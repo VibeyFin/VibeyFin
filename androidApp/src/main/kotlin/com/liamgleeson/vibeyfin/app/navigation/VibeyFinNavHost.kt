@@ -1,5 +1,10 @@
 package com.liamgleeson.vibeyfin.app.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -17,6 +22,19 @@ import com.liamgleeson.vibeyfin.domain.StartDestination
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
 import com.liamgleeson.vibeyfin.ui.home.HomeExit
 
+private const val SLIDE_MS = 280
+
+/** Screens slide a fifth of their width, not all of it: enough to show direction without a long wait. */
+private const val SLIDE_FRACTION = 5
+
+private fun enter() = slideInHorizontally(tween(SLIDE_MS)) { it / SLIDE_FRACTION } + fadeIn(tween(SLIDE_MS))
+
+private fun exit() = slideOutHorizontally(tween(SLIDE_MS)) { -it / SLIDE_FRACTION } + fadeOut(tween(SLIDE_MS))
+
+private fun popEnter() = slideInHorizontally(tween(SLIDE_MS)) { -it / SLIDE_FRACTION } + fadeIn(tween(SLIDE_MS))
+
+private fun popExit() = slideOutHorizontally(tween(SLIDE_MS)) { it / SLIDE_FRACTION } + fadeOut(tween(SLIDE_MS))
+
 @Composable
 fun VibeyFinNavHost() {
     val navController = rememberNavController()
@@ -30,7 +48,18 @@ fun VibeyFinNavHost() {
         navController.navigate(Servers) { popUpTo(Home) { inclusive = true } }
         if (exit is HomeExit.WhoIsWatching) navController.navigate(WhoIsWatching(exit.serverId))
     }
-    NavHost(navController = navController, startDestination = Startup) {
+    NavHost(
+        navController = navController,
+        startDestination = Startup,
+        enterTransition = { enter() },
+        exitTransition = { exit() },
+        popEnterTransition = { popEnter() },
+        popExitTransition = { popExit() },
+        // The back gesture scrubs these two. Left alone they are the library's own scale-down, which
+        // looks nothing like the slide the back button plays, so they are the pop pair again.
+        predictivePopEnterTransition = { popEnter() },
+        predictivePopExitTransition = { popExit() },
+    ) {
         composable<Startup> {
             StartupRoute(
                 onDecided = { destination ->

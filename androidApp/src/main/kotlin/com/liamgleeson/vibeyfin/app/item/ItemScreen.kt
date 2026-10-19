@@ -1,6 +1,5 @@
 package com.liamgleeson.vibeyfin.app.item
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,22 +10,23 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liamgleeson.vibeyfin.app.components.Artwork
+import com.liamgleeson.vibeyfin.app.components.BackButtonSpace
+import com.liamgleeson.vibeyfin.app.components.FloatingBackButton
 import com.liamgleeson.vibeyfin.app.components.LoadError
 import com.liamgleeson.vibeyfin.app.theme.VibeyFinPalette
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
@@ -53,18 +53,24 @@ fun ItemRoute(
 @Composable
 fun ItemScreen(state: ItemUiState, onBack: () -> Unit, onRetry: () -> Unit) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
-            TextButton(onClick = onBack, modifier = Modifier.padding(horizontal = 12.dp)) {
-                Text("Back", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            val item = state.item
-            when {
-                state.loading -> Box(Modifier.fillMaxWidth().height(240.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Box(Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+                val item = state.item
+                when {
+                    state.loading -> {
+                        Spacer(Modifier.height(BackButtonSpace))
+                        Box(Modifier.fillMaxWidth().height(240.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    state.message != null -> {
+                        Spacer(Modifier.height(BackButtonSpace))
+                        LoadError(message = state.message!!, onRetry = onRetry, modifier = Modifier.padding(horizontal = 24.dp))
+                    }
+                    item != null -> ItemDetails(item, state.facts)
                 }
-                state.message != null -> LoadError(state.message!!, onRetry, Modifier.padding(horizontal = 24.dp))
-                item != null -> ItemDetails(item, state.facts)
             }
+            FloatingBackButton(onBack)
         }
     }
 }
@@ -75,6 +81,7 @@ private fun ItemDetails(item: MediaItem, facts: List<String>) {
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        Spacer(Modifier.height(BackButtonSpace - 12.dp))
         // A wide backdrop when the server has one; otherwise the item's own picture at its own shape.
         val picture = item.backdropUrl ?: item.posterUrl
         if (picture != null) {

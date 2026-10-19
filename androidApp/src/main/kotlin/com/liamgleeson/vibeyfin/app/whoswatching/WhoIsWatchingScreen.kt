@@ -53,6 +53,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.liamgleeson.vibeyfin.app.components.BackButtonSpace
+import com.liamgleeson.vibeyfin.app.components.FloatingBackButton
 import com.liamgleeson.vibeyfin.app.components.vibeyFinTextFieldColors
 import com.liamgleeson.vibeyfin.app.theme.VibeyFinPalette
 import com.liamgleeson.vibeyfin.domain.model.Profile
@@ -99,55 +101,39 @@ fun WhoIsWatchingScreen(
     onDismissSheet: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp)) {
-            TextButton(onClick = onBack) {
-                Text("Back", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            state.serverName?.let { serverName ->
-                Text(
-                    text = serverName,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Text(
-                text = "Who's watching?",
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Spacer(Modifier.height(16.dp))
-            if (!state.loading && !state.serverReachable) {
-                UnreachableBanner(onRetry)
-            }
-            state.error.takeIf { state.sheet == null }?.let {
-                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(8.dp))
-            }
-            if (state.loading) {
-                Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(120.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    items(state.profiles, key = { it.userId }) { profile ->
-                        ProfileTile(profile, enabled = !state.signingIn) { onProfile(profile) }
+        Box(Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp)) {
+                if (state.loading) {
+                    Header(state, onRetry)
+                    Spacer(Modifier.height(16.dp))
+                    Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    if (state.quickConnectAvailable) {
-                        item(key = "quick-connect") {
-                            ActionTile("Quick Connect", symbol = "#", enabled = !state.signingIn, onClick = onQuickConnect)
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(120.dp),
+                        verticalArrangement = Arrangement.spacedBy(24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        // The heading is part of the grid, beneath the button, and scrolls up under it.
+                        item(span = { GridItemSpan(maxLineSpan) }, key = "header") { Header(state, onRetry) }
+                        items(state.profiles, key = { it.userId }) { profile ->
+                            ProfileTile(profile, enabled = !state.signingIn) { onProfile(profile) }
                         }
+                        if (state.quickConnectAvailable) {
+                            item(key = "quick-connect") {
+                                ActionTile("Quick Connect", symbol = "#", enabled = !state.signingIn, onClick = onQuickConnect)
+                            }
+                        }
+                        item(key = "other-user") {
+                            ActionTile("Other user", symbol = "+", enabled = !state.signingIn, onClick = onOtherUser)
+                        }
+                        item(span = { GridItemSpan(maxLineSpan) }, key = "bottom-space") { Spacer(Modifier.height(24.dp)) }
                     }
-                    item(key = "other-user") {
-                        ActionTile("Other user", symbol = "+", enabled = !state.signingIn, onClick = onOtherUser)
-                    }
-                    item(span = { GridItemSpan(maxLineSpan) }, key = "bottom-space") { Spacer(Modifier.height(24.dp)) }
                 }
             }
+            FloatingBackButton(onBack)
         }
     }
     state.sheet?.let { sheet ->
@@ -160,6 +146,34 @@ fun WhoIsWatchingScreen(
             onQuickConnectRetry = onQuickConnect,
             onDismiss = onDismissSheet,
         )
+    }
+}
+
+/** The server name, the heading, and whatever needs saying before the profiles. */
+@Composable
+private fun Header(state: WhoIsWatchingUiState, onRetry: () -> Unit) {
+    Column {
+        Spacer(Modifier.height(BackButtonSpace))
+        state.serverName?.let { serverName ->
+            Text(
+                text = serverName,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            text = "Who's watching?",
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        if (!state.loading && !state.serverReachable) {
+            Spacer(Modifier.height(16.dp))
+            UnreachableBanner(onRetry)
+        }
+        state.error.takeIf { state.sheet == null }?.let {
+            Spacer(Modifier.height(8.dp))
+            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+        }
     }
 }
 

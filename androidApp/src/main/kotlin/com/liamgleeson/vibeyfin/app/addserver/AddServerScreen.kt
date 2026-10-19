@@ -24,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,6 +34,8 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.liamgleeson.vibeyfin.app.components.BackButtonSpace
+import com.liamgleeson.vibeyfin.app.components.FloatingBackButton
 import com.liamgleeson.vibeyfin.app.components.vibeyFinTextFieldColors
 import com.liamgleeson.vibeyfin.app.theme.VibeyFinPalette
 import com.liamgleeson.vibeyfin.ui.addserver.AddServerStep
@@ -74,91 +75,91 @@ fun AddServerScreen(
 ) {
     val found = state.step as? AddServerStep.Found
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .safeDrawingPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 8.dp),
-        ) {
-            TextButton(onClick = onBack) {
-                Text("Back", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = "Add a server",
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Spacer(Modifier.height(24.dp))
+        Box(Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .safeDrawingPadding()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp),
+            ) {
+                Spacer(Modifier.height(BackButtonSpace))
+                Text(
+                    text = "Add a server",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Spacer(Modifier.height(24.dp))
 
-            OutlinedTextField(
-                value = state.address,
-                onValueChange = onAddressChange,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Server address") },
-                placeholder = { Text("192.168.1.20:8096") },
-                singleLine = true,
-                isError = state.step is AddServerStep.Failed,
-                colors = vibeyFinTextFieldColors(),
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.None,
-                    autoCorrectEnabled = false,
-                    keyboardType = KeyboardType.Uri,
-                    imeAction = ImeAction.Go,
-                ),
-                keyboardActions = KeyboardActions(onGo = { onConnect() }),
-            )
-            Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = state.address,
+                    onValueChange = onAddressChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Server address") },
+                    placeholder = { Text("192.168.1.20:8096") },
+                    singleLine = true,
+                    isError = state.step is AddServerStep.Failed,
+                    colors = vibeyFinTextFieldColors(),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.None,
+                        autoCorrectEnabled = false,
+                        keyboardType = KeyboardType.Uri,
+                        imeAction = ImeAction.Go,
+                    ),
+                    keyboardActions = KeyboardActions(onGo = { onConnect() }),
+                )
+                Spacer(Modifier.height(16.dp))
 
-            // Connect is the main action until a server has been found; then it's Add server.
-            if (found == null) {
-                val checking = state.step is AddServerStep.Checking
-                Button(
-                    onClick = onConnect,
-                    enabled = state.canConnect,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                ) {
-                    if (checking) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(Modifier.size(12.dp))
-                        Text("Connecting")
-                    } else {
-                        Text("Connect")
-                    }
-                }
-            }
-
-            when (val step = state.step) {
-                is AddServerStep.Failed -> {
-                    Spacer(Modifier.height(24.dp))
-                    ErrorCard(step.issue.message())
-                }
-
-                is AddServerStep.Found -> {
-                    FoundCard(step)
-                    Spacer(Modifier.height(16.dp))
+                // Connect is the main action until a server has been found; then it's Add server.
+                if (found == null) {
+                    val checking = state.step is AddServerStep.Checking
                     Button(
-                        onClick = onConfirm,
-                        enabled = !state.saving,
+                        onClick = onConnect,
+                        enabled = state.canConnect,
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                     ) {
-                        Text(
-                            when {
-                                !step.alreadySaved -> "Add server"
-                                step.addressIsNew -> "Save address"
-                                else -> "Done"
-                            },
-                        )
+                        if (checking) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.size(12.dp))
+                            Text("Connecting")
+                        } else {
+                            Text("Connect")
+                        }
                     }
                 }
 
-                AddServerStep.Idle, AddServerStep.Checking -> Unit
+                when (val step = state.step) {
+                    is AddServerStep.Failed -> {
+                        Spacer(Modifier.height(24.dp))
+                        ErrorCard(step.issue.message())
+                    }
+
+                    is AddServerStep.Found -> {
+                        FoundCard(step)
+                        Spacer(Modifier.height(16.dp))
+                        Button(
+                            onClick = onConfirm,
+                            enabled = !state.saving,
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                        ) {
+                            Text(
+                                when {
+                                    !step.alreadySaved -> "Add server"
+                                    step.addressIsNew -> "Save address"
+                                    else -> "Done"
+                                },
+                            )
+                        }
+                    }
+
+                    AddServerStep.Idle, AddServerStep.Checking -> Unit
+                }
             }
+            FloatingBackButton(onBack)
         }
     }
 }

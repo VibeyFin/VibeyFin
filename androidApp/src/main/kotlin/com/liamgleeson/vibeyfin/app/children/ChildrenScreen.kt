@@ -18,7 +18,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -29,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liamgleeson.vibeyfin.app.components.ArtworkTile
+import com.liamgleeson.vibeyfin.app.components.BackButtonSpace
+import com.liamgleeson.vibeyfin.app.components.FloatingBackButton
 import com.liamgleeson.vibeyfin.app.components.LoadError
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
 import com.liamgleeson.vibeyfin.ui.children.ChildrenUiState
@@ -73,32 +74,52 @@ fun ChildrenScreen(
     onRetry: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp)) {
-            TextButton(onClick = onBack) { Text("Back", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Spacer(Modifier.height(16.dp))
-            when {
-                state.loading -> Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Box(Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp)) {
+                when {
+                    state.loading -> {
+                        Title(title)
+                        Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    state.message != null -> {
+                        Title(title)
+                        LoadError(state.message!!, onRetry)
+                    }
+                    state.isEmpty -> {
+                        Title(title)
+                        Text(
+                            text = "There's nothing in here yet.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    else -> ItemGrid(title, state, onOpen, onLoadMore, onRetry)
                 }
-                state.message != null -> LoadError(state.message!!, onRetry)
-                state.isEmpty -> Text(
-                    text = "There's nothing in here yet.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                else -> ItemGrid(state, onOpen, onLoadMore, onRetry)
             }
+            FloatingBackButton(onBack)
         }
     }
 }
 
 @Composable
+private fun Title(title: String) {
+    // A Column: as a lazy grid item, several loose children would be drawn on top of each other.
+    Column {
+        Spacer(Modifier.height(BackButtonSpace))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
 private fun ItemGrid(
+    title: String,
     state: ChildrenUiState,
     onOpen: (MediaItem) -> Unit,
     onLoadMore: () -> Unit,
@@ -122,6 +143,8 @@ private fun ItemGrid(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
+        // The title is part of the list, beneath the button, and scrolls up under it.
+        item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title) }
         items(state.items, key = { it.id }) { item ->
             ArtworkTile(item, onClick = { onOpen(item) })
         }
