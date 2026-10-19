@@ -85,17 +85,28 @@ Device ID: generate a UUID once per install and persist it.
 
 ## Design language
 
-Dark, blue-ink background; amber is reserved for the single primary action (Play, Sign in);
-teal only for availability. Artwork carries the colour everywhere else. Heavy, tight type for
-titles. Netflix patterns: "Who's watching?" profile grid, hero billboard, rows of posters.
+The design system lives in `docs/design/` (start with `brand.md`) and `design/tokens.json`. It is
+dark only, artwork-forward, and native on each platform: Apple's Human Interface Guidelines with
+Liquid Glass on iOS 26+ (`ios.md`), Material 3 on Android (`android.md`). Behaviour rules that both
+apps share are in `guardrails.md`; which Jellyfin field drives which UI is in `jellyfin-mapping.md`.
 
-Native, not identical: the rules above hold on both platforms, implemented natively (`app/theme`
-in `androidApp`, `Theme.swift` in `iosApp`); each platform otherwise follows its own idioms.
-
-Palette: Ink `#10121A`, Surface `#1A1D29`, SurfaceHigh `#262A3A`, Text `#ECEAE4`,
-TextMuted `#8E92A3`, Marquee (amber) `#E8B04B`, OnMarquee `#1B1405`, Available (teal) `#5CC8B0`.
-
-Copy: sentence case, plain verbs, errors say what happened and how to fix it.
+- One brand across both: electric aqua `#3fe0d0` fills the single primary action per screen (Play,
+  Sign in) and playback progress, and nothing else. Aqua never signals status; downloaded uses `ink`
+  with the filled icon. No teal, no amber, no dynamic colour, no light theme.
+- Colours: iOS uses Apple's dark semantic colours (not hex) plus the brand values; Android builds an
+  explicit M3 dark `ColorScheme` from the `android` column of `tokens.json`. Text over artwork sits
+  on `scrim`.
+- Type: system fonts (SF Pro Dynamic Type styles on iOS, the M3 type scale on Android). Only
+  `brand-display` (Bricolage Grotesque) is bundled, for the wordmark, the hero title without a Logo
+  image and onboarding.
+- Use the platform's own component when it has one (buttons, sheets, menus, tab bar, text fields);
+  build custom only for posters, rows, the hero and the player. Never fake Liquid Glass.
+- Copy: `Strings` is written in sentence case, plain verbs; errors say what happened and how to fix
+  it. iOS shows button, tab and title labels in title case through one helper, `titleCased()`;
+  Android uses the text as is.
+- Token values are hand-written in `app/theme` (Android) and `Theme.swift` (iOS). A drift check
+  against `design/tokens.json` fails when they differ. Never hand-copy a hex value into a screen.
+- Netflix patterns stay: "Who's watching?" profile grid, hero billboard, rows of posters.
 
 ## Working agreement
 
