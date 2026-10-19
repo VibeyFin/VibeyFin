@@ -11,6 +11,8 @@ import io.ktor.client.request.HttpResponseData
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.time.TimeSource
 
 typealias Route = MockRequestHandleScope.() -> HttpResponseData
@@ -24,13 +26,18 @@ class FakeTlsException : Exception("TLS handshake failed")
 class MockJellyfinNetwork(vararg routes: Pair<String, Route>) {
     val requested = mutableListOf<String>()
     val authorization = mutableListOf<String?>()
+
+    /** Probes run side by side on the engine's threads; a plain list would lose an append now and then. */
+    private val recording = Mutex()
     private val byAddress = routes.toMap()
 
     fun resolver(timeSource: TimeSource = ScriptedTimeSource()): ServerResolver {
         val engine = MockEngine { request ->
             val url = request.url.toString()
-            requested += url
-            authorization += request.headers[HttpHeaders.Authorization]
+            recording.withLock {
+                requested += url
+                authorization += request.headers[HttpHeaders.Authorization]
+            }
             val route = byAddress[url.removeSuffix("/System/Info/Public")]
                 ?: throw Exception("connection refused")
             route()
