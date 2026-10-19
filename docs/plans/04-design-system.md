@@ -66,8 +66,8 @@ Also left alone: launcher and app icons stay amber until a separate icon task.
 
 ## Phase 2: Android theme
 
-- Font: Bricolage Grotesque ExtraBold static TTF from Google Fonts into `res/font`, with the OFL
-  licence next to it.
+- Font: Bricolage Grotesque variable TTF (Google Fonts ships no static files) in `res/font`, set to
+  weight 800 with `FontVariation`; OFL licence in `design/`.
 - Replace `Color.kt` with `VibeyFinTokens`: the `android` column of `tokens.json` for every colour,
   plus `space1..7`, radii (`radiusArtwork` 8, `m3` shapes), sizes (`touchAndroid`, `buttonAndroid`,
   `posterW`, `thumbW`) and `durHero`, `durBase`.
@@ -76,7 +76,8 @@ Also left alone: launcher and app icons stay amber until a separate icon task.
   line-strong to `outline`, ink to `onSurface`, ink-muted to `onSurfaceVariant`, accent to `primary`,
   on-accent to `onPrimary`, accent-soft and on-accent-soft to `secondaryContainer` and
   `onSecondaryContainer`, danger to `error`). Values with no M3 role (`ink-subtle`, `scrim`,
-  `scrim-strong`, `progress-track`, `focus`) go through `LocalVibeyFinExtras`.
+  `scrim-strong`, `progress-track`, `focus`) are read straight from `VibeyFinTokens.Colors`; no
+  CompositionLocal, since they never vary.
 - `Type.kt`: standard M3 `Typography`, with the design's exact sizes for the eight `m3-*` styles;
   drop the heavy-title overrides. Add `BrandDisplay` (`brand-display` 40/44, weight 800, -0.02em).
 - Update `res/values/colors.xml` and `themes.xml` (window, status and navigation bar) to `bg`
