@@ -7,12 +7,30 @@ enum Route: Hashable {
     case whoIsWatching(serverId: String)
     case home
     case settings
+    /// What is inside a library, folder, series or season; `title` shows while it loads.
+    case children(parentId: String, title: String)
+    case item(itemId: String)
 }
 
 struct RootView: View {
     @State private var path: [Route] = []
     @State private var ready = false
     @StateObject private var startup = StartupObservable()
+
+    /// A folder opens its list; anything else opens its page.
+    private func open(_ item: MediaItem) {
+        path.append(item.isFolder ? .children(parentId: item.id, title: item.title) : .item(itemId: item.id))
+    }
+
+    /// Leaves Home and everything opened from it. Servers is the root, so back from "Who's watching?"
+    /// has somewhere to go.
+    private func leave(_ exit: HomeExit) {
+        if let who = exit as? HomeExitWhoIsWatching {
+            path = [.whoIsWatching(serverId: who.serverId)]
+        } else {
+            path = []
+        }
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -31,19 +49,17 @@ struct RootView: View {
                     WhoIsWatchingView(serverId: serverId, onSignedIn: { path = [.home] })
                 case .home:
                     HomeView(
-                        onExit: { exit in
-                            // Servers is the root, so back from "Who's watching?" has somewhere to go.
-                            if let who = exit as? HomeExitWhoIsWatching {
-                                path = [.whoIsWatching(serverId: who.serverId)]
-                            } else {
-                                path = []
-                            }
-                        },
+                        onExit: leave,
+                        onOpen: open,
                         onSettings: { path.append(.settings) }
                     )
                     .navigationBarBackButtonHidden(true)
                 case .settings:
                     SettingsView()
+                case .children(let parentId, let title):
+                    ChildrenView(parentId: parentId, title: title, onOpen: open, onExit: leave)
+                case .item(let itemId):
+                    ItemView(itemId: itemId, onExit: leave)
                 }
             }
         }

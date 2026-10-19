@@ -15,5 +15,7 @@ class HomeModel {
 
     fun onSignOut() = host.viewModel.onSignOut()
 
+    fun onRetryLibraries() = host.viewModel.onRetryLibraries()
+
     fun close() = host.close()
 }

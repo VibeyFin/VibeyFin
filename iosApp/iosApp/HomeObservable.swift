@@ -30,6 +30,10 @@ final class HomeObservable: ObservableObject {
         model.onSignOut()
     }
 
+    func retryLibraries() {
+        model.onRetryLibraries()
+    }
+
     deinit {
         model.close()
     }
