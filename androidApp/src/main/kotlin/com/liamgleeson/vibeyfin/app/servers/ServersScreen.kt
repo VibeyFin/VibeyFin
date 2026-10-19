@@ -34,6 +34,7 @@ import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun ServersRoute(
+    onOpenServer: (Server) -> Unit,
     onAddServer: () -> Unit,
     onDiscoveredServer: (DiscoveredServer) -> Unit,
     viewModel: ServersViewModel = koinViewModel(),
@@ -41,6 +42,7 @@ fun ServersRoute(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     ServersScreen(
         state = state,
+        onOpenServer = onOpenServer,
         onAddServer = onAddServer,
         onDiscoveredServer = onDiscoveredServer,
         onSearchAgain = viewModel::onSearchAgain,
@@ -50,6 +52,7 @@ fun ServersRoute(
 @Composable
 fun ServersScreen(
     state: ServersUiState,
+    onOpenServer: (Server) -> Unit,
     onAddServer: () -> Unit,
     onDiscoveredServer: (DiscoveredServer) -> Unit,
     onSearchAgain: () -> Unit,
@@ -58,7 +61,7 @@ fun ServersScreen(
         when {
             state.loading -> Unit
             state.servers.isEmpty() && state.discovered.isEmpty() -> EmptyServers(state, onAddServer, onSearchAgain)
-            else -> ServerList(state, onAddServer, onDiscoveredServer, onSearchAgain)
+            else -> ServerList(state, onOpenServer, onAddServer, onDiscoveredServer, onSearchAgain)
         }
     }
 }
@@ -100,6 +103,7 @@ private fun EmptyServers(state: ServersUiState, onAddServer: () -> Unit, onSearc
 @Composable
 private fun ServerList(
     state: ServersUiState,
+    onOpenServer: (Server) -> Unit,
     onAddServer: () -> Unit,
     onDiscoveredServer: (DiscoveredServer) -> Unit,
     onSearchAgain: () -> Unit,
@@ -116,7 +120,7 @@ private fun ServerList(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(state.servers, key = { "saved-${it.id}" }) { ServerRow(it) }
+            items(state.servers, key = { "saved-${it.id}" }) { server -> ServerRow(server) { onOpenServer(server) } }
             if (state.canSearch) {
                 item(key = "nearby-header") { NearbyHeader(state.searching, onSearchAgain) }
                 items(state.discovered, key = { "found-${it.id}" }) { DiscoveredRow(it) { onDiscoveredServer(it) } }
@@ -180,8 +184,9 @@ private fun SearchingLabel() {
 }
 
 @Composable
-private fun ServerRow(server: Server) {
+private fun ServerRow(server: Server, onClick: () -> Unit) {
     Surface(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(16.dp),

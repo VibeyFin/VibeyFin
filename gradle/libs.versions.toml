@@ -20,6 +20,7 @@ ktor = "3.6.0"
 # Native Android UI (Jetpack Compose), resolved 2026-10-19 (latest stable).
 androidx-compose-bom = "2026.09.00"
 androidx-navigation = "2.10.2"
+coil = "3.6.3"
 
 # Android SDK levels (not dependencies). compileSdk 37 is required by the latest stable
 # lifecycle 2.11.0 / Compose 1.12.x AARs; targetSdk is a separate runtime-behaviour choice.
@@ -58,6 +59,9 @@ androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = 
 androidx-compose-ui = { module = "androidx.compose.ui:ui" }
 androidx-compose-foundation = { module = "androidx.compose.foundation:foundation" }
 androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
+androidx-compose-material-icons-core = { module = "androidx.compose.material:material-icons-core" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "androidx-navigation" }
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 koin-androidx-compose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
