@@ -4,6 +4,7 @@ import com.liamgleeson.vibeyfin.data.api.ClientInfo
 import com.liamgleeson.vibeyfin.data.api.JellyfinApi
 import com.liamgleeson.vibeyfin.data.api.JellyfinApiFactory
 import com.liamgleeson.vibeyfin.data.api.JellyfinHttpClient
+import com.liamgleeson.vibeyfin.data.api.RetryPolicy
 import com.liamgleeson.vibeyfin.data.api.UnauthorizedEvents
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -14,6 +15,9 @@ import io.ktor.http.Parameters
 import io.ktor.http.content.ByteArrayContent
 import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlin.time.Duration
 
 /** A request as the fake server saw it. [path] is relative to the server's address, without the query. */
 class RecordedRequest(
@@ -61,13 +65,16 @@ class FakeServer(val address: String) {
 
 /**
  * A pretend network of Jellyfin servers. Addresses nobody registered refuse connections. Every
- * request is recorded in [requests].
+ * request is recorded in [requests]. Retried reads try [retries] times without waiting by default.
  */
-class FakeJellyfin {
+class FakeJellyfin(retries: RetryPolicy = RetryPolicy(attempts = 3, backoff = Duration.ZERO)) {
     val requests = mutableListOf<RecordedRequest>()
     val unauthorized = UnauthorizedEvents()
 
     private val servers = mutableMapOf<String, FakeServer>()
+
+    /** Calls can overlap on the engine's threads; a plain list would lose an append now and then. */
+    private val recording = Mutex()
 
     fun server(address: String): FakeServer = servers.getOrPut(address) { FakeServer(address) }
 
@@ -84,7 +91,7 @@ class FakeJellyfin {
             authorization = data.headers[HttpHeaders.Authorization],
             body = data.bodyText(),
         )
-        requests += recorded
+        recording.withLock { requests += recorded }
         val reply = server.answer(recorded)
         respond(
             content = reply.body,
@@ -98,7 +105,7 @@ class FakeJellyfin {
         engine = engine,
     )
 
-    val apiFactory = JellyfinApiFactory(http, unauthorized)
+    val apiFactory = JellyfinApiFactory(http, unauthorized, retries)
 
     fun api(address: String, token: String? = null): JellyfinApi = apiFactory.create(address, token)
 

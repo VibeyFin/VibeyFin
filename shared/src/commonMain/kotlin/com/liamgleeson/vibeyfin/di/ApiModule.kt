@@ -7,6 +7,7 @@ import com.liamgleeson.vibeyfin.data.api.Timeouts
 import com.liamgleeson.vibeyfin.data.api.UnauthorizedEvents
 import com.liamgleeson.vibeyfin.domain.AuthRepository
 import com.liamgleeson.vibeyfin.domain.ConnectionManager
+import com.liamgleeson.vibeyfin.domain.LibraryRepository
 import com.liamgleeson.vibeyfin.domain.ServerConnector
 import com.liamgleeson.vibeyfin.domain.ServerResolver
 import com.liamgleeson.vibeyfin.domain.StartupRouter
@@ -38,4 +39,5 @@ fun apiModule() = module {
     single { ConnectionManager(get(), get(), get(), get(), get()) }
     single { AuthRepository(get(), get(), get()) }
     single { StartupRouter(get(), get(), get(), get()) }
+    single { LibraryRepository(get()) }
 }

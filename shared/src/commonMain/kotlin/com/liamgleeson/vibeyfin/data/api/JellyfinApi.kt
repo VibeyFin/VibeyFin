@@ -12,21 +12,26 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 
 /**
  * The calls we make to one Jellyfin server at [baseUrl]. With a [token] they are signed in.
  *
  * Every call returns an [ApiResult]; nothing here throws for a network or HTTP problem. Further
  * endpoint groups (library, playback) are extensions in their own files and use [get] and [post].
+ *
+ * Reads that are safe to repeat opt in to [retries]; sign-in and anything else that changes state
+ * never does.
  */
 class JellyfinApi(
     internal val http: HttpClient,
     val baseUrl: String,
     internal val token: String? = null,
     private val unauthorized: UnauthorizedEvents? = null,
+    private val retries: RetryPolicy = RetryPolicy.Default,
 ) {
     /** The same server, signed in with [token]. */
-    fun withToken(token: String?) = JellyfinApi(http, baseUrl, token, unauthorized)
+    fun withToken(token: String?) = JellyfinApi(http, baseUrl, token, unauthorized, retries)
 
     /** `GET /Users/Public`: the users the server lists on its sign-in screen. Needs no sign-in. */
     suspend fun publicUsers(): ApiResult<List<UserDto>> = get("/Users/Public")
@@ -65,13 +70,15 @@ class JellyfinApi(
     internal suspend inline fun <reified T> get(
         path: String,
         query: Map<String, String> = emptyMap(),
-    ): ApiResult<T> = send(HttpMethod.Get, path, query)
+        retry: Boolean = false,
+    ): ApiResult<T> = send(HttpMethod.Get, path, query, retry)
 
     internal suspend inline fun <reified T> send(
         method: HttpMethod,
         path: String,
         query: Map<String, String> = emptyMap(),
-    ): ApiResult<T> = execute({ it.body<T>() }) {
+        retry: Boolean = false,
+    ): ApiResult<T> = execute({ it.body<T>() }, retry) {
         this.method = method
         url("$baseUrl$path")
         query.forEach { (key, value) -> parameter(key, value) }
@@ -89,8 +96,28 @@ class JellyfinApi(
         setBody(body)
     }
 
-    /** Sends the request and turns the outcome into an [ApiResult]; [decode] reads a success body. */
+    /**
+     * Sends the request and turns the outcome into an [ApiResult]; [decode] reads a success body.
+     * With [retry] a failure that may pass ([isRetryable]) is tried again, up to [retries] in all.
+     */
     internal suspend fun <T> execute(
+        decode: suspend (HttpResponse) -> T,
+        retry: Boolean = false,
+        configure: HttpRequestBuilder.() -> Unit,
+    ): ApiResult<T> {
+        var result = attempt(decode, configure)
+        if (!retry) return result
+        var wait = retries.backoff
+        repeat(retries.attempts - 1) {
+            if (!result.isRetryable()) return result
+            delay(wait)
+            wait *= 2
+            result = attempt(decode, configure)
+        }
+        return result
+    }
+
+    private suspend fun <T> attempt(
         decode: suspend (HttpResponse) -> T,
         configure: HttpRequestBuilder.() -> Unit,
     ): ApiResult<T> {
@@ -135,6 +162,7 @@ fun userImageUrl(baseUrl: String, userId: String, imageTag: String, maxWidth: In
 class JellyfinApiFactory(
     private val http: HttpClient,
     private val unauthorized: UnauthorizedEvents? = null,
+    private val retries: RetryPolicy = RetryPolicy.Default,
 ) {
-    fun create(baseUrl: String, token: String? = null) = JellyfinApi(http, baseUrl, token, unauthorized)
+    fun create(baseUrl: String, token: String? = null) = JellyfinApi(http, baseUrl, token, unauthorized, retries)
 }

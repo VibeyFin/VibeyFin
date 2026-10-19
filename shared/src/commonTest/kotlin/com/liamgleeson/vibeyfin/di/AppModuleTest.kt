@@ -23,7 +23,9 @@ import com.liamgleeson.vibeyfin.testing.FakeLanDiscovery
 import com.liamgleeson.vibeyfin.testing.FakeTokenVault
 import com.liamgleeson.vibeyfin.testing.InMemoryPreferencesDataStore
 import com.liamgleeson.vibeyfin.ui.addserver.AddServerViewModel
+import com.liamgleeson.vibeyfin.ui.children.ChildrenViewModel
 import com.liamgleeson.vibeyfin.ui.home.HomeViewModel
+import com.liamgleeson.vibeyfin.ui.item.ItemViewModel
 import com.liamgleeson.vibeyfin.ui.servers.ServersViewModel
 import com.liamgleeson.vibeyfin.ui.settings.SettingsViewModel
 import com.liamgleeson.vibeyfin.ui.startup.StartupViewModel
@@ -77,6 +79,8 @@ class AppModuleTest {
             koin.get<AddServerViewModel>(),
             koin.get<WhoIsWatchingViewModel> { parametersOf("srv-1") },
             koin.get<HomeViewModel>(),
+            koin.get<ChildrenViewModel> { parametersOf("folder-1") },
+            koin.get<ItemViewModel> { parametersOf("item-1") },
             koin.get<StartupViewModel>(),
             koin.get<SettingsViewModel>(),
         )

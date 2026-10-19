@@ -1,7 +1,9 @@
 package com.liamgleeson.vibeyfin.di
 
 import com.liamgleeson.vibeyfin.ui.addserver.AddServerViewModel
+import com.liamgleeson.vibeyfin.ui.children.ChildrenViewModel
 import com.liamgleeson.vibeyfin.ui.home.HomeViewModel
+import com.liamgleeson.vibeyfin.ui.item.ItemViewModel
 import com.liamgleeson.vibeyfin.ui.servers.ServersViewModel
 import com.liamgleeson.vibeyfin.ui.settings.SettingsViewModel
 import com.liamgleeson.vibeyfin.ui.startup.StartupViewModel
@@ -22,6 +24,8 @@ fun appModule() = module {
     viewModel { params -> AddServerViewModel(params.getOrNull(), get(), get()) }
     viewModel { params -> WhoIsWatchingViewModel(params.get(), get(), get(), get(), get()) }
     viewModelOf(::HomeViewModel)
+    viewModel { params -> ChildrenViewModel(params.get(), get(), get()) }
+    viewModel { params -> ItemViewModel(params.get(), get(), get()) }
     viewModelOf(::StartupViewModel)
     viewModelOf(::SettingsViewModel)
 }

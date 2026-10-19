@@ -5,6 +5,7 @@ import com.liamgleeson.vibeyfin.data.prefs.DataStoreDevicePreferences
 import com.liamgleeson.vibeyfin.domain.AccountRepository
 import com.liamgleeson.vibeyfin.domain.AuthRepository
 import com.liamgleeson.vibeyfin.domain.ConnectionManager
+import com.liamgleeson.vibeyfin.domain.LibraryRepository
 import com.liamgleeson.vibeyfin.domain.ServerConnector
 import com.liamgleeson.vibeyfin.domain.ServerRepository
 import com.liamgleeson.vibeyfin.domain.StartupRouter
@@ -33,11 +34,21 @@ class TestApp {
     val connection = ConnectionManager(connector, servers, accounts, preferences, jellyfin.unauthorized, scope)
     val auth = AuthRepository(connector, accounts, connection)
     val router = StartupRouter(servers, accounts, preferences, connection)
+    val library = LibraryRepository(connection)
 
     /** Saves a server reachable at [address] and returns its fake. */
     suspend fun serverAt(address: String, id: String = "srv-1", name: String = "Home"): FakeServer {
         servers.save(id, name, "10.10.7", address)
         return jellyfin.server(address)
+    }
+
+    /** Saves a server and a profile with a session, and signs in as it ("Alex" on "Home", token-1). */
+    suspend fun signedIn(address: String = "http://nas:8096"): FakeServer {
+        val server = serverAt(address)
+        server.on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex"}"""))
+        accounts.saveSession("srv-1", "u1", "Alex", null, "token-1")
+        connection.activate("srv-1", "u1")
+        return server
     }
 
     /**
