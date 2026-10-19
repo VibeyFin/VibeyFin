@@ -9,5 +9,11 @@ class HomeModel {
 
     fun observe(onChange: (HomeUiState) -> Unit) = host.observe(host.viewModel.uiState, onChange)
 
+    fun onSwitchProfile() = host.viewModel.onSwitchProfile()
+
+    fun onSwitchServer() = host.viewModel.onSwitchServer()
+
+    fun onSignOut() = host.viewModel.onSignOut()
+
     fun close() = host.close()
 }

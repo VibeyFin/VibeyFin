@@ -6,10 +6,13 @@ enum Route: Hashable {
     case addServer(address: String?)
     case whoIsWatching(serverId: String)
     case home
+    case settings
 }
 
 struct RootView: View {
     @State private var path: [Route] = []
+    @State private var ready = false
+    @StateObject private var startup = StartupObservable()
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -27,11 +30,37 @@ struct RootView: View {
                     // Home becomes the only screen: back from it must not return to sign-in.
                     WhoIsWatchingView(serverId: serverId, onSignedIn: { path = [.home] })
                 case .home:
-                    HomeView(onSessionEnded: { serverId in path = [.whoIsWatching(serverId: serverId)] })
-                        .navigationBarBackButtonHidden(true)
+                    HomeView(
+                        onExit: { exit in
+                            // Servers is the root, so back from "Who's watching?" has somewhere to go.
+                            if let who = exit as? HomeExitWhoIsWatching {
+                                path = [.whoIsWatching(serverId: who.serverId)]
+                            } else {
+                                path = []
+                            }
+                        },
+                        onSettings: { path.append(.settings) }
+                    )
+                    .navigationBarBackButtonHidden(true)
+                case .settings:
+                    SettingsView()
                 }
             }
         }
         .tint(Palette.text)
+        // Blank ink until the app has worked out where to open, a moment of storage reads.
+        .overlay {
+            if !ready { Palette.ink.ignoresSafeArea() }
+        }
+        .onAppear {
+            startup.start { destination in
+                if destination is StartDestinationHome {
+                    path = [.home]
+                } else if let who = destination as? StartDestinationWhoIsWatching {
+                    path = [.whoIsWatching(serverId: who.serverId)]
+                }
+                ready = true
+            }
+        }
     }
 }

@@ -32,6 +32,10 @@ final class WhoIsWatchingObservable: ObservableObject {
         model.onOtherUserTapped()
     }
 
+    func quickConnectTapped() {
+        model.onQuickConnectTapped()
+    }
+
     func submitPassword(_ password: String) {
         model.onSubmitPassword(password: password)
     }

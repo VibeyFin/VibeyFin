@@ -32,6 +32,7 @@ struct WhoIsWatchingView: View {
                     signingIn: state.signingIn,
                     onSubmitPassword: { model.submitPassword($0) },
                     onSubmitOtherUser: { model.submitOtherUser(username: $0, password: $1) },
+                    onQuickConnectRetry: { model.quickConnectTapped() },
                     onDismiss: { model.dismissSheet() }
                 )
             }
@@ -90,8 +91,15 @@ struct WhoIsWatchingView: View {
                 .buttonStyle(.plain)
                 .disabled(state.signingIn)
             }
+            if state.quickConnectAvailable {
+                Button { model.quickConnectTapped() } label: {
+                    ActionTile(label: "Quick Connect", symbol: "#")
+                }
+                .buttonStyle(.plain)
+                .disabled(state.signingIn)
+            }
             Button { model.otherUserTapped() } label: {
-                OtherUserTile()
+                ActionTile(label: "Other user", symbol: "+")
             }
             .buttonStyle(.plain)
             .disabled(state.signingIn)
@@ -186,17 +194,21 @@ private struct Avatar: View {
     }
 }
 
-private struct OtherUserTile: View {
+/// A tile that isn't a person: "Other user", "Quick Connect".
+private struct ActionTile: View {
+    let label: String
+    let symbol: String
+
     var body: some View {
         VStack(spacing: 8) {
             ZStack {
                 RoundedRectangle(cornerRadius: 16).fill(Palette.surfaceHigh)
-                Text("+")
+                Text(symbol)
                     .font(.system(size: 36, weight: .heavy))
                     .foregroundColor(Palette.textMuted)
             }
             .frame(width: 104, height: 104)
-            Text("Other user")
+            Text(label)
                 .font(.system(size: 17, weight: .bold))
                 .foregroundColor(Palette.textMuted)
                 .lineLimit(1)
@@ -212,6 +224,7 @@ private struct SignInSheetView: View {
     let signingIn: Bool
     let onSubmitPassword: (String) -> Void
     let onSubmitOtherUser: (String, String) -> Void
+    let onQuickConnectRetry: () -> Void
     let onDismiss: () -> Void
 
     @State private var username = ""
@@ -224,6 +237,14 @@ private struct SignInSheetView: View {
     }
 
     var body: some View {
+        if let quickConnect = sheet as? SignInSheetQuickConnect {
+            QuickConnectSheetView(sheet: quickConnect, onRetry: onQuickConnectRetry, onDismiss: onDismiss)
+        } else {
+            passwordBody
+        }
+    }
+
+    private var passwordBody: some View {
         ZStack {
             Palette.surface.ignoresSafeArea()
             VStack(alignment: .leading, spacing: 16) {
@@ -291,6 +312,59 @@ private struct SignInSheetView: View {
                     RoundedRectangle(cornerRadius: 8)
                         .stroke(error != nil ? Palette.error : Palette.surfaceHigh, lineWidth: 1)
                 )
+        }
+    }
+}
+
+/// Shows the code while another device approves the sign-in, or why it stopped.
+private struct QuickConnectSheetView: View {
+    let sheet: SignInSheetQuickConnect
+    let onRetry: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        ZStack {
+            Palette.surface.ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Quick Connect").vibeTitle(size: 24)
+                if let message = sheet.message {
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundColor(Palette.error)
+                    Button("Try again", action: onRetry)
+                        .buttonStyle(PrimaryButtonStyle())
+                } else if let code = sheet.code {
+                    Text("On a device that's signed in to Jellyfin, open your user menu, choose Quick Connect and enter this code.")
+                        .font(.subheadline)
+                        .foregroundColor(Palette.textMuted)
+                    Text(code)
+                        .font(.system(size: 48, weight: .heavy, design: .rounded))
+                        .tracking(2)
+                        .foregroundColor(Palette.text)
+                    waiting("Waiting for approval")
+                } else {
+                    waiting("Getting a code")
+                }
+                Button("Cancel", action: onDismiss)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(Palette.textMuted)
+                    .frame(maxWidth: .infinity)
+                Spacer()
+            }
+            .padding(24)
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func waiting(_ text: String) -> some View {
+        HStack(spacing: 8) {
+            ProgressView()
+                .progressViewStyle(.circular)
+                .tint(Palette.textMuted)
+                .scaleEffect(0.8)
+            Text(text)
+                .font(.subheadline)
+                .foregroundColor(Palette.textMuted)
         }
     }
 }

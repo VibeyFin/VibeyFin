@@ -17,6 +17,9 @@ class WhoIsWatchingModel(serverId: String) {
 
     fun onOtherUserTapped() = host.viewModel.onOtherUserTapped()
 
+    /** Starts Quick Connect, or starts it over after it stopped. */
+    fun onQuickConnectTapped() = host.viewModel.onQuickConnectTapped()
+
     fun onSubmitPassword(password: String) = host.viewModel.onSubmitPassword(password)
 
     fun onSubmitOtherUser(username: String, password: String) = host.viewModel.onSubmitOtherUser(username, password)
