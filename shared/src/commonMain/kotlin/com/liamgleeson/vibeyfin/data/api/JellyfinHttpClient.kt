@@ -29,7 +29,8 @@ data class Timeouts(
         /** Probing a guessed address must fail fast: dead ports are common among the candidates. */
         val Probe = Timeouts(connect = 5.seconds, request = 8.seconds, socket = 8.seconds)
 
-        val Api = Timeouts(connect = 10.seconds, request = 30.seconds, socket = 30.seconds)
+        /** The connect timeout matches [Probe]: saved addresses are tried in turn, so a dead one must not stall the rest. */
+        val Api = Timeouts(connect = 5.seconds, request = 30.seconds, socket = 30.seconds)
     }
 }
 
