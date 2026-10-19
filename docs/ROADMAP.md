@@ -52,9 +52,10 @@ flowchart LR
 ## Phases
 
 ### Phase 0 — Foundations
-- [ ] Auth: username/password or Quick Connect; store token + stable device id / client name
-- [ ] Server version & capability check on connect (warn or degrade below 10.10)
-- [ ] API client in `commonMain` (base URL, token, retries, error handling)
+- [x] Auth: username/password or Quick Connect; store token + stable device id / client name
+- [ ] Server version & capability check on connect (warn or degrade below 10.10) — _checked, but a
+  server below 10.10 is rejected rather than warned about; decide whether to warn instead_
+- [x] API client in `commonMain` (base URL, token, retries, error handling)
 
 _Exit: log in, list libraries, fetch an item's metadata._
 

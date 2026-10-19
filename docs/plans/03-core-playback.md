@@ -4,6 +4,10 @@ Goal: finish the roadmap's Phase 0 (log in, list libraries, fetch an item's meta
 Phase 1 (play a movie and an episode, direct and transcoded, with position reported). Logic is
 shared; every screen and the player are native on each platform (plan 02).
 
+**Status (2026-10-19):** Phase A is done, which closes roadmap Phase 0. Phases B and C (roadmap
+Phase 1, playback) are **not started**: the owner asked to stop after roadmap Phase 0. Nothing in
+Phase A plays media or shows a Play button.
+
 Phase 1 can't start without Phase 0's exit, and plan 01 stops short of it (its Phases 6 and 7, sign-in
 and sessions, are unbuilt, and it lists library browsing as out of scope). So the order is:
 
@@ -15,14 +19,14 @@ and sessions, are unbuilt, and it lists library browsing as out of scope). So th
 
 | Roadmap item | Where |
 |---|---|
-| Phase 0: auth (password, Quick Connect), token, device id, client name | Plan 01 Phases 6 and 7 |
-| Phase 0: version and capability check | Done in plan 01 Phase 3 (rejects below 10.10) |
-| Phase 0: API client with token, retries, error handling | Plan 01 Phase 7 (401) and this plan's Phase A (retries, typed errors) |
-| Phase 0 exit: list libraries, fetch an item's metadata | Phase A |
-| Phase 1: PlaybackInfo with a device profile, direct play vs HLS | Phase B |
-| Phase 1: player behind a platform boundary | Phase C |
-| Phase 1: progress beacon, `Stopped` on backgrounding and crash | Phase B (logic), Phase C (platform hooks) |
-| Phase 1: audio and subtitle selection from `MediaStreams` | Phase B (logic), Phase C (UI) |
+| Phase 0: auth (password, Quick Connect), token, device id, client name | Plan 01 Phases 6 and 7 (done) |
+| Phase 0: version and capability check | Plan 01 Phase 3 (done; rejects below 10.10, where the roadmap says warn or degrade) |
+| Phase 0: API client with token, retries, error handling | Plan 01 Phase 7 (401) and this plan's Phase A (retries, typed errors) (done) |
+| Phase 0 exit: list libraries, fetch an item's metadata | Phase A (done) |
+| Phase 1: PlaybackInfo with a device profile, direct play vs HLS | Phase B (deferred) |
+| Phase 1: player behind a platform boundary | Phase C (deferred) |
+| Phase 1: progress beacon, `Stopped` on backgrounding and crash | Phase B (logic), Phase C (platform hooks) (deferred) |
+| Phase 1: audio and subtitle selection from `MediaStreams` | Phase B (logic), Phase C (UI) (deferred) |
 
 ## Decisions
 
@@ -46,16 +50,29 @@ and sessions, are unbuilt, and it lists library browsing as out of scope). So th
   Playable items (movie, episode, video) open the detail page.
 - Server minimum stays 10.10 (rejected below); whether to warn instead is the owner's call.
 
-## Phase A: Libraries and items (closes roadmap Phase 0)
+## Phase A: Libraries and items (closes roadmap Phase 0) — done
 
-- Retries for idempotent calls (not for sign-in or beacons that are not safe to repeat), typed API
-  errors, `GET /UserViews`, `GET /Items?parentId=`, `GET /Items?ids=` for one item's metadata.
-- Home lists libraries; a children screen lists what's inside; an item page shows metadata and a
-  Play or Resume button (the button is wired in Phase C).
-- Done when: on Android, signed in to a real server, Home lists the libraries, a folder opens, a
-  movie's page shows its title, year, runtime, genres and overview, and tests cover the repository.
+- Retries for idempotent reads only: a read that gets no answer or a 5xx is tried up to three times
+  with a doubling wait (400 ms, then 800 ms). Sign-in and anything that changes state is never
+  repeated, and a 401, 403 or 404 comes straight back. Typed `ApiError`s were already in place; every
+  load failure now maps to one worded message shared by both platforms.
+- `GET /UserViews` for the libraries, `GET /Items?parentId=` for a page of what is inside a library,
+  folder, series or season (sorted by name, 60 at a time, the next page loads as the end comes into
+  view), `GET /Items?ids=` for one item's metadata.
+- Home lists the libraries. Opening a folder, series or season shows its list; opening anything else
+  shows its page: picture, title, year, runtime, rating, genres and overview, and for an episode
+  the show and "S1 E5". **No Play or Resume button**: that belongs to Phase C.
+- A 401 from any of these calls ends the session and returns to "Who's watching?" like everywhere
+  else; a failed load says what happened and offers "Try again".
+- Verified: shared tests (retries, repository, ViewModels), and on an Android emulator against the
+  demo server: Home lists the libraries, Movies, a folder, a movie's page, Shows, a series, a season
+  and an episode all open, back unwinds one screen at a time, and an offline load shows the message
+  and recovers on "Try again". Not verified on a device: an ended session in the middle of browsing
+  (the demo's account can't revoke its own token; covered by tests) and paging through a list longer
+  than a screen (the demo has none; the load-more chain was checked with a page size of 1). iOS is
+  compiled to klibs and its Swift parsed and type-checked against a stub of the shared API, not run.
 
-## Phase B: Playback negotiation, reporting and track selection (shared)
+## Phase B: Playback negotiation, reporting and track selection (shared) — deferred, not started
 
 - `POST /Items/{id}/PlaybackInfo` with a device profile built from per-platform capabilities.
   Choose the media source, decide direct play, direct stream or transcode, and build the stream URL.
@@ -65,7 +82,7 @@ and sessions, are unbuilt, and it lists library browsing as out of scope). So th
 - Done when: MockEngine tests cover negotiation (direct, stream, transcode, no compatible stream),
   the beacon's lifecycle and recovery, and track selection.
 
-## Phase C: Native players
+## Phase C: Native players — deferred, not started
 
 - Android: Media3 ExoPlayer with custom Compose controls, audio and subtitle pickers, and `Stopped`
   on stopping the activity.
