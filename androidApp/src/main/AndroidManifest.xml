@@ -1,11 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Server discovery broadcasts on the local network and holds a multicast lock while it
+         listens for answers. While targetSdk is 36 or lower, Android grants local network access
+         with INTERNET. At targetSdk 37 it needs android.permission.ACCESS_LOCAL_NETWORK, declared
+         here and requested at runtime, and that covers connecting to LAN servers too. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+
     <!-- Backups are off: tokens live in a non-exportable Keystore key and can't be restored
-         onto another device, so restored data would only produce unreadable tokens. -->
+         onto another device, so restored data would only produce unreadable tokens.
+         Cleartext HTTP is allowed because most Jellyfin servers sit on a LAN at http://host:8096
+         and the user types the address, so it can't be listed up front. -->
     <application
         android:name=".VibeyFinApplication"
         android:allowBackup="false"
+        android:usesCleartextTraffic="true"
         android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
