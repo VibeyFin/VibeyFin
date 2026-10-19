@@ -6,6 +6,7 @@ import com.liamgleeson.vibeyfin.domain.ServerRepository
 import com.liamgleeson.vibeyfin.testing.FakeClock
 import com.liamgleeson.vibeyfin.testing.FakeLanDiscovery
 import com.liamgleeson.vibeyfin.testing.FakeTokenVault
+import com.liamgleeson.vibeyfin.testing.ViewModelTracker
 import com.liamgleeson.vibeyfin.testing.inMemoryDatabase
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -38,13 +39,16 @@ class ServersViewModelTest {
         servers = ServerRepository(database.serverDao(), database.accountDao(), FakeTokenVault(), FakeClock())
     }
 
+    private val viewModels = ViewModelTracker()
+
     @AfterTest
-    fun tearDown() {
+    fun tearDown() = runTest {
+        viewModels.stopAll()
         Dispatchers.resetMain()
         database.close()
     }
 
-    private fun viewModel() = ServersViewModel(servers, discovery)
+    private fun viewModel() = viewModels.track(ServersViewModel(servers, discovery))
 
     @Test
     fun startsLoadingSoTheEmptyStateDoesNotFlash() {
@@ -159,7 +163,7 @@ class ServersViewModelTest {
     fun whereSearchingIsNotSupportedTheScreenNeverSearches() = runTest {
         val unsupported = FakeLanDiscovery(servers = listOf(home), isSupported = false)
 
-        val state = ServersViewModel(servers, unsupported).uiState.first { !it.loading }
+        val state = viewModels.track(ServersViewModel(servers, unsupported)).uiState.first { !it.loading }
 
         assertEquals(0, unsupported.searches)
         assertFalse(state.canSearch)

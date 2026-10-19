@@ -17,7 +17,7 @@ class ServerConnectorTest {
     private val app = TestApp()
 
     @AfterTest
-    fun tearDown() = app.close()
+    fun tearDown() = runTest { app.close() }
 
     private suspend fun saveWithTwoAddresses() {
         // "http://lan" worked first; the domain was added later, so it leads.

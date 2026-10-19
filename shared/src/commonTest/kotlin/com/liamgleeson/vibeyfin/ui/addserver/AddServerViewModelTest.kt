@@ -7,6 +7,7 @@ import com.liamgleeson.vibeyfin.testing.FakeClock
 import com.liamgleeson.vibeyfin.testing.FakeTokenVault
 import com.liamgleeson.vibeyfin.testing.MockJellyfinNetwork
 import com.liamgleeson.vibeyfin.testing.Route
+import com.liamgleeson.vibeyfin.testing.ViewModelTracker
 import com.liamgleeson.vibeyfin.testing.inMemoryDatabase
 import com.liamgleeson.vibeyfin.testing.jellyfin
 import kotlinx.coroutines.Dispatchers
@@ -41,15 +42,18 @@ class AddServerViewModelTest {
         servers = ServerRepository(database.serverDao(), database.accountDao(), FakeTokenVault(), clock)
     }
 
+    private val viewModels = ViewModelTracker()
+
     @AfterTest
-    fun tearDown() {
+    fun tearDown() = runTest {
+        viewModels.stopAll()
         Dispatchers.resetMain()
         database.close()
     }
 
     private fun viewModel(vararg routes: Pair<String, Route>, initialAddress: String? = null): AddServerViewModel {
         network = MockJellyfinNetwork(*routes)
-        return AddServerViewModel(initialAddress, network.resolver(), servers)
+        return viewModels.track(AddServerViewModel(initialAddress, network.resolver(), servers))
     }
 
     /** Types [address], taps Connect, and waits for the check to finish. */

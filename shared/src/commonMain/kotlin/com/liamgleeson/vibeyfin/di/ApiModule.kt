@@ -9,6 +9,7 @@ import com.liamgleeson.vibeyfin.domain.AuthRepository
 import com.liamgleeson.vibeyfin.domain.ConnectionManager
 import com.liamgleeson.vibeyfin.domain.ServerConnector
 import com.liamgleeson.vibeyfin.domain.ServerResolver
+import com.liamgleeson.vibeyfin.domain.StartupRouter
 import org.koin.dsl.module
 
 /** Talking to Jellyfin servers. Needs a `DeviceInfo` from the platform. */
@@ -36,4 +37,5 @@ fun apiModule() = module {
     single { ServerConnector(get(), get()) }
     single { ConnectionManager(get(), get(), get(), get(), get()) }
     single { AuthRepository(get(), get(), get()) }
+    single { StartupRouter(get(), get(), get(), get()) }
 }

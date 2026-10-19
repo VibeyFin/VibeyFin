@@ -3,6 +3,8 @@ package com.liamgleeson.vibeyfin.di
 import com.liamgleeson.vibeyfin.ui.addserver.AddServerViewModel
 import com.liamgleeson.vibeyfin.ui.home.HomeViewModel
 import com.liamgleeson.vibeyfin.ui.servers.ServersViewModel
+import com.liamgleeson.vibeyfin.ui.settings.SettingsViewModel
+import com.liamgleeson.vibeyfin.ui.startup.StartupViewModel
 import com.liamgleeson.vibeyfin.ui.whoswatching.WhoIsWatchingViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
@@ -20,4 +22,6 @@ fun appModule() = module {
     viewModel { params -> AddServerViewModel(params.getOrNull(), get(), get()) }
     viewModel { params -> WhoIsWatchingViewModel(params.get(), get(), get(), get(), get()) }
     viewModelOf(::HomeViewModel)
+    viewModelOf(::StartupViewModel)
+    viewModelOf(::SettingsViewModel)
 }

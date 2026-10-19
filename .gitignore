@@ -38,3 +38,6 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# JVM crash reports
+hs_err_pid*.log

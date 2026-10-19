@@ -2,13 +2,17 @@ package com.liamgleeson.vibeyfin.domain
 
 import com.liamgleeson.vibeyfin.data.api.ApiError
 import com.liamgleeson.vibeyfin.domain.model.ProfileRef
+import com.liamgleeson.vibeyfin.testing.ConnectionRefused
 import com.liamgleeson.vibeyfin.testing.FakeServer
 import com.liamgleeson.vibeyfin.testing.Reply
 import com.liamgleeson.vibeyfin.testing.TestApp
 import com.liamgleeson.vibeyfin.testing.authJson
 import com.liamgleeson.vibeyfin.testing.publicUsersJson
+import com.liamgleeson.vibeyfin.testing.quickConnectJson
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -17,13 +21,15 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class AuthRepositoryTest {
     private val app = TestApp()
     private val address = "http://nas:8096"
 
     @AfterTest
-    fun tearDown() = app.close()
+    fun tearDown() = runTest { app.close() }
 
     private suspend fun server(): FakeServer = app.serverAt(address)
 
@@ -145,5 +151,130 @@ class AuthRepositoryTest {
         assertEquals(SignInResult.SignedIn, app.auth.signIn("srv-1", "alex", "pw"))
 
         assertEquals("http://lan:8096", assertIs<ConnectionState.Connected>(app.connection.state.value).api.baseUrl)
+    }
+
+    // Quick Connect
+
+    private suspend fun quickConnectServer(approveOnPoll: Int = 2): FakeServer {
+        val server = server()
+        server.on("POST", "/QuickConnect/Initiate", Reply.json(quickConnectJson(authenticated = false)))
+        var polls = 0
+        server.on("GET", "/QuickConnect/Connect") { Reply.json(quickConnectJson(authenticated = ++polls >= approveOnPoll)) }
+        server.on("POST", "/Users/AuthenticateWithQuickConnect", Reply.json(authJson(userId = "u9", name = "Quinn", token = "qc-token")))
+        return server
+    }
+
+    @Test
+    fun quickConnectShowsACodeThenSignsInOnceAnotherDeviceApproves() = runTest {
+        quickConnectServer(approveOnPoll = 3)
+
+        val states = app.auth.quickConnect("srv-1").toList()
+
+        assertEquals(
+            listOf(QuickConnectState.Starting, QuickConnectState.Waiting("123456"), QuickConnectState.SignedIn),
+            states,
+        )
+        assertEquals(3, app.jellyfin.requestsTo("GET", "/QuickConnect/Connect").size)
+        assertEquals("qc-token", app.accounts.sessionToken("srv-1", "u9"))
+        assertEquals("Quinn", assertIs<ConnectionState.Connected>(app.connection.state.value).account.name)
+        assertTrue(app.jellyfin.requestsTo("POST", "/Users/AuthenticateWithQuickConnect").single().body.contains(""""Secret":"sec""""))
+    }
+
+    @Test
+    fun quickConnectPollsEveryThreeSeconds() = runTest {
+        quickConnectServer(approveOnPoll = 2)
+
+        app.auth.quickConnect("srv-1").toList()
+
+        // Initiate at 0 s, two polls at 3 s and 6 s of virtual time.
+        assertEquals(6_000L, testScheduler.currentTime)
+    }
+
+    @Test
+    fun quickConnectGivesUpAfterFiveMinutes() = runTest {
+        quickConnectServer(approveOnPoll = Int.MAX_VALUE)
+
+        val states = app.auth.quickConnect("srv-1").toList()
+
+        assertEquals(QuickConnectState.TimedOut, states.last())
+        assertEquals(300_000L, testScheduler.currentTime)
+        assertNull(app.accounts.account("srv-1", "u9"))
+    }
+
+    @Test
+    fun theTimeoutCanBeShorter() = runTest {
+        quickConnectServer(approveOnPoll = Int.MAX_VALUE)
+        val auth = AuthRepository(app.connector, app.accounts, app.connection, quickConnectTimeout = 30.seconds)
+
+        val states = auth.quickConnect("srv-1").toList()
+
+        assertEquals(QuickConnectState.TimedOut, states.last())
+        assertEquals(30_000L, testScheduler.currentTime)
+    }
+
+    @Test
+    fun aServerWithQuickConnectOffIsUnavailable() = runTest {
+        server().on("POST", "/QuickConnect/Initiate", Reply.status(HttpStatusCode.Unauthorized))
+
+        assertEquals(listOf(QuickConnectState.Starting, QuickConnectState.Unavailable), app.auth.quickConnect("srv-1").toList())
+    }
+
+    @Test
+    fun quickConnectOnAnUnreachableServer() = runTest {
+        server().refuseConnections()
+
+        assertEquals(listOf(QuickConnectState.Starting, QuickConnectState.Unreachable), app.auth.quickConnect("srv-1").toList())
+    }
+
+    @Test
+    fun aServerErrorWhenAskingForACodeIsAFailure() = runTest {
+        server().on("POST", "/QuickConnect/Initiate", Reply.status(HttpStatusCode.InternalServerError))
+
+        assertEquals(
+            QuickConnectState.Failed(ApiError.Server(500)),
+            app.auth.quickConnect("srv-1").toList().last(),
+        )
+    }
+
+    @Test
+    fun aDroppedConnectionWhilePollingIsRetried() = runTest {
+        val server = server()
+        server.on("POST", "/QuickConnect/Initiate", Reply.json(quickConnectJson(authenticated = false)))
+        var polls = 0
+        server.on("GET", "/QuickConnect/Connect") {
+            if (++polls <= 2) throw ConnectionRefused() else Reply.json(quickConnectJson(authenticated = true))
+        }
+        server.on("POST", "/Users/AuthenticateWithQuickConnect", Reply.json(authJson()))
+
+        assertEquals(QuickConnectState.SignedIn, app.auth.quickConnect("srv-1").toList().last())
+        assertEquals(3, polls)
+    }
+
+    @Test
+    fun aCodeTheServerForgotMeansItExpired() = runTest {
+        val server = server()
+        server.on("POST", "/QuickConnect/Initiate", Reply.json(quickConnectJson(authenticated = false)))
+        server.on("GET", "/QuickConnect/Connect", Reply.status(HttpStatusCode.NotFound))
+
+        assertEquals(QuickConnectState.TimedOut, app.auth.quickConnect("srv-1").toList().last())
+    }
+
+    @Test
+    fun anErrorWhilePollingStopsTheAttempt() = runTest {
+        val server = server()
+        server.on("POST", "/QuickConnect/Initiate", Reply.json(quickConnectJson(authenticated = false)))
+        server.on("GET", "/QuickConnect/Connect", Reply.status(HttpStatusCode.BadGateway))
+
+        assertEquals(QuickConnectState.Failed(ApiError.Server(502)), app.auth.quickConnect("srv-1").toList().last())
+        assertEquals(1, app.jellyfin.requestsTo("GET", "/QuickConnect/Connect").size)
+    }
+
+    @Test
+    fun stoppingTheCollectorStopsPolling() = runTest {
+        quickConnectServer(approveOnPoll = Int.MAX_VALUE)
+
+        app.auth.quickConnect("srv-1").first { it is QuickConnectState.Waiting }
+
+        assertEquals(0, app.jellyfin.requestsTo("GET", "/QuickConnect/Connect").size)
     }
 }

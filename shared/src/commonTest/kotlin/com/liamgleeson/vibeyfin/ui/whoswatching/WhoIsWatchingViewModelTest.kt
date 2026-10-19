@@ -4,12 +4,11 @@ import com.liamgleeson.vibeyfin.domain.ConnectionState
 import com.liamgleeson.vibeyfin.testing.FakeServer
 import com.liamgleeson.vibeyfin.testing.Reply
 import com.liamgleeson.vibeyfin.testing.TestApp
+import com.liamgleeson.vibeyfin.testing.ViewModelTracker
 import com.liamgleeson.vibeyfin.testing.authJson
 import com.liamgleeson.vibeyfin.testing.publicUsersJson
-import androidx.lifecycle.viewModelScope
+import com.liamgleeson.vibeyfin.testing.quickConnectJson
 import io.ktor.http.HttpStatusCode
-import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -51,19 +50,18 @@ class WhoIsWatchingViewModelTest {
         }
     }
 
-    private val created = mutableListOf<WhoIsWatchingViewModel>()
+    private val viewModels = ViewModelTracker()
 
     @AfterTest
     fun tearDown() = runTest {
-        // Stop each ViewModel and wait for it to finish before the database and the main dispatcher
-        // go; a job that is only cancelled still completes later and would fail in the next test.
-        created.forEach { it.viewModelScope.coroutineContext.job.cancelAndJoin() }
+        viewModels.stopAll()
         Dispatchers.resetMain()
         app.close()
     }
 
-    private fun viewModel() =
-        WhoIsWatchingViewModel("srv-1", app.servers, app.accounts, app.auth, app.connection).also { created += it }
+    private fun viewModel() = viewModels.track(
+        WhoIsWatchingViewModel("srv-1", app.servers, app.accounts, app.auth, app.connection),
+    )
 
     private suspend fun WhoIsWatchingViewModel.loaded() = uiState.first { !it.loading }
 
@@ -252,5 +250,80 @@ class WhoIsWatchingViewModelTest {
 
         val state = viewModel.uiState.first { it.serverReachable }
         assertEquals(listOf("Alex", "Kim", "Sam"), state.profiles.map { it.name })
+    }
+
+    // Quick Connect
+
+    private fun quickConnectOn(approveOnPoll: Int = 2) {
+        server.on("GET", "/QuickConnect/Enabled", Reply.json("true"))
+        server.on("POST", "/QuickConnect/Initiate", Reply.json(quickConnectJson(authenticated = false)))
+        var polls = 0
+        server.on("GET", "/QuickConnect/Connect") { Reply.json(quickConnectJson(authenticated = ++polls >= approveOnPoll)) }
+        server.on("POST", "/Users/AuthenticateWithQuickConnect", Reply.json(authJson(userId = "u9", name = "Quinn", token = "qc-token")))
+    }
+
+    @Test
+    fun quickConnectIsOfferedOnlyWhenTheServerHasItOn() = runTest {
+        assertFalse(viewModel().loaded().quickConnectAvailable)
+        quickConnectOn()
+
+        assertTrue(viewModel().loaded().quickConnectAvailable)
+    }
+
+    @Test
+    fun quickConnectShowsACodeAndSignsInWhenItIsApproved() = runTest {
+        quickConnectOn(approveOnPoll = 2)
+        val viewModel = viewModel()
+        viewModel.loaded()
+
+        viewModel.onQuickConnectTapped()
+
+        val sheet = viewModel.uiState.first { (it.sheet as? SignInSheet.QuickConnect)?.code != null }.sheet
+        assertEquals("123456", assertIs<SignInSheet.QuickConnect>(sheet).code)
+        val done = viewModel.uiState.first { it.signedIn }
+        assertNull(done.sheet)
+        assertEquals("qc-token", app.accounts.sessionToken("srv-1", "u9"))
+    }
+
+    @Test
+    fun anExpiredCodeSaysSoAndCanBeTriedAgain() = runTest {
+        quickConnectOn(approveOnPoll = Int.MAX_VALUE)
+        val viewModel = viewModel()
+        viewModel.loaded()
+
+        viewModel.onQuickConnectTapped()
+        val expired = viewModel.uiState.first { (it.sheet as? SignInSheet.QuickConnect)?.message != null }
+        assertEquals(SignInMessages.QUICK_CONNECT_TIMED_OUT, assertIs<SignInSheet.QuickConnect>(expired.sheet).message)
+
+        viewModel.onQuickConnectTapped()
+        assertEquals("123456", assertIs<SignInSheet.QuickConnect>(viewModel.uiState.first { (it.sheet as? SignInSheet.QuickConnect)?.code != null }.sheet).code)
+    }
+
+    @Test
+    fun aServerWithQuickConnectOffSaysToUseAPassword() = runTest {
+        server.on("POST", "/QuickConnect/Initiate", Reply.status(HttpStatusCode.Unauthorized))
+        val viewModel = viewModel()
+        viewModel.loaded()
+
+        viewModel.onQuickConnectTapped()
+
+        val sheet = viewModel.uiState.first { (it.sheet as? SignInSheet.QuickConnect)?.message != null }.sheet
+        assertEquals(SignInMessages.QUICK_CONNECT_UNAVAILABLE, assertIs<SignInSheet.QuickConnect>(sheet).message)
+    }
+
+    @Test
+    fun closingTheQuickConnectSheetStopsPolling() = runTest {
+        quickConnectOn(approveOnPoll = Int.MAX_VALUE)
+        val viewModel = viewModel()
+        viewModel.loaded()
+        viewModel.onQuickConnectTapped()
+        viewModel.uiState.first { (it.sheet as? SignInSheet.QuickConnect)?.code != null }
+
+        viewModel.onDismissSheet()
+        val pollsAtClose = app.jellyfin.requestsTo("GET", "/QuickConnect/Connect").size
+
+        assertNull(viewModel.uiState.value.sheet)
+        kotlinx.coroutines.delay(10_000)
+        assertEquals(pollsAtClose, app.jellyfin.requestsTo("GET", "/QuickConnect/Connect").size)
     }
 }

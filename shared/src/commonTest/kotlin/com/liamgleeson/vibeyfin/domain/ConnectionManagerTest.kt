@@ -5,7 +5,11 @@ import com.liamgleeson.vibeyfin.testing.FakeServer
 import com.liamgleeson.vibeyfin.testing.Reply
 import com.liamgleeson.vibeyfin.testing.TestApp
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -14,13 +18,14 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
 
 class ConnectionManagerTest {
     private val app = TestApp()
     private val address = "http://nas:8096"
 
     @AfterTest
-    fun tearDown() = app.close()
+    fun tearDown() = runTest { app.close() }
 
     /** A saved server with a signed-in profile "u1" holding "token-1". */
     private suspend fun signedInProfile(): FakeServer {
@@ -162,5 +167,76 @@ class ConnectionManagerTest {
         app.connection.signOut()
 
         assertEquals(ConnectionState.Disconnected, app.connection.state.value)
+    }
+
+    // Resuming on a cold start
+
+    @Test
+    fun resumingConnectsAtOnceWithoutWaitingForTheNetwork() = runTest {
+        signedInProfile().refuseConnections()
+
+        val result = app.connection.resume("srv-1", "u1")
+
+        assertEquals(ActivateResult.Activated, result)
+        assertEquals("Alex", assertIs<ConnectionState.Connected>(app.connection.state.value).account.name)
+        assertEquals("token-1", app.accounts.sessionToken("srv-1", "u1"))
+        assertEquals(ProfileRef("srv-1", "u1"), app.preferences.lastProfile.first())
+    }
+
+    @Test
+    fun resumingThenFindingTheTokenRevokedLocksTheProfile() = runTest {
+        signedInProfile().on("GET", "/Users/Me", Reply.status(HttpStatusCode.Unauthorized))
+
+        app.connection.resume("srv-1", "u1")
+
+        assertEquals(ConnectionState.Expired("srv-1", "u1"), app.connection.state.first { it is ConnectionState.Expired })
+        assertNull(app.accounts.sessionToken("srv-1", "u1"))
+    }
+
+    @Test
+    fun resumingAndFindingTheServerFineKeepsTheSession() = runTest {
+        signedInProfile().on("GET", "/Users/Me", Reply.json("""{"Id":"u1"}"""))
+
+        app.connection.resume("srv-1", "u1")
+
+        // The check runs in the background, so wait for it to reach the server.
+        withContext(Dispatchers.Default) {
+            withTimeout(5.seconds) { while (app.jellyfin.requestsTo("GET", "/Users/Me").isEmpty()) delay(10) }
+        }
+        assertEquals(1, app.jellyfin.requestsTo("GET", "/Users/Me").size)
+        assertIs<ConnectionState.Connected>(app.connection.state.value)
+        assertEquals("token-1", app.accounts.sessionToken("srv-1", "u1"))
+    }
+
+    @Test
+    fun resumingMovesCallsToTheAddressThatActuallyAnswers() = runTest {
+        app.servers.save("srv-1", "Home", "10.10.7", "http://lan:8096")
+        app.clock.advance(kotlin.time.Duration.parse("1m"))
+        app.servers.save("srv-1", "Home", "10.10.7", "https://jelly.example.com")
+        app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-1")
+        app.jellyfin.server("https://jelly.example.com").refuseConnections()
+        app.jellyfin.server("http://lan:8096").on("GET", "/Users/Me", Reply.json("""{"Id":"u1"}"""))
+
+        app.connection.resume("srv-1", "u1")
+
+        val moved = app.connection.state.first { (it as? ConnectionState.Connected)?.api?.baseUrl == "http://lan:8096" }
+        assertIs<ConnectionState.Connected>(moved)
+    }
+
+    @Test
+    fun resumingAProfileWithoutATokenIsExpired() = runTest {
+        signedInProfile()
+        app.accounts.expire("srv-1", "u1")
+
+        assertEquals(ActivateResult.Expired, app.connection.resume("srv-1", "u1"))
+        assertEquals(ConnectionState.Expired("srv-1", "u1"), app.connection.state.value)
+    }
+
+    @Test
+    fun resumingAnUnknownProfileIsUnknown() = runTest {
+        signedInProfile()
+
+        assertEquals(ActivateResult.Unknown, app.connection.resume("srv-1", "nobody"))
+        assertEquals(ActivateResult.Unknown, app.connection.resume("missing", "u1"))
     }
 }

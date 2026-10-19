@@ -25,6 +25,8 @@ import com.liamgleeson.vibeyfin.testing.InMemoryPreferencesDataStore
 import com.liamgleeson.vibeyfin.ui.addserver.AddServerViewModel
 import com.liamgleeson.vibeyfin.ui.home.HomeViewModel
 import com.liamgleeson.vibeyfin.ui.servers.ServersViewModel
+import com.liamgleeson.vibeyfin.ui.settings.SettingsViewModel
+import com.liamgleeson.vibeyfin.ui.startup.StartupViewModel
 import com.liamgleeson.vibeyfin.ui.whoswatching.WhoIsWatchingViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -75,6 +77,8 @@ class AppModuleTest {
             koin.get<AddServerViewModel>(),
             koin.get<WhoIsWatchingViewModel> { parametersOf("srv-1") },
             koin.get<HomeViewModel>(),
+            koin.get<StartupViewModel>(),
+            koin.get<SettingsViewModel>(),
         )
 
         // Some start loading as soon as they exist; stop them before the database goes.

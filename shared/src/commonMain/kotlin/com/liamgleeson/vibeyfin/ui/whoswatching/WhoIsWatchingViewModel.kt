@@ -7,11 +7,13 @@ import com.liamgleeson.vibeyfin.domain.ActivateResult
 import com.liamgleeson.vibeyfin.domain.AuthRepository
 import com.liamgleeson.vibeyfin.domain.ConnectionManager
 import com.liamgleeson.vibeyfin.domain.PublicProfiles
+import com.liamgleeson.vibeyfin.domain.QuickConnectState
 import com.liamgleeson.vibeyfin.domain.ServerRepository
 import com.liamgleeson.vibeyfin.domain.SignInResult
 import com.liamgleeson.vibeyfin.domain.mergeProfiles
 import com.liamgleeson.vibeyfin.domain.model.Profile
 import com.liamgleeson.vibeyfin.domain.model.Server
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +29,12 @@ sealed interface SignInSheet {
 
     /** Asks for a username and password, for a user the server doesn't list. */
     data object OtherUser : SignInSheet
+
+    /**
+     * Quick Connect. Shows [code] while waiting for another device to approve it; [message] says
+     * why it stopped (expired, not allowed, no connection). Neither is set while the code is requested.
+     */
+    data class QuickConnect(val code: String?, val message: String?) : SignInSheet
 }
 
 data class WhoIsWatchingUiState(
@@ -36,6 +44,8 @@ data class WhoIsWatchingUiState(
     val profiles: List<Profile> = emptyList(),
     /** False when the server couldn't be reached; saved profiles still show. */
     val serverReachable: Boolean = true,
+    /** The server allows Quick Connect, so the grid offers it. */
+    val quickConnectAvailable: Boolean = false,
     val sheet: SignInSheet? = null,
     val signingIn: Boolean = false,
     /** Shown inside the open sheet, or on the grid when no sheet is open. */
@@ -62,6 +72,7 @@ class WhoIsWatchingViewModel(
     )
 
     private val local = MutableStateFlow(Local())
+    private var quickConnectJob: Job? = null
 
     val uiState: StateFlow<WhoIsWatchingUiState> =
         combine(accounts.observeAccounts(serverId), local) { saved, local ->
@@ -70,6 +81,7 @@ class WhoIsWatchingViewModel(
                 serverName = local.server?.name,
                 profiles = mergeProfiles(saved, local.public, local.server?.addresses?.firstOrNull()),
                 serverReachable = !local.loaded || local.public != null,
+                quickConnectAvailable = local.public?.quickConnectEnabled == true,
                 sheet = local.sheet,
                 signingIn = local.signingIn,
                 error = local.error,
@@ -128,7 +140,26 @@ class WhoIsWatchingViewModel(
         signIn(username.trim(), password, passwordOnly = false)
     }
 
+    /** Starts Quick Connect, or starts it over after it stopped. */
+    fun onQuickConnectTapped() {
+        quickConnectJob?.cancel()
+        local.update { it.copy(sheet = SignInSheet.QuickConnect(code = null, message = null), error = null) }
+        quickConnectJob = viewModelScope.launch {
+            auth.quickConnect(serverId).collect { state ->
+                local.update {
+                    when (state) {
+                        QuickConnectState.Starting -> it
+                        is QuickConnectState.Waiting -> it.copy(sheet = SignInSheet.QuickConnect(state.code, null))
+                        QuickConnectState.SignedIn -> it.copy(sheet = null, signedIn = true)
+                        else -> it.copy(sheet = SignInSheet.QuickConnect(null, SignInMessages.forQuickConnect(state)))
+                    }
+                }
+            }
+        }
+    }
+
     fun onDismissSheet() {
+        quickConnectJob?.cancel()
         local.update { it.copy(sheet = null, error = null) }
     }
 

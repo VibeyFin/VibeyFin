@@ -7,10 +7,12 @@ import com.liamgleeson.vibeyfin.domain.AuthRepository
 import com.liamgleeson.vibeyfin.domain.ConnectionManager
 import com.liamgleeson.vibeyfin.domain.ServerConnector
 import com.liamgleeson.vibeyfin.domain.ServerRepository
+import com.liamgleeson.vibeyfin.domain.StartupRouter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.job
 
 /**
  * The real repositories, connector, connection manager and auth, wired as the app wires them but
@@ -30,6 +32,7 @@ class TestApp {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
     val connection = ConnectionManager(connector, servers, accounts, preferences, jellyfin.unauthorized, scope)
     val auth = AuthRepository(connector, accounts, connection)
+    val router = StartupRouter(servers, accounts, preferences, connection)
 
     /** Saves a server reachable at [address] and returns its fake. */
     suspend fun serverAt(address: String, id: String = "srv-1", name: String = "Home"): FakeServer {
@@ -37,8 +40,13 @@ class TestApp {
         return jellyfin.server(address)
     }
 
-    fun close() {
-        scope.cancel()
+    /**
+     * Stops the connection manager's background work, waits for it, then closes the database.
+     * Closing while a query is still running frees SQLite's statements under it and crashes the
+     * whole test JVM.
+     */
+    suspend fun close() {
+        scope.coroutineContext.job.cancelAndJoin()
         database.close()
     }
 }
@@ -52,3 +60,6 @@ fun publicUsersJson(vararg users: Triple<String, String, Boolean>) =
     users.joinToString(prefix = "[", postfix = "]") { (id, name, hasPassword) ->
         """{"Id":"$id","Name":"$name","HasPassword":$hasPassword,"PrimaryImageTag":null}"""
     }
+
+fun quickConnectJson(authenticated: Boolean, secret: String = "sec", code: String = "123456") =
+    """{"Authenticated":$authenticated,"Secret":"$secret","Code":"$code"}"""

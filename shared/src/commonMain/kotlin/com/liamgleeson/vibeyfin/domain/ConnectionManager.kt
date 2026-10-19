@@ -50,7 +50,7 @@ class ConnectionManager(
     private val accounts: AccountRepository,
     private val preferences: DevicePreferences,
     unauthorized: UnauthorizedEvents,
-    scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private class Session(val serverId: String, val userId: String, val token: String)
 
@@ -91,6 +91,26 @@ class ConnectionManager(
         }
     }
 
+    /**
+     * Signs in as a saved profile on a cold start without waiting for the network: the saved token is
+     * trusted and the server is asked in the background. If it rejects the token, the profile is
+     * locked and the state moves to [ConnectionState.Expired], like any other rejected call. If a
+     * different saved address is the one that answers, calls move to it.
+     */
+    suspend fun resume(serverId: String, userId: String): ActivateResult {
+        val server = servers.get(serverId) ?: return ActivateResult.Unknown
+        val account = accounts.account(serverId, userId) ?: return ActivateResult.Unknown
+        val token = accounts.sessionToken(serverId, userId)
+        if (token == null) {
+            markExpired(serverId, userId)
+            return ActivateResult.Expired
+        }
+        val api = connector.apiFor(serverId, token) ?: return ActivateResult.Unknown
+        connect(server, account, token, api)
+        scope.launch { verify(serverId, token) }
+        return ActivateResult.Activated
+    }
+
     /** Takes over a session that was just created by signing in, so there is no need to check it again. */
     suspend fun adopt(serverId: String, userId: String, token: String, api: JellyfinApi): Boolean {
         val server = servers.get(serverId) ?: return false
@@ -126,6 +146,16 @@ class ConnectionManager(
         session = null
         accounts.expire(current.serverId, current.userId)
         markExpired(current.serverId, current.userId)
+    }
+
+    /** Asks the server about the token. A rejection is handled by [onTokenRejected] like any other. */
+    private suspend fun verify(serverId: String, token: String) {
+        val reached = connector.firstAnswer(serverId, token) { it.me() } ?: return
+        if (reached.result !is ApiResult.Success) return
+        val current = _state.value as? ConnectionState.Connected ?: return
+        if (session?.token == token && current.api.baseUrl != reached.api.baseUrl) {
+            _state.value = current.copy(api = reached.api)
+        }
     }
 
     private fun markExpired(serverId: String, userId: String) {
