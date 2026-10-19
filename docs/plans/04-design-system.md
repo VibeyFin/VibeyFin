@@ -102,6 +102,8 @@ Use M3 components wherever the design says so; build only what M3 lacks, in `app
   `ArtworkPlaceholder` (`surface-2` tile with the title, replacing `Artwork.kt`'s placeholder).
 - Text fields: M3 `OutlinedTextField`/`TextField` with `line-strong` borders; replace `Fields.kt`
   styling.
+- Icons: use `material-icons-core` (already a dependency) where it has the glyph; for the rest add
+  only the needed vector drawables in `res/drawable`. No `material-icons-extended`.
 - Restyle `servers`, `addserver`, `whoswatching`, `startup`, `home`, `children`, `item` and
   `settings`. Settings stays reachable from Home's profile avatar, not a tab.
 - New text (accessibility labels, "Downloaded") goes into `Strings` first. Card label
