@@ -1,0 +1,90 @@
+package com.liamgleeson.vibeyfin.ui.common
+
+/**
+ * Every piece of text the apps show: titles, labels, buttons, help text, empty states and
+ * accessibility descriptions. Screens on both platforms read from here and hold no string
+ * literals of their own, so wording and sentence case stay in step. Errors live in
+ * `LoadMessages`, `SignInMessages` and `ConnectionIssueMessage`.
+ *
+ * Strings are plain Kotlin for now. If the app is ever translated, this object is the one place
+ * that changes.
+ */
+object Strings {
+    val appName = "VibeyFin"
+
+    // Actions used on several screens
+    val tryAgain = "Try again"
+    val cancel = "Cancel"
+    val back = "Back"
+    val searchAgain = "Search again"
+    val searching = "Searching"
+    val addServer = "Add server"
+    val signIn = "Sign in"
+    val signingIn = "Signing in"
+    val signOut = "Sign out"
+    val settings = "Settings"
+
+    // Who's watching
+    val whoIsWatching = "Who's watching?"
+    val otherUser = "Other user"
+    val needsPassword = "Needs a password"
+    val cantReachServerTitle = "Can't reach this server"
+    val cantReachServerHelp = "Profiles saved on this device still show, but signing in needs the server."
+    val username = "Username"
+    val password = "Password"
+    val signInAsAnotherUser = "Sign in as another user"
+
+    fun signInAs(name: String) = "Sign in as $name"
+
+    // Quick Connect
+    val quickConnect = "Quick Connect"
+    val quickConnectHelp =
+        "On a device that's signed in to Jellyfin, open your user menu, choose Quick Connect and enter this code."
+    val quickConnectWaiting = "Waiting for approval"
+    val quickConnectGettingCode = "Getting a code"
+
+    // Servers
+    val servers = "Servers"
+    val onYourNetwork = "On your network"
+    val addToServers = "Add"
+    val noServersFound = "No servers found on your network."
+    val noNewServersFound = "No new servers found."
+
+    fun jellyfinVersion(version: String) = "Jellyfin $version"
+
+    // Add server
+    val addAServer = "Add a server"
+    val serverAddress = "Server address"
+    val serverAddressExample = "192.168.1.20:8096"
+    val connect = "Connect"
+    val connecting = "Connecting"
+    val found = "Found"
+    val cantConnectTitle = "Can't connect"
+    val saveAddress = "Save address"
+    val done = "Done"
+
+    fun alsoReachableAt(addresses: List<String>) = "Also reachable at " + addresses.joinToString(", ")
+
+    fun alreadySaved(addressIsNew: Boolean) =
+        if (addressIsNew) {
+            "You already have this server. This adds the new address to it."
+        } else {
+            "You already have this server at this address."
+        }
+
+    // Home and browsing
+    val home = "Home"
+    val libraries = "Libraries"
+    val switchProfile = "Switch profile"
+    val switchServer = "Switch server"
+    val noLibraries = "This account has no libraries yet. Ask the server's admin to add one."
+    val emptyFolder = "There's nothing in here yet."
+    val loadMoreFailed = "Couldn't load the rest of this list. Check your connection and try again."
+
+    fun greeting(name: String) = "Hi, $name"
+
+    // Settings
+    val alwaysAskWhoIsWatchingTitle = "Always ask who's watching"
+    val alwaysAskWhoIsWatchingHelp =
+        "Show the profile screen every time the app opens instead of going straight to the last profile."
+}

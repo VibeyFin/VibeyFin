@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Most Jellyfin servers sit on a LAN at http://host:8096 and the user types the address,
+	     so plain HTTP can't be limited to a list of domains. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<!-- Shown when iOS asks to let the app reach devices on the local network, which connecting to a
+	     server at an address like 192.168.1.20 triggers. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>VibeyFin connects to your Jellyfin server on your local network.</string>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+	</dict>
+	<!-- VibeyFin is dark-only. -->
+	<key>UIUserInterfaceStyle</key>
+	<string>Dark</string>
+</dict>
+</plist>

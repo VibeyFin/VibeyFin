@@ -1,0 +1,4 @@
+// Set TEAM_ID to your Apple developer team to run on a device. The simulator doesn't need it.
+TEAM_ID=
+BUNDLE_ID=com.liamgleeson.vibeyfin
+APP_NAME=VibeyFin

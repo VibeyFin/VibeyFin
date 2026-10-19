@@ -24,6 +24,11 @@ misc.xml
 deploymentTargetDropDown.xml
 render.experimental.xml
 
+# Xcode / macOS
+xcuserdata/
+*.xcuserstate
+.DS_Store
+
 # Keystore files
 *.jks
 *.keystore
@@ -33,3 +38,6 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# JVM crash reports
+hs_err_pid*.log
