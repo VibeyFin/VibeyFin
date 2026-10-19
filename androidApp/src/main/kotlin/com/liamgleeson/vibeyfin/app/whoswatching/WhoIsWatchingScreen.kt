@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -77,6 +78,7 @@ fun WhoIsWatchingRoute(
         onBack = onBack,
         onProfile = viewModel::onProfileTapped,
         onOtherUser = viewModel::onOtherUserTapped,
+        onQuickConnect = viewModel::onQuickConnectTapped,
         onRetry = viewModel::refresh,
         onSubmitPassword = viewModel::onSubmitPassword,
         onSubmitOtherUser = viewModel::onSubmitOtherUser,
@@ -90,6 +92,7 @@ fun WhoIsWatchingScreen(
     onBack: () -> Unit,
     onProfile: (Profile) -> Unit,
     onOtherUser: () -> Unit,
+    onQuickConnect: () -> Unit,
     onRetry: () -> Unit,
     onSubmitPassword: (String) -> Unit,
     onSubmitOtherUser: (String, String) -> Unit,
@@ -134,7 +137,14 @@ fun WhoIsWatchingScreen(
                     items(state.profiles, key = { it.userId }) { profile ->
                         ProfileTile(profile, enabled = !state.signingIn) { onProfile(profile) }
                     }
-                    item(key = "other-user") { OtherUserTile(enabled = !state.signingIn, onClick = onOtherUser) }
+                    if (state.quickConnectAvailable) {
+                        item(key = "quick-connect") {
+                            ActionTile("Quick Connect", symbol = "#", enabled = !state.signingIn, onClick = onQuickConnect)
+                        }
+                    }
+                    item(key = "other-user") {
+                        ActionTile("Other user", symbol = "+", enabled = !state.signingIn, onClick = onOtherUser)
+                    }
                     item(span = { GridItemSpan(maxLineSpan) }, key = "bottom-space") { Spacer(Modifier.height(24.dp)) }
                 }
             }
@@ -147,6 +157,7 @@ fun WhoIsWatchingScreen(
             signingIn = state.signingIn,
             onSubmitPassword = onSubmitPassword,
             onSubmitOtherUser = onSubmitOtherUser,
+            onQuickConnectRetry = onQuickConnect,
             onDismiss = onDismissSheet,
         )
     }
@@ -239,8 +250,9 @@ private fun Avatar(profile: Profile) {
     }
 }
 
+/** A tile that isn't a person: "Other user", "Quick Connect". */
 @Composable
-private fun OtherUserTile(enabled: Boolean, onClick: () -> Unit) {
+private fun ActionTile(label: String, symbol: String, enabled: Boolean, onClick: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable(enabled = enabled, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -250,10 +262,10 @@ private fun OtherUserTile(enabled: Boolean, onClick: () -> Unit) {
             modifier = Modifier.size(104.dp).clip(RoundedCornerShape(16.dp)).background(VibeyFinPalette.SurfaceHigh),
             contentAlignment = Alignment.Center,
         ) {
-            Text("+", style = MaterialTheme.typography.displaySmall, color = VibeyFinPalette.TextMuted)
+            Text(symbol, style = MaterialTheme.typography.displaySmall, color = VibeyFinPalette.TextMuted)
         }
         Text(
-            text = "Other user",
+            text = label,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
@@ -275,6 +287,7 @@ private fun SignInSheet(
     signingIn: Boolean,
     onSubmitPassword: (String) -> Unit,
     onSubmitOtherUser: (String, String) -> Unit,
+    onQuickConnectRetry: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(
@@ -282,6 +295,76 @@ private fun SignInSheet(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surface,
     ) {
+        if (sheet is SignInSheet.QuickConnect) {
+            QuickConnectContent(sheet, onQuickConnectRetry, onDismiss)
+        } else {
+            PasswordContent(sheet, error, signingIn, onSubmitPassword, onSubmitOtherUser, onDismiss)
+        }
+    }
+}
+
+@Composable
+private fun QuickConnectContent(sheet: SignInSheet.QuickConnect, onRetry: () -> Unit, onDismiss: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = "Quick Connect",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        when {
+            sheet.message != null -> {
+                Text(sheet.message!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+                Button(onClick = onRetry, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Try again") }
+            }
+            sheet.code != null -> {
+                Text(
+                    text = "On a device that's signed in to Jellyfin, open your user menu, choose Quick Connect and enter this code.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = sheet.code!!,
+                    style = MaterialTheme.typography.displayMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                WaitingLabel("Waiting for approval")
+            }
+            else -> WaitingLabel("Getting a code")
+        }
+        TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+            Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun WaitingLabel(text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(16.dp),
+            strokeWidth = 2.dp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.size(8.dp))
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun PasswordContent(
+    sheet: SignInSheet,
+    error: String?,
+    signingIn: Boolean,
+    onSubmitPassword: (String) -> Unit,
+    onSubmitOtherUser: (String, String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    run {
         // The fields keep what was typed when a sign-in fails, so a typo is a small fix.
         var username by rememberSaveable(sheet) { mutableStateOf("") }
         var password by rememberSaveable(sheet) { mutableStateOf("") }

@@ -15,3 +15,9 @@ data class WhoIsWatching(val serverId: String)
 
 @Serializable
 data object Home
+
+@Serializable
+data object Startup
+
+@Serializable
+data object Settings
