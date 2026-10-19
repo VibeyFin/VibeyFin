@@ -30,6 +30,8 @@ struct SettingsView: View {
         .onAppear { model.start() }
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        // Only the chevron, no "Back" label. The swipe from the edge still goes back.
+        .toolbarRole(.editor)
     }
 
     private var alwaysAsk: Binding<Bool> {

@@ -41,6 +41,8 @@ struct ChildrenView: View {
         .onAppear { model.start() }
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        // Only the chevron, no "Back" label. The swipe from the edge still goes back.
+        .toolbarRole(.editor)
         .onChange(of: model.state?.exit != nil) { hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
         }
