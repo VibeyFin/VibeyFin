@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window theme only; all real styling is Compose (VibeyFinTheme). The dark window background
+         avoids a white flash while the app starts. -->
+    <style name="Theme.VibeyFin" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/ink</item>
+    </style>
+</resources>
