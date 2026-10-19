@@ -124,7 +124,11 @@ screen uses it yet (add it with the feature that needs it):
   `scrim`, `scrimStrong`, `progressTrack`), `Space`, `Radius`, and `Font.brandDisplay`.
   Everything else uses system semantic colours and Dynamic Type styles (`.headline`, `.footnote`,
   ...), never hex or fixed sizes. Root view sets `.preferredColorScheme(.dark)`.
-- Add `Text.titleCased()` (conflict 2) in `Theme.swift`.
+- Add `String.titleCased()` (conflict 2) in `TitleCase.swift` (Foundation only, so
+  `scripts/check-title-case.sh` compiles and runs its checks with `swiftc`, no Xcode). Swift can't
+  transform a `Text`'s content, so call sites write `Text(label.titleCased())`.
+- `Palette` and `vibeTitle` stay as a shim mapped onto the new colours until Phase 5 restyles the
+  views, as on Android.
 - `scripts/check-swift-tokens.sh`: compare the brand hex values in `Theme.swift` and the
   `AccentColor` asset with `design/tokens.json`'s `ios` column. Fails on drift.
 - Verification limit (as plan 02): no Xcode here. Only `swiftc -parse` and the script run.

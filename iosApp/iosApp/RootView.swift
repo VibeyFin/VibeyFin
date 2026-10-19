@@ -63,8 +63,8 @@ struct RootView: View {
                 }
             }
         }
-        .tint(Palette.text)
-        // Blank ink until the app has worked out where to open, a moment of storage reads.
+        .tint(Brand.accent)
+        // Blank background until the app has worked out where to open, a moment of storage reads.
         .overlay {
             if !ready { Palette.ink.ignoresSafeArea() }
         }
