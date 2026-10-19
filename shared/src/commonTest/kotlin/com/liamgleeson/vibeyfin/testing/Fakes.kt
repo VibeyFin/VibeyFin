@@ -7,10 +7,15 @@ import androidx.room3.Room
 import androidx.room3.useReaderConnection
 import com.liamgleeson.vibeyfin.data.db.VibeyFinDatabase
 import com.liamgleeson.vibeyfin.data.db.buildVibeyFinDatabase
+import com.liamgleeson.vibeyfin.data.discovery.MulticastLock
 import com.liamgleeson.vibeyfin.data.platform.DeviceInfo
 import com.liamgleeson.vibeyfin.data.vault.TokenVault
+import com.liamgleeson.vibeyfin.domain.DiscoveredServer
+import com.liamgleeson.vibeyfin.domain.LanDiscovery
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Clock
@@ -44,6 +49,42 @@ class FakeTokenVault : TokenVault {
 
     override fun discard(sealed: ByteArray) {
         discarded += sealed.decodeToString()
+    }
+}
+
+/** A search that answers with [servers] and then, if [hold] is set, stays "in progress" until it completes. */
+class FakeLanDiscovery(
+    var servers: List<DiscoveredServer> = emptyList(),
+    override val isSupported: Boolean = true,
+) : LanDiscovery {
+    var searches = 0
+        private set
+    var hold: CompletableDeferred<Unit>? = null
+    var failure: Throwable? = null
+
+    override fun discover(): Flow<DiscoveredServer> = flow {
+        searches++
+        failure?.let { throw it }
+        servers.forEach { emit(it) }
+        hold?.await()
+    }
+}
+
+/** Records when the lock is held, so tests can see it taken and released around a search. */
+class FakeMulticastLock : MulticastLock {
+    var held = false
+        private set
+    var acquired = 0
+        private set
+
+    override suspend fun <T> withLock(block: suspend () -> T): T {
+        held = true
+        acquired++
+        try {
+            return block()
+        } finally {
+            held = false
+        }
     }
 }
 
