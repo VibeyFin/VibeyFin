@@ -16,9 +16,9 @@ struct HomeView: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
                         if let userName = model.state?.userName {
-                            Text("Hi, \(userName)").vibeTitle(size: 34)
+                            Text(Strings.shared.greeting(name: userName)).vibeTitle(size: 34)
                         } else {
-                            Text("Home").vibeTitle(size: 34)
+                            Text(Strings.shared.home).vibeTitle(size: 34)
                         }
                         if let serverName = model.state?.serverName {
                             Text(serverName)
@@ -46,7 +46,7 @@ struct HomeView: View {
 
     @ViewBuilder
     private func libraries(_ state: HomeUiState) -> some View {
-        Text("Libraries")
+        Text(Strings.shared.libraries)
             .font(.system(size: 14, weight: .semibold))
             .foregroundColor(Palette.textMuted)
             .padding(.bottom, 12)
@@ -55,7 +55,7 @@ struct HomeView: View {
         } else if let message = state.librariesMessage {
             LoadErrorView(message: message, onRetry: { model.retryLibraries() })
         } else if state.libraries.isEmpty {
-            Text("This account has no libraries yet. Ask the server's admin to add one.")
+            Text(Strings.shared.noLibraries)
                 .font(.body)
                 .foregroundColor(Palette.textMuted)
         } else {
@@ -67,10 +67,10 @@ struct HomeView: View {
 
     private var profileMenu: some View {
         Menu {
-            Button("Switch profile") { model.switchProfile() }
-            Button("Switch server") { model.switchServer() }
-            Button("Settings") { onSettings() }
-            Button("Sign out") { model.signOut() }
+            Button(Strings.shared.switchProfile) { model.switchProfile() }
+            Button(Strings.shared.switchServer) { model.switchServer() }
+            Button(Strings.shared.settings) { onSettings() }
+            Button(Strings.shared.signOut) { model.signOut() }
         } label: {
             ZStack {
                 Circle().fill(Palette.surfaceHigh)

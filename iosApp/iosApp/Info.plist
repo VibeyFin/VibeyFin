@@ -2,9 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Lets Compose run at 120 Hz on ProMotion iPhones. -->
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
 	<!-- Most Jellyfin servers sit on a LAN at http://host:8096 and the user types the address,
 	     so plain HTTP can't be limited to a list of domains. -->
 	<key>NSAppTransportSecurity</key>

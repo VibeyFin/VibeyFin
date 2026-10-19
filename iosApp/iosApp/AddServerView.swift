@@ -33,7 +33,7 @@ struct AddServerView: View {
 
     private func content(_ state: AddServerUiState) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Add a server")
+            Text(Strings.shared.addAServer)
                 .vibeTitle(size: 34)
                 .padding(.bottom, 8)
             addressField(state)
@@ -52,13 +52,13 @@ struct AddServerView: View {
             set: { model.setAddress($0) }
         )
         return VStack(alignment: .leading, spacing: 6) {
-            Text("Server address")
+            Text(Strings.shared.serverAddress)
                 .font(.caption)
                 .foregroundColor(failed ? Palette.error : Palette.textMuted)
             TextField(
-                "Server address",
+                Strings.shared.serverAddress,
                 text: address,
-                prompt: Text("192.168.1.20:8096").foregroundColor(Palette.textMuted)
+                prompt: Text(Strings.shared.serverAddressExample).foregroundColor(Palette.textMuted)
             )
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
@@ -83,10 +83,10 @@ struct AddServerView: View {
                         .progressViewStyle(.circular)
                         .tint(Palette.textMuted)
                         .scaleEffect(0.8)
-                    Text("Connecting")
+                    Text(Strings.shared.connecting)
                 }
             } else {
-                Text("Connect")
+                Text(Strings.shared.connect)
             }
         }
         .buttonStyle(PrimaryButtonStyle())
@@ -107,8 +107,8 @@ struct AddServerView: View {
     }
 
     private func confirmLabel(_ found: AddServerStepFound) -> String {
-        if !found.alreadySaved { return "Add server" }
-        return found.addressIsNew ? "Save address" : "Done"
+        if !found.alreadySaved { return Strings.shared.addServer }
+        return found.addressIsNew ? Strings.shared.saveAddress : Strings.shared.done
     }
 }
 
@@ -121,7 +121,7 @@ private struct FoundCard: View {
                 HStack(spacing: 8) {
                     // Teal means available: the server answered.
                     Circle().fill(Palette.available).frame(width: 8, height: 8)
-                    Text("Found")
+                    Text(Strings.shared.found)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Palette.available)
                 }
@@ -130,21 +130,19 @@ private struct FoundCard: View {
                     .font(.system(size: 24, weight: .heavy))
                     .tracking(-0.5)
                     .foregroundColor(Palette.text)
-                Text("Jellyfin \(found.server.version)")
+                Text(Strings.shared.jellyfinVersion(version: found.server.version))
                     .font(.subheadline)
                     .foregroundColor(Palette.textMuted)
                 Text(found.server.address)
                     .font(.subheadline)
                     .foregroundColor(Palette.text)
                 if !found.server.otherAddresses.isEmpty {
-                    Text("Also reachable at " + found.server.otherAddresses.joined(separator: ", "))
+                    Text(Strings.shared.alsoReachableAt(addresses: found.server.otherAddresses))
                         .font(.footnote)
                         .foregroundColor(Palette.textMuted)
                 }
                 if found.alreadySaved {
-                    Text(found.addressIsNew
-                        ? "You already have this server. This adds the new address to it."
-                        : "You already have this server at this address.")
+                    Text(Strings.shared.alreadySaved(addressIsNew: found.addressIsNew))
                         .font(.footnote)
                         .foregroundColor(Palette.textMuted)
                         .padding(.top, 8)
@@ -160,7 +158,7 @@ private struct ErrorCard: View {
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Can't connect")
+                Text(Strings.shared.cantConnectTitle)
                     .font(.system(size: 17, weight: .bold))
                     .foregroundColor(Palette.error)
                 Text(message)

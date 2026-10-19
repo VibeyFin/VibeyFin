@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liamgleeson.vibeyfin.app.components.BackButtonSpace
 import com.liamgleeson.vibeyfin.app.components.FloatingBackButton
 import com.liamgleeson.vibeyfin.app.theme.VibeyFinPalette
+import com.liamgleeson.vibeyfin.ui.common.Strings
 import com.liamgleeson.vibeyfin.ui.settings.SettingsUiState
 import com.liamgleeson.vibeyfin.ui.settings.SettingsViewModel
 import org.koin.androidx.compose.koinViewModel
@@ -51,7 +52,7 @@ fun SettingsScreen(state: SettingsUiState, onBack: () -> Unit, onAlwaysAskChange
             ) {
                 Spacer(Modifier.height(BackButtonSpace))
                 Text(
-                    text = "Settings",
+                    text = Strings.settings,
                     style = MaterialTheme.typography.headlineLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
@@ -68,12 +69,12 @@ fun SettingsScreen(state: SettingsUiState, onBack: () -> Unit, onAlwaysAskChange
                 ) {
                     Column(modifier = Modifier.weight(1f).padding(end = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            text = "Always ask who's watching",
+                            text = Strings.alwaysAskWhoIsWatchingTitle,
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onBackground,
                         )
                         Text(
-                            text = "Show the profile screen every time the app opens instead of going straight to the last profile.",
+                            text = Strings.alwaysAskWhoIsWatchingHelp,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

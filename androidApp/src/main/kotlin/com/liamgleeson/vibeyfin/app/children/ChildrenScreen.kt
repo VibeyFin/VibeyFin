@@ -34,6 +34,7 @@ import com.liamgleeson.vibeyfin.app.components.LoadError
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
 import com.liamgleeson.vibeyfin.ui.children.ChildrenUiState
 import com.liamgleeson.vibeyfin.ui.children.ChildrenViewModel
+import com.liamgleeson.vibeyfin.ui.common.Strings
 import com.liamgleeson.vibeyfin.ui.home.HomeExit
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -90,7 +91,7 @@ fun ChildrenScreen(
                     state.isEmpty -> {
                         Title(title)
                         Text(
-                            text = "There's nothing in here yet.",
+                            text = Strings.emptyFolder,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -157,7 +158,7 @@ private fun ItemGrid(
         }
         if (state.loadMoreFailed) {
             item(span = { GridItemSpan(maxLineSpan) }, key = "load-more-failed") {
-                LoadError("Couldn't load the rest of this list. Check your connection and try again.", onRetry)
+                LoadError(Strings.loadMoreFailed, onRetry)
             }
         }
         item(span = { GridItemSpan(maxLineSpan) }, key = "bottom-space") { Spacer(Modifier.height(24.dp)) }

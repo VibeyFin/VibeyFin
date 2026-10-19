@@ -1,4 +1,5 @@
 import SwiftUI
+import Shared
 
 /// The one primary action on a screen: amber and full width.
 struct PrimaryButtonStyle: ButtonStyle {
@@ -56,7 +57,7 @@ struct SearchingLabel: View {
                 .progressViewStyle(.circular)
                 .tint(Palette.textMuted)
                 .scaleEffect(0.8)
-            Text("Searching")
+            Text(Strings.shared.searching)
                 .font(.subheadline)
                 .foregroundColor(Palette.textMuted)
         }

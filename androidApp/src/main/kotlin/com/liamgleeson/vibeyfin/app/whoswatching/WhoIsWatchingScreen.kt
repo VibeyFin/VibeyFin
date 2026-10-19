@@ -29,6 +29,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -58,6 +59,7 @@ import com.liamgleeson.vibeyfin.app.components.FloatingBackButton
 import com.liamgleeson.vibeyfin.app.components.vibeyFinTextFieldColors
 import com.liamgleeson.vibeyfin.app.theme.VibeyFinPalette
 import com.liamgleeson.vibeyfin.domain.model.Profile
+import com.liamgleeson.vibeyfin.ui.common.Strings
 import com.liamgleeson.vibeyfin.ui.whoswatching.SignInSheet
 import com.liamgleeson.vibeyfin.ui.whoswatching.WhoIsWatchingUiState
 import com.liamgleeson.vibeyfin.ui.whoswatching.WhoIsWatchingViewModel
@@ -123,11 +125,11 @@ fun WhoIsWatchingScreen(
                         }
                         if (state.quickConnectAvailable) {
                             item(key = "quick-connect") {
-                                ActionTile("Quick Connect", symbol = "#", enabled = !state.signingIn, onClick = onQuickConnect)
+                                ActionTile(Strings.quickConnect, symbol = "#", enabled = !state.signingIn, onClick = onQuickConnect)
                             }
                         }
                         item(key = "other-user") {
-                            ActionTile("Other user", symbol = "+", enabled = !state.signingIn, onClick = onOtherUser)
+                            ActionTile(Strings.otherUser, symbol = "+", enabled = !state.signingIn, onClick = onOtherUser)
                         }
                         item(span = { GridItemSpan(maxLineSpan) }, key = "bottom-space") { Spacer(Modifier.height(24.dp)) }
                     }
@@ -162,7 +164,7 @@ private fun Header(state: WhoIsWatchingUiState, onRetry: () -> Unit) {
             )
         }
         Text(
-            text = "Who's watching?",
+            text = Strings.whoIsWatching,
             style = MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.onBackground,
         )
@@ -186,16 +188,16 @@ private fun UnreachableBanner(onRetry: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = "Can't reach this server",
+                text = Strings.cantReachServerTitle,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.error,
             )
             Text(
-                text = "Profiles saved on this device still show, but signing in needs the server.",
+                text = Strings.cantReachServerHelp,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            TextButton(onClick = onRetry) { Text("Try again", color = MaterialTheme.colorScheme.onSurface) }
+            TextButton(onClick = onRetry) { Text(Strings.tryAgain, color = MaterialTheme.colorScheme.onSurface) }
         }
     }
 }
@@ -220,7 +222,7 @@ private fun ProfileTile(profile: Profile, enabled: Boolean, onClick: () -> Unit)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Lock,
-                        contentDescription = "Needs a password",
+                        contentDescription = Strings.needsPassword,
                         tint = VibeyFinPalette.Text,
                         modifier = Modifier.size(16.dp),
                     )
@@ -264,7 +266,7 @@ private fun Avatar(profile: Profile) {
     }
 }
 
-/** A tile that isn't a person: "Other user", "Quick Connect". */
+/** A tile that isn't a person: Strings.otherUser, Strings.quickConnect. */
 @Composable
 private fun ActionTile(label: String, symbol: String, enabled: Boolean, onClick: () -> Unit) {
     Column(
@@ -324,18 +326,18 @@ private fun QuickConnectContent(sheet: SignInSheet.QuickConnect, onRetry: () -> 
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            text = "Quick Connect",
+            text = Strings.quickConnect,
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurface,
         )
         when {
             sheet.message != null -> {
                 Text(sheet.message!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
-                Button(onClick = onRetry, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Try again") }
+                OutlinedButton(onClick = onRetry, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text(Strings.tryAgain) }
             }
             sheet.code != null -> {
                 Text(
-                    text = "On a device that's signed in to Jellyfin, open your user menu, choose Quick Connect and enter this code.",
+                    text = Strings.quickConnectHelp,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -345,12 +347,12 @@ private fun QuickConnectContent(sheet: SignInSheet.QuickConnect, onRetry: () -> 
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                WaitingLabel("Waiting for approval")
+                WaitingLabel(Strings.quickConnectWaiting)
             }
-            else -> WaitingLabel("Getting a code")
+            else -> WaitingLabel(Strings.quickConnectGettingCode)
         }
         TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-            Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(Strings.cancel, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.height(8.dp))
     }
@@ -394,7 +396,7 @@ private fun PasswordContent(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                text = if (sheet is SignInSheet.Password) "Sign in as ${sheet.profile.name}" else "Sign in as another user",
+                text = if (sheet is SignInSheet.Password) Strings.signInAs(sheet.profile.name) else Strings.signInAsAnotherUser,
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -402,7 +404,7 @@ private fun PasswordContent(
                 OutlinedTextField(
                     value = username,
                     onValueChange = { username = it },
-                    label = { Text("Username") },
+                    label = { Text(Strings.username) },
                     singleLine = true,
                     isError = error != null,
                     colors = vibeyFinTextFieldColors(),
@@ -417,7 +419,7 @@ private fun PasswordContent(
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Password") },
+                label = { Text(Strings.password) },
                 singleLine = true,
                 isError = error != null,
                 visualTransformation = PasswordVisualTransformation(),
@@ -446,13 +448,13 @@ private fun PasswordContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.size(12.dp))
-                    Text("Signing in")
+                    Text(Strings.signingIn)
                 } else {
-                    Text("Sign in")
+                    Text(Strings.signIn)
                 }
             }
             TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(Strings.cancel, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(8.dp))
         }

@@ -25,19 +25,19 @@ struct ServersView: View {
 
     private func emptyState(_ state: ServersUiState) -> some View {
         VStack(spacing: 32) {
-            Text("VibeyFin").vibeTitle(size: 56, weight: .black, tracking: -2)
+            Text(Strings.shared.appName).vibeTitle(size: 56, weight: .black, tracking: -2)
             VStack(spacing: 16) {
-                Button("Add server", action: onAddServer)
+                Button(Strings.shared.addServer, action: onAddServer)
                     .buttonStyle(PrimaryButtonStyle())
                 if state.canSearch {
                     if state.searching {
                         SearchingLabel()
                     } else {
                         VStack(spacing: 4) {
-                            Text("No servers found on your network.")
+                            Text(Strings.shared.noServersFound)
                                 .font(.subheadline)
                                 .foregroundColor(Palette.textMuted)
-                            Button("Search again") { model.searchAgain() }
+                            Button(Strings.shared.searchAgain) { model.searchAgain() }
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundColor(Palette.text)
                         }
@@ -50,7 +50,7 @@ struct ServersView: View {
 
     private func list(_ state: ServersUiState) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Servers")
+            Text(Strings.shared.servers)
                 .vibeTitle(size: 34)
                 .padding(.top, 32)
                 .padding(.bottom, 24)
@@ -71,7 +71,7 @@ struct ServersView: View {
                             .buttonStyle(.plain)
                         }
                         if state.discovered.isEmpty && !state.searching {
-                            Text("No new servers found.")
+                            Text(Strings.shared.noNewServersFound)
                                 .font(.subheadline)
                                 .foregroundColor(Palette.textMuted)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -79,7 +79,7 @@ struct ServersView: View {
                     }
                 }
             }
-            Button("Add server", action: onAddServer)
+            Button(Strings.shared.addServer, action: onAddServer)
                 .buttonStyle(OutlineButtonStyle())
                 .padding(.vertical, 16)
         }
@@ -88,14 +88,14 @@ struct ServersView: View {
 
     private func nearbyHeader(_ state: ServersUiState) -> some View {
         HStack {
-            Text("On your network")
+            Text(Strings.shared.onYourNetwork)
                 .font(.system(size: 17, weight: .bold))
                 .foregroundColor(Palette.textMuted)
             Spacer()
             if state.searching {
                 SearchingLabel()
             } else {
-                Button("Search again") { model.searchAgain() }
+                Button(Strings.shared.searchAgain) { model.searchAgain() }
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(Palette.text)
             }
@@ -119,7 +119,7 @@ private struct ServerRow: View {
                     .font(.subheadline)
                     .foregroundColor(Palette.textMuted)
                 if let version = server.version {
-                    Text("Jellyfin \(version)")
+                    Text(Strings.shared.jellyfinVersion(version: version))
                         .font(.footnote)
                         .foregroundColor(Palette.textMuted)
                 }
@@ -143,7 +143,7 @@ private struct DiscoveredRow: View {
                         .foregroundColor(Palette.textMuted)
                 }
                 Spacer()
-                Text("Add")
+                Text(Strings.shared.addToServers)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(Palette.textMuted)
             }

@@ -55,7 +55,7 @@ struct ChildrenView: View {
         } else if let message = state.message {
             LoadErrorView(message: message, onRetry: { model.retry() })
         } else if state.isEmpty {
-            Text("There's nothing in here yet.")
+            Text(Strings.shared.emptyFolder)
                 .font(.body)
                 .foregroundColor(Palette.textMuted)
         } else {
@@ -70,7 +70,7 @@ struct ChildrenView: View {
             }
             if state.loadMoreFailed {
                 LoadErrorView(
-                    message: "Couldn't load the rest of this list. Check your connection and try again.",
+                    message: Strings.shared.loadMoreFailed,
                     onRetry: { model.retry() }
                 )
             }

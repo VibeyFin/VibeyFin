@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liamgleeson.vibeyfin.domain.DiscoveredServer
 import com.liamgleeson.vibeyfin.domain.model.Server
+import com.liamgleeson.vibeyfin.ui.common.Strings
 import com.liamgleeson.vibeyfin.ui.servers.ServersUiState
 import com.liamgleeson.vibeyfin.ui.servers.ServersViewModel
 import org.koin.androidx.compose.koinViewModel
@@ -74,13 +75,13 @@ private fun EmptyServers(state: ServersUiState, onAddServer: () -> Unit, onSearc
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = "VibeyFin",
+            text = Strings.appName,
             style = MaterialTheme.typography.displayLarge,
             color = MaterialTheme.colorScheme.onBackground,
         )
         Spacer(Modifier.height(32.dp))
         Button(onClick = onAddServer, modifier = Modifier.fillMaxWidth().height(52.dp)) {
-            Text("Add server")
+            Text(Strings.addServer)
         }
         if (state.canSearch) {
             Spacer(Modifier.height(16.dp))
@@ -88,12 +89,12 @@ private fun EmptyServers(state: ServersUiState, onAddServer: () -> Unit, onSearc
                 SearchingLabel()
             } else {
                 Text(
-                    text = "No servers found on your network.",
+                    text = Strings.noServersFound,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 TextButton(onClick = onSearchAgain) {
-                    Text("Search again", color = MaterialTheme.colorScheme.onSurface)
+                    Text(Strings.searchAgain, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
@@ -111,7 +112,7 @@ private fun ServerList(
     Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp)) {
         Spacer(Modifier.height(32.dp))
         Text(
-            text = "Servers",
+            text = Strings.servers,
             style = MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.onBackground,
         )
@@ -127,7 +128,7 @@ private fun ServerList(
                 if (state.discovered.isEmpty() && !state.searching) {
                     item(key = "nearby-empty") {
                         Text(
-                            text = "No new servers found.",
+                            text = Strings.noNewServersFound,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -139,7 +140,7 @@ private fun ServerList(
             onClick = onAddServer,
             modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp).height(52.dp),
         ) {
-            Text("Add server")
+            Text(Strings.addServer)
         }
     }
 }
@@ -152,7 +153,7 @@ private fun NearbyHeader(searching: Boolean, onSearchAgain: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
-            text = "On your network",
+            text = Strings.onYourNetwork,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -160,7 +161,7 @@ private fun NearbyHeader(searching: Boolean, onSearchAgain: () -> Unit) {
             SearchingLabel()
         } else {
             TextButton(onClick = onSearchAgain) {
-                Text("Search again", color = MaterialTheme.colorScheme.onSurface)
+                Text(Strings.searchAgain, color = MaterialTheme.colorScheme.onSurface)
             }
         }
     }
@@ -176,7 +177,7 @@ private fun SearchingLabel() {
         )
         Spacer(Modifier.size(8.dp))
         Text(
-            text = "Searching",
+            text = Strings.searching,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -204,7 +205,7 @@ private fun ServerRow(server: Server, onClick: () -> Unit) {
             )
             server.version?.let {
                 Text(
-                    text = "Jellyfin $it",
+                    text = Strings.jellyfinVersion(it),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -240,7 +241,7 @@ private fun DiscoveredRow(server: DiscoveredServer, onClick: () -> Unit) {
             }
             Spacer(Modifier.size(16.dp))
             Text(
-                text = "Add",
+                text = Strings.addToServers,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

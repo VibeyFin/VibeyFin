@@ -42,6 +42,7 @@ import com.liamgleeson.vibeyfin.ui.addserver.AddServerStep
 import com.liamgleeson.vibeyfin.ui.addserver.AddServerUiState
 import com.liamgleeson.vibeyfin.ui.addserver.AddServerViewModel
 import com.liamgleeson.vibeyfin.ui.addserver.message
+import com.liamgleeson.vibeyfin.ui.common.Strings
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -85,7 +86,7 @@ fun AddServerScreen(
             ) {
                 Spacer(Modifier.height(BackButtonSpace))
                 Text(
-                    text = "Add a server",
+                    text = Strings.addAServer,
                     style = MaterialTheme.typography.headlineLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
@@ -95,7 +96,7 @@ fun AddServerScreen(
                     value = state.address,
                     onValueChange = onAddressChange,
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Server address") },
+                    label = { Text(Strings.serverAddress) },
                     placeholder = { Text("192.168.1.20:8096") },
                     singleLine = true,
                     isError = state.step is AddServerStep.Failed,
@@ -125,9 +126,9 @@ fun AddServerScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Spacer(Modifier.size(12.dp))
-                            Text("Connecting")
+                            Text(Strings.connecting)
                         } else {
-                            Text("Connect")
+                            Text(Strings.connect)
                         }
                     }
                 }
@@ -148,9 +149,9 @@ fun AddServerScreen(
                         ) {
                             Text(
                                 when {
-                                    !step.alreadySaved -> "Add server"
-                                    step.addressIsNew -> "Save address"
-                                    else -> "Done"
+                                    !step.alreadySaved -> Strings.addServer
+                                    step.addressIsNew -> Strings.saveAddress
+                                    else -> Strings.done
                                 },
                             )
                         }
@@ -177,7 +178,7 @@ private fun FoundCard(found: AddServerStep.Found) {
                 Box(Modifier.size(8.dp).background(VibeyFinPalette.Available, CircleShape))
                 Spacer(Modifier.size(8.dp))
                 Text(
-                    text = "Found",
+                    text = Strings.found,
                     style = MaterialTheme.typography.labelMedium,
                     color = VibeyFinPalette.Available,
                 )
@@ -189,7 +190,7 @@ private fun FoundCard(found: AddServerStep.Found) {
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = "Jellyfin ${found.server.version}",
+                text = Strings.jellyfinVersion(found.server.version),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -200,7 +201,7 @@ private fun FoundCard(found: AddServerStep.Found) {
             )
             if (found.server.otherAddresses.isNotEmpty()) {
                 Text(
-                    text = "Also reachable at " + found.server.otherAddresses.joinToString(", "),
+                    text = Strings.alsoReachableAt(found.server.otherAddresses),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -208,11 +209,7 @@ private fun FoundCard(found: AddServerStep.Found) {
             if (found.alreadySaved) {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = if (found.addressIsNew) {
-                        "You already have this server. This adds the new address to it."
-                    } else {
-                        "You already have this server at this address."
-                    },
+                    text = Strings.alreadySaved(found.addressIsNew),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -230,7 +227,7 @@ private fun ErrorCard(message: String) {
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                text = "Can't connect",
+                text = Strings.cantConnectTitle,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.error,
             )

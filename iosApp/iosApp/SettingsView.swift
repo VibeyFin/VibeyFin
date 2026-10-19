@@ -8,15 +8,15 @@ struct SettingsView: View {
         ZStack {
             Palette.ink.ignoresSafeArea()
             VStack(alignment: .leading, spacing: 24) {
-                Text("Settings").vibeTitle(size: 34)
+                Text(Strings.shared.settings).vibeTitle(size: 34)
                 // The whole row is the toggle, so the label is a target too. The switch is light on
                 // dark: amber is for the one primary action on a screen.
                 Toggle(isOn: alwaysAsk) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Always ask who's watching")
+                        Text(Strings.shared.alwaysAskWhoIsWatchingTitle)
                             .font(.system(size: 17, weight: .bold))
                             .foregroundColor(Palette.text)
-                        Text("Show the profile screen every time the app opens instead of going straight to the last profile.")
+                        Text(Strings.shared.alwaysAskWhoIsWatchingHelp)
                             .font(.subheadline)
                             .foregroundColor(Palette.textMuted)
                     }

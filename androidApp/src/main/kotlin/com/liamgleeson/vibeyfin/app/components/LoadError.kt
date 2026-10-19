@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.liamgleeson.vibeyfin.ui.common.Strings
 
 /** What went wrong and a way to try again. The button is outlined: amber is for the primary action. */
 @Composable
@@ -19,6 +20,6 @@ fun LoadError(message: String, onRetry: () -> Unit, modifier: Modifier = Modifie
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(message, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
-        OutlinedButton(onClick = onRetry) { Text("Try again") }
+        OutlinedButton(onClick = onRetry) { Text(Strings.tryAgain) }
     }
 }

@@ -70,11 +70,15 @@ Device ID: generate a UUID once per install and persist it.
   presentation (one shared ViewModel per feature, exposing a `StateFlow` of UI state) → native
   screens. Screens only draw state and forward events; behaviour lives in the ViewModel. UI never
   sees DTOs or Room entities.
-- Wording that must match across platforms, such as error messages, lives in `shared/`.
+- All user-facing text lives in `shared/`: titles, labels, buttons, help text, empty states and
+  accessibility descriptions in `Strings` (`ui/common/Strings.kt`), errors in `LoadMessages`,
+  `SignInMessages` and `ConnectionIssueMessage`. Native screens hold no string literals; they read
+  `Strings` (`Strings.shared` in Swift). Add the text there first, then use it from both apps.
 - One `ConnectionManager` owns the current server, profile and authenticated HTTP client as a
   `StateFlow`. Features read from it; nothing else holds tokens.
-- A 401 from any authenticated call goes through one place that calls `expire()` and routes to
-  "Who's watching?".
+- A 401 from any authenticated call goes through one place, `ConnectionManager.expireSession`, which
+  calls `expire()` and routes to "Who's watching?". Don't call `AccountRepository.expire` from
+  anywhere else, except for an explicit sign-out.
 - Platform code only behind `expect`/`actual` or interfaces injected by Koin: token vault,
   Wi-Fi multicast lock (Android), device name.
 - Time: inject a clock (`kotlin.time.Clock`) so repositories are testable.

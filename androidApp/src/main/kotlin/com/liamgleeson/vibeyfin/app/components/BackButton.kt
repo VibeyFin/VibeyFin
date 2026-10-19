@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.liamgleeson.vibeyfin.app.theme.VibeyFinPalette
+import com.liamgleeson.vibeyfin.ui.common.Strings
 
 /**
  * An arrow on a round chip like the profile button on Home, with no label; it has a name for
@@ -41,7 +42,7 @@ fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
+                contentDescription = Strings.back,
                 tint = VibeyFinPalette.Text,
                 modifier = Modifier.size(20.dp),
             )

@@ -100,7 +100,7 @@ struct LoadErrorView: View {
             Text(message)
                 .font(.body)
                 .foregroundColor(Palette.text)
-            Button("Try again", action: onRetry)
+            Button(Strings.shared.tryAgain, action: onRetry)
                 .buttonStyle(OutlineButtonStyle())
                 .frame(maxWidth: 200)
         }

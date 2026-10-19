@@ -38,6 +38,7 @@ import com.liamgleeson.vibeyfin.app.components.ArtworkTile
 import com.liamgleeson.vibeyfin.app.components.LoadError
 import com.liamgleeson.vibeyfin.app.theme.VibeyFinPalette
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
+import com.liamgleeson.vibeyfin.ui.common.Strings
 import com.liamgleeson.vibeyfin.ui.home.HomeExit
 import com.liamgleeson.vibeyfin.ui.home.HomeUiState
 import com.liamgleeson.vibeyfin.ui.home.HomeViewModel
@@ -84,7 +85,7 @@ fun HomeScreen(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
                     Text(
-                        text = state.userName?.let { "Hi, $it" } ?: "Home",
+                        text = state.userName?.let { Strings.greeting(it) } ?: Strings.home,
                         style = MaterialTheme.typography.headlineLarge,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
@@ -105,7 +106,7 @@ fun HomeScreen(
 @Composable
 private fun Libraries(state: HomeUiState, onOpen: (MediaItem) -> Unit, onRetry: () -> Unit) {
     Text(
-        text = "Libraries",
+        text = Strings.libraries,
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -116,7 +117,7 @@ private fun Libraries(state: HomeUiState, onOpen: (MediaItem) -> Unit, onRetry: 
         }
         state.librariesMessage != null -> LoadError(state.librariesMessage!!, onRetry)
         state.libraries.isEmpty() -> Text(
-            text = "This account has no libraries yet. Ask the server's admin to add one.",
+            text = Strings.noLibraries,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -163,10 +164,10 @@ private fun ProfileMenu(
             onDismissRequest = { open = false },
             containerColor = VibeyFinPalette.SurfaceHigh,
         ) {
-            MenuItem("Switch profile") { open = false; onSwitchProfile() }
-            MenuItem("Switch server") { open = false; onSwitchServer() }
-            MenuItem("Settings") { open = false; onSettings() }
-            MenuItem("Sign out") { open = false; onSignOut() }
+            MenuItem(Strings.switchProfile) { open = false; onSwitchProfile() }
+            MenuItem(Strings.switchServer) { open = false; onSwitchServer() }
+            MenuItem(Strings.settings) { open = false; onSettings() }
+            MenuItem(Strings.signOut) { open = false; onSignOut() }
         }
     }
 }

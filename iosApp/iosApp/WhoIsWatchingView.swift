@@ -59,7 +59,7 @@ struct WhoIsWatchingView: View {
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundColor(Palette.textMuted)
                     }
-                    Text("Who's watching?").vibeTitle(size: 34)
+                    Text(Strings.shared.whoIsWatching).vibeTitle(size: 34)
                 }
                 if !state.loading && !state.serverReachable {
                     UnreachableBanner(onRetry: { model.refresh() })
@@ -95,13 +95,13 @@ struct WhoIsWatchingView: View {
             }
             if state.quickConnectAvailable {
                 Button { model.quickConnectTapped() } label: {
-                    ActionTile(label: "Quick Connect", symbol: "#")
+                    ActionTile(label: Strings.shared.quickConnect, symbol: "#")
                 }
                 .buttonStyle(.plain)
                 .disabled(state.signingIn)
             }
             Button { model.otherUserTapped() } label: {
-                ActionTile(label: "Other user", symbol: "+")
+                ActionTile(label: Strings.shared.otherUser, symbol: "+")
             }
             .buttonStyle(.plain)
             .disabled(state.signingIn)
@@ -115,13 +115,13 @@ private struct UnreachableBanner: View {
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Can't reach this server")
+                Text(Strings.shared.cantReachServerTitle)
                     .font(.system(size: 15, weight: .bold))
                     .foregroundColor(Palette.error)
-                Text("Profiles saved on this device still show, but signing in needs the server.")
+                Text(Strings.shared.cantReachServerHelp)
                     .font(.subheadline)
                     .foregroundColor(Palette.text)
-                Button("Try again", action: onRetry)
+                Button(Strings.shared.tryAgain, action: onRetry)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(Palette.text)
                     .padding(.top, 4)
@@ -144,7 +144,7 @@ private struct ProfileTile: View {
                         .frame(width: 26, height: 26)
                         .background(RoundedRectangle(cornerRadius: 8).fill(Palette.ink.opacity(0.85)))
                         .padding(6)
-                        .accessibilityLabel("Needs a password")
+                        .accessibilityLabel(Strings.shared.needsPassword)
                 }
             }
             Text(profile.name)
@@ -252,15 +252,15 @@ private struct SignInSheetView: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text(title).vibeTitle(size: 24)
                 if isOtherUser {
-                    field("Username") {
-                        TextField("Username", text: $username)
+                    field(Strings.shared.username) {
+                        TextField(Strings.shared.username, text: $username)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .submitLabel(.next)
                     }
                 }
-                field("Password") {
-                    SecureField("Password", text: $password)
+                field(Strings.shared.password) {
+                    SecureField(Strings.shared.password, text: $password)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .submitLabel(.go)
@@ -272,11 +272,11 @@ private struct SignInSheetView: View {
                         .foregroundColor(Palette.error)
                 }
                 Button { submit() } label: {
-                    Text(signingIn ? "Signing in" : "Sign in")
+                    Text(signingIn ? Strings.shared.signingIn : Strings.shared.signIn)
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(!canSubmit)
-                Button("Cancel", action: onDismiss)
+                Button(Strings.shared.cancel, action: onDismiss)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(Palette.textMuted)
                     .frame(maxWidth: .infinity)
@@ -288,9 +288,9 @@ private struct SignInSheetView: View {
 
     private var title: String {
         if let passwordSheet = passwordSheet {
-            return "Sign in as \(passwordSheet.profile.name)"
+            return Strings.shared.signInAs(name: passwordSheet.profile.name)
         }
-        return "Sign in as another user"
+        return Strings.shared.signInAsAnotherUser
     }
 
     private func submit() {
@@ -328,26 +328,26 @@ private struct QuickConnectSheetView: View {
         ZStack {
             Palette.surface.ignoresSafeArea()
             VStack(alignment: .leading, spacing: 16) {
-                Text("Quick Connect").vibeTitle(size: 24)
+                Text(Strings.shared.quickConnect).vibeTitle(size: 24)
                 if let message = sheet.message {
                     Text(message)
                         .font(.subheadline)
                         .foregroundColor(Palette.error)
-                    Button("Try again", action: onRetry)
-                        .buttonStyle(PrimaryButtonStyle())
+                    Button(Strings.shared.tryAgain, action: onRetry)
+                        .buttonStyle(OutlineButtonStyle())
                 } else if let code = sheet.code {
-                    Text("On a device that's signed in to Jellyfin, open your user menu, choose Quick Connect and enter this code.")
+                    Text(Strings.shared.quickConnectHelp)
                         .font(.subheadline)
                         .foregroundColor(Palette.textMuted)
                     Text(code)
                         .font(.system(size: 48, weight: .heavy, design: .rounded))
                         .tracking(2)
                         .foregroundColor(Palette.text)
-                    waiting("Waiting for approval")
+                    waiting(Strings.shared.quickConnectWaiting)
                 } else {
-                    waiting("Getting a code")
+                    waiting(Strings.shared.quickConnectGettingCode)
                 }
-                Button("Cancel", action: onDismiss)
+                Button(Strings.shared.cancel, action: onDismiss)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(Palette.textMuted)
                     .frame(maxWidth: .infinity)
