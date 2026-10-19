@@ -20,7 +20,7 @@ and sessions, are unbuilt, and it lists library browsing as out of scope). So th
 | Roadmap item | Where |
 |---|---|
 | Phase 0: auth (password, Quick Connect), token, device id, client name | Plan 01 Phases 6 and 7 (done) |
-| Phase 0: version and capability check | Plan 01 Phase 3 (done; rejects below 10.10, where the roadmap says warn or degrade) |
+| Phase 0: version and capability check | Plan 01 Phase 3 (done; rejects below 10.10, which the owner chose over warning or degrading) |
 | Phase 0: API client with token, retries, error handling | Plan 01 Phase 7 (401) and this plan's Phase A (retries, typed errors) (done) |
 | Phase 0 exit: list libraries, fetch an item's metadata | Phase A (done) |
 | Phase 1: PlaybackInfo with a device profile, direct play vs HLS | Phase B (deferred) |
@@ -48,7 +48,7 @@ and sessions, are unbuilt, and it lists library browsing as out of scope). So th
 - **Browsing is generic.** Libraries, folders, series and seasons all open the same children list
   (`GET /Items?parentId=`), because real libraries nest (the demo's Movies are in folders).
   Playable items (movie, episode, video) open the detail page.
-- Server minimum stays 10.10 (rejected below); whether to warn instead is the owner's call.
+- Server minimum stays 10.10: a server below it is rejected, not warned about (owner's decision).
 
 ## Phase A: Libraries and items (closes roadmap Phase 0) — done
 
