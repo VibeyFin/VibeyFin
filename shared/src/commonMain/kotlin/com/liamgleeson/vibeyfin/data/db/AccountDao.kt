@@ -1,0 +1,61 @@
+package com.liamgleeson.vibeyfin.data.db
+
+import androidx.room3.Dao
+import androidx.room3.Insert
+import androidx.room3.OnConflictStrategy
+import androidx.room3.Query
+import androidx.room3.Transaction
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+abstract class AccountDao {
+    /** Most recently used first, so the profile you last watched as is the first tile. */
+    @Query("SELECT * FROM accounts WHERE serverId = :serverId ORDER BY lastUsedAt DESC, name")
+    abstract fun observeAccounts(serverId: String): Flow<List<AccountEntity>>
+
+    @Query("SELECT * FROM accounts WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun getAccount(serverId: String, userId: String): AccountEntity?
+
+    @Query("SELECT sealedToken FROM accounts WHERE serverId = :serverId AND sealedToken IS NOT NULL")
+    abstract suspend fun getSealedTokens(serverId: String): List<ByteArray>
+
+    @Query("UPDATE accounts SET sealedToken = NULL WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun clearToken(serverId: String, userId: String)
+
+    @Query("UPDATE accounts SET lastUsedAt = :at WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun markUsed(serverId: String, userId: String, at: Long)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    protected abstract suspend fun insertAccount(account: AccountEntity): Long
+
+    @Query(
+        "UPDATE accounts SET name = :name, imageTag = :imageTag, sealedToken = :sealedToken, " +
+            "lastUsedAt = :now WHERE serverId = :serverId AND userId = :userId",
+    )
+    protected abstract suspend fun updateAccount(
+        serverId: String,
+        userId: String,
+        name: String,
+        imageTag: String?,
+        sealedToken: ByteArray,
+        now: Long,
+    )
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    protected abstract suspend fun insertSettings(settings: AccountSettingsEntity): Long
+
+    /** Creates the profile if it is new, otherwise refreshes it, and stores the sealed token. */
+    @Transaction
+    open suspend fun saveSession(
+        serverId: String,
+        userId: String,
+        name: String,
+        imageTag: String?,
+        sealedToken: ByteArray,
+        now: Long,
+    ) {
+        insertAccount(AccountEntity(serverId, userId, name, imageTag, sealedToken, now))
+        updateAccount(serverId, userId, name, imageTag, sealedToken, now)
+        insertSettings(AccountSettingsEntity(serverId, userId))
+    }
+}

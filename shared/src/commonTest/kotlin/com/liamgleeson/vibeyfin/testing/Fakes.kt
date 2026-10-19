@@ -1,0 +1,68 @@
+package com.liamgleeson.vibeyfin.testing
+
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.emptyPreferences
+import androidx.room3.Room
+import androidx.room3.useReaderConnection
+import com.liamgleeson.vibeyfin.data.db.VibeyFinDatabase
+import com.liamgleeson.vibeyfin.data.db.buildVibeyFinDatabase
+import com.liamgleeson.vibeyfin.data.vault.TokenVault
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Instant
+
+/** A clock that only moves when the test says so. */
+class FakeClock(private var current: Instant = Instant.fromEpochMilliseconds(1_700_000_000_000)) : Clock {
+    override fun now(): Instant = current
+
+    fun advance(by: Duration) {
+        current += by
+    }
+}
+
+/**
+ * Reversible stand-in for the platform vault. [unreadable] makes every blob fail to open, like a
+ * Keystore key that was lost; [discarded] records the blobs that were released.
+ */
+class FakeTokenVault : TokenVault {
+    var unreadable = false
+    val discarded = mutableListOf<String>()
+
+    override fun seal(token: String): ByteArray = "sealed:$token".encodeToByteArray()
+
+    override fun open(sealed: ByteArray): String? =
+        if (unreadable) null else sealed.decodeToString().removePrefix("sealed:")
+
+    override fun discard(sealed: ByteArray) {
+        discarded += sealed.decodeToString()
+    }
+}
+
+/** A DataStore that lives in memory, so preferences logic can be tested without files. */
+class InMemoryPreferencesDataStore : DataStore<Preferences> {
+    private val state = MutableStateFlow(emptyPreferences())
+    private val lock = Mutex()
+
+    override val data: Flow<Preferences> = state
+
+    override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences =
+        lock.withLock { transform(state.value).also { state.value = it } }
+}
+
+/** A fresh database in memory, built the same way as the real one. */
+fun inMemoryDatabase(): VibeyFinDatabase =
+    Room.inMemoryDatabaseBuilder<VibeyFinDatabase>().buildVibeyFinDatabase()
+
+/** Counts rows straight from SQLite, so cascades can be checked without a DAO for every table. */
+suspend fun VibeyFinDatabase.count(table: String, where: String = "1"): Int =
+    useReaderConnection { connection ->
+        connection.usePrepared("SELECT COUNT(*) FROM $table WHERE $where") { statement ->
+            statement.step()
+            statement.getLong(0).toInt()
+        }
+    }
