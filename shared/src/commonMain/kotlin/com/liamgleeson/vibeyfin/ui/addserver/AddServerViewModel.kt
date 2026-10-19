@@ -25,7 +25,10 @@ sealed interface AddServerStep {
         val addressIsNew get() = existing == null || server.address !in existing.addresses
     }
 
-    data class Failed(val issue: ConnectionIssue) : AddServerStep
+    data class Failed(val issue: ConnectionIssue) : AddServerStep {
+        /** What went wrong and what to try, worded once for every platform. */
+        val message: String get() = issue.message()
+    }
 }
 
 data class AddServerUiState(

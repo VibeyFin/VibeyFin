@@ -4,12 +4,13 @@ import Shared
 @main
 struct iOSApp: App {
     init() {
-        MainViewControllerKt.startKoinIos()
+        IosEntryKt.startKoinIos()
     }
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
+                .preferredColorScheme(.dark)
         }
     }
 }
