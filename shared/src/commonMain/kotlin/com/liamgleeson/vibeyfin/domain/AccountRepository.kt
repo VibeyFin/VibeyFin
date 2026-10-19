@@ -18,6 +18,8 @@ class AccountRepository(
     fun observeAccounts(serverId: String): Flow<List<Account>> =
         dao.observeAccounts(serverId).map { accounts -> accounts.map { it.toAccount() } }
 
+    suspend fun account(serverId: String, userId: String): Account? = dao.getAccount(serverId, userId)?.toAccount()
+
     /** Stores the token from a successful sign-in, creating the profile or refreshing it. */
     suspend fun saveSession(serverId: String, userId: String, name: String, imageTag: String?, token: String) {
         val previous = dao.getAccount(serverId, userId)?.sealedToken

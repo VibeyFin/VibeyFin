@@ -8,6 +8,9 @@ import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
+import io.ktor.util.AttributeKey
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.serialization.json.Json
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -30,11 +33,31 @@ data class Timeouts(
     }
 }
 
+/** Set on a request to send that session's token; one client can then serve every session. */
+internal val TokenAttribute = AttributeKey<String>("VibeyFinToken")
+
+/**
+ * Tells whoever listens that a server rejected a token (HTTP 401) on a call that carried one. A
+ * 401 from a call without a token, such as a wrong password at sign-in, is not reported. Calls
+ * report it in [JellyfinApi], which every authenticated request goes through.
+ */
+class UnauthorizedEvents {
+    private val events = MutableSharedFlow<String>(extraBufferCapacity = 16)
+
+    /** The rejected tokens. */
+    val tokens: SharedFlow<String> get() = events
+
+    internal fun report(token: String) {
+        events.tryEmit(token)
+    }
+}
+
 object JellyfinHttpClient {
     /**
      * Builds a client that sends the `MediaBrowser` `Authorization` header on every request and
-     * reads JSON leniently. Pass [token] for a signed-in session. [engine] is for tests; leave it
-     * out to use the platform's engine (OkHttp on Android, Darwin on iOS).
+     * reads JSON leniently. Give a request [TokenAttribute] to sign it in, or pass a default [token].
+     * [engine] is for tests; leave it out to use the platform's engine (OkHttp on Android, Darwin
+     * on iOS).
      */
     fun create(
         clientInfo: suspend () -> ClientInfo,
@@ -54,9 +77,10 @@ object JellyfinHttpClient {
         return if (engine != null) HttpClient(engine, configure) else HttpClient(configure)
     }
 
-    private fun authorization(clientInfo: suspend () -> ClientInfo, token: String?) =
+    private fun authorization(clientInfo: suspend () -> ClientInfo, defaultToken: String?) =
         createClientPlugin("JellyfinAuthorization") {
             onRequest { request, _ ->
+                val token = request.attributes.getOrNull(TokenAttribute) ?: defaultToken
                 request.headers[HttpHeaders.Authorization] = clientInfo().authorizationHeader(token)
             }
         }

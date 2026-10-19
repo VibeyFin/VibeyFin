@@ -2,6 +2,8 @@ package com.liamgleeson.vibeyfin.di
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
 import com.liamgleeson.vibeyfin.data.api.ClientInfoProvider
@@ -9,6 +11,9 @@ import com.liamgleeson.vibeyfin.data.db.VibeyFinDatabase
 import com.liamgleeson.vibeyfin.data.platform.DeviceInfo
 import com.liamgleeson.vibeyfin.data.vault.TokenVault
 import com.liamgleeson.vibeyfin.domain.AccountRepository
+import com.liamgleeson.vibeyfin.domain.AuthRepository
+import com.liamgleeson.vibeyfin.domain.ConnectionManager
+import com.liamgleeson.vibeyfin.domain.ConnectionState
 import com.liamgleeson.vibeyfin.domain.DevicePreferences
 import com.liamgleeson.vibeyfin.domain.LanDiscovery
 import com.liamgleeson.vibeyfin.domain.ServerRepository
@@ -18,17 +23,40 @@ import com.liamgleeson.vibeyfin.testing.FakeLanDiscovery
 import com.liamgleeson.vibeyfin.testing.FakeTokenVault
 import com.liamgleeson.vibeyfin.testing.InMemoryPreferencesDataStore
 import com.liamgleeson.vibeyfin.ui.addserver.AddServerViewModel
+import com.liamgleeson.vibeyfin.ui.home.HomeViewModel
 import com.liamgleeson.vibeyfin.ui.servers.ServersViewModel
+import com.liamgleeson.vibeyfin.ui.whoswatching.WhoIsWatchingViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.job
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.test.runTest
+import org.koin.core.parameter.parametersOf
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotSame
 import kotlin.test.assertTrue
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class AppModuleTest {
+    @BeforeTest
+    fun setMain() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+    }
+
+    @AfterTest
+    fun resetMain() {
+        Dispatchers.resetMain()
+    }
+
     /** Stands in for [platformModule]: same bindings, but in memory. */
     private fun fakePlatformModule() = module {
         single<RoomDatabase.Builder<VibeyFinDatabase>> { Room.inMemoryDatabaseBuilder<VibeyFinDatabase>() }
@@ -39,12 +67,18 @@ class AppModuleTest {
     }
 
     @Test
-    fun appModuleResolvesEveryViewModel() {
+    fun appModuleResolvesEveryViewModel() = runTest {
         val koin = koinApplication { modules(fakePlatformModule(), appModule()) }.koin
 
-        koin.get<ServersViewModel>()
-        koin.get<AddServerViewModel>()
+        val viewModels = listOf<ViewModel>(
+            koin.get<ServersViewModel>(),
+            koin.get<AddServerViewModel>(),
+            koin.get<WhoIsWatchingViewModel> { parametersOf("srv-1") },
+            koin.get<HomeViewModel>(),
+        )
 
+        // Some start loading as soon as they exist; stop them before the database goes.
+        viewModels.forEach { it.viewModelScope.coroutineContext.job.cancelAndJoin() }
         koin.get<VibeyFinDatabase>().close()
     }
 
@@ -71,6 +105,8 @@ class AppModuleTest {
         val koin = koinApplication { modules(fakePlatformModule(), appModule()) }.koin
 
         koin.get<ServerResolver>()
+        koin.get<AuthRepository>()
+        assertEquals(ConnectionState.Disconnected, koin.get<ConnectionManager>().state.value)
         val info = koin.get<ClientInfoProvider>().current()
 
         assertEquals("Test phone", info.deviceName)
