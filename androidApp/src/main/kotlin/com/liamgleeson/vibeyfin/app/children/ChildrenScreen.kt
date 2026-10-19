@@ -27,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.liamgleeson.vibeyfin.app.theme.VibeyFinTokens
+import com.liamgleeson.vibeyfin.app.theme.screenMargin
 import com.liamgleeson.vibeyfin.app.components.ArtworkTile
 import com.liamgleeson.vibeyfin.app.components.BackButtonSpace
 import com.liamgleeson.vibeyfin.app.components.FloatingBackButton
@@ -76,7 +78,7 @@ fun ChildrenScreen(
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp)) {
+            Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = screenMargin())) {
                 when {
                     state.loading -> {
                         Title(title)
@@ -111,7 +113,7 @@ private fun Title(title: String) {
         Spacer(Modifier.height(BackButtonSpace))
         Text(
             text = title,
-            style = MaterialTheme.typography.headlineLarge,
+            style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground,
         )
         Spacer(Modifier.height(16.dp))
@@ -140,8 +142,8 @@ private fun ItemGrid(
     LazyVerticalGrid(
         state = gridState,
         columns = GridCells.Adaptive(130.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
+        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         modifier = Modifier.fillMaxSize(),
     ) {
         // The title is part of the list, beneath the button, and scrolls up under it.

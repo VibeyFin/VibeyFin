@@ -16,7 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -26,6 +26,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.liamgleeson.vibeyfin.app.theme.screenMargin
+import com.liamgleeson.vibeyfin.app.theme.BrandDisplay
+import com.liamgleeson.vibeyfin.app.theme.VibeyFinTokens
 import com.liamgleeson.vibeyfin.domain.DiscoveredServer
 import com.liamgleeson.vibeyfin.domain.model.Server
 import com.liamgleeson.vibeyfin.ui.common.Strings
@@ -70,17 +73,17 @@ fun ServersScreen(
 @Composable
 private fun EmptyServers(state: ServersUiState, onAddServer: () -> Unit, onSearchAgain: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp),
+        modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = screenMargin()),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = Strings.appName,
-            style = MaterialTheme.typography.displayLarge,
+            style = BrandDisplay,
             color = MaterialTheme.colorScheme.onBackground,
         )
         Spacer(Modifier.height(32.dp))
-        Button(onClick = onAddServer, modifier = Modifier.fillMaxWidth().height(52.dp)) {
+        Button(onClick = onAddServer, modifier = Modifier.fillMaxWidth().height(56.dp)) {
             Text(Strings.addServer)
         }
         if (state.canSearch) {
@@ -109,11 +112,11 @@ private fun ServerList(
     onDiscoveredServer: (DiscoveredServer) -> Unit,
     onSearchAgain: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp)) {
+    Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = screenMargin())) {
         Spacer(Modifier.height(32.dp))
         Text(
             text = Strings.servers,
-            style = MaterialTheme.typography.headlineLarge,
+            style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground,
         )
         Spacer(Modifier.height(24.dp))
@@ -136,9 +139,9 @@ private fun ServerList(
                 }
             }
         }
-        OutlinedButton(
+        FilledTonalButton(
             onClick = onAddServer,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp).height(52.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp).height(VibeyFinTokens.Size.touch),
         ) {
             Text(Strings.addServer)
         }
@@ -189,8 +192,8 @@ private fun ServerRow(server: Server, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md),
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
@@ -219,8 +222,8 @@ private fun DiscoveredRow(server: DiscoveredServer, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md),
     ) {
         Row(
             modifier = Modifier.padding(20.dp),

@@ -24,11 +24,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.liamgleeson.vibeyfin.app.theme.screenMargin
 import com.liamgleeson.vibeyfin.app.components.Artwork
 import com.liamgleeson.vibeyfin.app.components.BackButtonSpace
 import com.liamgleeson.vibeyfin.app.components.FloatingBackButton
 import com.liamgleeson.vibeyfin.app.components.LoadError
-import com.liamgleeson.vibeyfin.app.theme.VibeyFinPalette
+import com.liamgleeson.vibeyfin.app.theme.VibeyFinTokens
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
 import com.liamgleeson.vibeyfin.ui.home.HomeExit
 import com.liamgleeson.vibeyfin.ui.item.ItemUiState
@@ -65,7 +66,7 @@ fun ItemScreen(state: ItemUiState, onBack: () -> Unit, onRetry: () -> Unit) {
                     }
                     state.message != null -> {
                         Spacer(Modifier.height(BackButtonSpace))
-                        LoadError(message = state.message!!, onRetry = onRetry, modifier = Modifier.padding(horizontal = 24.dp))
+                        LoadError(message = state.message!!, onRetry = onRetry, modifier = Modifier.padding(horizontal = screenMargin()))
                     }
                     item != null -> ItemDetails(item, state.facts)
                 }
@@ -78,7 +79,7 @@ fun ItemScreen(state: ItemUiState, onBack: () -> Unit, onRetry: () -> Unit) {
 @Composable
 private fun ItemDetails(item: MediaItem, facts: List<String>) {
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = screenMargin()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Spacer(Modifier.height(BackButtonSpace - 12.dp))
@@ -90,7 +91,7 @@ private fun ItemDetails(item: MediaItem, facts: List<String>) {
                 url = picture,
                 title = item.title,
                 aspectRatio = ratio,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork)),
             )
         }
         item.seriesName?.let {
@@ -98,7 +99,7 @@ private fun ItemDetails(item: MediaItem, facts: List<String>) {
         }
         Text(
             text = item.title,
-            style = MaterialTheme.typography.headlineLarge,
+            style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onBackground,
         )
         if (facts.isNotEmpty()) {
@@ -112,7 +113,7 @@ private fun ItemDetails(item: MediaItem, facts: List<String>) {
             Text(
                 text = item.genres.joinToString("  ·  "),
                 style = MaterialTheme.typography.bodyMedium,
-                color = VibeyFinPalette.Text,
+                color = VibeyFinTokens.Colors.ink,
             )
         }
         item.overview?.let {

@@ -25,9 +25,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.liamgleeson.vibeyfin.app.theme.screenMargin
 import com.liamgleeson.vibeyfin.app.components.BackButtonSpace
 import com.liamgleeson.vibeyfin.app.components.FloatingBackButton
-import com.liamgleeson.vibeyfin.app.theme.VibeyFinPalette
+import com.liamgleeson.vibeyfin.app.theme.VibeyFinTokens
 import com.liamgleeson.vibeyfin.ui.common.Strings
 import com.liamgleeson.vibeyfin.ui.settings.SettingsUiState
 import com.liamgleeson.vibeyfin.ui.settings.SettingsViewModel
@@ -48,12 +49,12 @@ fun SettingsScreen(state: SettingsUiState, onBack: () -> Unit, onAlwaysAskChange
                     .fillMaxSize()
                     .safeDrawingPadding()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = screenMargin()),
             ) {
                 Spacer(Modifier.height(BackButtonSpace))
                 Text(
                     text = Strings.settings,
-                    style = MaterialTheme.typography.headlineLarge,
+                    style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Spacer(Modifier.height(24.dp))
@@ -79,16 +80,16 @@ fun SettingsScreen(state: SettingsUiState, onBack: () -> Unit, onAlwaysAskChange
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    // Amber is for the one primary action, so the switch is light on dark instead.
+                    // Aqua is for the one primary action, so the switch is light on dark instead.
                     Switch(
                         checked = state.alwaysAskWhoIsWatching,
                         onCheckedChange = null,
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = VibeyFinPalette.Ink,
-                            checkedTrackColor = VibeyFinPalette.Text,
-                            uncheckedThumbColor = VibeyFinPalette.TextMuted,
-                            uncheckedTrackColor = VibeyFinPalette.SurfaceHigh,
-                            uncheckedBorderColor = VibeyFinPalette.SurfaceHigh,
+                            checkedThumbColor = VibeyFinTokens.Colors.bg,
+                            checkedTrackColor = VibeyFinTokens.Colors.ink,
+                            uncheckedThumbColor = VibeyFinTokens.Colors.inkMuted,
+                            uncheckedTrackColor = VibeyFinTokens.Colors.surface3,
+                            uncheckedBorderColor = VibeyFinTokens.Colors.lineStrong,
                         ),
                     )
                 }

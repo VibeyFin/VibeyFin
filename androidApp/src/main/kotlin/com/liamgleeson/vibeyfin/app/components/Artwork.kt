@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -16,16 +17,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.liamgleeson.vibeyfin.app.theme.VibeyFinPalette
+import com.liamgleeson.vibeyfin.app.theme.VibeyFinTokens
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
+import com.liamgleeson.vibeyfin.ui.common.Strings
 
 /**
- * Artwork at [aspectRatio], or the first letter of [title] on a plain tile when there is none. The
- * tile's own colour shows through while an image loads or if it fails. Give [description] when the
- * title isn't written next to the image, so a screen reader still has a name for it.
+ * Artwork at [aspectRatio], or the title on a plain `surface-2` tile when there is none. The tile's
+ * own colour shows through while an image loads or if it fails. Give [description] when the title
+ * isn't written next to the image, so a screen reader still has a name for it.
  */
 @Composable
 fun Artwork(
@@ -36,7 +40,7 @@ fun Artwork(
     description: String? = null,
 ) {
     Box(
-        modifier = modifier.aspectRatio(aspectRatio).background(VibeyFinPalette.SurfaceHigh),
+        modifier = modifier.aspectRatio(aspectRatio).background(VibeyFinTokens.Colors.surface2),
         contentAlignment = Alignment.Center,
     ) {
         if (url != null) {
@@ -48,9 +52,13 @@ fun Artwork(
             )
         } else {
             Text(
-                text = title.take(1).uppercase(),
-                style = MaterialTheme.typography.headlineMedium,
-                color = VibeyFinPalette.TextMuted,
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(VibeyFinTokens.Space.s2),
             )
         }
     }
@@ -60,15 +68,18 @@ fun Artwork(
 @Composable
 fun ArtworkTile(item: MediaItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
+            .clickable(onClick = onClick)
+            .semantics(mergeDescendants = true) { contentDescription = Strings.cardLabel(item.title, item.year) },
+        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
     ) {
         Artwork(
             url = item.posterUrl,
             title = item.title,
             aspectRatio = item.posterAspectRatio,
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)),
-            description = item.title.takeIf { item.nameIsOnPoster },
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork)),
         )
         if (!item.nameIsOnPoster) {
             Text(

@@ -65,19 +65,3 @@ object VibeyFinTokens {
         const val heroMs = 600
     }
 }
-
-/**
- * The previous palette, kept only so screens compile until Phase 3 restyles them onto
- * MaterialTheme and [VibeyFinTokens]. Teal is gone from the design, so [Available] maps to ink.
- */
-@Deprecated("Use MaterialTheme.colorScheme or VibeyFinTokens.Colors. Removed in Phase 3.")
-object VibeyFinPalette {
-    val Ink = VibeyFinTokens.Colors.bg
-    val Surface = VibeyFinTokens.Colors.surface1
-    val SurfaceHigh = VibeyFinTokens.Colors.surface3
-    val Text = VibeyFinTokens.Colors.ink
-    val TextMuted = VibeyFinTokens.Colors.inkMuted
-    val Marquee = VibeyFinTokens.Colors.accent
-    val OnMarquee = VibeyFinTokens.Colors.onAccent
-    val Available = VibeyFinTokens.Colors.ink
-}
