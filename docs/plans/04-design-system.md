@@ -131,7 +131,8 @@ screen uses it yet (add it with the feature that needs it):
   views, as on Android.
 - `scripts/check-swift-tokens.sh`: compare the brand hex values in `Theme.swift` and the
   `AccentColor` asset with `design/tokens.json`'s `ios` column. Fails on drift.
-- Verification limit (as plan 02): no Xcode here. Only `swiftc -parse` and the script run.
+- Verification: Phase 4 was only parsed (no Xcode then). Phase 5 builds with `xcodebuild` on the
+  iPhone 17 simulator.
 - Done when: all Swift files parse and the script passes (and fails on a deliberate edit).
   Commit: `feat: apply design tokens to the iOS theme`.
 

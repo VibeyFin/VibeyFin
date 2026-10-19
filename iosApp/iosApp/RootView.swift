@@ -66,7 +66,7 @@ struct RootView: View {
         .tint(Brand.accent)
         // Blank background until the app has worked out where to open, a moment of storage reads.
         .overlay {
-            if !ready { Palette.ink.ignoresSafeArea() }
+            if !ready { Color(.systemBackground).ignoresSafeArea() }
         }
         .onAppear {
             startup.start { destination in

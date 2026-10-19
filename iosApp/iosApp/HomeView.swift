@@ -11,19 +11,19 @@ struct HomeView: View {
 
     var body: some View {
         ZStack {
-            Palette.ink.ignoresSafeArea()
+            Color(.systemBackground).ignoresSafeArea()
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: Space.s1) {
                         if let userName = model.state?.userName {
-                            Text(Strings.shared.greeting(name: userName)).vibeTitle(size: 34)
+                            Text(Strings.shared.greeting(name: userName)).screenTitle()
                         } else {
-                            Text(Strings.shared.home).vibeTitle(size: 34)
+                            Text(Strings.shared.home.titleCased()).screenTitle()
                         }
                         if let serverName = model.state?.serverName {
                             Text(serverName)
                                 .font(.body)
-                                .foregroundColor(Palette.textMuted)
+                                .foregroundStyle(.secondary)
                         }
                     }
                     Spacer()
@@ -31,12 +31,13 @@ struct HomeView: View {
                 }
                 if let state = model.state, state.serverId != nil {
                     libraries(state)
-                        .padding(.top, 24)
+                        .padding(.top, Space.s5)
                 }
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(24)
+            .screenMargin()
+            .padding(.vertical, Space.s5)
         }
         .onAppear { model.start() }
         .onChange(of: model.state?.exit != nil) { hasExit in
@@ -46,10 +47,9 @@ struct HomeView: View {
 
     @ViewBuilder
     private func libraries(_ state: HomeUiState) -> some View {
-        Text(Strings.shared.libraries)
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundColor(Palette.textMuted)
-            .padding(.bottom, 12)
+        Text(Strings.shared.libraries.titleCased())
+            .sectionTitle()
+            .padding(.bottom, Space.s3)
         if state.loadingLibraries {
             LoadingIndicator()
         } else if let message = state.librariesMessage {
@@ -57,7 +57,7 @@ struct HomeView: View {
         } else if state.libraries.isEmpty {
             Text(Strings.shared.noLibraries)
                 .font(.body)
-                .foregroundColor(Palette.textMuted)
+                .foregroundStyle(.secondary)
         } else {
             ScrollView {
                 ArtworkGrid(items: state.libraries, minimumWidth: 150, onOpen: onOpen)
@@ -67,18 +67,19 @@ struct HomeView: View {
 
     private var profileMenu: some View {
         Menu {
-            Button(Strings.shared.switchProfile) { model.switchProfile() }
-            Button(Strings.shared.switchServer) { model.switchServer() }
-            Button(Strings.shared.settings) { onSettings() }
-            Button(Strings.shared.signOut) { model.signOut() }
+            Button(Strings.shared.switchProfile.titleCased()) { model.switchProfile() }
+            Button(Strings.shared.switchServer.titleCased()) { model.switchServer() }
+            Button(Strings.shared.settings.titleCased()) { onSettings() }
+            Button(Strings.shared.signOut.titleCased()) { model.signOut() }
         } label: {
             ZStack {
-                Circle().fill(Palette.surfaceHigh)
+                Circle().fill(Color(.systemGray4))
                 Text(String((model.state?.userName ?? "").prefix(1)).uppercased())
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundColor(Palette.text)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
             }
             .frame(width: 44, height: 44)
+            .accessibilityLabel(model.state?.userName ?? "")
         }
     }
 }

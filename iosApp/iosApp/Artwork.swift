@@ -1,8 +1,8 @@
 import SwiftUI
 import Shared
 
-/// Artwork at `aspectRatio`, or the first letter of `title` on a plain tile when there is none. The
-/// tile's own colour shows while an image loads or if it fails.
+/// Artwork at `aspectRatio`, or the title on a plain `surface-2` tile when there is none. The tile's
+/// own colour shows while an image loads or if it fails.
 struct Artwork: View {
     let url: String?
     let title: String
@@ -10,7 +10,7 @@ struct Artwork: View {
 
     var body: some View {
         // The colour sets the size from the aspect ratio; the image fills it and is cropped to it.
-        Palette.surfaceHigh
+        Color(.tertiarySystemBackground)
             .aspectRatio(aspectRatio, contentMode: .fit)
             .overlay {
                 if let url = url.flatMap(URL.init(string:)) {
@@ -22,9 +22,12 @@ struct Artwork: View {
                         }
                     }
                 } else {
-                    Text(String(title.prefix(1)).uppercased())
-                        .font(.system(size: 28, weight: .heavy))
-                        .foregroundColor(Palette.textMuted)
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(3)
+                        .padding(Space.s2)
                 }
             }
             .clipped()
@@ -36,20 +39,21 @@ struct ArtworkTile: View {
     let item: MediaItem
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Space.s2) {
             Artwork(url: item.posterUrl, title: item.title, aspectRatio: CGFloat(item.posterAspectRatio))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
             if !item.nameIsOnPoster {
                 Text(item.title)
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(Palette.text)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
             }
         }
-        // One element for VoiceOver: the title, whether it is written under the picture or on it.
+        // One element for VoiceOver: the title and year, whether the title is written under the
+        // picture or on it.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(item.title)
+        .accessibilityLabel(Strings.shared.cardLabel(title: item.title, year: item.year))
         .accessibilityAddTraits(.isButton)
     }
 }
@@ -66,9 +70,9 @@ struct ArtworkGrid: View {
 
     var body: some View {
         LazyVGrid(
-            columns: [GridItem(.adaptive(minimum: minimumWidth), spacing: 16, alignment: .top)],
+            columns: [GridItem(.adaptive(minimum: minimumWidth), spacing: Space.s3, alignment: .top)],
             alignment: .leading,
-            spacing: 20
+            spacing: Space.s4
         ) {
             ForEach(items, id: \.id) { item in
                 Button { onOpen(item) } label: { ArtworkTile(item: item) }
@@ -85,23 +89,21 @@ struct LoadingIndicator: View {
     var body: some View {
         ProgressView()
             .progressViewStyle(.circular)
-            .tint(Palette.textMuted)
             .frame(maxWidth: .infinity, minHeight: 120)
     }
 }
 
-/// What went wrong and a way to try again. The button is outlined: amber is for the primary action.
+/// What went wrong and a way to try again. The button is the grey secondary: aqua is for the primary action.
 struct LoadErrorView: View {
     let message: String
     let onRetry: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Space.s3) {
             Text(message)
                 .font(.body)
-                .foregroundColor(Palette.text)
-            Button(Strings.shared.tryAgain, action: onRetry)
-                .buttonStyle(OutlineButtonStyle())
+                .foregroundStyle(.primary)
+            SecondaryButton(title: Strings.shared.tryAgain, action: onRetry)
                 .frame(maxWidth: 200)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

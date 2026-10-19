@@ -54,28 +54,42 @@ extension Color {
     }
 }
 
-// MARK: - Previous palette
+// MARK: - Layout and text
 
-/// The previous palette, mapped onto the new design so screens keep compiling until Phase 5 moves
-/// them to Apple's semantic colours and `Brand`. Teal is gone from the design, so `available` is the
-/// label colour. Removed in Phase 5.
-enum Palette {
-    static let ink = Color(.systemBackground)
-    static let surface = Color(.secondarySystemBackground)
-    static let surfaceHigh = Color(.systemGray4)
-    static let text = Color(.label)
-    static let textMuted = Color(.secondaryLabel)
-    static let marquee = Brand.accent
-    static let onMarquee = Brand.onAccent
-    static let available = Color(.label)
-    static let error = Color(.systemRed)
+extension Space {
+    /// iPad screen margin. Phones use `s4`.
+    static let regularMargin: CGFloat = 20
+}
+
+private struct ScreenMargin: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    func body(content: Content) -> some View {
+        content.padding(.horizontal, sizeClass == .regular ? Space.regularMargin : Space.s4)
+    }
+}
+
+extension View {
+    /// The horizontal screen margin: 16 pt on phones, 20 pt on iPad.
+    func screenMargin() -> some View {
+        modifier(ScreenMargin())
+    }
 }
 
 extension Text {
-    /// Previous heavy title style; Phase 5 replaces it with Dynamic Type styles.
-    func vibeTitle(size: CGFloat, weight: Font.Weight = .heavy, tracking: CGFloat = -0.8) -> Text {
-        self.font(.system(size: size, weight: weight))
-            .tracking(tracking)
-            .foregroundColor(Palette.text)
+    /// A screen's own title, drawn in the content (tab roots and pushed screens that don't use the
+    /// navigation bar title). Dynamic Type `.largeTitle`, bold.
+    func screenTitle() -> some View {
+        self.font(.largeTitle.bold()).foregroundStyle(.primary)
+    }
+
+    /// A sheet's title: Dynamic Type `.title2`, bold.
+    func sheetTitle() -> some View {
+        self.font(.title2.bold()).foregroundStyle(.primary)
+    }
+
+    /// A section heading above a row or grid: Dynamic Type `.title3`, bold.
+    func sectionTitle() -> some View {
+        self.font(.title3.bold()).foregroundStyle(.primary)
     }
 }

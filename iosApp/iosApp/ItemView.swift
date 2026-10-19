@@ -15,9 +15,9 @@ struct ItemView: View {
 
     var body: some View {
         ZStack {
-            Palette.ink.ignoresSafeArea()
+            Color(.systemBackground).ignoresSafeArea()
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Space.s3) {
                     if let state = model.state, !state.loading {
                         if let item = state.item {
                             details(item, facts: state.facts)
@@ -29,7 +29,8 @@ struct ItemView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(24)
+                .screenMargin()
+                .padding(.vertical, Space.s5)
             }
         }
         .onAppear { model.start() }
@@ -47,31 +48,33 @@ struct ItemView: View {
         // A wide backdrop when the server has one; otherwise the item's own picture at its own shape.
         if let backdrop = item.backdropUrl {
             Artwork(url: backdrop, title: item.title, aspectRatio: 16.0 / 9.0)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
         } else if let poster = item.posterUrl {
             Artwork(url: poster, title: item.title, aspectRatio: CGFloat(item.posterAspectRatio))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
         }
         if let seriesName = item.seriesName {
             Text(seriesName)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(Palette.textMuted)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
         }
-        Text(item.title).vibeTitle(size: 34)
+        Text(item.title)
+            .font(.title2.bold())
+            .foregroundStyle(.primary)
         if !facts.isEmpty {
             Text(facts.joined(separator: "  ·  "))
                 .font(.subheadline)
-                .foregroundColor(Palette.textMuted)
+                .foregroundStyle(.secondary)
         }
         if !item.genres.isEmpty {
             Text(item.genres.joined(separator: "  ·  "))
                 .font(.subheadline)
-                .foregroundColor(Palette.text)
+                .foregroundStyle(.primary)
         }
         if let overview = item.overview {
             Text(overview)
                 .font(.body)
-                .foregroundColor(Palette.text)
+                .foregroundStyle(.primary)
         }
     }
 }

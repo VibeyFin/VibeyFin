@@ -10,7 +10,7 @@ struct ServersView: View {
 
     var body: some View {
         ZStack {
-            Palette.ink.ignoresSafeArea()
+            Color(.systemBackground).ignoresSafeArea()
             // Nothing is drawn until the saved servers have been read, so the empty state never flashes.
             if let state = model.state, !state.loading {
                 if state.servers.isEmpty && state.discovered.isEmpty {
@@ -24,38 +24,38 @@ struct ServersView: View {
     }
 
     private func emptyState(_ state: ServersUiState) -> some View {
-        VStack(spacing: 32) {
-            Text(Strings.shared.appName).vibeTitle(size: 56, weight: .black, tracking: -2)
-            VStack(spacing: 16) {
-                Button(Strings.shared.addServer, action: onAddServer)
-                    .buttonStyle(PrimaryButtonStyle())
+        VStack(spacing: Space.s6) {
+            Text(Strings.shared.appName)
+                .font(.brandDisplay)
+                .tracking(-0.8)
+                .foregroundStyle(.primary)
+            VStack(spacing: Space.s4) {
+                PrimaryButton(Strings.shared.addServer, action: onAddServer)
                 if state.canSearch {
                     if state.searching {
                         SearchingLabel()
                     } else {
-                        VStack(spacing: 4) {
+                        VStack(spacing: Space.s1) {
                             Text(Strings.shared.noServersFound)
                                 .font(.subheadline)
-                                .foregroundColor(Palette.textMuted)
-                            Button(Strings.shared.searchAgain) { model.searchAgain() }
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(Palette.text)
+                                .foregroundStyle(.secondary)
+                            GhostButton(title: Strings.shared.searchAgain) { model.searchAgain() }
                         }
                     }
                 }
             }
         }
-        .padding(.horizontal, 24)
+        .screenMargin()
     }
 
     private func list(_ state: ServersUiState) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(Strings.shared.servers)
-                .vibeTitle(size: 34)
-                .padding(.top, 32)
-                .padding(.bottom, 24)
+            Text(Strings.shared.servers.titleCased())
+                .screenTitle()
+                .padding(.top, Space.s6)
+                .padding(.bottom, Space.s5)
             ScrollView {
-                LazyVStack(spacing: 12) {
+                LazyVStack(spacing: Space.s3) {
                     ForEach(state.servers, id: \.id) { server in
                         Button { onOpenServer(server) } label: {
                             ServerRow(server: server)
@@ -73,35 +73,32 @@ struct ServersView: View {
                         if state.discovered.isEmpty && !state.searching {
                             Text(Strings.shared.noNewServersFound)
                                 .font(.subheadline)
-                                .foregroundColor(Palette.textMuted)
+                                .foregroundStyle(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
                 }
             }
-            Button(Strings.shared.addServer, action: onAddServer)
-                .buttonStyle(OutlineButtonStyle())
-                .padding(.vertical, 16)
+            SecondaryButton(title: Strings.shared.addServer, action: onAddServer)
+                .padding(.vertical, Space.s4)
         }
-        .padding(.horizontal, 24)
+        .screenMargin()
     }
 
     private func nearbyHeader(_ state: ServersUiState) -> some View {
         HStack {
             Text(Strings.shared.onYourNetwork)
-                .font(.system(size: 17, weight: .bold))
-                .foregroundColor(Palette.textMuted)
+                .font(.headline)
+                .foregroundStyle(.secondary)
             Spacer()
             if state.searching {
                 SearchingLabel()
             } else {
-                Button(Strings.shared.searchAgain) { model.searchAgain() }
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(Palette.text)
+                GhostButton(title: Strings.shared.searchAgain) { model.searchAgain() }
             }
         }
         .frame(height: 40)
-        .padding(.top, 12)
+        .padding(.top, Space.s3)
     }
 }
 
@@ -112,16 +109,15 @@ private struct ServerRow: View {
         Card {
             VStack(alignment: .leading, spacing: 2) {
                 Text(server.name)
-                    .font(.system(size: 22, weight: .bold))
-                    .tracking(-0.5)
-                    .foregroundColor(Palette.text)
+                    .font(.title3.bold())
+                    .foregroundStyle(.primary)
                 Text(server.addresses.first ?? "")
                     .font(.subheadline)
-                    .foregroundColor(Palette.textMuted)
+                    .foregroundStyle(.secondary)
                 if let version = server.version {
                     Text(Strings.shared.jellyfinVersion(version: version))
                         .font(.footnote)
-                        .foregroundColor(Palette.textMuted)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
@@ -136,16 +132,16 @@ private struct DiscoveredRow: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(server.name)
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundColor(Palette.text)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
                     Text(server.address)
                         .font(.subheadline)
-                        .foregroundColor(Palette.textMuted)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
                 Text(Strings.shared.addToServers)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(Palette.textMuted)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
             }
         }
     }

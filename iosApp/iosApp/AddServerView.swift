@@ -11,12 +11,12 @@ struct AddServerView: View {
 
     var body: some View {
         ZStack {
-            Palette.ink.ignoresSafeArea()
+            Color(.systemBackground).ignoresSafeArea()
             if let state = model.state {
                 ScrollView {
                     content(state)
-                        .padding(.horizontal, 24)
-                        .padding(.top, 8)
+                        .screenMargin()
+                        .padding(.top, Space.s2)
                 }
                 .scrollDismissesKeyboard(.interactively)
             }
@@ -32,10 +32,10 @@ struct AddServerView: View {
     }
 
     private func content(_ state: AddServerUiState) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(Strings.shared.addAServer)
-                .vibeTitle(size: 34)
-                .padding(.bottom, 8)
+        VStack(alignment: .leading, spacing: Space.s4) {
+            Text(Strings.shared.addAServer.titleCased())
+                .screenTitle()
+                .padding(.bottom, Space.s2)
             addressField(state)
             // Connect is the main action until a server has been found; then it is Add server.
             if !(state.step is AddServerStepFound) {
@@ -51,45 +51,34 @@ struct AddServerView: View {
             get: { model.state?.address ?? "" },
             set: { model.setAddress($0) }
         )
-        return VStack(alignment: .leading, spacing: 6) {
-            Text(Strings.shared.serverAddress)
-                .font(.caption)
-                .foregroundColor(failed ? Palette.error : Palette.textMuted)
+        return FormField(label: Strings.shared.serverAddress, isError: failed) {
             TextField(
                 Strings.shared.serverAddress,
                 text: address,
-                prompt: Text(Strings.shared.serverAddressExample).foregroundColor(Palette.textMuted)
+                prompt: Text(Strings.shared.serverAddressExample).foregroundColor(.secondary)
             )
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .keyboardType(.URL)
             .submitLabel(.go)
             .onSubmit { model.connect() }
-            .foregroundColor(Palette.text)
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(failed ? Palette.error : Palette.surfaceHigh, lineWidth: 1)
-            )
         }
     }
 
     private func connectButton(_ state: AddServerUiState) -> some View {
         let checking = state.step is AddServerStepChecking
-        return Button { model.connect() } label: {
+        return PrimaryButton(action: { model.connect() }) {
             if checking {
-                HStack(spacing: 12) {
+                HStack(spacing: Space.s3) {
                     ProgressView()
                         .progressViewStyle(.circular)
-                        .tint(Palette.textMuted)
                         .scaleEffect(0.8)
-                    Text(Strings.shared.connecting)
+                    Text(Strings.shared.connecting.titleCased())
                 }
             } else {
-                Text(Strings.shared.connect)
+                Text(Strings.shared.connect.titleCased())
             }
         }
-        .buttonStyle(PrimaryButtonStyle())
         .disabled(!state.canConnect)
     }
 
@@ -97,11 +86,10 @@ struct AddServerView: View {
     private func stepContent(_ state: AddServerUiState) -> some View {
         if let failed = state.step as? AddServerStepFailed {
             ErrorCard(message: failed.message)
-                .padding(.top, 8)
+                .padding(.top, Space.s2)
         } else if let found = state.step as? AddServerStepFound {
             FoundCard(found: found)
-            Button(confirmLabel(found)) { model.confirm() }
-                .buttonStyle(PrimaryButtonStyle())
+            PrimaryButton(confirmLabel(found)) { model.confirm() }
                 .disabled(state.saving)
         }
     }
@@ -117,35 +105,37 @@ private struct FoundCard: View {
 
     var body: some View {
         Card {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    // Teal means available: the server answered.
-                    Circle().fill(Palette.available).frame(width: 8, height: 8)
+            VStack(alignment: .leading, spacing: Space.s1) {
+                HStack(spacing: Space.s2) {
+                    // The server answered: a check and the word, in the text colour. Aqua is for the
+                    // primary action.
+                    Image(systemName: "checkmark")
+                        .font(.caption.bold())
+                        .foregroundStyle(.primary)
                     Text(Strings.shared.found)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(Palette.available)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.primary)
                 }
-                .padding(.bottom, 4)
+                .padding(.bottom, Space.s1)
                 Text(found.server.name)
-                    .font(.system(size: 24, weight: .heavy))
-                    .tracking(-0.5)
-                    .foregroundColor(Palette.text)
+                    .font(.title2.bold())
+                    .foregroundStyle(.primary)
                 Text(Strings.shared.jellyfinVersion(version: found.server.version))
                     .font(.subheadline)
-                    .foregroundColor(Palette.textMuted)
+                    .foregroundStyle(.secondary)
                 Text(found.server.address)
                     .font(.subheadline)
-                    .foregroundColor(Palette.text)
+                    .foregroundStyle(.primary)
                 if !found.server.otherAddresses.isEmpty {
                     Text(Strings.shared.alsoReachableAt(addresses: found.server.otherAddresses))
                         .font(.footnote)
-                        .foregroundColor(Palette.textMuted)
+                        .foregroundStyle(.secondary)
                 }
                 if found.alreadySaved {
                     Text(Strings.shared.alreadySaved(addressIsNew: found.addressIsNew))
                         .font(.footnote)
-                        .foregroundColor(Palette.textMuted)
-                        .padding(.top, 8)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, Space.s2)
                 }
             }
         }
@@ -159,11 +149,11 @@ private struct ErrorCard: View {
         Card {
             VStack(alignment: .leading, spacing: 8) {
                 Text(Strings.shared.cantConnectTitle)
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundColor(Palette.error)
+                    .font(.headline)
+                    .foregroundStyle(Color(.systemRed))
                 Text(message)
                     .font(.subheadline)
-                    .foregroundColor(Palette.text)
+                    .foregroundStyle(.primary)
             }
         }
     }

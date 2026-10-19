@@ -13,7 +13,7 @@ struct WhoIsWatchingView: View {
 
     var body: some View {
         ZStack {
-            Palette.ink.ignoresSafeArea()
+            Color(.systemBackground).ignoresSafeArea()
             if let state = model.state {
                 content(state)
             }
@@ -52,14 +52,14 @@ struct WhoIsWatchingView: View {
 
     private func content(_ state: WhoIsWatchingUiState) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: Space.s4) {
                 VStack(alignment: .leading, spacing: 2) {
                     if let serverName = state.serverName {
                         Text(serverName)
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(Palette.textMuted)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
                     }
-                    Text(Strings.shared.whoIsWatching).vibeTitle(size: 34)
+                    Text(Strings.shared.whoIsWatching.titleCased()).screenTitle()
                 }
                 if !state.loading && !state.serverReachable {
                     UnreachableBanner(onRetry: { model.refresh() })
@@ -67,25 +67,24 @@ struct WhoIsWatchingView: View {
                 if state.sheet == nil, let error = state.error {
                     Text(error)
                         .font(.subheadline)
-                        .foregroundColor(Palette.error)
+                        .foregroundStyle(Color(.systemRed))
                 }
                 if state.loading {
                     ProgressView()
                         .progressViewStyle(.circular)
-                        .tint(Palette.textMuted)
                         .frame(maxWidth: .infinity, minHeight: 160)
                 } else {
                     grid(state)
                 }
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 8)
-            .padding(.bottom, 24)
+            .screenMargin()
+            .padding(.top, Space.s2)
+            .padding(.bottom, Space.s5)
         }
     }
 
     private func grid(_ state: WhoIsWatchingUiState) -> some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 16, alignment: .top)], spacing: 24) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s4, alignment: .top)], spacing: Space.s5) {
             ForEach(state.profiles, id: \.userId) { profile in
                 Button { model.profileTapped(profile) } label: {
                     ProfileTile(profile: profile)
@@ -114,17 +113,15 @@ private struct UnreachableBanner: View {
 
     var body: some View {
         Card {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Space.s1) {
                 Text(Strings.shared.cantReachServerTitle)
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(Palette.error)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(Color(.systemRed))
                 Text(Strings.shared.cantReachServerHelp)
                     .font(.subheadline)
-                    .foregroundColor(Palette.text)
-                Button(Strings.shared.tryAgain, action: onRetry)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(Palette.text)
-                    .padding(.top, 4)
+                    .foregroundStyle(.primary)
+                GhostButton(title: Strings.shared.tryAgain, action: onRetry)
+                    .padding(.top, Space.s1)
             }
         }
     }
@@ -139,17 +136,17 @@ private struct ProfileTile: View {
                 Avatar(profile: profile)
                 if profile.locked {
                     Image(systemName: "lock.fill")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(Palette.text)
+                        .font(.caption.bold())
+                        .foregroundStyle(.primary)
                         .frame(width: 26, height: 26)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(Palette.ink.opacity(0.85)))
+                        .background(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous).fill(Brand.scrim))
                         .padding(6)
                         .accessibilityLabel(Strings.shared.needsPassword)
                 }
             }
             Text(profile.name)
-                .font(.system(size: 17, weight: .bold))
-                .foregroundColor(Palette.text)
+                .font(.headline)
+                .foregroundStyle(.primary)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
@@ -178,13 +175,13 @@ private struct Avatar: View {
             }
         }
         .frame(width: 104, height: 104)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
     }
 
     private var initial: some View {
         Text(String(profile.name.prefix(1)).uppercased())
-            .font(.system(size: 36, weight: .heavy))
-            .foregroundColor(Palette.text)
+            .font(.largeTitle.weight(.heavy))
+            .foregroundStyle(.primary)
     }
 
     /// A muted, stable colour per name. Swift's own hashing changes on every launch, so this adds
@@ -204,15 +201,15 @@ private struct ActionTile: View {
     var body: some View {
         VStack(spacing: 8) {
             ZStack {
-                RoundedRectangle(cornerRadius: 16).fill(Palette.surfaceHigh)
+                RoundedRectangle(cornerRadius: Radius.card, style: .continuous).fill(Color(.systemGray4))
                 Text(symbol)
-                    .font(.system(size: 36, weight: .heavy))
-                    .foregroundColor(Palette.textMuted)
+                    .font(.largeTitle.weight(.heavy))
+                    .foregroundStyle(.secondary)
             }
             .frame(width: 104, height: 104)
-            Text(label)
-                .font(.system(size: 17, weight: .bold))
-                .foregroundColor(Palette.textMuted)
+            Text(label.titleCased())
+                .font(.headline)
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
@@ -248,18 +245,18 @@ private struct SignInSheetView: View {
 
     private var passwordBody: some View {
         ZStack {
-            Palette.surface.ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 16) {
-                Text(title).vibeTitle(size: 24)
+            Color(.secondarySystemBackground).ignoresSafeArea()
+            VStack(alignment: .leading, spacing: Space.s4) {
+                Text(title.titleCased()).sheetTitle()
                 if isOtherUser {
-                    field(Strings.shared.username) {
+                    FormField(label: Strings.shared.username, isError: error != nil) {
                         TextField(Strings.shared.username, text: $username)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .submitLabel(.next)
                     }
                 }
-                field(Strings.shared.password) {
+                FormField(label: Strings.shared.password, isError: error != nil) {
                     SecureField(Strings.shared.password, text: $password)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
@@ -269,21 +266,19 @@ private struct SignInSheetView: View {
                 if let error = error {
                     Text(error)
                         .font(.subheadline)
-                        .foregroundColor(Palette.error)
+                        .foregroundStyle(Color(.systemRed))
                 }
-                Button { submit() } label: {
-                    Text(signingIn ? Strings.shared.signingIn : Strings.shared.signIn)
+                PrimaryButton(action: { submit() }) {
+                    Text((signingIn ? Strings.shared.signingIn : Strings.shared.signIn).titleCased())
                 }
-                .buttonStyle(PrimaryButtonStyle())
                 .disabled(!canSubmit)
-                Button(Strings.shared.cancel, action: onDismiss)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(Palette.textMuted)
+                GhostButton(title: Strings.shared.cancel, action: onDismiss)
                     .frame(maxWidth: .infinity)
             }
-            .padding(24)
+            .padding(Space.s5)
         }
         .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 
     private var title: String {
@@ -301,21 +296,6 @@ private struct SignInSheetView: View {
             onSubmitOtherUser(username, password)
         }
     }
-
-    private func field<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label)
-                .font(.caption)
-                .foregroundColor(error != nil ? Palette.error : Palette.textMuted)
-            content()
-                .foregroundColor(Palette.text)
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(error != nil ? Palette.error : Palette.surfaceHigh, lineWidth: 1)
-                )
-        }
-    }
 }
 
 /// Shows the code while another device approves the sign-in, or why it stopped.
@@ -326,47 +306,45 @@ private struct QuickConnectSheetView: View {
 
     var body: some View {
         ZStack {
-            Palette.surface.ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 16) {
-                Text(Strings.shared.quickConnect).vibeTitle(size: 24)
+            Color(.secondarySystemBackground).ignoresSafeArea()
+            VStack(alignment: .leading, spacing: Space.s4) {
+                Text(Strings.shared.quickConnect.titleCased()).sheetTitle()
                 if let message = sheet.message {
                     Text(message)
                         .font(.subheadline)
-                        .foregroundColor(Palette.error)
-                    Button(Strings.shared.tryAgain, action: onRetry)
-                        .buttonStyle(OutlineButtonStyle())
+                        .foregroundStyle(Color(.systemRed))
+                    SecondaryButton(title: Strings.shared.tryAgain, action: onRetry)
                 } else if let code = sheet.code {
                     Text(Strings.shared.quickConnectHelp)
                         .font(.subheadline)
-                        .foregroundColor(Palette.textMuted)
+                        .foregroundStyle(.secondary)
                     Text(code)
-                        .font(.system(size: 48, weight: .heavy, design: .rounded))
+                        .font(.system(.largeTitle, design: .rounded).weight(.heavy))
+                        .monospacedDigit()
                         .tracking(2)
-                        .foregroundColor(Palette.text)
+                        .foregroundStyle(.primary)
                     waiting(Strings.shared.quickConnectWaiting)
                 } else {
                     waiting(Strings.shared.quickConnectGettingCode)
                 }
-                Button(Strings.shared.cancel, action: onDismiss)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(Palette.textMuted)
+                GhostButton(title: Strings.shared.cancel, action: onDismiss)
                     .frame(maxWidth: .infinity)
                 Spacer()
             }
-            .padding(24)
+            .padding(Space.s5)
         }
         .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 
     private func waiting(_ text: String) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Space.s2) {
             ProgressView()
                 .progressViewStyle(.circular)
-                .tint(Palette.textMuted)
                 .scaleEffect(0.8)
             Text(text)
                 .font(.subheadline)
-                .foregroundColor(Palette.textMuted)
+                .foregroundStyle(.secondary)
         }
     }
 }
