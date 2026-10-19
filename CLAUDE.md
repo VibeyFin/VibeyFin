@@ -105,7 +105,10 @@ Copy: sentence case, plain verbs, errors say what happened and how to fix it.
   before calling a phase done.
 - iOS can only be built with Xcode. Say plainly when iOS code was only compiled to klibs or
   parsed, not built or run.
-- Small commits with clear messages. Don't commit secrets.
+- Small commits. Don't commit secrets.
+- Commit message format, always: `task|fix|feat|chore: <short message>`. One line, no body. Use `feat`
+  for new behaviour, `fix` for a bug fix, `chore` for upkeep (build, dependencies, config), `task`
+  for everything else (refactors, docs).
 - Ask before adding a dependency that isn't in the stack above.
 
 ## Reference material
