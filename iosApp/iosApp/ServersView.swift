@@ -4,6 +4,7 @@ import Shared
 struct ServersView: View {
     @StateObject private var model = ServersObservable()
 
+    let onOpenServer: (Server) -> Void
     let onAddServer: () -> Void
     let onDiscoveredServer: (DiscoveredServer) -> Void
 
@@ -56,7 +57,10 @@ struct ServersView: View {
             ScrollView {
                 LazyVStack(spacing: 12) {
                     ForEach(state.servers, id: \.id) { server in
-                        ServerRow(server: server)
+                        Button { onOpenServer(server) } label: {
+                            ServerRow(server: server)
+                        }
+                        .buttonStyle(.plain)
                     }
                     if state.canSearch {
                         nearbyHeader(state)
