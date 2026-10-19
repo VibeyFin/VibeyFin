@@ -4,8 +4,6 @@ import javax.inject.Inject
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
-    alias(libs.plugins.compose.multiplatform)
-    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
@@ -48,19 +46,10 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(libs.compose.runtime)
-            implementation(libs.compose.foundation)
-            implementation(libs.compose.ui)
-            implementation(libs.compose.material3)
-
-            implementation(libs.navigation.compose)
             implementation(libs.lifecycle.viewmodel)
-            implementation(libs.lifecycle.viewmodel.compose)
-            implementation(libs.lifecycle.runtime.compose)
 
             implementation(libs.koin.core)
-            implementation(libs.koin.compose)
-            implementation(libs.koin.compose.viewmodel)
+            implementation(libs.koin.core.viewmodel)
 
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
@@ -147,12 +136,6 @@ val sqliteHostNativesDir = run {
     val osName = if ("mac" in os) "osx" else if ("win" in os) "windows" else "linux"
     val archName = if (arch == "aarch64" || arch == "arm64") "arm64" else "x64"
     layout.buildDirectory.dir("sqlite-host-natives/natives/${osName}_$archName")
-}
-
-// Compose Multiplatform 1.12.x registers this task for the device-test variant without giving it an
-// output directory, which fails the build. The device tests use no Compose resources.
-tasks.matching { it.name == "copyAndroidDeviceTestComposeResourcesToAndroidAssets" }.configureEach {
-    enabled = false
 }
 
 tasks.withType<Test>().configureEach {
