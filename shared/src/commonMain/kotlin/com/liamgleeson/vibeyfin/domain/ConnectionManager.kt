@@ -72,7 +72,7 @@ class ConnectionManager(
         val account = accounts.account(serverId, userId) ?: return ActivateResult.Unknown
         val token = accounts.sessionToken(serverId, userId)
         if (token == null) {
-            markExpired(serverId, userId)
+            expireSession(serverId, userId)
             return ActivateResult.Expired
         }
         val reached = connector.firstAnswer(serverId, token) { it.me() } ?: return ActivateResult.Unreachable
@@ -82,8 +82,7 @@ class ConnectionManager(
                 ActivateResult.Activated
             }
             is ApiResult.Failure -> if (result.error == ApiError.Unauthorized) {
-                accounts.expire(serverId, userId)
-                markExpired(serverId, userId)
+                expireSession(serverId, userId)
                 ActivateResult.Expired
             } else {
                 ActivateResult.Unreachable
@@ -102,7 +101,7 @@ class ConnectionManager(
         val account = accounts.account(serverId, userId) ?: return ActivateResult.Unknown
         val token = accounts.sessionToken(serverId, userId)
         if (token == null) {
-            markExpired(serverId, userId)
+            expireSession(serverId, userId)
             return ActivateResult.Expired
         }
         val api = connector.apiFor(serverId, token) ?: return ActivateResult.Unknown
@@ -144,8 +143,7 @@ class ConnectionManager(
     private suspend fun onTokenRejected(token: String) {
         val current = session?.takeIf { it.token == token } ?: return
         session = null
-        accounts.expire(current.serverId, current.userId)
-        markExpired(current.serverId, current.userId)
+        expireSession(current.serverId, current.userId)
     }
 
     /** Asks the server about the token. A rejection is handled by [onTokenRejected] like any other. */
@@ -158,7 +156,13 @@ class ConnectionManager(
         }
     }
 
-    private fun markExpired(serverId: String, userId: String) {
+    /**
+     * The one place a rejected token ends a session: drops the token, locks the profile and moves
+     * the state to [ConnectionState.Expired] so the app routes to "Who's watching?". Explicit
+     * sign-out is the only other way a token is cleared, and it goes through [signOut].
+     */
+    private suspend fun expireSession(serverId: String, userId: String) {
+        accounts.expire(serverId, userId)
         _state.value = ConnectionState.Expired(serverId, userId)
     }
 }
