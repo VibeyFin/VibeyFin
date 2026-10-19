@@ -439,14 +439,15 @@ private fun PasswordContent(
             }
             Button(
                 onClick = { submit() },
-                enabled = canSubmit,
+                // Stays enabled while signing in so the busy button keeps its colours; submit() ignores it.
+                enabled = canSubmit || signingIn,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
             ) {
                 if (signingIn) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onPrimary,
                     )
                     Spacer(Modifier.size(12.dp))
                     Text(Strings.signingIn)

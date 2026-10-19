@@ -6,6 +6,7 @@ import Shared
 struct PrimaryButton<Label: View>: View {
     let action: () -> Void
     @ViewBuilder let label: () -> Label
+    @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
         Button(action: action) {
@@ -16,7 +17,18 @@ struct PrimaryButton<Label: View>: View {
         .buttonBorderShape(.capsule)
         .controlSize(.large)
         .tint(Brand.accent)
-        .foregroundStyle(Brand.onAccent)
+        // Disabled keeps a readable label: the system greys the fill, and `onAccent` on grey is not legible.
+        .foregroundStyle(isEnabled ? Brand.onAccent : Color.secondary)
+    }
+}
+
+/// A spinner that shows on the aqua of a busy primary button.
+struct PrimaryButtonSpinner: View {
+    var body: some View {
+        ProgressView()
+            .progressViewStyle(.circular)
+            .tint(Brand.onAccent)
+            .scaleEffect(0.8)
     }
 }
 

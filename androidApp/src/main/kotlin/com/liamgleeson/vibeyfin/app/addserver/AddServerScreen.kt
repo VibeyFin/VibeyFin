@@ -118,14 +118,16 @@ fun AddServerScreen(
                     val checking = state.step is AddServerStep.Checking
                     Button(
                         onClick = onConnect,
-                        enabled = state.canConnect,
+                        // Stays enabled while checking so the busy button keeps its colours; the
+                        // view model ignores a second tap.
+                        enabled = state.canConnect || checking,
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                     ) {
                         if (checking) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(18.dp),
                                 strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = MaterialTheme.colorScheme.onPrimary,
                             )
                             Spacer(Modifier.size(12.dp))
                             Text(Strings.connecting)
@@ -146,7 +148,6 @@ fun AddServerScreen(
                         Spacer(Modifier.height(16.dp))
                         Button(
                             onClick = onConfirm,
-                            enabled = !state.saving,
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                         ) {
                             Text(

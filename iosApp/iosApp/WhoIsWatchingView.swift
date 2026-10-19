@@ -269,9 +269,13 @@ private struct SignInSheetView: View {
                         .foregroundStyle(Color(.systemRed))
                 }
                 PrimaryButton(action: { submit() }) {
-                    Text((signingIn ? Strings.shared.signingIn : Strings.shared.signIn).titleCased())
+                    HStack(spacing: Space.s3) {
+                        if signingIn { PrimaryButtonSpinner() }
+                        Text((signingIn ? Strings.shared.signingIn : Strings.shared.signIn).titleCased())
+                    }
                 }
-                .disabled(!canSubmit)
+                // Stays aqua while signing in; submit() ignores a second tap.
+                .disabled(!canSubmit && !signingIn)
                 GhostButton(title: Strings.shared.cancel, action: onDismiss)
                     .frame(maxWidth: .infinity)
             }

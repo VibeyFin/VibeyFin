@@ -70,16 +70,16 @@ struct AddServerView: View {
         return PrimaryButton(action: { model.connect() }) {
             if checking {
                 HStack(spacing: Space.s3) {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .scaleEffect(0.8)
+                    PrimaryButtonSpinner()
                     Text(Strings.shared.connecting.titleCased())
                 }
             } else {
                 Text(Strings.shared.connect.titleCased())
             }
         }
-        .disabled(!state.canConnect)
+        // Disabled only while the address is blank. While checking it stays aqua with its spinner; the
+        // view model ignores a second tap.
+        .disabled(!state.canConnect && !checking)
     }
 
     @ViewBuilder
@@ -90,7 +90,6 @@ struct AddServerView: View {
         } else if let found = state.step as? AddServerStepFound {
             FoundCard(found: found)
             PrimaryButton(confirmLabel(found)) { model.confirm() }
-                .disabled(state.saving)
         }
     }
 
