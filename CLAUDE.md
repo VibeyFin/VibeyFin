@@ -1,29 +1,38 @@
 # VibeyFin: Jellyfin client (Kotlin Multiplatform)
 
 A Netflix-style Jellyfin client with Seerr request integration, visually inspired by Nuvio
-(dark, artwork-forward). Phone and tablet first. Android ships first; iOS shares the code.
+(dark, artwork-forward). Phone and tablet first. Android ships first; iOS shares the logic.
+The UI is native on each platform (Jetpack Compose, SwiftUI); only the logic is shared.
 The app should become very configurable over time, so settings live per profile from day one.
 
 ## Targets and modules
 
-- `shared/`: KMP library (`com.android.kotlin.multiplatform.library`). All logic and Compose
-  Multiplatform UI live here. Source sets: `commonMain`, `androidMain`, `iosMain`, `commonTest`.
-- `androidApp/`: thin Android application module (Activity, manifest, icons). AGP 9 does not
-  allow the KMP plugin and `com.android.application` in one module, which is why this is separate.
-- `iosApp/`: Xcode project hosting the shared Compose UI.
+- `shared/`: KMP library (`com.android.kotlin.multiplatform.library`). Logic only: data, domain,
+  DI and the ViewModels with their UI state. No UI toolkit. Source sets: `commonMain`,
+  `androidMain`, `iosMain`, `commonTest`, `androidHostTest`, `androidDeviceTest`.
+- `androidApp/`: the native Android app: Jetpack Compose screens, navigation and theme (package
+  `com.liamgleeson.vibeyfin.app`), plus Activity, manifest and icons. AGP 9 does not allow the KMP
+  plugin and `com.android.application` in one module, which is why this is separate.
+- `iosApp/`: the native iOS app in SwiftUI (Xcode project with synchronized folders). It reads
+  shared state through the facades in `shared/src/iosMain/.../ios`.
 
 Targets: `androidTarget`, `iosArm64`, `iosSimulatorArm64`.
 
 ## Stack
 
-- Kotlin (latest stable 2.4.x), Compose Multiplatform, Material 3.
-- Navigation: JetBrains Compose Multiplatform navigation, type-safe `@Serializable` routes.
-- ViewModels: JetBrains multiplatform lifecycle-viewmodel.
+- Kotlin (latest stable 2.4.x).
+- UI is native per platform: Jetpack Compose with AndroidX Material 3 on Android, SwiftUI (iOS 16
+  and up) on iOS. Shared code has no UI toolkit.
+- Navigation: AndroidX Navigation Compose with type-safe `@Serializable` routes on Android;
+  `NavigationStack` on iOS.
+- ViewModels: JetBrains multiplatform lifecycle-viewmodel, in `shared/`. Android uses them
+  directly (`koinViewModel`); iOS reaches each one through a facade in `shared/src/iosMain` that
+  takes typed callbacks and owns its own `ViewModelStore`.
 - DI: Koin (multiplatform).
 - Networking: Ktor client + kotlinx.serialization (OkHttp engine on Android, Darwin on iOS).
 - UDP discovery: `ktor-network` sockets.
 - Storage: Room KMP with the bundled SQLite driver; DataStore Preferences KMP for device-wide prefs.
-- Images: Coil 3 multiplatform.
+- Images: Coil 3 on Android. On iOS, SwiftUI's `AsyncImage` or a loader chosen when images land (ask first).
 - Tests: `kotlin.test`, `kotlinx-coroutines-test`, Ktor `MockEngine`.
 
 **Versions:** always resolve the latest *stable* release of each dependency yourself before adding
@@ -57,8 +66,11 @@ Device ID: generate a UUID once per install and persist it.
 
 ## Architecture rules
 
-- Layers: `data` (API, DB, vault) → `domain` (repositories, use cases where they earn it) → `ui`
-  (screen + ViewModel per feature). UI never sees DTOs or Room entities.
+- Layers: `data` (API, DB, vault) → `domain` (repositories, use cases where they earn it) →
+  presentation (one shared ViewModel per feature, exposing a `StateFlow` of UI state) → native
+  screens. Screens only draw state and forward events; behaviour lives in the ViewModel. UI never
+  sees DTOs or Room entities.
+- Wording that must match across platforms, such as error messages, lives in `shared/`.
 - One `ConnectionManager` owns the current server, profile and authenticated HTTP client as a
   `StateFlow`. Features read from it; nothing else holds tokens.
 - A 401 from any authenticated call goes through one place that calls `expire()` and routes to
@@ -73,6 +85,9 @@ Dark, blue-ink background; amber is reserved for the single primary action (Play
 teal only for availability. Artwork carries the colour everywhere else. Heavy, tight type for
 titles. Netflix patterns: "Who's watching?" profile grid, hero billboard, rows of posters.
 
+Native, not identical: the rules above hold on both platforms, implemented natively (`app/theme`
+in `androidApp`, `Theme.swift` in `iosApp`); each platform otherwise follows its own idioms.
+
 Palette: Ink `#10121A`, Surface `#1A1D29`, SurfaceHigh `#262A3A`, Text `#ECEAE4`,
 TextMuted `#8E92A3`, Marquee (amber) `#E8B04B`, OnMarquee `#1B1405`, Available (teal) `#5CC8B0`.
 
@@ -84,6 +99,8 @@ Copy: sentence case, plain verbs, errors say what happened and how to fix it.
   and its tests pass, summarise what changed, then stop for review before the next phase.
 - Run `./gradlew :shared:allTests` (or the equivalent) and `./gradlew :androidApp:assembleDebug`
   before calling a phase done.
+- iOS can only be built with Xcode. Say plainly when iOS code was only compiled to klibs or
+  parsed, not built or run.
 - Small commits with clear messages. Don't commit secrets.
 - Ask before adding a dependency that isn't in the stack above.
 
