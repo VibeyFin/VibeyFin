@@ -93,14 +93,15 @@ Also left alone: launcher and app icons stay amber until a separate icon task.
 
 ## Phase 3: Android components and screens
 
-Use M3 components wherever the design says so; build only what M3 lacks, in `app/components`:
+Use M3 components wherever the design says so. What was built, and what was left out because no
+screen uses it yet (add it with the feature that needs it): 
 
-- Buttons: filled `Button` for Play/Sign in (one per screen, 56dp on hero and detail), 
-  `FilledTonalButton` secondary, `TextButton` ghost. No custom button.
-- Custom, reading `MaterialTheme` plus `LocalVibeyFinExtras`: `PosterCard` (2:3, radius 8, one
-  badge top-left, check top-right, progress on the bottom edge), `Row` (`m3-title-large` header,
-  optional "See all", next card peeks at least 24dp), `Badge`, `Progress`, `EpisodeItem`,
-  `ArtworkPlaceholder` (`surface-2` tile with the title, replacing `Artwork.kt`'s placeholder).
+- Buttons: filled `Button` for the one primary action per screen (56dp), `FilledTonalButton` for
+  secondary (48dp), `TextButton` ghost. No custom button.
+- Built: `ArtworkTile` (poster or library tile, radius 8, accessibility label from
+  `Strings.cardLabel`), and `Artwork` with the `surface-2` title tile as its placeholder.
+- Not built yet (no consumer): `Row`, `Badge`, `Progress`, `EpisodeItem`, the "{n}% watched" part of
+  the card label (needs watch state), custom focus ring and state layers (M3 ripple and focus apply).
 - Text fields: M3 `OutlinedTextField`/`TextField` with `line-strong` borders; replace `Fields.kt`
   styling.
 - Icons: use `material-icons-core` (already a dependency) where it has the glyph; for the rest add

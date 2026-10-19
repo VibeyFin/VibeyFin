@@ -83,6 +83,9 @@ object Strings {
 
     fun greeting(name: String) = "Hi, $name"
 
+    /** What a screen reader says for a poster: the title and, when known, the year. */
+    fun cardLabel(title: String, year: Int?) = listOfNotNull(title, year?.toString()).joinToString(", ")
+
     // Settings
     val alwaysAskWhoIsWatchingTitle = "Always ask who's watching"
     val alwaysAskWhoIsWatchingHelp =
