@@ -9,9 +9,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -28,7 +34,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.liamgleeson.vibeyfin.app.components.ArtworkTile
+import com.liamgleeson.vibeyfin.app.components.LoadError
 import com.liamgleeson.vibeyfin.app.theme.VibeyFinPalette
+import com.liamgleeson.vibeyfin.domain.model.MediaItem
 import com.liamgleeson.vibeyfin.ui.home.HomeExit
 import com.liamgleeson.vibeyfin.ui.home.HomeUiState
 import com.liamgleeson.vibeyfin.ui.home.HomeViewModel
@@ -37,6 +46,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun HomeRoute(
     onExit: (HomeExit) -> Unit,
+    onOpen: (MediaItem) -> Unit,
     onSettings: () -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
@@ -46,6 +56,8 @@ fun HomeRoute(
     }
     HomeScreen(
         state = state,
+        onOpen = onOpen,
+        onRetryLibraries = viewModel::onRetryLibraries,
         onSwitchProfile = viewModel::onSwitchProfile,
         onSwitchServer = viewModel::onSwitchServer,
         onSettings = onSettings,
@@ -56,6 +68,8 @@ fun HomeRoute(
 @Composable
 fun HomeScreen(
     state: HomeUiState,
+    onOpen: (MediaItem) -> Unit,
+    onRetryLibraries: () -> Unit,
     onSwitchProfile: () -> Unit,
     onSwitchServer: () -> Unit,
     onSettings: () -> Unit,
@@ -79,6 +93,41 @@ fun HomeScreen(
                     }
                 }
                 ProfileMenu(state.userName, onSwitchProfile, onSwitchServer, onSettings, onSignOut)
+            }
+            if (state.serverId != null) {
+                Spacer(Modifier.height(24.dp))
+                Libraries(state, onOpen, onRetryLibraries)
+            }
+        }
+    }
+}
+
+@Composable
+private fun Libraries(state: HomeUiState, onOpen: (MediaItem) -> Unit, onRetry: () -> Unit) {
+    Text(
+        text = "Libraries",
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(12.dp))
+    when {
+        state.loadingLibraries -> Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        state.librariesMessage != null -> LoadError(state.librariesMessage!!, onRetry)
+        state.libraries.isEmpty() -> Text(
+            text = "This account has no libraries yet. Ask the server's admin to add one.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        else -> LazyVerticalGrid(
+            columns = GridCells.Adaptive(150.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            items(state.libraries, key = { it.id }) { library ->
+                ArtworkTile(library, onClick = { onOpen(library) })
             }
         }
     }

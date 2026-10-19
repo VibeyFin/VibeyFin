@@ -21,3 +21,10 @@ data object Startup
 
 @Serializable
 data object Settings
+
+/** What is inside a library, folder, series or season. [title] is shown at the top while it loads. */
+@Serializable
+data class Children(val parentId: String, val title: String)
+
+@Serializable
+data class Item(val itemId: String)

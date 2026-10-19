@@ -6,17 +6,30 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.liamgleeson.vibeyfin.app.addserver.AddServerRoute
+import com.liamgleeson.vibeyfin.app.children.ChildrenRoute
 import com.liamgleeson.vibeyfin.app.home.HomeRoute
+import com.liamgleeson.vibeyfin.app.item.ItemRoute
 import com.liamgleeson.vibeyfin.app.servers.ServersRoute
 import com.liamgleeson.vibeyfin.app.settings.SettingsRoute
 import com.liamgleeson.vibeyfin.app.startup.StartupRoute
 import com.liamgleeson.vibeyfin.app.whoswatching.WhoIsWatchingRoute
 import com.liamgleeson.vibeyfin.domain.StartDestination
+import com.liamgleeson.vibeyfin.domain.model.MediaItem
 import com.liamgleeson.vibeyfin.ui.home.HomeExit
 
 @Composable
 fun VibeyFinNavHost() {
     val navController = rememberNavController()
+    // A folder opens its list; anything else opens its page.
+    val open: (MediaItem) -> Unit = { item ->
+        navController.navigate(if (item.isFolder) Children(item.id, item.title) else Item(item.id))
+    }
+    // Leaves Home and everything opened from it. Servers goes underneath "Who's watching?" so back
+    // from it has somewhere to go.
+    val leave: (HomeExit) -> Unit = { exit ->
+        navController.navigate(Servers) { popUpTo(Home) { inclusive = true } }
+        if (exit is HomeExit.WhoIsWatching) navController.navigate(WhoIsWatching(exit.serverId))
+    }
     NavHost(navController = navController, startDestination = Startup) {
         composable<Startup> {
             StartupRoute(
@@ -52,12 +65,26 @@ fun VibeyFinNavHost() {
         }
         composable<Home> {
             HomeRoute(
-                onExit = { exit ->
-                    // Servers goes underneath "Who's watching?" so back from it has somewhere to go.
-                    navController.navigate(Servers) { popUpTo(Home) { inclusive = true } }
-                    if (exit is HomeExit.WhoIsWatching) navController.navigate(WhoIsWatching(exit.serverId))
-                },
+                onExit = leave,
+                onOpen = open,
                 onSettings = { navController.navigate(Settings) },
+            )
+        }
+        composable<Children> { entry ->
+            val route = entry.toRoute<Children>()
+            ChildrenRoute(
+                parentId = route.parentId,
+                title = route.title,
+                onBack = { navController.popBackStack() },
+                onOpen = open,
+                onExit = leave,
+            )
+        }
+        composable<Item> { entry ->
+            ItemRoute(
+                itemId = entry.toRoute<Item>().itemId,
+                onBack = { navController.popBackStack() },
+                onExit = leave,
             )
         }
         composable<Settings> {
