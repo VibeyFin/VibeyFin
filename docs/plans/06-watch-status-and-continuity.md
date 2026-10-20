@@ -3,7 +3,7 @@
 Goal: remember what the user watched. Resume where they stopped (on any device), show Continue watching on Home,
 let them mark things watched, and move on to the next episode by itself. Logic is shared; every screen is native.
 
-**Status (2026-10-20):** approved. Phases A and B are done; C to E are not started. Each phase stops for review.
+**Status (2026-10-20):** approved. Phases A to C are done; D and E are not started. Each phase stops for review.
 
 Paths: `C/` = `shared/src/commonMain/kotlin/com/liamgleeson/vibeyfin`, `T/` = `shared/src/commonTest/...` (same package),
 `A/` = `androidApp/src/main/kotlin/com/liamgleeson/vibeyfin/app`, `I/` = `iosApp/iosApp`, `X/` = `shared/src/iosMain/.../ios`.
@@ -166,7 +166,7 @@ First step after approval: cut `feature/watch-status` from `develop` (not `main`
   overwrote the 2:10).
 - Not done: no 10.10 server was available for the new routes; "Try again" and the offline row were covered by tests, not on the emulator.
 
-## Phase C: Resume on open and Start over
+## Phase C: Resume on open and Start over — done
 
 - `PlaybackViewModel` (`C/ui/playback/PlaybackViewModel.kt:174-177`): replace `loadTitle(); open(0)` with a start step that reads the
   item once (title and position), then `open(startAtMs)`: 0 if `startOver` or played, else `max(0, position - 5 s)`. Seed
@@ -182,6 +182,20 @@ First step after approval: cut `feature/watch-status` from `develop` (not `main`
   position), `ItemViewModelTest` labels, `StringsTest`.
 - Done when: tests pass; on the emulator, play 2 min of a long item, back out, the item page says "Resume from 2:00" without a manual
   refresh, Resume starts at 1:55, Start over starts at 0, and the Continue card resumes directly.
+
+**Built (Phase C, 2026-10-20).**
+- `PlaybackViewModel` reads the item first (`start()`), then opens at `max(0, position - 5 s)` (`RESUME_REWIND_MS`), or at 0 for `startOver`
+  or a watched item; `lastPositionMs` is seeded so retries and fallbacks keep it. A failed item read shows the load message with "Try again"
+  and negotiates nothing (the old test "a missing title doesn't stop playback" was replaced by this). `ItemUiState` has `playLabel`
+  ("Play" / "Resume from 41:12") and `canStartOver`; `ItemViewModel` reloads quietly on `WatchChanges`. New strings `resumeFrom`, `startOver`.
+- Android: `Player(itemId, startOver)` route; the item page has the aqua button with the grey "Start over" beside it (3:2). iOS: the same
+  through `PlaybackModel(itemId, startOver)`, `PlayerView(itemId:startOver:)` and `ItemView` (parsed only, not type-checked or run).
+- Design docs fixed: "Resume from 41:12" (not "Resume · 38m left") and "S2 E4" (not "S2:E4"), in `guardrails.md`, `brand.md`, `screens.md`.
+- Tests: 461 shared tests pass (new: start position, clamp at 0, start over, watched, item failure and retry, retry keeps position, item labels
+  and quiet reload). Sweep (iOS klib compile, `assembleDebug`, Android unit tests, both Swift scripts) green.
+- **Verified on the emulator** (local Jellyfin, 6.5 min film saved at 48.2 s): a Continue watching tap played with the video's burned-in
+  clock at 43.8 s; the item page read "Resume from 0:51" with "Start over"; "Start over" began at 0, and on going back the page had changed to
+  "Play" by itself (the server keeps no position under 5%). Not run: "Resume" from the item page itself (same code path as the card).
 
 ## Phase D: Mark watched/unwatched, optimistic writes
 

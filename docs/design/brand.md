@@ -23,8 +23,8 @@ Further sections: **UX guardrails** (behavior both apps must share), **iOS & iPa
 ## Voice
 
 - Same words on both; casing follows the platform. iOS: title case for buttons, tabs and titles ("Continue Watching", "Mark as Watched", "Skip Intro"). Android: sentence case everywhere ("Continue watching", "Mark as watched", "Skip intro").
-- Buttons are verbs, specific when we know more: "Play", "Resume", "Play S2:E4".
-- Time and episode shorthand: `1h 52m`, `38m left`, `S2:E4`; tabular numerals for clocks.
+- Buttons are verbs, specific when we know more: "Play", "Resume from 41:12", "Play S2 E4".
+- Time and episode shorthand: `1h 52m`, `38m left`, `S2 E4`; tabular numerals for clocks.
 - Use metadata exactly as Jellyfin returns it. No emoji, no exclamation marks. Errors say what happened and what to do: "Can't reach your server. Check your connection, then try again."
 
 ## Color

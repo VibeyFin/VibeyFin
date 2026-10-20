@@ -26,9 +26,10 @@ official rating, runtime, genres, overview, `UserData` (playback position, `IsFa
 - Layered over the image: the `Logo` image as the title, centered and large (the `brand-display` title,
   centered, when the item has no Logo) → facts line centered under it (year · rating · runtime · genres,
   `ink-muted`) → overview (3 lines + "More", left-aligned) → Play / Resume → secondary actions.
-- Play / Resume is the one aqua `primary` button on the screen, full width, large (iOS
+- Play / Resume is the one aqua `primary` button on the screen, large (iOS
   `.borderedProminent` capsule `.controlSize(.large)`, Android filled 56dp). The label says what happens:
-  "Play", "Resume · 38m left".
+  "Play", "Resume from 41:12". It is full width until there is something to resume; then "Start over"
+  (the grey secondary button) sits beside it, with the primary button taking the larger share.
 - Secondary actions as `action` buttons (icon over label), max four: My List (Favorites), Like (thumbs,
   `UserData.Likes`), Trailer (only when the item has a local or remote trailer), Download. Mark as watched
   moves to the overflow menu (`…` / `⋮`).
@@ -60,7 +61,7 @@ The hero, bar and secondary actions follow **Detail**.
 ### Hero
 
 - Same layout as Detail. A series without a Logo image shows the `brand-display` title.
-- Play / Resume starts the next-up episode and says so: "Play S2:E4", "Resume S2:E4 · 30m left".
+- Play / Resume starts the next-up episode and says so: "Play S2 E4", "Resume S2 E4 from 12:30".
 
 ### Seasons
 

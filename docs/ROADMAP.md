@@ -90,7 +90,7 @@ _Exit: play a movie and an episode, direct and transcoded, with position reporte
   show their episode ("S2 E5"); tapping either plays. If one request fails the row shows the other, and if
   both fail it shows the row's error state. A plain row above the libraries on the existing Home; Phase 4
   restructures Home around it
-- [ ] Resume on open (seek to `PlaybackPositionTicks`, 10,000,000 ticks/sec) — _the server's position is
+- [x] Resume on open (seek to `PlaybackPositionTicks`, 10,000,000 ticks/sec) — _the server's position is
   the source of truth, so there are no per-device positions. Resume is the aqua primary button reading
   "Resume from 41:12", with "Start over" beside it and a 5 s rewind when resuming. A local position is
   only the offline fallback (Phase 10)_
