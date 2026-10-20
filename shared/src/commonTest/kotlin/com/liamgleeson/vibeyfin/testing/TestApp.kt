@@ -1,11 +1,13 @@
 package com.liamgleeson.vibeyfin.testing
 
+import com.liamgleeson.vibeyfin.data.api.ClientInfoProvider
 import com.liamgleeson.vibeyfin.data.db.VibeyFinDatabase
 import com.liamgleeson.vibeyfin.data.prefs.DataStoreDevicePreferences
 import com.liamgleeson.vibeyfin.domain.AccountRepository
 import com.liamgleeson.vibeyfin.domain.AuthRepository
 import com.liamgleeson.vibeyfin.domain.ConnectionManager
 import com.liamgleeson.vibeyfin.domain.LibraryRepository
+import com.liamgleeson.vibeyfin.domain.PlaybackRepository
 import com.liamgleeson.vibeyfin.domain.ServerConnector
 import com.liamgleeson.vibeyfin.domain.ServerRepository
 import com.liamgleeson.vibeyfin.domain.StartupRouter
@@ -35,6 +37,8 @@ class TestApp {
     val auth = AuthRepository(connector, accounts, connection)
     val router = StartupRouter(servers, accounts, preferences, connection)
     val library = LibraryRepository(connection)
+    val capabilities = FakePlaybackCapabilities()
+    val playback = PlaybackRepository(connection, capabilities, ClientInfoProvider(FakeDeviceInfo(), preferences))
 
     /** Saves a server reachable at [address] and returns its fake. */
     suspend fun serverAt(address: String, id: String = "srv-1", name: String = "Home"): FakeServer {

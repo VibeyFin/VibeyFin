@@ -15,8 +15,11 @@ import io.ktor.http.Parameters
 import io.ktor.http.content.ByteArrayContent
 import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlin.time.Duration
 
 /** A request as the fake server saw it. [path] is relative to the server's address, without the query. */
@@ -111,6 +114,28 @@ class FakeJellyfin(retries: RetryPolicy = RetryPolicy(attempts = 3, backoff = Du
 
     /** The recorded requests for `method path`, in order. */
     fun requestsTo(method: String, path: String) = requests.filter { it.method == method && it.path == path }
+
+    /**
+     * Waits, in real time, until at least [count] requests have come in for `method path`, and
+     * returns them. For calls the code under test makes in the background: they end up on the
+     * engine's threads, so the test can't know when they are done any other way.
+     */
+    suspend fun awaitRequests(method: String, path: String, count: Int = 1): List<RecordedRequest> {
+        repeat(AWAIT_ATTEMPTS) {
+            val found = recording.withLock { requests.filter { it.method == method && it.path == path } }
+            if (found.size >= count) return found
+            withContext(Dispatchers.Default) { delay(AWAIT_STEP_MS) }
+        }
+        throw AssertionError("Expected $count request(s) to $method $path, saw ${requestsTo(method, path).size}")
+    }
+
+    /** What the server saw, in order, as `METHOD path`. */
+    suspend fun callLog(): List<String> = recording.withLock { requests.map { "${it.method} ${it.path}" } }
+
+    private companion object {
+        const val AWAIT_ATTEMPTS = 500
+        const val AWAIT_STEP_MS = 10L
+    }
 
     private fun HttpRequestData.bodyText(): String = when (val content = body) {
         is TextContent -> content.text
