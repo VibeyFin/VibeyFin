@@ -4,13 +4,13 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 
 ## Home
 
-- **Must** order rows: hero (optional, max one) → Continue watching → Next up → Recently added (one row per library) → collections / genres.
+- **Must** order rows: hero (optional, max one) → Continue watching (Next up is part of it, not a row of its own) → Recently added (one row per library) → collections / genres.
 - **Must** show Continue watching above the fold on a 6.1" phone, even with the hero present.
 - **Must** hide empty rows. Never show a row that says "No items" on Home.
 - Each row holds at most 20 items, then a "See all" action in its header.
 - At most 12 rows on Home. More belongs in Library.
 - Hero: one item per app session (recently added or a favorite) that has both a Backdrop and a Logo image. **Never** an auto-rotating carousel.
-- Pull to refresh reloads Continue watching and Next up first.
+- Pull to refresh reloads Continue watching first.
 
 ## Cards
 

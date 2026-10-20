@@ -83,9 +83,12 @@ _Exit: play a movie and an episode, direct and transcoded, with position reporte
 - [ ] `Stopped` after a crash or a killed process (split from Phase 1's progress beacon): keep a pending
   record (item, play session, last position) in Room, keyed by server and profile, and send `Stopped` for
   it on the next start. First item of the Phase 2 plan, so it lands before the MVP gate
-- [ ] Continue Watching: `GET /Users/{id}/Items/Resume` — _plain poster row above the libraries on the
-  existing Home; Phase 4 restructures Home around it_
-- [ ] Next Up: `GET /Shows/NextUp` — _same: a plain row for now_
+- [ ] Continue Watching, one row that also holds Next Up: `GET /Users/{id}/Items/Resume` (in progress,
+  newest first) followed by `GET /Shows/NextUp` (one episode per series). A series that already has an
+  item in progress appears once, as that item. In-progress cards carry the progress bar and Next Up cards
+  show their episode ("S2 E5"); tapping either plays. If one request fails the row shows the other, and if
+  both fail it shows the row's error state. A plain row above the libraries on the existing Home; Phase 4
+  restructures Home around it
 - [ ] Resume on open (seek to `PlaybackPositionTicks`, 10,000,000 ticks/sec) — _the server's position is
   the source of truth, so there are no per-device positions. Resume is the aqua primary button reading
   "Resume from 41:12", with "Start over" beside it and a 5 s rewind when resuming. A local position is
@@ -122,7 +125,7 @@ _Exit: skip-intro and scrub previews working end to end._
 ### Phase 4 — Browse & discovery
 _Starts after the state audit (see Cross-cutting)._
 
-- [ ] Home rows: Latest, genres, My Media, plus Resume & Next Up
+- [ ] Home rows: Latest, genres, My Media, plus Continue Watching (which holds Next Up)
 - [ ] Detail page: metadata, cast, `/Items/{id}/Similar`. The page opens on a full-width cinematic
   backdrop hero (`Backdrop` image) with a dark gradient overlay (the `scrim` token), and the movie
   details and action buttons are layered over the image: the `Logo` image as the title (the
@@ -171,8 +174,8 @@ _Depends on Phase 4 (Home rows) and Phase 6 (profiles and the first settings). S
   cleanly. Device-wide options ("Always ask who's watching") stay in DataStore. A native Settings
   screen on each platform, grouped in sections and searchable; every option and every section can
   be reset to its default
-- [ ] Custom Home rows: reorder, hide and rename any row. Built-in sources are Continue watching,
-  Next up, Latest per library, My List, genres, collections, hidden gems (unwatched, best rated first)
+- [ ] Custom Home rows: reorder, hide and rename any row. Built-in sources are Continue watching
+  (Next up included), Latest per library, My List, genres, collections, hidden gems (unwatched, best rated first)
   and My Media; the user can also define
   a row from a library, genre, collection, tag or person, with filters (unwatched, year, rating)
   and a sort order. A row editor with a live preview

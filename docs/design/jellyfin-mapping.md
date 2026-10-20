@@ -6,8 +6,7 @@ Which server data drives which piece of UI. All of this lives in the shared Kotl
 
 | Row | Source | Notes |
 | --- | --- | --- |
-| Continue watching | `GET /UserItems/Resume` | Movies and episodes; 16:9 `ContinueCard`, newest first. |
-| Next up | `GET /Shows/NextUp` | One episode per series; hide series already in Continue watching. |
+| Continue watching (includes Next up) | `GET /UserItems/Resume`, then `GET /Shows/NextUp` | Movies and episodes; 16:9 `ContinueCard`. In-progress items first, newest first, then one Next up episode per series, hiding any series that already has an item in progress. Progress bar on in-progress cards only; Next up cards show "S2 E5". |
 | Recently added — {library} | `GET /Items/Latest?parentId={viewId}` | One row per library from `GET /UserViews`. Posters; episodes grouped by series. |
 | Collections / genres | `GET /Items` with `genreIds` or a `BoxSet` parent | Optional rows after the core four. |
 | My List | Items with `UserData.IsFavorite = true` | Jellyfin has no watchlist; VibeyFin uses Favorites for "My List". |
