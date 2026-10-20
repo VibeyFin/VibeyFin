@@ -23,15 +23,12 @@ class PlaybackRepository(
     private val connection: ConnectionManager,
     private val capabilities: PlaybackCapabilitiesSource,
     private val clientInfo: ClientInfoProvider,
-    private val settings: ProfileSettings,
 ) {
     /**
      * `PlaybackInfo` with this device's profile. With [forceTranscode] the server is told not to
      * direct play or direct stream, for when the device failed to play what it offered first.
      *
-     * The server may always remux and convert audio, which is cheap. It re-encodes video only when the
-     * profile allows it ([ProfileSettings.allowTranscoding]); otherwise a stream that would is
-     * [PlaybackNegotiation.NeedsTranscoding], [forceTranscode] included.
+     * The server decides: direct play, then direct stream, then transcode.
      *
      * [audioStreamIndex] and [subtitleStreamIndex] are the user's choices ([SUBTITLES_OFF] for no
      * subtitles) for the media source [mediaSourceId]. The server ignores them without the source's
@@ -46,7 +43,6 @@ class PlaybackRepository(
     ): PlaybackNegotiation {
         val connected = connection.state.value as? ConnectionState.Connected
             ?: return PlaybackNegotiation.Failed(ApiError.Unauthorized)
-        val videoTranscodingAllowed = settings.transcodingAllowed()
         val api = connected.api
         val request = PlaybackInfoRequestDto(
             userId = connected.account.userId,
@@ -68,8 +64,8 @@ class PlaybackRepository(
         val directPlay = response.mediaSources.firstOrNull { it.supportsDirectPlay && !forceTranscode }
         val transcodes = response.mediaSources.filter { it.transcodingUrl != null }
         val source = directPlay
-            ?: transcodes.firstOrNull { videoTranscodingAllowed || !it.transcodingUrl.reencodesVideo() }
-            ?: return if (transcodes.isEmpty()) PlaybackNegotiation.NoCompatibleStream else PlaybackNegotiation.NeedsTranscoding
+            ?: transcodes.firstOrNull()
+            ?: return PlaybackNegotiation.NoCompatibleStream
 
         val method = when {
             directPlay != null -> PlayMethod.DirectPlay
@@ -180,28 +176,6 @@ private fun MediaStreamDto.toSubtitleFile(baseUrl: String): SubtitleFile? {
     }
     return SubtitleFile(index, serverUrl(baseUrl, path), mimeType, language?.takeIf { it.isNotBlank() }, name())
 }
-
-/**
- * Whether the server would re-encode the video of this stream, which is what a small server can't
- * afford. It says why it must change a file in the `TranscodeReasons` of the URL: a container or audio
- * reason is a remux or an audio conversion, any of these is the picture itself, a subtitle burned in
- * included. A URL that gives no reasons is taken as no re-encode, since nothing says otherwise.
- */
-private fun String?.reencodesVideo(): Boolean {
-    val reasons = this?.let(::transcodeReasons) ?: return false
-    return reasons.any {
-        it.startsWith("Video") || it in OTHER_VIDEO_REASONS
-    }
-}
-
-private val OTHER_VIDEO_REASONS = setOf(
-    "RefFramesNotSupported",
-    "AnamorphicVideoNotSupported",
-    "InterlacedVideoNotSupported",
-    "SubtitleCodecNotSupported",
-    "ContainerBitrateExceedsLimit",
-    "UnknownVideoStreamInfo",
-)
 
 /** `GET /Videos/{id}/stream.{container}?static=true`: the file as it is on the server. */
 private fun directPlayUrl(baseUrl: String, itemId: String, source: MediaSourceDto, deviceId: String, playSessionId: String): String {

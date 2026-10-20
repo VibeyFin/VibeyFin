@@ -78,9 +78,6 @@ class AccountEntity(
 class AccountSettingsEntity(
     val serverId: String,
     val userId: String,
-    /** Whether the server may re-encode video for this profile. Off: it may still remux and convert audio. */
-    @ColumnInfo(defaultValue = "0")
-    val allowTranscoding: Boolean = false,
     /** Whether the player shows its stats overlay for this profile. */
     @ColumnInfo(defaultValue = "0")
     val showPlaybackStats: Boolean = false,

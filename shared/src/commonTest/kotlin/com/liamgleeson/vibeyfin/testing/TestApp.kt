@@ -49,7 +49,7 @@ class TestApp {
     val watch = WatchRepository(connection, watchChanges)
     val capabilities = FakePlaybackCapabilities()
     val profileSettings = ProfileSettings(database.accountDao(), connection)
-    val playback = PlaybackRepository(connection, capabilities, ClientInfoProvider(FakeDeviceInfo(), preferences), profileSettings)
+    val playback = PlaybackRepository(connection, capabilities, ClientInfoProvider(FakeDeviceInfo(), preferences))
 
     val pending = PendingReports(database.pendingReportDao(), clock)
     val recovery = PlaybackRecovery(pending, connection)
@@ -66,14 +66,12 @@ class TestApp {
 
     /**
      * Saves a server and a profile with a session, and signs in as it ("Alex" on "Home", token-1).
-     * The profile allows transcoding unless [allowTranscoding] says otherwise, which is not how a new profile starts.
      */
-    suspend fun signedIn(address: String = "http://nas:8096", allowTranscoding: Boolean = true): FakeServer {
+    suspend fun signedIn(address: String = "http://nas:8096"): FakeServer {
         val server = serverAt(address)
         server.on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex"}"""))
         accounts.saveSession("srv-1", "u1", "Alex", null, "token-1")
         connection.activate("srv-1", "u1")
-        profileSettings.setAllowTranscoding(allowTranscoding)
         return server
     }
 

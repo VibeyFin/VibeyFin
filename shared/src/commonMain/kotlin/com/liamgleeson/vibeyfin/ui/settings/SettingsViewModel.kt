@@ -15,8 +15,6 @@ data class SettingsUiState(
     val alwaysAskWhoIsWatching: Boolean = false,
     /** Whether there is a signed-in profile whose settings are shown below the device ones. */
     val hasProfile: Boolean = false,
-    /** The profile lets the server transcode when the device can't play a file as it is. */
-    val allowTranscoding: Boolean = false,
     /** The player shows its stats overlay. */
     val showPlaybackStats: Boolean = false,
     /** Episodes in a row before "Still watching?"; 0 is off. */
@@ -30,14 +28,12 @@ class SettingsViewModel(
 ) : ViewModel() {
     val uiState: StateFlow<SettingsUiState> = combine(
         preferences.alwaysAskWhoIsWatching,
-        profileSettings.allowTranscoding,
         profileSettings.showPlaybackStats,
         profileSettings.bingeThreshold,
-    ) { alwaysAsk, allowTranscoding, showStats, threshold ->
+    ) { alwaysAsk, showStats, threshold ->
         SettingsUiState(
             alwaysAskWhoIsWatching = alwaysAsk,
-            hasProfile = allowTranscoding != null || showStats != null || threshold != null,
-            allowTranscoding = allowTranscoding ?: false,
+            hasProfile = showStats != null || threshold != null,
             showPlaybackStats = showStats ?: false,
             bingeThreshold = threshold ?: 3,
         )
@@ -45,10 +41,6 @@ class SettingsViewModel(
 
     fun onAlwaysAskChanged(value: Boolean) {
         viewModelScope.launch { preferences.setAlwaysAskWhoIsWatching(value) }
-    }
-
-    fun onAllowTranscodingChanged(value: Boolean) {
-        viewModelScope.launch { profileSettings.setAllowTranscoding(value) }
     }
 
     fun onShowPlaybackStatsChanged(value: Boolean) {

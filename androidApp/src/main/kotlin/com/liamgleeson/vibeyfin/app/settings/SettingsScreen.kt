@@ -37,7 +37,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SettingsRoute(onBack: () -> Unit, viewModel: SettingsViewModel = koinViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    SettingsScreen(state, onBack, viewModel::onAlwaysAskChanged, viewModel::onAllowTranscodingChanged, viewModel::onShowPlaybackStatsChanged)
+    SettingsScreen(state, onBack, viewModel::onAlwaysAskChanged, viewModel::onShowPlaybackStatsChanged)
 }
 
 @Composable
@@ -45,7 +45,6 @@ fun SettingsScreen(
     state: SettingsUiState,
     onBack: () -> Unit,
     onAlwaysAskChanged: (Boolean) -> Unit,
-    onAllowTranscodingChanged: (Boolean) -> Unit,
     onShowPlaybackStatsChanged: (Boolean) -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -72,13 +71,6 @@ fun SettingsScreen(
                 )
                 if (state.hasProfile) {
                     Spacer(Modifier.height(VibeyFinTokens.Space.s5))
-                    SwitchRow(
-                        title = Strings.allowTranscodingTitle,
-                        help = Strings.allowTranscodingHelp,
-                        checked = state.allowTranscoding,
-                        onCheckedChange = onAllowTranscodingChanged,
-                    )
-                    Spacer(Modifier.height(24.dp))
                     SwitchRow(
                         title = Strings.playbackStatsTitle,
                         help = Strings.playbackStatsHelp,

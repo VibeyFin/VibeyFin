@@ -99,9 +99,8 @@ class PlaybackViewModelTest {
     private suspend fun server(
         info: String = playbackInfoJson(mediaSourceJson()),
         item: String = itemJson("m1", "Heat", year = 1995),
-        allowTranscoding: Boolean = true,
     ): FakeJellyfin {
-        val server = app.signedIn(allowTranscoding = allowTranscoding)
+        val server = app.signedIn()
         server.on("GET", "/Items", Reply.json(itemsJson(item)))
         server.on("POST", "/Items/m1/PlaybackInfo", Reply.json(info))
         server.on("POST", "/Sessions/Playing", Reply.noContent())
@@ -366,41 +365,17 @@ class PlaybackViewModelTest {
     }
 
     @Test
-    fun aDirectPlayThatFailsWithTranscodingOffTakesARemuxButNotAReencode() = runTest {
-        server(allowTranscoding = false)
-        val viewModel = viewModel()
-        viewModel.uiState.first { it.stream != null }
-        viewModel.onPlaying(0)
-
-        app.jellyfin.server("http://nas:8096").on(
-            "POST", "/Items/m1/PlaybackInfo",
-            Reply.json(
-                playbackInfoJson(
-                    mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = "$HLS_PATH&TranscodeReasons=VideoCodecNotSupported"),
-                    playSessionId = "ps-2",
-                ),
-            ),
-        )
-        viewModel.onFailed(PlaybackFailure.Unsupported)
-
-        val state = viewModel.uiState.first { it.message != null }
-        assertEquals(LoadMessages.TRANSCODING_NEEDED, state.message)
-        assertNull(state.stream)
-    }
-
-    @Test
-    fun aFileOnlyAVideoReencodeCanPlayWithTranscodingOffSaysTranscodingIsNeeded() = runTest {
+    fun `a file only a video reencode can play transcodes without any setting`() = runTest {
         server(
             info = playbackInfoJson(
                 mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = "$HLS_PATH&TranscodeReasons=VideoCodecNotSupported"),
             ),
-            allowTranscoding = false,
         )
 
-        val state = viewModel().uiState.first { it.message != null }
+        val state = viewModel().uiState.first { it.stream != null }
 
-        assertEquals(LoadMessages.TRANSCODING_NEEDED, state.message)
-        assertNull(state.stream)
+        assertNull(state.message)
+        assertEquals(PlayMethod.Transcode, state.diagnostics?.method)
     }
 
     @Test

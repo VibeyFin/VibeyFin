@@ -22,10 +22,6 @@ final class SettingsObservable: ObservableObject {
         model.onAlwaysAskChanged(value: value)
     }
 
-    func setAllowTranscoding(_ value: Bool) {
-        model.onAllowTranscodingChanged(value: value)
-    }
-
     func setShowPlaybackStats(_ value: Bool) {
         model.onShowPlaybackStatsChanged(value: value)
     }

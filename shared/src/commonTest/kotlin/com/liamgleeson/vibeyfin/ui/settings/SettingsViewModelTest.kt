@@ -68,24 +68,10 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun transcodingStartsOffForANewProfile() = runTest {
-        app.signedIn(allowTranscoding = false)
-        // `saveSession` makes the settings row; nothing but the user turns this on.
-        val state = viewModel().uiState.first { it.hasProfile }
+    fun `hasProfile is true for a signed-in profile`() = runTest {
+        app.signedIn()
 
-        assertFalse(state.allowTranscoding)
-    }
-
-    @Test
-    fun theTranscodingToggleIsSavedForTheProfile() = runTest {
-        app.signedIn(allowTranscoding = false)
-        val viewModel = viewModel()
-        viewModel.uiState.first { it.hasProfile }
-
-        viewModel.onAllowTranscodingChanged(true)
-
-        assertTrue(viewModel.uiState.first { it.allowTranscoding }.allowTranscoding)
-        assertTrue(app.profileSettings.transcodingAllowed())
+        assertTrue(viewModel().uiState.first { it.hasProfile }.hasProfile)
     }
 
     @Test

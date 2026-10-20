@@ -23,17 +23,6 @@ struct SettingsView: View {
                 }
                 .tint(Color(.label))
                 if model.state?.hasProfile == true {
-                    Toggle(isOn: allowTranscoding) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(Strings.shared.allowTranscodingTitle)
-                                .font(.headline)
-                                .foregroundStyle(.primary)
-                            Text(Strings.shared.allowTranscodingHelp)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .tint(Color(.label))
                     Toggle(isOn: showPlaybackStats) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(Strings.shared.playbackStatsTitle)
@@ -57,13 +46,6 @@ struct SettingsView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         // Only the chevron, no "Back" label. The swipe from the edge still goes back.
         .toolbarRole(.editor)
-    }
-
-    private var allowTranscoding: Binding<Bool> {
-        Binding(
-            get: { model.state?.allowTranscoding ?? false },
-            set: { model.setAllowTranscoding($0) }
-        )
     }
 
     private var showPlaybackStats: Binding<Bool> {

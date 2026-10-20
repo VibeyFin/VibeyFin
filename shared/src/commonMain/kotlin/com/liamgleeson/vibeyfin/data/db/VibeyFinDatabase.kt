@@ -1,10 +1,12 @@
 package com.liamgleeson.vibeyfin.data.db
 
 import androidx.room3.AutoMigration
+import androidx.room3.DeleteColumn
 import androidx.room3.ConstructedBy
 import androidx.room3.Database
 import androidx.room3.RoomDatabase
 import androidx.room3.RoomDatabaseConstructor
+import androidx.room3.migration.AutoMigrationSpec
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -21,7 +23,7 @@ import kotlinx.coroutines.IO
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
-        AutoMigration(from = 3, to = 4),
+        AutoMigration(from = 3, to = 4, spec = DropAllowTranscoding::class),
     ],
 )
 @ConstructedBy(VibeyFinDatabaseConstructor::class)
@@ -30,6 +32,13 @@ abstract class VibeyFinDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
     abstract fun pendingReportDao(): PendingReportDao
 }
+
+/**
+ * Version 3 is unreleased: it adds the stats and binge columns and drops `allowTranscoding`, a flag
+ * the released version 2 already has.
+ */
+@DeleteColumn(tableName = "account_settings", columnName = "allowTranscoding")
+class DropAllowTranscoding : AutoMigrationSpec
 
 // Room generates the actual implementations for each target.
 @Suppress("KotlinNoActualForExpect")

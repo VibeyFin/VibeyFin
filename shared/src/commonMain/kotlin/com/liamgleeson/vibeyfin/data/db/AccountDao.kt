@@ -25,12 +25,6 @@ abstract class AccountDao {
     @Query("UPDATE accounts SET lastUsedAt = :at WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun markUsed(serverId: String, userId: String, at: Long)
 
-    @Query("SELECT allowTranscoding FROM account_settings WHERE serverId = :serverId AND userId = :userId")
-    abstract fun observeAllowTranscoding(serverId: String, userId: String): Flow<Boolean?>
-
-    @Query("UPDATE account_settings SET allowTranscoding = :value WHERE serverId = :serverId AND userId = :userId")
-    abstract suspend fun setAllowTranscoding(serverId: String, userId: String, value: Boolean)
-
     @Query("SELECT showPlaybackStats FROM account_settings WHERE serverId = :serverId AND userId = :userId")
     abstract fun observeShowPlaybackStats(serverId: String, userId: String): Flow<Boolean?>
 

@@ -36,8 +36,8 @@ class PlaybackRepositoryTest {
         return (negotiation as? PlaybackNegotiation.Ready)?.plan ?: fail("Expected a plan, got $negotiation")
     }
 
-    private suspend fun answerWith(json: String, allowTranscoding: Boolean = true) {
-        app.signedIn(allowTranscoding = allowTranscoding).on("POST", "/Items/m1/PlaybackInfo", Reply.json(json))
+    private suspend fun answerWith(json: String) {
+        app.signedIn().on("POST", "/Items/m1/PlaybackInfo", Reply.json(json))
     }
 
     private fun requestBody(): JsonObject =
@@ -173,18 +173,40 @@ class PlaybackRepositoryTest {
     }
 
     @Test
-    fun withTranscodingOffAFileThatPlaysAsItIsStillPlays() = runTest {
-        answerWith(playbackInfoJson(mediaSourceJson(container = "mp4", transcodingUrl = HLS_PATH)), allowTranscoding = false)
+    fun `transcodes when the device can't play the file`() = runTest {
+        answerWith(
+            playbackInfoJson(
+                mediaSourceJson(
+                    container = "mkv", directPlay = false, directStream = false,
+                    transcodingUrl = "$HLS_PATH&TranscodeReasons=ContainerNotSupported,VideoCodecNotSupported",
+                ),
+            ),
+        )
+
+        assertEquals(PlayMethod.Transcode, ready().method)
+    }
+
+    @Test
+    fun `transcodes when a subtitle has to be burned in`() = runTest {
+        answerWith(
+            playbackInfoJson(mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = "$HLS_PATH&TranscodeReasons=SubtitleCodecNotSupported")),
+        )
+
+        assertEquals(PlayMethod.Transcode, ready().method)
+    }
+
+    @Test
+    fun `a file that plays as it is still plays directly`() = runTest {
+        answerWith(playbackInfoJson(mediaSourceJson(container = "mp4", transcodingUrl = HLS_PATH)))
 
         assertEquals(PlayMethod.DirectPlay, ready().method)
     }
 
     @Test
-    fun withTranscodingOffARemuxOrAnAudioConversionIsStillTaken() = runTest {
+    fun `a remux or an audio conversion is a direct stream`() = runTest {
         val reasons = "&TranscodeReasons=ContainerNotSupported,AudioCodecNotSupported"
         answerWith(
             playbackInfoJson(mediaSourceJson(container = "mkv", directPlay = false, directStream = true, transcodingUrl = HLS_PATH + reasons)),
-            allowTranscoding = false,
         )
 
         val plan = ready()
@@ -194,44 +216,8 @@ class PlaybackRepositoryTest {
     }
 
     @Test
-    fun withTranscodingOffAStreamThatWouldReencodeTheVideoNeedsTranscoding() = runTest {
-        answerWith(
-            playbackInfoJson(
-                mediaSourceJson(
-                    container = "mkv", directPlay = false, directStream = false,
-                    transcodingUrl = "$HLS_PATH&TranscodeReasons=ContainerNotSupported,VideoCodecNotSupported",
-                ),
-            ),
-            allowTranscoding = false,
-        )
-
-        assertEquals(PlaybackNegotiation.NeedsTranscoding, app.playback.negotiate("m1"))
-    }
-
-    @Test
-    fun withTranscodingOffASubtitleBurnedInCountsAsReencodingTheVideo() = runTest {
-        answerWith(
-            playbackInfoJson(mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = "$HLS_PATH&TranscodeReasons=SubtitleCodecNotSupported")),
-            allowTranscoding = false,
-        )
-
-        assertEquals(PlaybackNegotiation.NeedsTranscoding, app.playback.negotiate("m1"))
-    }
-
-    @Test
-    fun withTranscodingOnAVideoReencodeIsTaken() = runTest {
-        answerWith(
-            playbackInfoJson(
-                mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = "$HLS_PATH&TranscodeReasons=VideoCodecNotSupported"),
-            ),
-        )
-
-        assertEquals(PlayMethod.Transcode, ready().method)
-    }
-
-    @Test
-    fun withTranscodingOffNothingTheServerCanDeliverIsStillNoCompatibleStream() = runTest {
-        answerWith(playbackInfoJson(mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = null)), allowTranscoding = false)
+    fun `nothing the server can deliver is no compatible stream`() = runTest {
+        answerWith(playbackInfoJson(mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = null)))
 
         assertEquals(PlaybackNegotiation.NoCompatibleStream, app.playback.negotiate("m1"))
     }
