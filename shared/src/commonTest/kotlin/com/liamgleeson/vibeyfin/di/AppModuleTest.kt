@@ -16,16 +16,19 @@ import com.liamgleeson.vibeyfin.domain.ConnectionManager
 import com.liamgleeson.vibeyfin.domain.ConnectionState
 import com.liamgleeson.vibeyfin.domain.DevicePreferences
 import com.liamgleeson.vibeyfin.domain.LanDiscovery
+import com.liamgleeson.vibeyfin.domain.PlaybackCapabilitiesSource
 import com.liamgleeson.vibeyfin.domain.ServerRepository
 import com.liamgleeson.vibeyfin.domain.ServerResolver
 import com.liamgleeson.vibeyfin.testing.FakeDeviceInfo
 import com.liamgleeson.vibeyfin.testing.FakeLanDiscovery
+import com.liamgleeson.vibeyfin.testing.FakePlaybackCapabilities
 import com.liamgleeson.vibeyfin.testing.FakeTokenVault
 import com.liamgleeson.vibeyfin.testing.InMemoryPreferencesDataStore
 import com.liamgleeson.vibeyfin.ui.addserver.AddServerViewModel
 import com.liamgleeson.vibeyfin.ui.children.ChildrenViewModel
 import com.liamgleeson.vibeyfin.ui.home.HomeViewModel
 import com.liamgleeson.vibeyfin.ui.item.ItemViewModel
+import com.liamgleeson.vibeyfin.ui.playback.PlaybackViewModel
 import com.liamgleeson.vibeyfin.ui.servers.ServersViewModel
 import com.liamgleeson.vibeyfin.ui.settings.SettingsViewModel
 import com.liamgleeson.vibeyfin.ui.startup.StartupViewModel
@@ -68,6 +71,7 @@ class AppModuleTest {
         single<TokenVault> { FakeTokenVault() }
         single<DeviceInfo> { FakeDeviceInfo() }
         single<LanDiscovery> { FakeLanDiscovery() }
+        single<PlaybackCapabilitiesSource> { FakePlaybackCapabilities() }
     }
 
     @Test
@@ -81,6 +85,7 @@ class AppModuleTest {
             koin.get<HomeViewModel>(),
             koin.get<ChildrenViewModel> { parametersOf("folder-1") },
             koin.get<ItemViewModel> { parametersOf("item-1") },
+            koin.get<PlaybackViewModel> { parametersOf("item-1") },
             koin.get<StartupViewModel>(),
             koin.get<SettingsViewModel>(),
         )

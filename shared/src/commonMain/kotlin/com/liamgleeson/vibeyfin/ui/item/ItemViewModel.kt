@@ -25,7 +25,10 @@ data class ItemUiState(
     val message: String? = null,
     /** Set when the session ended and the screen must be left. */
     val exit: HomeExit? = null,
-)
+) {
+    /** Whether the page offers Play. */
+    val canPlay: Boolean get() = item?.canPlay == true
+}
 
 /** One item's metadata. */
 class ItemViewModel(
