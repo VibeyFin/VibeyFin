@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -197,6 +198,8 @@ fun PlayerRoute(
         if (stream != null) player.applyTrackSelection(stream, state.audioTracks, state.subtitleTracks)
     }
     var showTracks by remember { mutableStateOf(false) }
+    // A new stream (the next episode) takes the track sheet with it: it listed the old one's tracks.
+    LaunchedEffect(stream?.id) { showTracks = false }
 
     LaunchedEffect(player) {
         while (isActive) {
@@ -293,6 +296,18 @@ fun PlayerRoute(
                 },
                 onDismiss = { showTracks = false },
             )
+        }
+        // The next episode, in the last seconds of this one. Part of the same Box as the video so it travels with
+        // it when the screen leaves, and gated on `leaving` like the controls.
+        state.upNext?.let { upNext ->
+            if (!leaving && state.message == null) {
+                UpNextCard(
+                    upNext = upNext,
+                    onPlayNow = viewModel::onPlayNow,
+                    onWatchCredits = viewModel::onWatchCredits,
+                    modifier = Modifier.align(Alignment.BottomEnd).safeDrawingPadding().padding(end = screenMargin(), bottom = 72.dp),
+                )
+            }
         }
         state.message?.let { message ->
             Column(Modifier.align(Alignment.Center).safeDrawingPadding().padding(horizontal = screenMargin())) {
