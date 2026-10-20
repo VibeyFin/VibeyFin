@@ -40,7 +40,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.invisibleToUser
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -167,9 +170,8 @@ private fun Content(
             horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
             modifier = Modifier.fillMaxSize(),
         ) {
-            if (state.continueRow.isVisible) {
-                fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onRetryContinue) }
-            }
+            // Always laid out, empty or not, so the libraries never move when a card turns up.
+            fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onRetryContinue) }
             fullWidth(key = "libraries-title") { SectionTitle(Strings.libraries) }
             libraries(state, onOpen, onRetryLibraries)
         }
@@ -189,8 +191,10 @@ private fun SectionTitle(text: String) {
 @Composable
 private fun ContinueWatching(row: ContinueRow, margin: Dp, onPlay: (String) -> Unit, onRetry: () -> Unit) {
     Column(Modifier.padding(bottom = VibeyFinTokens.Space.s2), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-        SectionTitle(Strings.continueWatching)
+        Box(Modifier.alpha(if (row.isVisible) 1f else 0f)) { SectionTitle(Strings.continueWatching) }
         when {
+            // Nothing to show: the same space, unseen, so the libraries stay where they are.
+            !row.isVisible -> ContinueSkeletonCards(Modifier.bleed(margin).padding(horizontal = margin).alpha(0f).semantics { invisibleToUser() })
             row.loading -> ContinueSkeletonCards(Modifier.bleed(margin).padding(horizontal = margin))
             row.message != null -> LoadError(row.message!!, onRetry)
             else -> LazyRow(

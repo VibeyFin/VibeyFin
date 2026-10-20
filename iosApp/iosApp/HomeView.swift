@@ -28,13 +28,12 @@ struct HomeView: View {
                 if let state = model.state, state.serverId != nil {
                     ScrollView {
                         VStack(alignment: .leading, spacing: Space.s5) {
-                            if state.continueRow.isVisible {
-                                ContinueRowView(
-                                    row: state.continueRow,
-                                    onPlay: { playing = PlayRequest(id: $0) },
-                                    onRetry: { model.retryContinue() }
-                                )
-                            }
+                            // Always laid out, empty or not, so the libraries never move when a card turns up.
+                            ContinueRowView(
+                                row: state.continueRow,
+                                onPlay: { playing = PlayRequest(id: $0) },
+                                onRetry: { model.retryContinue() }
+                            )
                             libraries(state)
                                 .screenMargin()
                         }

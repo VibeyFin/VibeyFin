@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -56,15 +57,15 @@ fun ContinueCard(card: ContinueCard, onClick: () -> Unit, modifier: Modifier = M
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        card.subtitle?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        // Always one line, empty for a movie, so every card is the same height as the skeleton.
+        Text(
+            text = card.subtitle.orEmpty(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            minLines = 1,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -95,9 +96,24 @@ fun ContinueSkeletonCards(modifier: Modifier = Modifier) {
                         .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
                         .background(VibeyFinTokens.Colors.surface2),
                 )
-                Box(Modifier.width(140.dp).height(14.dp).clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Xs)).background(VibeyFinTokens.Colors.surface2))
-                Box(Modifier.width(72.dp).height(12.dp).clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Xs)).background(VibeyFinTokens.Colors.surface2))
+                SkeletonLine(140.dp, MaterialTheme.typography.titleSmall)
+                SkeletonLine(72.dp, MaterialTheme.typography.bodySmall)
             }
         }
+    }
+}
+
+/** A grey bar as tall as one line of [style], so the skeleton is exactly as tall as the real card. */
+@Composable
+private fun SkeletonLine(width: androidx.compose.ui.unit.Dp, style: androidx.compose.ui.text.TextStyle) {
+    Box(Modifier.width(width)) {
+        Text(text = "", style = style, minLines = 1)
+        Box(
+            Modifier
+                .matchParentSize()
+                .padding(vertical = 4.dp)
+                .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Xs))
+                .background(VibeyFinTokens.Colors.surface2),
+        )
     }
 }

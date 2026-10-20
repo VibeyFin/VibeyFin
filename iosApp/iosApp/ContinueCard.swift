@@ -20,12 +20,11 @@ struct ContinueCardTile: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
-            if let subtitle = card.subtitle {
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+            // Always one line, a space for a movie, so every card is as tall as the skeleton.
+            Text(card.subtitle ?? " ")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
         .frame(width: Size.thumbWidth, alignment: .leading)
         // One element for VoiceOver: the title, the episode and how far in.
@@ -62,7 +61,11 @@ struct ContinueRowView: View {
             Text(Strings.shared.continueWatching.titleCased())
                 .sectionTitle()
                 .screenMargin()
-            if row.loading {
+                .opacity(row.isVisible ? 1 : 0)
+            if !row.isVisible {
+                // Nothing to show: the same space, unseen, so the libraries stay where they are.
+                ContinueSkeletonRow().hidden()
+            } else if row.loading {
                 ContinueSkeletonRow()
             } else if let message = row.message {
                 LoadErrorView(message: message, onRetry: onRetry)
@@ -85,7 +88,7 @@ struct ContinueRowView: View {
 /// Stands in for the row while it loads, redacted so nothing moves when the cards arrive. Not
 /// animated; looping motion is an opt-in setting (`brand.md`). The words under the pictures are never
 /// seen, only drawn as grey bars, so they borrow strings that already exist.
-private struct ContinueSkeletonRow: View {
+struct ContinueSkeletonRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: Space.s3) {
             ForEach(0..<3, id: \.self) { _ in
