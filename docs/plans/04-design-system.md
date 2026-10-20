@@ -11,6 +11,8 @@ Source: the "VibeyFin" design system artifact (https://claude.ai/artifact/HeWVw1
 version `1792434133-0ab2` (2026-10-19), the split iOS / Android revision. Files used:
 `project/tokens.json` (v2), `README.md`, `ios.md`, `android.md`, `guardrails.md`,
 `jellyfin-mapping.md`, `components/*/README.md`. Re-read the artifact if it has changed.
+`docs/design/` was refreshed from version `1792497333-649f` (2026-10-20), which adds the detail
+screens (`docs/design/screens.md`); `tokens.json` was unchanged.
 
 This revision supersedes my first draft, which assumed a shared Compose UI. The split design
 already matches CLAUDE.md's "native UI, shared logic", so the earlier conflicts about shared UI,

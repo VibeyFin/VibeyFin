@@ -1,6 +1,6 @@
 VibeyFin is a dark, artwork-first client for a personal Jellyfin library. **One brand, two native apps:** the iOS / iPadOS app is SwiftUI and follows Apple's Human Interface Guidelines (Liquid Glass included); the Android app is Jetpack Compose and follows Material 3. They share a Kotlin Multiplatform core — Jellyfin API, repositories, playback reporting, downloads, and the state each screen renders — never UI code.
 
-Further sections: **UX guardrails** (behavior both apps must share), **iOS & iPadOS** and **Android** (each platform's native UI rules), **Jellyfin data → UI** (which API field drives which pixel). Every component preview shows both platforms side by side; the two color themes *are* the two platforms.
+Further sections: **UX guardrails** (behavior both apps must share), **iOS & iPadOS** and **Android** (each platform's native UI rules), **Reference screens** (detail, series detail and tablet layouts), **Jellyfin data → UI** (which API field drives which pixel). Every component preview shows both platforms side by side; the two color themes *are* the two platforms.
 
 ## Principles
 
@@ -56,7 +56,7 @@ System fonts for UI on each platform; one brand face.
 
 ## Artwork
 
-- Ratios: poster 2:3, thumbnail and backdrop 16:9, phone hero 4:5 crop. `radius-artwork` (8) on both (continuous on iOS).
+- Ratios: poster 2:3, thumbnail and backdrop 16:9, Home hero 4:5 crop on phones; the detail hero is the full-bleed Backdrop, center-cropped to 2:3 on phones and at its own 16:9 on tablets (see **Reference screens**). `radius-artwork` (8) on both (continuous on iOS).
 - BlurHash color block → image fades in. Missing image: `surface-2` tile with the title. Never a broken-image icon.
 - Request images at rendered size × density. One badge per card, top-left; watched check top-right; progress on the bottom edge.
 

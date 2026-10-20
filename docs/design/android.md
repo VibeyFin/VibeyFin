@@ -5,7 +5,7 @@ A Jetpack Compose app that follows Material 3. Use the `android` theme and `m3-*
 ## Structure
 
 - `Scaffold` per screen with a `TopAppBar` (Home: app name + profile avatar; tab roots: medium / large top app bar that collapses on scroll; detail: transparent bar over the backdrop).
-- `NavigationBar` with Home, Search, Library, Downloads — labels always visible, pill indicator in `accent-soft`. Medium / expanded widths: `NavigationRail` (or `NavigationSuiteScaffold` to switch automatically).
+- `NavigationBar` with Home, Search, Library, Downloads — labels always visible, pill indicator in `accent-soft`. Medium / expanded widths (tablets): the same four destinations move to the top, centered in the top app bar (custom row over the content, active item in an `accent-soft` pill) — no `NavigationRail`, matching the iPad's top tab bar.
 - Navigation Compose with one back stack per destination; system back and **predictive back** (`android:enableOnBackInvokedCallback="true"`) on every screen, sheet and the player.
 - Edge-to-edge (`enableEdgeToEdge()`); pad with `WindowInsets`, never fake status-bar strips. Dark always — no dynamic color.
 
@@ -18,7 +18,8 @@ A Jetpack Compose app that follows Material 3. Use the `android` theme and `m3-*
 | Quick actions on a card | Long-press → `ModalBottomSheet` with the actions as list items |
 | Overflow | `⋮` `IconButton` → `DropdownMenu` |
 | Filters (All / Movies / Shows) | `FilterChip` row under the top app bar |
-| Audio / subtitles, season picker | `ModalBottomSheet`; season as `ExposedDropdownMenuBox` |
+| Audio / subtitles | `ModalBottomSheet` |
+| Season buttons (series detail) | `LazyRow` of `FilterChip`s, selected = `accent-soft`; `rememberLazyListState` scrolled to the next-up season on open |
 | Featured row (optional) | `HorizontalMultiBrowseCarousel` — user-scrolled, never auto-advancing |
 | Messages | `Snackbar` with an action |
 | Casting | Google Cast button + MediaRouter |

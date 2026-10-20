@@ -28,7 +28,8 @@ Glass is the **navigation and controls layer** floating above content — never 
 | Secondary action | `.bordered`; tertiary `.borderless` (tinted) |
 | Quick actions on a card | `.contextMenu { … } preview: { … }` |
 | Episode row actions | `.swipeActions` (Mark as Watched, Download) |
-| Audio / subtitles, season picker | `Menu` / `Picker` in a toolbar or a sheet with `.presentationDetents([.medium, .large])` |
+| Audio / subtitles | `Menu` / `Picker` in a toolbar or a sheet with `.presentationDetents([.medium, .large])` |
+| Season buttons (series detail) | Horizontal `ScrollView` of capsule buttons, selected filled `ink`; `ScrollViewReader` scrolls to the next-up season on open |
 | Share | `ShareLink` |
 | Casting | `AVRoutePickerView` (AirPlay) |
 | Player | Custom SwiftUI controls over `AVPlayerLayer` (Jellyfin trickplay and skip segments need it); PiP via `AVPictureInPictureController`; Now Playing via `MPNowPlayingInfoCenter` |
