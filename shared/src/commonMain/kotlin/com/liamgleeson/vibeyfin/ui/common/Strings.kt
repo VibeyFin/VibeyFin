@@ -114,8 +114,8 @@ object Strings {
     /** The Resume button when the length isn't known. */
     val resume = "Resume"
 
-    /** The Resume button: how much is left to watch, "Resume · 38m left" or "Resume · 1h 52m left". */
-    fun resumeTimeLeft(remainingMs: Long): String {
+    /** How much is left to watch: "38m left", or "1h 52m left" from an hour. Never under a minute. */
+    fun timeLeftShort(remainingMs: Long): String {
         val minutes = ((remainingMs + 30_000) / 60_000).coerceAtLeast(1)
         val hours = minutes / 60
         val rest = minutes % 60
@@ -124,8 +124,11 @@ object Strings {
             rest == 0L -> "${hours}h"
             else -> "${hours}h ${rest}m"
         }
-        return "Resume · $left left"
+        return "$left left"
     }
+
+    /** The Resume button: "Resume · 38m left". */
+    fun resumeTimeLeft(remainingMs: Long) = "Resume · ${timeLeftShort(remainingMs)}"
     val pause = "Pause"
     val close = "Close"
     val playbackPosition = "Playback position"

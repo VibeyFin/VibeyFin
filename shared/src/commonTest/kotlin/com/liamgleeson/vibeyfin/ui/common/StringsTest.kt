@@ -15,6 +15,13 @@ class StringsTest {
     }
 
     @Test
+    fun timeLeftIsShortAndNeverUnderAMinute() {
+        assertEquals("38m left", Strings.timeLeftShort(38 * 60_000L))
+        assertEquals("1h 52m left", Strings.timeLeftShort(112 * 60_000L))
+        assertEquals("1m left", Strings.timeLeftShort(0))
+    }
+
+    @Test
     fun resumeSaysHowMuchIsLeftInMinutesOrHoursAndMinutes() {
         assertEquals("Resume · 38m left", Strings.resumeTimeLeft(38 * 60_000L))
         assertEquals("Resume · 1h 52m left", Strings.resumeTimeLeft((112 * 60_000L)))

@@ -10,7 +10,11 @@ data class ContinueCard(
     val id: String,
     /** A movie's title, or the show's name for an episode. */
     val title: String,
-    /** For an episode, "S2 E5 · Episode title"; null for a movie. */
+    /**
+     * What is under the title: in progress, the time left ("38m left"), after the episode for an episode
+     * ("S2 E5 · 38m left"); a Next Up card has the episode and its title ("S2 E5 · Episode title"). Null
+     * for a movie nobody has started.
+     */
     val subtitle: String?,
     /** A 16:9 picture, or null when the server has none. */
     val imageUrl: String?,
@@ -31,9 +35,19 @@ data class ContinueRow(
     val isVisible: Boolean get() = loading || cards.isNotEmpty() || message != null
 }
 
+private const val SEPARATOR = " · "
+
 internal fun MediaItem.toContinueCard(): ContinueCard {
     val isEpisode = kind == ItemKind.Episode
-    val subtitle = if (isEpisode) listOfNotNull(episodeLabel(), this.title.takeIf { it.isNotBlank() }).joinToString("  ·  ").ifEmpty { null } else null
+    val label = episodeLabel()
+    val left = runtimeMs?.takeIf { progress != null }?.let { Strings.timeLeftShort(it - resumePositionMs) }
+    val subtitle = when {
+        // Started: how long is left, after the episode.
+        left != null -> listOfNotNull(label.takeIf { isEpisode }, left).joinToString(SEPARATOR)
+        // Next up: the episode and its title.
+        isEpisode -> listOfNotNull(label, this.title.takeIf { it.isNotBlank() }).joinToString(SEPARATOR).ifEmpty { null }
+        else -> null
+    }
     val title = if (isEpisode) seriesName ?: title else title
     val percent = progress?.let { (it * 100).toInt().coerceIn(1, 99) }
     return ContinueCard(
@@ -42,6 +56,6 @@ internal fun MediaItem.toContinueCard(): ContinueCard {
         subtitle = subtitle,
         imageUrl = landscapeUrl,
         progress = progress,
-        accessibilityLabel = Strings.continueCardLabel(title, subtitle ?: year?.toString(), percent),
+        accessibilityLabel = Strings.continueCardLabel(title, label ?: year?.toString(), percent),
     )
 }
