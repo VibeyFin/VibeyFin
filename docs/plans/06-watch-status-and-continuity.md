@@ -67,7 +67,7 @@ First step after approval: cut `feature/watch-status` from `develop` (not `main`
    wording. Use `send(..., retry = true)`; `post<B,T>` can't retry.
 9. **Auto-advance** is a `PlaybackViewModel` constructor parameter (default true), not a settings column; Phase 7 wires it to
    the profile setting.
-10. **Continue card:** 16:9 (`Thumb`, else `Backdrop`, else `Primary`), title = series name for an episode, subtitle "S2 E5",
+10. **Continue card:** 16:9 (`Thumb`, else `Backdrop`, else `Primary`), title = series name for an episode, subtitle "S2 E5 · episode title",
     aqua progress bar on in-progress cards only, label `"{title}, {year}, {n}% watched"`. Row cap 20, hidden when empty. No
     "See all" (nothing to open yet). The ContinueCard design page was never copied, so record what we build in `docs/design/`.
 11. **Failed-write feedback:** Android `Snackbar` with "Try again"; iOS has no equivalent (`ios.md:50` bans snackbars), so a
@@ -283,3 +283,5 @@ This replaces "Resume from 41:12" above, and the design docs and roadmap now say
 Also at your request: a watched item shows a check icon, not the word "Watched": on its poster in every list (`WatchedBadge`, Android and iOS, on
 the scrim, VoiceOver reads "…, Watched" on the tile) and beside the facts on the item page. `ItemUiState.watched` replaced the "Watched" fact.
 Checked on the emulator: the film's poster in Movies shows the badge and its page shows the check-circle after "2020 · 7 min".
+
+Continue watching cards for an episode now read "S2 E5  ·  Episode title" under the show's name (the screen-reader label includes it too).
