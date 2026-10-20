@@ -1,6 +1,7 @@
 package com.liamgleeson.vibeyfin.ui.common
 
 import com.liamgleeson.vibeyfin.domain.PlayMethod
+import com.liamgleeson.vibeyfin.domain.SegmentType
 import kotlin.math.roundToInt
 
 /**
@@ -186,6 +187,16 @@ object Strings {
     fun statsBuffer(milliseconds: Long): String {
         val tenths = (milliseconds.coerceAtLeast(0) / 100)
         return "${tenths / 10}.${tenths % 10} s"
+    }
+
+    /** The button that jumps over a marked part of the video. */
+    fun skip(type: SegmentType): String = when (type) {
+        SegmentType.Intro -> "Skip intro"
+        SegmentType.Outro -> "Skip credits"
+        SegmentType.Recap -> "Skip recap"
+        SegmentType.Preview -> "Skip preview"
+        SegmentType.Commercial -> "Skip ad"
+        SegmentType.Unknown -> ""
     }
 
     /** A track the file gives no name or language for. */

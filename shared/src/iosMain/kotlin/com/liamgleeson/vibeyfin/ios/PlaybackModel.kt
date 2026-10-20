@@ -26,6 +26,10 @@ class PlaybackModel(itemId: String, startOver: Boolean) {
 
     fun onPosition(positionMs: Long) = host.viewModel.onPosition(positionMs)
 
+    fun onSkip() = host.viewModel.onSkip()
+
+    fun onSeekHandled() = host.viewModel.onSeekHandled()
+
     fun onEnded(positionMs: Long) = host.viewModel.onEnded(positionMs)
 
     fun onBackgrounded(positionMs: Long) = host.viewModel.onBackgrounded(positionMs)

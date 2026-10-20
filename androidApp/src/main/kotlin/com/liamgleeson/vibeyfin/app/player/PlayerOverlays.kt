@@ -4,9 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -68,5 +70,16 @@ fun StatsOverlay(diagnostics: PlaybackDiagnostics, modifier: Modifier = Modifier
                 Text(text = value, style = MaterialTheme.typography.labelSmall, color = VibeyFinTokens.Colors.ink)
             }
         }
+    }
+}
+
+/**
+ * "Skip intro", "Skip credits": a secondary button (aqua is for Play), shown for the whole segment
+ * whether or not the controls are up. The label comes from the shared state.
+ */
+@Composable
+fun SkipButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    FilledTonalButton(onClick = onClick, modifier = modifier.height(VibeyFinTokens.Size.touch)) {
+        Text(label)
     }
 }

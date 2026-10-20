@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 4,
-    "identityHash": "d8d5feca2b7e23904317e5d15bdab5c6",
+    "identityHash": "40a7829cefdbad4bba353b13245b49ad",
     "entities": [
       {
         "tableName": "servers",
@@ -150,7 +150,7 @@
       },
       {
         "tableName": "account_settings",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `userId` TEXT NOT NULL, `allowTranscoding` INTEGER NOT NULL DEFAULT 0, `showPlaybackStats` INTEGER NOT NULL DEFAULT 0, `bingeThreshold` INTEGER NOT NULL DEFAULT 3, PRIMARY KEY(`serverId`, `userId`), FOREIGN KEY(`serverId`, `userId`) REFERENCES `accounts`(`serverId`, `userId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `userId` TEXT NOT NULL, `showPlaybackStats` INTEGER NOT NULL DEFAULT 0, `bingeThreshold` INTEGER NOT NULL DEFAULT 3, PRIMARY KEY(`serverId`, `userId`), FOREIGN KEY(`serverId`, `userId`) REFERENCES `accounts`(`serverId`, `userId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "serverId",
@@ -163,13 +163,6 @@
             "columnName": "userId",
             "affinity": "TEXT",
             "notNull": true
-          },
-          {
-            "fieldPath": "allowTranscoding",
-            "columnName": "allowTranscoding",
-            "affinity": "INTEGER",
-            "notNull": true,
-            "defaultValue": "0"
           },
           {
             "fieldPath": "showPlaybackStats",
@@ -313,7 +306,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd8d5feca2b7e23904317e5d15bdab5c6')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '40a7829cefdbad4bba353b13245b49ad')"
     ]
   }
 }

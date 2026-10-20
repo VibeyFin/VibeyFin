@@ -1,6 +1,7 @@
 package com.liamgleeson.vibeyfin.ui.common
 
 import com.liamgleeson.vibeyfin.domain.PlayMethod
+import com.liamgleeson.vibeyfin.domain.SegmentType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -70,5 +71,14 @@ class StringsTest {
         assertEquals("4.5 Mbps", Strings.statsBitrate(4500))
         assertEquals("0.0 s", Strings.statsBuffer(-5))
         assertEquals("12.3 s", Strings.statsBuffer(12_345))
+    }
+
+    @Test
+    fun skipNamesWhatIsSkipped() {
+        assertEquals("Skip intro", Strings.skip(SegmentType.Intro))
+        assertEquals("Skip credits", Strings.skip(SegmentType.Outro))
+        assertEquals("Skip recap", Strings.skip(SegmentType.Recap))
+        assertEquals("Skip preview", Strings.skip(SegmentType.Preview))
+        assertEquals("Skip ad", Strings.skip(SegmentType.Commercial))
     }
 }

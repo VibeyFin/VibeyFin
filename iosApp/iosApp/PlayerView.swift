@@ -19,6 +19,8 @@ struct PlayerView: View {
     /// The second under the finger while the scrubber is dragged.
     @State private var scrubPosition: TimeInterval?
     @State private var hideTask: Task<Void, Never>?
+    /// The skip seek handed to the player last, until the model's state has cleared it.
+    @State private var lastSkipSeekMs: Int64?
 
     /// How long the controls stay after the last touch while playing.
     private let hideDelay: UInt64 = 3_000_000_000
@@ -54,6 +56,10 @@ struct PlayerView: View {
                 if controlsVisible {
                     controls
                         .transition(.opacity)
+                }
+                // Offered for the whole segment, controls up or not; above the scrubber while that shows.
+                if let offer = state?.skipOffer {
+                    skipButton(offer)
                 }
                 // Stays up when the controls hide; an error fills the same part of the screen.
                 if state?.showDiagnostics == true, let diagnostics = state?.diagnostics {
@@ -93,6 +99,19 @@ struct PlayerView: View {
                 controller.open(stream)
             } else if state?.message != nil {
                 controller.clear()
+            }
+            // A skip: the shared model asks for a seek. It goes through the same path as the scrubber, so
+            // the player's seek callback reports it to the server.
+            // Each request is acted on once: a state that arrives before the model has cleared it carries
+            // the same value again, which is skipped.
+            if let seekTo = state?.pendingSeekMs?.int64Value {
+                if seekTo != lastSkipSeekMs {
+                    lastSkipSeekMs = seekTo
+                    controller.seek(to: TimeInterval(seekTo) / 1000)
+                    model.seekHandled()
+                }
+            } else {
+                lastSkipSeekMs = nil
             }
             controller.wantAudio(audioChoice(in: state))
             controller.wantDiagnostics(state?.showDiagnostics == true)
@@ -247,6 +266,19 @@ struct PlayerView: View {
         .screenMargin()
         .padding(.top, Space.s7 + Space.s4)
         .allowsHitTesting(false)
+    }
+
+    /// Bottom trailing; rises above the scrubber and the times while the controls show.
+    private func skipButton(_ offer: SkipOffer) -> some View {
+        VStack {
+            Spacer(minLength: 0)
+            HStack {
+                Spacer(minLength: 0)
+                SkipButton(label: offer.label) { model.skip() }
+            }
+        }
+        .screenMargin()
+        .padding(.bottom, controlsVisible ? Space.s7 + Space.s6 : Space.s4)
     }
 
     // MARK: - Errors

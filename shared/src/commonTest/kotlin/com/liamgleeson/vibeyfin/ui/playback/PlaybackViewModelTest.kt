@@ -23,6 +23,8 @@ import com.liamgleeson.vibeyfin.testing.itemJson
 import com.liamgleeson.vibeyfin.testing.itemsJson
 import com.liamgleeson.vibeyfin.testing.mediaSourceJson
 import com.liamgleeson.vibeyfin.testing.playbackInfoJson
+import com.liamgleeson.vibeyfin.testing.segmentJson
+import com.liamgleeson.vibeyfin.testing.segmentsJson
 import com.liamgleeson.vibeyfin.testing.subtitleStreamJson
 import com.liamgleeson.vibeyfin.ui.common.LoadMessages
 import com.liamgleeson.vibeyfin.ui.common.Strings
@@ -41,6 +43,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.yield
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
@@ -58,6 +61,7 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.TimeSource
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlaybackViewModelTest {
@@ -99,8 +103,10 @@ class PlaybackViewModelTest {
     private suspend fun server(
         info: String = playbackInfoJson(mediaSourceJson()),
         item: String = itemJson("m1", "Heat", year = 1995),
+        segments: Reply? = null,
     ): FakeJellyfin {
         val server = app.signedIn()
+        if (segments != null) server.on("GET", "/MediaSegments/m1", segments)
         server.on("GET", "/Items", Reply.json(itemsJson(item)))
         server.on("POST", "/Items/m1/PlaybackInfo", Reply.json(info))
         server.on("POST", "/Sessions/Playing", Reply.noContent())
@@ -1238,5 +1244,150 @@ class PlaybackViewModelTest {
         viewModel.onPosition(tenMinutes - 20_000)
 
         assertEquals(10, assertNotNull(seen.last().upNext).secondsLeft)
+    }
+
+    private suspend fun serverWithSegments(vararg segments: String): PlaybackViewModel {
+        server(segments = Reply.json(segmentsJson(*segments)))
+        return viewModel().also { vm ->
+            vm.uiState.first { it.stream != null }
+            // The segments come in a separate call; wait until it has been made, so the first position isn't checked before it.
+            while (app.jellyfin.requestsTo("GET", "/MediaSegments/m1").isEmpty()) yield()
+            // Stopgap: the request is recorded before its reply is read, and nothing observable says when the
+            // segments were applied (the offer depends on the position), so keep the scheduler turning for a
+            // moment of real time instead.
+            val until = TimeSource.Monotonic.markNow() + 200.milliseconds
+            while (until.hasNotPassedNow()) yield()
+        }
+    }
+
+    @Test
+    fun `offer appears inside an intro and stays for the whole segment`() = runTest {
+        val vm = serverWithSegments(segmentJson("Intro", 10_000, 90_000))
+
+        vm.onPosition(5_000)
+        assertNull(vm.uiState.value.skipOffer)
+        vm.onPosition(10_000)
+        assertEquals(SkipOffer("Skip intro", 90_000), vm.uiState.value.skipOffer)
+        vm.onPosition(50_000)
+        assertEquals(SkipOffer("Skip intro", 90_000), vm.uiState.value.skipOffer)
+        vm.onPosition(89_999)
+        assertNotNull(vm.uiState.value.skipOffer)
+        vm.onPosition(90_000)
+        assertNull(vm.uiState.value.skipOffer)
+    }
+
+    @Test
+    fun `no offer outside any segment`() = runTest {
+        val vm = serverWithSegments(segmentJson("Intro", 10_000, 90_000))
+
+        vm.onPosition(200_000)
+
+        assertNull(vm.uiState.value.skipOffer)
+    }
+
+    @Test
+    fun `outro offers Skip credits`() = runTest {
+        val vm = serverWithSegments(segmentJson("Outro", 5_400_000, 6_000_000))
+
+        vm.onPosition(5_500_000)
+
+        assertEquals(SkipOffer("Skip credits", 6_000_000), vm.uiState.value.skipOffer)
+    }
+
+    @Test
+    fun `skip sets a seek to the segment end`() = runTest {
+        val vm = serverWithSegments(segmentJson("Intro", 10_000, 90_000))
+        vm.onPosition(20_000)
+
+        vm.onSkip()
+        assertEquals(90_000L, vm.uiState.value.pendingSeekMs)
+
+        vm.onSeekHandled()
+        assertNull(vm.uiState.value.pendingSeekMs)
+        vm.onPosition(90_500)
+        assertNull(vm.uiState.value.skipOffer)
+    }
+
+    @Test
+    fun `skip with no offer does nothing`() = runTest {
+        val vm = serverWithSegments(segmentJson("Intro", 10_000, 90_000))
+        vm.onPosition(200_000)
+
+        vm.onSkip()
+
+        assertNull(vm.uiState.value.pendingSeekMs)
+    }
+
+    @Test
+    fun `no segments means no offer and no error`() = runTest {
+        val vm = serverWithSegments()
+
+        vm.onPosition(20_000)
+
+        assertNull(vm.uiState.value.skipOffer)
+        assertNull(vm.uiState.value.message)
+    }
+
+    @Test
+    fun `a seek past the segment removes the offer`() = runTest {
+        val vm = serverWithSegments(segmentJson("Intro", 10_000, 90_000))
+        vm.onPosition(20_000)
+        assertNotNull(vm.uiState.value.skipOffer)
+
+        vm.onSeeked(300_000)
+
+        assertNull(vm.uiState.value.skipOffer)
+    }
+
+    @Test
+    fun `Unknown segments never offer`() = runTest {
+        val vm = serverWithSegments(segmentJson("Mystery", 10_000, 90_000))
+
+        vm.onPosition(20_000)
+
+        assertNull(vm.uiState.value.skipOffer)
+    }
+
+    @Test
+    fun `overlapping segments offer the one that ends last`() = runTest {
+        val vm = serverWithSegments(segmentJson("Intro", 10_000, 60_000), segmentJson("Recap", 0, 90_000))
+
+        vm.onPosition(20_000)
+
+        assertEquals(SkipOffer("Skip recap", 90_000), vm.uiState.value.skipOffer)
+    }
+
+    @Test
+    fun `a failing segments call does not stop playback from starting`() = runTest {
+        server(segments = Reply.status(HttpStatusCode.InternalServerError))
+        val vm = viewModel()
+
+        val state = vm.uiState.first { it.stream != null }
+        vm.onPosition(20_000)
+
+        assertNull(state.message)
+        assertNull(vm.uiState.value.skipOffer)
+    }
+
+    @Test
+    fun `segments are fetched once even when the stream is opened again`() = runTest {
+        val vm = serverWithSegments(segmentJson("Intro", 10_000, 90_000))
+
+        vm.onFailed(PlaybackFailure.Unauthorized)
+        vm.uiState.first { it.stream != null && it.stream?.id == 2 }
+
+        assertEquals(1, app.jellyfin.requestsTo("GET", "/MediaSegments/m1").size)
+    }
+
+    @Test
+    fun `a skip asked for during a network retry is dropped when the stream comes back`() = runTest {
+        val vm = serverWithSegments(segmentJson("Intro", 10_000, 90_000))
+        vm.onPosition(20_000)
+
+        vm.onFailed(PlaybackFailure.Network)
+        vm.onSkip()
+        vm.uiState.first { it.stream?.id == 2 }
+
+        assertNull(vm.uiState.value.pendingSeekMs)
     }
 }

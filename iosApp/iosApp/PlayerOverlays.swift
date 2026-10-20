@@ -52,3 +52,37 @@ struct StatsOverlay: View {
         .allowsHitTesting(false)
     }
 }
+
+/// "Skip intro", "Skip credits": a secondary button (aqua is for Play), shown for the whole segment
+/// whether or not the controls are up. Real Liquid Glass on iOS 26, the scrim before that. The label
+/// is the shared model's wording.
+struct SkipButton: View {
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(label.titleCased())
+                .font(.headline)
+                .foregroundStyle(.primary)
+                .padding(.horizontal, Space.s4)
+                .frame(minHeight: 44)
+                .contentShape(Capsule())
+        }
+        .modifier(SkipButtonStyle())
+    }
+}
+
+private struct SkipButtonStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .buttonStyle(.glass)
+                .buttonBorderShape(.capsule)
+        } else {
+            content
+                .buttonStyle(.plain)
+                .background(Capsule().fill(Brand.scrim))
+        }
+    }
+}

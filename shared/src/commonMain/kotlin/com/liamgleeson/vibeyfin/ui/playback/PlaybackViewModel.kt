@@ -15,7 +15,9 @@ import com.liamgleeson.vibeyfin.domain.PlaybackNegotiation
 import com.liamgleeson.vibeyfin.domain.PlaybackPlan
 import com.liamgleeson.vibeyfin.domain.PlaybackReporter
 import com.liamgleeson.vibeyfin.domain.PlaybackRepository
+import com.liamgleeson.vibeyfin.domain.MediaSegment
 import com.liamgleeson.vibeyfin.domain.PlaybackTrack
+import com.liamgleeson.vibeyfin.domain.SegmentType
 import com.liamgleeson.vibeyfin.domain.SubtitleFile
 import com.liamgleeson.vibeyfin.domain.WatchRepository
 import com.liamgleeson.vibeyfin.domain.model.ItemKind
@@ -120,6 +122,9 @@ data class TrackOption(
 /** The index of the "Off" row in the subtitle picker. */
 const val SUBTITLES_OFF = PlaybackRepository.SUBTITLES_OFF
 
+/** The button to jump over the part of the video that is playing: [label] says what, [toMs] is where it ends. */
+data class SkipOffer(val label: String, val toMs: Long)
+
 data class PlaybackUiState(
     /** Asking the server how to play the item. */
     val loading: Boolean = true,
@@ -144,6 +149,10 @@ data class PlaybackUiState(
     val diagnostics: PlaybackDiagnostics? = null,
     /** The signed-in profile wants the stats overlay. */
     val showDiagnostics: Boolean = false,
+    /** Set while an intro, recap or the like is playing; stays for the whole segment. */
+    val skipOffer: SkipOffer? = null,
+    /** Where the player should seek to now (set by `onSkip`); it clears this with `onSeekHandled`. */
+    val pendingSeekMs: Long? = null,
 ) {
     /** Whether there is anything to choose between, so the player shows its audio and subtitles control. */
     val hasTrackChoices: Boolean get() = audioTracks.isNotEmpty() || subtitleTracks.isNotEmpty()
@@ -222,6 +231,10 @@ class PlaybackViewModel(
     private var countdown: Job? = null
     private var method: PlayMethod? = null
     private var streams = 0
+
+    /** The item's marked segments; loaded once, by the first [open]. */
+    private var segments: List<MediaSegment> = emptyList()
+    private var segmentsRequested = false
 
     /** What the current stream plays. Null while there is none. */
     private var plan: PlaybackPlan? = null
@@ -306,6 +319,18 @@ class PlaybackViewModel(
         lastPositionMs = positionMs
         reporter.seeked(positionMs)
         checkUpNext(positionMs)
+        refreshSkipOffer()
+    }
+
+    /** The user chose the skip button: the player is asked to seek to the end of the segment. */
+    fun onSkip() {
+        val offer = content.value.skipOffer ?: return
+        content.update { it.copy(pendingSeekMs = offer.toMs) }
+    }
+
+    /** The player has done the seek it was asked for. */
+    fun onSeekHandled() {
+        content.update { if (it.pendingSeekMs == null) it else it.copy(pendingSeekMs = null) }
     }
 
     /** The current position, as often as the player knows it (about once a second). */
@@ -313,6 +338,7 @@ class PlaybackViewModel(
         lastPositionMs = positionMs
         reporter.position(positionMs)
         checkUpNext(positionMs)
+        refreshSkipOffer()
         if ((networkRetries > 0 || reauthorized) && positionMs - failedAtMs >= RECOVERED_AFTER_MS) {
             networkRetries = 0
             reauthorized = false
@@ -384,11 +410,11 @@ class PlaybackViewModel(
         cancelCountdown()
         networkRetries++
         reporter.paused(lastPositionMs)
-        content.update { it.copy(loading = true, stream = null, message = null) }
+        content.update { it.copy(loading = true, stream = null, message = null, pendingSeekMs = null) }
         viewModelScope.launch {
             delay(wait)
             content.update {
-                it.copy(loading = false, stream = failed.copy(id = ++streams, startPositionMs = lastPositionMs))
+                it.copy(loading = false, pendingSeekMs = null, stream = failed.copy(id = ++streams, startPositionMs = lastPositionMs))
             }
         }
     }
@@ -420,7 +446,7 @@ class PlaybackViewModel(
         reporter.stop(lastPositionMs, failed = true)
         method = null
         this.lostConnection = lostConnection
-        content.update { it.copy(stream = null, loading = false, message = message) }
+        content.update { it.copy(stream = null, loading = false, message = message, pendingSeekMs = null) }
     }
 
     override fun onCleared() {
@@ -590,10 +616,30 @@ class PlaybackViewModel(
         choice = TrackChoice(current.mediaSourceId, audioNow, subtitleNow ?: SUBTITLES_OFF)
     }
 
+    /** Off the critical path: a slow or failed call only means there is nothing to skip. Once per item. */
+    private fun loadSegments() {
+        if (segmentsRequested) return
+        segmentsRequested = true
+        viewModelScope.launch {
+            segments = playback.segments(itemId)
+            refreshSkipOffer()
+        }
+    }
+
+    /** The offer for [lastPositionMs]: the skippable segment playing now, the one that ends last if several. */
+    private fun refreshSkipOffer() {
+        val playing = segments
+            .filter { it.type != SegmentType.Unknown && lastPositionMs >= it.startMs && lastPositionMs < it.endMs }
+            .maxByOrNull { it.endMs }
+        val offer = playing?.let { SkipOffer(Strings.skip(it.type), it.endMs) }
+        content.update { if (it.skipOffer == offer) it else it.copy(skipOffer = offer) }
+    }
+
     private fun open(startAtMs: Long) {
         // A stream that restarts (a retry, a track change) is not the end of the episode.
         cancelCountdown()
-        content.update { it.copy(loading = true, stream = null, message = null) }
+        content.update { it.copy(loading = true, stream = null, message = null, pendingSeekMs = null) }
+        loadSegments()
         viewModelScope.launch {
             val picked = choice
             val negotiation = playback.negotiate(itemId, transcodeOnly, picked?.mediaSourceId, picked?.audio, picked?.subtitle)
@@ -609,6 +655,7 @@ class PlaybackViewModel(
                     content.update {
                         it.copy(
                             loading = false,
+                            pendingSeekMs = null,
                             stream = PlaybackStream(
                                 id = ++streams,
                                 url = ready.url,

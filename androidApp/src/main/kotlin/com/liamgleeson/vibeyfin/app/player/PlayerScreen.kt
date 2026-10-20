@@ -11,6 +11,7 @@ import android.view.WindowManager
 import android.view.accessibility.AccessibilityManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -86,6 +87,9 @@ private const val POSITION_TICK_MS = 500L
 
 /** Keeps the stats panel below the controls' top bar, so it doesn't jump when the controls come and go. */
 private val STATS_TOP_INSET = 72.dp
+
+/** How far the skip button rises while the controls show, to clear the scrubber and the times. */
+private val SKIP_LIFT_WITH_CONTROLS = 80.dp
 
 private const val TIMING_TAG = "VibeyFinTiming"
 
@@ -225,6 +229,17 @@ fun PlayerRoute(
     LaunchedEffect(stream?.id) { stats.reset() }
     LaunchedEffect(statsOn) { if (statsOn) stats.publish() }
 
+    // A skip: the shared code asks for a seek; it goes through the same path as the scrubber, so the
+    // player's seek event reports it to the server.
+    LaunchedEffect(state.pendingSeekMs) {
+        state.pendingSeekMs?.let {
+            seekAt = SystemClock.elapsedRealtime()
+            positionMs = it
+            player.seekTo(it)
+            viewModel.onSeekHandled()
+        }
+    }
+
     LaunchedEffect(player) {
         while (isActive) {
             positionMs = player.currentPosition
@@ -311,6 +326,16 @@ fun PlayerRoute(
             StatsOverlay(
                 diagnostics,
                 Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(start = screenMargin(), top = STATS_TOP_INSET),
+            )
+        }
+        // Offered for the whole segment, controls up or not; above the scrubber while that shows.
+        val skip = state.skipOffer
+        if (!leaving && skip != null && state.message == null) {
+            val lift by animateDpAsState(if (controlsVisible) SKIP_LIFT_WITH_CONTROLS else 0.dp, label = "skipLift")
+            SkipButton(
+                label = skip.label,
+                onClick = viewModel::onSkip,
+                modifier = Modifier.align(Alignment.BottomEnd).safeDrawingPadding().padding(end = screenMargin(), bottom = 16.dp + lift),
             )
         }
         if (!leaving && (state.loading || (buffering && state.stream != null))) {

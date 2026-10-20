@@ -85,6 +85,16 @@ final class PlaybackObservable: ObservableObject {
         model.onRetry()
     }
 
+    /// The viewer tapped the skip button; the model answers with a seek to the segment's end.
+    func skip() {
+        model.onSkip()
+    }
+
+    /// The seek the model asked for has been handed to the player.
+    func seekHandled() {
+        model.onSeekHandled()
+    }
+
     deinit {
         model.close()
     }
