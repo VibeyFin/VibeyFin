@@ -26,6 +26,18 @@ sealed interface ConnectionState {
     data class Expired(val serverId: String, val userId: String) : ConnectionState
 }
 
+/** The answer to [ConnectionManager.asProfile]. */
+sealed interface ProfileCall<out T> {
+    /** A saved address answered; [result] may still be a failure such as a 401. */
+    data class Answered<T>(val result: ApiResult<T>) : ProfileCall<T>
+
+    /** The profile has no usable token: it is locked, or its token can't be read. */
+    data object NoSession : ProfileCall<Nothing>
+
+    /** The server isn't saved, or none of its addresses answered. */
+    data object Unreachable : ProfileCall<Nothing>
+}
+
 enum class ActivateResult {
     Activated,
 
@@ -133,6 +145,26 @@ class ConnectionManager(
         accounts.expire(current.account.serverId, current.account.userId)
     }
 
+    /**
+     * Runs [call] as a saved profile that need not be the signed-in one, for work that belongs to
+     * the profile that began it (telling the server a play session stopped after the user switched
+     * profile, or after a restart). Tries the server's addresses in order. The current state is not
+     * touched; but a token the server rejects (HTTP 401) is locked here like anywhere else, whether
+     * or not it is the current profile's.
+     */
+    suspend fun <T> asProfile(serverId: String, userId: String, call: suspend (JellyfinApi) -> ApiResult<T>): ProfileCall<T> {
+        val token = accounts.sessionToken(serverId, userId) ?: return ProfileCall.NoSession
+        val reached = connector.firstAnswer(serverId, token, call) ?: return ProfileCall.Unreachable
+        val result = reached.result
+        // The current profile's rejection reaches onTokenRejected through the call's own API; another
+        // profile's is ignored there, so it is locked here, and signed-in state is left alone.
+        val isCurrent = session?.let { it.serverId == serverId && it.userId == userId } == true
+        if (!isCurrent && result is ApiResult.Failure && result.error == ApiError.Unauthorized) {
+            accounts.expire(serverId, userId)
+        }
+        return ProfileCall.Answered(result)
+    }
+
     private suspend fun connect(server: Server, account: Account, token: String, api: JellyfinApi) {
         session = Session(server.id, account.userId, token)
         accounts.markUsed(server.id, account.userId)
@@ -159,7 +191,8 @@ class ConnectionManager(
     /**
      * The one place a rejected token ends a session: drops the token, locks the profile and moves
      * the state to [ConnectionState.Expired] so the app routes to "Who's watching?". Explicit
-     * sign-out is the only other way a token is cleared, and it goes through [signOut].
+     * sign-out is the only other way a token is cleared, and it goes through [signOut]; [asProfile]
+     * locks a rejected token of a profile that isn't signed in, which has no state to move.
      */
     private suspend fun expireSession(serverId: String, userId: String) {
         accounts.expire(serverId, userId)

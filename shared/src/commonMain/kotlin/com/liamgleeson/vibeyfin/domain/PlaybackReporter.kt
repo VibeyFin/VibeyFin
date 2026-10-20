@@ -1,14 +1,12 @@
 package com.liamgleeson.vibeyfin.domain
 
-import com.liamgleeson.vibeyfin.data.api.ApiError
 import com.liamgleeson.vibeyfin.data.api.ApiResult
 import com.liamgleeson.vibeyfin.data.api.JellyfinApi
 import com.liamgleeson.vibeyfin.data.api.PlaybackProgressDto
 import com.liamgleeson.vibeyfin.data.api.PlaybackStartDto
-import com.liamgleeson.vibeyfin.data.api.PlaybackStopDto
 import com.liamgleeson.vibeyfin.data.api.reportPlaybackProgress
 import com.liamgleeson.vibeyfin.data.api.reportPlaybackStart
-import com.liamgleeson.vibeyfin.data.api.reportPlaybackStopped
+import com.liamgleeson.vibeyfin.domain.model.ProfileRef
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -31,6 +29,11 @@ val PROGRESS_INTERVAL: Duration = 10.seconds
  * away would be cancelled with the screen's own scope. Reports are best effort: a failed one is
  * dropped, except `Stopped`, which is tried once more.
  *
+ * `Stopped` is the one report that must not get lost, so a session is also saved in [pending] when it
+ * starts and as its position moves, and is only forgotten once the server has answered. If the
+ * process dies first, [PlaybackRecovery] sends it at the next start. It is sent as the profile that
+ * started it, even if the user has switched profile or the session has ended since.
+ *
  * A stop is not final. After one, the next [playing] starts the session again, which is what
  * happens when the app goes to the background and comes back. [begin] gives the item to report on,
  * and a new one for each stream, since a transcode fallback is a new play session.
@@ -40,6 +43,9 @@ val PROGRESS_INTERVAL: Duration = 10.seconds
 class PlaybackReporter(
     private val connection: ConnectionManager,
     private val scope: CoroutineScope,
+    private val pending: PendingReports,
+    private val recovery: PlaybackRecovery,
+    private val changes: WatchChanges,
     private val interval: Duration = PROGRESS_INTERVAL,
 ) {
     private sealed interface Event {
@@ -60,6 +66,9 @@ class PlaybackReporter(
     private var isPaused = false
     private var positionMs = 0L
     private var ticker: Job? = null
+
+    /** The session that was started, as `Stopped` has to name it; null if nobody was signed in to start it. */
+    private var open: PendingStop? = null
 
     init {
         scope.launch {
@@ -116,6 +125,8 @@ class PlaybackReporter(
                 if (!started) {
                     started = true
                     isPaused = false
+                    open = plan?.let { current -> currentProfile()?.let { openSession(it, current) } }
+                    keep()
                     sendStart()
                 } else if (isPaused) {
                     isPaused = false
@@ -141,7 +152,8 @@ class PlaybackReporter(
                 if (started) {
                     started = false
                     isPaused = false
-                    sendStopped(event.failed)
+                    keep(event.failed)
+                    sendStopped()
                 }
             }
             Event.Tick -> if (started && !isPaused) sendProgress()
@@ -184,6 +196,7 @@ class PlaybackReporter(
 
     private suspend fun sendProgress() {
         val plan = plan ?: return
+        keep()
         call { api ->
             api.reportPlaybackProgress(
                 PlaybackProgressDto(
@@ -201,18 +214,26 @@ class PlaybackReporter(
         }
     }
 
-    private suspend fun sendStopped(failed: Boolean) {
-        val plan = plan ?: return
-        val info = PlaybackStopDto(
-            itemId = plan.itemId,
-            mediaSourceId = plan.mediaSourceId,
-            playSessionId = plan.playSessionId,
-            positionTicks = positionMs * TICKS_PER_MILLISECOND,
-            failed = failed,
-        )
+    /** Saves the session with where it is now, so a crash from here on leaves a `Stopped` to send. */
+    private suspend fun keep(failed: Boolean = false) {
+        val stop = open?.copy(positionTicks = positionMs * TICKS_PER_MILLISECOND, failed = failed) ?: return
+        open = stop
+        try {
+            pending.save(stop)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // The report below still goes out; only the safety net is missing.
+        }
+    }
+
+    private suspend fun sendStopped() {
+        val stop = open ?: return
+        open = null
         // The one report worth a second try: without it the server keeps showing the item as playing.
-        val first = call { api -> api.reportPlaybackStopped(info) }
-        if (first is ApiResult.Failure && first.error.mayPass()) call { api -> api.reportPlaybackStopped(info) }
+        // If both fail the session stays saved and goes out at the next start.
+        if (recovery.send(stop) == StopOutcome.Retry) recovery.send(stop)
+        changes.changed()
     }
 
     /** Sends one report with the current session. A report that can't be sent, or fails, is dropped. */
@@ -227,5 +248,15 @@ class PlaybackReporter(
         }
     }
 
-    private fun ApiError.mayPass() = this == ApiError.Network || this is ApiError.Server
+    private fun currentProfile(): ProfileRef? =
+        (connection.state.value as? ConnectionState.Connected)?.let { ProfileRef(it.server.id, it.account.userId) }
+
+    private fun openSession(profile: ProfileRef, plan: PlaybackPlan) = PendingStop(
+        profile = profile,
+        itemId = plan.itemId,
+        mediaSourceId = plan.mediaSourceId,
+        playSessionId = plan.playSessionId,
+        positionTicks = positionMs * TICKS_PER_MILLISECOND,
+        failed = false,
+    )
 }

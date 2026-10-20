@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewmodel.CreationExtras
-import com.liamgleeson.vibeyfin.domain.PlaybackReporter
 import com.liamgleeson.vibeyfin.testing.FakeJellyfin
 import com.liamgleeson.vibeyfin.testing.HLS_PATH
 import com.liamgleeson.vibeyfin.testing.Reply
@@ -75,7 +74,7 @@ class PlaybackViewModelTest {
     private val retryDelays = listOf(1.milliseconds, 1.milliseconds)
 
     private fun viewModel(id: String = "m1") = viewModels.track(
-        PlaybackViewModel(id, app.library, app.playback, PlaybackReporter(app.connection, reporterScope), app.connection, retryDelays),
+        PlaybackViewModel(id, app.library, app.playback, app.reporter(reporterScope), app.connection, retryDelays),
     )
 
     /** A signed-in server that offers a direct play of "Heat", answers the reports and, for an episode test, can be given another item. */
@@ -566,7 +565,7 @@ class PlaybackViewModelTest {
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =
-                    PlaybackViewModel("m1", app.library, app.playback, PlaybackReporter(app.connection, reporterScope), app.connection) as T
+                    PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection) as T
             },
         )[PlaybackViewModel::class]
         viewModel.uiState.first { it.stream != null }
