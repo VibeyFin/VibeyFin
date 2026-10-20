@@ -5,6 +5,7 @@ import Shared
 struct ItemView: View {
     @StateObject private var model: ItemObservable
     @State private var showsPlayer = false
+    @State private var startsOver = false
 
     private let itemId: String
 
@@ -24,7 +25,7 @@ struct ItemView: View {
                 VStack(alignment: .leading, spacing: Space.s3) {
                     if let state = model.state, !state.loading {
                         if let item = state.item {
-                            details(item, facts: state.facts, canPlay: state.canPlay)
+                            details(item, state: state)
                         } else if let message = state.message {
                             LoadErrorView(message: message, onRetry: { model.retry() })
                         }
@@ -39,7 +40,7 @@ struct ItemView: View {
         }
         .onAppear { model.start() }
         .fullScreenCover(isPresented: $showsPlayer) {
-            PlayerView(itemId: itemId, onExit: onExit)
+            PlayerView(itemId: itemId, startOver: startsOver, onExit: onExit)
         }
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
@@ -50,8 +51,14 @@ struct ItemView: View {
         }
     }
 
+    private func play(startOver: Bool) {
+        startsOver = startOver
+        showsPlayer = true
+    }
+
     @ViewBuilder
-    private func details(_ item: MediaItem, facts: [String], canPlay: Bool) -> some View {
+    private func details(_ item: MediaItem, state: ItemUiState) -> some View {
+        let facts = state.facts
         // A wide backdrop when the server has one; otherwise the item's own picture at its own shape.
         if let backdrop = item.backdropUrl {
             Artwork(url: backdrop, title: item.title, aspectRatio: 16.0 / 9.0)
@@ -79,9 +86,15 @@ struct ItemView: View {
                 .foregroundStyle(.primary)
         }
         // The one filled action on the page: the aqua capsule.
-        if canPlay {
-            PrimaryButton(Strings.shared.play) { showsPlayer = true }
-                .padding(.vertical, Space.s1)
+        // "Play" or "Resume from 41:12", with "Start over" beside it only when there is something to resume.
+        if state.canPlay {
+            HStack(spacing: Space.s3) {
+                PrimaryButton(state.playLabel) { play(startOver: false) }
+                if state.canStartOver {
+                    SecondaryButton(title: Strings.shared.startOver) { play(startOver: true) }
+                }
+            }
+            .padding(.vertical, Space.s1)
         }
         if let overview = item.overview {
             Text(overview)

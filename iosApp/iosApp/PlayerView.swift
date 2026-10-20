@@ -23,8 +23,9 @@ struct PlayerView: View {
     /// How long the controls stay after the last touch while playing.
     private let hideDelay: UInt64 = 3_000_000_000
 
-    init(itemId: String, onExit: @escaping (HomeExit) -> Void) {
-        _model = StateObject(wrappedValue: PlaybackObservable(itemId: itemId))
+    /// Resumes where the server says the user stopped, unless `startOver`.
+    init(itemId: String, startOver: Bool = false, onExit: @escaping (HomeExit) -> Void) {
+        _model = StateObject(wrappedValue: PlaybackObservable(itemId: itemId, startOver: startOver))
         self.onExit = onExit
     }
 

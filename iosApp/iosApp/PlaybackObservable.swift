@@ -10,8 +10,8 @@ final class PlaybackObservable: ObservableObject {
     private let model: PlaybackModel
     private var started = false
 
-    init(itemId: String) {
-        model = PlaybackModel(itemId: itemId)
+    init(itemId: String, startOver: Bool) {
+        model = PlaybackModel(itemId: itemId, startOver: startOver)
     }
 
     /// Starts watching. Called when the screen appears, not from `init`, because SwiftUI may build
