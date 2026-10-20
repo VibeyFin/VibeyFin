@@ -73,7 +73,7 @@ First step after approval: cut `feature/watch-status` from `develop` (not `main`
 11. **Failed-write feedback:** Android `Snackbar` with "Try again"; iOS has no equivalent (`ios.md:50` bans snackbars), so a
     small non-modal bottom banner with the same action, written into `ios.md`.
 12. **New row gets a static skeleton** (no shimmer). Libraries keep their spinner until the state audit before Phase 4.
-13. Item facts show "Watched" for played items. Poster check badges stay in Phase 4.
+13. Watched is an icon, not a word: a check on a watched poster's top-right corner (Android, iOS) and a check-circle beside the item page's facts. (Moved up from Phase 4 at your request.)
 
 ## Phase A: Crash-safe `Stopped` — done
 
@@ -272,3 +272,14 @@ disk queue for played marks (Phase 10); the phone pass still owed from Phase 1.
 :shared:compileTestKotlinIosSimulatorArm64 :shared:compileKotlinIosArm64`, `:androidApp:assembleDebug`, `:androidApp:testDebugUnitTest` (token
 drift), and `scripts/check-title-case.sh` / `scripts/check-swift-tokens.sh` when Swift changes. Then the emulator check named in each phase,
 reading the server's side with `GET /Sessions` and the item's `UserData`. Small commits, one line, `task|fix|feat|chore:`.
+
+## Change after Phase D review (2026-10-20)
+
+You asked for the Resume button to say the time left and for "Start over" to be an icon. Done on both platforms: the primary button reads
+"Resume · 38m left" (`Strings.resumeTimeLeft`, "1h 52m" from an hour; "Resume" alone if the length is unknown), with its play icon; "Start
+over" is a round icon-only circular-arrow button with the words as its accessibility label. The menus got leading icons (info, check, clear).
+This replaces "Resume from 41:12" above, and the design docs and roadmap now say so.
+
+Also at your request: a watched item shows a check icon, not the word "Watched": on its poster in every list (`WatchedBadge`, Android and iOS, on
+the scrim, VoiceOver reads "…, Watched" on the tile) and beside the facts on the item page. `ItemUiState.watched` replaced the "Watched" fact.
+Checked on the emulator: the film's poster in Movies shows the badge and its page shows the check-circle after "2020 · 7 min".

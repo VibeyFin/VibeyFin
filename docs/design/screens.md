@@ -28,8 +28,8 @@ official rating, runtime, genres, overview, `UserData` (playback position, `IsFa
   `ink-muted`) → overview (3 lines + "More", left-aligned) → Play / Resume → secondary actions.
 - Play / Resume is the one aqua `primary` button on the screen, large (iOS
   `.borderedProminent` capsule `.controlSize(.large)`, Android filled 56dp). The label says what happens:
-  "Play", "Resume from 41:12". It is full width until there is something to resume; then "Start over"
-  (the grey secondary button) sits beside it, with the primary button taking the larger share.
+  "Play", "Resume · 38m left" (with the play icon). It is full width until there is something to resume;
+  then a round icon-only "start over" button (a circular arrow, the grey secondary button) sits beside it.
 - Secondary actions as `action` buttons (icon over label), max four: My List (Favorites), Like (thumbs,
   `UserData.Likes`), Trailer (only when the item has a local or remote trailer), Download. Mark as watched
   moves to the overflow menu (`…` / `⋮`).

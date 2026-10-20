@@ -22,7 +22,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 ## Detail
 
 - Opens on a full-width backdrop hero; title (Logo image, else `brand-display`), facts, overview and actions sit over the image, always on `scrim`. Cast and More like this scroll below it.
-- Exactly one primary button, and its label says what happens: "Play", "Resume from 41:12" (the saved position; "Start over" sits beside it as the secondary button, only when there is something to resume), "Play S2 E4".
+- Exactly one primary button, and its label says what happens: "Play", "Resume · 38m left" (the time left; a round icon-only "start over" arrow sits beside it as the secondary button, only when there is something to resume), "Play S2 E4".
 - Secondary actions (icon over label) after it: My List, Like, Trailer (only when the item has one), Download — max four. Mark as watched lives in the overflow menu.
 - Series: a row of season buttons (about four visible, scrolling sideways) and the selected season's episode list below. **Must** open on the season of the episode Play / Resume starts, with that episode marked; picking a season swaps the list in place.
 - Synopsis 3 lines + "More". Technical info (video, audio, subtitles, file) in a collapsed section at the bottom.

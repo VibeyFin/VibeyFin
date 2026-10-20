@@ -92,7 +92,7 @@ _Exit: play a movie and an episode, direct and transcoded, with position reporte
   restructures Home around it
 - [x] Resume on open (seek to `PlaybackPositionTicks`, 10,000,000 ticks/sec) — _the server's position is
   the source of truth, so there are no per-device positions. Resume is the aqua primary button reading
-  "Resume from 41:12", with "Start over" beside it and a 5 s rewind when resuming. A local position is
+  "Resume · 38m left", with a round icon-only "start over" arrow beside it and a 5 s rewind when resuming. A local position is
   only the offline fallback (Phase 10)_
 - [ ] Auto-advance with countdown into Next Up — _owned here: countdown, cancel, on by default. Phase 3
   keeps only "are you still watching?"; Phase 7 makes it a toggle_
