@@ -50,6 +50,7 @@ def px(token):
 for kind, mapping, fam in [
     ('Space', {'s%d' % i: 'space-%d' % i for i in range(1, 8)}, family('spacing')),
     ('Radius', {'artwork': 'radius-artwork', 'card': 'radius-ios-card'}, family('radius')),
+    ('Size', {'thumbWidth': 'thumb-w'}, family('size')),
 ]:
     body = block(kind)
     for swift_name, token in mapping.items():

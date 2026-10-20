@@ -35,6 +35,11 @@ enum Radius {
     static let card: CGFloat = 16
 }
 
+enum Size {
+    /// A Continue watching thumbnail on phones (16:9).
+    static let thumbWidth: CGFloat = 224
+}
+
 extension Font {
     /// `brand-display`: the only brand face. For the wordmark, a hero title without a Logo image and
     /// onboarding; everything else uses Dynamic Type text styles. Scales with `.largeTitle`. Apply

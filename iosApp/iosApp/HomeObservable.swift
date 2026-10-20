@@ -34,6 +34,27 @@ final class HomeObservable: ObservableObject {
         model.onRetryLibraries()
     }
 
+    func retryContinue() {
+        model.onRetryContinue()
+    }
+
+    /// Pull to refresh. The shared view model reloads both lists and reports `refreshing`; this returns
+    /// when it has finished, which is what keeps the pull indicator up.
+    @MainActor
+    func refresh() async {
+        model.onRefresh()
+        // Give the state a moment to say it started; with nobody signed in it never does.
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        while state?.refreshing == true {
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+    }
+
+    /// The app came back to the foreground, where something may have been watched on another device.
+    func foreground() {
+        model.onForeground()
+    }
+
     deinit {
         model.close()
     }
