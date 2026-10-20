@@ -9,8 +9,8 @@ import com.liamgleeson.vibeyfin.domain.PlaybackCapabilitiesSource
 /**
  * What Media3's ExoPlayer can decode here. H.264 and AAC are always there. HEVC, VP9 and AV1 depend
  * on the phone, and only count when a hardware decoder exists: software decoding them is too slow
- * to be worth offering over a server transcode. Dolby audio (AC-3, E-AC-3) isn't listed because
- * many phones have no decoder for it; the server converts that audio and leaves the video alone.
+ * to be worth offering over a server transcode. Dolby and DTS audio is listed because the player
+ * carries an ffmpeg audio decoder; audio is light enough to decode in software.
  */
 class AndroidPlaybackCapabilities : PlaybackCapabilitiesSource {
     private val capabilities by lazy {
@@ -22,7 +22,8 @@ class AndroidPlaybackCapabilities : PlaybackCapabilitiesSource {
                 if (hasHardwareDecoder("video/x-vnd.on2.vp9")) add("vp9")
                 if (hasHardwareDecoder("video/av01")) add("av1")
             },
-            audioCodecs = listOf("aac", "mp3", "opus", "flac", "vorbis"),
+            // Dolby and DTS audio is decoded by the ffmpeg extension in the player, so the server can leave it alone.
+            audioCodecs = listOf("aac", "mp3", "opus", "flac", "vorbis", "ac3", "eac3", "dts", "truehd"),
             // HLS from the server carries HEVC as it is when the phone decodes it, so a remux needn't re-encode it.
             streamVideoCodecs = buildList {
                 add("h264")

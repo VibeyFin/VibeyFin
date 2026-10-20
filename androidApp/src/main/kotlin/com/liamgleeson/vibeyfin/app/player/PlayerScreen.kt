@@ -50,6 +50,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -300,9 +301,17 @@ fun PlayerRoute(
 
 private const val CONNECT_TIMEOUT_MS = 15_000
 
+/**
+ * The phone's own decoders come first. The ffmpeg decoder (a Jellyfin build of Media3's extension) is
+ * the fallback for audio they lack, such as DTS and TrueHD, so the server needn't convert it.
+ */
+@androidx.annotation.OptIn(UnstableApi::class)
+private fun renderersFactory(context: Context) =
+    DefaultRenderersFactory(context).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+
 @androidx.annotation.OptIn(UnstableApi::class)
 private fun buildPlayer(context: Context, http: DefaultHttpDataSource.Factory): ExoPlayer =
-    ExoPlayer.Builder(context)
+    ExoPlayer.Builder(context, renderersFactory(context))
         .setMediaSourceFactory(DefaultMediaSourceFactory(http))
         .setAudioAttributes(
             AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
