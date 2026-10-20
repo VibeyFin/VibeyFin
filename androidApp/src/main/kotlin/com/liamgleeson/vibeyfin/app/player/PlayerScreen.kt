@@ -78,9 +78,10 @@ private const val TIMING_TAG = "VibeyFinTiming"
 @Composable
 fun PlayerRoute(
     itemId: String,
+    startOver: Boolean,
     onBack: () -> Unit,
     onExit: (HomeExit) -> Unit,
-    viewModel: PlaybackViewModel = koinViewModel(parameters = { parametersOf(itemId) }),
+    viewModel: PlaybackViewModel = koinViewModel(parameters = { parametersOf(itemId, startOver) }),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val window = rememberPlayerWindow()

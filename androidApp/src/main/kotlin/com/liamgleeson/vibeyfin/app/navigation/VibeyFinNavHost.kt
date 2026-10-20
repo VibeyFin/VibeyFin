@@ -134,13 +134,15 @@ fun VibeyFinNavHost() {
             ItemRoute(
                 itemId = itemId,
                 onBack = { navController.popBackStack() },
-                onPlay = { navController.navigate(Player(itemId)) },
+                onPlay = { startOver -> navController.navigate(Player(itemId, startOver)) },
                 onExit = leave,
             )
         }
         composable<Player> { entry ->
+            val route = entry.toRoute<Player>()
             PlayerRoute(
-                itemId = entry.toRoute<Player>().itemId,
+                itemId = route.itemId,
+                startOver = route.startOver,
                 onBack = { navController.popBackStack() },
                 onExit = leave,
             )

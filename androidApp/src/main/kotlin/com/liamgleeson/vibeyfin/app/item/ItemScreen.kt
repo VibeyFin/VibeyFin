@@ -3,6 +3,7 @@ package com.liamgleeson.vibeyfin.app.item
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -47,7 +49,7 @@ import org.koin.core.parameter.parametersOf
 fun ItemRoute(
     itemId: String,
     onBack: () -> Unit,
-    onPlay: () -> Unit,
+    onPlay: (startOver: Boolean) -> Unit,
     onExit: (HomeExit) -> Unit,
     viewModel: ItemViewModel = koinViewModel(parameters = { parametersOf(itemId) }),
 ) {
@@ -59,7 +61,7 @@ fun ItemRoute(
 }
 
 @Composable
-fun ItemScreen(state: ItemUiState, onBack: () -> Unit, onPlay: () -> Unit, onRetry: () -> Unit) {
+fun ItemScreen(state: ItemUiState, onBack: () -> Unit, onPlay: (startOver: Boolean) -> Unit, onRetry: () -> Unit) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
@@ -75,7 +77,7 @@ fun ItemScreen(state: ItemUiState, onBack: () -> Unit, onPlay: () -> Unit, onRet
                         Spacer(Modifier.height(BackButtonSpace))
                         LoadError(message = state.message!!, onRetry = onRetry, modifier = Modifier.padding(horizontal = screenMargin()))
                     }
-                    item != null -> ItemDetails(item, state.facts, state.canPlay, onPlay)
+                    item != null -> ItemDetails(item, state, onPlay)
                 }
             }
             FloatingBackButton(onBack)
@@ -84,7 +86,8 @@ fun ItemScreen(state: ItemUiState, onBack: () -> Unit, onPlay: () -> Unit, onRet
 }
 
 @Composable
-private fun ItemDetails(item: MediaItem, facts: List<String>, canPlay: Boolean, onPlay: () -> Unit) {
+private fun ItemDetails(item: MediaItem, state: ItemUiState, onPlay: (startOver: Boolean) -> Unit) {
+    val facts = state.facts
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = screenMargin()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -116,7 +119,7 @@ private fun ItemDetails(item: MediaItem, facts: List<String>, canPlay: Boolean, 
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (canPlay) PlayButton(onPlay)
+        if (state.canPlay) PlayButtons(state.playLabel, state.canStartOver, onPlay)
         if (item.genres.isNotEmpty()) {
             Text(
                 text = item.genres.joinToString("  ·  "),
@@ -131,12 +134,22 @@ private fun ItemDetails(item: MediaItem, facts: List<String>, canPlay: Boolean, 
     }
 }
 
-/** The one filled action on the page: aqua, 56 dp tall, as the design asks for Play. */
+/**
+ * The one filled action on the page: aqua, 56 dp tall, reading "Play" or "Resume from 41:12". "Start over"
+ * sits beside it as the plain secondary button, only when there is something to resume.
+ */
 @Composable
-private fun PlayButton(onClick: () -> Unit) {
-    Button(onClick = onClick, modifier = Modifier.fillMaxWidth().height(56.dp)) {
-        Icon(painter = painterResource(R.drawable.ic_play), contentDescription = null)
-        Spacer(Modifier.width(8.dp))
-        Text(Strings.play, style = MaterialTheme.typography.labelLarge)
+private fun PlayButtons(label: String, canStartOver: Boolean, onPlay: (startOver: Boolean) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3), modifier = Modifier.fillMaxWidth()) {
+        Button(onClick = { onPlay(false) }, modifier = Modifier.weight(3f).height(56.dp)) {
+            Icon(painter = painterResource(R.drawable.ic_play), contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        }
+        if (canStartOver) {
+            FilledTonalButton(onClick = { onPlay(true) }, modifier = Modifier.weight(2f).height(56.dp)) {
+                Text(Strings.startOver, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            }
+        }
     }
 }
