@@ -23,6 +23,11 @@ class AndroidPlaybackCapabilities : PlaybackCapabilitiesSource {
                 if (hasHardwareDecoder("video/av01")) add("av1")
             },
             audioCodecs = listOf("aac", "mp3", "opus", "flac", "vorbis"),
+            // HLS from the server carries HEVC as it is when the phone decodes it, so a remux needn't re-encode it.
+            streamVideoCodecs = buildList {
+                add("h264")
+                if (hasHardwareDecoder("video/hevc")) add("hevc")
+            },
             // Media3 reads these as side-loaded text tracks. Image-based subtitles aren't listed.
             subtitleFormats = listOf("srt", "vtt", "ass", "ssa"),
         )

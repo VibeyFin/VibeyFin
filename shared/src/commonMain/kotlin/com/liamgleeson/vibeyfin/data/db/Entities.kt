@@ -1,5 +1,6 @@
 package com.liamgleeson.vibeyfin.data.db
 
+import androidx.room3.ColumnInfo
 import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.PrimaryKey
@@ -76,4 +77,7 @@ class AccountEntity(
 class AccountSettingsEntity(
     val serverId: String,
     val userId: String,
+    /** Whether the server may re-encode video for this profile. Off: it may still remux and convert audio. */
+    @ColumnInfo(defaultValue = "0")
+    val allowTranscoding: Boolean = false,
 )

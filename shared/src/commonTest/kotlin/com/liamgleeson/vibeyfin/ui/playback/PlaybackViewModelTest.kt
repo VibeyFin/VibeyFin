@@ -82,8 +82,9 @@ class PlaybackViewModelTest {
     private suspend fun server(
         info: String = playbackInfoJson(mediaSourceJson()),
         item: String = itemJson("m1", "Heat", year = 1995),
+        allowTranscoding: Boolean = true,
     ): FakeJellyfin {
-        val server = app.signedIn()
+        val server = app.signedIn(allowTranscoding = allowTranscoding)
         server.on("GET", "/Items", Reply.json(itemsJson(item)))
         server.on("POST", "/Items/m1/PlaybackInfo", Reply.json(info))
         server.on("POST", "/Sessions/Playing", Reply.noContent())
@@ -285,6 +286,44 @@ class PlaybackViewModelTest {
         val restarted = jellyfin.awaitRequests("POST", "/Sessions/Playing", 2).map(::bodyOf)
         assertEquals(listOf("ps-1", "ps-2"), restarted.map { it.getValue("PlaySessionId").jsonPrimitive.content })
         assertEquals("Transcode", restarted.last().getValue("PlayMethod").jsonPrimitive.content)
+    }
+
+    @Test
+    fun aDirectPlayThatFailsWithTranscodingOffTakesARemuxButNotAReencode() = runTest {
+        server(allowTranscoding = false)
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.stream != null }
+        viewModel.onPlaying(0)
+
+        app.jellyfin.server("http://nas:8096").on(
+            "POST", "/Items/m1/PlaybackInfo",
+            Reply.json(
+                playbackInfoJson(
+                    mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = "$HLS_PATH&TranscodeReasons=VideoCodecNotSupported"),
+                    playSessionId = "ps-2",
+                ),
+            ),
+        )
+        viewModel.onFailed(PlaybackFailure.Unsupported)
+
+        val state = viewModel.uiState.first { it.message != null }
+        assertEquals(LoadMessages.TRANSCODING_NEEDED, state.message)
+        assertNull(state.stream)
+    }
+
+    @Test
+    fun aFileOnlyAVideoReencodeCanPlayWithTranscodingOffSaysTranscodingIsNeeded() = runTest {
+        server(
+            info = playbackInfoJson(
+                mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = "$HLS_PATH&TranscodeReasons=VideoCodecNotSupported"),
+            ),
+            allowTranscoding = false,
+        )
+
+        val state = viewModel().uiState.first { it.message != null }
+
+        assertEquals(LoadMessages.TRANSCODING_NEEDED, state.message)
+        assertNull(state.stream)
     }
 
     @Test

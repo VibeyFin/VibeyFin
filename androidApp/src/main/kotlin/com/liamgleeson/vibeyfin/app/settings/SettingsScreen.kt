@@ -37,11 +37,16 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SettingsRoute(onBack: () -> Unit, viewModel: SettingsViewModel = koinViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    SettingsScreen(state, onBack, viewModel::onAlwaysAskChanged)
+    SettingsScreen(state, onBack, viewModel::onAlwaysAskChanged, viewModel::onAllowTranscodingChanged)
 }
 
 @Composable
-fun SettingsScreen(state: SettingsUiState, onBack: () -> Unit, onAlwaysAskChanged: (Boolean) -> Unit) {
+fun SettingsScreen(
+    state: SettingsUiState,
+    onBack: () -> Unit,
+    onAlwaysAskChanged: (Boolean) -> Unit,
+    onAllowTranscodingChanged: (Boolean) -> Unit,
+) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
             Column(
@@ -58,43 +63,62 @@ fun SettingsScreen(state: SettingsUiState, onBack: () -> Unit, onAlwaysAskChange
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Spacer(Modifier.height(24.dp))
-                Row(
-                    // The whole row toggles, not just the switch, so the label is a target too.
-                    modifier = Modifier.fillMaxWidth().toggleable(
-                        value = state.alwaysAskWhoIsWatching,
-                        role = Role.Switch,
-                        onValueChange = onAlwaysAskChanged,
-                    ),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Column(modifier = Modifier.weight(1f).padding(end = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = Strings.alwaysAskWhoIsWatchingTitle,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                        Text(
-                            text = Strings.alwaysAskWhoIsWatchingHelp,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    // Aqua is for the one primary action, so the switch is light on dark instead.
-                    Switch(
-                        checked = state.alwaysAskWhoIsWatching,
-                        onCheckedChange = null,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = VibeyFinTokens.Colors.bg,
-                            checkedTrackColor = VibeyFinTokens.Colors.ink,
-                            uncheckedThumbColor = VibeyFinTokens.Colors.inkMuted,
-                            uncheckedTrackColor = VibeyFinTokens.Colors.surface3,
-                            uncheckedBorderColor = VibeyFinTokens.Colors.lineStrong,
-                        ),
+                SwitchRow(
+                    title = Strings.alwaysAskWhoIsWatchingTitle,
+                    help = Strings.alwaysAskWhoIsWatchingHelp,
+                    checked = state.alwaysAskWhoIsWatching,
+                    onCheckedChange = onAlwaysAskChanged,
+                )
+                if (state.hasProfile) {
+                    Spacer(Modifier.height(24.dp))
+                    SwitchRow(
+                        title = Strings.allowTranscodingTitle,
+                        help = Strings.allowTranscodingHelp,
+                        checked = state.allowTranscoding,
+                        onCheckedChange = onAllowTranscodingChanged,
                     )
                 }
             }
             FloatingBackButton(onBack)
         }
+    }
+}
+
+@Composable
+private fun SwitchRow(title: String, help: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        // The whole row toggles, not just the switch, so the label is a target too.
+        modifier = Modifier.fillMaxWidth().toggleable(
+            value = checked,
+            role = Role.Switch,
+            onValueChange = onCheckedChange,
+        ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column(modifier = Modifier.weight(1f).padding(end = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = help,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        // Aqua is for the one primary action, so the switch is light on dark instead.
+        Switch(
+            checked = checked,
+            onCheckedChange = null,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = VibeyFinTokens.Colors.bg,
+                checkedTrackColor = VibeyFinTokens.Colors.ink,
+                uncheckedThumbColor = VibeyFinTokens.Colors.inkMuted,
+                uncheckedTrackColor = VibeyFinTokens.Colors.surface3,
+                uncheckedBorderColor = VibeyFinTokens.Colors.lineStrong,
+            ),
+        )
     }
 }

@@ -65,6 +65,9 @@ sealed interface PlaybackNegotiation {
     /** The server found no way to deliver the item to this device. */
     data object NoCompatibleStream : PlaybackNegotiation
 
+    /** Only re-encoding the video would play it, and the profile doesn't allow that. */
+    data object NeedsTranscoding : PlaybackNegotiation
+
     data class Failed(val error: ApiError) : PlaybackNegotiation
 }
 

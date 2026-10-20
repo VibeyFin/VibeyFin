@@ -24,6 +24,11 @@ data class PlaybackCapabilities(
      * or any when this is empty) is burned into the video instead, which means a transcode.
      */
     val subtitleFormats: List<String> = emptyList(),
+    /**
+     * Video codecs the player takes inside the server's HLS stream. A file in one of these is repackaged
+     * (a remux) instead of re-encoded when only its container or audio is the problem.
+     */
+    val streamVideoCodecs: List<String> = listOf("h264"),
 )
 
 /** Reports [PlaybackCapabilities] for this device. Bound per platform in `platformModule()`. */
@@ -44,8 +49,7 @@ private const val VIDEO = "Video"
 private fun lessThanOrEqual(property: String, value: String) =
     ProfileConditionDto(condition = "LessThanEqual", property = property, value = value, isRequired = false)
 
-/** Transcodes are always H.264 with AAC stereo in HLS: the one combination every phone plays. */
-private const val TRANSCODE_VIDEO = "h264"
+/** Transcodes are always AAC stereo in HLS, and H.264 unless the file's own codec can be carried as it is. */
 private const val TRANSCODE_AUDIO = "aac"
 
 /** The newest H.264 level (5.2) common phone decoders handle, as the server counts it (level × 10). */
@@ -69,7 +73,7 @@ internal fun PlaybackCapabilities.toDeviceProfile(): DeviceProfileDto = DevicePr
             type = VIDEO,
             protocol = "hls",
             context = "Streaming",
-            videoCodec = TRANSCODE_VIDEO,
+            videoCodec = streamVideoCodecs.joinToString(","),
             audioCodec = TRANSCODE_AUDIO,
             maxAudioChannels = "2",
             minSegments = 1,

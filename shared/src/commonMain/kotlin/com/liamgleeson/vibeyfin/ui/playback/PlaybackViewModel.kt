@@ -394,6 +394,8 @@ class PlaybackViewModel(
                 }
                 PlaybackNegotiation.NoCompatibleStream ->
                     content.update { it.copy(loading = false, message = LoadMessages.NO_COMPATIBLE_STREAM) }
+                PlaybackNegotiation.NeedsTranscoding ->
+                    content.update { it.copy(loading = false, message = LoadMessages.TRANSCODING_NEEDED) }
                 is PlaybackNegotiation.Failed ->
                     content.update { it.copy(loading = false, message = LoadMessages.forError(result.error)) }
             }

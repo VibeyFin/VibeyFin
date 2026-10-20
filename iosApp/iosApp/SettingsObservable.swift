@@ -22,6 +22,10 @@ final class SettingsObservable: ObservableObject {
         model.onAlwaysAskChanged(value: value)
     }
 
+    func setAllowTranscoding(_ value: Bool) {
+        model.onAllowTranscodingChanged(value: value)
+    }
+
     deinit {
         model.close()
     }

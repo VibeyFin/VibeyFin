@@ -11,6 +11,8 @@ internal object LoadMessages {
 
     const val NO_COMPATIBLE_STREAM =
         "The server can't play this on your device. Ask the server's admin to check the file's format."
+    const val TRANSCODING_NEEDED =
+        "This video needs re-encoding to play on your device, and video transcoding is off. Turn on Allow video transcoding in Settings."
     const val PLAYBACK_FAILED = "This video wouldn't play. Try again, or ask the server's admin to check the file."
     const val PLAYBACK_NETWORK = "Lost the connection to the server. Check your network and try again."
 

@@ -1,5 +1,6 @@
 package com.liamgleeson.vibeyfin.data.db
 
+import androidx.room3.AutoMigration
 import androidx.room3.ConstructedBy
 import androidx.room3.Database
 import androidx.room3.RoomDatabase
@@ -15,7 +16,8 @@ import kotlinx.coroutines.IO
         AccountEntity::class,
         AccountSettingsEntity::class,
     ],
-    version = 1,
+    version = 2,
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
 )
 @ConstructedBy(VibeyFinDatabaseConstructor::class)
 abstract class VibeyFinDatabase : RoomDatabase() {
