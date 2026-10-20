@@ -66,7 +66,10 @@ and sessions, are unbuilt, and it lists library browsing as out of scope). So th
   401 handling, but the new `PlaybackInfo` call goes through it, so a dead token ends the session in the
   one place that does that and a stale stream key gets a fresh address. A second rejection is
   `PLAYBACK_FAILED`. `Unsupported`, which is also everything the player can't place (every other HTTP
-  status included), falls back to one transcode and then shows `PLAYBACK_FAILED`.
+  status included), falls back to one transcode and then shows `PLAYBACK_FAILED`. "Try again" starts
+  afresh, except after a lost connection on a stream that needed the transcode: that says nothing about
+  what the device can play, so it goes straight back to the transcode instead of repeating a direct play
+  that is known to fail.
 - **Browsing is generic.** Libraries, folders, series and seasons all open the same children list
   (`GET /Items?parentId=`), because real libraries nest (the demo's Movies are in folders).
   Playable items (movie, episode, video) open the detail page.
@@ -170,12 +173,24 @@ and sessions, are unbuilt, and it lists library browsing as out of scope). So th
   shown after seeking back; a device with no subtitle formats gets the subtitle burned into an HLS
   transcode, turning it off returns to direct play at the same position, and changing audio on that
   transcode renegotiates and continues from the same position.
-- **Player failures: tested, not yet seen on a device.** `PlaybackViewModelTest` covers a retry from the same
-  position (direct and transcode), the tries running out into `PLAYBACK_NETWORK` with "Try again" and no
-  transcode, the tries coming back after 5 s of playing (and not after the player merely reporting ready), a
-  rejected token asking again from the same position, a dead token ending the session through the usual
-  handling, and a second rejection ending as an error. The Media3 and AVFoundation mappings are not unit
-  tested; a forced network drop on a phone is part of the real-device pass.
+- **Player failures.** `PlaybackViewModelTest` covers a retry from the same position (direct and transcode),
+  the tries running out into `PLAYBACK_NETWORK` with "Try again" and no transcode, the tries coming back after
+  5 s of playing (and not after the player merely reporting ready), "Try again" keeping a needed transcode
+  after a lost connection and starting afresh after any other failure, a rejected token asking again from the
+  same position, a dead token ending the session through the usual handling, and a second rejection ending as
+  an error. The Media3 and AVFoundation mappings are not unit tested.
+- **Verified on the Android emulator (2026-10-20), against the demo server and a local Jellyfin 12.2.0:**
+  with the network cut and a seek past the buffer, a direct play (MP4) and an HLS transcode each show the
+  spinner and no error, then, after three ExoPlayer errors (the failure and our two tries, about 9 s),
+  `PLAYBACK_NETWORK` with "Try again"; with the network back, "Try again" resumes near the same position and
+  plays on. A drop of about 7 s that ends during the tries recovers with no error shown (one ExoPlayer error
+  logged); one of 1.5 s never reaches us, because ExoPlayer's own retries absorb it. A proxy that answers
+  401 to the stream request only (the token stays valid): four 401s from the player, then exactly one new
+  `PlaybackInfo`, then the second refusal ends as `PLAYBACK_FAILED` with no loop, no transcode and no exit;
+  lifting the 401 and "Try again" resumed at the same position. Not isolated: revoking the token as admin
+  and seeking ended the session within 4 s, but the seek's own progress report is rejected through the usual
+  handling, so that run says nothing about the stream's 401. A local HEVC file direct-played on the
+  emulator, whose goldfish decoder counts as hardware: this says nothing about a phone's.
 - **Bugs the tests and the emulator found**: `Json` doesn't encode defaults, so fields such as
   `Protocol` and `Type` were silently dropped (the server would have read an HLS video profile as a
   progressive audio one); the `ON_STOP` timing above; the server silently ignoring track indices
@@ -188,7 +203,12 @@ and sessions, are unbuilt, and it lists library browsing as out of scope). So th
 
 - Resume from the saved position: playback always starts at the beginning (roadmap Phase 2).
 - `Stopped` after a crash or a killed process (the pending-record recovery in the decisions above):
-  roadmap Phase 2, first item.
+  roadmap Phase 2, first item. The same record would cover a `Stopped` that can't go out offline: after a
+  lost connection the server kept showing the item as playing at its last reported position until its own
+  timeout.
+- The error panel over the video has no scrim: white text on bright footage (the snow scene in the test
+  film) is hard to read, which the design guardrail "text over artwork sits on `scrim`" rules out. It also
+  shows the Pause icon while the error is up.
 - Double-tap seek, ±10 s buttons, Cast, AirPlay, picture-in-picture.
 - Subtitles on iOS are always burned in (a transcode). Delivering them as HLS WebVTT, which AVPlayer shows
   natively, would avoid that and is the next step if it matters.
