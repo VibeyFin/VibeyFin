@@ -24,11 +24,6 @@ class AndroidPlaybackCapabilities : PlaybackCapabilitiesSource {
             },
             // Dolby and DTS audio is decoded by the ffmpeg extension in the player, so the server can leave it alone.
             audioCodecs = listOf("aac", "mp3", "opus", "flac", "vorbis", "ac3", "eac3", "dts", "truehd"),
-            // HLS from the server carries HEVC as it is when the phone decodes it, so a remux needn't re-encode it.
-            streamVideoCodecs = buildList {
-                add("h264")
-                if (hasHardwareDecoder("video/hevc")) add("hevc")
-            },
             // Media3 reads these as side-loaded text tracks. Image-based subtitles aren't listed.
             subtitleFormats = listOf("srt", "vtt", "ass", "ssa"),
         )
