@@ -20,12 +20,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -111,7 +116,7 @@ fun ItemScreen(
                 }
             }
             FloatingBackButton(onBack)
-            if (state.canPlay) OverflowMenu(state.markLabel, onTogglePlayed)
+            if (state.canPlay) OverflowMenu(state.markLabel, if (state.item?.played == true) Icons.Default.Clear else Icons.Default.Check, onTogglePlayed)
             ActionSnackbar(state.actionMessage, onRetry = onRetryAction, onDismiss = onDismissMessage)
         }
     }
@@ -144,12 +149,23 @@ private fun ItemDetails(item: MediaItem, state: ItemUiState, onPlay: (startOver:
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onBackground,
         )
-        if (facts.isNotEmpty()) {
-            Text(
-                text = facts.joinToString("  ·  "),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        if (facts.isNotEmpty() || state.watched) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
+                Text(
+                    text = facts.joinToString("  ·  "),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                // Watched is an icon, in ink: aqua never signals status.
+                if (state.watched) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = Strings.watched,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
         }
         if (state.canPlay) PlayButtons(state.playLabel, state.canStartOver, onPlay)
         if (item.genres.isNotEmpty()) {
@@ -167,20 +183,21 @@ private fun ItemDetails(item: MediaItem, state: ItemUiState, onPlay: (startOver:
 }
 
 /**
- * The one filled action on the page: aqua, 56 dp tall, reading "Play" or "Resume from 41:12". "Start over"
- * sits beside it as the plain secondary button, only when there is something to resume.
+ * The one filled action on the page: aqua, 56 dp tall, reading "Play" or "Resume · 38m left". "Start over"
+ * sits beside it as a round icon-only secondary button (a circular arrow), only when there is something
+ * to resume.
  */
 @Composable
 private fun PlayButtons(label: String, canStartOver: Boolean, onPlay: (startOver: Boolean) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3), modifier = Modifier.fillMaxWidth()) {
-        Button(onClick = { onPlay(false) }, modifier = Modifier.weight(3f).height(56.dp)) {
+        Button(onClick = { onPlay(false) }, modifier = Modifier.weight(1f).height(56.dp)) {
             Icon(painter = painterResource(R.drawable.ic_play), contentDescription = null)
             Spacer(Modifier.width(8.dp))
             Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
         if (canStartOver) {
-            FilledTonalButton(onClick = { onPlay(true) }, modifier = Modifier.weight(2f).height(56.dp)) {
-                Text(Strings.startOver, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            FilledTonalIconButton(onClick = { onPlay(true) }, modifier = Modifier.size(56.dp)) {
+                Icon(imageVector = Icons.Default.Refresh, contentDescription = Strings.startOver)
             }
         }
     }
@@ -188,7 +205,7 @@ private fun PlayButtons(label: String, canStartOver: Boolean, onPlay: (startOver
 
 /** The "⋮" chip in the top-right corner, opposite the back button, and the menu it opens: Mark as watched or unwatched. */
 @Composable
-private fun BoxScope.OverflowMenu(markLabel: String, onTogglePlayed: () -> Unit) {
+private fun BoxScope.OverflowMenu(markLabel: String, markIcon: ImageVector, onTogglePlayed: () -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box(Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(end = screenMargin() - 4.dp, top = 8.dp)) {
         Box(
@@ -208,7 +225,11 @@ private fun BoxScope.OverflowMenu(markLabel: String, onTogglePlayed: () -> Unit)
             }
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(text = { Text(markLabel) }, onClick = { open = false; onTogglePlayed() })
+            DropdownMenuItem(
+                text = { Text(markLabel) },
+                leadingIcon = { Icon(imageVector = markIcon, contentDescription = null) },
+                onClick = { open = false; onTogglePlayed() },
+            )
         }
     }
 }
