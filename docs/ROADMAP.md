@@ -117,6 +117,15 @@ _Exit: finish an episode on one device, resume on another._
   redoing the exit transition (`res/layout/player_view_texture.xml`, `PlayerScreen.kt`)_
 - [ ] Binge UX: "are you still watching?" (auto-advance itself is Phase 2)
 - [ ] Playback speed (Media3 `setPlaybackSpeed`, AVPlayer `rate`)
+- [ ] Picture-in-picture and mini player: leaving the player while something plays keeps it playing in
+  the system's PiP window (Android: `setAutoEnterEnabled` on 12+ with the Media3 `PlayerSurface`; iOS:
+  `AVPictureInPictureController` on the `AVPlayerLayer`). Entering PiP is not backgrounding: the
+  progress beacon keeps running and `Stopped` goes out only when the PiP window is closed or playback
+  ends (Phase 1 sends it on backgrounding today). iOS 26+ also shows a mini player in
+  `.tabViewBottomAccessory` while PiP or audio continues, and tapping it returns to the full player
+  (`docs/design/ios.md`); below iOS 26 it is PiP only. **Open question:** `docs/design/android.md` has
+  PiP and the `MediaSession` notification but no mini player; decide whether Android gets an in-app
+  bar above the `NavigationBar` or stops at PiP and the notification
 - [ ] HDR and format badge on the detail page and in the player, from `MediaStreams`
   (`VideoRangeType`, codec, resolution)
 
