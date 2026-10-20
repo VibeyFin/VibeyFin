@@ -83,6 +83,18 @@ object Strings {
 
     fun greeting(name: String) = "Hi, $name"
 
+    val continueWatching = "Continue watching"
+
+    /** What a screen reader says while the Continue watching row is still loading. */
+    val loadingContinueWatching = "Loading Continue watching"
+
+    /**
+     * What a screen reader says for a Continue watching card: the title, what it is (the episode, or
+     * a movie's year) and, for something in progress, how far in the user is.
+     */
+    fun continueCardLabel(title: String, detail: String?, percentWatched: Int?) =
+        listOfNotNull(title, detail, percentWatched?.let { "$it% watched" }).joinToString(", ")
+
     /** What a screen reader says for a poster: the title and, when known, the year. */
     fun cardLabel(title: String, year: Int?) = listOfNotNull(title, year?.toString()).joinToString(", ")
 

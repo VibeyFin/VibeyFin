@@ -17,5 +17,11 @@ class HomeModel {
 
     fun onRetryLibraries() = host.viewModel.onRetryLibraries()
 
+    fun onRetryContinue() = host.viewModel.onRetryContinue()
+
+    fun onRefresh() = host.viewModel.onRefresh()
+
+    fun onForeground() = host.viewModel.onForeground()
+
     fun close() = host.close()
 }
