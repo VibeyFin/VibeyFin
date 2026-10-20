@@ -1390,4 +1390,61 @@ class PlaybackViewModelTest {
 
         assertNull(vm.uiState.value.pendingSeekMs)
     }
+
+    private fun trickplayInfo(width: Int) =
+        """"$width":{"Width":$width,"Height":${width * 9 / 16},"TileWidth":10,"TileHeight":10,"ThumbnailCount":250,"Interval":10000,"Bandwidth":1}"""
+
+    /** [item] with trickplay thumbnails for each of [sources] (media source ids), as the server sends them. */
+    private fun withTrickplay(item: String, vararg sources: String) =
+        item.dropLast(1) + ""","Trickplay":{${sources.joinToString(",") { """"$it":{${trickplayInfo(320)}}""" }}}}"""
+
+    @Test
+    fun `trickplay is loaded for the played media source`() = runTest {
+        server(item = withTrickplay(itemJson("m1", "Heat", year = 1995), "ms-1", "ms-2"))
+
+        val track = assertNotNull(viewModel().uiState.first { it.trickplay != null }.trickplay)
+
+        assertEquals("ms-1", track.mediaSourceId)
+        assertEquals(320, track.width)
+        assertEquals(10_000L, track.intervalMs)
+    }
+
+    @Test
+    fun `no trickplay entry leaves it null`() = runTest {
+        server()
+        val vm = viewModel()
+
+        vm.uiState.first { it.stream != null }
+        withContext(Dispatchers.Default) { delay(100) }
+
+        assertNull(vm.uiState.value.trickplay)
+        assertNull(vm.uiState.value.message)
+    }
+
+    @Test
+    fun `trickplay for another media source is ignored`() = runTest {
+        server(item = withTrickplay(itemJson("m1", "Heat", year = 1995), "ms-2"))
+        val vm = viewModel()
+
+        vm.uiState.first { it.stream != null }
+        withContext(Dispatchers.Default) { delay(100) }
+
+        assertNull(vm.uiState.value.trickplay)
+    }
+
+    @Test
+    fun `the next episode loads its own trickplay and never shows the previous one`() = runTest {
+        val jellyfin = seriesServer(first = withTrickplay(episode("m1", 1), "ms-1"))
+        val viewModel = viewModel(countdownStep = 1.milliseconds)
+        val seen = playing(viewModel, jellyfin)
+        assertNotNull(viewModel.uiState.value.trickplay)
+
+        viewModel.onPosition(tenMinutes - 30_000)
+        viewModel.uiState.first { it.title == "Northbound" && it.stream != null }
+        withContext(Dispatchers.Default) { delay(100) }
+
+        // Asked again, for the new episode; and while it was switching nothing from the old one was left.
+        assertEquals(1, jellyfin.requestsTo("GET", "/Items").count { it.query["ids"] == "e2" })
+        assertTrue(seen.filter { it.title == "Northbound" && it.stream == null }.all { it.trickplay == null })
+    }
 }

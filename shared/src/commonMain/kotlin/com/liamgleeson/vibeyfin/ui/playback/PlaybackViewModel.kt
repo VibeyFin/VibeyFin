@@ -19,6 +19,7 @@ import com.liamgleeson.vibeyfin.domain.MediaSegment
 import com.liamgleeson.vibeyfin.domain.PlaybackTrack
 import com.liamgleeson.vibeyfin.domain.SegmentType
 import com.liamgleeson.vibeyfin.domain.SubtitleFile
+import com.liamgleeson.vibeyfin.domain.TrickplayTrack
 import com.liamgleeson.vibeyfin.domain.WatchRepository
 import com.liamgleeson.vibeyfin.domain.model.ItemKind
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
@@ -153,6 +154,8 @@ data class PlaybackUiState(
     val skipOffer: SkipOffer? = null,
     /** Where the player should seek to now (set by `onSkip`); it clears this with `onSeekHandled`. */
     val pendingSeekMs: Long? = null,
+    /** The scrub-preview thumbnails of the playing media source; null when the server made none or can't be asked. */
+    val trickplay: TrickplayTrack? = null,
 ) {
     /** Whether there is anything to choose between, so the player shows its audio and subtitles control. */
     val hasTrackChoices: Boolean get() = audioTracks.isNotEmpty() || subtitleTracks.isNotEmpty()
@@ -235,6 +238,9 @@ class PlaybackViewModel(
     /** The item's marked segments; loaded once, by the first [open]. */
     private var segments: List<MediaSegment> = emptyList()
     private var segmentsRequested = false
+
+    /** The item and media source the trickplay was asked for, so a re-opened stream of the same one doesn't ask again. */
+    private var trickplayFor: Pair<String, String>? = null
 
     /** What the current stream plays. Null while there is none. */
     private var plan: PlaybackPlan? = null
@@ -562,8 +568,12 @@ class PlaybackViewModel(
         networkRetries = 0
         reauthorized = false
         lostConnection = false
+        // Segments and trickplay belong to the item, so the next episode asks for its own.
+        segments = emptyList()
+        segmentsRequested = false
+        trickplayFor = null
         content.update {
-            it.copy(loading = true, stream = null, upNext = null, audioTracks = emptyList(), subtitleTracks = emptyList(), message = null, finished = false)
+            it.copy(loading = true, stream = null, upNext = null, skipOffer = null, trickplay = null, audioTracks = emptyList(), subtitleTracks = emptyList(), message = null, finished = false)
         }
         begin(target, honourStartOver = false)
     }
@@ -626,6 +636,19 @@ class PlaybackViewModel(
         }
     }
 
+    /** Off the critical path, like [loadSegments]: a slow or failed call only means no scrub preview. Once per item and media source. */
+    private fun loadTrickplay(mediaSourceId: String) {
+        val key = itemId to mediaSourceId
+        if (trickplayFor == key) return
+        trickplayFor = key
+        content.update { if (it.trickplay == null) it else it.copy(trickplay = null) }
+        viewModelScope.launch {
+            val track = playback.trickplay(key.first, mediaSourceId)
+            // Only if the user is still on what this was asked for.
+            if (trickplayFor == key) content.update { it.copy(trickplay = track) }
+        }
+    }
+
     /** The offer for [lastPositionMs]: the skippable segment playing now, the one that ends last if several. */
     private fun refreshSkipOffer() {
         val playing = segments
@@ -652,6 +675,7 @@ class PlaybackViewModel(
                     subtitleNow = ready.subtitleStreamIndex
                     reporter.begin(ready)
                     liveDiagnostics = null
+                    loadTrickplay(ready.mediaSourceId)
                     content.update {
                         it.copy(
                             loading = false,
