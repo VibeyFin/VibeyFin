@@ -84,7 +84,7 @@ _Exit: play a movie and an episode, direct and transcoded, with position reporte
   record (item, play session, last position) in Room, keyed by server and profile, and send `Stopped` for
   it on the next start. First item of the Phase 2 plan, so it lands before the MVP gate — _built (plan 06,
   Phase A): the record is dropped after 24 h, and `Stopped` is always sent as the profile that started it_
-- [ ] Continue Watching, one row that also holds Next Up: `GET /Users/{id}/Items/Resume` (in progress,
+- [x] Continue Watching, one row that also holds Next Up: `GET /UserItems/Resume` (in progress,
   newest first) followed by `GET /Shows/NextUp` (one episode per series). A series that already has an
   item in progress appears once, as that item. In-progress cards carry the progress bar and Next Up cards
   show their episode ("S2 E5"); tapping either plays. If one request fails the row shows the other, and if

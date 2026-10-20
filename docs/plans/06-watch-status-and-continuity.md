@@ -3,7 +3,7 @@
 Goal: remember what the user watched. Resume where they stopped (on any device), show Continue watching on Home,
 let them mark things watched, and move on to the next episode by itself. Logic is shared; every screen is native.
 
-**Status (2026-10-20):** approved. Phase A is done and awaiting review; B to E are not started. Each phase stops for review.
+**Status (2026-10-20):** approved. Phases A and B are done; C to E are not started. Each phase stops for review.
 
 Paths: `C/` = `shared/src/commonMain/kotlin/com/liamgleeson/vibeyfin`, `T/` = `shared/src/commonTest/...` (same package),
 `A/` = `androidApp/src/main/kotlin/com/liamgleeson/vibeyfin/app`, `I/` = `iosApp/iosApp`, `X/` = `shared/src/iosMain/.../ios`.
@@ -123,7 +123,7 @@ First step after approval: cut `feature/watch-status` from `develop` (not `main`
   Phase B finds the new routes missing there, fall back to the old ones.
 - The test server (`jf-test` in podman, media in the session scratchpad) is stopped, not removed, for the next phases.
 
-## Phase B: Continue watching row
+## Phase B: Continue watching row — done
 
 - API (`C/data/api/LibraryApi.kt` pattern, `ItemDtos.kt`): `UserItemDataDto` (position, played) and `SeriesId` on `BaseItemDto`;
   `resumeItems` (`mediaTypes=Video`, `limit=20`) and `nextUp` as `get(..., retry = true)`.
@@ -145,6 +145,26 @@ First step after approval: cut `feature/watch-status` from `develop` (not `main`
   and total failure, empty hides, reload on `WatchChanges`, 60 s foreground throttle with `FakeClock`).
 - Done when: tests and `assembleDebug` pass; on the emulator the row shows an in-progress item with its bar, one Next Up card per series,
   and a second client (curl, own `DeviceId`) changing a position shows up after pull-to-refresh. iOS compile-checked only.
+
+**Built (Phase B, 2026-10-20).**
+- Shared: `UserItemDataDto` and `SeriesId` on `BaseItemDto`; `resumeItems` and `nextUp` (`data/api/WatchApi.kt`, retried reads);
+  `MediaItem` gained `seriesId`, `runtimeMs`, `resumePositionMs`, `played`, `landscapeUrl` and `progress`; `WatchRepository.continueWatching()`
+  with `mergeContinueWatching`; `HomeViewModel` now has `continueRow` (`ContinueRow`, `ContinueCard` with an `accessibilityLabel`),
+  `refreshing`, `onRefresh`, `onForeground` (60 s throttle, `Clock`), `onRetryContinue`, and reloads on `WatchChanges`. A reload that fails
+  leaves the cards as they were; only the first load or "Try again" shows a message.
+- Android: `ContinueCard` and a static skeleton, Home as one `LazyVerticalGrid` (row as a full-span item that bleeds to the screen edge),
+  `PullToRefreshBox` with a neutral indicator, `ON_RESUME` hook, tap goes straight to `Player(id)`.
+- iOS: `ContinueCard.swift`, `HomeView` restructured (row above the libraries in one `ScrollView`, `.refreshable`, `scenePhase` hook,
+  `fullScreenCover(item:)` player), facade and observable gained the three calls, `Size.thumbWidth` added to `Theme.swift` and to the token
+  drift check. **Parsed with `swiftc -parse` only; not type-checked or run.**
+- Tests: shared host tests 452 pass (new: `WatchApiTest`, `WatchRepositoryTest`, mapping tests, 12 Home tests), the timing-sensitive ones
+  rerun five times green; iOS klib compile, `assembleDebug`, Android unit tests and both Swift scripts pass.
+- **Verified on the emulator against local Jellyfin 12.2.0** (Movies, plus two generated shows): the row listed Beta E01 (33%), Long Test
+  (12%), then Alpha E02 as Next Up with no bar and "S1 E2"; Alpha E01 (watched) and Beta E02 (Beta has an item in progress) were left out. A
+  second client (`DeviceId` `second-device`) starting Alpha E02 at 2:10 showed up first at 36% after a pull to refresh. Tapping the card
+  played at once, and going back refreshed the row by itself (5%, because playback still starts at 0 until Phase C, so that session
+  overwrote the 2:10).
+- Not done: no 10.10 server was available for the new routes; "Try again" and the offline row were covered by tests, not on the emulator.
 
 ## Phase C: Resume on open and Start over
 
