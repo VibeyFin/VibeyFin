@@ -34,7 +34,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 - Controls auto-hide after 3s without input; a tap toggles them. Double-tap the left / right third seeks ∓10s with a visible "10s" label.
 - Scrubbing shows the trickplay thumbnail above the thumb with the timestamp; no trickplay data → timestamp only.
 - Skip buttons ("Skip intro", "Skip recap") appear at segment start and stay for the whole segment, also when controls are hidden. **Never** auto-skip unless the user turned it on.
-- Up next: at the Outro segment (or the last 30s without one) show the next-episode card with a 10s countdown and "Watch credits". After 3 auto-played episodes without input, pause and ask "Still watching?".
+- Up next: at the Outro segment (or the last 30s without one) show the next-episode card with a 10s countdown, "Play now" and "Watch credits". At zero the next episode starts (about 20s early, the finished one counted as watched); "Watch credits" dismisses the card for that episode, which plays out and closes with no second countdown. A video under three minutes only counts down once it has ended. After 3 auto-played episodes without input, pause and ask "Still watching?".
 - Remember audio and subtitle language per series; fall back to the user's Jellyfin preferences.
 - **Must** report progress to the server on start, every 10s, on pause, seek and stop — and on app backgrounding.
 - **Never** start playback with sound from a non-player screen.

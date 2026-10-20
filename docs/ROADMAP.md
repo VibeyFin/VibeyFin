@@ -94,7 +94,7 @@ _Exit: play a movie and an episode, direct and transcoded, with position reporte
   the source of truth, so there are no per-device positions. Resume is the aqua primary button reading
   "Resume · 38m left", with a round icon-only "start over" arrow beside it and a 5 s rewind when resuming. A local position is
   only the offline fallback (Phase 10)_
-- [ ] Auto-advance with countdown into Next Up — _owned here: countdown, cancel, on by default. Phase 3
+- [x] Auto-advance with countdown into Next Up — _owned here: countdown, cancel, on by default. Phase 3
   keeps only "are you still watching?"; Phase 7 makes it a toggle_
 - [x] Mark played/unplayed: `POST` / `DELETE /UserPlayedItems/{id}`
 - [x] Optimistic user-data writes (played here; favourites and thumbs in Phase 4): the UI changes at once
@@ -135,6 +135,12 @@ _Exit: skip-intro and scrub previews working end to end._
 ### Phase 4 — Browse & discovery
 _Starts after the state audit (see Cross-cutting)._
 
+- [ ] Main navigation bar, the bar only: Home, Library and Downloads, as drawn in the design's detail screens
+  and `BottomNav` (iOS `TabView`, the floating Liquid Glass bar on iOS 26+; Android M3 `NavigationBar`; at
+  tablet widths the same destinations sit at the top, `docs/design/screens.md` "Chrome"). Each tab keeps its
+  own back stack and Settings stays under the profile avatar. Home is the Home that exists today. Library and
+  Downloads open an empty page that says "Not available yet" (text in `Strings`) until their features land.
+  The Search tab joins with unified search below. Nothing else is built in this item
 - [ ] Home rows: Latest, genres, My Media, plus Continue Watching (which holds Next Up)
 - [ ] Detail page: metadata, cast, `/Items/{id}/Similar`. The page opens on a full-width cinematic
   backdrop hero (`Backdrop` image) with a dark gradient overlay (the `scrim` token), and the movie

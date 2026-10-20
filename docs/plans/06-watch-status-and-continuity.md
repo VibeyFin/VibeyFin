@@ -3,7 +3,7 @@
 Goal: remember what the user watched. Resume where they stopped (on any device), show Continue watching on Home,
 let them mark things watched, and move on to the next episode by itself. Logic is shared; every screen is native.
 
-**Status (2026-10-20):** approved. Phases A to D are done; E is not started. Each phase stops for review.
+**Status (2026-10-20):** approved. All five phases (A to E) are done; this is for review. Each phase stops for review.
 
 Paths: `C/` = `shared/src/commonMain/kotlin/com/liamgleeson/vibeyfin`, `T/` = `shared/src/commonTest/...` (same package),
 `A/` = `androidApp/src/main/kotlin/com/liamgleeson/vibeyfin/app`, `I/` = `iosApp/iosApp`, `X/` = `shared/src/iosMain/.../ios`.
@@ -230,7 +230,7 @@ First step after approval: cut `feature/watch-status` from `develop` (not `main`
 - Rig note: after restarting the podman container the app's pooled connection kept getting 503s until the app was restarted. It was not seen
   against a real server; if it ever is, look at the HTTP client's connection reuse.
 
-## Phase E: Auto-advance
+## Phase E: Auto-advance — done
 
 - API/repo: `episodesFrom(seriesId, startItemId)`, `WatchRepository.nextEpisode(item)` (null for a movie, no series, or the last episode).
 - `PlaybackViewModel`: after open, prefetch the next episode in the background. `PlaybackUiState.upNext` (id, label, title, image,
@@ -250,6 +250,25 @@ First step after approval: cut `feature/watch-status` from `develop` (not `main`
   failed next lookup all just finish; background and close cancel.
 - Done when: tests pass; on the emulator two episodes of a local series advance on their own, the server shows the first as watched, and
   Cancel and Back mid-countdown behave.
+
+**Built (Phase E, 2026-10-20).**
+- Shared: `episodesFrom` (`GET /Shows/{seriesId}/Episodes?startItemId=&limit=2`) and `WatchRepository.nextEpisode` (null for a movie, no show,
+  the last episode, or when the server doesn't start at the episode asked for). `PlaybackViewModel` took `watch`, `autoAdvance` (default true)
+  and `countdownStep`; it looks the next episode up in the background, shows `PlaybackUiState.upNext` (`UpNext`: id, "S1 E2", title, picture,
+  seconds left) from 30 s before the end for videos of 3 min or more (a shorter one counts down after it ends), counts 10 s, then plays the next
+  episode in place: `reporter.stop(runtime)`, per-item state reset, `begin(next)`. `onPlayNow`, `onWatchCredits` (dismiss for this episode; if the
+  video had ended, the screen closes), a seek back out of the window or a background, close, retry or give-up takes the card away. Strings:
+  "Up next", "Play now", "Watch credits", "Starts in N".
+- Android: `UpNextCard` (picture, "S1 E2 · title", countdown, aqua "Play now", "Watch credits") over the video, gated on `!leaving`, and the track
+  sheet closes on a new stream. iOS (parsed only): `UpNextCard.swift` in the player's `ZStack`, facade and observable `onPlayNow`/`onWatchCredits`.
+- Tests: 500 shared tests pass (new: 13 in `PlaybackViewModelTest` for the window, the zero, play now, watch credits, short videos, a video that ends
+  during the count, movies, the last episode, auto-advance off, a failed lookup, background, close, seeking out; 5 in `WatchRepositoryTest`; the
+  endpoint); the playback tests were rerun five times green.
+- **Verified on the emulator** (local Jellyfin, two 6 min shows): jumping Alpha E01 near its end, the card appeared ("Up next · S1 E3 · …",
+  "Starts in 8", aqua "Play now", "Watch credits"); left alone, E01 gave way to E02 about 20 s before its end and E02 to E03 the same way,
+  E01 and E02 each recorded as watched (`Played: true`) by the `Stopped` at their end. On Beta, "Watch credits" removed the card, E01
+  played to the end, the server recorded it watched, the screen closed and E02 was not started.
+- Not run: "Play now" on the emulator (covered by a test), the iOS card, and a swap on a transcode.
 
 ## Left out
 
