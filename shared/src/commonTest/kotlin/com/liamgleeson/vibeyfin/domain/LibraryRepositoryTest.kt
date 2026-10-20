@@ -243,4 +243,82 @@ class LibraryRepositoryTest {
         app.connection.state.first { it is ConnectionState.Expired }
         assertNull(app.accounts.sessionToken("srv-1", "u1"))
     }
+
+    @Test
+    fun whatTheUserHasWatchedComesWithTheItem() = runTest {
+        val server = app.signedIn()
+        server.on(
+            "GET", "/Items",
+            Reply.json(
+                itemsJson(
+                    itemJson(
+                        "e1", "Pilot", type = "Episode", seriesName = "Show", seriesId = "s1", seasonNumber = 2, episodeNumber = 5,
+                        runtimeTicks = 40 * TICKS_PER_MINUTE, positionTicks = 10 * TICKS_PER_MINUTE, thumbTag = "t", primaryTag = "p",
+                    ),
+                ),
+            ),
+        )
+
+        val episode = app.library.item("e1").success()
+
+        assertEquals("s1", episode.seriesId)
+        assertEquals(40 * 60_000L, episode.runtimeMs)
+        assertEquals(10 * 60_000L, episode.resumePositionMs)
+        assertFalse(episode.played)
+        assertEquals(0.25f, episode.progress)
+    }
+
+    @Test
+    fun aFinishedItemHasNoPositionToResumeFromWhateverTheServerStored() = runTest {
+        val server = app.signedIn()
+        server.on(
+            "GET", "/Items",
+            Reply.json(itemsJson(itemJson("m1", runtimeTicks = 90 * TICKS_PER_MINUTE, positionTicks = 80 * TICKS_PER_MINUTE, played = true))),
+        )
+
+        val movie = app.library.item("m1").success()
+
+        assertTrue(movie.played)
+        assertEquals(0L, movie.resumePositionMs)
+        assertNull(movie.progress)
+    }
+
+    @Test
+    fun anItemTheUserHasNotStartedHasNoProgress() = runTest {
+        app.signedIn().on("GET", "/Items", Reply.json(itemsJson(itemJson("m1", runtimeTicks = 90 * TICKS_PER_MINUTE))))
+
+        val movie = app.library.item("m1").success()
+
+        assertFalse(movie.played)
+        assertEquals(0L, movie.resumePositionMs)
+        assertNull(movie.progress)
+    }
+
+    @Test
+    fun theLandscapePictureIsTheThumbElseTheBackdropElseThePrimaryImage() = runTest {
+        val server = app.signedIn()
+        server.on(
+            "GET", "/Items",
+            Reply.json(
+                itemsJson(
+                    itemJson("a", thumbTag = "t", backdropTag = "b", primaryTag = "p"),
+                    itemJson("b", backdropTag = "b", primaryTag = "p"),
+                    itemJson("c", primaryTag = "p"),
+                    itemJson("d"),
+                ),
+            ),
+        )
+
+        val urls = app.library.children("folder").success().items.map { it.landscapeUrl }
+
+        assertEquals(
+            listOf(
+                "http://nas:8096/Items/a/Images/Thumb?tag=t&maxWidth=640",
+                "http://nas:8096/Items/b/Images/Backdrop?tag=b&maxWidth=640",
+                "http://nas:8096/Items/c/Images/Primary?tag=p&maxWidth=640",
+                null,
+            ),
+            urls,
+        )
+    }
 }

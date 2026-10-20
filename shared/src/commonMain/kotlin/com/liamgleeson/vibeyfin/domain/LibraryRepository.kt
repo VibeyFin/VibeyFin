@@ -54,6 +54,7 @@ class LibraryRepository(private val connection: ConnectionManager) {
 
 private const val POSTER_WIDTH = 400
 private const val BACKDROP_WIDTH = 1280
+private const val LANDSCAPE_WIDTH = 640
 private const val TALL = 2f / 3f
 private const val WIDE = 16f / 9f
 private const val TICKS_PER_MINUTE = 600_000_000L
@@ -70,6 +71,7 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
     }
     val posterTag = imageTags["Primary"]
     val backdropTag = backdropImageTags.firstOrNull()
+    val thumbTag = imageTags["Thumb"]
     return MediaItem(
         id = id,
         title = name.orEmpty(),
@@ -88,5 +90,13 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
             ?: if (kind == ItemKind.Movie || kind == ItemKind.Series || kind == ItemKind.Season) TALL else WIDE,
         posterUrl = posterTag?.let { itemImageUrl(baseUrl, id, "Primary", it, POSTER_WIDTH) },
         backdropUrl = backdropTag?.let { itemImageUrl(baseUrl, id, "Backdrop", it, BACKDROP_WIDTH) },
+        seriesId = seriesId,
+        runtimeMs = runTimeTicks?.takeIf { it > 0 }?.let { it / TICKS_PER_MILLISECOND },
+        // A finished item has no position to resume from, whatever the server last stored.
+        resumePositionMs = userData?.takeIf { !it.played }?.let { it.playbackPositionTicks / TICKS_PER_MILLISECOND } ?: 0,
+        played = userData?.played == true,
+        landscapeUrl = thumbTag?.let { itemImageUrl(baseUrl, id, "Thumb", it, LANDSCAPE_WIDTH) }
+            ?: backdropTag?.let { itemImageUrl(baseUrl, id, "Backdrop", it, LANDSCAPE_WIDTH) }
+            ?: posterTag?.let { itemImageUrl(baseUrl, id, "Primary", it, LANDSCAPE_WIDTH) },
     )
 }
