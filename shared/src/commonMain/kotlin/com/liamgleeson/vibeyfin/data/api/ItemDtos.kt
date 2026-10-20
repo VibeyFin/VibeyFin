@@ -28,6 +28,10 @@ data class BaseItemDto(
     /** For an episode or a season: the show it belongs to. */
     @SerialName("SeriesId") val seriesId: String? = null,
     @SerialName("UserData") val userData: UserItemDataDto? = null,
+    /** The tracks of the item's file; only sent when asked for (see `DETAIL_FIELDS`). */
+    @SerialName("MediaStreams") val mediaStreams: List<MediaStreamDto> = emptyList(),
+    /** Trickplay thumbnails by media source id, then by width in pixels; only sent when asked for. */
+    @SerialName("Trickplay") val trickplay: Map<String, Map<String, TrickplayInfoDto>> = emptyMap(),
 )
 
 /** `UserItemDataDto`: what this user has done with an item. Only the fields we read. */
@@ -36,6 +40,19 @@ data class UserItemDataDto(
     /** Where the user stopped, in 100 ns ticks; 0 when they haven't started it or have finished it. */
     @SerialName("PlaybackPositionTicks") val playbackPositionTicks: Long = 0,
     @SerialName("Played") val played: Boolean = false,
+)
+
+
+/** One set of trickplay thumbnails: [thumbnailCount] pictures of [width] by [height], packed into tiles of [tileWidth] by [tileHeight]. */
+@Serializable
+data class TrickplayInfoDto(
+    @SerialName("Width") val width: Int,
+    @SerialName("Height") val height: Int,
+    @SerialName("TileWidth") val tileWidth: Int,
+    @SerialName("TileHeight") val tileHeight: Int,
+    @SerialName("ThumbnailCount") val thumbnailCount: Int,
+    /** Milliseconds between two thumbnails. */
+    @SerialName("Interval") val interval: Int,
 )
 
 /** `BaseItemDtoQueryResult`: one page of items and how many there are in all. */

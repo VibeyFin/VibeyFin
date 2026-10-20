@@ -13,5 +13,9 @@ class SettingsModel {
 
     fun onAllowTranscodingChanged(value: Boolean) = host.viewModel.onAllowTranscodingChanged(value)
 
+    fun onShowPlaybackStatsChanged(value: Boolean) = host.viewModel.onShowPlaybackStatsChanged(value)
+
+    fun onBingeThresholdChanged(value: Int) = host.viewModel.onBingeThresholdChanged(value)
+
     fun close() = host.close()
 }

@@ -105,6 +105,7 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
         posterBlurHash = posterTag?.let { blurHash("Primary", it) },
         backdropBlurHash = backdropTag?.let { blurHash("Backdrop", it) },
         landscapeBlurHash = landscape?.let { (type, tag) -> blurHash(type, tag) },
+        videoFormat = mediaStreams.firstOrNull { it.type == "Video" }?.toVideoFormat(),
     )
 }
 

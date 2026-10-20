@@ -81,6 +81,12 @@ class AccountSettingsEntity(
     /** Whether the server may re-encode video for this profile. Off: it may still remux and convert audio. */
     @ColumnInfo(defaultValue = "0")
     val allowTranscoding: Boolean = false,
+    /** Whether the player shows its stats overlay for this profile. */
+    @ColumnInfo(defaultValue = "0")
+    val showPlaybackStats: Boolean = false,
+    /** Episodes in a row before the player asks "Still watching?". 0 is off. */
+    @ColumnInfo(defaultValue = "3")
+    val bingeThreshold: Int = 3,
 )
 
 /** [PendingReportEntity.kind] of a play session whose `Stopped` the server may not have heard yet. */

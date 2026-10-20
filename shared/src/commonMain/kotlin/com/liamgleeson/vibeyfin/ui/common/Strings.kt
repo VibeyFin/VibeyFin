@@ -174,4 +174,12 @@ object Strings {
     val allowTranscodingHelp =
         "Let the server re-encode video your device can't play. This is hard on a small server. " +
             "When off, the server still repackages files and converts audio. Applies to this profile."
+    val playbackStatsTitle = "Show playback stats"
+    val playbackStatsHelp =
+        "Show codec, bitrate and how the server is delivering the video in the player. Applies to this profile."
+    val stillWatchingTitle = "Ask if you're still watching"
+    val stillWatchingHelp =
+        "Pause and ask after several episodes in a row so the next one doesn't play to an empty room. Applies to this profile."
+    val stillWatchingOff = "Off"
+    fun stillWatchingAfter(n: Int) = "After $n episodes"
 }

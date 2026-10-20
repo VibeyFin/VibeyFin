@@ -17,9 +17,19 @@ fun mediaSourceJson(
     /** What the server says is selected: the user's choice if the request named this source, else its own pick. */
     defaultAudio: Int? = null,
     defaultSubtitle: Int? = null,
+    /** The video stream's picture: size and the server's `VideoRangeType` (`SDR`, `HDR10`, `DOVIWithHDR10`, `HLG`, ...); null leaves it out. */
+    videoWidth: Int? = null,
+    videoHeight: Int? = null,
+    videoRangeType: String? = null,
 ): String {
     fun string(value: String?) = value?.let { "\"$it\"" } ?: "null"
-    val allStreams = listOf("""{"Index":0,"Type":"Video","Codec":"h264"}""") + streams
+    val video = listOfNotNull(
+        """"Index":0,"Type":"Video","Codec":"h264"""",
+        videoWidth?.let { """"Width":$it""" },
+        videoHeight?.let { """"Height":$it""" },
+        videoRangeType?.let { """"VideoRangeType":"$it"""" },
+    ).joinToString(",", "{", "}")
+    val allStreams = listOf(video) + streams
     return """{"Id":"$id","Container":${string(container)},"ETag":${string(etag)},"RunTimeTicks":${runtimeTicks ?: "null"},""" +
         """"SupportsDirectPlay":$directPlay,"SupportsDirectStream":$directStream,"SupportsTranscoding":${transcodingUrl != null},""" +
         """"TranscodingUrl":${string(transcodingUrl)},"TranscodingSubProtocol":${if (transcodingUrl != null) "\"hls\"" else "null"},""" +

@@ -87,4 +87,57 @@ class SettingsViewModelTest {
         assertTrue(viewModel.uiState.first { it.allowTranscoding }.allowTranscoding)
         assertTrue(app.profileSettings.transcodingAllowed())
     }
+
+    @Test
+    fun `defaults are stats off and three in a row`() = runTest {
+        app.signedIn()
+        val state = viewModel().uiState.first { it.hasProfile }
+
+        assertFalse(state.showPlaybackStats)
+        assertEquals(3, state.bingeThreshold)
+    }
+
+    @Test
+    fun `changing the threshold is stored per profile`() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Users/Me", com.liamgleeson.vibeyfin.testing.Reply.json("""{"Id":"u2","Name":"Sam"}"""))
+        app.accounts.saveSession("srv-1", "u2", "Sam", null, "token-2")
+        val viewModel = viewModel()
+
+        app.connection.activate("srv-1", "u1")
+        viewModel.uiState.first { it.hasProfile }
+        viewModel.onBingeThresholdChanged(5)
+        viewModel.uiState.first { it.bingeThreshold == 5 }
+
+        app.connection.activate("srv-1", "u2")
+        assertEquals(3, app.profileSettings.bingeThreshold.first())
+        viewModel.onBingeThresholdChanged(0)
+        viewModel.uiState.first { it.bingeThreshold == 0 }
+
+        app.connection.activate("srv-1", "u1")
+        assertEquals(5, app.profileSettings.bingeThreshold.first())
+    }
+
+    @Test
+    fun `a threshold outside 0 or 2 to 5 is ignored`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hasProfile }
+
+        for (invalid in listOf(1, 6, -1, 100)) {
+            viewModel.onBingeThresholdChanged(invalid)
+            assertEquals(3, app.profileSettings.bingeThreshold.first())
+        }
+    }
+
+    @Test
+    fun theStatsToggleIsSavedForTheProfile() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hasProfile }
+
+        viewModel.onShowPlaybackStatsChanged(true)
+
+        assertTrue(viewModel.uiState.first { it.showPlaybackStats }.showPlaybackStats)
+    }
 }

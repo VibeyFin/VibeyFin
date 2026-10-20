@@ -7,6 +7,8 @@ import com.liamgleeson.vibeyfin.data.api.MediaSourceDto
 import com.liamgleeson.vibeyfin.data.api.MediaStreamDto
 import com.liamgleeson.vibeyfin.data.api.PlaybackInfoRequestDto
 import com.liamgleeson.vibeyfin.data.api.authorizationHeader
+import com.liamgleeson.vibeyfin.data.api.itemsById
+import com.liamgleeson.vibeyfin.data.api.mediaSegments
 import com.liamgleeson.vibeyfin.data.api.playbackInfo
 import io.ktor.http.HttpHeaders
 import io.ktor.http.URLBuilder
@@ -96,8 +98,35 @@ class PlaybackRepository(
                 subtitleBurnedIn = tracks.subtitleBurnedIn,
                 audioStreamIndex = tracks.audio.firstOrNull { it.selected }?.index,
                 subtitleStreamIndex = tracks.subtitles.firstOrNull { it.selected }?.index,
+                videoFormat = source.mediaStreams.firstOrNull { it.type == "Video" }?.toVideoFormat(),
             ),
         )
+    }
+
+    /**
+     * The skippable parts of an item (intro, credits, recap) the server has marked. Empty when there
+     * are none, and on any failure: a server without the endpoint (before 10.10) answers 404, and a
+     * missing skip button isn't worth an error.
+     */
+    suspend fun segments(itemId: String): List<MediaSegment> {
+        val connected = connection.state.value as? ConnectionState.Connected ?: return emptyList()
+        return when (val result = connected.api.mediaSegments(itemId)) {
+            is ApiResult.Success -> result.value.items.map { it.toMediaSegment() }
+            is ApiResult.Failure -> emptyList()
+        }
+    }
+
+    /**
+     * The trickplay thumbnails of media source [mediaSourceId], in the width closest to
+     * [TRICKPLAY_TARGET_WIDTH]; null when the server has made none for it, or can't be asked.
+     */
+    suspend fun trickplay(itemId: String, mediaSourceId: String): TrickplayTrack? {
+        val connected = connection.state.value as? ConnectionState.Connected ?: return null
+        val item = when (val result = connected.api.itemsById(itemId, connected.account.userId)) {
+            is ApiResult.Success -> result.value.items.firstOrNull() ?: return null
+            is ApiResult.Failure -> return null
+        }
+        return item.trickplay[mediaSourceId]?.values?.toTrickplayTrack(mediaSourceId)
     }
 
     companion object {

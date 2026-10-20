@@ -42,4 +42,9 @@ class StringsTest {
         // Past the end it stops at zero rather than counting up.
         assertEquals("\u22120:00", Strings.timeLeft(positionMs = 130_000, durationMs = 120_000))
     }
+
+    @Test
+    fun stillWatchingAfterNamesTheEpisodeCount() {
+        assertEquals("After 4 episodes", Strings.stillWatchingAfter(4))
+    }
 }

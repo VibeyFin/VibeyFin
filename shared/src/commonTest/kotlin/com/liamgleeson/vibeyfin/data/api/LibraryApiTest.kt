@@ -69,7 +69,7 @@ class LibraryApiTest {
         val query = jellyfin.requestsTo("GET", "/Items").single().query
         assertEquals("m1", query["ids"])
         assertEquals("u1", query["userId"])
-        assertEquals("Overview,Genres", query["fields"])
+        assertEquals("Overview,Genres,MediaStreams,Trickplay", query["fields"])
     }
 
     @Test

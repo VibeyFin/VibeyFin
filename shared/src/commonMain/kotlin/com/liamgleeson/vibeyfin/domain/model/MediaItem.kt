@@ -1,5 +1,7 @@
 package com.liamgleeson.vibeyfin.domain.model
 
+import com.liamgleeson.vibeyfin.domain.VideoFormat
+
 enum class ItemKind {
     /** A library: Movies, Shows, Music. */
     Library,
@@ -53,6 +55,8 @@ data class MediaItem(
     val backdropBlurHash: String? = null,
     /** The BlurHash of [landscapeUrl]'s picture, whichever image type that turned out to be. */
     val landscapeBlurHash: String? = null,
+    /** The file's video picture; null when the server wasn't asked for streams or the item has no video. */
+    val videoFormat: VideoFormat? = null,
 ) {
     /** How far in the user is, from 0 to 1; null when they haven't started or the length isn't known. */
     val progress: Float?

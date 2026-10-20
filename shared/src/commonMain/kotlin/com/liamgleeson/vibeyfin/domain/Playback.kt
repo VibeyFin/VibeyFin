@@ -56,6 +56,8 @@ data class PlaybackPlan(
     /** The audio and subtitle tracks this stream plays, for the reports; null for none. */
     val audioStreamIndex: Int? = null,
     val subtitleStreamIndex: Int? = null,
+    /** The picture of the file, for the player's format badges; null when the server doesn't describe a video stream. */
+    val videoFormat: VideoFormat? = null,
 )
 
 /** The outcome of asking the server how to play an item. */
