@@ -15,14 +15,19 @@ import kotlinx.coroutines.IO
         ServerAddressEntity::class,
         AccountEntity::class,
         AccountSettingsEntity::class,
+        PendingReportEntity::class,
     ],
-    version = 2,
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    version = 3,
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2),
+        AutoMigration(from = 2, to = 3),
+    ],
 )
 @ConstructedBy(VibeyFinDatabaseConstructor::class)
 abstract class VibeyFinDatabase : RoomDatabase() {
     abstract fun serverDao(): ServerDao
     abstract fun accountDao(): AccountDao
+    abstract fun pendingReportDao(): PendingReportDao
 }
 
 // Room generates the actual implementations for each target.
