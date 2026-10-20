@@ -67,6 +67,10 @@ import kotlinx.coroutines.isActive
 import kotlin.concurrent.thread
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.tween
+import com.liamgleeson.vibeyfin.ui.playback.UpNext
 
 /** How long the controls stay up after the last touch while the video plays. */
 private const val CONTROLS_HIDE_MS = 3_000L
@@ -297,16 +301,19 @@ fun PlayerRoute(
                 onDismiss = { showTracks = false },
             )
         }
-        // The next episode, in the last seconds of this one. Part of the same Box as the video so it travels with
-        // it when the screen leaves, and gated on `leaving` like the controls.
-        state.upNext?.let { upNext ->
-            if (!leaving && state.message == null) {
-                UpNextCard(
-                    upNext = upNext,
-                    onPlayNow = viewModel::onPlayNow,
-                    onWatchCredits = viewModel::onWatchCredits,
-                    modifier = Modifier.align(Alignment.BottomEnd).safeDrawingPadding().padding(end = screenMargin(), bottom = 72.dp),
-                )
+        // The next episode, in the last seconds of this one. It grows in and fades like a screen opening, and goes the
+        // same way; it keeps the last card while it fades out, because the state is already empty by then. Part of the
+        // same Box as the video so it travels with it when the screen leaves, and gated on `leaving` like the controls.
+        var lastUpNext by remember { mutableStateOf<UpNext?>(null) }
+        state.upNext?.let { lastUpNext = it }
+        AnimatedVisibility(
+            visible = state.upNext != null && !leaving && state.message == null,
+            enter = scaleIn(tween(UP_NEXT_MS), initialScale = UP_NEXT_START_SCALE) + fadeIn(tween(UP_NEXT_MS)),
+            exit = scaleOut(tween(UP_NEXT_EXIT_MS), targetScale = UP_NEXT_START_SCALE) + fadeOut(tween(UP_NEXT_EXIT_MS)),
+            modifier = Modifier.align(Alignment.BottomEnd).safeDrawingPadding().padding(end = screenMargin(), bottom = 72.dp),
+        ) {
+            lastUpNext?.let { upNext ->
+                UpNextCard(upNext = upNext, onPlayNow = viewModel::onPlayNow, onWatchCredits = viewModel::onWatchCredits)
             }
         }
         state.message?.let { message ->
@@ -318,6 +325,11 @@ fun PlayerRoute(
 }
 
 private const val CONNECT_TIMEOUT_MS = 15_000
+
+/** The same grow-in as a screen opening (`VibeyFinNavHost`), a little quicker for a card. */
+private const val UP_NEXT_MS = 260
+private const val UP_NEXT_EXIT_MS = 180
+private const val UP_NEXT_START_SCALE = 0.92f
 
 /**
  * The phone's own decoders come first. The ffmpeg decoder (a Jellyfin build of Media3's extension) is

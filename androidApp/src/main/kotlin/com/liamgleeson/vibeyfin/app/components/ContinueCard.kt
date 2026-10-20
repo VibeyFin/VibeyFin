@@ -57,9 +57,12 @@ fun ContinueCard(card: ContinueCard, onClick: () -> Unit, onLongClick: () -> Uni
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick)
                 .semantics(mergeDescendants = true) { contentDescription = card.accessibilityLabel },
         ) {
-            Artwork(url = card.imageUrl, title = card.title, aspectRatio = CARD_ASPECT, modifier = Modifier.fillMaxWidth())
-            PlayDisc(Modifier.align(Alignment.Center))
-            card.progress?.let { ProgressBar(it, Modifier.align(Alignment.BottomStart)) }
+            // Rounded again inside the outer clip: a pressed card shrinks, and its corners shrink with it.
+            Box(Modifier.clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
+                Artwork(url = card.imageUrl, title = card.title, aspectRatio = CARD_ASPECT, modifier = Modifier.fillMaxWidth())
+                PlayDisc(Modifier.align(Alignment.Center))
+                card.progress?.let { ProgressBar(it, Modifier.align(Alignment.BottomStart)) }
+            }
         }
         Row(verticalAlignment = Alignment.Top) {
             // The words play too; the picture already says so to a screen reader, so they stay out of its way.

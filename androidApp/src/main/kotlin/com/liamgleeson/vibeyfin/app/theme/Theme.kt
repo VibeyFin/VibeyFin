@@ -1,8 +1,10 @@
 package com.liamgleeson.vibeyfin.app.theme
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 
 // VibeyFin is dark-only and never uses dynamic colour. Every role is set explicitly: Material fills
@@ -54,6 +56,8 @@ fun VibeyFinTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = VibeyFinColorScheme,
         typography = VibeyFinTypography,
-        content = content,
-    )
+    ) {
+        // Inside MaterialTheme, which sets its own ripple: this one keeps the ripple and adds the press scale.
+        CompositionLocalProvider(LocalIndication provides PressScaleIndication, content = content)
+    }
 }
