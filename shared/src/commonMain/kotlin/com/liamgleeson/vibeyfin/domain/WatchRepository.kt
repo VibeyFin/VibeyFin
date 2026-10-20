@@ -4,9 +4,12 @@ import com.liamgleeson.vibeyfin.data.api.ApiError
 import com.liamgleeson.vibeyfin.data.api.ApiResult
 import com.liamgleeson.vibeyfin.data.api.ItemsResultDto
 import com.liamgleeson.vibeyfin.data.api.JellyfinApi
+import com.liamgleeson.vibeyfin.data.api.episodesFrom
 import com.liamgleeson.vibeyfin.data.api.nextUp
 import com.liamgleeson.vibeyfin.data.api.resumeItems
 import com.liamgleeson.vibeyfin.data.api.setPlayed
+import com.liamgleeson.vibeyfin.data.api.map
+import com.liamgleeson.vibeyfin.domain.model.ItemKind
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -34,6 +37,22 @@ class WatchRepository(private val connection: ConnectionManager, private val cha
                 resumeItems is ApiResult.Success -> ApiResult.Success(mergeContinueWatching(resumeItems.value, emptyList()))
                 nextItems is ApiResult.Success -> ApiResult.Success(mergeContinueWatching(emptyList(), nextItems.value))
                 else -> ApiResult.Failure(worseOf((resumeItems as ApiResult.Failure).error, (nextItems as ApiResult.Failure).error))
+            }
+        }
+    }
+
+    /**
+     * The episode after [current], in the show's own order and across seasons, or null when [current] is
+     * the last one, is not an episode, or has no show. Asked of the show's episode list rather than of
+     * Next Up, which can still name [current] while its `Stopped` is on its way to the server.
+     */
+    suspend fun nextEpisode(current: MediaItem): ApiResult<MediaItem?> {
+        val seriesId = current.seriesId
+        if (current.kind != ItemKind.Episode || seriesId == null) return ApiResult.Success(null)
+        return call { api, userId ->
+            api.episodesFrom(seriesId, current.id, userId, limit = 2).toItems(api).map { episodes ->
+                val at = episodes.indexOfFirst { it.id == current.id }
+                if (at < 0) null else episodes.getOrNull(at + 1)
             }
         }
     }

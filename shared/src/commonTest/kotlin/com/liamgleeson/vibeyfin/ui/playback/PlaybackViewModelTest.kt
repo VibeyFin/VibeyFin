@@ -1,5 +1,10 @@
 package com.liamgleeson.vibeyfin.ui.playback
 
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.CoroutineStart
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
@@ -76,8 +81,16 @@ class PlaybackViewModelTest {
     /** The waits before the tries at a stream that lost its connection, short so the tests don't wait. */
     private val retryDelays = listOf(1.milliseconds, 1.milliseconds)
 
-    private fun viewModel(id: String = "m1", startOver: Boolean = false) = viewModels.track(
-        PlaybackViewModel(id, app.library, app.playback, app.reporter(reporterScope), app.connection, retryDelays, startOver),
+    private fun viewModel(
+        id: String = "m1",
+        startOver: Boolean = false,
+        autoAdvance: Boolean = true,
+        countdownStep: Duration = 1.hours,
+    ) = viewModels.track(
+        PlaybackViewModel(
+            id, app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch,
+            retryDelays, startOver, autoAdvance, countdownStep,
+        ),
     )
 
     /** A signed-in server that offers a direct play of "Heat", answers the reports and, for an episode test, can be given another item. */
@@ -556,7 +569,7 @@ class PlaybackViewModelTest {
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =
-                    PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection) as T
+                    PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch) as T
             },
         )[PlaybackViewModel::class]
         viewModel.uiState.first { it.stream != null }
@@ -930,5 +943,251 @@ class PlaybackViewModelTest {
         val stream = assertNotNull(viewModel.uiState.first { it.stream?.id == 2 }.stream)
 
         assertEquals(700_000L, stream.startPositionMs)
+    }
+
+    // ---- Auto-advance ----
+
+    private val tenMinutes = 10 * 60_000L
+
+    private fun episode(id: String, number: Int, minutes: Long = 10) = itemJson(
+        id, if (id == "m1") "Heat" else "Northbound", type = "Episode", seriesName = "Paper Harbour", seriesId = "s1",
+        seasonNumber = 1, episodeNumber = number, runtimeTicks = minutes * TICKS_PER_MINUTE,
+    )
+
+    /** A signed-in server with a show: m1 is episode 1, e2 comes after it. */
+    private suspend fun seriesServer(
+        first: String = episode("m1", 1),
+        episodes: String = itemsJson(first, episode("e2", 2)),
+    ): FakeJellyfin {
+        val jellyfin = server(item = first)
+        val show = jellyfin.server("http://nas:8096")
+        show.on("GET", "/Shows/s1/Episodes", Reply.json(episodes))
+        show.on("POST", "/Items/e2/PlaybackInfo", Reply.json(playbackInfoJson(mediaSourceJson())))
+        return jellyfin
+    }
+
+    private fun TestScope.statesOf(viewModel: PlaybackViewModel): MutableList<PlaybackUiState> {
+        val seen = mutableListOf<PlaybackUiState>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler), start = CoroutineStart.UNDISPATCHED) {
+            viewModel.uiState.collect { seen += it }
+        }
+        return seen
+    }
+
+    /** Playing, with the next episode looked up (it is asked for in the background). */
+    private suspend fun TestScope.playing(viewModel: PlaybackViewModel, jellyfin: FakeJellyfin): MutableList<PlaybackUiState> {
+        val seen = statesOf(viewModel)
+        viewModel.uiState.first { it.stream != null }
+        viewModel.onPlaying(0)
+        jellyfin.awaitRequests("GET", "/Shows/s1/Episodes")
+        withContext(Dispatchers.Default) { delay(150) }
+        return seen
+    }
+
+    @Test
+    fun theCardAppearsInTheLast30SecondsWithATenSecondCountdown() = runTest {
+        val jellyfin = seriesServer()
+        val viewModel = viewModel()
+        val seen = playing(viewModel, jellyfin)
+
+        viewModel.onPosition(tenMinutes - 31_000)
+        assertNull(seen.last().upNext)
+        viewModel.onPosition(tenMinutes - 30_000)
+
+        val card = assertNotNull(seen.last().upNext)
+        assertEquals("e2", card.id)
+        assertEquals("S1 E2", card.label)
+        assertEquals("Northbound", card.title)
+        assertEquals(10, card.secondsLeft)
+        assertFalse(seen.last().finished)
+    }
+
+    @Test
+    fun atZeroTheNextEpisodeStartsInPlaceAndTheFinishedOneIsReportedAtItsEnd() = runTest {
+        val jellyfin = seriesServer()
+        val viewModel = viewModel(countdownStep = 1.milliseconds)
+        val seen = playing(viewModel, jellyfin)
+        val first = assertNotNull(seen.last().stream)
+
+        viewModel.onPosition(tenMinutes - 30_000)
+        val next = viewModel.uiState.first { it.title == "Northbound" && it.stream != null }
+
+        val stream = assertNotNull(next.stream)
+        assertNotEquals(first.id, stream.id)
+        assertEquals(0L, stream.startPositionMs)
+        assertNull(next.upNext)
+        assertFalse(next.finished)
+        assertEquals("Paper Harbour  ·  S1 E2", next.subtitle)
+        val stopped = bodyOf(jellyfin.awaitRequests("POST", "/Sessions/Playing/Stopped").first())
+        assertEquals("m1", stopped.getValue("ItemId").jsonPrimitive.content)
+        // At its end, not where the countdown cut in, so the server counts it as watched.
+        assertEquals(tenMinutes * 10_000, stopped.getValue("PositionTicks").jsonPrimitive.long)
+        assertEquals(1, jellyfin.requestsTo("POST", "/Items/e2/PlaybackInfo").size)
+    }
+
+    @Test
+    fun playNowDoesNotWaitForTheCountdown() = runTest {
+        val jellyfin = seriesServer()
+        val viewModel = viewModel()
+        val seen = playing(viewModel, jellyfin)
+        viewModel.onPosition(tenMinutes - 20_000)
+        assertNotNull(seen.last().upNext)
+
+        viewModel.onPlayNow()
+        val next = viewModel.uiState.first { it.title == "Northbound" && it.stream != null }
+
+        assertNull(next.upNext)
+    }
+
+    @Test
+    fun watchCreditsDismissesTheCardForGoodAndPlaysOnToTheEndAndTheScreenCloses() = runTest {
+        val jellyfin = seriesServer()
+        val viewModel = viewModel()
+        val seen = playing(viewModel, jellyfin)
+        viewModel.onPosition(tenMinutes - 25_000)
+        assertNotNull(seen.last().upNext)
+
+        viewModel.onWatchCredits()
+        assertNull(seen.last().upNext)
+        viewModel.onPosition(tenMinutes - 10_000)
+        assertNull(seen.last().upNext)
+        viewModel.onEnded(tenMinutes)
+
+        assertTrue(seen.last().finished)
+        assertEquals(0, jellyfin.requestsTo("POST", "/Items/e2/PlaybackInfo").size)
+    }
+
+    @Test
+    fun aShortVideoOnlyCountsDownOnceItHasEnded() = runTest {
+        val short = episode("m1", 1, minutes = 2)
+        val jellyfin = seriesServer(first = short, episodes = itemsJson(short, episode("e2", 2)))
+        val viewModel = viewModel(countdownStep = 1.hours)
+        val seen = playing(viewModel, jellyfin)
+
+        viewModel.onPosition(2 * 60_000L - 10_000)
+        assertNull(seen.last().upNext)
+        viewModel.onEnded(2 * 60_000L)
+
+        assertNotNull(seen.last().upNext)
+        assertFalse(seen.last().finished)
+        // "Watch credits" at that point has nothing left to watch: the screen closes.
+        viewModel.onWatchCredits()
+        assertTrue(seen.last().finished)
+    }
+
+    @Test
+    fun aVideoThatEndsDuringTheCountdownStartsTheNextAtOnce() = runTest {
+        val jellyfin = seriesServer()
+        val viewModel = viewModel()
+        val seen = playing(viewModel, jellyfin)
+        viewModel.onPosition(tenMinutes - 5_000)
+        assertNotNull(seen.last().upNext)
+
+        viewModel.onEnded(tenMinutes)
+        val next = viewModel.uiState.first { it.title == "Northbound" && it.stream != null }
+
+        assertFalse(next.finished)
+    }
+
+    @Test
+    fun aMovieJustFinishes() = runTest {
+        val jellyfin = server(item = itemJson("m1", "Heat", runtimeTicks = 10 * TICKS_PER_MINUTE))
+        val viewModel = viewModel()
+        val seen = statesOf(viewModel)
+        viewModel.uiState.first { it.stream != null }
+
+        viewModel.onPosition(tenMinutes - 5_000)
+        assertNull(seen.last().upNext)
+        viewModel.onEnded(tenMinutes)
+
+        assertTrue(seen.last().finished)
+        assertEquals(0, jellyfin.requestsTo("GET", "/Shows/s1/Episodes").size)
+    }
+
+    @Test
+    fun theLastEpisodeJustFinishes() = runTest {
+        val only = episode("m1", 1)
+        val jellyfin = seriesServer(first = only, episodes = itemsJson(only))
+        val viewModel = viewModel()
+        val seen = playing(viewModel, jellyfin)
+
+        viewModel.onPosition(tenMinutes - 5_000)
+        assertNull(seen.last().upNext)
+        viewModel.onEnded(tenMinutes)
+
+        assertTrue(seen.last().finished)
+    }
+
+    @Test
+    fun withAutoAdvanceOffNothingIsLookedUpAndTheEpisodeJustFinishes() = runTest {
+        val jellyfin = seriesServer()
+        val viewModel = viewModel(autoAdvance = false)
+        val seen = statesOf(viewModel)
+        viewModel.uiState.first { it.stream != null }
+
+        viewModel.onPosition(tenMinutes - 5_000)
+        viewModel.onEnded(tenMinutes)
+
+        assertNull(seen.last().upNext)
+        assertTrue(seen.last().finished)
+        assertEquals(0, jellyfin.requestsTo("GET", "/Shows/s1/Episodes").size)
+    }
+
+    @Test
+    fun aFailedLookupOfTheNextEpisodeJustFinishes() = runTest {
+        val jellyfin = seriesServer()
+        jellyfin.server("http://nas:8096").on("GET", "/Shows/s1/Episodes", Reply.status(HttpStatusCode.ServiceUnavailable))
+        val viewModel = viewModel()
+        val seen = playing(viewModel, jellyfin)
+
+        viewModel.onPosition(tenMinutes - 5_000)
+        assertNull(seen.last().upNext)
+        viewModel.onEnded(tenMinutes)
+
+        assertTrue(seen.last().finished)
+    }
+
+    @Test
+    fun goingToTheBackgroundTakesTheCardAwayWithoutPlayingOn() = runTest {
+        val jellyfin = seriesServer()
+        val viewModel = viewModel()
+        val seen = playing(viewModel, jellyfin)
+        viewModel.onPosition(tenMinutes - 25_000)
+        assertNotNull(seen.last().upNext)
+
+        viewModel.onBackgrounded(tenMinutes - 25_000)
+        withContext(Dispatchers.Default) { delay(200) }
+
+        assertNull(seen.last().upNext)
+        assertEquals("Heat", seen.last().title)
+        assertEquals(0, jellyfin.requestsTo("POST", "/Items/e2/PlaybackInfo").size)
+    }
+
+    @Test
+    fun closingTheScreenTakesTheCardAway() = runTest {
+        val jellyfin = seriesServer()
+        val viewModel = viewModel()
+        val seen = playing(viewModel, jellyfin)
+        viewModel.onPosition(tenMinutes - 25_000)
+        assertNotNull(seen.last().upNext)
+
+        viewModel.onClosed(tenMinutes - 25_000)
+
+        assertNull(seen.last().upNext)
+    }
+
+    @Test
+    fun seekingBackOutOfTheWindowTakesTheCardAwayAndItComesBackWhenTheEndIsNearAgain() = runTest {
+        val jellyfin = seriesServer()
+        val viewModel = viewModel()
+        val seen = playing(viewModel, jellyfin)
+        viewModel.onPosition(tenMinutes - 25_000)
+        assertNotNull(seen.last().upNext)
+
+        viewModel.onSeeked(tenMinutes - 120_000)
+        assertNull(seen.last().upNext)
+        viewModel.onPosition(tenMinutes - 20_000)
+
+        assertEquals(10, assertNotNull(seen.last().upNext).secondsLeft)
     }
 }

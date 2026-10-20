@@ -41,3 +41,15 @@ suspend fun JellyfinApi.setPlayed(itemId: String, userId: String, played: Boolea
         url("$baseUrl/UserPlayedItems/$itemId")
         parameter("userId", userId)
     }
+
+/**
+ * `GET /Shows/{seriesId}/Episodes?startItemId=`: the show's episodes in order, starting at [startItemId]
+ * and no more than [limit] of them, across season boundaries. Asked for two, it is the episode and the
+ * one after it. Unlike `NextUp` it doesn't depend on what the server thinks was watched, which a
+ * `Stopped` still on its way may not have reached.
+ */
+suspend fun JellyfinApi.episodesFrom(seriesId: String, startItemId: String, userId: String, limit: Int): ApiResult<ItemsResultDto> = get(
+    "/Shows/$seriesId/Episodes",
+    mapOf("userId" to userId, "startItemId" to startItemId, "limit" to limit.toString()),
+    retry = true,
+)

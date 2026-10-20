@@ -38,6 +38,10 @@ class PlaybackModel(itemId: String, startOver: Boolean) {
     /** [index] is a track's index, or -1 for no subtitles. */
     fun onSelectSubtitle(index: Int) = host.viewModel.onSelectSubtitle(index)
 
+    fun onPlayNow() = host.viewModel.onPlayNow()
+
+    fun onWatchCredits() = host.viewModel.onWatchCredits()
+
     fun onRetry() = host.viewModel.onRetry()
 
     fun close() = host.close()

@@ -95,4 +95,17 @@ class WatchApiTest {
         assertEquals(ApiError.Forbidden, assertIs<ApiResult.Failure>(api.setPlayed("e1", "u1", played = true)).error)
         assertEquals(1, jellyfin.requestsTo("POST", "/UserPlayedItems/e1").size)
     }
+
+    @Test
+    fun episodesAreAskedForFromOneEpisodeOnwardsTwoAtATime() = runTest {
+        server.on("GET", "/Shows/s1/Episodes", Reply.json(itemsJson(itemJson("e1", type = "Episode"), itemJson("e2", type = "Episode"))))
+
+        val result = api.episodesFrom("s1", "e1", "u1", limit = 2).success()
+
+        assertEquals(listOf("e1", "e2"), result.items.map { it.id })
+        val query = jellyfin.requestsTo("GET", "/Shows/s1/Episodes").single().query
+        assertEquals("u1", query["userId"])
+        assertEquals("e1", query["startItemId"])
+        assertEquals("2", query["limit"])
+    }
 }

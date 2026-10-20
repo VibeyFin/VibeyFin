@@ -175,4 +175,51 @@ class WatchRepositoryTest {
     fun markingWithNobodySignedInIsUnauthorized() = runTest {
         assertEquals(ApiError.Unauthorized, assertIs<ApiResult.Failure>(app.watch.setPlayed("e1", played = true)).error)
     }
+
+    private fun episodeItem(id: String, seriesId: String? = "s1") = MediaItem(
+        id = id, title = id, kind = ItemKind.Episode, isFolder = false, year = null, runtimeMinutes = null, genres = emptyList(),
+        overview = null, rating = null, ageRating = null, seriesName = null, seasonNumber = null, episodeNumber = null,
+        posterAspectRatio = 16f / 9f, posterUrl = null, backdropUrl = null, seriesId = seriesId,
+    )
+
+    @Test
+    fun theNextEpisodeIsTheOneAfterTheCurrentInTheShowsOwnOrder() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Shows/s1/Episodes", Reply.json(itemsJson(itemJson("e1", type = "Episode"), itemJson("e2", "Two", type = "Episode"))))
+
+        val next = app.watch.nextEpisode(episodeItem("e1")).success()
+
+        assertEquals("e2", next?.id)
+        assertEquals("e1", app.jellyfin.requestsTo("GET", "/Shows/s1/Episodes").single().query["startItemId"])
+    }
+
+    @Test
+    fun theLastEpisodeHasNoNextOne() = runTest {
+        app.signedIn().on("GET", "/Shows/s1/Episodes", Reply.json(itemsJson(itemJson("e9", type = "Episode"))))
+
+        assertEquals(null, app.watch.nextEpisode(episodeItem("e9")).success())
+    }
+
+    @Test
+    fun whenTheServerDoesNotStartAtTheEpisodeAskedForThereIsNoGuess() = runTest {
+        app.signedIn().on("GET", "/Shows/s1/Episodes", Reply.json(itemsJson(itemJson("other", type = "Episode"), itemJson("e2", type = "Episode"))))
+
+        assertEquals(null, app.watch.nextEpisode(episodeItem("e1")).success())
+    }
+
+    @Test
+    fun aMovieOrAnEpisodeWithNoShowIsNotAskedAbout() = runTest {
+        app.signedIn()
+
+        assertEquals(null, app.watch.nextEpisode(episodeItem("e1", seriesId = null)).success())
+        assertEquals(null, app.watch.nextEpisode(episodeItem("m1").copy(kind = ItemKind.Movie)).success())
+        assertEquals(0, app.jellyfin.requestsTo("GET", "/Shows/s1/Episodes").size)
+    }
+
+    @Test
+    fun aFailedLookupIsAFailure() = runTest {
+        app.signedIn().on("GET", "/Shows/s1/Episodes", Reply.status(HttpStatusCode.Forbidden))
+
+        assertEquals(ApiError.Forbidden, assertIs<ApiResult.Failure>(app.watch.nextEpisode(episodeItem("e1"))).error)
+    }
 }

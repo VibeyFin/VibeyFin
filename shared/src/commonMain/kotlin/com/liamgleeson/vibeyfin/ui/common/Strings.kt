@@ -111,6 +111,15 @@ object Strings {
     val play = "Play"
     val startOver = "Start over"
 
+    /** The card in the last seconds of an episode that offers the next one. */
+    val upNext = "Up next"
+    val playNow = "Play now"
+
+    /** Dismisses the card and plays the episode out to the end of its credits. */
+    val watchCredits = "Watch credits"
+
+    fun upNextIn(seconds: Int) = "Starts in $seconds"
+
     /** The Resume button when the length isn't known. */
     val resume = "Resume"
 
