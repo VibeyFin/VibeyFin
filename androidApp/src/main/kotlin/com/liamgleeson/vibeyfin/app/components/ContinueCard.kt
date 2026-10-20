@@ -1,7 +1,7 @@
 package com.liamgleeson.vibeyfin.app.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,15 +34,15 @@ private val PROGRESS_HEIGHT = 3.dp
 /**
  * A 16:9 card in the Continue watching row: the picture, the aqua progress bar along its bottom edge
  * if something is in progress, and the title with the episode under it. Tapping plays; there is no
- * detail page in between.
+ * detail page in between. A long press opens the card's actions.
  */
 @Composable
-fun ContinueCard(card: ContinueCard, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun ContinueCard(card: ContinueCard, onClick: () -> Unit, onLongClick: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .width(VibeyFinTokens.Size.thumbWidth)
             .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .semantics(mergeDescendants = true) { contentDescription = card.accessibilityLabel },
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
     ) {

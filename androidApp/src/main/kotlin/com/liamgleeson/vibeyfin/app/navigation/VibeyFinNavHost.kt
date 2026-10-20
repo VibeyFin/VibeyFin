@@ -116,6 +116,7 @@ fun VibeyFinNavHost() {
                 onOpen = open,
                 // A Continue watching card plays at once; it never goes through the detail page.
                 onPlay = { itemId -> navController.navigate(Player(itemId)) },
+                onDetails = { itemId -> navController.navigate(Item(itemId)) },
                 onSettings = { navController.navigate(Settings) },
             )
         }

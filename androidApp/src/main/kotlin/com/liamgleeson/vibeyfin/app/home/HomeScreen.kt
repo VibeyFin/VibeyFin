@@ -21,12 +21,14 @@ import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -51,6 +53,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liamgleeson.vibeyfin.app.theme.screenMargin
+import com.liamgleeson.vibeyfin.app.components.ActionSnackbar
 import com.liamgleeson.vibeyfin.app.components.ArtworkTile
 import com.liamgleeson.vibeyfin.app.components.ContinueCard
 import com.liamgleeson.vibeyfin.app.components.ContinueSkeletonCards
@@ -58,6 +61,7 @@ import com.liamgleeson.vibeyfin.app.components.LoadError
 import com.liamgleeson.vibeyfin.app.theme.VibeyFinTokens
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
 import com.liamgleeson.vibeyfin.ui.common.Strings
+import com.liamgleeson.vibeyfin.ui.home.ContinueCard as ContinueCardState
 import com.liamgleeson.vibeyfin.ui.home.ContinueRow
 import com.liamgleeson.vibeyfin.ui.home.HomeExit
 import com.liamgleeson.vibeyfin.ui.home.HomeUiState
@@ -69,6 +73,7 @@ fun HomeRoute(
     onExit: (HomeExit) -> Unit,
     onOpen: (MediaItem) -> Unit,
     onPlay: (String) -> Unit,
+    onDetails: (String) -> Unit,
     onSettings: () -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
@@ -82,6 +87,10 @@ fun HomeRoute(
         state = state,
         onOpen = onOpen,
         onPlay = onPlay,
+        onDetails = onDetails,
+        onMarkWatched = viewModel::onMarkWatched,
+        onRetryAction = viewModel::onRetryAction,
+        onDismissMessage = viewModel::onDismissMessage,
         onRefresh = viewModel::onRefresh,
         onRetryContinue = viewModel::onRetryContinue,
         onRetryLibraries = viewModel::onRetryLibraries,
@@ -92,11 +101,16 @@ fun HomeRoute(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     state: HomeUiState,
     onOpen: (MediaItem) -> Unit,
     onPlay: (String) -> Unit,
+    onDetails: (String) -> Unit,
+    onMarkWatched: (String) -> Unit,
+    onRetryAction: () -> Unit,
+    onDismissMessage: () -> Unit,
     onRefresh: () -> Unit,
     onRetryContinue: () -> Unit,
     onRetryLibraries: () -> Unit,
@@ -106,6 +120,8 @@ fun HomeScreen(
     onSignOut: () -> Unit,
 ) {
     val margin = screenMargin()
+    // The card whose actions are showing, after a long press.
+    var menuCard by remember { mutableStateOf<ContinueCardState?>(null) }
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         // No side margin on the column: the Continue watching row runs to the screen edge, so the
         // header and the grid each apply the margin themselves.
@@ -128,10 +144,40 @@ fun HomeScreen(
                 ProfileMenu(state.userName, onSwitchProfile, onSwitchServer, onSettings, onSignOut)
             }
             if (state.serverId != null) {
-                Content(state, margin, onOpen, onPlay, onRefresh, onRetryContinue, onRetryLibraries)
+                Content(state, margin, onOpen, onPlay, { menuCard = it }, onRefresh, onRetryContinue, onRetryLibraries)
+            }
+        }
+        Box(Modifier.fillMaxSize()) {
+            ActionSnackbar(state.actionMessage, onRetry = onRetryAction, onDismiss = onDismissMessage)
+        }
+    }
+    menuCard?.let { card ->
+        ModalBottomSheet(onDismissRequest = { menuCard = null }) {
+            Column(Modifier.padding(bottom = VibeyFinTokens.Space.s5)) {
+                Text(
+                    text = card.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(horizontal = margin, vertical = VibeyFinTokens.Space.s2),
+                )
+                SheetAction(Strings.details) { menuCard = null; onDetails(card.id) }
+                SheetAction(Strings.markWatched) { menuCard = null; onMarkWatched(card.id) }
             }
         }
     }
+}
+
+@Composable
+private fun SheetAction(label: String, onClick: () -> Unit) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = screenMargin(), vertical = VibeyFinTokens.Space.s4),
+    )
 }
 
 /** Continue watching and the libraries in one scrolling grid, with a pull to refresh over it. */
@@ -142,6 +188,7 @@ private fun Content(
     margin: Dp,
     onOpen: (MediaItem) -> Unit,
     onPlay: (String) -> Unit,
+    onLongPress: (ContinueCardState) -> Unit,
     onRefresh: () -> Unit,
     onRetryContinue: () -> Unit,
     onRetryLibraries: () -> Unit,
@@ -171,7 +218,7 @@ private fun Content(
             modifier = Modifier.fillMaxSize(),
         ) {
             // Always laid out, empty or not, so the libraries never move when a card turns up.
-            fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onRetryContinue) }
+            fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onLongPress, onRetryContinue) }
             fullWidth(key = "libraries-title") { SectionTitle(Strings.libraries) }
             libraries(state, onOpen, onRetryLibraries)
         }
@@ -189,7 +236,7 @@ private fun SectionTitle(text: String) {
 
 /** The row of what the user is in the middle of. Its cards run past the grid's margins to the screen edge. */
 @Composable
-private fun ContinueWatching(row: ContinueRow, margin: Dp, onPlay: (String) -> Unit, onRetry: () -> Unit) {
+private fun ContinueWatching(row: ContinueRow, margin: Dp, onPlay: (String) -> Unit, onLongPress: (ContinueCardState) -> Unit, onRetry: () -> Unit) {
     Column(Modifier.padding(bottom = VibeyFinTokens.Space.s2), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         Box(Modifier.alpha(if (row.isVisible) 1f else 0f)) { SectionTitle(Strings.continueWatching) }
         when {
@@ -197,12 +244,19 @@ private fun ContinueWatching(row: ContinueRow, margin: Dp, onPlay: (String) -> U
             !row.isVisible -> ContinueSkeletonCards(Modifier.bleed(margin).padding(horizontal = margin).alpha(0f).semantics { invisibleToUser() })
             row.loading -> ContinueSkeletonCards(Modifier.bleed(margin).padding(horizontal = margin))
             row.message != null -> LoadError(row.message!!, onRetry)
-            else -> LazyRow(
+            else -> {
+                // A card that goes (marked watched) or comes back (the save failed) at the front would
+                // leave the list anchored on the card after it; start from the front again instead.
+                val listState = rememberLazyListState()
+                LaunchedEffect(row.cards.firstOrNull()?.id) { listState.scrollToItem(0) }
+                LazyRow(
+                state = listState,
                 modifier = Modifier.bleed(margin),
                 contentPadding = PaddingValues(horizontal = margin),
                 horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
             ) {
-                items(row.cards, key = { it.id }) { card -> ContinueCard(card, onClick = { onPlay(card.id) }) }
+                items(row.cards, key = { it.id }) { card -> ContinueCard(card, onClick = { onPlay(card.id) }, onLongClick = { onLongPress(card) }) }
+                }
             }
         }
     }
