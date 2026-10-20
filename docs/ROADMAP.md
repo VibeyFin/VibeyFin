@@ -80,25 +80,26 @@ _Exit: log in, list libraries, fetch an item's metadata._
 _Exit: play a movie and an episode, direct and transcoded, with position reported._
 
 ### Phase 2 — Watch status & continuity
-- [ ] `Stopped` after a crash or a killed process (split from Phase 1's progress beacon): keep a pending
+- [x] `Stopped` after a crash or a killed process (split from Phase 1's progress beacon): keep a pending
   record (item, play session, last position) in Room, keyed by server and profile, and send `Stopped` for
-  it on the next start. First item of the Phase 2 plan, so it lands before the MVP gate
-- [ ] Continue Watching, one row that also holds Next Up: `GET /Users/{id}/Items/Resume` (in progress,
+  it on the next start. First item of the Phase 2 plan, so it lands before the MVP gate — _built (plan 06,
+  Phase A): the record is dropped after 24 h, and `Stopped` is always sent as the profile that started it_
+- [x] Continue Watching, one row that also holds Next Up: `GET /UserItems/Resume` (in progress,
   newest first) followed by `GET /Shows/NextUp` (one episode per series). A series that already has an
   item in progress appears once, as that item. In-progress cards carry the progress bar and Next Up cards
   show their episode ("S2 E5"); tapping either plays. If one request fails the row shows the other, and if
   both fail it shows the row's error state. A plain row above the libraries on the existing Home; Phase 4
   restructures Home around it
-- [ ] Resume on open (seek to `PlaybackPositionTicks`, 10,000,000 ticks/sec) — _the server's position is
+- [x] Resume on open (seek to `PlaybackPositionTicks`, 10,000,000 ticks/sec) — _the server's position is
   the source of truth, so there are no per-device positions. Resume is the aqua primary button reading
-  "Resume from 41:12", with "Start over" beside it and a 5 s rewind when resuming. A local position is
+  "Resume · 38m left", with a round icon-only "start over" arrow beside it and a 5 s rewind when resuming. A local position is
   only the offline fallback (Phase 10)_
-- [ ] Auto-advance with countdown into Next Up — _owned here: countdown, cancel, on by default. Phase 3
+- [x] Auto-advance with countdown into Next Up — _owned here: countdown, cancel, on by default. Phase 3
   keeps only "are you still watching?"; Phase 7 makes it a toggle_
-- [ ] Mark played/unplayed: `POST` / `DELETE /Users/{id}/PlayedItems/{id}`
-- [ ] Optimistic user-data writes (played here; favourites and thumbs in Phase 4): the UI changes at once
+- [x] Mark played/unplayed: `POST` / `DELETE /UserPlayedItems/{id}`
+- [x] Optimistic user-data writes (played here; favourites and thumbs in Phase 4): the UI changes at once
   and the call follows. If it fails the change reverts with a plain message, and a 401 still ends the
-  session. Setting played or a favourite is the one write that is retried (the same two tries as
+  session. Setting played or a favourite is the one write that is retried (the same retries as
   reads), because setting a state twice is harmless; every other write is still never repeated. Nothing
   is queued on disk until Phase 10
 
@@ -134,7 +135,18 @@ _Exit: skip-intro and scrub previews working end to end._
 ### Phase 4 — Browse & discovery
 _Starts after the state audit (see Cross-cutting)._
 
+- [ ] Main navigation bar, the bar only: Home, Library and Downloads, as drawn in the design's detail screens
+  and `BottomNav` (iOS `TabView`, the floating Liquid Glass bar on iOS 26+; Android M3 `NavigationBar`; at
+  tablet widths the same destinations sit at the top, `docs/design/screens.md` "Chrome"). Each tab keeps its
+  own back stack and Settings stays under the profile avatar. Home is the Home that exists today. Library and
+  Downloads open an empty page that says "Not available yet" (text in `Strings`) until their features land.
+  The Search tab joins with unified search below. Nothing else is built in this item
 - [ ] Home rows: Latest, genres, My Media, plus Continue Watching (which holds Next Up)
+- [ ] Home filter chips under the header, above the hero (`docs/design/screens.md` "Home"): Shows, Movies,
+  Collections (when the server has any), then the library's genres from `GET /Genres`, at most 12. One at a
+  time, none selected on launch, tapping the selected chip clears it. A chip limits the hero, Continue
+  Watching and every row to that type or genre; rows left empty hide. Capsules on iOS, M3 `FilterChip`s on
+  Android
 - [ ] Detail page: metadata, cast, `/Items/{id}/Similar`. The page opens on a full-width cinematic
   backdrop hero (`Backdrop` image) with a dark gradient overlay (the `scrim` token), and the movie
   details and action buttons are layered over the image: the `Logo` image as the title (the

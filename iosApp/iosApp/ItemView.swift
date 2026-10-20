@@ -5,6 +5,7 @@ import Shared
 struct ItemView: View {
     @StateObject private var model: ItemObservable
     @State private var showsPlayer = false
+    @State private var startsOver = false
 
     private let itemId: String
 
@@ -24,7 +25,7 @@ struct ItemView: View {
                 VStack(alignment: .leading, spacing: Space.s3) {
                     if let state = model.state, !state.loading {
                         if let item = state.item {
-                            details(item, facts: state.facts, canPlay: state.canPlay)
+                            details(item, state: state)
                         } else if let message = state.message {
                             LoadErrorView(message: message, onRetry: { model.retry() })
                         }
@@ -39,7 +40,32 @@ struct ItemView: View {
         }
         .onAppear { model.start() }
         .fullScreenCover(isPresented: $showsPlayer) {
-            PlayerView(itemId: itemId, onExit: onExit)
+            PlayerView(itemId: itemId, startOver: startsOver, onExit: onExit)
+        }
+        .failureBanner(
+            model.state?.actionMessage,
+            onRetry: { model.retryAction() },
+            onDismiss: { model.dismissMessage() }
+        )
+        .toolbar {
+            // Mark as watched or unwatched, worded for what it will do.
+            if let state = model.state, state.canPlay {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button {
+                            model.togglePlayed()
+                        } label: {
+                            Label(
+                                state.markLabel.titleCased(),
+                                systemImage: state.item?.played == true ? "xmark.circle" : "checkmark.circle"
+                            )
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .accessibilityLabel(Strings.shared.moreActions)
+                }
+            }
         }
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
@@ -50,8 +76,14 @@ struct ItemView: View {
         }
     }
 
+    private func play(startOver: Bool) {
+        startsOver = startOver
+        showsPlayer = true
+    }
+
     @ViewBuilder
-    private func details(_ item: MediaItem, facts: [String], canPlay: Bool) -> some View {
+    private func details(_ item: MediaItem, state: ItemUiState) -> some View {
+        let facts = state.facts
         // A wide backdrop when the server has one; otherwise the item's own picture at its own shape.
         if let backdrop = item.backdropUrl {
             Artwork(url: backdrop, title: item.title, aspectRatio: 16.0 / 9.0)
@@ -68,10 +100,19 @@ struct ItemView: View {
         Text(item.title)
             .font(.title2.bold())
             .foregroundStyle(.primary)
-        if !facts.isEmpty {
-            Text(facts.joined(separator: "  ·  "))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        if !facts.isEmpty || state.watched {
+            HStack(spacing: Space.s2) {
+                Text(facts.joined(separator: "  ·  "))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                // Watched is an icon, in the secondary ink: aqua never signals status.
+                if state.watched {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel(Strings.shared.watched)
+                }
+            }
         }
         if !item.genres.isEmpty {
             Text(item.genres.joined(separator: "  ·  "))
@@ -79,9 +120,19 @@ struct ItemView: View {
                 .foregroundStyle(.primary)
         }
         // The one filled action on the page: the aqua capsule.
-        if canPlay {
-            PrimaryButton(Strings.shared.play) { showsPlayer = true }
-                .padding(.vertical, Space.s1)
+        // "Play" or "Resume · 38m left", with a round "start over" arrow beside it only when there is something to resume.
+        if state.canPlay {
+            HStack(spacing: Space.s3) {
+                PrimaryButton(action: { play(startOver: false) }) {
+                    Label(state.playLabel.titleCased(), systemImage: "play.fill")
+                }
+                if state.canStartOver {
+                    IconSecondaryButton(systemImage: "arrow.counterclockwise", label: Strings.shared.startOver) {
+                        play(startOver: true)
+                    }
+                }
+            }
+            .padding(.vertical, Space.s1)
         }
         if let overview = item.overview {
             Text(overview)

@@ -51,6 +51,7 @@ struct RootView: View {
                     HomeView(
                         onExit: leave,
                         onOpen: open,
+                        onDetails: { path.append(.item(itemId: $0)) },
                         onSettings: { path.append(.settings) }
                     )
                     .navigationBarBackButtonHidden(true)

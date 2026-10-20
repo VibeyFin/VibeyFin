@@ -89,20 +89,20 @@ struct WhoIsWatchingView: View {
                 Button { model.profileTapped(profile) } label: {
                     ProfileTile(profile: profile)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableButtonStyle())
                 .disabled(state.signingIn)
             }
             if state.quickConnectAvailable {
                 Button { model.quickConnectTapped() } label: {
                     ActionTile(label: Strings.shared.quickConnect, symbol: "#")
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableButtonStyle())
                 .disabled(state.signingIn)
             }
             Button { model.otherUserTapped() } label: {
                 ActionTile(label: Strings.shared.otherUser, symbol: "+")
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableButtonStyle())
             .disabled(state.signingIn)
         }
     }

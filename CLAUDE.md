@@ -80,7 +80,9 @@ Device ID: generate a UUID once per install and persist it.
   `StateFlow`. Features read from it; nothing else holds tokens.
 - A 401 from any authenticated call goes through one place, `ConnectionManager.expireSession`, which
   calls `expire()` and routes to "Who's watching?". Don't call `AccountRepository.expire` from
-  anywhere else, except for an explicit sign-out.
+  anywhere else, except for an explicit sign-out. `ConnectionManager.asProfile` runs work as a saved
+  profile that isn't signed in (a pending `Stopped`) and locks that profile on a 401 the same way,
+  without moving the signed-in state.
 - Platform code only behind `expect`/`actual` or interfaces injected by Koin: token vault,
   Wi-Fi multicast lock (Android), device name.
 - Time: inject a clock (`kotlin.time.Clock`) so repositories are testable.

@@ -1,9 +1,56 @@
 # Reference screens
 
-Layouts for the detail screens, the same on both platforms apart from the native chrome. These are
-reference screens, not components: build each from the parts named here (hero, `action` buttons, rows,
-`PosterCard`s). Colours, type and controls come from `brand.md`, `ios.md` and `android.md`; the rules
-from `guardrails.md`; the data from `jellyfin-mapping.md`.
+Layouts for Home and the detail screens, the same on both platforms apart from the native chrome. These
+are reference screens, not components: build each from the parts named here (hero, `action` buttons,
+rows, `PosterCard`s, filter chips). Colours, type and controls come from `brand.md`, `ios.md` and
+`android.md`; the rules from `guardrails.md`; the data from `jellyfin-mapping.md`.
+
+## Home
+
+The Home tab: the same content, rows and rules on both platforms, with native chrome on each.
+
+- iOS: large title "Home" with the profile avatar and the filter chips under it; the backdrop and rows
+  scroll under the floating tab bar (the safe area provides the bottom inset).
+- Android: top app bar with the app name and avatar, the filter chips under it, rows scrolling above the
+  `NavigationBar` (`Scaffold`'s inner padding).
+- Same on both: filter chips → hero (optional) → Continue watching → Recently added. Aqua only on Play and
+  progress (plus native tinting on iOS). The chip row scrolls with the content.
+
+### Filter chips
+
+The filter row at the top of Home: Shows, Movies, Collections, then the library's genres.
+
+**Provide:** the chips (`id`, `label`), the selected id (none = no filter) and a handler for a tap.
+
+- Order: Shows and Movies first (only the types the user's libraries hold), Collections when the server
+  has any, then genres from `GET /Genres` in the server's order, at most 12. Labels exactly as Jellyfin
+  returns them ("Science Fiction").
+- One chip at a time, nothing selected by default. Tapping the selected chip clears it. The selected chip
+  scrolls into view; the next chip always peeks.
+- A filter limits the hero, Continue watching and every row to that type or genre; rows left empty are
+  hidden. Home opens unfiltered on every launch.
+- iOS: a horizontal `ScrollView` of capsule buttons, 36pt tall with a 44pt hit area. Unselected on
+  `surface-2` (`tertiarySystemBackground`) with `ink`; selected filled `ink` with `bg` text and a trailing
+  `xmark`, the same selected look as the season buttons. A capsule on the system background, never glass.
+- Android: a `LazyRow` of M3 `FilterChip`s, 32dp tall inside the 48dp touch target. Unselected outlined in
+  `line-strong` with `ink-muted`; selected `accent-soft` with `on-accent-soft` and M3's leading check.
+- Both: aqua is not used in this row. Accessibility: the row is a group named "Filter Home"; each chip is
+  a toggle button and says whether it is selected.
+
+### Home with a filter
+
+Home with one chip selected, for a type (Shows) and for a genre (Drama).
+
+- The header, chip row, hero, Continue watching and rows keep their places and order. The selected chip is
+  the only change in the chrome, scrolled into view.
+- The hero, Continue watching and every row hold only items of that type or genre. A row with nothing left
+  is hidden, never shown empty. The hero is picked again from the filtered items (still one per session,
+  still a Backdrop and a Logo image).
+- Shows: Continue watching holds episodes and Next up; Movies holds movies only. A genre matches an item's
+  own genres, or its series' genres for an episode.
+- Tapping the selected chip clears the filter and restores the full Home, scrolled to the top.
+- Switching chips keeps the old content on screen until the new content has loaded (skeleton rows only on
+  the first load); nothing navigates and the tab bar stays as is.
 
 ## Detail
 
@@ -26,9 +73,10 @@ official rating, runtime, genres, overview, `UserData` (playback position, `IsFa
 - Layered over the image: the `Logo` image as the title, centered and large (the `brand-display` title,
   centered, when the item has no Logo) → facts line centered under it (year · rating · runtime · genres,
   `ink-muted`) → overview (3 lines + "More", left-aligned) → Play / Resume → secondary actions.
-- Play / Resume is the one aqua `primary` button on the screen, full width, large (iOS
+- Play / Resume is the one aqua `primary` button on the screen, large (iOS
   `.borderedProminent` capsule `.controlSize(.large)`, Android filled 56dp). The label says what happens:
-  "Play", "Resume · 38m left".
+  "Play", "Resume · 38m left" (with the play icon). It is full width until there is something to resume;
+  then a round icon-only "start over" button (a circular arrow, the grey secondary button) sits beside it.
 - Secondary actions as `action` buttons (icon over label), max four: My List (Favorites), Like (thumbs,
   `UserData.Likes`), Trailer (only when the item has a local or remote trailer), Download. Mark as watched
   moves to the overflow menu (`…` / `⋮`).
@@ -60,7 +108,7 @@ The hero, bar and secondary actions follow **Detail**.
 ### Hero
 
 - Same layout as Detail. A series without a Logo image shows the `brand-display` title.
-- Play / Resume starts the next-up episode and says so: "Play S2:E4", "Resume S2:E4 · 30m left".
+- Play / Resume starts the next-up episode and says so: "Play S2 E4", "Resume S2 E4 from 12:30".
 
 ### Seasons
 

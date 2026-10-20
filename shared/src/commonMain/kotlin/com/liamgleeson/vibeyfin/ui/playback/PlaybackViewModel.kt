@@ -12,11 +12,15 @@ import com.liamgleeson.vibeyfin.domain.PlaybackReporter
 import com.liamgleeson.vibeyfin.domain.PlaybackRepository
 import com.liamgleeson.vibeyfin.domain.PlaybackTrack
 import com.liamgleeson.vibeyfin.domain.SubtitleFile
+import com.liamgleeson.vibeyfin.domain.WatchRepository
+import com.liamgleeson.vibeyfin.domain.model.ItemKind
+import com.liamgleeson.vibeyfin.domain.model.MediaItem
 import com.liamgleeson.vibeyfin.ui.common.LoadMessages
 import com.liamgleeson.vibeyfin.ui.common.Strings
 import com.liamgleeson.vibeyfin.ui.common.sessionEnded
 import com.liamgleeson.vibeyfin.ui.home.HomeExit
 import com.liamgleeson.vibeyfin.ui.item.episodeLabel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -73,6 +77,31 @@ internal val NETWORK_RETRY_DELAYS: List<Duration> = listOf(1.seconds, 2.seconds)
 /** Playing this far past where a failure happened counts as the connection, or the token, being good again. */
 private const val RECOVERED_AFTER_MS = 5_000L
 
+/** The card offering the next episode in the last seconds of this one. */
+data class UpNext(
+    val id: String,
+    /** "S2 E6"; null when the server gives no numbers. */
+    val label: String?,
+    /** The episode's own title. */
+    val title: String,
+    /** A 16:9 picture, or null when the server has none. */
+    val imageUrl: String?,
+    /** Whole seconds until it starts on its own. */
+    val secondsLeft: Int,
+)
+
+/** The next-episode card appears this long before the end of an episode (the last 30 s when there are no credits to find). */
+private const val UP_NEXT_WINDOW_MS = 30_000L
+
+/** How long the card counts down before the next episode starts by itself. */
+private const val UP_NEXT_SECONDS = 10
+
+/** A video shorter than this never offers the card early: it would start the next one almost at once. */
+private const val MIN_AUTO_ADVANCE_RUNTIME_MS = 180_000L
+
+/** Seeking back this far outside the window takes the card away again. */
+private const val UP_NEXT_SEEK_SLACK_MS = 5_000L
+
 /** One row in the audio or subtitle picker. */
 data class TrackOption(
     /** What to pass back to `onSelectAudio` or `onSelectSubtitle`; [SUBTITLES_OFF] is "no subtitles". */
@@ -98,7 +127,9 @@ data class PlaybackUiState(
     val subtitleTracks: List<TrackOption> = emptyList(),
     /** Why nothing is playing, with what to try. */
     val message: String? = null,
-    /** Playback reached the end; the screen should close. */
+    /** The next episode is about to start; null when there is none or nobody is being offered it. */
+    val upNext: UpNext? = null,
+    /** Playback reached the end and nothing follows; the screen should close. */
     val finished: Boolean = false,
     /** Set when the session ended and the screen must be left. */
     val exit: HomeExit? = null,
@@ -106,6 +137,9 @@ data class PlaybackUiState(
     /** Whether there is anything to choose between, so the player shows its audio and subtitles control. */
     val hasTrackChoices: Boolean get() = audioTracks.isNotEmpty() || subtitleTracks.isNotEmpty()
 }
+
+/** Resuming starts this long before where the user stopped, so the scene they left is in view again. */
+const val RESUME_REWIND_MS = 5_000L
 
 /**
  * Plays one item: asks the server how, hands the native player a [PlaybackStream], and reports to
@@ -124,14 +158,31 @@ data class PlaybackUiState(
  * and any subtitle the server sends as a file), and costs nothing. Otherwise (a subtitle burned into
  * the video, or the audio of a stream the server prepares) it is a new negotiation, and the player
  * opens the new stream at the position it was at.
+ *
+ * It starts where the server says the user stopped, [RESUME_REWIND_MS] earlier so they pick up the
+ * thread, unless [startOver] is set or the server says the item was finished. The item is read first for
+ * that: if that read fails, playback doesn't start (with "Try again"), because starting at 0 would later
+ * report a small position and overwrite the real one.
+ *
+ * Auto-advance: for an episode, the next one is looked up in the background. In the last 30 s of an
+ * episode (the card is Phase 3's Outro segment once there is one) [PlaybackUiState.upNext] counts down
+ * 10 s and then plays the next episode in this same ViewModel, so neither native player is rebuilt: the
+ * finished one is reported stopped at its end, so the server marks it watched, and the stream changes.
+ * [onWatchCredits] dismisses the card for this episode; [onPlayNow] doesn't wait. A video under three
+ * minutes only counts down once it has ended. [autoAdvance] is on by default (Phase 7 makes it a setting).
  */
 class PlaybackViewModel(
-    private val itemId: String,
+    private var itemId: String,
     private val library: LibraryRepository,
     private val playback: PlaybackRepository,
     private val reporter: PlaybackReporter,
     connection: ConnectionManager,
+    private val watch: WatchRepository,
     private val retryDelays: List<Duration> = NETWORK_RETRY_DELAYS,
+    private val startOver: Boolean = false,
+    private val autoAdvance: Boolean = true,
+    /** How long one second of the countdown takes; tests make it short. */
+    private val countdownStep: Duration = 1.seconds,
 ) : ViewModel() {
     private val content = MutableStateFlow(PlaybackUiState())
 
@@ -140,6 +191,23 @@ class PlaybackViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlaybackUiState())
 
     private var lastPositionMs = 0L
+
+    /** The item has been read, so where to start is known and a retry doesn't need to ask again. */
+    private var started = false
+
+    /** What is playing, as the server describes it. */
+    private var item: MediaItem? = null
+
+    /** The episode after [item], once looked up; null while unknown, and for anything that has no next one. */
+    private var next: MediaItem? = null
+
+    /** The user chose "Watch credits": no card for the rest of this episode. */
+    private var upNextDismissed = false
+
+    /** The item played to its end, so a dismissed card now means leaving. */
+    private var ended = false
+
+    private var countdown: Job? = null
     private var method: PlayMethod? = null
     private var streams = 0
 
@@ -172,8 +240,7 @@ class PlaybackViewModel(
     private class TrackChoice(val mediaSourceId: String, val audio: Int?, val subtitle: Int)
 
     init {
-        loadTitle()
-        open(startAtMs = 0)
+        start()
     }
 
     /** Plays the audio track [index] (a [TrackOption.index]) from where the video is now. */
@@ -217,35 +284,53 @@ class PlaybackViewModel(
     fun onSeeked(positionMs: Long) {
         lastPositionMs = positionMs
         reporter.seeked(positionMs)
+        checkUpNext(positionMs)
     }
 
     /** The current position, as often as the player knows it (about once a second). */
     fun onPosition(positionMs: Long) {
         lastPositionMs = positionMs
         reporter.position(positionMs)
+        checkUpNext(positionMs)
         if ((networkRetries > 0 || reauthorized) && positionMs - failedAtMs >= RECOVERED_AFTER_MS) {
             networkRetries = 0
             reauthorized = false
         }
     }
 
-    /** The item played to its end. */
+    /**
+     * The item played to its end. If an episode follows (and the user didn't ask to watch the credits),
+     * the next one starts now, or after the countdown if it hasn't run yet; otherwise the screen closes.
+     */
     fun onEnded(positionMs: Long) {
         lastPositionMs = positionMs
         reporter.stop(positionMs)
+        ended = true
+        val upcoming = next
+        if (autoAdvance && upcoming != null && !upNextDismissed) {
+            // Already counting down: the video ended under it, so there is nothing left to wait for.
+            if (countdown != null) onPlayNow() else startCountdown(upcoming)
+            return
+        }
         content.update { it.copy(finished = true) }
     }
 
-    /** The app went to the background (the native player has paused). Reported as a stop; playing again starts anew. */
+    /**
+     * The app went to the background (the native player has paused). Reported as a stop; playing again
+     * starts anew, and a card that was counting goes with it (it returns if the end is still near).
+     */
     fun onBackgrounded(positionMs: Long) {
         lastPositionMs = positionMs
         reporter.stop(positionMs)
+        cancelCountdown()
+        if (ended) content.update { it.copy(finished = true) }
     }
 
     /** The user closed the player. */
     fun onClosed(positionMs: Long) {
         lastPositionMs = positionMs
         reporter.stop(positionMs)
+        cancelCountdown()
     }
 
     /** The player couldn't play the stream, for the reason [failure]. Ignored when no stream is open. */
@@ -264,7 +349,7 @@ class PlaybackViewModel(
         lostConnection = false
         networkRetries = 0
         reauthorized = false
-        open(startAtMs = lastPositionMs)
+        if (started) open(startAtMs = lastPositionMs) else start()
     }
 
     /**
@@ -275,6 +360,7 @@ class PlaybackViewModel(
     private fun retrySameStream(failed: PlaybackStream) {
         val wait = retryDelays.getOrNull(networkRetries) ?: return giveUp(LoadMessages.PLAYBACK_NETWORK, lostConnection = true)
         if (networkRetries == 0 && !reauthorized) failedAtMs = lastPositionMs
+        cancelCountdown()
         networkRetries++
         reporter.paused(lastPositionMs)
         content.update { it.copy(loading = true, stream = null, message = null) }
@@ -309,6 +395,7 @@ class PlaybackViewModel(
     }
 
     private fun giveUp(message: String, lostConnection: Boolean = false) {
+        cancelCountdown()
         reporter.stop(lastPositionMs, failed = true)
         method = null
         this.lostConnection = lostConnection
@@ -322,17 +409,120 @@ class PlaybackViewModel(
         reporter.close()
     }
 
-    private fun loadTitle() {
+    /** Reads the item for its title and where the user stopped, then opens it there. */
+    private fun start() {
+        content.update { it.copy(loading = true, stream = null, message = null) }
         viewModelScope.launch {
-            val item = (library.item(itemId) as? ApiResult.Success)?.value ?: return@launch
-            content.update {
-                it.copy(
-                    title = item.title,
-                    subtitle = listOfNotNull(item.seriesName, item.episodeLabel()).joinToString("  ·  ").ifEmpty { null },
-                )
+            when (val result = library.item(itemId)) {
+                is ApiResult.Success -> begin(result.value, honourStartOver = true)
+                is ApiResult.Failure -> content.update { it.copy(loading = false, message = LoadMessages.forError(result.error)) }
             }
         }
     }
+
+    /** Starts [found] where the user left off (or at the beginning), and looks up what comes after it. */
+    private fun begin(found: MediaItem, honourStartOver: Boolean) {
+        val startAtMs = if ((honourStartOver && startOver) || found.played) 0L else (found.resumePositionMs - RESUME_REWIND_MS).coerceAtLeast(0)
+        item = found
+        started = true
+        lastPositionMs = startAtMs
+        content.update {
+            it.copy(
+                title = found.title,
+                subtitle = listOfNotNull(found.seriesName, found.episodeLabel()).joinToString("  ·  ").ifEmpty { null },
+            )
+        }
+        open(startAtMs)
+        lookUpNext(found)
+    }
+
+    private fun lookUpNext(current: MediaItem) {
+        if (!autoAdvance || current.kind != ItemKind.Episode || current.seriesId == null) return
+        viewModelScope.launch {
+            val found = (watch.nextEpisode(current) as? ApiResult.Success)?.value ?: return@launch
+            // Only if the user is still on the episode this was asked for.
+            if (item?.id == current.id) next = found
+        }
+    }
+
+    /**
+     * Shows the card when the end is near enough ([UP_NEXT_WINDOW_MS]) and it is worth it, or takes it
+     * away again after a seek back out of the window. Called with every new position.
+     */
+    private fun checkUpNext(positionMs: Long) {
+        val upcoming = next ?: return
+        val runtime = item?.runtimeMs ?: return
+        if (!autoAdvance || upNextDismissed || ended) return
+        val remaining = runtime - positionMs
+        if (countdown == null) {
+            if (runtime >= MIN_AUTO_ADVANCE_RUNTIME_MS && remaining <= UP_NEXT_WINDOW_MS) startCountdown(upcoming)
+        } else if (remaining > UP_NEXT_WINDOW_MS + UP_NEXT_SEEK_SLACK_MS) {
+            cancelCountdown()
+        }
+    }
+
+    private fun startCountdown(upcoming: MediaItem) {
+        countdown = viewModelScope.launch {
+            for (left in UP_NEXT_SECONDS downTo 1) {
+                content.update { it.copy(upNext = upcoming.toUpNext(left)) }
+                delay(countdownStep)
+            }
+            countdown = null
+            advance()
+        }
+    }
+
+    private fun cancelCountdown() {
+        countdown?.cancel()
+        countdown = null
+        content.update { it.copy(upNext = null) }
+    }
+
+    /** "Play now" on the card: the next episode starts without waiting for the countdown. */
+    fun onPlayNow() {
+        if (next == null) return
+        countdown?.cancel()
+        countdown = null
+        advance()
+    }
+
+    /** "Watch credits" on the card: it goes, and this episode plays out. If it already ended, the screen closes. */
+    fun onWatchCredits() {
+        upNextDismissed = true
+        cancelCountdown()
+        if (ended) content.update { it.copy(finished = true) }
+    }
+
+    /**
+     * Plays [next] in place of the episode that is ending. The finished one is reported stopped at its
+     * end, whatever the countdown cut short, so the server counts it as watched.
+     */
+    private fun advance() {
+        val target = next ?: return
+        reporter.stop(item?.runtimeMs ?: lastPositionMs)
+        itemId = target.id
+        next = null
+        item = null
+        started = false
+        ended = false
+        upNextDismissed = false
+        plan = null
+        method = null
+        audioNow = null
+        subtitleNow = null
+        choice = null
+        transcodeOnly = false
+        networkRetries = 0
+        reauthorized = false
+        lostConnection = false
+        content.update {
+            it.copy(loading = true, stream = null, upNext = null, audioTracks = emptyList(), subtitleTracks = emptyList(), message = null, finished = false)
+        }
+        begin(target, honourStartOver = false)
+    }
+
+    private fun MediaItem.toUpNext(secondsLeft: Int) =
+        UpNext(id = id, label = episodeLabel(), title = title, imageUrl = landscapeUrl, secondsLeft = secondsLeft)
 
     /** The player does the switching: only the picker and the reports change, the stream stays. */
     private fun applySelection(current: PlaybackPlan) {
@@ -364,6 +554,8 @@ class PlaybackViewModel(
     }
 
     private fun open(startAtMs: Long) {
+        // A stream that restarts (a retry, a track change) is not the end of the episode.
+        cancelCountdown()
         content.update { it.copy(loading = true, stream = null, message = null) }
         viewModelScope.launch {
             val picked = choice

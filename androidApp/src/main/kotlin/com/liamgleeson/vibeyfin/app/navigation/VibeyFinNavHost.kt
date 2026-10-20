@@ -3,6 +3,9 @@ package com.liamgleeson.vibeyfin.app.navigation
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
@@ -28,9 +31,23 @@ private const val SLIDE_MS = 280
 /** Screens slide a fifth of their width, not all of it: enough to show direction without a long wait. */
 private const val SLIDE_FRACTION = 5
 
-private fun enter() = slideInHorizontally(tween(SLIDE_MS)) { it / SLIDE_FRACTION } + fadeIn(tween(SLIDE_MS))
+/** Opening a screen grows it in from slightly smaller, as if opening the thing that was tapped. */
+private const val OPEN_START_SCALE = 0.92f
 
-private fun exit() = slideOutHorizontally(tween(SLIDE_MS)) { -it / SLIDE_FRACTION } + fadeOut(tween(SLIDE_MS))
+/** The player is full-screen landscape video, so it only fades in: a scale would fight the rotation. */
+private const val PLAYER_FADE_MS = 220
+
+private fun NavBackStackEntry.opensPlayer() = destination.hasRoute<Player>()
+
+private fun enter(target: NavBackStackEntry) =
+    if (target.opensPlayer()) {
+        fadeIn(tween(PLAYER_FADE_MS))
+    } else {
+        scaleIn(tween(SLIDE_MS), initialScale = OPEN_START_SCALE) + fadeIn(tween(SLIDE_MS))
+    }
+
+/** The screen underneath stays put and fades out behind the one opening over it. */
+private fun exit(target: NavBackStackEntry) = fadeOut(tween(if (target.opensPlayer()) PLAYER_FADE_MS else SLIDE_MS))
 
 private fun popEnter() = slideInHorizontally(tween(SLIDE_MS)) { -it / SLIDE_FRACTION } + fadeIn(tween(SLIDE_MS))
 
@@ -52,8 +69,8 @@ fun VibeyFinNavHost() {
     NavHost(
         navController = navController,
         startDestination = Startup,
-        enterTransition = { enter() },
-        exitTransition = { exit() },
+        enterTransition = { enter(targetState) },
+        exitTransition = { exit(targetState) },
         popEnterTransition = { popEnter() },
         popExitTransition = { popExit() },
         // The back gesture scrubs these two. Left alone they are the library's own scale-down, which
@@ -97,6 +114,9 @@ fun VibeyFinNavHost() {
             HomeRoute(
                 onExit = leave,
                 onOpen = open,
+                // A Continue watching card plays at once; it never goes through the detail page.
+                onPlay = { itemId -> navController.navigate(Player(itemId)) },
+                onDetails = { itemId -> navController.navigate(Item(itemId)) },
                 onSettings = { navController.navigate(Settings) },
             )
         }
@@ -115,13 +135,15 @@ fun VibeyFinNavHost() {
             ItemRoute(
                 itemId = itemId,
                 onBack = { navController.popBackStack() },
-                onPlay = { navController.navigate(Player(itemId)) },
+                onPlay = { startOver -> navController.navigate(Player(itemId, startOver)) },
                 onExit = leave,
             )
         }
         composable<Player> { entry ->
+            val route = entry.toRoute<Player>()
             PlayerRoute(
-                itemId = entry.toRoute<Player>().itemId,
+                itemId = route.itemId,
+                startOver = route.startOver,
                 onBack = { navController.popBackStack() },
                 onExit = leave,
             )

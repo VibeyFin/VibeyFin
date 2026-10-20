@@ -60,7 +60,7 @@ struct ServersView: View {
                         Button { onOpenServer(server) } label: {
                             ServerRow(server: server)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressableButtonStyle())
                     }
                     if state.canSearch {
                         nearbyHeader(state)
@@ -68,7 +68,7 @@ struct ServersView: View {
                             Button { onDiscoveredServer(server) } label: {
                                 DiscoveredRow(server: server)
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(PressableButtonStyle())
                         }
                         if state.discovered.isEmpty && !state.searching {
                             Text(Strings.shared.noNewServersFound)

@@ -38,7 +38,21 @@ data class MediaItem(
     val posterAspectRatio: Float,
     val posterUrl: String?,
     val backdropUrl: String?,
+    /** For an episode or a season: the show it belongs to. */
+    val seriesId: String? = null,
+    val runtimeMs: Long? = null,
+    /** Where the server says the user stopped; 0 when they haven't started it, or have finished it. */
+    val resumePositionMs: Long = 0,
+    /** The server's own verdict on whether the user has watched it; it decides this from its resume thresholds. */
+    val played: Boolean = false,
+    /** A 16:9 picture for a card: the item's Thumb, else its Backdrop, else its Primary image. */
+    val landscapeUrl: String? = null,
 ) {
+    /** How far in the user is, from 0 to 1; null when they haven't started or the length isn't known. */
+    val progress: Float?
+        get() = runtimeMs?.takeIf { it > 0 && resumePositionMs > 0 }
+            ?.let { (resumePositionMs.toFloat() / it).coerceIn(0f, 1f) }
+
     /**
      * The server's picture for a library has its name written on it, so a caption under it would
      * say the name twice. Screens leave the caption off and describe the picture with the title.

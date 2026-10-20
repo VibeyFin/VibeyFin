@@ -1,16 +1,23 @@
 package com.liamgleeson.vibeyfin.domain
 
+import com.liamgleeson.vibeyfin.domain.model.ProfileRef
 import com.liamgleeson.vibeyfin.testing.FakeJellyfin
 import com.liamgleeson.vibeyfin.testing.Reply
 import com.liamgleeson.vibeyfin.testing.TestApp
+import com.liamgleeson.vibeyfin.testing.count
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
@@ -24,6 +31,7 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * The reporter works on its own scope in real time, like the app does, so these tests wait for the
@@ -50,7 +58,7 @@ class PlaybackReporterTest {
     }
 
     /** A reporter that only sends when told to: the interval is too long to ever fire. */
-    private fun reporter(interval: Duration = 10.hours) = PlaybackReporter(app.connection, scope, interval).also { it.begin(plan) }
+    private fun reporter(interval: Duration = 10.hours) = app.reporter(scope, interval).also { it.begin(plan) }
 
     private suspend fun serverAnsweringReports(): FakeJellyfin {
         val server = app.signedIn()
@@ -295,12 +303,13 @@ class PlaybackReporterTest {
         withContext(Dispatchers.Default) { delay(100) }
 
         assertTrue(app.jellyfin.requests.isEmpty())
+        assertEquals(0, app.database.count("pending_reports"))
     }
 
     @Test
     fun switchingTracksInTheSameSessionIsReportedAtOnceWithTheNewTracks() = runTest {
         val jellyfin = serverAnsweringReports()
-        val reporter = PlaybackReporter(app.connection, scope, 10.hours).also { it.begin(plan.copy(audioStreamIndex = 1, subtitleStreamIndex = null)) }
+        val reporter = app.reporter(scope, 10.hours).also { it.begin(plan.copy(audioStreamIndex = 1, subtitleStreamIndex = null)) }
 
         reporter.playing(0)
         reporter.position(15_000)
@@ -315,7 +324,7 @@ class PlaybackReporterTest {
     @Test
     fun theSameTracksAgainOrANewSessionSendNothingExtra() = runTest {
         val jellyfin = serverAnsweringReports()
-        val reporter = PlaybackReporter(app.connection, scope, 10.hours).also { it.begin(plan.copy(audioStreamIndex = 1)) }
+        val reporter = app.reporter(scope, 10.hours).also { it.begin(plan.copy(audioStreamIndex = 1)) }
 
         reporter.playing(0)
         reporter.begin(plan.copy(audioStreamIndex = 1))
@@ -329,12 +338,96 @@ class PlaybackReporterTest {
     @Test
     fun theReportsNameTheTracksOfTheStream() = runTest {
         val jellyfin = serverAnsweringReports()
-        val reporter = PlaybackReporter(app.connection, scope, 10.hours).also { it.begin(plan.copy(audioStreamIndex = 2, subtitleStreamIndex = 3)) }
+        val reporter = app.reporter(scope, 10.hours).also { it.begin(plan.copy(audioStreamIndex = 2, subtitleStreamIndex = 3)) }
 
         reporter.playing(0)
 
         val start = body(jellyfin.awaitRequests("POST", "/Sessions/Playing").single())
         assertEquals(2, start.getValue("AudioStreamIndex").jsonPrimitive.int)
         assertEquals(3, start.getValue("SubtitleStreamIndex").jsonPrimitive.int)
+    }
+
+    private suspend fun awaitSavedSessions(expected: Int) {
+        repeat(500) {
+            if (app.database.count("pending_reports") == expected) return
+            withContext(Dispatchers.Default) { delay(10) }
+        }
+        assertEquals(expected, app.database.count("pending_reports"))
+    }
+
+    @Test
+    fun aSessionIsSavedWhileItPlaysAndForgottenOnceTheServerHasHeardItStopped() = runTest {
+        val jellyfin = serverAnsweringReports()
+        val reporter = reporter()
+
+        reporter.playing(0)
+        jellyfin.awaitRequests("POST", "/Sessions/Playing")
+        assertEquals(1, app.database.count("pending_reports"))
+
+        reporter.stop(9_000)
+        awaitSavedSessions(0)
+        assertEquals(1, jellyfin.requestsTo("POST", "/Sessions/Playing/Stopped").size)
+    }
+
+    @Test
+    fun theSavedSessionFollowsPlaybackAndNamesTheProfileThatStartedIt() = runTest {
+        val jellyfin = serverAnsweringReports()
+        val reporter = reporter(interval = 40.milliseconds)
+
+        reporter.playing(0)
+        reporter.position(7_000)
+        jellyfin.awaitRequests("POST", "/Sessions/Playing/Progress", 2)
+
+        val saved = app.pending.stops().single()
+        assertEquals(ProfileRef("srv-1", "u1"), saved.profile)
+        assertEquals("ps-1", saved.playSessionId)
+        assertEquals(70_000_000L, saved.positionTicks)
+    }
+
+    @Test
+    fun aStoppedTheServerCouldNotTakeStaysSavedForTheNextStart() = runTest {
+        val jellyfin = serverAnsweringReports()
+        jellyfin.server("http://nas:8096").on("POST", "/Sessions/Playing/Stopped", Reply.status(HttpStatusCode.ServiceUnavailable))
+        val reporter = reporter()
+
+        reporter.playing(0)
+        reporter.stop(31_500)
+
+        jellyfin.awaitRequests("POST", "/Sessions/Playing/Stopped", 2)
+        withContext(Dispatchers.Default) { delay(100) }
+        val saved = app.pending.stops().single()
+        assertEquals(315_000_000L, saved.positionTicks)
+        assertEquals(2, jellyfin.requestsTo("POST", "/Sessions/Playing/Stopped").size)
+    }
+
+    @Test
+    fun stoppedIsSentAsTheProfileThatStartedItEvenAfterSwitchingProfile() = runTest {
+        val jellyfin = serverAnsweringReports()
+        val reporter = reporter()
+
+        reporter.playing(0)
+        jellyfin.awaitRequests("POST", "/Sessions/Playing")
+        app.connection.switchProfile()
+        reporter.stop(12_000)
+
+        val stopped = jellyfin.awaitRequests("POST", "/Sessions/Playing/Stopped").single()
+        assertTrue(stopped.authorization.orEmpty().contains("Token=\"token-1\""), stopped.authorization)
+    }
+
+    @Test
+    fun screensAreToldOnlyAfterTheServerHasBeenToldItStopped() = runTest {
+        val jellyfin = serverAnsweringReports()
+        val reporter = reporter()
+        val announced = CompletableDeferred<Unit>()
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            app.watchChanges.events.first()
+            announced.complete(Unit)
+        }
+
+        reporter.playing(0)
+        reporter.stop(1_000)
+        withContext(Dispatchers.Default) { withTimeout(5.seconds) { announced.await() } }
+
+        assertEquals(1, jellyfin.requestsTo("POST", "/Sessions/Playing/Stopped").size)
     }
 }

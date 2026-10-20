@@ -18,6 +18,11 @@ fun itemJson(
     seriesName: String? = null,
     seasonNumber: Int? = null,
     episodeNumber: Int? = null,
+    seriesId: String? = null,
+    thumbTag: String? = null,
+    /** Where the user stopped; with [played] this becomes the item's `UserData`. */
+    positionTicks: Long? = null,
+    played: Boolean? = null,
 ): String {
     fun string(value: String?) = value?.let { "\"$it\"" } ?: "null"
     val fields = listOf(
@@ -31,12 +36,20 @@ fun itemJson(
         """"Genres":[${genres.joinToString(",") { "\"$it\"" }}]""",
         """"CommunityRating":${communityRating ?: "null"}""",
         """"OfficialRating":${string(officialRating)}""",
-        """"ImageTags":{${primaryTag?.let { "\"Primary\":\"$it\"" } ?: ""}}""",
+        """"ImageTags":{${listOfNotNull(primaryTag?.let { "\"Primary\":\"$it\"" }, thumbTag?.let { "\"Thumb\":\"$it\"" }).joinToString(",")}}""",
         """"BackdropImageTags":[${backdropTag?.let { "\"$it\"" } ?: ""}]""",
         """"PrimaryImageAspectRatio":${aspectRatio ?: "null"}""",
         """"SeriesName":${string(seriesName)}""",
         """"ParentIndexNumber":${seasonNumber ?: "null"}""",
         """"IndexNumber":${episodeNumber ?: "null"}""",
+        """"SeriesId":${string(seriesId)}""",
+        """"UserData":${
+            if (positionTicks == null && played == null) {
+                "null"
+            } else {
+                """{"PlaybackPositionTicks":${positionTicks ?: 0},"Played":${played ?: false}}"""
+            }
+        }""",
         """"SomethingWeDontRead":true""",
     )
     return fields.joinToString(prefix = "{", postfix = "}")

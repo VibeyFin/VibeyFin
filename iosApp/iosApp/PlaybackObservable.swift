@@ -10,8 +10,8 @@ final class PlaybackObservable: ObservableObject {
     private let model: PlaybackModel
     private var started = false
 
-    init(itemId: String) {
-        model = PlaybackModel(itemId: itemId)
+    init(itemId: String, startOver: Bool) {
+        model = PlaybackModel(itemId: itemId, startOver: startOver)
     }
 
     /// Starts watching. Called when the screen appears, not from `init`, because SwiftUI may build
@@ -50,6 +50,16 @@ final class PlaybackObservable: ObservableObject {
 
     func closed(_ positionMs: Int64) {
         model.onClosed(positionMs: positionMs)
+    }
+
+    /// "Play now" on the next-episode card.
+    func playNow() {
+        model.onPlayNow()
+    }
+
+    /// "Watch credits" on the next-episode card: it goes, and the episode plays out.
+    func watchCredits() {
+        model.onWatchCredits()
     }
 
     func failed(_ failure: PlaybackFailure) {

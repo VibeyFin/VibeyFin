@@ -56,6 +56,38 @@ struct SecondaryButton: View {
     }
 }
 
+/// A secondary action with only an icon: the system's `.bordered` circle with a grey fill. [label] is what
+/// VoiceOver says, since there is no text.
+struct IconSecondaryButton: View {
+    let systemImage: String
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+        }
+        .buttonStyle(.bordered)
+        .circleBorderShape()
+        .controlSize(.large)
+        .tint(Color(.systemGray))
+        .foregroundStyle(.primary)
+        .accessibilityLabel(label)
+    }
+}
+
+private extension View {
+    /// The circle border shape arrived in iOS 17; on iOS 16 the capsule is the closest the system offers.
+    @ViewBuilder
+    func circleBorderShape() -> some View {
+        if #available(iOS 17, *) {
+            buttonBorderShape(.circle)
+        } else {
+            buttonBorderShape(.capsule)
+        }
+    }
+}
+
 /// A tertiary action: the system's `.borderless` button, tinted with the app tint.
 struct GhostButton: View {
     let title: String
@@ -122,6 +154,68 @@ struct SearchingLabel: View {
             Text(Strings.shared.searching)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// Says that a change couldn't be saved, with "Try again", at the bottom of the screen. iOS has no
+/// snackbar, so this is a small banner on the system material: it never blocks anything, never takes
+/// a tap away from the screen, and goes by itself after a few seconds. [message] nil shows nothing.
+private struct FailureBanner: ViewModifier {
+    let message: String?
+    let onRetry: () -> Void
+    let onDismiss: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .overlay(alignment: .bottom) {
+                if let message {
+                    HStack(spacing: Space.s3) {
+                        Text(message)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Button(Strings.shared.tryAgain.titleCased(), action: onRetry)
+                            .buttonStyle(PressableButtonStyle())
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                    }
+                    .padding(Space.s4)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+                    .padding(Space.s4)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .task(id: message) {
+                        try? await Task.sleep(nanoseconds: 6_000_000_000)
+                        onDismiss()
+                    }
+                }
+            }
+            .animation(.default, value: message)
+    }
+}
+
+extension View {
+    func failureBanner(_ message: String?, onRetry: @escaping () -> Void, onDismiss: @escaping () -> Void) -> some View {
+        modifier(FailureBanner(message: message, onRetry: onRetry, onDismiss: onDismiss))
+    }
+}
+
+/// The press feedback for buttons that have no system look of their own (cards, tiles, rows, the glassless
+/// player buttons): the label shrinks a little under the finger and springs back. The system's bordered and
+/// glass styles keep their own highlight. Nothing moves when the system asks for Reduce Motion.
+struct PressableButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        PressableLabel(configuration: configuration)
+    }
+
+    private struct PressableLabel: View {
+        let configuration: ButtonStyleConfiguration
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+        var body: some View {
+            configuration.label
+                .scaleEffect(configuration.isPressed && !reduceMotion ? 0.95 : 1)
+                .animation(reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.6), value: configuration.isPressed)
         }
     }
 }

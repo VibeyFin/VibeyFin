@@ -23,8 +23,9 @@ struct PlayerView: View {
     /// How long the controls stay after the last touch while playing.
     private let hideDelay: UInt64 = 3_000_000_000
 
-    init(itemId: String, onExit: @escaping (HomeExit) -> Void) {
-        _model = StateObject(wrappedValue: PlaybackObservable(itemId: itemId))
+    /// Resumes where the server says the user stopped, unless `startOver`.
+    init(itemId: String, startOver: Bool = false, onExit: @escaping (HomeExit) -> Void) {
+        _model = StateObject(wrappedValue: PlaybackObservable(itemId: itemId, startOver: startOver))
         self.onExit = onExit
     }
 
@@ -55,7 +56,21 @@ struct PlayerView: View {
                         .transition(.opacity)
                 }
             }
+            // The next episode, in the last seconds of this one, whether or not the controls are up.
+            if let upNext = state?.upNext, state?.message == nil {
+                UpNextCard(
+                    upNext: upNext,
+                    onPlayNow: { model.playNow() },
+                    onWatchCredits: { model.watchCredits() }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .screenMargin()
+                .padding(.bottom, Space.s7 + Space.s5)
+                // Grows in and fades like a screen opening, and goes the same way (none of it under Reduce Motion).
+                .transition(reduceMotion ? .opacity : .scale(scale: 0.92).combined(with: .opacity))
+            }
         }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.26), value: state?.upNext != nil)
         .statusBarHidden(!controlsVisible)
         .persistentSystemOverlays(controlsVisible ? .automatic : .hidden)
         .onAppear {

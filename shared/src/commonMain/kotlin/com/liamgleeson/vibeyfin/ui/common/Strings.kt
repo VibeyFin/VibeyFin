@@ -83,11 +83,61 @@ object Strings {
 
     fun greeting(name: String) = "Hi, $name"
 
+    val continueWatching = "Continue watching"
+    val markWatched = "Mark as watched"
+    val markUnwatched = "Mark as unwatched"
+    val details = "Details"
+
+    /** In an item's facts, once the server says the user has watched it. */
+    val watched = "Watched"
+
+    /** What a screen reader says for the "…" menu on the item page. */
+    val moreActions = "More actions"
+
+    /** What a screen reader says while the Continue watching row is still loading. */
+    val loadingContinueWatching = "Loading Continue watching"
+
+    /**
+     * What a screen reader says for a Continue watching card: the title, what it is (the episode, or
+     * a movie's year) and, for something in progress, how far in the user is.
+     */
+    fun continueCardLabel(title: String, detail: String?, percentWatched: Int?) =
+        listOfNotNull(title, detail, percentWatched?.let { "$it% watched" }).joinToString(", ")
+
     /** What a screen reader says for a poster: the title and, when known, the year. */
     fun cardLabel(title: String, year: Int?) = listOfNotNull(title, year?.toString()).joinToString(", ")
 
     // Playback
     val play = "Play"
+    val startOver = "Start over"
+
+    /** The card in the last seconds of an episode that offers the next one. */
+    val upNext = "Up next"
+    val playNow = "Play now"
+
+    /** Dismisses the card and plays the episode out to the end of its credits. */
+    val watchCredits = "Watch credits"
+
+    fun upNextIn(seconds: Int) = "Starts in $seconds"
+
+    /** The Resume button when the length isn't known. */
+    val resume = "Resume"
+
+    /** How much is left to watch: "38m left", or "1h 52m left" from an hour. Never under a minute. */
+    fun timeLeftShort(remainingMs: Long): String {
+        val minutes = ((remainingMs + 30_000) / 60_000).coerceAtLeast(1)
+        val hours = minutes / 60
+        val rest = minutes % 60
+        val left = when {
+            hours == 0L -> "${rest}m"
+            rest == 0L -> "${hours}h"
+            else -> "${hours}h ${rest}m"
+        }
+        return "$left left"
+    }
+
+    /** The Resume button: "Resume · 38m left". */
+    fun resumeTimeLeft(remainingMs: Long) = "Resume · ${timeLeftShort(remainingMs)}"
     val pause = "Pause"
     val close = "Close"
     val playbackPosition = "Playback position"

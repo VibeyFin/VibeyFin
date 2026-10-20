@@ -5,6 +5,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 ## Home
 
 - **Must** order rows: hero (optional, max one) → Continue watching (Next up is part of it, not a row of its own) → Recently added (one row per library) → collections / genres.
+- **Must** show the filter chips under the header, above the hero: Shows, Movies, Collections (only when the server has any), then the library's genres, at most 12 chips. A type with no library gets no chip. One chip at a time, none selected on launch; tapping the selected chip clears it. A selected chip limits the hero, Continue watching and every row to that type or genre (empty rows hide, as always). Aqua is never used on the chips.
 - **Must** show Continue watching above the fold on a 6.1" phone, even with the hero present.
 - **Must** hide empty rows. Never show a row that says "No items" on Home.
 - Each row holds at most 20 items, then a "See all" action in its header.
@@ -22,7 +23,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 ## Detail
 
 - Opens on a full-width backdrop hero; title (Logo image, else `brand-display`), facts, overview and actions sit over the image, always on `scrim`. Cast and More like this scroll below it.
-- Exactly one primary button, and its label says what happens: "Play", "Resume · 38m left", "Play S2:E4".
+- Exactly one primary button, and its label says what happens: "Play", "Resume · 38m left" (the time left; a round icon-only "start over" arrow sits beside it as the secondary button, only when there is something to resume), "Play S2 E4".
 - Secondary actions (icon over label) after it: My List, Like, Trailer (only when the item has one), Download — max four. Mark as watched lives in the overflow menu.
 - Series: a row of season buttons (about four visible, scrolling sideways) and the selected season's episode list below. **Must** open on the season of the episode Play / Resume starts, with that episode marked; picking a season swaps the list in place.
 - Synopsis 3 lines + "More". Technical info (video, audio, subtitles, file) in a collapsed section at the bottom.
@@ -34,7 +35,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 - Controls auto-hide after 3s without input; a tap toggles them. Double-tap the left / right third seeks ∓10s with a visible "10s" label.
 - Scrubbing shows the trickplay thumbnail above the thumb with the timestamp; no trickplay data → timestamp only.
 - Skip buttons ("Skip intro", "Skip recap") appear at segment start and stay for the whole segment, also when controls are hidden. **Never** auto-skip unless the user turned it on.
-- Up next: at the Outro segment (or the last 30s without one) show the next-episode card with a 10s countdown and "Watch credits". After 3 auto-played episodes without input, pause and ask "Still watching?".
+- Up next: at the Outro segment (or the last 30s without one) show the next-episode card with a 10s countdown, "Play now" and "Watch credits". At zero the next episode starts (about 20s early, the finished one counted as watched); "Watch credits" dismisses the card for that episode, which plays out and closes with no second countdown. A video under three minutes only counts down once it has ended. After 3 auto-played episodes without input, pause and ask "Still watching?".
 - Remember audio and subtitle language per series; fall back to the user's Jellyfin preferences.
 - **Must** report progress to the server on start, every 10s, on pause, seek and stop — and on app backgrounding.
 - **Never** start playback with sound from a non-player screen.
@@ -58,7 +59,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 ## Offline and errors
 
 - Server unreachable: keep the last Home in cache and show a banner with "Try again"; Downloads stays fully usable.
-- Failed actions retry silently once, then say so in a snackbar with an action. **Never** a modal for a non-blocking error.
+- Failed actions retry silently (the same retries as a read), then say so with an action. Android: a `Snackbar`. iOS has no snackbar, so a small banner on the system material at the bottom, with the same "Try again" action, gone after a few seconds. **Never** a modal for a non-blocking error.
 
 ## Accessibility
 

@@ -9,6 +9,12 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -64,6 +70,22 @@ fun Artwork(
     }
 }
 
+/** The check on a watched poster's top-right corner, on the scrim so it reads over any picture. */
+@Composable
+fun WatchedBadge(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.size(24.dp).clip(CircleShape).background(VibeyFinTokens.Colors.scrim),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Check,
+            contentDescription = Strings.watched,
+            tint = VibeyFinTokens.Colors.ink,
+            modifier = Modifier.size(16.dp),
+        )
+    }
+}
+
 /** A poster or a library tile with its title underneath, unless the picture already says it. */
 @Composable
 fun ArtworkTile(item: MediaItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -75,12 +97,15 @@ fun ArtworkTile(item: MediaItem, onClick: () -> Unit, modifier: Modifier = Modif
             .semantics(mergeDescendants = true) { contentDescription = Strings.cardLabel(item.title, item.year) },
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
     ) {
-        Artwork(
-            url = item.posterUrl,
-            title = item.title,
-            aspectRatio = item.posterAspectRatio,
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork)),
-        )
+        Box(Modifier.clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
+            Artwork(
+                url = item.posterUrl,
+                title = item.title,
+                aspectRatio = item.posterAspectRatio,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (item.played) WatchedBadge(Modifier.align(Alignment.TopEnd).padding(VibeyFinTokens.Space.s2))
+        }
         if (!item.nameIsOnPoster) {
             Text(
                 text = item.title,

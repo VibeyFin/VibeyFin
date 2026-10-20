@@ -29,6 +29,6 @@ data class Children(val parentId: String, val title: String)
 @Serializable
 data class Item(val itemId: String)
 
-/** Plays one movie or episode, full screen. */
+/** Plays one movie or episode, full screen. It resumes where the server says the user stopped, unless [startOver]. */
 @Serializable
-data class Player(val itemId: String)
+data class Player(val itemId: String, val startOver: Boolean = false)

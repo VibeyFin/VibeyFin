@@ -7,16 +7,23 @@ import com.liamgleeson.vibeyfin.domain.AccountRepository
 import com.liamgleeson.vibeyfin.domain.AuthRepository
 import com.liamgleeson.vibeyfin.domain.ConnectionManager
 import com.liamgleeson.vibeyfin.domain.LibraryRepository
+import com.liamgleeson.vibeyfin.domain.PROGRESS_INTERVAL
+import com.liamgleeson.vibeyfin.domain.PendingReports
+import com.liamgleeson.vibeyfin.domain.PlaybackRecovery
+import com.liamgleeson.vibeyfin.domain.PlaybackReporter
 import com.liamgleeson.vibeyfin.domain.PlaybackRepository
 import com.liamgleeson.vibeyfin.domain.ProfileSettings
 import com.liamgleeson.vibeyfin.domain.ServerConnector
 import com.liamgleeson.vibeyfin.domain.ServerRepository
 import com.liamgleeson.vibeyfin.domain.StartupRouter
+import com.liamgleeson.vibeyfin.domain.WatchChanges
+import com.liamgleeson.vibeyfin.domain.WatchRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.job
+import kotlin.time.Duration
 
 /**
  * The real repositories, connector, connection manager and auth, wired as the app wires them but
@@ -38,9 +45,18 @@ class TestApp {
     val auth = AuthRepository(connector, accounts, connection)
     val router = StartupRouter(servers, accounts, preferences, connection)
     val library = LibraryRepository(connection)
+    val watchChanges = WatchChanges()
+    val watch = WatchRepository(connection, watchChanges)
     val capabilities = FakePlaybackCapabilities()
     val profileSettings = ProfileSettings(database.accountDao(), connection)
     val playback = PlaybackRepository(connection, capabilities, ClientInfoProvider(FakeDeviceInfo(), preferences), profileSettings)
+
+    val pending = PendingReports(database.pendingReportDao(), clock)
+    val recovery = PlaybackRecovery(pending, connection)
+
+    /** A reporter wired like the app's, working on [scope], which the test cancels before closing the app. */
+    fun reporter(scope: CoroutineScope, interval: Duration = PROGRESS_INTERVAL) =
+        PlaybackReporter(connection, scope, pending, recovery, watchChanges, interval)
 
     /** Saves a server reachable at [address] and returns its fake. */
     suspend fun serverAt(address: String, id: String = "srv-1", name: String = "Home"): FakeServer {

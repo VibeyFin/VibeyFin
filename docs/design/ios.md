@@ -30,6 +30,7 @@ Glass is the **navigation and controls layer** floating above content — never 
 | Episode row actions | `.swipeActions` (Mark as Watched, Download) |
 | Audio / subtitles | `Menu` / `Picker` in a toolbar or a sheet with `.presentationDetents([.medium, .large])` |
 | Season buttons (series detail) | Horizontal `ScrollView` of capsule buttons, selected filled `ink`; `ScrollViewReader` scrolls to the next-up season on open |
+| Home filters (Shows, Movies, Collections, genres) | Horizontal `ScrollView` of capsule buttons under the Home header: `surface-2` fill with `ink`, selected filled `ink` with `bg` text and a trailing `xmark`; 36pt tall with a 44pt hit area. Not glass. `ScrollViewReader` scrolls the selected chip into view |
 | Share | `ShareLink` |
 | Casting | `AVRoutePickerView` (AirPlay) |
 | Player | Custom SwiftUI controls over `AVPlayerLayer` (Jellyfin trickplay and skip segments need it); PiP via `AVPictureInPictureController`; Now Playing via `MPNowPlayingInfoCenter` |
@@ -47,7 +48,7 @@ Glass is the **navigation and controls layer** floating above content — never 
 ## Don't
 
 - Don't fake glass with blur materials where a system component exists, and don't stack glass on glass.
-- Don't add a hamburger menu, FAB, Android-style snackbars or an in-app "Exit".
+- Don't add a hamburger menu, FAB, Android-style snackbars or an in-app "Exit". A failed write that needs a word ("Couldn't mark this as watched") uses `failureBanner`: a non-modal capsule on `.regularMaterial` at the bottom with "Try again", dismissed after about six seconds.
 - Don't use Material icons, `⋮` or `←` — SF Symbols, `…`, `‹`.
 - Don't put Settings in a tab — it's under the profile avatar on Home.
 - Don't leave the player rotated when returning to a portrait screen; hide the home indicator with the controls (`.persistentSystemOverlays(.hidden)`).
