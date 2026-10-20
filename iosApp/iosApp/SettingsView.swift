@@ -6,26 +6,27 @@ struct SettingsView: View {
 
     var body: some View {
         ZStack {
-            Palette.ink.ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 24) {
-                Text(Strings.shared.settings).vibeTitle(size: 34)
+            Color(.systemBackground).ignoresSafeArea()
+            VStack(alignment: .leading, spacing: Space.s5) {
+                Text(Strings.shared.settings.titleCased()).screenTitle()
                 // The whole row is the toggle, so the label is a target too. The switch is light on
-                // dark: amber is for the one primary action on a screen.
+                // dark: aqua is for the one primary action on a screen.
                 Toggle(isOn: alwaysAsk) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(Strings.shared.alwaysAskWhoIsWatchingTitle)
-                            .font(.system(size: 17, weight: .bold))
-                            .foregroundColor(Palette.text)
+                            .font(.headline)
+                            .foregroundStyle(.primary)
                         Text(Strings.shared.alwaysAskWhoIsWatchingHelp)
                             .font(.subheadline)
-                            .foregroundColor(Palette.textMuted)
+                            .foregroundStyle(.secondary)
                     }
                 }
-                .tint(Palette.text)
+                .tint(Color(.label))
                 Spacer()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(24)
+            .screenMargin()
+            .padding(.vertical, Space.s5)
         }
         .onAppear { model.start() }
         .toolbarBackground(.hidden, for: .navigationBar)

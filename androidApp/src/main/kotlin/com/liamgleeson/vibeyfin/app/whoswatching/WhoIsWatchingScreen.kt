@@ -29,7 +29,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -54,10 +54,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.liamgleeson.vibeyfin.app.theme.screenMargin
 import com.liamgleeson.vibeyfin.app.components.BackButtonSpace
 import com.liamgleeson.vibeyfin.app.components.FloatingBackButton
 import com.liamgleeson.vibeyfin.app.components.vibeyFinTextFieldColors
-import com.liamgleeson.vibeyfin.app.theme.VibeyFinPalette
+import com.liamgleeson.vibeyfin.app.theme.VibeyFinTokens
 import com.liamgleeson.vibeyfin.domain.model.Profile
 import com.liamgleeson.vibeyfin.ui.common.Strings
 import com.liamgleeson.vibeyfin.ui.whoswatching.SignInSheet
@@ -104,7 +105,7 @@ fun WhoIsWatchingScreen(
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp)) {
+            Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = screenMargin())) {
                 if (state.loading) {
                     Header(state, onRetry)
                     Spacer(Modifier.height(16.dp))
@@ -165,7 +166,7 @@ private fun Header(state: WhoIsWatchingUiState, onRetry: () -> Unit) {
         }
         Text(
             text = Strings.whoIsWatching,
-            style = MaterialTheme.typography.headlineLarge,
+            style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground,
         )
         if (!state.loading && !state.serverReachable) {
@@ -183,8 +184,8 @@ private fun Header(state: WhoIsWatchingUiState, onRetry: () -> Unit) {
 private fun UnreachableBanner(onRetry: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
@@ -205,7 +206,7 @@ private fun UnreachableBanner(onRetry: () -> Unit) {
 @Composable
 private fun ProfileTile(profile: Profile, enabled: Boolean, onClick: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable(enabled = enabled, onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).clickable(enabled = enabled, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -217,13 +218,13 @@ private fun ProfileTile(profile: Profile, enabled: Boolean, onClick: () -> Unit)
                         .align(Alignment.BottomEnd)
                         .padding(6.dp)
                         .size(26.dp)
-                        .background(VibeyFinPalette.Ink.copy(alpha = 0.85f), RoundedCornerShape(8.dp)),
+                        .background(VibeyFinTokens.Colors.scrim, RoundedCornerShape(8.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Lock,
                         contentDescription = Strings.needsPassword,
-                        tint = VibeyFinPalette.Text,
+                        tint = VibeyFinTokens.Colors.ink,
                         modifier = Modifier.size(16.dp),
                     )
                 }
@@ -243,7 +244,7 @@ private fun ProfileTile(profile: Profile, enabled: Boolean, onClick: () -> Unit)
 private fun Avatar(profile: Profile) {
     var pictureShown by remember(profile.avatarUrl) { mutableStateOf(false) }
     Box(
-        modifier = Modifier.size(104.dp).clip(RoundedCornerShape(16.dp)).background(tintFor(profile.name)),
+        modifier = Modifier.size(104.dp).clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).background(tintFor(profile.name)),
         contentAlignment = Alignment.Center,
     ) {
         // The letter goes once the picture is there; pictures with transparent areas would show it through.
@@ -251,7 +252,7 @@ private fun Avatar(profile: Profile) {
             Text(
                 text = profile.name.take(1).uppercase(),
                 style = MaterialTheme.typography.displaySmall,
-                color = VibeyFinPalette.Text,
+                color = VibeyFinTokens.Colors.ink,
             )
         }
         profile.avatarUrl?.let { url ->
@@ -270,15 +271,15 @@ private fun Avatar(profile: Profile) {
 @Composable
 private fun ActionTile(label: String, symbol: String, enabled: Boolean, onClick: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable(enabled = enabled, onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).clickable(enabled = enabled, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(
-            modifier = Modifier.size(104.dp).clip(RoundedCornerShape(16.dp)).background(VibeyFinPalette.SurfaceHigh),
+            modifier = Modifier.size(104.dp).clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).background(VibeyFinTokens.Colors.surface3),
             contentAlignment = Alignment.Center,
         ) {
-            Text(symbol, style = MaterialTheme.typography.displaySmall, color = VibeyFinPalette.TextMuted)
+            Text(symbol, style = MaterialTheme.typography.displaySmall, color = VibeyFinTokens.Colors.inkMuted)
         }
         Text(
             text = label,
@@ -309,7 +310,7 @@ private fun SignInSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         if (sheet is SignInSheet.QuickConnect) {
             QuickConnectContent(sheet, onQuickConnectRetry, onDismiss)
@@ -333,7 +334,7 @@ private fun QuickConnectContent(sheet: SignInSheet.QuickConnect, onRetry: () -> 
         when {
             sheet.message != null -> {
                 Text(sheet.message!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
-                OutlinedButton(onClick = onRetry, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text(Strings.tryAgain) }
+                FilledTonalButton(onClick = onRetry, modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.touch)) { Text(Strings.tryAgain) }
             }
             sheet.code != null -> {
                 Text(
@@ -438,14 +439,15 @@ private fun PasswordContent(
             }
             Button(
                 onClick = { submit() },
-                enabled = canSubmit,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
+                // Stays enabled while signing in so the busy button keeps its colours; submit() ignores it.
+                enabled = canSubmit || signingIn,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
             ) {
                 if (signingIn) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onPrimary,
                     )
                     Spacer(Modifier.size(12.dp))
                     Text(Strings.signingIn)

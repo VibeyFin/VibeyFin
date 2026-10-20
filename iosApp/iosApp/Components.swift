@@ -1,40 +1,73 @@
 import SwiftUI
 import Shared
 
-/// The one primary action on a screen: amber and full width.
-struct PrimaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        PrimaryButtonBody(configuration: configuration)
-    }
+/// The one filled primary action on a screen: an aqua capsule, full width. Native `.borderedProminent`
+/// so the system supplies press, disabled and Liquid Glass-era behaviour; the label sits on `onAccent`.
+struct PrimaryButton<Label: View>: View {
+    let action: () -> Void
+    @ViewBuilder let label: () -> Label
+    @Environment(\.isEnabled) private var isEnabled
 
-    private struct PrimaryButtonBody: View {
-        let configuration: ButtonStyleConfiguration
-        @Environment(\.isEnabled) private var isEnabled
-
-        var body: some View {
-            configuration.label
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(isEnabled ? Palette.onMarquee : Palette.textMuted)
-                .frame(maxWidth: .infinity, minHeight: 52)
-                .background(Capsule().fill(isEnabled ? Palette.marquee : Palette.surfaceHigh))
-                .opacity(configuration.isPressed ? 0.85 : 1)
+    var body: some View {
+        Button(action: action) {
+            label()
+                .frame(maxWidth: .infinity)
         }
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.capsule)
+        .controlSize(.large)
+        .tint(Brand.accent)
+        // Disabled keeps a readable label: the system greys the fill, and `onAccent` on grey is not legible.
+        .foregroundStyle(isEnabled ? Brand.onAccent : Color.secondary)
     }
 }
 
-/// A quieter full-width action for screens that already have their own focus.
-struct OutlineButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundColor(Palette.textMuted)
-            .frame(maxWidth: .infinity, minHeight: 52)
-            .overlay(Capsule().stroke(Palette.surfaceHigh, lineWidth: 1))
-            .opacity(configuration.isPressed ? 0.7 : 1)
+/// A spinner that shows on the aqua of a busy primary button.
+struct PrimaryButtonSpinner: View {
+    var body: some View {
+        ProgressView()
+            .progressViewStyle(.circular)
+            .tint(Brand.onAccent)
+            .scaleEffect(0.8)
     }
 }
 
-/// A rounded surface that holds a server or a message.
+extension PrimaryButton where Label == Text {
+    init(_ title: String, action: @escaping () -> Void) {
+        self.init(action: action) { Text(title.titleCased()) }
+    }
+}
+
+/// A secondary action: the system's `.bordered` capsule with a grey fill, full width.
+struct SecondaryButton: View {
+    let title: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title.titleCased())
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.capsule)
+        .controlSize(.large)
+        .tint(Color(.systemGray))
+        .foregroundStyle(.primary)
+    }
+}
+
+/// A tertiary action: the system's `.borderless` button, tinted with the app tint.
+struct GhostButton: View {
+    let title: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(title.titleCased(), action: action)
+            .buttonStyle(.borderless)
+    }
+}
+
+/// A grouped surface that holds a server or a message.
 struct Card<Content: View>: View {
     private let content: Content
 
@@ -44,22 +77,51 @@ struct Card<Content: View>: View {
 
     var body: some View {
         content
-            .padding(20)
+            .padding(Space.s4)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 16).fill(Palette.surface))
+            .background(
+                RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+                    .fill(Color(.secondarySystemBackground))
+            )
+    }
+}
+
+/// A labelled field on `surface-2`. The border turns red when `isError`; it is the control's edge, so it
+/// stays visible at rest.
+struct FormField<Content: View>: View {
+    let label: String
+    var isError = false
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.s1) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(isError ? Color(.systemRed) : Color.secondary)
+            content()
+                .foregroundStyle(.primary)
+                .padding(Space.s4)
+                .background(
+                    RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous)
+                        .fill(Color(.tertiarySystemBackground))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous)
+                        .stroke(isError ? Color(.systemRed) : Color(.systemGray), lineWidth: 1)
+                )
+        }
     }
 }
 
 struct SearchingLabel: View {
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Space.s2) {
             ProgressView()
                 .progressViewStyle(.circular)
-                .tint(Palette.textMuted)
                 .scaleEffect(0.8)
             Text(Strings.shared.searching)
                 .font(.subheadline)
-                .foregroundColor(Palette.textMuted)
+                .foregroundStyle(.secondary)
         }
     }
 }

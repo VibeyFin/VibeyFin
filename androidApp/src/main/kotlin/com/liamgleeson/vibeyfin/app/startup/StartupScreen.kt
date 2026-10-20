@@ -8,7 +8,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.liamgleeson.vibeyfin.app.theme.VibeyFinPalette
+import com.liamgleeson.vibeyfin.app.theme.VibeyFinTokens
 import com.liamgleeson.vibeyfin.domain.StartDestination
 import com.liamgleeson.vibeyfin.ui.startup.StartupViewModel
 import org.koin.androidx.compose.koinViewModel
@@ -20,5 +20,5 @@ fun StartupRoute(onDecided: (StartDestination) -> Unit, viewModel: StartupViewMo
     LaunchedEffect(destination) {
         destination?.let(onDecided)
     }
-    Box(Modifier.fillMaxSize().background(VibeyFinPalette.Ink))
+    Box(Modifier.fillMaxSize().background(VibeyFinTokens.Colors.bg))
 }

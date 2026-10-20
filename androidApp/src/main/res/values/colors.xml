@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Ink, from the VibeyFin palette. Shown before Compose draws its first frame. -->
-    <color name="ink">#10121A</color>
-    <!-- Marquee (amber). Used by the launcher icon only. -->
+    <!-- bg, from design/tokens.json. Shown before Compose draws its first frame. -->
+    <color name="ink">#0E1514</color>
+    <!-- Amber, launcher icon only. The icon is recoloured in a separate task. -->
     <color name="marquee">#E8B04B</color>
 </resources>

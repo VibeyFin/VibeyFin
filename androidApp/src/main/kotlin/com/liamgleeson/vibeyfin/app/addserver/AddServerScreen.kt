@@ -1,6 +1,5 @@
 package com.liamgleeson.vibeyfin.app.addserver
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,12 +12,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -34,10 +35,11 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.liamgleeson.vibeyfin.app.theme.screenMargin
 import com.liamgleeson.vibeyfin.app.components.BackButtonSpace
 import com.liamgleeson.vibeyfin.app.components.FloatingBackButton
 import com.liamgleeson.vibeyfin.app.components.vibeyFinTextFieldColors
-import com.liamgleeson.vibeyfin.app.theme.VibeyFinPalette
+import com.liamgleeson.vibeyfin.app.theme.VibeyFinTokens
 import com.liamgleeson.vibeyfin.ui.addserver.AddServerStep
 import com.liamgleeson.vibeyfin.ui.addserver.AddServerUiState
 import com.liamgleeson.vibeyfin.ui.addserver.AddServerViewModel
@@ -82,12 +84,12 @@ fun AddServerScreen(
                     .fillMaxSize()
                     .safeDrawingPadding()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = screenMargin()),
             ) {
                 Spacer(Modifier.height(BackButtonSpace))
                 Text(
                     text = Strings.addAServer,
-                    style = MaterialTheme.typography.headlineLarge,
+                    style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Spacer(Modifier.height(24.dp))
@@ -97,7 +99,7 @@ fun AddServerScreen(
                     onValueChange = onAddressChange,
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(Strings.serverAddress) },
-                    placeholder = { Text("192.168.1.20:8096") },
+                    placeholder = { Text(Strings.serverAddressExample) },
                     singleLine = true,
                     isError = state.step is AddServerStep.Failed,
                     colors = vibeyFinTextFieldColors(),
@@ -116,14 +118,16 @@ fun AddServerScreen(
                     val checking = state.step is AddServerStep.Checking
                     Button(
                         onClick = onConnect,
-                        enabled = state.canConnect,
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        // Stays enabled while checking so the busy button keeps its colours; the
+                        // view model ignores a second tap.
+                        enabled = state.canConnect || checking,
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
                     ) {
                         if (checking) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(18.dp),
                                 strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = MaterialTheme.colorScheme.onPrimary,
                             )
                             Spacer(Modifier.size(12.dp))
                             Text(Strings.connecting)
@@ -144,8 +148,7 @@ fun AddServerScreen(
                         Spacer(Modifier.height(16.dp))
                         Button(
                             onClick = onConfirm,
-                            enabled = !state.saving,
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
                         ) {
                             Text(
                                 when {
@@ -169,18 +172,23 @@ fun AddServerScreen(
 private fun FoundCard(found: AddServerStep.Found) {
     Surface(
         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md),
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Teal means available: the server answered.
-                Box(Modifier.size(8.dp).background(VibeyFinPalette.Available, CircleShape))
+                // The server answered: a check and the word, in the text colour. Aqua is for the primary action.
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(16.dp),
+                )
                 Spacer(Modifier.size(8.dp))
                 Text(
                     text = Strings.found,
                     style = MaterialTheme.typography.labelMedium,
-                    color = VibeyFinPalette.Available,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
             Spacer(Modifier.height(4.dp))
@@ -222,8 +230,8 @@ private fun FoundCard(found: AddServerStep.Found) {
 private fun ErrorCard(message: String) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md),
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(

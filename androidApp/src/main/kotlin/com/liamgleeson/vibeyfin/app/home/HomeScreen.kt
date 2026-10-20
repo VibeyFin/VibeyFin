@@ -34,9 +34,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.liamgleeson.vibeyfin.app.theme.screenMargin
 import com.liamgleeson.vibeyfin.app.components.ArtworkTile
 import com.liamgleeson.vibeyfin.app.components.LoadError
-import com.liamgleeson.vibeyfin.app.theme.VibeyFinPalette
+import com.liamgleeson.vibeyfin.app.theme.VibeyFinTokens
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
 import com.liamgleeson.vibeyfin.ui.common.Strings
 import com.liamgleeson.vibeyfin.ui.home.HomeExit
@@ -77,7 +78,7 @@ fun HomeScreen(
     onSignOut: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp)) {
+        Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(screenMargin())) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -86,7 +87,7 @@ fun HomeScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
                     Text(
                         text = state.userName?.let { Strings.greeting(it) } ?: Strings.home,
-                        style = MaterialTheme.typography.headlineLarge,
+                        style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
                     state.serverName?.let {
@@ -123,8 +124,8 @@ private fun Libraries(state: HomeUiState, onOpen: (MediaItem) -> Unit, onRetry: 
         )
         else -> LazyVerticalGrid(
             columns = GridCells.Adaptive(150.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
+            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
             modifier = Modifier.fillMaxSize(),
         ) {
             items(state.libraries, key = { it.id }) { library ->
@@ -147,22 +148,21 @@ private fun ProfileMenu(
     Box {
         Box(
             modifier = Modifier
-                .size(44.dp)
+                .size(VibeyFinTokens.Size.touch)
                 .clip(CircleShape)
-                .background(VibeyFinPalette.SurfaceHigh)
+                .background(VibeyFinTokens.Colors.surface3)
                 .clickable { open = true },
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = userName?.take(1)?.uppercase().orEmpty(),
                 style = MaterialTheme.typography.titleMedium,
-                color = VibeyFinPalette.Text,
+                color = VibeyFinTokens.Colors.ink,
             )
         }
         DropdownMenu(
             expanded = open,
             onDismissRequest = { open = false },
-            containerColor = VibeyFinPalette.SurfaceHigh,
         ) {
             MenuItem(Strings.switchProfile) { open = false; onSwitchProfile() }
             MenuItem(Strings.switchServer) { open = false; onSwitchServer() }
@@ -174,5 +174,5 @@ private fun ProfileMenu(
 
 @Composable
 private fun MenuItem(label: String, onClick: () -> Unit) {
-    DropdownMenuItem(text = { Text(label, color = VibeyFinPalette.Text) }, onClick = onClick)
+    DropdownMenuItem(text = { Text(label) }, onClick = onClick)
 }

@@ -18,6 +18,11 @@
 		<key>UIColorName</key>
 		<string>LaunchBackground</string>
 	</dict>
+	<!-- Bricolage Grotesque, the brand display face (see Theme.swift). -->
+	<key>UIAppFonts</key>
+	<array>
+		<string>BricolageGrotesque.ttf</string>
+	</array>
 	<!-- VibeyFin is dark-only. -->
 	<key>UIUserInterfaceStyle</key>
 	<string>Dark</string>

@@ -24,10 +24,10 @@ struct ChildrenView: View {
 
     var body: some View {
         ZStack {
-            Palette.ink.ignoresSafeArea()
+            Color(.systemBackground).ignoresSafeArea()
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text(title).vibeTitle(size: 34)
+                VStack(alignment: .leading, spacing: Space.s4) {
+                    Text(title).screenTitle()
                     if let state = model.state {
                         content(state)
                     } else {
@@ -35,7 +35,8 @@ struct ChildrenView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(24)
+                .screenMargin()
+                .padding(.vertical, Space.s5)
             }
         }
         .onAppear { model.start() }
@@ -57,7 +58,7 @@ struct ChildrenView: View {
         } else if state.isEmpty {
             Text(Strings.shared.emptyFolder)
                 .font(.body)
-                .foregroundColor(Palette.textMuted)
+                .foregroundStyle(.secondary)
         } else {
             ArtworkGrid(
                 items: state.items,

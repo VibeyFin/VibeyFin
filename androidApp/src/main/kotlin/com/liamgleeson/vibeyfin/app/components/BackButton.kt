@@ -15,15 +15,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import com.liamgleeson.vibeyfin.app.theme.VibeyFinPalette
+import com.liamgleeson.vibeyfin.app.theme.VibeyFinTokens
+import com.liamgleeson.vibeyfin.app.theme.screenMargin
 import com.liamgleeson.vibeyfin.ui.common.Strings
 
 /**
- * An arrow on a round chip like the profile button on Home, with no label; it has a name for
- * screen readers. Screens show it through [FloatingBackButton], not in a row of their own.
+ * An arrow on a round chip over the content, on the scrim so it reads over any artwork, with no
+ * label; it has a name for screen readers. Screens show it through [FloatingBackButton], not in a row of their own.
  */
 @Composable
 fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -35,15 +35,14 @@ fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
         Box(
             modifier = Modifier
                 .size(40.dp)
-                .shadow(4.dp, CircleShape)
                 .clip(CircleShape)
-                .background(VibeyFinPalette.SurfaceHigh),
+                .background(VibeyFinTokens.Colors.scrim),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = Strings.back,
-                tint = VibeyFinPalette.Text,
+                tint = VibeyFinTokens.Colors.ink,
                 modifier = Modifier.size(20.dp),
             )
         }
@@ -60,7 +59,7 @@ fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
 fun BoxScope.FloatingBackButton(onClick: () -> Unit) {
     BackButton(
         onClick = onClick,
-        modifier = Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(start = 20.dp, top = 8.dp),
+        modifier = Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(start = screenMargin() - 4.dp, top = 8.dp),
     )
 }
 
