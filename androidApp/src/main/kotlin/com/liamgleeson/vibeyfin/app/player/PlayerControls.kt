@@ -20,6 +20,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -64,12 +66,14 @@ fun PlayerControls(
     /** The user is dragging the scrubber, or has let go (false); the controls must not hide meanwhile. */
     onScrubbing: (Boolean) -> Unit,
     onSeek: (Long) -> Unit,
+    /** The thumbnails to preview while scrubbing; null shows the timestamp alone. */
+    trickplay: TrickplayTiles? = null,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxSize()) {
         TopBar(title, subtitle, hasTrackChoices, onClose, onTracks, Modifier.align(Alignment.TopStart))
         PlayPauseButton(playing, onTogglePlay, Modifier.align(Alignment.Center))
-        Scrubber(positionMs, durationMs, onScrubbing, onSeek, Modifier.align(Alignment.BottomCenter))
+        Scrubber(positionMs, durationMs, trickplay, onScrubbing, onSeek, Modifier.align(Alignment.BottomCenter))
     }
 }
 
@@ -153,6 +157,7 @@ private fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, modifier: Mod
 private fun Scrubber(
     positionMs: Long,
     durationMs: Long,
+    trickplay: TrickplayTiles?,
     onScrubbing: (Boolean) -> Unit,
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
@@ -162,6 +167,16 @@ private fun Scrubber(
     val known = durationMs > 0
     val shown = (dragged ?: positionMs.toFloat()).coerceIn(0f, if (known) durationMs.toFloat() else 1f)
     val shownMs = shown.toLong()
+    // The thumbnail for where the thumb is; null until its tile arrives, and when there is none.
+    var thumbnail by remember(trickplay) { mutableStateOf<ImageBitmap?>(null) }
+    var thumbnailTile by remember(trickplay) { mutableStateOf<Int?>(null) }
+    LaunchedEffect(trickplay, dragged != null, shownMs / 1000) {
+        // A frame from another tile must never sit under a new timestamp while that tile loads.
+        val tile = trickplay?.tileAt(shownMs)
+        if (tile != thumbnailTile) thumbnail = null
+        thumbnailTile = tile
+        thumbnail = if (trickplay != null && dragged != null) trickplay.thumbnail(shownMs) else null
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -170,6 +185,7 @@ private fun Scrubber(
             .padding(horizontal = screenMargin(), vertical = VibeyFinTokens.Space.s2)
             .padding(top = VibeyFinTokens.Space.s4),
     ) {
+        Box {
         Slider(
             value = if (known) shown else 0f,
             onValueChange = {
@@ -196,6 +212,11 @@ private fun Scrubber(
                 stateDescription = Strings.positionDescription(shownMs, durationMs)
             },
         )
+        val preview = thumbnail
+        if (dragged != null && preview != null && known) {
+            ScrubPreview(preview, Strings.clock(shownMs), shown / durationMs, Modifier.align(Alignment.TopStart))
+        }
+        }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(Strings.clock(shownMs), style = TimeStyle, color = VibeyFinTokens.Colors.ink)
             if (known) Text(Strings.timeLeft(shownMs, durationMs), style = TimeStyle, color = VibeyFinTokens.Colors.ink)

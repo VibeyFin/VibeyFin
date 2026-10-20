@@ -38,6 +38,14 @@ class TrickplayTest {
     }
 
     @Test
+    fun tileUrlHangsOffTheSetsAddress() {
+        assertEquals(
+            "http://h/Videos/m1/Trickplay/320/2.jpg?mediaSourceId=ms-2",
+            track.copy(mediaSourceId = "ms-2", tilesUrl = "http://h/Videos/m1/Trickplay/320").tileUrl(2),
+        )
+    }
+
+    @Test
     fun tilePathNamesTheWidthAndTheTile() {
         assertEquals("/Videos/m1/Trickplay/320/2.jpg", track.tilePath("m1", 2))
     }

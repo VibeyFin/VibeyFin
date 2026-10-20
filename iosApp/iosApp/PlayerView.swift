@@ -21,6 +21,8 @@ struct PlayerView: View {
     @State private var hideTask: Task<Void, Never>?
     /// The skip seek handed to the player last, until the model's state has cleared it.
     @State private var lastSkipSeekMs: Int64?
+    /// The scrub-preview tiles of the playing item; a new item gets its own, which drops the old cache.
+    @State private var trickplayTiles: TrickplayTiles?
 
     /// How long the controls stay after the last touch while playing.
     private let hideDelay: UInt64 = 3_000_000_000
@@ -113,6 +115,7 @@ struct PlayerView: View {
             } else {
                 lastSkipSeekMs = nil
             }
+            updateTrickplay(state)
             controller.wantAudio(audioChoice(in: state))
             controller.wantDiagnostics(state?.showDiagnostics == true)
         }
@@ -223,6 +226,16 @@ struct PlayerView: View {
         }
     }
 
+    /// A new item's trickplay gets new tiles, so the previous episode's thumbnails never show; none clears them.
+    private func updateTrickplay(_ state: PlaybackUiState?) {
+        guard let track = state?.trickplay, !track.tilesUrl.isEmpty else {
+            if trickplayTiles != nil { trickplayTiles = nil }
+            return
+        }
+        guard let headers = state?.stream?.headers, trickplayTiles?.isFor(track) != true else { return }
+        trickplayTiles = TrickplayTiles(track: track, headers: headers)
+    }
+
     private var bottomBar: some View {
         VStack(spacing: 0) {
             PlayerScrubber(
@@ -236,7 +249,8 @@ struct PlayerView: View {
                     scrubPosition = nil
                     controller.seek(to: seconds)
                     scheduleHide()
-                }
+                },
+                trickplay: trickplayTiles
             )
             HStack {
                 Text(Strings.shared.clock(milliseconds: PlayerTime.milliseconds(shownPosition)))

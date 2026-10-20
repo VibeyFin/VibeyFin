@@ -189,6 +189,17 @@ fun PlayerRoute(
 
     // A new stream: the first one, a retry, or the transcode fallback that carries on from where it was.
     val stream = state.stream
+    // The scrub-preview tiles belong to the item: a new track (the next episode) starts with an empty cache,
+    // and leaving the screen drops it.
+    val trickplayTrack = state.trickplay
+    val trickplayHeaders = stream?.headers
+    val trickplay = remember(trickplayTrack, trickplayHeaders) {
+        if (trickplayTrack != null && trickplayHeaders != null && trickplayTrack.tilesUrl.isNotEmpty()) {
+            TrickplayTiles(context.applicationContext, trickplayTrack, trickplayHeaders)
+        } else {
+            null
+        }
+    }
     LaunchedEffect(stream?.id) {
         if (stream == null) {
             player.stop()
@@ -300,6 +311,7 @@ fun PlayerRoute(
                     durationMs = durationMs,
                     playing = playing,
                     hasTrackChoices = state.hasTrackChoices && state.message == null,
+                    trickplay = trickplay,
                     onClose = close,
                     onTracks = { showTracks = true },
                     onTogglePlay = {

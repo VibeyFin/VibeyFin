@@ -604,6 +604,7 @@ class PlaybackRepositoryTest {
         assertEquals(225, track.thumbHeight)
         assertEquals("ms-1", track.mediaSourceId)
         assertEquals(10_000L, track.intervalMs)
+        assertEquals("http://nas:8096/Videos/m1/Trickplay/400/3.jpg?mediaSourceId=ms-1", track.tileUrl(3))
     }
 
     @Test

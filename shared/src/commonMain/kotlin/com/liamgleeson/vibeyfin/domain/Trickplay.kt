@@ -21,7 +21,15 @@ data class TrickplayTrack(
     val thumbHeight: Int,
     val thumbnailCount: Int,
     val intervalMs: Long,
+    /** The server's address of this set, `https://host/Videos/{itemId}/Trickplay/{width}`; set when the item is known. */
+    val tilesUrl: String = "",
 ) {
+    /**
+     * The full address of tile image [tileIndex]; fetch it with the stream's headers. It names the media
+     * source, which the server needs to find the tiles of a version that is not the item's default.
+     */
+    fun tileUrl(tileIndex: Int): String = "$tilesUrl/$tileIndex.jpg?mediaSourceId=$mediaSourceId"
+
     /** Where the thumbnail for [positionMs] sits: which tile image, and which cell of it. */
     fun locate(positionMs: Long): TrickplayThumb {
         val index = (positionMs / intervalMs).coerceIn(0L, (thumbnailCount - 1).toLong().coerceAtLeast(0L)).toInt()

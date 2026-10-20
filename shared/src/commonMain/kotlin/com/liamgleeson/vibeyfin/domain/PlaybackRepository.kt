@@ -122,7 +122,8 @@ class PlaybackRepository(
             is ApiResult.Success -> result.value.items.firstOrNull() ?: return null
             is ApiResult.Failure -> return null
         }
-        return item.trickplay[mediaSourceId]?.values?.toTrickplayTrack(mediaSourceId)
+        val track = item.trickplay[mediaSourceId]?.values?.toTrickplayTrack(mediaSourceId) ?: return null
+        return track.copy(tilesUrl = serverUrl(connected.api.baseUrl, "/Videos/$itemId/Trickplay/${track.width}"))
     }
 
     companion object {

@@ -1,24 +1,45 @@
 package com.liamgleeson.vibeyfin.app.player
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.util.LruCache
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
+import coil3.SingletonImageLoader
+import coil3.network.NetworkHeaders
+import coil3.network.httpHeaders
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
+import coil3.request.SuccessResult
+import coil3.request.allowHardware
+import coil3.toBitmap
 import com.liamgleeson.vibeyfin.app.theme.VibeyFinTokens
+import com.liamgleeson.vibeyfin.domain.TrickplayTrack
 import com.liamgleeson.vibeyfin.domain.PlaybackDiagnostics
 import com.liamgleeson.vibeyfin.ui.common.Strings
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * What the stream is and how it is arriving, in a compact panel on the scrim so it reads over any
@@ -83,3 +104,90 @@ fun SkipButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier
         Text(label)
     }
 }
+
+/**
+ * The scrub-preview thumbnails of one playback: fetches the tile images with the stream's headers,
+ * keeps them decoded, and crops one thumbnail out by the shared maths. Make a new one for a new
+ * track (another episode); dropping it from composition drops the cache. A tile that fails to load
+ * is remembered as missing, so scrubbing carries on with the timestamp alone.
+ */
+class TrickplayTiles(private val context: Context, private val track: TrickplayTrack, private val headers: Map<String, String>) {
+    // Bounded by bytes; a tile that falls out is fetched again when it is needed.
+    private val tiles = object : LruCache<Int, Bitmap>(CACHE_BYTES) {
+        override fun sizeOf(key: Int, value: Bitmap): Int = value.byteCount
+    }
+    private val failed = ConcurrentHashMap.newKeySet<Int>()
+
+    /** Which tile image holds the thumbnail for [positionMs]. */
+    fun tileAt(positionMs: Long): Int = track.locate(positionMs).tileIndex
+
+    /** The thumbnail for [positionMs], or null while its tile is loading and when it can't be had. */
+    suspend fun thumbnail(positionMs: Long): ImageBitmap? {
+        val at = track.locate(positionMs)
+        val tile = tiles.get(at.tileIndex) ?: load(at.tileIndex) ?: return null
+        val x = at.column * track.thumbWidth
+        val y = at.row * track.thumbHeight
+        if (x + track.thumbWidth > tile.width || y + track.thumbHeight > tile.height) return null
+        return Bitmap.createBitmap(tile, x, y, track.thumbWidth, track.thumbHeight).asImageBitmap()
+    }
+
+    private companion object {
+        const val CACHE_BYTES = 32 * 1024 * 1024
+    }
+
+    private suspend fun load(index: Int): Bitmap? {
+        if (index in failed) return null
+        val request = ImageRequest.Builder(context)
+            .data(track.tileUrl(index))
+            .httpHeaders(NetworkHeaders.Builder().apply { headers.forEach { (name, value) -> set(name, value) } }.build())
+            // Cropping needs pixels in memory; the tiles are held here, not in Coil's shared caches.
+            .allowHardware(false)
+            .memoryCachePolicy(CachePolicy.DISABLED)
+            .diskCachePolicy(CachePolicy.DISABLED)
+            .build()
+        val result = SingletonImageLoader.get(context).execute(request)
+        val bitmap = (result as? SuccessResult)?.image?.toBitmap()
+        if (bitmap == null) failed += index else tiles.put(index, bitmap)
+        return bitmap
+    }
+}
+
+/**
+ * The thumbnail above the scrubber's thumb with the time under it, on the scrim. [fraction] is where
+ * the thumb is along the bar; the preview is centred on it but kept inside the bar's width, so it
+ * never leaves the screen at either end. It takes no touches.
+ */
+@Composable
+fun ScrubPreview(thumbnail: ImageBitmap, time: String, fraction: Float, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .layout { measurable, constraints ->
+                val placeable = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+                // Sits on top of the bar without taking room in it.
+                layout(0, 0) {
+                    val centred = (constraints.maxWidth * fraction - placeable.width / 2f).toInt()
+                    placeable.place(centred.coerceIn(0, (constraints.maxWidth - placeable.width).coerceAtLeast(0)), -placeable.height)
+                }
+            }
+            .background(VibeyFinTokens.Colors.scrim, RoundedCornerShape(VibeyFinTokens.Radius.artwork))
+            .padding(VibeyFinTokens.Space.s1),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Image(
+            bitmap = thumbnail,
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .width(PreviewWidth)
+                .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Xs)),
+        )
+        Text(
+            text = time,
+            style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
+            color = VibeyFinTokens.Colors.ink,
+            modifier = Modifier.padding(top = VibeyFinTokens.Space.s1),
+        )
+    }
+}
+
+private val PreviewWidth = 160.dp
