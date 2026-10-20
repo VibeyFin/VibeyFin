@@ -164,7 +164,7 @@ private struct FailureBanner: ViewModifier {
                             .foregroundStyle(.primary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         Button(Strings.shared.tryAgain.titleCased(), action: onRetry)
-                            .buttonStyle(.plain)
+                            .buttonStyle(PressableButtonStyle())
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.primary)
                     }
@@ -185,5 +185,25 @@ private struct FailureBanner: ViewModifier {
 extension View {
     func failureBanner(_ message: String?, onRetry: @escaping () -> Void, onDismiss: @escaping () -> Void) -> some View {
         modifier(FailureBanner(message: message, onRetry: onRetry, onDismiss: onDismiss))
+    }
+}
+
+/// The press feedback for buttons that have no system look of their own (cards, tiles, rows, the glassless
+/// player buttons): the label shrinks a little under the finger and springs back. The system's bordered and
+/// glass styles keep their own highlight. Nothing moves when the system asks for Reduce Motion.
+struct PressableButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        PressableLabel(configuration: configuration)
+    }
+
+    private struct PressableLabel: View {
+        let configuration: ButtonStyleConfiguration
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+        var body: some View {
+            configuration.label
+                .scaleEffect(configuration.isPressed && !reduceMotion ? 0.95 : 1)
+                .animation(reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.6), value: configuration.isPressed)
+        }
     }
 }

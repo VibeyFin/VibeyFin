@@ -66,10 +66,11 @@ struct PlayerView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 .screenMargin()
                 .padding(.bottom, Space.s7 + Space.s5)
-                .transition(.opacity)
+                // Grows in and fades like a screen opening, and goes the same way (none of it under Reduce Motion).
+                .transition(reduceMotion ? .opacity : .scale(scale: 0.92).combined(with: .opacity))
             }
         }
-        .animation(.default, value: state?.upNext != nil)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.26), value: state?.upNext != nil)
         .statusBarHidden(!controlsVisible)
         .persistentSystemOverlays(controlsVisible ? .automatic : .hidden)
         .onAppear {

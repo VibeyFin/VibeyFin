@@ -96,7 +96,7 @@ struct ArtworkGrid: View {
         ) {
             ForEach(items, id: \.id) { item in
                 Button { onOpen(item) } label: { ArtworkTile(item: item) }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressableButtonStyle())
                     .onAppear {
                         if items.suffix(loadAhead).contains(where: { $0.id == item.id }) { onNearEnd() }
                     }

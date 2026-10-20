@@ -23,7 +23,7 @@ struct ContinueCardTile: View {
                     }
                     .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableButtonStyle())
             // One element for VoiceOver: the title, the episode and how far in.
             .accessibilityLabel(card.accessibilityLabel)
             HStack(alignment: .top, spacing: Space.s2) {
@@ -41,7 +41,7 @@ struct ContinueCardTile: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableButtonStyle())
                 .accessibilityHidden(true)
                 Menu {
                     Button(action: onDetails) {

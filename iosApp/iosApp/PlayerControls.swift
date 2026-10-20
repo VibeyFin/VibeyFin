@@ -33,7 +33,7 @@ private struct PlayerControlStyle: ViewModifier {
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)
         } else {
-            content.buttonStyle(.plain)
+            content.buttonStyle(PressableButtonStyle())
         }
     }
 }
