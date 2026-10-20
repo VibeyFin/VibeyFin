@@ -21,7 +21,7 @@ A Jetpack Compose app that follows Material 3. Use the `android` theme and `m3-*
 | Audio / subtitles | `ModalBottomSheet` |
 | Season buttons (series detail) | `LazyRow` of `FilterChip`s, selected = `accent-soft`; `rememberLazyListState` scrolled to the next-up season on open |
 | Featured row (optional) | `HorizontalMultiBrowseCarousel` — user-scrolled, never auto-advancing |
-| Messages | `Snackbar` with an action |
+| Messages | `Snackbar` with an action ("Try again" for a failed write); the action is plain text, not aqua |
 | Casting | Google Cast button + MediaRouter |
 | Player | Compose controls over Media3 `PlayerSurface`; `MediaSession` notification; PiP with `setAutoEnterEnabled` on Android 12+ |
 | Loading | `LinearProgressIndicator` / skeletons; `CircularProgressIndicator` only in the player |

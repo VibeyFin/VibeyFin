@@ -3,7 +3,7 @@
 Goal: remember what the user watched. Resume where they stopped (on any device), show Continue watching on Home,
 let them mark things watched, and move on to the next episode by itself. Logic is shared; every screen is native.
 
-**Status (2026-10-20):** approved. Phases A to C are done; D and E are not started. Each phase stops for review.
+**Status (2026-10-20):** approved. Phases A to D are done; E is not started. Each phase stops for review.
 
 Paths: `C/` = `shared/src/commonMain/kotlin/com/liamgleeson/vibeyfin`, `T/` = `shared/src/commonTest/...` (same package),
 `A/` = `androidApp/src/main/kotlin/com/liamgleeson/vibeyfin/app`, `I/` = `iosApp/iosApp`, `X/` = `shared/src/iosMain/.../ios`.
@@ -197,7 +197,7 @@ First step after approval: cut `feature/watch-status` from `develop` (not `main`
   clock at 43.8 s; the item page read "Resume from 0:51" with "Start over"; "Start over" began at 0, and on going back the page had changed to
   "Play" by itself (the server keeps no position under 5%). Not run: "Resume" from the item page itself (same code path as the card).
 
-## Phase D: Mark watched/unwatched, optimistic writes
+## Phase D: Mark watched/unwatched, optimistic writes — done
 
 - API: `POST`/`DELETE /UserPlayedItems/{id}` through `send(..., retry = true)`; the 401 reaches `expireSession` with no extra code.
   `WatchRepository.setPlayed`, then `WatchChanges.changed()` on success.
@@ -209,6 +209,26 @@ First step after approval: cut `feature/watch-status` from `develop` (not `main`
 - Tests: optimistic flip and revert, retry count on 5xx, 401 ends the session with no message, card removal and restore, double tap.
 - Done when: tests pass; on the emulator a card disappears at once, comes back with a snackbar when the server is cut, and the played state
   matches `GET /Users/{id}/Items/{id}` afterwards.
+
+**Built (Phase D, 2026-10-20).**
+- Shared: `setPlayed` (`POST`/`DELETE /UserPlayedItems/{id}?userId=`, `execute(..., retry = true)`, body not read); `WatchRepository.setPlayed`
+  (fires `WatchChanges` on success; the repository now takes `WatchChanges`); `ItemViewModel.onTogglePlayed` flips `played`, clears the
+  position and adds "Watched" to the facts at once, takes it back on failure, ignores taps while a write is in flight, and exposes
+  `markLabel`, `actionMessage`, `onRetryAction`, `onDismissMessage`; `HomeViewModel.onMarkWatched(cardId)` removes the card at once and puts it
+  back at its place on failure, with the same message and retry. A 401 sets no message (the session ends). New strings and two
+  `LoadMessages`.
+- Android: a "⋮" chip top-right on the item page (`Mark as watched` / `Mark as unwatched`), a bottom sheet on a card's long press (the card's
+  title, `Details`, `Mark as watched`), and `ActionSnackbar` ("Try again", action in plain text, not aqua). The Continue row scrolls back to its
+  start when its first card changes (otherwise a restored card sat half off-screen to the left).
+- iOS (parsed only): toolbar `Menu` on the item page, `.contextMenu` on a card, and `failureBanner` (a non-modal capsule on `.regularMaterial`).
+- Tests: 478 shared tests pass (new: the endpoint, the repository signal, optimistic flip and revert on the item and on Home, retry, 401
+  without a message, a second tap ignored, dismissing). The fakes behave like the real server (after a write the item reads back changed).
+- **Verified on the emulator** (local Jellyfin): long press showed the sheet; with the server stopped, "Mark as watched" removed the card at
+  once and, when the save failed, brought it back at the front with "Couldn't mark this as watched… Try again"; with the server up the card
+  went for good and Beta's Next Up took its place ("Beta Show S1 E2"); the item page's "⋮" marked a film watched ("2020 · 7 min · Watched",
+  server `played: true`). Not tried on the emulator: "Try again" from the snackbar (covered by tests), and the iOS banner and menus.
+- Rig note: after restarting the podman container the app's pooled connection kept getting 503s until the app was restarted. It was not seen
+  against a real server; if it ever is, look at the HTTP client's connection reuse.
 
 ## Phase E: Auto-advance
 

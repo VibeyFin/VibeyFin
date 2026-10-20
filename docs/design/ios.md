@@ -47,7 +47,7 @@ Glass is the **navigation and controls layer** floating above content — never 
 ## Don't
 
 - Don't fake glass with blur materials where a system component exists, and don't stack glass on glass.
-- Don't add a hamburger menu, FAB, Android-style snackbars or an in-app "Exit".
+- Don't add a hamburger menu, FAB, Android-style snackbars or an in-app "Exit". A failed write that needs a word ("Couldn't mark this as watched") uses `failureBanner`: a non-modal capsule on `.regularMaterial` at the bottom with "Try again", dismissed after about six seconds.
 - Don't use Material icons, `⋮` or `←` — SF Symbols, `…`, `‹`.
 - Don't put Settings in a tab — it's under the profile avatar on Home.
 - Don't leave the player rotated when returning to a portrait screen; hide the home indicator with the controls (`.persistentSystemOverlays(.hidden)`).

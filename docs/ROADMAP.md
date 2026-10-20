@@ -96,10 +96,10 @@ _Exit: play a movie and an episode, direct and transcoded, with position reporte
   only the offline fallback (Phase 10)_
 - [ ] Auto-advance with countdown into Next Up — _owned here: countdown, cancel, on by default. Phase 3
   keeps only "are you still watching?"; Phase 7 makes it a toggle_
-- [ ] Mark played/unplayed: `POST` / `DELETE /Users/{id}/PlayedItems/{id}`
-- [ ] Optimistic user-data writes (played here; favourites and thumbs in Phase 4): the UI changes at once
+- [x] Mark played/unplayed: `POST` / `DELETE /UserPlayedItems/{id}`
+- [x] Optimistic user-data writes (played here; favourites and thumbs in Phase 4): the UI changes at once
   and the call follows. If it fails the change reverts with a plain message, and a 401 still ends the
-  session. Setting played or a favourite is the one write that is retried (the same two tries as
+  session. Setting played or a favourite is the one write that is retried (the same retries as
   reads), because setting a state twice is harmless; every other write is still never repeated. Nothing
   is queued on disk until Phase 10
 

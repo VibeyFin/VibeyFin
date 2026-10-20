@@ -58,7 +58,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 ## Offline and errors
 
 - Server unreachable: keep the last Home in cache and show a banner with "Try again"; Downloads stays fully usable.
-- Failed actions retry silently once, then say so in a snackbar with an action. **Never** a modal for a non-blocking error.
+- Failed actions retry silently (the same retries as a read), then say so with an action. Android: a `Snackbar`. iOS has no snackbar, so a small banner on the system material at the bottom, with the same "Try again" action, gone after a few seconds. **Never** a modal for a non-blocking error.
 
 ## Accessibility
 
