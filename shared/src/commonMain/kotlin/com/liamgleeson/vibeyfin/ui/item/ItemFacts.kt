@@ -12,7 +12,7 @@ internal fun MediaItem.facts(): List<String> = listOfNotNull(
     rating?.let { "★ ${oneDecimal(it)}" },
 )
 
-private fun MediaItem.episodeLabel(): String? {
+internal fun MediaItem.episodeLabel(): String? {
     if (kind != ItemKind.Episode || episodeNumber == null) return null
     return seasonNumber?.let { "S$it E$episodeNumber" } ?: "E$episodeNumber"
 }

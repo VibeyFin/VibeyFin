@@ -6,11 +6,30 @@ Which server data drives which piece of UI. All of this lives in the shared Kotl
 
 | Row | Source | Notes |
 | --- | --- | --- |
-| Continue watching | `GET /UserItems/Resume` | Movies and episodes; 16:9 `ContinueCard`, newest first. |
-| Next up | `GET /Shows/NextUp` | One episode per series; hide series already in Continue watching. |
+| Continue watching (includes Next up) | `GET /UserItems/Resume`, then `GET /Shows/NextUp` | Movies and episodes; 16:9 `ContinueCard`. In-progress items first, newest first, then one Next up episode per series, hiding any series that already has an item in progress. Progress bar on in-progress cards only; Next up cards show "S2 E5". |
 | Recently added — {library} | `GET /Items/Latest?parentId={viewId}` | One row per library from `GET /UserViews`. Posters; episodes grouped by series. |
-| Collections / genres | `GET /Items` with `genreIds` or a `BoxSet` parent | Optional rows after the core four. |
+| Collections / genres | `GET /Items` with `genreIds` or a `BoxSet` parent | Optional rows after the core four; genre list from `GET /Genres`. |
+| My media | `GET /UserViews` | The user's libraries as 16:9 tiles; tap opens that library. |
 | My List | Items with `UserData.IsFavorite = true` | Jellyfin has no watchlist; VibeyFin uses Favorites for "My List". |
+
+## Detail
+
+| UI | Source | Notes |
+| --- | --- | --- |
+| Hero backdrop, title | `Backdrop` + `Logo` images | Phone: Backdrop center-cropped to 2:3; tablet: 16:9 as is. No Logo → `brand-display` title from `Name`. |
+| Facts line | `ProductionYear` (series: `ProductionYear`–`EndDate`), `OfficialRating`, `RunTimeTicks`, `Genres` | Series show the season count instead of runtime. |
+| Overview | `Overview` | 3 lines + "More". |
+| Cast | `People` (type `Actor`; `Role`) | Person image: `GET /Items/{personId}/Images/Primary`. |
+| More like this | `GET /Items/{id}/Similar` | Posters. |
+| Seasons | `GET /Shows/{id}/Seasons` | One button each, in server order (Specials included). |
+| Episodes | `GET /Shows/{id}/Episodes?seasonId={seasonId}` | Fetch on season change; cache per season. |
+| Play / Resume target (series) | `GET /Shows/NextUp?seriesId={id}` | Its `ParentIndexNumber` picks the season the row opens on. |
+| Trailer action | `LocalTrailerCount` → `GET /Items/{id}/LocalTrailers`; else `RemoteTrailers[].Url` | Hide the action when both are empty. Tile trailers depend on the content having trailers. |
+| Like | `UserData.Likes` | `POST /UserItems/{id}/Rating?likes=true or false`, `DELETE` to clear — check against your server's OpenAPI. |
+
+## Search
+
+- `GET /Search/Hints?searchTerm=` (debounced) for the results grid, grouped by `Type`.
 
 ## Card state
 
@@ -36,4 +55,5 @@ Which server data drives which piece of UI. All of this lives in the shared Kotl
 
 - Mark watched / unwatched: `POST` / `DELETE /UserPlayedItems/{id}`.
 - My List: `POST` / `DELETE /UserFavoriteItems/{id}`.
+- Like (thumbs): `POST` / `DELETE /UserItems/{id}/Rating`, read from `UserData.Likes`.
 - Sign-in: `POST /Users/AuthenticateByName`, or Quick Connect (`/QuickConnect/Initiate` → poll → authenticate with the secret).

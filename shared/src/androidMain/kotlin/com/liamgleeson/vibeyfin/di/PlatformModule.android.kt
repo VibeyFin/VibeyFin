@@ -8,11 +8,13 @@ import com.liamgleeson.vibeyfin.data.db.VibeyFinDatabase
 import com.liamgleeson.vibeyfin.data.discovery.AndroidMulticastLock
 import com.liamgleeson.vibeyfin.data.discovery.UdpLanDiscovery
 import com.liamgleeson.vibeyfin.data.platform.AndroidDeviceInfo
+import com.liamgleeson.vibeyfin.data.platform.AndroidPlaybackCapabilities
 import com.liamgleeson.vibeyfin.data.platform.DeviceInfo
 import com.liamgleeson.vibeyfin.data.prefs.createDevicePreferencesDataStore
 import com.liamgleeson.vibeyfin.data.vault.AndroidKeystoreTokenVault
 import com.liamgleeson.vibeyfin.data.vault.TokenVault
 import com.liamgleeson.vibeyfin.domain.LanDiscovery
+import com.liamgleeson.vibeyfin.domain.PlaybackCapabilitiesSource
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -32,5 +34,6 @@ actual fun platformModule(): Module = module {
     }
     single<TokenVault> { AndroidKeystoreTokenVault() }
     single<DeviceInfo> { AndroidDeviceInfo(androidContext()) }
+    single<PlaybackCapabilitiesSource> { AndroidPlaybackCapabilities() }
     single<LanDiscovery> { UdpLanDiscovery(AndroidMulticastLock(androidContext())) }
 }

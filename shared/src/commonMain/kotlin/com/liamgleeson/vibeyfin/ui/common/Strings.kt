@@ -86,8 +86,42 @@ object Strings {
     /** What a screen reader says for a poster: the title and, when known, the year. */
     fun cardLabel(title: String, year: Int?) = listOfNotNull(title, year?.toString()).joinToString(", ")
 
+    // Playback
+    val play = "Play"
+    val pause = "Pause"
+    val close = "Close"
+    val playbackPosition = "Playback position"
+    val audio = "Audio"
+    val subtitles = "Subtitles"
+    val subtitlesOff = "Off"
+    val audioAndSubtitles = "Audio and subtitles"
+
+    /** A track the file gives no name or language for. */
+    fun track(index: Int) = "Track ${index + 1}"
+
+    /** A time in a video as a clock: `4:07`, or `1:24:30` from an hour on. */
+    fun clock(milliseconds: Long): String {
+        val totalSeconds = (milliseconds / 1000).coerceAtLeast(0)
+        val hours = totalSeconds / 3600
+        val minutes = (totalSeconds % 3600) / 60
+        val seconds = totalSeconds % 60
+        val mm = if (hours > 0) minutes.toString().padStart(2, '0') else minutes.toString()
+        val ss = seconds.toString().padStart(2, '0')
+        return if (hours > 0) "$hours:$mm:$ss" else "$mm:$ss"
+    }
+
+    /** How much of the video is left, shown opposite the elapsed time: `-1:12`. */
+    fun timeLeft(positionMs: Long, durationMs: Long) = "-" + clock((durationMs - positionMs).coerceAtLeast(0))
+
+    /** What a screen reader says for the scrubber. */
+    fun positionDescription(positionMs: Long, durationMs: Long) = "${clock(positionMs)} of ${clock(durationMs)}"
+
     // Settings
     val alwaysAskWhoIsWatchingTitle = "Always ask who's watching"
     val alwaysAskWhoIsWatchingHelp =
         "Show the profile screen every time the app opens instead of going straight to the last profile."
+    val allowTranscodingTitle = "Allow video transcoding"
+    val allowTranscodingHelp =
+        "Let the server re-encode video your device can't play. This is hard on a small server. " +
+            "When off, the server still repackages files and converts audio. Applies to this profile."
 }

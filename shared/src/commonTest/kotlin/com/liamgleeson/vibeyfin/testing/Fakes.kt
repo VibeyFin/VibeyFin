@@ -12,6 +12,8 @@ import com.liamgleeson.vibeyfin.data.platform.DeviceInfo
 import com.liamgleeson.vibeyfin.data.vault.TokenVault
 import com.liamgleeson.vibeyfin.domain.DiscoveredServer
 import com.liamgleeson.vibeyfin.domain.LanDiscovery
+import com.liamgleeson.vibeyfin.domain.PlaybackCapabilities
+import com.liamgleeson.vibeyfin.domain.PlaybackCapabilitiesSource
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -86,6 +88,17 @@ class FakeMulticastLock : MulticastLock {
             held = false
         }
     }
+}
+
+/** A device that plays H.264 and AAC in MP4 and Matroska, unless a test says otherwise. */
+class FakePlaybackCapabilities(
+    var capabilities: PlaybackCapabilities = PlaybackCapabilities(
+        containers = listOf("mp4", "mkv"),
+        videoCodecs = listOf("h264"),
+        audioCodecs = listOf("aac"),
+    ),
+) : PlaybackCapabilitiesSource {
+    override fun current() = capabilities
 }
 
 class FakeDeviceInfo(

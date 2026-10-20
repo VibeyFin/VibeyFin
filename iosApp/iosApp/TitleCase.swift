@@ -30,6 +30,6 @@ extension String {
         guard let firstIndex = firstIndex(where: { $0.isLetter }) else { return self }
         let rest = self[index(after: firstIndex)...]
         if rest.contains(where: { $0.isUppercase || $0.isNumber }) { return self }
-        return prefix(upTo: firstIndex) + self[firstIndex].uppercased() + rest
+        return String(self[..<firstIndex]) + self[firstIndex].uppercased() + String(rest)
     }
 }

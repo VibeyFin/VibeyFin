@@ -7,11 +7,13 @@ import androidx.room3.RoomDatabase
 import com.liamgleeson.vibeyfin.data.db.VibeyFinDatabase
 import com.liamgleeson.vibeyfin.data.platform.DeviceInfo
 import com.liamgleeson.vibeyfin.data.platform.IosDeviceInfo
+import com.liamgleeson.vibeyfin.data.platform.IosPlaybackCapabilities
 import com.liamgleeson.vibeyfin.data.prefs.createDevicePreferencesDataStore
 import com.liamgleeson.vibeyfin.data.vault.KeychainTokenVault
 import com.liamgleeson.vibeyfin.data.vault.TokenVault
 import com.liamgleeson.vibeyfin.domain.LanDiscovery
 import com.liamgleeson.vibeyfin.domain.NoLanDiscovery
+import com.liamgleeson.vibeyfin.domain.PlaybackCapabilitiesSource
 import kotlinx.cinterop.ExperimentalForeignApi
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -28,6 +30,7 @@ actual fun platformModule(): Module = module {
     }
     single<TokenVault> { KeychainTokenVault() }
     single<DeviceInfo> { IosDeviceInfo() }
+    single<PlaybackCapabilitiesSource> { IosPlaybackCapabilities() }
     // Broadcasting needs a multicast entitlement Apple has to approve, so iOS adds servers by address.
     single<LanDiscovery> { NoLanDiscovery }
 }

@@ -44,6 +44,9 @@ data class MediaItem(
      * say the name twice. Screens leave the caption off and describe the picture with the title.
      */
     val nameIsOnPoster: Boolean get() = kind == ItemKind.Library && posterUrl != null
+
+    /** Movies and episodes play. Other kinds, such as music or extras, are not offered yet. */
+    val canPlay: Boolean get() = kind == ItemKind.Movie || kind == ItemKind.Episode
 }
 
 /** One page of a list that can be longer than we ask for at once. */

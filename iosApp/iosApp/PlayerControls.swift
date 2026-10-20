@@ -1,0 +1,182 @@
+import Shared
+import SwiftUI
+
+/// The symbol of a round player control, sized to touch and growing with Dynamic Type. Before iOS 26
+/// it sits on a scrim disc; on iOS 26 the glass button style draws the disc.
+private struct PlayerSymbol: View {
+    let systemName: String
+    var font: Font = .title2
+
+    // 44 pt to touch at the default text size.
+    @ScaledMetric(relativeTo: .title2) private var diameter: CGFloat = 44
+
+    var body: some View {
+        let symbol = Image(systemName: systemName)
+            .font(font.weight(.semibold))
+            .foregroundStyle(.primary)
+            .frame(width: diameter, height: diameter)
+            .contentShape(Circle())
+        if #available(iOS 26.0, *) {
+            symbol
+        } else {
+            symbol.background(Circle().fill(Brand.scrim))
+        }
+    }
+}
+
+/// How a round control is drawn: real Liquid Glass on iOS 26 (`.glass`, never tinted), plain on the
+/// scrim before that. Glass floats over the video, which is what it is for: never over content.
+private struct PlayerControlStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+        } else {
+            content.buttonStyle(.plain)
+        }
+    }
+}
+
+/// A round icon button for the player's controls.
+struct PlayerIconButton: View {
+    let systemName: String
+    /// What VoiceOver says; the button shows only the symbol.
+    let label: String
+    var font: Font = .title2
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            PlayerSymbol(systemName: systemName, font: font)
+        }
+        .modifier(PlayerControlStyle())
+        .accessibilityLabel(label)
+    }
+}
+
+/// The audio and subtitle picker: one round button that opens a menu with an Audio and a Subtitles
+/// picker. A list is left out when the file has nothing to choose from. The labels are the shared
+/// model's own wording; only the two section titles are set here.
+struct PlayerTrackMenu: View {
+    let audio: [TrackOption]
+    let subtitles: [TrackOption]
+    let onSelectAudio: (Int32) -> Void
+    let onSelectSubtitle: (Int32) -> Void
+    /// A touch landed on the button, so the menu is about to open. A menu can't say when it opens or
+    /// closes, so this is the only moment the player can hold its controls up.
+    var onTouch: () -> Void = {}
+
+    /// A subtitle is showing: the "Off" row has a negative index.
+    private var subtitleIsOn: Bool {
+        subtitles.contains { $0.selected && $0.index >= 0 }
+    }
+
+    var body: some View {
+        Menu {
+            if !audio.isEmpty {
+                picker(Strings.shared.audio, options: audio, onSelect: onSelectAudio)
+            }
+            if !subtitles.isEmpty {
+                picker(Strings.shared.subtitles, options: subtitles, onSelect: onSelectSubtitle)
+            }
+        } label: {
+            PlayerSymbol(systemName: subtitleIsOn ? "captions.bubble.fill" : "captions.bubble")
+        }
+        .modifier(PlayerControlStyle())
+        .simultaneousGesture(TapGesture().onEnded(onTouch))
+        .accessibilityLabel(Strings.shared.audioAndSubtitles)
+    }
+
+    /// The picker shows what the shared model marks as selected, and a pick goes straight back to it:
+    /// nothing is kept here, so the state is the only truth.
+    private func picker(_ title: String, options: [TrackOption], onSelect: @escaping (Int32) -> Void) -> some View {
+        Picker(
+            title.titleCased(),
+            selection: Binding(
+                get: { options.first(where: { $0.selected })?.index ?? options.first?.index ?? 0 },
+                set: onSelect
+            )
+        ) {
+            ForEach(options, id: \.index) { option in
+                Text(option.label).tag(option.index)
+            }
+        }
+    }
+}
+
+/// Groups the player's glass controls so they blend and share one render pass on iOS 26. Before
+/// that there is nothing to group.
+struct PlayerGlassGroup<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer { content() }
+        } else {
+            content()
+        }
+    }
+}
+
+/// The scrubber: a bar with no thumb that thickens while it is dragged. Aqua is the progress. A tap
+/// or a drag anywhere on it moves there; the seek happens when the finger lifts.
+struct PlayerScrubber: View {
+    /// Seconds.
+    let position: TimeInterval
+    let duration: TimeInterval
+    /// While dragging, with the second under the finger.
+    let onScrub: (TimeInterval) -> Void
+    /// When the finger lifts, with the second to go to.
+    let onCommit: (TimeInterval) -> Void
+    /// A step of a VoiceOver swipe up or down on the scrubber.
+    var accessibilityStep: TimeInterval = 10
+
+    @State private var isDragging = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            let fraction = duration > 0 ? min(max(position / duration, 0), 1) : 0
+            ZStack(alignment: .leading) {
+                Capsule().fill(Brand.progressTrack)
+                Capsule().fill(Brand.accent).frame(width: width * fraction)
+            }
+            .frame(height: isDragging ? 10 : 4)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        isDragging = true
+                        onScrub(seconds(at: value.location.x, in: width))
+                    }
+                    .onEnded { value in
+                        isDragging = false
+                        onCommit(seconds(at: value.location.x, in: width))
+                    }
+            )
+        }
+        .frame(height: 44)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: isDragging)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Strings.shared.playbackPosition)
+        .accessibilityValue(Strings.shared.positionDescription(
+            positionMs: PlayerTime.milliseconds(position),
+            durationMs: PlayerTime.milliseconds(duration)
+        ))
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: onCommit(min(position + accessibilityStep, duration))
+            case .decrement: onCommit(max(position - accessibilityStep, 0))
+            @unknown default: break
+            }
+        }
+    }
+
+    private func seconds(at x: CGFloat, in width: CGFloat) -> TimeInterval {
+        guard width > 0 else { return 0 }
+        return duration * Double(min(max(x / width, 0), 1))
+    }
+}

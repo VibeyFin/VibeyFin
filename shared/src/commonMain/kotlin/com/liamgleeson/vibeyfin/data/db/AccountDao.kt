@@ -25,6 +25,12 @@ abstract class AccountDao {
     @Query("UPDATE accounts SET lastUsedAt = :at WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun markUsed(serverId: String, userId: String, at: Long)
 
+    @Query("SELECT allowTranscoding FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeAllowTranscoding(serverId: String, userId: String): Flow<Boolean?>
+
+    @Query("UPDATE account_settings SET allowTranscoding = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setAllowTranscoding(serverId: String, userId: String, value: Boolean)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract suspend fun insertAccount(account: AccountEntity): Long
 

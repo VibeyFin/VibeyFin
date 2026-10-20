@@ -1,15 +1,19 @@
 import SwiftUI
 import Shared
 
-/// One item's page: picture, title, the short facts, genres and overview.
+/// One item's page: picture, title, the short facts, genres, Play and the overview.
 struct ItemView: View {
     @StateObject private var model: ItemObservable
+    @State private var showsPlayer = false
+
+    private let itemId: String
 
     /// Called when the session ended and the screen must be left.
     let onExit: (HomeExit) -> Void
 
     init(itemId: String, onExit: @escaping (HomeExit) -> Void) {
         _model = StateObject(wrappedValue: ItemObservable(itemId: itemId))
+        self.itemId = itemId
         self.onExit = onExit
     }
 
@@ -20,7 +24,7 @@ struct ItemView: View {
                 VStack(alignment: .leading, spacing: Space.s3) {
                     if let state = model.state, !state.loading {
                         if let item = state.item {
-                            details(item, facts: state.facts)
+                            details(item, facts: state.facts, canPlay: state.canPlay)
                         } else if let message = state.message {
                             LoadErrorView(message: message, onRetry: { model.retry() })
                         }
@@ -34,6 +38,9 @@ struct ItemView: View {
             }
         }
         .onAppear { model.start() }
+        .fullScreenCover(isPresented: $showsPlayer) {
+            PlayerView(itemId: itemId, onExit: onExit)
+        }
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         // Only the chevron, no "Back" label. The swipe from the edge still goes back.
@@ -44,7 +51,7 @@ struct ItemView: View {
     }
 
     @ViewBuilder
-    private func details(_ item: MediaItem, facts: [String]) -> some View {
+    private func details(_ item: MediaItem, facts: [String], canPlay: Bool) -> some View {
         // A wide backdrop when the server has one; otherwise the item's own picture at its own shape.
         if let backdrop = item.backdropUrl {
             Artwork(url: backdrop, title: item.title, aspectRatio: 16.0 / 9.0)
@@ -70,6 +77,11 @@ struct ItemView: View {
             Text(item.genres.joined(separator: "  ·  "))
                 .font(.subheadline)
                 .foregroundStyle(.primary)
+        }
+        // The one filled action on the page: the aqua capsule.
+        if canPlay {
+            PrimaryButton(Strings.shared.play) { showsPlayer = true }
+                .padding(.vertical, Space.s1)
         }
         if let overview = item.overview {
             Text(overview)

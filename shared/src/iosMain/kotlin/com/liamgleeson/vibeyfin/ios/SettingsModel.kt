@@ -11,5 +11,7 @@ class SettingsModel {
 
     fun onAlwaysAskChanged(value: Boolean) = host.viewModel.onAlwaysAskChanged(value)
 
+    fun onAllowTranscodingChanged(value: Boolean) = host.viewModel.onAllowTranscodingChanged(value)
+
     fun close() = host.close()
 }

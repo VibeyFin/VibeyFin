@@ -33,7 +33,7 @@ class SettingsViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(SettingsViewModel(app.preferences))
+    private fun viewModel() = viewModels.track(SettingsViewModel(app.preferences, app.profileSettings))
 
     @Test
     fun alwaysAskStartsOff() = runTest {
@@ -60,5 +60,31 @@ class SettingsViewModelTest {
         viewModel.onAlwaysAskChanged(false)
 
         assertEquals(false, viewModel.uiState.first { !it.alwaysAskWhoIsWatching }.alwaysAskWhoIsWatching)
+    }
+
+    @Test
+    fun withNobodySignedInThereAreNoProfileSettings() = runTest {
+        assertFalse(viewModel().uiState.first().hasProfile)
+    }
+
+    @Test
+    fun transcodingStartsOffForANewProfile() = runTest {
+        app.signedIn(allowTranscoding = false)
+        // `saveSession` makes the settings row; nothing but the user turns this on.
+        val state = viewModel().uiState.first { it.hasProfile }
+
+        assertFalse(state.allowTranscoding)
+    }
+
+    @Test
+    fun theTranscodingToggleIsSavedForTheProfile() = runTest {
+        app.signedIn(allowTranscoding = false)
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hasProfile }
+
+        viewModel.onAllowTranscodingChanged(true)
+
+        assertTrue(viewModel.uiState.first { it.allowTranscoding }.allowTranscoding)
+        assertTrue(app.profileSettings.transcodingAllowed())
     }
 }

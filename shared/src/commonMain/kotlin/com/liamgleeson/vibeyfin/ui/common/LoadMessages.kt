@@ -9,6 +9,13 @@ internal object LoadMessages {
     const val NOT_FOUND = "That isn't on the server any more. It may have been removed or moved."
     const val UNEXPECTED = "The server sent something VibeyFin couldn't read. Try again, and update the server if it keeps happening."
 
+    const val NO_COMPATIBLE_STREAM =
+        "The server can't play this on your device. Ask the server's admin to check the file's format."
+    const val TRANSCODING_NEEDED =
+        "This video needs re-encoding to play on your device, and video transcoding is off. Turn on Allow video transcoding in Settings."
+    const val PLAYBACK_FAILED = "This video wouldn't play. Try again, or ask the server's admin to check the file."
+    const val PLAYBACK_NETWORK = "Lost the connection to the server. Check your network and try again."
+
     fun forError(error: ApiError): String = when (error) {
         ApiError.Network -> SignInMessages.UNREACHABLE
         ApiError.Unauthorized -> SignInMessages.SESSION_ENDED

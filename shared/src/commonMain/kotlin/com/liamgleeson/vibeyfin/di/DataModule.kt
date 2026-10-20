@@ -6,6 +6,7 @@ import com.liamgleeson.vibeyfin.data.db.buildVibeyFinDatabase
 import com.liamgleeson.vibeyfin.data.prefs.DataStoreDevicePreferences
 import com.liamgleeson.vibeyfin.domain.AccountRepository
 import com.liamgleeson.vibeyfin.domain.DevicePreferences
+import com.liamgleeson.vibeyfin.domain.ProfileSettings
 import com.liamgleeson.vibeyfin.domain.ServerRepository
 import org.koin.dsl.module
 import kotlin.time.Clock
@@ -21,4 +22,5 @@ fun dataModule() = module {
     single<DevicePreferences> { DataStoreDevicePreferences(get()) }
     single { ServerRepository(get(), get(), get(), get()) }
     single { AccountRepository(get(), get(), get()) }
+    single { ProfileSettings(get(), get()) }
 }

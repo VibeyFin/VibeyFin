@@ -9,10 +9,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -22,8 +25,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.liamgleeson.vibeyfin.R
 import com.liamgleeson.vibeyfin.app.theme.screenMargin
 import com.liamgleeson.vibeyfin.app.components.Artwork
 import com.liamgleeson.vibeyfin.app.components.BackButtonSpace
@@ -33,6 +38,7 @@ import com.liamgleeson.vibeyfin.app.theme.VibeyFinTokens
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
 import com.liamgleeson.vibeyfin.ui.home.HomeExit
 import com.liamgleeson.vibeyfin.ui.item.ItemUiState
+import com.liamgleeson.vibeyfin.ui.common.Strings
 import com.liamgleeson.vibeyfin.ui.item.ItemViewModel
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -41,6 +47,7 @@ import org.koin.core.parameter.parametersOf
 fun ItemRoute(
     itemId: String,
     onBack: () -> Unit,
+    onPlay: () -> Unit,
     onExit: (HomeExit) -> Unit,
     viewModel: ItemViewModel = koinViewModel(parameters = { parametersOf(itemId) }),
 ) {
@@ -48,11 +55,11 @@ fun ItemRoute(
     LaunchedEffect(state.exit) {
         state.exit?.let(onExit)
     }
-    ItemScreen(state = state, onBack = onBack, onRetry = viewModel::onRetry)
+    ItemScreen(state = state, onBack = onBack, onPlay = onPlay, onRetry = viewModel::onRetry)
 }
 
 @Composable
-fun ItemScreen(state: ItemUiState, onBack: () -> Unit, onRetry: () -> Unit) {
+fun ItemScreen(state: ItemUiState, onBack: () -> Unit, onPlay: () -> Unit, onRetry: () -> Unit) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
@@ -68,7 +75,7 @@ fun ItemScreen(state: ItemUiState, onBack: () -> Unit, onRetry: () -> Unit) {
                         Spacer(Modifier.height(BackButtonSpace))
                         LoadError(message = state.message!!, onRetry = onRetry, modifier = Modifier.padding(horizontal = screenMargin()))
                     }
-                    item != null -> ItemDetails(item, state.facts)
+                    item != null -> ItemDetails(item, state.facts, state.canPlay, onPlay)
                 }
             }
             FloatingBackButton(onBack)
@@ -77,7 +84,7 @@ fun ItemScreen(state: ItemUiState, onBack: () -> Unit, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun ItemDetails(item: MediaItem, facts: List<String>) {
+private fun ItemDetails(item: MediaItem, facts: List<String>, canPlay: Boolean, onPlay: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = screenMargin()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -109,6 +116,7 @@ private fun ItemDetails(item: MediaItem, facts: List<String>) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        if (canPlay) PlayButton(onPlay)
         if (item.genres.isNotEmpty()) {
             Text(
                 text = item.genres.joinToString("  ·  "),
@@ -120,5 +128,15 @@ private fun ItemDetails(item: MediaItem, facts: List<String>) {
             Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
         }
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+/** The one filled action on the page: aqua, 56 dp tall, as the design asks for Play. */
+@Composable
+private fun PlayButton(onClick: () -> Unit) {
+    Button(onClick = onClick, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+        Icon(painter = painterResource(R.drawable.ic_play), contentDescription = null)
+        Spacer(Modifier.width(8.dp))
+        Text(Strings.play, style = MaterialTheme.typography.labelLarge)
     }
 }
