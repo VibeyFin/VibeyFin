@@ -3,7 +3,7 @@
 Goal: remember what the user watched. Resume where they stopped (on any device), show Continue watching on Home,
 let them mark things watched, and move on to the next episode by itself. Logic is shared; every screen is native.
 
-**Status (2026-10-20):** planned and approved, nothing built. Phases A to E each stop for review.
+**Status (2026-10-20):** approved. Phase A is done and awaiting review; B to E are not started. Each phase stops for review.
 
 Paths: `C/` = `shared/src/commonMain/kotlin/com/liamgleeson/vibeyfin`, `T/` = `shared/src/commonTest/...` (same package),
 `A/` = `androidApp/src/main/kotlin/com/liamgleeson/vibeyfin/app`, `I/` = `iosApp/iosApp`, `X/` = `shared/src/iosMain/.../ios`.
@@ -75,7 +75,7 @@ First step after approval: cut `feature/watch-status` from `develop` (not `main`
 12. **New row gets a static skeleton** (no shimmer). Libraries keep their spinner until the state audit before Phase 4.
 13. Item facts show "Watched" for played items. Poster check badges stay in Phase 4.
 
-## Phase A: Crash-safe `Stopped`
+## Phase A: Crash-safe `Stopped` — done
 
 - `C/data/db`: `PendingReportEntity`, `PendingReportDao`, version 3. `C/domain/PendingReports` (DAO + `Clock`, create/touch/remove,
   list). `C/domain/PlaybackRecovery`: `send(record)` returns Sent/Dropped/Retry, and `recoverOnStart()` goes through the records,
@@ -94,6 +94,34 @@ First step after approval: cut `feature/watch-status` from `develop` (not `main`
   `phase-1-playback-decisions`): play an item over 5 min, `adb shell am force-stop`, `GET /Sessions` still shows it playing,
   relaunch, the session ends and the resume position is saved. Install over the existing v2 build to prove the migration. Also
   note whether the server accepts a `Stopped` under a different token.
+
+**Built (Phase A, 2026-10-20).**
+- `pending_reports` (Room v3, `AutoMigration(2,3)`, `schemas/.../3.json`) with `PendingReportDao`; `PendingReports` (save, remove, list,
+  discard older than an age) and `PendingStop`; `PlaybackRecovery.send` / `recoverOnStart` (Sent, Dropped, Retry); `WatchChanges`;
+  `ConnectionManager.asProfile` (`ProfileCall`: Answered, NoSession, Unreachable). `initKoin` launches `recoverOnStart()` on
+  `ApplicationScope`.
+- `PlaybackReporter` keeps the started session in memory as a `PendingStop` and saves it when playback starts, before every progress report
+  and at the stop; `Stopped` goes through `PlaybackRecovery` (one immediate second try, then the record stays for the next start) and
+  `WatchChanges.changed()` fires after it. The session is named by the profile that started it, so a profile switch or an ended session
+  no longer drops `Stopped`. `TestApp.reporter(scope, interval)` builds a reporter wired like the app's.
+- Tests: 12 in `PlaybackRecoveryTest` (sent and forgotten; other profile's token while another is signed in; locked profile; 401 locking only
+  that profile; 401 of the signed-in profile ending its session; no connection and 5xx keep the record; 404 drops it; over 24 h dropped
+  unsent; oldest first; saving twice is one row; deleting the server cascades) and 5 in `PlaybackReporterTest`. `:shared:testAndroidHostTest`
+  (421 tests), the iOS klib compile checks, `:androidApp:assembleDebug` and `:androidApp:testDebugUnitTest` pass.
+- **Verified on the Android emulator against a local Jellyfin 12.2.0** (podman, a 6.5 min H.264 file): installing over the existing v2
+  database migrated it to v3 with both saved profiles intact; playing, then `am force-stop` mid-playback, left the server showing the item
+  as playing and a `pending_reports` row at the last reported position (16.17 s in one run); relaunching ended the session on the server
+  within 6 s and removed the row. Not seen by this run: the record rescuing a position, because Jellyfin already saves the position from
+  each progress report (48.2 s was on the server before the kill). What the crash leaves behind is the "playing" session, and that is what
+  recovery clears.
+- **What the server taught us.** A `Stopped` from another token and device is accepted (204) and its position is saved, but it does not clear
+  the "now playing" entry of the session that sent `Start`: only the same device and token do. Recovery sends as the same profile with the
+  same `DeviceId`, so it clears the right session; the 24 h rule matters because a late `Stopped` does overwrite the saved position.
+  Jellyfin keeps no resume position under 5% of the runtime (19.5 s of a 6.5 min file), so a test that kills the app at 16 s saves nothing.
+- Routes checked on 12.2.0: `GET /UserItems/Resume`, `POST`/`DELETE /UserPlayedItems/{id}` (200, and marking played clears the position),
+  the old `/Users/{id}/...` forms and `GET /Shows/NextUp` all answer. **Not checked on a 10.10 server** (the floor): none was available. If
+  Phase B finds the new routes missing there, fall back to the old ones.
+- The test server (`jf-test` in podman, media in the session scratchpad) is stopped, not removed, for the next phases.
 
 ## Phase B: Continue watching row
 
@@ -178,7 +206,7 @@ disk queue for played marks (Phase 10); the phone pass still owed from Phase 1.
 ## Risks
 
 - A late `Stopped` overwriting a newer position: bounded by the 24 h rule only; an item-level check was judged too heavy.
-- Whether Jellyfin accepts `Stopped` for an unknown session or a different token is unverified until Phase A's check.
+- The new routes (`/UserItems/Resume`, `/UserPlayedItems`) are verified on Jellyfin 12.2.0 only, not on the 10.10 floor.
 - The reporter now touches Room on every progress tick (about every 10 s); its tests are real-time and must stay so.
 - iOS is compile-checked and parsed only (no Xcode on this Mac), so the Home restructure, banner and overlay are unrun.
 - The phone is signed into your real NAS and Phase 2 now writes watch state (including marking things watched). Verify on the emulator

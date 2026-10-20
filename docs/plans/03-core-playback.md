@@ -51,7 +51,7 @@ and sessions, are unbuilt, and it lists library browsing as out of scope). So th
   indices unless the request names the media source.
 - **Stream auth.** Players send the `Authorization` header; the HLS URL the server returns already
   carries its own key. The shared code never builds URLs with the user's token.
-- **Orphaned sessions (deferred to the Phase 2 plan, where it is the first item).** A crash can't send
+- **Orphaned sessions (built in plan 06, Phase A).** A crash can't send
   `Stopped`. The beacon will keep a small pending record (item, session, last position) in a Room table
   keyed by server and profile, because `Stopped` needs that profile's token, and send `Stopped` for it on
   the next start.
@@ -203,7 +203,7 @@ and sessions, are unbuilt, and it lists library browsing as out of scope). So th
 
 - Resume from the saved position: playback always starts at the beginning (roadmap Phase 2).
 - `Stopped` after a crash or a killed process (the pending-record recovery in the decisions above):
-  roadmap Phase 2, first item. The same record would cover a `Stopped` that can't go out offline: after a
+  roadmap Phase 2, first item (done in plan 06, Phase A). The same record covers a `Stopped` that can't go out offline: after a
   lost connection the server kept showing the item as playing at its last reported position until its own
   timeout.
 - The error panel over the video has no scrim: white text on bright footage (the snow scene in the test

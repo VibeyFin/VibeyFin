@@ -80,9 +80,10 @@ _Exit: log in, list libraries, fetch an item's metadata._
 _Exit: play a movie and an episode, direct and transcoded, with position reported._
 
 ### Phase 2 — Watch status & continuity
-- [ ] `Stopped` after a crash or a killed process (split from Phase 1's progress beacon): keep a pending
+- [x] `Stopped` after a crash or a killed process (split from Phase 1's progress beacon): keep a pending
   record (item, play session, last position) in Room, keyed by server and profile, and send `Stopped` for
-  it on the next start. First item of the Phase 2 plan, so it lands before the MVP gate
+  it on the next start. First item of the Phase 2 plan, so it lands before the MVP gate — _built (plan 06,
+  Phase A): the record is dropped after 24 h, and `Stopped` is always sent as the profile that started it_
 - [ ] Continue Watching, one row that also holds Next Up: `GET /Users/{id}/Items/Resume` (in progress,
   newest first) followed by `GET /Shows/NextUp` (one episode per series). A series that already has an
   item in progress appears once, as that item. In-progress cards carry the progress bar and Next Up cards
