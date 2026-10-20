@@ -125,7 +125,7 @@ class ItemViewModelTest {
 
         val state = viewModel().uiState.first { !it.loading }
 
-        assertEquals("Resume from 41:12", state.playLabel)
+        assertEquals("Resume · 49m left", state.playLabel)
         assertTrue(state.canStartOver)
     }
 
@@ -159,7 +159,7 @@ class ItemViewModelTest {
         app.watchChanges.changed()
         val state = viewModel.uiState.first { it.canStartOver }
 
-        assertEquals("Resume from 2:00", state.playLabel)
+        assertEquals("Resume · 1h 28m left", state.playLabel)
         assertFalse(state.loading)
     }
 
@@ -184,7 +184,7 @@ class ItemViewModelTest {
         viewModel.onTogglePlayed()
         val shown = viewModel.uiState.first { it.item?.played == true }
 
-        assertTrue("Watched" in shown.facts)
+        assertTrue(shown.watched)
         assertEquals("Mark as unwatched", shown.markLabel)
         assertEquals("Play", shown.playLabel)
         assertFalse(shown.canStartOver)
@@ -224,7 +224,7 @@ class ItemViewModelTest {
         assertTrue(states.any { it.item?.played == true })
         assertEquals(LoadMessages.MARK_WATCHED_FAILED, failed.actionMessage)
         assertEquals(false, failed.item?.played)
-        assertFalse("Watched" in failed.facts)
+        assertFalse(failed.watched)
 
         server.on("POST", "/UserPlayedItems/m1", Reply.json("""{"Played":true}"""))
         viewModel.onRetryAction()

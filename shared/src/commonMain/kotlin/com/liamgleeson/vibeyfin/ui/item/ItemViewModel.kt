@@ -33,18 +33,21 @@ data class ItemUiState(
     /** Set when the session ended and the screen must be left. */
     val exit: HomeExit? = null,
 ) {
+    /** The server says the user has watched it: the page shows a check icon beside the facts. */
+    val watched: Boolean get() = item?.played == true
+
     /** The menu entry that flips the watched mark, worded for what it will do. */
     val markLabel: String get() = if (item?.played == true) Strings.markUnwatched else Strings.markWatched
 
     /** Whether the page offers Play. */
     val canPlay: Boolean get() = item?.canPlay == true
 
-    /** "Resume from 41:12" when the server says the user stopped part way, else null. */
+    /** "Resume · 38m left" when the server says the user stopped part way, else null. */
     private val resumeLabel: String?
         get() = item?.takeIf { it.canPlay && !it.played && it.resumePositionMs > 0 }
-            ?.let { Strings.resumeFrom(Strings.clock(it.resumePositionMs)) }
+            ?.let { found -> found.runtimeMs?.let { Strings.resumeTimeLeft(it - found.resumePositionMs) } ?: Strings.resume }
 
-    /** The primary button: "Resume from 41:12", or "Play". */
+    /** The primary button: "Resume · 38m left", or "Play". */
     val playLabel: String get() = resumeLabel ?: Strings.play
 
     /** Whether "Start over" is offered beside the primary button: only when there is something to resume. */
@@ -80,7 +83,7 @@ class ItemViewModel(
         content.update { it.copy(item = result.value, facts = factsOf(result.value)) }
     }
 
-    private fun factsOf(item: MediaItem) = item.facts() + listOfNotNull(Strings.watched.takeIf { item.played })
+    private fun factsOf(item: MediaItem) = item.facts()
 
     private var writing = false
 
