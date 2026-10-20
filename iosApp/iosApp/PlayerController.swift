@@ -49,6 +49,8 @@ final class PlayerController: ObservableObject {
     /// What is selected on the open item, so the same choice isn't applied twice.
     private var appliedAudio: AudioChoice?
     private var lastPushedSecond = -1
+    /// Seeks the player hasn't finished or cancelled yet.
+    private var seeksInFlight = 0
     private var failureReported = false
     private var endReported = false
 
@@ -203,12 +205,14 @@ final class PlayerController: ObservableObject {
         let limit = duration > 0 ? duration : seconds
         let target = CMTime(seconds: min(max(0, seconds), limit), preferredTimescale: 600)
         position = target.seconds
+        seeksInFlight += 1
         let startedAt = CACurrentMediaTime()
         player.seek(to: target) { [weak self] finished in
-            // A seek that a newer one cut short is not reported; the newer one will be.
-            guard finished else { return }
             DispatchQueue.main.async {
                 guard let self else { return }
+                self.seeksInFlight -= 1
+                // A seek that a newer one cut short is not reported; the newer one will be.
+                guard finished else { return }
                 Self.timing.debug("seek finished after \(Int((CACurrentMediaTime() - startedAt) * 1000)) ms")
                 self.events.seeked(self.currentMilliseconds)
             }
@@ -280,6 +284,8 @@ final class PlayerController: ObservableObject {
 
     private func tick(_ time: CMTime) {
         guard time.isNumeric, openedStreamId != nil else { return }
+        // While a seek is pending the player still reports the old time; keep showing the target.
+        guard seeksInFlight == 0 else { return }
         position = time.seconds
         // The shared model hears the position about once a second.
         let second = Int(time.seconds)

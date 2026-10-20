@@ -268,6 +268,8 @@ fun PlayerRoute(
                     },
                     onSeek = {
                         seekAt = SystemClock.elapsedRealtime()
+                        // The scrubber shows this until the next tick, so it doesn't fall back to the old position.
+                        positionMs = it
                         player.seekTo(it)
                     },
                 )
