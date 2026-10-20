@@ -68,11 +68,23 @@ struct IconSecondaryButton: View {
             Image(systemName: systemImage)
         }
         .buttonStyle(.bordered)
-        .buttonBorderShape(.circle)
+        .circleBorderShape()
         .controlSize(.large)
         .tint(Color(.systemGray))
         .foregroundStyle(.primary)
         .accessibilityLabel(label)
+    }
+}
+
+private extension View {
+    /// The circle border shape arrived in iOS 17; on iOS 16 the capsule is the closest the system offers.
+    @ViewBuilder
+    func circleBorderShape() -> some View {
+        if #available(iOS 17, *) {
+            buttonBorderShape(.circle)
+        } else {
+            buttonBorderShape(.capsule)
+        }
     }
 }
 
