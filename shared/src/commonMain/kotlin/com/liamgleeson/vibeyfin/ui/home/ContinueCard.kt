@@ -10,7 +10,7 @@ data class ContinueCard(
     val id: String,
     /** A movie's title, or the show's name for an episode. */
     val title: String,
-    /** The episode ("S2 E5"); null for a movie. */
+    /** For an episode, "S2 E5 · Episode title"; null for a movie. */
     val subtitle: String?,
     /** A 16:9 picture, or null when the server has none. */
     val imageUrl: String?,
@@ -32,15 +32,16 @@ data class ContinueRow(
 }
 
 internal fun MediaItem.toContinueCard(): ContinueCard {
-    val label = episodeLabel()
-    val title = if (kind == ItemKind.Episode) seriesName ?: title else title
+    val isEpisode = kind == ItemKind.Episode
+    val subtitle = if (isEpisode) listOfNotNull(episodeLabel(), this.title.takeIf { it.isNotBlank() }).joinToString("  ·  ").ifEmpty { null } else null
+    val title = if (isEpisode) seriesName ?: title else title
     val percent = progress?.let { (it * 100).toInt().coerceIn(1, 99) }
     return ContinueCard(
         id = id,
         title = title,
-        subtitle = label,
+        subtitle = subtitle,
         imageUrl = landscapeUrl,
         progress = progress,
-        accessibilityLabel = Strings.continueCardLabel(title, label ?: year?.toString(), percent),
+        accessibilityLabel = Strings.continueCardLabel(title, subtitle ?: year?.toString(), percent),
     )
 }

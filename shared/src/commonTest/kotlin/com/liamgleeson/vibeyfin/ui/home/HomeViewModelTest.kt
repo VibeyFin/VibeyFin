@@ -252,15 +252,15 @@ class HomeViewModelTest {
 
         val (started, next) = row.cards
         assertEquals("Show", started.title)
-        assertEquals("S2 E5", started.subtitle)
+        assertEquals("S2 E5  ·  Pilot", started.subtitle)
         assertEquals(0.25f, started.progress)
-        assertEquals("Show, S2 E5, 25% watched", started.accessibilityLabel)
+        assertEquals("Show, S2 E5  ·  Pilot, 25% watched", started.accessibilityLabel)
         assertEquals("http://nas:8096/Items/e1/Images/Thumb?tag=t&maxWidth=640", started.imageUrl)
         assertEquals("Other", next.title)
-        assertEquals("S1 E1", next.subtitle)
+        assertEquals("S1 E1  ·  Opener", next.subtitle)
         // A next-up card has no bar: nothing has been watched of it.
         assertNull(next.progress)
-        assertEquals("Other, S1 E1", next.accessibilityLabel)
+        assertEquals("Other, S1 E1  ·  Opener", next.accessibilityLabel)
         assertTrue(row.isVisible)
         assertNull(row.message)
     }
