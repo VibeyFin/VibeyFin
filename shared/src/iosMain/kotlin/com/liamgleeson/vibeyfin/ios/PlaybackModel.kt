@@ -10,9 +10,9 @@ import org.koin.core.parameter.parametersOf
  * stream the state names and reports what it does through the `on…` functions, with its position in
  * milliseconds.
  */
-class PlaybackModel(itemId: String) {
+class PlaybackModel(itemId: String, startOver: Boolean) {
     private val host = ViewModelHost(PlaybackViewModel::class) {
-        it.get<PlaybackViewModel> { parametersOf(itemId) }
+        it.get<PlaybackViewModel> { parametersOf(itemId, startOver) }
     }
 
     fun observe(onChange: (PlaybackUiState) -> Unit) = host.observe(host.viewModel.uiState, onChange)

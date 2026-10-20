@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.liamgleeson.vibeyfin.data.api.ApiError
 import com.liamgleeson.vibeyfin.testing.FakeJellyfin
 import com.liamgleeson.vibeyfin.testing.HLS_PATH
+import com.liamgleeson.vibeyfin.testing.TICKS_PER_MINUTE
 import com.liamgleeson.vibeyfin.testing.Reply
 import com.liamgleeson.vibeyfin.testing.TestApp
 import com.liamgleeson.vibeyfin.testing.ViewModelTracker
@@ -44,6 +46,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -73,8 +76,8 @@ class PlaybackViewModelTest {
     /** The waits before the tries at a stream that lost its connection, short so the tests don't wait. */
     private val retryDelays = listOf(1.milliseconds, 1.milliseconds)
 
-    private fun viewModel(id: String = "m1") = viewModels.track(
-        PlaybackViewModel(id, app.library, app.playback, app.reporter(reporterScope), app.connection, retryDelays),
+    private fun viewModel(id: String = "m1", startOver: Boolean = false) = viewModels.track(
+        PlaybackViewModel(id, app.library, app.playback, app.reporter(reporterScope), app.connection, retryDelays, startOver),
     )
 
     /** A signed-in server that offers a direct play of "Heat", answers the reports and, for an episode test, can be given another item. */
@@ -134,18 +137,6 @@ class PlaybackViewModelTest {
 
         assertEquals("Northbound", state.title)
         assertEquals("Paper Harbour  ·  S2 E4", state.subtitle)
-    }
-
-    @Test
-    fun aMissingTitleDoesNotStopPlayback() = runTest {
-        val jellyfin = server()
-        app.jellyfin.server("http://nas:8096").on("GET", "/Items", Reply.status(HttpStatusCode.InternalServerError))
-
-        val state = viewModel().uiState.first { it.stream != null }
-
-        assertEquals("", state.title)
-        assertNotNull(state.stream)
-        assertTrue(jellyfin.requestsTo("POST", "/Items/m1/PlaybackInfo").isNotEmpty())
     }
 
     @Test
@@ -866,5 +857,78 @@ class PlaybackViewModelTest {
         viewModel.uiState.first { it.hasStreamOtherThan(second.id) }
         assertEquals(3, negotiations().size)
         assertEquals(false, bodyOf(negotiations().last()).getValue("EnableDirectPlay").jsonPrimitive.boolean)
+    }
+
+    private fun halfWatched(minutes: Long = 10, played: Boolean = false) = itemJson(
+        "m1", "Heat", year = 1995, runtimeTicks = 90 * TICKS_PER_MINUTE, positionTicks = minutes * TICKS_PER_MINUTE, played = played,
+    )
+
+    @Test
+    fun resumesFiveSecondsBeforeWhereTheServerSaysTheUserStopped() = runTest {
+        server(item = halfWatched(minutes = 10))
+
+        val stream = assertNotNull(viewModel().uiState.first { it.stream != null }.stream)
+
+        assertEquals(10 * 60_000L - RESUME_REWIND_MS, stream.startPositionMs)
+    }
+
+    @Test
+    fun aPositionUnderTheRewindStartsAtTheBeginning() = runTest {
+        server(item = itemJson("m1", "Heat", runtimeTicks = 90 * TICKS_PER_MINUTE, positionTicks = 30_000_000))
+
+        val stream = assertNotNull(viewModel().uiState.first { it.stream != null }.stream)
+
+        assertEquals(0L, stream.startPositionMs)
+    }
+
+    @Test
+    fun startOverIgnoresTheSavedPosition() = runTest {
+        server(item = halfWatched())
+
+        val stream = assertNotNull(viewModel(startOver = true).uiState.first { it.stream != null }.stream)
+
+        assertEquals(0L, stream.startPositionMs)
+    }
+
+    @Test
+    fun anItemTheServerSaysIsWatchedStartsAtTheBeginning() = runTest {
+        server(item = halfWatched(played = true))
+
+        val stream = assertNotNull(viewModel().uiState.first { it.stream != null }.stream)
+
+        assertEquals(0L, stream.startPositionMs)
+    }
+
+    @Test
+    fun withoutTheItemPlaybackDoesNotStartAndRetryReadsItAgain() = runTest {
+        val jellyfin = server(item = halfWatched())
+        jellyfin.server("http://nas:8096").on("GET", "/Items", Reply.status(HttpStatusCode.ServiceUnavailable))
+        val viewModel = viewModel()
+
+        val failed = viewModel.uiState.first { it.message != null }
+        assertEquals(LoadMessages.forError(ApiError.Server(503)), failed.message)
+        assertNull(failed.stream)
+        assertFalse(failed.loading)
+        // Starting at 0 would later report a small position over the real one, so nothing was negotiated.
+        assertEquals(0, jellyfin.requestsTo("POST", "/Items/m1/PlaybackInfo").size)
+
+        jellyfin.server("http://nas:8096").on("GET", "/Items", Reply.json(itemsJson(halfWatched())))
+        viewModel.onRetry()
+        val stream = assertNotNull(viewModel.uiState.first { it.stream != null }.stream)
+
+        assertEquals(10 * 60_000L - RESUME_REWIND_MS, stream.startPositionMs)
+    }
+
+    @Test
+    fun aRetryAfterAFailureOnceStartedKeepsThePositionItReached() = runTest {
+        server(item = halfWatched())
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.stream != null }
+        viewModel.onPosition(700_000)
+
+        viewModel.onFailed(PlaybackFailure.Network)
+        val stream = assertNotNull(viewModel.uiState.first { it.stream?.id == 2 }.stream)
+
+        assertEquals(700_000L, stream.startPositionMs)
     }
 }

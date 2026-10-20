@@ -107,6 +107,9 @@ data class PlaybackUiState(
     val hasTrackChoices: Boolean get() = audioTracks.isNotEmpty() || subtitleTracks.isNotEmpty()
 }
 
+/** Resuming starts this long before where the user stopped, so the scene they left is in view again. */
+const val RESUME_REWIND_MS = 5_000L
+
 /**
  * Plays one item: asks the server how, hands the native player a [PlaybackStream], and reports to
  * the server what the player tells it. The player is native (Media3, AVPlayer); it pushes its events
@@ -124,6 +127,11 @@ data class PlaybackUiState(
  * and any subtitle the server sends as a file), and costs nothing. Otherwise (a subtitle burned into
  * the video, or the audio of a stream the server prepares) it is a new negotiation, and the player
  * opens the new stream at the position it was at.
+ *
+ * It starts where the server says the user stopped, [RESUME_REWIND_MS] earlier so they pick up the
+ * thread, unless [startOver] is set or the server says the item was finished. The item is read first for
+ * that: if that read fails, playback doesn't start (with "Try again"), because starting at 0 would later
+ * report a small position and overwrite the real one.
  */
 class PlaybackViewModel(
     private val itemId: String,
@@ -132,6 +140,7 @@ class PlaybackViewModel(
     private val reporter: PlaybackReporter,
     connection: ConnectionManager,
     private val retryDelays: List<Duration> = NETWORK_RETRY_DELAYS,
+    private val startOver: Boolean = false,
 ) : ViewModel() {
     private val content = MutableStateFlow(PlaybackUiState())
 
@@ -140,6 +149,9 @@ class PlaybackViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlaybackUiState())
 
     private var lastPositionMs = 0L
+
+    /** The item has been read, so where to start is known and a retry doesn't need to ask again. */
+    private var started = false
     private var method: PlayMethod? = null
     private var streams = 0
 
@@ -172,8 +184,7 @@ class PlaybackViewModel(
     private class TrackChoice(val mediaSourceId: String, val audio: Int?, val subtitle: Int)
 
     init {
-        loadTitle()
-        open(startAtMs = 0)
+        start()
     }
 
     /** Plays the audio track [index] (a [TrackOption.index]) from where the video is now. */
@@ -264,7 +275,7 @@ class PlaybackViewModel(
         lostConnection = false
         networkRetries = 0
         reauthorized = false
-        open(startAtMs = lastPositionMs)
+        if (started) open(startAtMs = lastPositionMs) else start()
     }
 
     /**
@@ -322,14 +333,25 @@ class PlaybackViewModel(
         reporter.close()
     }
 
-    private fun loadTitle() {
+    /** Reads the item for its title and where the user stopped, then opens it there. */
+    private fun start() {
+        content.update { it.copy(loading = true, stream = null, message = null) }
         viewModelScope.launch {
-            val item = (library.item(itemId) as? ApiResult.Success)?.value ?: return@launch
-            content.update {
-                it.copy(
-                    title = item.title,
-                    subtitle = listOfNotNull(item.seriesName, item.episodeLabel()).joinToString("  ·  ").ifEmpty { null },
-                )
+            when (val result = library.item(itemId)) {
+                is ApiResult.Success -> {
+                    val item = result.value
+                    val startAtMs = if (startOver || item.played) 0L else (item.resumePositionMs - RESUME_REWIND_MS).coerceAtLeast(0)
+                    started = true
+                    lastPositionMs = startAtMs
+                    content.update {
+                        it.copy(
+                            title = item.title,
+                            subtitle = listOfNotNull(item.seriesName, item.episodeLabel()).joinToString("  ·  ").ifEmpty { null },
+                        )
+                    }
+                    open(startAtMs)
+                }
+                is ApiResult.Failure -> content.update { it.copy(loading = false, message = LoadMessages.forError(result.error)) }
             }
         }
     }

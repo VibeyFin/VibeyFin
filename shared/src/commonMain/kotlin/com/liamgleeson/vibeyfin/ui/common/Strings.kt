@@ -100,6 +100,10 @@ object Strings {
 
     // Playback
     val play = "Play"
+    val startOver = "Start over"
+
+    /** The Resume button: where the server says the user stopped, as a clock. */
+    fun resumeFrom(clock: String) = "Resume from $clock"
     val pause = "Pause"
     val close = "Close"
     val playbackPosition = "Playback position"

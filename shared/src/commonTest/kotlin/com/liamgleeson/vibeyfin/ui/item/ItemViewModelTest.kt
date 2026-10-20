@@ -21,6 +21,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -41,7 +42,7 @@ class ItemViewModelTest {
         app.close()
     }
 
-    private fun viewModel(id: String = "m1") = viewModels.track(ItemViewModel(id, app.library, app.connection))
+    private fun viewModel(id: String = "m1") = viewModels.track(ItemViewModel(id, app.library, app.connection, app.watchChanges))
 
     @Test
     fun showsTheItemWithItsFacts() = runTest {
@@ -109,5 +110,52 @@ class ItemViewModelTest {
         val state = viewModel().uiState.first { it.exit != null }
 
         assertEquals(HomeExit.WhoIsWatching("srv-1"), state.exit)
+    }
+
+    private suspend fun itemServer(item: String) =
+        app.signedIn().also { it.on("GET", "/Items", Reply.json(itemsJson(item))) }
+
+    @Test
+    fun anItemInProgressOffersResumeFromWhereTheUserStoppedAndStartOver() = runTest {
+        itemServer(itemJson("m1", runtimeTicks = 90 * TICKS_PER_MINUTE, positionTicks = (41 * 60 + 12) * 10_000_000L))
+
+        val state = viewModel().uiState.first { !it.loading }
+
+        assertEquals("Resume from 41:12", state.playLabel)
+        assertTrue(state.canStartOver)
+    }
+
+    @Test
+    fun anItemNotStartedOffersPlayOnly() = runTest {
+        itemServer(itemJson("m1", runtimeTicks = 90 * TICKS_PER_MINUTE))
+
+        val state = viewModel().uiState.first { !it.loading }
+
+        assertEquals("Play", state.playLabel)
+        assertFalse(state.canStartOver)
+    }
+
+    @Test
+    fun aWatchedItemOffersPlayOnly() = runTest {
+        itemServer(itemJson("m1", runtimeTicks = 90 * TICKS_PER_MINUTE, positionTicks = 600_000_000, played = true))
+
+        val state = viewModel().uiState.first { !it.loading }
+
+        assertEquals("Play", state.playLabel)
+        assertFalse(state.canStartOver)
+    }
+
+    @Test
+    fun theButtonsFollowWhatWasWatchedWithoutALoadingScreen() = runTest {
+        val server = itemServer(itemJson("m1", runtimeTicks = 90 * TICKS_PER_MINUTE))
+        val viewModel = viewModel()
+        viewModel.uiState.first { !it.loading }
+
+        server.on("GET", "/Items", Reply.json(itemsJson(itemJson("m1", runtimeTicks = 90 * TICKS_PER_MINUTE, positionTicks = 1_200_000_000))))
+        app.watchChanges.changed()
+        val state = viewModel.uiState.first { it.canStartOver }
+
+        assertEquals("Resume from 2:00", state.playLabel)
+        assertFalse(state.loading)
     }
 }
