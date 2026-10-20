@@ -142,6 +142,11 @@ _Starts after the state audit (see Cross-cutting)._
   Downloads open an empty page that says "Not available yet" (text in `Strings`) until their features land.
   The Search tab joins with unified search below. Nothing else is built in this item
 - [ ] Home rows: Latest, genres, My Media, plus Continue Watching (which holds Next Up)
+- [ ] Home filter chips under the header, above the hero (`docs/design/screens.md` "Home"): Shows, Movies,
+  Collections (when the server has any), then the library's genres from `GET /Genres`, at most 12. One at a
+  time, none selected on launch, tapping the selected chip clears it. A chip limits the hero, Continue
+  Watching and every row to that type or genre; rows left empty hide. Capsules on iOS, M3 `FilterChip`s on
+  Android
 - [ ] Detail page: metadata, cast, `/Items/{id}/Similar`. The page opens on a full-width cinematic
   backdrop hero (`Backdrop` image) with a dark gradient overlay (the `scrim` token), and the movie
   details and action buttons are layered over the image: the `Logo` image as the title (the

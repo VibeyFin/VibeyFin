@@ -12,6 +12,17 @@ Which server data drives which piece of UI. All of this lives in the shared Kotl
 | My media | `GET /UserViews` | The user's libraries as 16:9 tiles; tap opens that library. |
 | My List | Items with `UserData.IsFavorite = true` | Jellyfin has no watchlist; VibeyFin uses Favorites for "My List". |
 
+### Home filter chips
+
+| Chip | Source | Notes |
+| --- | --- | --- |
+| Shows | `includeItemTypes=Series` on `GET /Items`; Continue watching keeps the episodes | No chip when `GET /UserViews` has no `tvshows` library. |
+| Movies | `includeItemTypes=Movie` on `GET /Items`; Continue watching keeps the movies | No chip when there is no `movies` library. |
+| Collections | `GET /Items?includeItemTypes=BoxSet&recursive=true` | No chip when it returns nothing. Shown as a row of collection posters. |
+| Genre | `GET /Genres` for the chips (server order, at most 12); `genreIds` on `GET /Items` for the rows | `GET /Items/Latest` has no genre filter, so a filtered "Recently added" row uses `GET /Items` sorted by `DateCreated`, newest first. Continue watching keeps items whose own genres, or their series' genres, include the genre. |
+
+A selected chip swaps the row sources above for the filtered ones. Nothing is stored: Home opens unfiltered.
+
 ## Detail
 
 | UI | Source | Notes |

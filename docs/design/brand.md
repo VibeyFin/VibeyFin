@@ -24,6 +24,7 @@ Further sections: **UX guardrails** (behavior both apps must share), **iOS & iPa
 
 - Same words on both; casing follows the platform. iOS: title case for buttons, tabs and titles ("Continue Watching", "Mark as Watched", "Skip Intro"). Android: sentence case everywhere ("Continue watching", "Mark as watched", "Skip intro").
 - Watched is a check icon (a small badge on the poster's top-right, a check-circle by the facts on the detail page), in ink, never aqua.
+- Motion is for feedback and orientation, short and calm: a press shrinks the thing to 95% and springs back, a card or screen opening grows in from 92% while it fades. Nothing bounces for effect, and Reduce Motion turns the scale off.
 - Prefer an icon to a word where the icon is clear (start over is a circular arrow, with the word as its accessibility label); the primary action keeps its words.
 - Buttons are verbs, specific when we know more: "Play", "Resume · 38m left", "Play S2 E4".
 - Time and episode shorthand: `1h 52m`, `38m left`, `S2 E4`; tabular numerals for clocks.

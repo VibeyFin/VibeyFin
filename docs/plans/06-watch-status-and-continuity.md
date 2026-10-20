@@ -309,3 +309,11 @@ Continue watching card, redone from your reference: a play disc centred on the p
 under it only 2 dp apart, and a "…" button (Android `IconButton`, iOS `Menu`) beside the title that opens the same actions as a long press.
 In-progress cards say what is left ("S2 E5 · 38m left", "5m left" for a movie); Next Up cards keep "S2 E5 · Episode title". The screen-reader label
 is back to "{title}, {episode or year}, {n}% watched". The skeleton uses the same spacing. Checked on the emulator.
+
+Motion, at your request. The next-episode card grows in from 92% and fades (260 ms) and goes the same way (180 ms), like a screen opening
+(Android `AnimatedVisibility` keeping the last card while it fades out; iOS a scale-and-opacity transition, plain opacity under Reduce Motion).
+Presses: on Android the theme's indication is now `PressScaleIndication` (the system ripple plus a spring-back shrink to 95% under the finger), so
+every Material button, card, chip and plain `clickable` gets it with no per-screen code; only what is drawn scales, not the touch area. On iOS the
+plain-styled card, tile and row buttons use `PressableButtonStyle` (the same shrink, none under Reduce Motion); the system bordered and glass
+buttons keep their own highlight. Checked on the emulator: a held press on the Movies tile shrinks it with its rounded corners kept. Not seen: the
+card's animation (too quick to catch with screenshots) and anything on iOS.
