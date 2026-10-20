@@ -28,6 +28,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -400,6 +401,48 @@ class PlaybackViewModelTest {
         val again = assertNotNull(viewModel.uiState.first { it.stream != null }.stream)
         assertEquals(61_000L, again.startPositionMs)
         assertEquals(2, negotiations().size)
+    }
+
+    /** Plays on a device that can't direct play, then fails [times] more times with [failure] on the transcode. */
+    private suspend fun TestScope.transcodeThatEndsInAnError(failure: PlaybackFailure, times: Int): PlaybackViewModel {
+        serverWithTracks()
+        val viewModel = viewModel()
+        var stream = assertNotNull(viewModel.uiState.first { it.stream != null }.stream)
+        viewModel.onPlaying(0)
+        viewModel.onPosition(20_000)
+        viewModel.onFailed(PlaybackFailure.Unsupported)
+        stream = assertNotNull(viewModel.uiState.first { it.hasStreamOtherThan(stream.id) }.stream)
+        repeat(times) {
+            val previous = stream
+            viewModel.onFailed(failure)
+            val next = viewModel.uiState.first { it.hasStreamOtherThan(previous.id) || it.message != null }
+            next.stream?.let { stream = it }
+        }
+        return viewModel
+    }
+
+    @Test
+    fun tryingAgainAfterALostConnectionKeepsATranscodeThatWasNeeded() = runTest {
+        val viewModel = transcodeThatEndsInAnError(PlaybackFailure.Network, times = retryDelays.size + 1)
+        assertEquals(LoadMessages.PLAYBACK_NETWORK, viewModel.uiState.first { it.message != null }.message)
+        val before = negotiations().size
+
+        viewModel.onRetry()
+
+        viewModel.uiState.first { it.stream != null }
+        assertEquals(before + 1, negotiations().size)
+        assertEquals(false, bodyOf(negotiations().last()).getValue("EnableDirectPlay").jsonPrimitive.boolean)
+    }
+
+    @Test
+    fun tryingAgainAfterATranscodeThatWouldNotPlayStartsAfresh() = runTest {
+        val viewModel = transcodeThatEndsInAnError(PlaybackFailure.Unsupported, times = 1)
+        assertEquals(LoadMessages.PLAYBACK_FAILED, viewModel.uiState.first { it.message != null }.message)
+
+        viewModel.onRetry()
+
+        viewModel.uiState.first { it.stream != null }
+        assertEquals(true, bodyOf(negotiations().last()).getValue("EnableDirectPlay").jsonPrimitive.boolean)
     }
 
     @Test

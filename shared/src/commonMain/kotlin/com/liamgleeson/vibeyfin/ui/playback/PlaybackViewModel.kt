@@ -166,6 +166,9 @@ class PlaybackViewModel(
     private var reauthorized = false
     private var failedAtMs = 0L
 
+    /** The error on screen is a lost connection, which says nothing about what the device can play. */
+    private var lostConnection = false
+
     private class TrackChoice(val mediaSourceId: String, val audio: Int?, val subtitle: Int)
 
     init {
@@ -256,7 +259,9 @@ class PlaybackViewModel(
     }
 
     fun onRetry() {
-        transcodeOnly = false
+        // A transcode that was needed still is after a lost connection; after any other failure start afresh.
+        if (!lostConnection) transcodeOnly = false
+        lostConnection = false
         networkRetries = 0
         reauthorized = false
         open(startAtMs = lastPositionMs)
@@ -268,7 +273,7 @@ class PlaybackViewModel(
      * are used up it is an error with "Try again", not a transcode, which would need the same connection.
      */
     private fun retrySameStream(failed: PlaybackStream) {
-        val wait = retryDelays.getOrNull(networkRetries) ?: return giveUp(LoadMessages.PLAYBACK_NETWORK)
+        val wait = retryDelays.getOrNull(networkRetries) ?: return giveUp(LoadMessages.PLAYBACK_NETWORK, lostConnection = true)
         if (networkRetries == 0 && !reauthorized) failedAtMs = lastPositionMs
         networkRetries++
         reporter.paused(lastPositionMs)
@@ -303,9 +308,10 @@ class PlaybackViewModel(
         open(startAtMs = lastPositionMs)
     }
 
-    private fun giveUp(message: String) {
+    private fun giveUp(message: String, lostConnection: Boolean = false) {
         reporter.stop(lastPositionMs, failed = true)
         method = null
+        this.lostConnection = lostConnection
         content.update { it.copy(stream = null, loading = false, message = message) }
     }
 
