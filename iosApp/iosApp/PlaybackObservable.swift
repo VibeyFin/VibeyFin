@@ -52,6 +52,16 @@ final class PlaybackObservable: ObservableObject {
         model.onClosed(positionMs: positionMs)
     }
 
+    /// "Play now" on the next-episode card.
+    func playNow() {
+        model.onPlayNow()
+    }
+
+    /// "Watch credits" on the next-episode card: it goes, and the episode plays out.
+    func watchCredits() {
+        model.onWatchCredits()
+    }
+
     func failed(_ failure: PlaybackFailure) {
         model.onFailed(failure: failure)
     }

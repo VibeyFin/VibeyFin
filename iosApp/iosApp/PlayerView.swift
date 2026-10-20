@@ -56,7 +56,20 @@ struct PlayerView: View {
                         .transition(.opacity)
                 }
             }
+            // The next episode, in the last seconds of this one, whether or not the controls are up.
+            if let upNext = state?.upNext, state?.message == nil {
+                UpNextCard(
+                    upNext: upNext,
+                    onPlayNow: { model.playNow() },
+                    onWatchCredits: { model.watchCredits() }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .screenMargin()
+                .padding(.bottom, Space.s7 + Space.s5)
+                .transition(.opacity)
+            }
         }
+        .animation(.default, value: state?.upNext != nil)
         .statusBarHidden(!controlsVisible)
         .persistentSystemOverlays(controlsVisible ? .automatic : .hidden)
         .onAppear {
