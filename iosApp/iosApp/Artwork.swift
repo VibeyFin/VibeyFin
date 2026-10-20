@@ -41,6 +41,9 @@ struct ArtworkTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s2) {
             Artwork(url: item.posterUrl, title: item.title, aspectRatio: CGFloat(item.posterAspectRatio))
+                .overlay(alignment: .topTrailing) {
+                    if item.played { WatchedBadge().padding(Space.s2) }
+                }
                 .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
             if !item.nameIsOnPoster {
                 Text(item.title)
@@ -53,8 +56,25 @@ struct ArtworkTile: View {
         // One element for VoiceOver: the title and year, whether the title is written under the
         // picture or on it.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Strings.shared.cardLabel(title: item.title, year: item.year))
+        .accessibilityLabel(
+            item.played
+                ? Strings.shared.cardLabel(title: item.title, year: item.year) + ", " + Strings.shared.watched
+                : Strings.shared.cardLabel(title: item.title, year: item.year)
+        )
         .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// The check on a watched poster's top-right corner, on the scrim so it reads over any picture.
+/// VoiceOver reads the tile's own label, so the badge itself is hidden from it.
+struct WatchedBadge: View {
+    var body: some View {
+        Image(systemName: "checkmark")
+            .font(.caption.weight(.bold))
+            .foregroundStyle(.white)
+            .frame(width: 24, height: 24)
+            .background(Brand.scrim, in: Circle())
+            .accessibilityHidden(true)
     }
 }
 

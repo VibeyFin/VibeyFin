@@ -56,6 +56,26 @@ struct SecondaryButton: View {
     }
 }
 
+/// A secondary action with only an icon: the system's `.bordered` circle with a grey fill. [label] is what
+/// VoiceOver says, since there is no text.
+struct IconSecondaryButton: View {
+    let systemImage: String
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+        }
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.circle)
+        .controlSize(.large)
+        .tint(Color(.systemGray))
+        .foregroundStyle(.primary)
+        .accessibilityLabel(label)
+    }
+}
+
 /// A tertiary action: the system's `.borderless` button, tinted with the app tint.
 struct GhostButton: View {
     let title: String

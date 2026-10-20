@@ -80,8 +80,12 @@ struct ContinueRowView: View {
                                 .buttonStyle(.plain)
                                 // Long press: the card's actions. A tap plays.
                                 .contextMenu {
-                                    Button(Strings.shared.details.titleCased()) { onDetails(card.id) }
-                                    Button(Strings.shared.markWatched.titleCased()) { onMarkWatched(card.id) }
+                                    Button { onDetails(card.id) } label: {
+                                        Label(Strings.shared.details.titleCased(), systemImage: "info.circle")
+                                    }
+                                    Button { onMarkWatched(card.id) } label: {
+                                        Label(Strings.shared.markWatched.titleCased(), systemImage: "checkmark.circle")
+                                    }
                                 }
                         }
                     }

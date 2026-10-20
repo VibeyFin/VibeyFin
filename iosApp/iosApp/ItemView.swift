@@ -52,7 +52,14 @@ struct ItemView: View {
             if let state = model.state, state.canPlay {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
-                        Button(state.markLabel.titleCased()) { model.togglePlayed() }
+                        Button {
+                            model.togglePlayed()
+                        } label: {
+                            Label(
+                                state.markLabel.titleCased(),
+                                systemImage: state.item?.played == true ? "xmark.circle" : "checkmark.circle"
+                            )
+                        }
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
@@ -93,10 +100,19 @@ struct ItemView: View {
         Text(item.title)
             .font(.title2.bold())
             .foregroundStyle(.primary)
-        if !facts.isEmpty {
-            Text(facts.joined(separator: "  ·  "))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        if !facts.isEmpty || state.watched {
+            HStack(spacing: Space.s2) {
+                Text(facts.joined(separator: "  ·  "))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                // Watched is an icon, in the secondary ink: aqua never signals status.
+                if state.watched {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel(Strings.shared.watched)
+                }
+            }
         }
         if !item.genres.isEmpty {
             Text(item.genres.joined(separator: "  ·  "))
@@ -104,12 +120,16 @@ struct ItemView: View {
                 .foregroundStyle(.primary)
         }
         // The one filled action on the page: the aqua capsule.
-        // "Play" or "Resume from 41:12", with "Start over" beside it only when there is something to resume.
+        // "Play" or "Resume · 38m left", with a round "start over" arrow beside it only when there is something to resume.
         if state.canPlay {
             HStack(spacing: Space.s3) {
-                PrimaryButton(state.playLabel) { play(startOver: false) }
+                PrimaryButton(action: { play(startOver: false) }) {
+                    Label(state.playLabel.titleCased(), systemImage: "play.fill")
+                }
                 if state.canStartOver {
-                    SecondaryButton(title: Strings.shared.startOver) { play(startOver: true) }
+                    IconSecondaryButton(systemImage: "arrow.counterclockwise", label: Strings.shared.startOver) {
+                        play(startOver: true)
+                    }
                 }
             }
             .padding(.vertical, Space.s1)
