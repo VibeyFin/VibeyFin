@@ -90,6 +90,6 @@ through a thin Ktor client.
 ## Where to read more
 
 - [`docs/ROADMAP.md`](docs/ROADMAP.md): what is done and what comes next, including Seerr
-  requests and recommendations (Phases 7 and 8).
+  requests and recommendations (Phases 8 and 9).
 - [`docs/plans/`](docs/plans): how each stage was planned and what was verified.
 - [`CLAUDE.md`](CLAUDE.md): the project's conventions, product decisions and architecture rules.
