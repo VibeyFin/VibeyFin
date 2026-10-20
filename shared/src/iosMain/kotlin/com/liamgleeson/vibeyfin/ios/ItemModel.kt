@@ -14,5 +14,11 @@ class ItemModel(itemId: String) {
 
     fun onRetry() = host.viewModel.onRetry()
 
+    fun onTogglePlayed() = host.viewModel.onTogglePlayed()
+
+    fun onRetryAction() = host.viewModel.onRetryAction()
+
+    fun onDismissMessage() = host.viewModel.onDismissMessage()
+
     fun close() = host.close()
 }

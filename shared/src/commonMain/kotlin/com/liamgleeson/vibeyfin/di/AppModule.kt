@@ -26,7 +26,7 @@ fun appModule() = module {
     viewModel { params -> WhoIsWatchingViewModel(params.get(), get(), get(), get(), get()) }
     viewModelOf(::HomeViewModel)
     viewModel { params -> ChildrenViewModel(params.get(), get(), get()) }
-    viewModel { params -> ItemViewModel(params.get(), get(), get(), get()) }
+    viewModel { params -> ItemViewModel(params.get(), get(), get(), get(), get()) }
     viewModel { params -> PlaybackViewModel(params.get(), get(), get(), get(), get(), startOver = params.getOrNull() ?: false) }
     viewModelOf(::StartupViewModel)
     viewModelOf(::SettingsViewModel)

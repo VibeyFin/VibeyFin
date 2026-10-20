@@ -52,7 +52,7 @@ fun apiModule() = module {
     single { AuthRepository(get(), get(), get()) }
     single { StartupRouter(get(), get(), get(), get()) }
     single { LibraryRepository(get()) }
-    single { WatchRepository(get()) }
+    single { WatchRepository(get(), get()) }
 
     single(ApplicationScope) { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
     single { PlaybackRepository(get(), get(), get(), get()) }

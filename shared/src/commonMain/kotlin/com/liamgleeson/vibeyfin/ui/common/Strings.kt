@@ -84,6 +84,15 @@ object Strings {
     fun greeting(name: String) = "Hi, $name"
 
     val continueWatching = "Continue watching"
+    val markWatched = "Mark as watched"
+    val markUnwatched = "Mark as unwatched"
+    val details = "Details"
+
+    /** In an item's facts, once the server says the user has watched it. */
+    val watched = "Watched"
+
+    /** What a screen reader says for the "…" menu on the item page. */
+    val moreActions = "More actions"
 
     /** What a screen reader says while the Continue watching row is still loading. */
     val loadingContinueWatching = "Loading Continue watching"

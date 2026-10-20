@@ -19,6 +19,12 @@ class HomeModel {
 
     fun onRetryContinue() = host.viewModel.onRetryContinue()
 
+    fun onMarkWatched(cardId: String) = host.viewModel.onMarkWatched(cardId)
+
+    fun onRetryAction() = host.viewModel.onRetryAction()
+
+    fun onDismissMessage() = host.viewModel.onDismissMessage()
+
     fun onRefresh() = host.viewModel.onRefresh()
 
     fun onForeground() = host.viewModel.onForeground()

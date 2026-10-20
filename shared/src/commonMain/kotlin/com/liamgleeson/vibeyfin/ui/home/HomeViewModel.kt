@@ -2,6 +2,7 @@ package com.liamgleeson.vibeyfin.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.liamgleeson.vibeyfin.data.api.ApiError
 import com.liamgleeson.vibeyfin.data.api.ApiResult
 import com.liamgleeson.vibeyfin.domain.ConnectionManager
 import com.liamgleeson.vibeyfin.domain.ConnectionState
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
@@ -47,6 +49,8 @@ data class HomeUiState(
     val continueRow: ContinueRow = ContinueRow(),
     /** A pull to refresh is running; the cards and libraries stay on screen while it does. */
     val refreshing: Boolean = false,
+    /** A change that couldn't be saved on the server and was taken back, with what to try. */
+    val actionMessage: String? = null,
     /** Set when the screen should be left: the user chose to, or the session ended. */
     val exit: HomeExit? = null,
 )
@@ -77,7 +81,9 @@ class HomeViewModel(
     private var refresh: Job? = null
     private var continueLoadedAt: Instant? = null
 
-    val uiState: StateFlow<HomeUiState> = combine(connection.state, exit, libraries, continueRow, refreshing) { state, exit, libraries, continueRow, refreshing ->
+    private val actionMessage = MutableStateFlow<String?>(null)
+
+    private val screen = combine(connection.state, exit, libraries, continueRow, refreshing) { state, exit, libraries, continueRow, refreshing ->
         when (state) {
             is ConnectionState.Connected -> HomeUiState(
                 userName = state.account.name,
@@ -97,6 +103,10 @@ class HomeViewModel(
             )
             ConnectionState.Disconnected -> HomeUiState(exit = exit)
         }
+    }
+
+    val uiState: StateFlow<HomeUiState> = combine(screen, actionMessage) { screen, message ->
+        screen.copy(actionMessage = message)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     init {
@@ -119,6 +129,51 @@ class HomeViewModel(
 
     fun onRetryLibraries() {
         viewModelScope.launch { loadLibraries() }
+    }
+
+    private val marking = mutableSetOf<String>()
+    private var failedMark: String? = null
+
+    /**
+     * "Mark as watched" on a Continue watching card: the card goes at once and the server is told after.
+     * If that fails the card comes back where it was, with a message. A rejected token ends the session
+     * instead, so no message.
+     */
+    fun onMarkWatched(cardId: String) {
+        val row = continueRow.value
+        val index = row.cards.indexOfFirst { it.id == cardId }
+        if (index < 0 || !marking.add(cardId)) return
+        val card = row.cards[index]
+        actionMessage.value = null
+        continueRow.value = row.copy(cards = row.cards - card)
+        viewModelScope.launch {
+            val result = watch.setPlayed(cardId, played = true)
+            marking.remove(cardId)
+            if (result is ApiResult.Failure) {
+                continueRow.update { current ->
+                    if (current.cards.any { it.id == cardId }) {
+                        current
+                    } else {
+                        current.copy(cards = current.cards.toMutableList().apply { add(index.coerceAtMost(size), card) })
+                    }
+                }
+                if (result.error != ApiError.Unauthorized) {
+                    failedMark = cardId
+                    actionMessage.value = LoadMessages.MARK_WATCHED_FAILED
+                }
+            }
+        }
+    }
+
+    /** "Try again" on the failure message. */
+    fun onRetryAction() {
+        val card = failedMark ?: return
+        failedMark = null
+        onMarkWatched(card)
+    }
+
+    fun onDismissMessage() {
+        actionMessage.value = null
     }
 
     fun onRetryContinue() {

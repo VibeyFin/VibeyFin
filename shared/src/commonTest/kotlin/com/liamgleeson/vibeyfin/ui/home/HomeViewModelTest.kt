@@ -1,5 +1,9 @@
 package com.liamgleeson.vibeyfin.ui.home
 
+import com.liamgleeson.vibeyfin.ui.common.LoadMessages
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.CoroutineScope
 import com.liamgleeson.vibeyfin.domain.ConnectionState
 import com.liamgleeson.vibeyfin.testing.FakeServer
 import com.liamgleeson.vibeyfin.testing.Reply
@@ -435,5 +439,86 @@ class HomeViewModelTest {
 
         assertFalse(viewModel.uiState.value.refreshing)
         assertEquals(0, app.jellyfin.requests.size)
+    }
+
+    private fun CoroutineScope.collectStates(into: MutableList<HomeUiState>, viewModel: HomeViewModel) {
+        launch(UnconfinedTestDispatcher(), start = CoroutineStart.UNDISPATCHED) { viewModel.uiState.collect { into += it } }
+    }
+
+    @Test
+    fun markingACardWatchedRemovesItAtOnceAndSavesTheMark() = runTest {
+        val server = signedIn()
+        server.libraries()
+        server.watching(resume = itemsJson(halfWatched), nextUp = itemsJson(nextEpisode))
+        server.on("POST", "/UserPlayedItems/e1", Reply.noContent())
+        val viewModel = viewModel()
+        val states = mutableListOf<HomeUiState>()
+        backgroundScope.collectStates(states, viewModel)
+        viewModel.loadedRow()
+
+        server.watching(nextUp = itemsJson(nextEpisode))
+        viewModel.onMarkWatched("e1")
+        val row = viewModel.uiState.first { it.continueRow.cards.map { card -> card.id } == listOf("e9") }.continueRow
+
+        assertNull(row.message)
+        app.jellyfin.awaitRequests("POST", "/UserPlayedItems/e1")
+        // The change reloads the row from the server, which agrees.
+        app.jellyfin.awaitRequests("GET", "/UserItems/Resume", 2)
+    }
+
+    @Test
+    fun aMarkThatCantBeSavedBringsTheCardBackWhereItWasWithAMessage() = runTest {
+        val server = signedIn()
+        server.libraries()
+        server.watching(resume = itemsJson(halfWatched), nextUp = itemsJson(nextEpisode))
+        server.on("POST", "/UserPlayedItems/e1", Reply.status(HttpStatusCode.ServiceUnavailable))
+        val viewModel = viewModel()
+        val states = mutableListOf<HomeUiState>()
+        backgroundScope.collectStates(states, viewModel)
+        viewModel.loadedRow()
+
+        viewModel.onMarkWatched("e1")
+        val failed = viewModel.uiState.first { it.actionMessage != null }
+
+        assertTrue(states.any { state -> state.continueRow.cards.map { it.id } == listOf("e9") }, "the card should have gone at once")
+        assertEquals(listOf("e1", "e9"), failed.continueRow.cards.map { it.id })
+        assertEquals(LoadMessages.MARK_WATCHED_FAILED, failed.actionMessage)
+
+        server.on("POST", "/UserPlayedItems/e1", Reply.noContent())
+        server.watching(nextUp = itemsJson(nextEpisode))
+        viewModel.onRetryAction()
+        val saved = viewModel.uiState.first { it.actionMessage == null && it.continueRow.cards.map { card -> card.id } == listOf("e9") }
+
+        assertNull(saved.actionMessage)
+    }
+
+    @Test
+    fun aRejectedTokenWhileMarkingEndsTheSessionWithoutAMessage() = runTest {
+        val server = signedIn()
+        server.libraries()
+        server.watching(resume = itemsJson(halfWatched))
+        server.on("POST", "/UserPlayedItems/e1", Reply.status(HttpStatusCode.Unauthorized))
+        val viewModel = viewModel()
+        viewModel.loadedRow()
+
+        viewModel.onMarkWatched("e1")
+        val state = viewModel.uiState.first { it.exit != null }
+
+        assertNull(state.actionMessage)
+    }
+
+    @Test
+    fun markingACardThatIsNotThereDoesNothing() = runTest {
+        val server = signedIn()
+        server.libraries()
+        server.watching(resume = itemsJson(halfWatched))
+        val viewModel = viewModel()
+        viewModel.loadedRow()
+
+        viewModel.onMarkWatched("nope")
+        pause()
+
+        assertEquals(0, app.jellyfin.requestsTo("POST", "/UserPlayedItems/nope").size)
+        assertEquals(listOf("e1"), viewModel.uiState.value.continueRow.cards.map { it.id })
     }
 }

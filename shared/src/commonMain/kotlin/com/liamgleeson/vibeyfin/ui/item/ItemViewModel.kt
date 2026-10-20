@@ -2,10 +2,12 @@ package com.liamgleeson.vibeyfin.ui.item
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.liamgleeson.vibeyfin.data.api.ApiError
 import com.liamgleeson.vibeyfin.data.api.ApiResult
 import com.liamgleeson.vibeyfin.domain.ConnectionManager
 import com.liamgleeson.vibeyfin.domain.LibraryRepository
 import com.liamgleeson.vibeyfin.domain.WatchChanges
+import com.liamgleeson.vibeyfin.domain.WatchRepository
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
 import com.liamgleeson.vibeyfin.ui.common.LoadMessages
 import com.liamgleeson.vibeyfin.ui.common.Strings
@@ -26,9 +28,14 @@ data class ItemUiState(
     val loading: Boolean = true,
     /** Why the item didn't load, with what to try. */
     val message: String? = null,
+    /** A change that couldn't be saved on the server and was taken back, with what to try. */
+    val actionMessage: String? = null,
     /** Set when the session ended and the screen must be left. */
     val exit: HomeExit? = null,
 ) {
+    /** The menu entry that flips the watched mark, worded for what it will do. */
+    val markLabel: String get() = if (item?.played == true) Strings.markUnwatched else Strings.markWatched
+
     /** Whether the page offers Play. */
     val canPlay: Boolean get() = item?.canPlay == true
 
@@ -49,6 +56,7 @@ class ItemViewModel(
     private val itemId: String,
     private val library: LibraryRepository,
     connection: ConnectionManager,
+    private val watch: WatchRepository,
     changes: WatchChanges,
 ) : ViewModel() {
     private val content = MutableStateFlow(ItemUiState())
@@ -69,14 +77,48 @@ class ItemViewModel(
     private suspend fun refresh() {
         if (content.value.item == null) return
         val result = library.item(itemId) as? ApiResult.Success ?: return
-        content.update { it.copy(item = result.value, facts = result.value.facts()) }
+        content.update { it.copy(item = result.value, facts = factsOf(result.value)) }
     }
+
+    private fun factsOf(item: MediaItem) = item.facts() + listOfNotNull(Strings.watched.takeIf { item.played })
+
+    private var writing = false
+
+    /**
+     * Flips the watched mark. The page shows the change at once and the server is told after; if that
+     * fails the page goes back and says so. A rejected token ends the session instead, so no message.
+     */
+    fun onTogglePlayed() {
+        val before = content.value.item ?: return
+        if (!before.canPlay || writing) return
+        writing = true
+        val target = !before.played
+        val shown = before.copy(played = target, resumePositionMs = 0)
+        content.update { it.copy(item = shown, facts = factsOf(shown), actionMessage = null) }
+        viewModelScope.launch {
+            val result = watch.setPlayed(itemId, target)
+            writing = false
+            if (result is ApiResult.Failure) {
+                val message = when {
+                    result.error == ApiError.Unauthorized -> null
+                    target -> LoadMessages.MARK_WATCHED_FAILED
+                    else -> LoadMessages.MARK_UNWATCHED_FAILED
+                }
+                content.update { it.copy(item = before, facts = factsOf(before), actionMessage = message) }
+            }
+        }
+    }
+
+    /** "Try again" on the failure message: the page was taken back, so flipping again repeats the change. */
+    fun onRetryAction() = onTogglePlayed()
+
+    fun onDismissMessage() = content.update { it.copy(actionMessage = null) }
 
     private fun load() {
         content.value = ItemUiState(loading = true)
         viewModelScope.launch {
             content.value = when (val result = library.item(itemId)) {
-                is ApiResult.Success -> ItemUiState(item = result.value, facts = result.value.facts(), loading = false)
+                is ApiResult.Success -> ItemUiState(item = result.value, facts = factsOf(result.value), loading = false)
                 is ApiResult.Failure -> ItemUiState(loading = false, message = LoadMessages.forError(result.error))
             }
         }

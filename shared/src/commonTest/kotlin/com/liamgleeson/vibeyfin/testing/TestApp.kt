@@ -45,14 +45,14 @@ class TestApp {
     val auth = AuthRepository(connector, accounts, connection)
     val router = StartupRouter(servers, accounts, preferences, connection)
     val library = LibraryRepository(connection)
-    val watch = WatchRepository(connection)
+    val watchChanges = WatchChanges()
+    val watch = WatchRepository(connection, watchChanges)
     val capabilities = FakePlaybackCapabilities()
     val profileSettings = ProfileSettings(database.accountDao(), connection)
     val playback = PlaybackRepository(connection, capabilities, ClientInfoProvider(FakeDeviceInfo(), preferences), profileSettings)
 
     val pending = PendingReports(database.pendingReportDao(), clock)
     val recovery = PlaybackRecovery(pending, connection)
-    val watchChanges = WatchChanges()
 
     /** A reporter wired like the app's, working on [scope], which the test cancels before closing the app. */
     fun reporter(scope: CoroutineScope, interval: Duration = PROGRESS_INTERVAL) =

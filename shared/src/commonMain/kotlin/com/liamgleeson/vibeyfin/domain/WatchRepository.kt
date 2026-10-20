@@ -6,6 +6,7 @@ import com.liamgleeson.vibeyfin.data.api.ItemsResultDto
 import com.liamgleeson.vibeyfin.data.api.JellyfinApi
 import com.liamgleeson.vibeyfin.data.api.nextUp
 import com.liamgleeson.vibeyfin.data.api.resumeItems
+import com.liamgleeson.vibeyfin.data.api.setPlayed
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -15,7 +16,7 @@ import kotlinx.coroutines.coroutineScope
  * session from [ConnectionManager] on every call, like [LibraryRepository]. With nobody signed in
  * every call is [ApiError.Unauthorized].
  */
-class WatchRepository(private val connection: ConnectionManager) {
+class WatchRepository(private val connection: ConnectionManager, private val changes: WatchChanges) {
     /**
      * The Continue watching row: what the user has started, newest first, then the next episode of
      * each show they follow ([mergeContinueWatching]). The two lists are asked for together. If one
@@ -35,6 +36,16 @@ class WatchRepository(private val connection: ConnectionManager) {
                 else -> ApiResult.Failure(worseOf((resumeItems as ApiResult.Failure).error, (nextItems as ApiResult.Failure).error))
             }
         }
+    }
+
+    /**
+     * Marks [itemId] watched or unwatched on the server. The screens have already shown the change; if
+     * this fails they take it back. On success [WatchChanges] says so, so what shows watch state reloads.
+     */
+    suspend fun setPlayed(itemId: String, played: Boolean): ApiResult<Unit> {
+        val result = call { api, userId -> api.setPlayed(itemId, userId, played) }
+        if (result is ApiResult.Success) changes.changed()
+        return result
     }
 
     private fun ApiResult<ItemsResultDto>.toItems(api: JellyfinApi): ApiResult<List<MediaItem>> =

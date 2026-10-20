@@ -58,4 +58,41 @@ class WatchApiTest {
 
         assertEquals(2, jellyfin.requestsTo("GET", "/UserItems/Resume").size)
     }
+
+    @Test
+    fun markingWatchedPostsAndMarkingUnwatchedDeletesForTheUser() = runTest {
+        server.on("POST", "/UserPlayedItems/e1", Reply.json("""{"Played":true}"""))
+        server.on("DELETE", "/UserPlayedItems/e1", Reply.json("""{"Played":false}"""))
+
+        api.setPlayed("e1", "u1", played = true).success()
+        api.setPlayed("e1", "u1", played = false).success()
+
+        assertEquals("u1", jellyfin.requestsTo("POST", "/UserPlayedItems/e1").single().query["userId"])
+        assertEquals("u1", jellyfin.requestsTo("DELETE", "/UserPlayedItems/e1").single().query["userId"])
+    }
+
+    @Test
+    fun theAnswersBodyIsNotNeeded() = runTest {
+        server.on("POST", "/UserPlayedItems/e1", Reply.noContent())
+
+        api.setPlayed("e1", "u1", played = true).success()
+    }
+
+    @Test
+    fun settingAMarkTwiceIsHarmlessSoAServerErrorIsTriedAgain() = runTest {
+        server.on("POST", "/UserPlayedItems/e1", Reply.status(HttpStatusCode.ServiceUnavailable))
+
+        val result = api.setPlayed("e1", "u1", played = true)
+
+        assertIs<ApiResult.Failure>(result)
+        assertEquals(3, jellyfin.requestsTo("POST", "/UserPlayedItems/e1").size)
+    }
+
+    @Test
+    fun aRefusalIsNotTriedAgain() = runTest {
+        server.on("POST", "/UserPlayedItems/e1", Reply.status(HttpStatusCode.Forbidden))
+
+        assertEquals(ApiError.Forbidden, assertIs<ApiResult.Failure>(api.setPlayed("e1", "u1", played = true)).error)
+        assertEquals(1, jellyfin.requestsTo("POST", "/UserPlayedItems/e1").size)
+    }
 }

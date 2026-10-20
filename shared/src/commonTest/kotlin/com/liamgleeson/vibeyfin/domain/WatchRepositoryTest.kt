@@ -1,5 +1,9 @@
 package com.liamgleeson.vibeyfin.domain
 
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.CoroutineScope
 import com.liamgleeson.vibeyfin.data.api.ApiError
 import com.liamgleeson.vibeyfin.data.api.ApiResult
 import com.liamgleeson.vibeyfin.domain.model.ItemKind
@@ -138,5 +142,37 @@ class WatchRepositoryTest {
 
         assertEquals(ApiError.Unauthorized, failure.error)
         assertEquals(0, app.jellyfin.requests.size)
+    }
+
+    private fun CoroutineScope.countChanges(): MutableList<Unit> {
+        val seen = mutableListOf<Unit>()
+        launch(UnconfinedTestDispatcher(), start = CoroutineStart.UNDISPATCHED) { app.watchChanges.events.collect { seen += it } }
+        return seen
+    }
+
+    @Test
+    fun aSavedMarkSaysWhatWasWatchedChanged() = runTest {
+        app.signedIn().on("POST", "/UserPlayedItems/e1", Reply.noContent())
+        val seen = backgroundScope.countChanges()
+
+        app.watch.setPlayed("e1", played = true).success()
+
+        assertEquals(1, seen.size)
+        assertEquals("u1", app.jellyfin.requestsTo("POST", "/UserPlayedItems/e1").single().query["userId"])
+    }
+
+    @Test
+    fun aMarkThatFailedChangesNothingSoNobodyIsTold() = runTest {
+        app.signedIn().on("DELETE", "/UserPlayedItems/e1", Reply.status(HttpStatusCode.Forbidden))
+        val seen = backgroundScope.countChanges()
+
+        assertIs<ApiResult.Failure>(app.watch.setPlayed("e1", played = false))
+
+        assertEquals(0, seen.size)
+    }
+
+    @Test
+    fun markingWithNobodySignedInIsUnauthorized() = runTest {
+        assertEquals(ApiError.Unauthorized, assertIs<ApiResult.Failure>(app.watch.setPlayed("e1", played = true)).error)
     }
 }
