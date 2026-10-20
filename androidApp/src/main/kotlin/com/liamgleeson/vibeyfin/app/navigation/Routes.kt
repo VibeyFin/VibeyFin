@@ -28,3 +28,7 @@ data class Children(val parentId: String, val title: String)
 
 @Serializable
 data class Item(val itemId: String)
+
+/** Plays one movie or episode, full screen. */
+@Serializable
+data class Player(val itemId: String)

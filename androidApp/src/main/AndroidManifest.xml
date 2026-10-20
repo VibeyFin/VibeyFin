@@ -25,8 +25,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.VibeyFin">
 
+        <!-- The activity handles rotation and window resizes itself, so turning the phone doesn't
+             recreate it: the player would otherwise restart. Compose redraws on a configuration change. -->
         <activity
             android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|keyboard|navigation|uiMode|density"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -14,6 +14,7 @@ import com.liamgleeson.vibeyfin.app.addserver.AddServerRoute
 import com.liamgleeson.vibeyfin.app.children.ChildrenRoute
 import com.liamgleeson.vibeyfin.app.home.HomeRoute
 import com.liamgleeson.vibeyfin.app.item.ItemRoute
+import com.liamgleeson.vibeyfin.app.player.PlayerRoute
 import com.liamgleeson.vibeyfin.app.servers.ServersRoute
 import com.liamgleeson.vibeyfin.app.settings.SettingsRoute
 import com.liamgleeson.vibeyfin.app.startup.StartupRoute
@@ -110,8 +111,17 @@ fun VibeyFinNavHost() {
             )
         }
         composable<Item> { entry ->
+            val itemId = entry.toRoute<Item>().itemId
             ItemRoute(
-                itemId = entry.toRoute<Item>().itemId,
+                itemId = itemId,
+                onBack = { navController.popBackStack() },
+                onPlay = { navController.navigate(Player(itemId)) },
+                onExit = leave,
+            )
+        }
+        composable<Player> { entry ->
+            PlayerRoute(
+                itemId = entry.toRoute<Player>().itemId,
                 onBack = { navController.popBackStack() },
                 onExit = leave,
             )
