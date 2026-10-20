@@ -1,5 +1,8 @@
 package com.liamgleeson.vibeyfin.ui.common
 
+import com.liamgleeson.vibeyfin.domain.PlayMethod
+import kotlin.math.roundToInt
+
 /**
  * Every piece of text the apps show: titles, labels, buttons, help text, empty states and
  * accessibility descriptions. Screens on both platforms read from here and hold no string
@@ -145,6 +148,45 @@ object Strings {
     val subtitles = "Subtitles"
     val subtitlesOff = "Off"
     val audioAndSubtitles = "Audio and subtitles"
+
+    // Playback stats
+    fun statsMethod(method: PlayMethod) = when (method) {
+        PlayMethod.DirectPlay -> "Direct play"
+        PlayMethod.DirectStream -> "Direct stream"
+        PlayMethod.Transcode -> "Transcode"
+    }
+    val statsLabelMethod = "Method"
+    val statsLabelReasons = "Reasons"
+    val statsLabelVideo = "Video"
+    val statsLabelAudio = "Audio"
+    val statsLabelResolution = "Resolution"
+    val statsLabelFrameRate = "Frame rate"
+    val statsLabelBitrate = "Bitrate"
+    val statsLabelDroppedFrames = "Dropped frames"
+    val statsLabelThroughput = "Throughput"
+    val statsLabelBuffer = "Buffer"
+
+    /** Shown for a stat nobody can tell. */
+    val statsUnavailable = "–"
+
+    fun statsResolution(width: Int, height: Int) = "$width × $height"
+
+    /** `24 fps`, `23.98 fps`: two decimals at most, none when the rate is whole. */
+    fun statsFrameRate(framesPerSecond: Float): String {
+        val hundredths = (framesPerSecond * 100).roundToInt()
+        val text = if (hundredths % 100 == 0) (hundredths / 100).toString() else (hundredths / 100f).toString()
+        return "$text fps"
+    }
+
+    /** `850 kbps` below a megabit, `4.5 Mbps` from there. Used for bitrate and throughput. */
+    fun statsBitrate(kbps: Int) =
+        if (kbps < 1000) "$kbps kbps" else "${kbps / 1000}.${(kbps % 1000) / 100} Mbps"
+
+    /** `12.3 s` of video buffered ahead. */
+    fun statsBuffer(milliseconds: Long): String {
+        val tenths = (milliseconds.coerceAtLeast(0) / 100)
+        return "${tenths / 10}.${tenths % 10} s"
+    }
 
     /** A track the file gives no name or language for. */
     fun track(index: Int) = "Track ${index + 1}"

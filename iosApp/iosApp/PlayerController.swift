@@ -12,6 +12,21 @@ struct PlayerEvents {
     var position: (Int64) -> Void = { _ in }
     var ended: (Int64) -> Void = { _ in }
     var failed: (PlaybackFailure) -> Void = { _ in }
+    var diagnostics: (LiveDiagnostics) -> Void = { _ in }
+}
+
+/// What the stats overlay needs from the player, kept as plain values so a repeat can be skipped.
+/// Anything AVFoundation can't say is nil.
+private struct DiagnosticsSnapshot: Equatable {
+    var videoCodec: String?
+    var audioCodec: String?
+    var width: Int32?
+    var height: Int32?
+    var frameRate: Float?
+    var bitrateKbps: Int32?
+    var droppedFrames: Int32?
+    var throughputKbps: Int32?
+    var bufferMs: Int64?
 }
 
 /// The audio track the shared state marks as selected, as its place in the file's audio list and how
@@ -54,6 +69,19 @@ final class PlayerController: ObservableObject {
     private var failureReported = false
     private var endReported = false
 
+    /// The stats overlay is on, so diagnostics are worth working out.
+    private var diagnosticsWanted = false
+    private var lastDiagnostics: DiagnosticsSnapshot?
+    private var lastDiagnosticsAt: CFTimeInterval = 0
+    /// What the open item's tracks say; read once per item and audio choice.
+    private var trackInfo = TrackInfo()
+
+    private struct TrackInfo {
+        var videoCodec: String?
+        var audioCodec: String?
+        var frameRate: Float?
+    }
+
     private var timeObserver: Any?
     private var playerSubscriptions = Set<AnyCancellable>()
     private var itemSubscriptions = Set<AnyCancellable>()
@@ -95,6 +123,8 @@ final class PlayerController: ObservableObject {
         endReported = false
         lastPushedSecond = -1
         appliedAudio = nil
+        lastDiagnostics = nil
+        trackInfo = TrackInfo()
         // The player may still say "paused" for the old item; the new stream starts from "not playing".
         isPlaying = false
 
@@ -182,7 +212,115 @@ final class PlayerController: ObservableObject {
             guard options.count == choice.count, options.indices.contains(choice.position) else { return }
             item.select(options[choice.position], in: group)
             self.appliedAudio = choice
+            self.loadTrackInfo(for: item)
         }
+    }
+
+    // MARK: - Diagnostics
+
+    /// Turns the stats on or off. Switching on works out the values at once.
+    func wantDiagnostics(_ wanted: Bool) {
+        guard wanted != diagnosticsWanted else { return }
+        diagnosticsWanted = wanted
+        lastDiagnostics = nil
+        if wanted {
+            if let item = player.currentItem, item.status == .readyToPlay { loadTrackInfo(for: item) }
+            pushDiagnostics()
+        }
+    }
+
+    /// Codecs and frame rate come from the format descriptions of the tracks that are playing.
+    private func loadTrackInfo(for item: AVPlayerItem) {
+        guard diagnosticsWanted else { return }
+        let tracks = item.tracks.filter { $0.isEnabled }.compactMap { $0.assetTrack }
+        Task { @MainActor [weak self, weak item] in
+            var info = TrackInfo()
+            for track in tracks {
+                guard let descriptions = try? await track.load(.formatDescriptions) else { continue }
+                let fourCC = descriptions.first.map { Self.fourCC(CMFormatDescriptionGetMediaSubType($0)) }
+                switch track.mediaType {
+                case .video where info.videoCodec == nil:
+                    info.videoCodec = fourCC.map(Self.codecName)
+                    if let rate = try? await track.load(.nominalFrameRate), rate > 0 { info.frameRate = rate }
+                case .audio where info.audioCodec == nil:
+                    info.audioCodec = fourCC.map(Self.codecName)
+                default: break
+                }
+            }
+            guard let self, let item, self.player.currentItem === item else { return }
+            self.trackInfo = info
+            self.pushDiagnostics()
+        }
+    }
+
+    private static func fourCC(_ code: FourCharCode) -> String {
+        let bytes = [24, 16, 8, 0].map { UInt8((code >> $0) & 0xFF) }
+        return String(decoding: bytes, as: UTF8.self)
+    }
+
+    /// The short names the Android player shows: `avc1` is "h264", `mp4a` is "aac".
+    private static func codecName(_ fourCC: String) -> String {
+        switch fourCC.lowercased() {
+        case "avc1", "avc3": return "h264"
+        case "hvc1", "hev1": return "hevc"
+        case "dvh1", "dvhe": return "dolby vision"
+        case "av01": return "av1"
+        case "vp09": return "vp9"
+        case "vp08": return "vp8"
+        case "mp4v": return "mpeg4"
+        case "mp4a": return "aac"
+        case "ac-3": return "ac3"
+        case "ec-3": return "eac3"
+        case "alac": return "alac"
+        case "flac": return "flac"
+        case "opus": return "opus"
+        case ".mp3": return "mp3"
+        default: return fourCC.trimmingCharacters(in: .whitespaces).lowercased()
+        }
+    }
+
+    /// Reads the item's access log, size and buffer, and tells the shared model when something changed.
+    private func pushDiagnostics() {
+        guard diagnosticsWanted, let item = player.currentItem else { return }
+        lastDiagnosticsAt = CACurrentMediaTime()
+        let events = item.accessLog()?.events ?? []
+        let latest = events.last
+        let dropped = events.map(\.numberOfDroppedVideoFrames).filter { $0 >= 0 }
+        let size = item.presentationSize
+        let now = player.currentTime()
+        let buffered = item.loadedTimeRanges
+            .map(\.timeRangeValue)
+            .first { $0.containsTime(now) }
+            .map { CMTimeSubtract($0.end, now).seconds }
+        let snapshot = DiagnosticsSnapshot(
+            videoCodec: trackInfo.videoCodec,
+            audioCodec: trackInfo.audioCodec,
+            width: size.width > 0 ? Int32(size.width) : nil,
+            height: size.height > 0 ? Int32(size.height) : nil,
+            frameRate: trackInfo.frameRate,
+            bitrateKbps: latest.flatMap { Self.kbps($0.indicatedBitrate) },
+            droppedFrames: dropped.isEmpty ? nil : Int32(dropped.reduce(0, +)),
+            throughputKbps: latest.flatMap { Self.kbps($0.observedBitrate) },
+            bufferMs: buffered.flatMap { $0.isFinite ? Int64(max(0, $0) * 1000) : nil }
+        )
+        guard snapshot != lastDiagnostics else { return }
+        lastDiagnostics = snapshot
+        self.events.diagnostics(LiveDiagnostics(
+            videoCodec: snapshot.videoCodec,
+            audioCodec: snapshot.audioCodec,
+            width: snapshot.width.map(KotlinInt.init),
+            height: snapshot.height.map(KotlinInt.init),
+            frameRate: snapshot.frameRate.map(KotlinFloat.init),
+            bitrateKbps: snapshot.bitrateKbps.map(KotlinInt.init),
+            droppedFrames: snapshot.droppedFrames.map(KotlinInt.init),
+            throughputKbps: snapshot.throughputKbps.map(KotlinInt.init),
+            bufferMs: snapshot.bufferMs.map(KotlinLong.init)
+        ))
+    }
+
+    /// AVFoundation uses -1 or 0 for "not known".
+    private static func kbps(_ bitsPerSecond: Double) -> Int32? {
+        bitsPerSecond > 0 ? Int32(bitsPerSecond / 1000) : nil
     }
 
     // MARK: - Commands
@@ -253,6 +391,15 @@ final class PlayerController: ObservableObject {
             }
             .store(in: &itemSubscriptions)
         NotificationCenter.default
+            .publisher(for: AVPlayerItem.newAccessLogEntryNotification, object: item)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.pushDiagnostics() }
+            .store(in: &itemSubscriptions)
+        item.publisher(for: \.presentationSize)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.pushDiagnostics() }
+            .store(in: &itemSubscriptions)
+        NotificationCenter.default
             .publisher(for: .AVPlayerItemDidPlayToEndTime, object: item)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.reportEnded() }
@@ -271,6 +418,7 @@ final class PlayerController: ObservableObject {
         Self.timing.debug("item ready \(Int((CACurrentMediaTime() - self.openedAt) * 1000)) ms after the stream was opened")
         if item.duration.isNumeric, item.duration.seconds > 0 { duration = item.duration.seconds }
         applyAudio(to: item)
+        loadTrackInfo(for: item)
         guard let start = pendingStart else { return }
         pendingStart = nil
         player.seek(
@@ -287,6 +435,7 @@ final class PlayerController: ObservableObject {
         // While a seek is pending the player still reports the old time; keep showing the target.
         guard seeksInFlight == 0 else { return }
         position = time.seconds
+        if diagnosticsWanted, CACurrentMediaTime() - lastDiagnosticsAt >= 1 { pushDiagnostics() }
         // The shared model hears the position about once a second.
         let second = Int(time.seconds)
         if second != lastPushedSecond {

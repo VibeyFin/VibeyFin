@@ -55,6 +55,10 @@ struct PlayerView: View {
                     controls
                         .transition(.opacity)
                 }
+                // Stays up when the controls hide; an error fills the same part of the screen.
+                if state?.showDiagnostics == true, let diagnostics = state?.diagnostics {
+                    statsOverlay(diagnostics)
+                }
             }
             // The next episode, in the last seconds of this one, whether or not the controls are up.
             if let upNext = state?.upNext, state?.message == nil {
@@ -91,6 +95,7 @@ struct PlayerView: View {
                 controller.clear()
             }
             controller.wantAudio(audioChoice(in: state))
+            controller.wantDiagnostics(state?.showDiagnostics == true)
         }
         .onChange(of: controller.isPlaying) { isPlaying in
             if isPlaying {
@@ -230,6 +235,20 @@ struct PlayerView: View {
         }
     }
 
+    /// Top leading, under the close button and title row.
+    private func statsOverlay(_ diagnostics: PlaybackDiagnostics) -> some View {
+        VStack {
+            HStack {
+                StatsOverlay(diagnostics: diagnostics)
+                Spacer(minLength: 0)
+            }
+            Spacer(minLength: 0)
+        }
+        .screenMargin()
+        .padding(.top, Space.s7 + Space.s4)
+        .allowsHitTesting(false)
+    }
+
     // MARK: - Errors
 
     /// A failed load or a video that wouldn't play: what happened and Try again. The close button is on top.
@@ -263,7 +282,8 @@ struct PlayerView: View {
             seeked: { model.seeked($0) },
             position: { model.position($0) },
             ended: { model.ended($0) },
-            failed: { model.failed($0) }
+            failed: { model.failed($0) },
+            diagnostics: { model.diagnostics($0) }
         )
     }
 

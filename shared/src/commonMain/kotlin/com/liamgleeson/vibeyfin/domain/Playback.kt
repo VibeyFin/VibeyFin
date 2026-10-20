@@ -21,6 +21,8 @@ data class PlaybackTrack(
     /** The name the server (or the file) gives it, such as `English - Dolby Digital - 5.1`; null if it gives none. */
     val name: String?,
     val selected: Boolean,
+    /** The file's codec for this track (`eac3`); null for a subtitle or when the server doesn't say. */
+    val codec: String? = null,
 )
 
 /** A text subtitle the server sends as a file, for the player to load next to the video. */

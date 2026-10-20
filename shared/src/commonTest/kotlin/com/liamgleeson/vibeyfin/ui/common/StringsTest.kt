@@ -1,5 +1,6 @@
 package com.liamgleeson.vibeyfin.ui.common
 
+import com.liamgleeson.vibeyfin.domain.PlayMethod
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -46,5 +47,28 @@ class StringsTest {
     @Test
     fun stillWatchingAfterNamesTheEpisodeCount() {
         assertEquals("After 4 episodes", Strings.stillWatchingAfter(4))
+    }
+
+    @Test
+    fun statsMethodNamesEachWayOfPlaying() {
+        assertEquals("Direct play", Strings.statsMethod(PlayMethod.DirectPlay))
+        assertEquals("Direct stream", Strings.statsMethod(PlayMethod.DirectStream))
+        assertEquals("Transcode", Strings.statsMethod(PlayMethod.Transcode))
+    }
+
+    @Test
+    fun statsShowADashForAMissingValue() {
+        assertEquals("–", Strings.statsUnavailable)
+    }
+
+    @Test
+    fun statsValuesCarryTheirUnits() {
+        assertEquals("1920 × 1080", Strings.statsResolution(1920, 1080))
+        assertEquals("24 fps", Strings.statsFrameRate(24f))
+        assertEquals("23.98 fps", Strings.statsFrameRate(23.976f))
+        assertEquals("850 kbps", Strings.statsBitrate(850))
+        assertEquals("4.5 Mbps", Strings.statsBitrate(4500))
+        assertEquals("0.0 s", Strings.statsBuffer(-5))
+        assertEquals("12.3 s", Strings.statsBuffer(12_345))
     }
 }

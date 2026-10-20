@@ -66,6 +66,11 @@ final class PlaybackObservable: ObservableObject {
         model.onFailed(failure: failure)
     }
 
+    /// What the player measures about the stream, for the stats overlay.
+    func diagnostics(_ live: LiveDiagnostics) {
+        model.diagnostics(live: live)
+    }
+
     /// Plays the audio track with this `TrackOption.index`.
     func selectAudio(_ index: Int32) {
         model.onSelectAudio(index: index)

@@ -1,5 +1,6 @@
 package com.liamgleeson.vibeyfin.ios
 
+import com.liamgleeson.vibeyfin.domain.LiveDiagnostics
 import com.liamgleeson.vibeyfin.ui.playback.PlaybackFailure
 import com.liamgleeson.vibeyfin.ui.playback.PlaybackUiState
 import com.liamgleeson.vibeyfin.ui.playback.PlaybackViewModel
@@ -41,6 +42,8 @@ class PlaybackModel(itemId: String, startOver: Boolean) {
     fun onPlayNow() = host.viewModel.onPlayNow()
 
     fun onWatchCredits() = host.viewModel.onWatchCredits()
+
+    fun diagnostics(live: LiveDiagnostics) = host.viewModel.onDiagnostics(live)
 
     fun onRetry() = host.viewModel.onRetry()
 

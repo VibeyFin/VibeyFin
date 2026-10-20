@@ -5,6 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.liamgleeson.vibeyfin.data.api.ApiResult
 import com.liamgleeson.vibeyfin.domain.ConnectionManager
 import com.liamgleeson.vibeyfin.domain.LibraryRepository
+import com.liamgleeson.vibeyfin.domain.LiveDiagnostics
+import com.liamgleeson.vibeyfin.domain.PlaybackDiagnostics
+import com.liamgleeson.vibeyfin.domain.ProfileSettings
+import com.liamgleeson.vibeyfin.domain.toDiagnostics
+import com.liamgleeson.vibeyfin.domain.withLive
 import com.liamgleeson.vibeyfin.domain.PlayMethod
 import com.liamgleeson.vibeyfin.domain.PlaybackNegotiation
 import com.liamgleeson.vibeyfin.domain.PlaybackPlan
@@ -135,6 +140,10 @@ data class PlaybackUiState(
     val finished: Boolean = false,
     /** Set when the session ended and the screen must be left. */
     val exit: HomeExit? = null,
+    /** What the stats overlay shows for the current stream; null while there is none. */
+    val diagnostics: PlaybackDiagnostics? = null,
+    /** The signed-in profile wants the stats overlay. */
+    val showDiagnostics: Boolean = false,
 ) {
     /** Whether there is anything to choose between, so the player shows its audio and subtitles control. */
     val hasTrackChoices: Boolean get() = audioTracks.isNotEmpty() || subtitleTracks.isNotEmpty()
@@ -180,6 +189,7 @@ class PlaybackViewModel(
     private val reporter: PlaybackReporter,
     connection: ConnectionManager,
     private val watch: WatchRepository,
+    profileSettings: ProfileSettings,
     private val retryDelays: List<Duration> = NETWORK_RETRY_DELAYS,
     private val startOver: Boolean = false,
     private val autoAdvance: Boolean = true,
@@ -188,8 +198,8 @@ class PlaybackViewModel(
 ) : ViewModel() {
     private val content = MutableStateFlow(PlaybackUiState())
 
-    val uiState: StateFlow<PlaybackUiState> = combine(content, connection.sessionEnded()) { content, exit ->
-        content.copy(exit = exit)
+    val uiState: StateFlow<PlaybackUiState> = combine(content, connection.sessionEnded(), profileSettings.showPlaybackStats) { content, exit, showStats ->
+        content.copy(exit = exit, showDiagnostics = showStats ?: false)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlaybackUiState())
 
     private var lastPositionMs = 0L
@@ -215,6 +225,9 @@ class PlaybackViewModel(
 
     /** What the current stream plays. Null while there is none. */
     private var plan: PlaybackPlan? = null
+
+    /** What the player last measured for this stream; cleared with a new one. */
+    private var liveDiagnostics: LiveDiagnostics? = null
 
     /** The audio and subtitle tracks selected now; a null subtitle is none. */
     private var audioNow: Int? = null
@@ -270,6 +283,12 @@ class PlaybackViewModel(
         } else {
             reopen(current, audio = audioNow, subtitle = target)
         }
+    }
+
+    /** What the player measures about the stream, as often as it likes; values it can't give are null. */
+    fun onDiagnostics(live: LiveDiagnostics) {
+        liveDiagnostics = live
+        refreshDiagnostics()
     }
 
     /** The player is playing: it started, or resumed. */
@@ -539,6 +558,7 @@ class PlaybackViewModel(
         val updated = current.copy(audioStreamIndex = audioNow, subtitleStreamIndex = subtitleNow)
         plan = updated
         reporter.begin(updated)
+        refreshDiagnostics()
         content.update {
             it.copy(
                 audioTracks = it.audioTracks.map { track -> track.copy(selected = track.index == audioNow) },
@@ -555,6 +575,14 @@ class PlaybackViewModel(
         remember(current)
         reporter.stop(lastPositionMs)
         open(startAtMs = lastPositionMs)
+    }
+
+    /** The plan's diagnostics with whatever the player measured on top. */
+    private fun refreshDiagnostics() {
+        val current = plan ?: return
+        val base = current.toDiagnostics(audioNow)
+        val merged = liveDiagnostics?.let(base::withLive) ?: base
+        content.update { it.copy(diagnostics = merged) }
     }
 
     /** Keeps what is selected, so the next negotiation (a retry, the transcode fallback) asks for the same. */
@@ -577,6 +605,7 @@ class PlaybackViewModel(
                     audioNow = ready.audioStreamIndex
                     subtitleNow = ready.subtitleStreamIndex
                     reporter.begin(ready)
+                    liveDiagnostics = null
                     content.update {
                         it.copy(
                             loading = false,
@@ -588,6 +617,7 @@ class PlaybackViewModel(
                                 subtitleFiles = ready.subtitleFiles,
                                 audioInPlayer = ready.method == PlayMethod.DirectPlay,
                             ),
+                            diagnostics = ready.toDiagnostics(audioNow),
                             audioTracks = ready.audioTracks.toAudioOptions(),
                             subtitleTracks = ready.subtitleTracks.toSubtitleOptions(),
                         )

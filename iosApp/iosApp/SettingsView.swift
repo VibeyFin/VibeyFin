@@ -34,6 +34,17 @@ struct SettingsView: View {
                         }
                     }
                     .tint(Color(.label))
+                    Toggle(isOn: showPlaybackStats) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(Strings.shared.playbackStatsTitle)
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                            Text(Strings.shared.playbackStatsHelp)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .tint(Color(.label))
                 }
                 Spacer()
             }
@@ -52,6 +63,13 @@ struct SettingsView: View {
         Binding(
             get: { model.state?.allowTranscoding ?? false },
             set: { model.setAllowTranscoding($0) }
+        )
+    }
+
+    private var showPlaybackStats: Binding<Bool> {
+        Binding(
+            get: { model.state?.showPlaybackStats ?? false },
+            set: { model.setShowPlaybackStats($0) }
         )
     }
 

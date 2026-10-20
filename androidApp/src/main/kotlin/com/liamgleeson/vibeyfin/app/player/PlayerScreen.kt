@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -46,19 +47,24 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.Format
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
+import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.DecoderReuseEvaluation
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import com.liamgleeson.vibeyfin.R
 import com.liamgleeson.vibeyfin.app.components.LoadError
 import com.liamgleeson.vibeyfin.app.theme.screenMargin
+import com.liamgleeson.vibeyfin.domain.LiveDiagnostics
 import com.liamgleeson.vibeyfin.ui.home.HomeExit
 import com.liamgleeson.vibeyfin.ui.playback.PlaybackStream
 import com.liamgleeson.vibeyfin.ui.playback.PlaybackViewModel
@@ -77,6 +83,9 @@ private const val CONTROLS_HIDE_MS = 3_000L
 
 /** How often the scrubber moves, and the position is handed to the shared code. */
 private const val POSITION_TICK_MS = 500L
+
+/** Keeps the stats panel below the controls' top bar, so it doesn't jump when the controls come and go. */
+private val STATS_TOP_INSET = 72.dp
 
 private const val TIMING_TAG = "VibeyFinTiming"
 
@@ -205,11 +214,23 @@ fun PlayerRoute(
     // A new stream (the next episode) takes the track sheet with it: it listed the old one's tracks.
     LaunchedEffect(stream?.id) { showTracks = false }
 
+    // Playback stats: what the player measures goes to the shared code, only while the overlay is on and
+    // only when it changed. Dropped frames and bandwidth arrive as events; the rest is read off the player.
+    val statsOn by rememberUpdatedState(state.showDiagnostics)
+    val stats = remember(player) { StatsFeed(player, viewModel::onDiagnostics) { statsOn } }
+    DisposableEffect(player) {
+        player.addAnalyticsListener(stats)
+        onDispose { player.removeAnalyticsListener(stats) }
+    }
+    LaunchedEffect(stream?.id) { stats.reset() }
+    LaunchedEffect(statsOn) { if (statsOn) stats.publish() }
+
     LaunchedEffect(player) {
         while (isActive) {
             positionMs = player.currentPosition
             if (player.duration != C.TIME_UNSET) durationMs = player.duration
             if (player.isPlaying || player.playbackState == Player.STATE_READY) viewModel.onPosition(positionMs)
+            stats.publish()
             delay(POSITION_TICK_MS)
         }
     }
@@ -283,6 +304,15 @@ fun PlayerRoute(
                 )
             }
         }
+        // Stays up when the controls hide, but not under an error, which fills the same part of the screen.
+        // It takes no touches, so taps still reach the player.
+        val diagnostics = state.diagnostics
+        if (!leaving && state.showDiagnostics && diagnostics != null && state.message == null) {
+            StatsOverlay(
+                diagnostics,
+                Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(start = screenMargin(), top = STATS_TOP_INSET),
+            )
+        }
         if (!leaving && (state.loading || (buffering && state.stream != null))) {
             CircularProgressIndicator(Modifier.align(Alignment.Center), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -330,6 +360,57 @@ private const val CONNECT_TIMEOUT_MS = 15_000
 private const val UP_NEXT_MS = 260
 private const val UP_NEXT_EXIT_MS = 180
 private const val UP_NEXT_START_SCALE = 0.92f
+
+/** Collects the player's measurements and hands them on when they change. */
+@androidx.annotation.OptIn(UnstableApi::class)
+private class StatsFeed(
+    private val player: ExoPlayer,
+    private val onChanged: (LiveDiagnostics) -> Unit,
+    private val enabled: () -> Boolean,
+) : AnalyticsListener {
+    private var droppedFrames = 0
+    private var bandwidthBps = 0L
+    private var last: LiveDiagnostics? = null
+
+    /** A new stream starts its own count. */
+    fun reset() {
+        droppedFrames = 0
+        publish()
+    }
+
+    fun publish() {
+        if (!enabled()) return
+        val size = player.videoSize
+        val now = liveDiagnostics(
+            video = player.videoFormat,
+            audio = player.audioFormat,
+            width = size.width,
+            height = size.height,
+            droppedFrames = droppedFrames,
+            bandwidthBps = bandwidthBps,
+            bufferMs = player.totalBufferedDuration,
+        )
+        if (now == last) return
+        last = now
+        onChanged(now)
+    }
+
+    override fun onVideoInputFormatChanged(eventTime: AnalyticsListener.EventTime, format: Format, decoderReuseEvaluation: DecoderReuseEvaluation?) = publish()
+
+    override fun onAudioInputFormatChanged(eventTime: AnalyticsListener.EventTime, format: Format, decoderReuseEvaluation: DecoderReuseEvaluation?) = publish()
+
+    override fun onVideoSizeChanged(eventTime: AnalyticsListener.EventTime, videoSize: VideoSize) = publish()
+
+    override fun onDroppedVideoFrames(eventTime: AnalyticsListener.EventTime, droppedFrames: Int, elapsedMs: Long) {
+        this.droppedFrames += droppedFrames
+        publish()
+    }
+
+    override fun onBandwidthEstimate(eventTime: AnalyticsListener.EventTime, totalLoadTimeMs: Int, totalBytesLoaded: Long, bitrateEstimate: Long) {
+        bandwidthBps = bitrateEstimate
+        publish()
+    }
+}
 
 /**
  * The phone's own decoders come first. The ffmpeg decoder (a Jellyfin build of Media3's extension) is

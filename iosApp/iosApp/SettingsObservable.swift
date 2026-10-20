@@ -26,6 +26,10 @@ final class SettingsObservable: ObservableObject {
         model.onAllowTranscodingChanged(value: value)
     }
 
+    func setShowPlaybackStats(_ value: Bool) {
+        model.onShowPlaybackStatsChanged(value: value)
+    }
+
     deinit {
         model.close()
     }

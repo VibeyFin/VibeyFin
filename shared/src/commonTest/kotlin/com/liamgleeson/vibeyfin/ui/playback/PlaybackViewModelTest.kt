@@ -10,6 +10,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.liamgleeson.vibeyfin.data.api.ApiError
+import com.liamgleeson.vibeyfin.domain.LiveDiagnostics
+import com.liamgleeson.vibeyfin.domain.PlayMethod
 import com.liamgleeson.vibeyfin.testing.FakeJellyfin
 import com.liamgleeson.vibeyfin.testing.HLS_PATH
 import com.liamgleeson.vibeyfin.testing.TICKS_PER_MINUTE
@@ -88,7 +90,7 @@ class PlaybackViewModelTest {
         countdownStep: Duration = 1.hours,
     ) = viewModels.track(
         PlaybackViewModel(
-            id, app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch,
+            id, app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings,
             retryDelays, startOver, autoAdvance, countdownStep,
         ),
     )
@@ -109,6 +111,78 @@ class PlaybackViewModelTest {
     }
 
     private fun bodyOf(request: com.liamgleeson.vibeyfin.testing.RecordedRequest) = Json.parseToJsonElement(request.body).jsonObject
+
+    private val noLive = LiveDiagnostics(null, null, null, null, null, null, null, null, null)
+
+    @Test
+    fun `diagnostics start from the plan`() = runTest {
+        server(info = playbackInfoJson(mediaSourceJson(videoWidth = 1920, videoHeight = 1080, streams = listOf(audioStreamJson(1, codec = "eac3")), defaultAudio = 1)))
+
+        val diagnostics = assertNotNull(viewModel().uiState.first { it.diagnostics != null }.diagnostics)
+
+        assertEquals(PlayMethod.DirectPlay, diagnostics.method)
+        assertEquals("h264", diagnostics.videoCodec)
+        assertEquals("eac3", diagnostics.audioCodec)
+        assertEquals(1920, diagnostics.width)
+        assertEquals(1080, diagnostics.height)
+        assertEquals(emptyList(), diagnostics.transcodeReasons)
+    }
+
+    @Test
+    fun `a transcode lists the reasons from the stream URL`() = runTest {
+        server(
+            info = playbackInfoJson(
+                mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = "$HLS_PATH&TranscodeReasons=VideoCodecNotSupported,AudioCodecNotSupported"),
+            ),
+        )
+
+        val diagnostics = assertNotNull(viewModel().uiState.first { it.diagnostics != null }.diagnostics)
+
+        assertEquals(PlayMethod.Transcode, diagnostics.method)
+        assertEquals(listOf("VideoCodecNotSupported", "AudioCodecNotSupported"), diagnostics.transcodeReasons)
+    }
+
+    @Test
+    fun `live values merge without losing the plan's`() = runTest {
+        server(info = playbackInfoJson(mediaSourceJson(videoWidth = 1920, videoHeight = 1080)))
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.diagnostics != null }
+
+        viewModel.onDiagnostics(noLive.copy(droppedFrames = 4, throughputKbps = 9000, width = 1280))
+        val diagnostics = assertNotNull(viewModel.uiState.first { it.diagnostics?.droppedFrames == 4 }.diagnostics)
+
+        assertEquals(1280, diagnostics.width)
+        assertEquals(1080, diagnostics.height)
+        assertEquals("h264", diagnostics.videoCodec)
+        assertEquals(9000, diagnostics.throughputKbps)
+        assertEquals(PlayMethod.DirectPlay, diagnostics.method)
+    }
+
+    @Test
+    fun `showDiagnostics follows the profile setting`() = runTest {
+        server()
+        val viewModel = viewModel()
+        assertEquals(false, viewModel.uiState.first { it.stream != null }.showDiagnostics)
+
+        app.profileSettings.setShowPlaybackStats(true)
+        assertTrue(viewModel.uiState.first { it.showDiagnostics }.showDiagnostics)
+
+        app.profileSettings.setShowPlaybackStats(false)
+        assertEquals(false, viewModel.uiState.first { !it.showDiagnostics }.showDiagnostics)
+    }
+
+    @Test
+    fun `missing values stay null`() = runTest {
+        server()
+
+        val diagnostics = assertNotNull(viewModel().uiState.first { it.diagnostics != null }.diagnostics)
+
+        assertNull(diagnostics.width)
+        assertNull(diagnostics.audioCodec)
+        assertNull(diagnostics.droppedFrames)
+        assertNull(diagnostics.throughputKbps)
+        assertNull(diagnostics.bufferMs)
+    }
 
     @Test
     fun isLoadingUntilTheServerHasAnswered() {
@@ -569,7 +643,7 @@ class PlaybackViewModelTest {
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =
-                    PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch) as T
+                    PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings) as T
             },
         )[PlaybackViewModel::class]
         viewModel.uiState.first { it.stream != null }

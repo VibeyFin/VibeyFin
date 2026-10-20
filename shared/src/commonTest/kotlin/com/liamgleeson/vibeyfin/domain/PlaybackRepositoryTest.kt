@@ -362,8 +362,8 @@ class PlaybackRepositoryTest {
 
         assertEquals(
             listOf(
-                PlaybackTrack(1, "English - AAC - Stereo - Default", selected = false),
-                PlaybackTrack(2, "Spanish - AAC - Stereo", selected = true),
+                PlaybackTrack(1, "English - AAC - Stereo - Default", selected = false, codec = "aac"),
+                PlaybackTrack(2, "Spanish - AAC - Stereo", selected = true, codec = "aac"),
             ),
             plan.audioTracks,
         )

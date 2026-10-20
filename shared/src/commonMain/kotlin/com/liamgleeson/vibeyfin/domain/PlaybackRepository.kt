@@ -156,7 +156,7 @@ private fun MediaSourceDto.tracks(baseUrl: String): Tracks {
     val audioIndex = defaultAudioStreamIndex?.takeIf { it >= 0 } ?: audio.firstOrNull()?.index
     val subtitleIndex = defaultSubtitleStreamIndex?.takeIf { it >= 0 }
     return Tracks(
-        audio = audio.map { PlaybackTrack(it.index, it.name(), it.index == audioIndex) },
+        audio = audio.map { PlaybackTrack(it.index, it.name(), it.index == audioIndex, it.codec) },
         subtitles = subtitles.map { PlaybackTrack(it.index, it.name(), it.index == subtitleIndex) },
         subtitleFiles = subtitles.filter { it.deliveryMethod == "External" }.mapNotNull { it.toSubtitleFile(baseUrl) },
         subtitleBurnedIn = subtitles.firstOrNull { it.index == subtitleIndex }?.deliveryMethod == "Encode",
@@ -188,12 +188,7 @@ private fun MediaStreamDto.toSubtitleFile(baseUrl: String): SubtitleFile? {
  * included. A URL that gives no reasons is taken as no re-encode, since nothing says otherwise.
  */
 private fun String?.reencodesVideo(): Boolean {
-    val query = this?.substringAfter('?', "") ?: return false
-    val reasons = query.split('&')
-        .firstOrNull { it.substringBefore('=').equals("TranscodeReasons", ignoreCase = true) }
-        ?.substringAfter('=', "")
-        ?.split(',')
-        .orEmpty()
+    val reasons = this?.let(::transcodeReasons) ?: return false
     return reasons.any {
         it.startsWith("Video") || it in OTHER_VIDEO_REASONS
     }
