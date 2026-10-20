@@ -67,7 +67,7 @@ First step after approval: cut `feature/watch-status` from `develop` (not `main`
    wording. Use `send(..., retry = true)`; `post<B,T>` can't retry.
 9. **Auto-advance** is a `PlaybackViewModel` constructor parameter (default true), not a settings column; Phase 7 wires it to
    the profile setting.
-10. **Continue card:** 16:9 (`Thumb`, else `Backdrop`, else `Primary`), title = series name for an episode, subtitle "S2 E5 · episode title",
+10. **Continue card:** 16:9 (`Thumb`, else `Backdrop`, else `Primary`), title = series name for an episode, subtitle (time left when started: "S2 E5 · 38m left", "38m left" for a movie; the episode and title for Next Up),
     aqua progress bar on in-progress cards only, label `"{title}, {year}, {n}% watched"`. Row cap 20, hidden when empty. No
     "See all" (nothing to open yet). The ContinueCard design page was never copied, so record what we build in `docs/design/`.
 11. **Failed-write feedback:** Android `Snackbar` with "Try again"; iOS has no equivalent (`ios.md:50` bans snackbars), so a
@@ -285,3 +285,8 @@ the scrim, VoiceOver reads "…, Watched" on the tile) and beside the facts on t
 Checked on the emulator: the film's poster in Movies shows the badge and its page shows the check-circle after "2020 · 7 min".
 
 Continue watching cards for an episode now read "S2 E5  ·  Episode title" under the show's name (the screen-reader label includes it too).
+
+Continue watching card, redone from your reference: a play disc centred on the picture, the aqua bar on its bottom edge, the title with its line
+under it only 2 dp apart, and a "…" button (Android `IconButton`, iOS `Menu`) beside the title that opens the same actions as a long press.
+In-progress cards say what is left ("S2 E5 · 38m left", "5m left" for a movie); Next Up cards keep "S2 E5 · Episode title". The screen-reader label
+is back to "{title}, {episode or year}, {n}% watched". The skeleton uses the same spacing. Checked on the emulator.
