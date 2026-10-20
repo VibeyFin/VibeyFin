@@ -42,6 +42,24 @@ struct ItemView: View {
         .fullScreenCover(isPresented: $showsPlayer) {
             PlayerView(itemId: itemId, startOver: startsOver, onExit: onExit)
         }
+        .failureBanner(
+            model.state?.actionMessage,
+            onRetry: { model.retryAction() },
+            onDismiss: { model.dismissMessage() }
+        )
+        .toolbar {
+            // Mark as watched or unwatched, worded for what it will do.
+            if let state = model.state, state.canPlay {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button(state.markLabel.titleCased()) { model.togglePlayed() }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .accessibilityLabel(Strings.shared.moreActions)
+                }
+            }
+        }
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         // Only the chevron, no "Back" label. The swipe from the edge still goes back.

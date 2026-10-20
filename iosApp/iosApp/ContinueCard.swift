@@ -54,6 +54,8 @@ private struct ProgressBar: View {
 struct ContinueRowView: View {
     let row: ContinueRow
     let onPlay: (String) -> Void
+    let onDetails: (String) -> Void
+    let onMarkWatched: (String) -> Void
     let onRetry: () -> Void
 
     var body: some View {
@@ -76,6 +78,11 @@ struct ContinueRowView: View {
                         ForEach(row.cards, id: \.id) { card in
                             Button { onPlay(card.id) } label: { ContinueCardTile(card: card) }
                                 .buttonStyle(.plain)
+                                // Long press: the card's actions. A tap plays.
+                                .contextMenu {
+                                    Button(Strings.shared.details.titleCased()) { onDetails(card.id) }
+                                    Button(Strings.shared.markWatched.titleCased()) { onMarkWatched(card.id) }
+                                }
                         }
                     }
                     .screenMargin()

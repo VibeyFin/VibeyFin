@@ -27,6 +27,18 @@ final class ItemObservable: ObservableObject {
         model.onRetry()
     }
 
+    func togglePlayed() {
+        model.onTogglePlayed()
+    }
+
+    func retryAction() {
+        model.onRetryAction()
+    }
+
+    func dismissMessage() {
+        model.onDismissMessage()
+    }
+
     deinit {
         model.close()
     }

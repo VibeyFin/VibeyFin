@@ -34,6 +34,18 @@ final class HomeObservable: ObservableObject {
         model.onRetryLibraries()
     }
 
+    func markWatched(_ cardId: String) {
+        model.onMarkWatched(cardId: cardId)
+    }
+
+    func retryAction() {
+        model.onRetryAction()
+    }
+
+    func dismissMessage() {
+        model.onDismissMessage()
+    }
+
     func retryContinue() {
         model.onRetryContinue()
     }

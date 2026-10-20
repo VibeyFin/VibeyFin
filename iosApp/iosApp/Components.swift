@@ -125,3 +125,45 @@ struct SearchingLabel: View {
         }
     }
 }
+
+/// Says that a change couldn't be saved, with "Try again", at the bottom of the screen. iOS has no
+/// snackbar, so this is a small banner on the system material: it never blocks anything, never takes
+/// a tap away from the screen, and goes by itself after a few seconds. [message] nil shows nothing.
+private struct FailureBanner: ViewModifier {
+    let message: String?
+    let onRetry: () -> Void
+    let onDismiss: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .overlay(alignment: .bottom) {
+                if let message {
+                    HStack(spacing: Space.s3) {
+                        Text(message)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Button(Strings.shared.tryAgain.titleCased(), action: onRetry)
+                            .buttonStyle(.plain)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                    }
+                    .padding(Space.s4)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+                    .padding(Space.s4)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .task(id: message) {
+                        try? await Task.sleep(nanoseconds: 6_000_000_000)
+                        onDismiss()
+                    }
+                }
+            }
+            .animation(.default, value: message)
+    }
+}
+
+extension View {
+    func failureBanner(_ message: String?, onRetry: @escaping () -> Void, onDismiss: @escaping () -> Void) -> some View {
+        modifier(FailureBanner(message: message, onRetry: onRetry, onDismiss: onDismiss))
+    }
+}

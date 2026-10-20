@@ -14,6 +14,8 @@ struct HomeView: View {
     /// Called when the screen should be left: the user chose to, or the session ended.
     let onExit: (HomeExit) -> Void
     let onOpen: (MediaItem) -> Void
+    /// Opens an item's page, from a Continue watching card's menu.
+    let onDetails: (String) -> Void
     let onSettings: () -> Void
 
     var body: some View {
@@ -32,6 +34,8 @@ struct HomeView: View {
                             ContinueRowView(
                                 row: state.continueRow,
                                 onPlay: { playing = PlayRequest(id: $0) },
+                                onDetails: onDetails,
+                                onMarkWatched: { model.markWatched($0) },
                                 onRetry: { model.retryContinue() }
                             )
                             libraries(state)
@@ -46,6 +50,11 @@ struct HomeView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .failureBanner(
+            model.state?.actionMessage,
+            onRetry: { model.retryAction() },
+            onDismiss: { model.dismissMessage() }
+        )
         .onAppear { model.start() }
         .onChange(of: scenePhase) { phase in
             if phase == .active { model.foreground() }
