@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
+import android.os.SystemClock
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityManager
@@ -49,6 +51,7 @@ import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import com.liamgleeson.vibeyfin.R
@@ -68,6 +71,8 @@ private const val CONTROLS_HIDE_MS = 3_000L
 
 /** How often the scrubber moves, and the position is handed to the shared code. */
 private const val POSITION_TICK_MS = 500L
+
+private const val TIMING_TAG = "VibeyFinTiming"
 
 @Composable
 fun PlayerRoute(
@@ -120,8 +125,16 @@ fun PlayerRoute(
     }
 
     // The shared ViewModel is the one that talks to the server; the player only says what happens.
+    // Timing for the slow-load and slow-seek reports: screen opened, stream handed over, first frame; seek to ready.
+    val openedAt = remember { SystemClock.elapsedRealtime() }
+    var seekAt by remember { mutableLongStateOf(0L) }
+
     DisposableEffect(player) {
         val listener = object : Player.Listener {
+            override fun onRenderedFirstFrame() {
+                Log.d(TIMING_TAG, "first frame ${SystemClock.elapsedRealtime() - openedAt} ms after the screen opened")
+            }
+
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
                 playing = playWhenReady
                 if (playWhenReady) viewModel.onPlaying(player.currentPosition) else viewModel.onPaused(player.currentPosition)
@@ -129,6 +142,10 @@ fun PlayerRoute(
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 buffering = playbackState == Player.STATE_BUFFERING
+                if (playbackState == Player.STATE_READY && seekAt != 0L) {
+                    Log.d(TIMING_TAG, "seek ready after ${SystemClock.elapsedRealtime() - seekAt} ms")
+                    seekAt = 0L
+                }
                 if (player.duration != C.TIME_UNSET) durationMs = player.duration
                 if (playbackState == Player.STATE_ENDED) viewModel.onEnded(player.duration.coerceAtLeast(0))
             }
@@ -156,6 +173,7 @@ fun PlayerRoute(
         if (stream == null) {
             player.stop()
         } else {
+            Log.d(TIMING_TAG, "stream ready ${SystemClock.elapsedRealtime() - openedAt} ms after the screen opened (negotiation done)")
             open(player, http, stream)
             viewModel.onPlaying(stream.startPositionMs)
         }
@@ -247,7 +265,10 @@ fun PlayerRoute(
                         scrubbing = it
                         interactions++
                     },
-                    onSeek = { player.seekTo(it) },
+                    onSeek = {
+                        seekAt = SystemClock.elapsedRealtime()
+                        player.seekTo(it)
+                    },
                 )
             }
         }
@@ -290,6 +311,8 @@ private fun buildPlayer(context: Context, http: DefaultHttpDataSource.Factory): 
         .setHandleAudioBecomingNoisy(true)
         .build()
         .apply {
+            // A seek lands on the nearest keyframe, instead of decoding from the one before the target.
+            setSeekParameters(SeekParameters.CLOSEST_SYNC)
             // Subtitles are not offered yet, so no track is shown even if the file marks one as default.
             trackSelectionParameters = trackSelectionParameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build()
         }

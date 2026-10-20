@@ -1,6 +1,7 @@
 import AVFoundation
 import Combine
 import Foundation
+import OSLog
 import Shared
 
 /// What the player tells the shared playback model. Positions are milliseconds.
@@ -25,6 +26,10 @@ struct AudioChoice: Equatable {
 /// All of it happens on the main thread.
 final class PlayerController: ObservableObject {
     let player = AVPlayer()
+
+    /// Timings for the slow-load and slow-seek reports.
+    private static let timing = Logger(subsystem: "com.liamgleeson.vibeyfin", category: "timing")
+    private var openedAt: CFTimeInterval = 0
 
     /// Seconds. Follows the player about twice a second.
     @Published private(set) var position: TimeInterval = 0
@@ -82,6 +87,7 @@ final class PlayerController: ObservableObject {
     func open(_ stream: PlaybackStream) {
         guard stream.id != openedStreamId else { return }
         openedStreamId = stream.id
+        openedAt = CACurrentMediaTime()
         itemSubscriptions.removeAll()
         failureReported = false
         endReported = false
@@ -191,16 +197,19 @@ final class PlayerController: ObservableObject {
         if isPlaying { pause() } else { play() }
     }
 
-    /// Moves to `seconds` exactly. `onSeeked` follows once the player got there.
+    /// Moves to `seconds`, or the nearest keyframe, which is much quicker than decoding up to the exact
+    /// frame. `onSeeked` follows once the player got there.
     func seek(to seconds: TimeInterval) {
         let limit = duration > 0 ? duration : seconds
         let target = CMTime(seconds: min(max(0, seconds), limit), preferredTimescale: 600)
         position = target.seconds
-        player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
+        let startedAt = CACurrentMediaTime()
+        player.seek(to: target) { [weak self] finished in
             // A seek that a newer one cut short is not reported; the newer one will be.
             guard finished else { return }
             DispatchQueue.main.async {
                 guard let self else { return }
+                Self.timing.debug("seek finished after \(Int((CACurrentMediaTime() - startedAt) * 1000)) ms")
                 self.events.seeked(self.currentMilliseconds)
             }
         }
@@ -255,6 +264,7 @@ final class PlayerController: ObservableObject {
     }
 
     private func itemIsReady(_ item: AVPlayerItem) {
+        Self.timing.debug("item ready \(Int((CACurrentMediaTime() - self.openedAt) * 1000)) ms after the stream was opened")
         if item.duration.isNumeric, item.duration.seconds > 0 { duration = item.duration.seconds }
         applyAudio(to: item)
         guard let start = pendingStart else { return }
