@@ -445,10 +445,19 @@ class PlaybackViewModel(
     /** The viewer touched or pressed something: whatever was counted towards "Are you still watching?" starts over. */
     fun onUserInteraction() = binge.interacted()
 
-    /** "Keep watching" on the prompt: the count starts over, the player carries on, and the card comes back in its window. */
+    /**
+     * "Keep watching" on the prompt: the count starts over, the player carries on, and the card comes back
+     * in its window. If the episode already ended (the prompt came at its end), the card counts down to
+     * the next one now, since there is nothing left to play.
+     */
     fun onContinueWatching() {
         binge.reset()
         content.update { it.copy(stillWatching = false) }
+        val upcoming = next
+        if (ended && autoAdvance && upcoming != null && !upNextDismissed) {
+            if (countdown == null) startCountdown(upcoming)
+            return
+        }
         checkUpNext(lastPositionMs)
     }
 

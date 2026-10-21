@@ -1607,6 +1607,25 @@ class PlaybackViewModelTest {
     }
 
     @Test
+    fun `continue after the episode ended counts down to the next one`() = runTest {
+        val jellyfin = seriesServer()
+        repeat(3) { app.binge.autoAdvanced() }
+        val vm = viewModel(countdownStep = 1.milliseconds)
+        val seen = playing(vm, jellyfin)
+        // The end came before any countdown (a seek to the end, a short episode): the prompt asks there.
+        vm.onEnded(tenMinutes)
+        vm.uiState.first { it.stillWatching }
+
+        vm.onContinueWatching()
+        vm.uiState.first { it.stream?.id == 2 }
+
+        assertFalse(seen.last().stillWatching)
+        assertFalse(seen.last().finished)
+        // The count was just reset, and the countdown that ran out counts as one auto advance.
+        assertEquals(1, app.binge.count.value)
+    }
+
+    @Test
     fun `stop watching ends the session and closes the screen`() = runTest {
         val jellyfin = seriesServer()
         repeat(3) { app.binge.autoAdvanced() }
