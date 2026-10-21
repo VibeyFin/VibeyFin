@@ -134,6 +134,9 @@ final class PlayerController: ObservableObject {
             reportFailure(nil, item: nil)
             return
         }
+        // AVPlayer passes HDR through by itself; nothing here changes that. The log shows what it was given and what
+        // the display offers, since neither simulator can show real HDR.
+        Self.timing.info("picture \(String(describing: stream.dynamicRange), privacy: .public); display HDR: \(Self.availableHDRModes(), privacy: .public)")
         // The server wants its Authorization header on every request the player makes for this stream.
         let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": stream.headers])
         let item = AVPlayerItem(asset: asset)
@@ -254,6 +257,16 @@ final class PlayerController: ObservableObject {
             self.trackInfo = info
             self.pushDiagnostics()
         }
+    }
+
+    /// The HDR formats the display and device can show, by name, for the log.
+    private static func availableHDRModes() -> String {
+        let modes = AVPlayer.availableHDRModes
+        var names: [String] = []
+        if modes.contains(.hdr10) { names.append("HDR10") }
+        if modes.contains(.hlg) { names.append("HLG") }
+        if modes.contains(.dolbyVision) { names.append("Dolby Vision") }
+        return names.isEmpty ? "none" : names.joined(separator: ", ")
     }
 
     private static func fourCC(_ code: FourCharCode) -> String {
