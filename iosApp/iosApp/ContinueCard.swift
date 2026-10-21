@@ -147,24 +147,29 @@ struct ContinueRowView: View {
 /// seen, only drawn as grey bars, so they borrow strings that already exist.
 struct ContinueSkeletonRow: View {
     var body: some View {
-        HStack(alignment: .top, spacing: Space.s3) {
-            ForEach(0..<3, id: \.self) { _ in
-                VStack(alignment: .leading, spacing: Space.s2) {
-                    Color(.tertiarySystemBackground)
-                        .aspectRatio(16.0 / 9.0, contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(Strings.shared.continueWatching)
-                            .font(.subheadline.weight(.semibold))
-                        Text(Strings.shared.play)
-                            .font(.caption)
+        // In a scroll view that never scrolls: the three fixed-width cards are wider than a phone, and
+        // laid out on their own they would stretch everything above them past the screen's edge.
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: Space.s3) {
+                ForEach(0..<3, id: \.self) { _ in
+                    VStack(alignment: .leading, spacing: Space.s2) {
+                        Color(.tertiarySystemBackground)
+                            .aspectRatio(16.0 / 9.0, contentMode: .fit)
+                            .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(Strings.shared.continueWatching)
+                                .font(.subheadline.weight(.semibold))
+                            Text(Strings.shared.play)
+                                .font(.caption)
+                        }
                     }
+                    .frame(width: Size.thumbWidth, alignment: .leading)
                 }
-                .frame(width: Size.thumbWidth, alignment: .leading)
             }
+            .redacted(reason: .placeholder)
+            .screenMargin()
         }
-        .redacted(reason: .placeholder)
-        .screenMargin()
+        .scrollDisabled(true)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Strings.shared.loadingContinueWatching)
     }
