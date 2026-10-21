@@ -6,6 +6,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineStart
 import androidx.lifecycle.ViewModel
+import com.liamgleeson.vibeyfin.domain.DynamicRange
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewmodel.CreationExtras
@@ -1619,6 +1620,27 @@ class PlaybackViewModelTest {
         assertTrue(seen.last().finished)
         assertFalse(seen.last().stillWatching)
         assertEquals(0, app.binge.count.value)
+    }
+
+    @Test
+    fun `the stream carries the dynamic range of the plan`() = runTest {
+        server(info = playbackInfoJson(mediaSourceJson(videoWidth = 3840, videoHeight = 2160, videoRangeType = "DOVIWithHDR10")))
+
+        val stream = assertNotNull(viewModel().uiState.first { it.stream != null }.stream)
+
+        assertEquals(DynamicRange.DolbyVision, stream.dynamicRange)
+    }
+
+    @Test
+    fun `an SDR or unknown picture is SDR`() = runTest {
+        server(info = playbackInfoJson(mediaSourceJson(videoRangeType = "SDR")))
+        assertEquals(DynamicRange.Sdr, assertNotNull(viewModel().uiState.first { it.stream != null }.stream).dynamicRange)
+    }
+
+    @Test
+    fun `a stream with no video information is SDR`() = runTest {
+        server()
+        assertEquals(DynamicRange.Sdr, assertNotNull(viewModel().uiState.first { it.stream != null }.stream).dynamicRange)
     }
 
     @Test

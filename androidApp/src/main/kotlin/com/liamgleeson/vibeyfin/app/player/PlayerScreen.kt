@@ -4,9 +4,13 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
+import android.hardware.display.DisplayManager
+import android.os.Build
 import android.os.SystemClock
 import android.util.Log
+import android.view.Display
 import android.view.LayoutInflater
+import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityManager
 import androidx.activity.compose.BackHandler
@@ -27,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -66,6 +71,7 @@ import com.liamgleeson.vibeyfin.R
 import com.liamgleeson.vibeyfin.app.components.LoadError
 import com.liamgleeson.vibeyfin.app.theme.screenMargin
 import com.liamgleeson.vibeyfin.domain.LiveDiagnostics
+import com.liamgleeson.vibeyfin.domain.DynamicRange
 import com.liamgleeson.vibeyfin.ui.common.Strings
 import com.liamgleeson.vibeyfin.ui.home.HomeExit
 import com.liamgleeson.vibeyfin.ui.playback.PlaybackStream
@@ -94,6 +100,7 @@ private val STATS_TOP_INSET = 72.dp
 private val SKIP_LIFT_WITH_CONTROLS = 80.dp
 
 private const val TIMING_TAG = "VibeyFinTiming"
+private const val HDR_TAG = "VibeyFinHdr"
 
 @Composable
 fun PlayerRoute(
@@ -205,6 +212,14 @@ fun PlayerRoute(
         } else {
             null
         }
+    }
+    // Which kind of view the picture needs, known once the first stream arrives; it stays until a stream of the
+    // other kind replaces it.
+    var hdrVideo by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(stream?.id) {
+        val range = stream?.dynamicRange ?: return@LaunchedEffect
+        hdrVideo = range != DynamicRange.Sdr
+        Log.d(HDR_TAG, "picture is $range: ${if (range != DynamicRange.Sdr) "SurfaceView layout" else "TextureView layout"}; ${displayHdrTypes(context)}")
     }
     LaunchedEffect(stream?.id) {
         if (stream == null) {
@@ -333,16 +348,25 @@ fun PlayerRoute(
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        // Inflated, because the surface type can only be set from XML. See the layout for why a TextureView.
-        AndroidView(
-            factory = { viewContext ->
-                (LayoutInflater.from(viewContext).inflate(R.layout.player_view_texture, null) as PlayerView).also {
-                    it.player = player
-                    it.setKeepContentOnPlayerReset(true)
-                }
-            },
-            modifier = Modifier.fillMaxSize(),
-        )
+        // Inflated, because the surface type can only be set from XML. SDR video is drawn on a TextureView, which
+        // slides and fades with the screen (player_view_texture.xml); HDR and Dolby Vision need a SurfaceView to
+        // reach the display (player_view_surface.xml), which does not, so it is hidden as the screen is left.
+        // Kept across streams of the same kind, so the next episode doesn't flash.
+        hdrVideo?.let { surface ->
+            key(surface) {
+                AndroidView(
+                    factory = { viewContext ->
+                        val layout = if (surface) R.layout.player_view_surface else R.layout.player_view_texture
+                        (LayoutInflater.from(viewContext).inflate(layout, null) as PlayerView).also {
+                            it.player = player
+                            it.setKeepContentOnPlayerReset(true)
+                        }
+                    },
+                    update = { it.visibility = if (leaving && surface) View.INVISIBLE else View.VISIBLE },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
         // A tap anywhere on the video shows or hides the controls.
         Box(
             Modifier.fillMaxSize().pointerInput(Unit) {
@@ -640,4 +664,25 @@ internal tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null
+}
+
+/** What the display says it can show, for the log: HDR types by name, or "none". */
+@Suppress("DEPRECATION")
+private fun displayHdrTypes(context: Context): String {
+    val display = context.getSystemService(DisplayManager::class.java)?.getDisplay(Display.DEFAULT_DISPLAY) ?: return "display unknown"
+    val types = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        display.mode.supportedHdrTypes
+    } else {
+        display.hdrCapabilities?.supportedHdrTypes ?: IntArray(0)
+    }
+    val names = types.map {
+        when (it) {
+            Display.HdrCapabilities.HDR_TYPE_DOLBY_VISION -> "Dolby Vision"
+            Display.HdrCapabilities.HDR_TYPE_HDR10 -> "HDR10"
+            Display.HdrCapabilities.HDR_TYPE_HLG -> "HLG"
+            Display.HdrCapabilities.HDR_TYPE_HDR10_PLUS -> "HDR10+"
+            else -> "type $it"
+        }
+    }
+    return "display HDR: ${names.ifEmpty { listOf("none") }.joinToString()}"
 }

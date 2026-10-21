@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.liamgleeson.vibeyfin.data.api.ApiResult
 import com.liamgleeson.vibeyfin.domain.BingeCounter
 import com.liamgleeson.vibeyfin.domain.ConnectionManager
+import com.liamgleeson.vibeyfin.domain.DynamicRange
 import com.liamgleeson.vibeyfin.domain.LibraryRepository
 import com.liamgleeson.vibeyfin.domain.LiveDiagnostics
 import com.liamgleeson.vibeyfin.domain.NowPlaying
@@ -66,6 +67,11 @@ data class PlaybackStream(
      * list, which is the file's order. When false, the server already chose the audio in the stream.
      */
     val audioInPlayer: Boolean = false,
+    /**
+     * The picture's range as the server describes the file. A player that can draw HDR only through its
+     * own surface (Android's `SurfaceView`) chooses that for anything but [DynamicRange.Sdr].
+     */
+    val dynamicRange: DynamicRange = DynamicRange.Sdr,
 )
 
 /**
@@ -790,6 +796,7 @@ class PlaybackViewModel(
                                 startPositionMs = startAtMs,
                                 subtitleFiles = ready.subtitleFiles,
                                 audioInPlayer = ready.method == PlayMethod.DirectPlay,
+                                dynamicRange = ready.videoFormat?.dynamicRange ?: DynamicRange.Sdr,
                             ),
                             diagnostics = ready.toDiagnostics(audioNow),
                             badge = ready.videoFormat?.badge(),
