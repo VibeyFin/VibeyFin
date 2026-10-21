@@ -59,7 +59,6 @@ final class PlayerController: ObservableObject {
     var events = PlayerEvents()
 
     private var openedStreamId: Int32?
-    private var pendingStart: TimeInterval?
     /// The audio to play, when the player has to choose it (a direct play). Nil: leave the player's own choice.
     private var wantedAudio: AudioChoice?
     /// What is selected on the open item, so the same choice isn't applied twice.
@@ -147,18 +146,24 @@ final class PlayerController: ObservableObject {
         position = start
         duration = 0
         if start > 0 {
-            // Seek first and play once there, so a resume doesn't flash the first frames.
-            pendingStart = start
-        } else {
-            pendingStart = nil
-            player.play()
+            // The seek goes in before the item is ready; the player applies it once it can, so the first
+            // frames aren't shown and a transcode starts at the resume point. Seeking after the item is
+            // ready makes the server drop the transcode it began at 0 and restart it, which takes seconds.
+            seeksInFlight += 1
+            player.seek(
+                to: CMTime(seconds: start, preferredTimescale: 600),
+                toleranceBefore: .zero,
+                toleranceAfter: .zero
+            ) { [weak self] _ in
+                DispatchQueue.main.async { self?.seeksInFlight -= 1 }
+            }
         }
+        player.play()
     }
 
     /// Drops the stream, e.g. after the last attempt failed and the shared state shows a message.
     func clear() {
         itemSubscriptions.removeAll()
-        pendingStart = nil
         openedStreamId = nil
         wantedAudio = nil
         appliedAudio = nil
@@ -430,15 +435,6 @@ final class PlayerController: ObservableObject {
         if item.duration.isNumeric, item.duration.seconds > 0 { duration = item.duration.seconds }
         applyAudio(to: item)
         loadTrackInfo(for: item)
-        guard let start = pendingStart else { return }
-        pendingStart = nil
-        player.seek(
-            to: CMTime(seconds: start, preferredTimescale: 600),
-            toleranceBefore: .zero,
-            toleranceAfter: .zero
-        ) { [weak self] _ in
-            DispatchQueue.main.async { self?.player.play() }
-        }
     }
 
     // MARK: - Now playing
