@@ -165,7 +165,7 @@ private fun ItemDetails(item: MediaItem, state: ItemUiState, onPlay: (startOver:
                         modifier = Modifier
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                            .padding(horizontal = 10.dp, vertical = 2.dp),
+                            .padding(horizontal = VibeyFinTokens.Space.s2, vertical = VibeyFinTokens.Space.s1),
                     )
                 }
                 // Watched is an icon, in ink: aqua never signals status.
