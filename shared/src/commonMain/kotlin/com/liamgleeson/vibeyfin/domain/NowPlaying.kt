@@ -39,6 +39,9 @@ class NowPlaying {
 
     fun clear() = _state.update { null }
 
+    /** Clears it only while it still shows [itemId], so a player that leaves late can't clear a newer one's. */
+    fun clear(itemId: String) = _state.update { if (it?.itemId == itemId) null else it }
+
     /** Asks the UI to bring the full player back for the current item. Does nothing when idle. */
     fun requestRestore() {
         val current = _state.value ?: return

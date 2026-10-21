@@ -558,6 +558,7 @@ class PlaybackViewModel(
         // is queued, `Stopped` included, is still sent after the screen's scope is gone.
         reporter.stop(lastPositionMs)
         reporter.close()
+        nowPlaying.clear(itemId)
     }
 
     /** Reads the item for its title and where the user stopped, then opens it there. */

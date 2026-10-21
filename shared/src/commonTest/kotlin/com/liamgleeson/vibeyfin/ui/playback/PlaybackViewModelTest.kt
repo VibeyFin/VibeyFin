@@ -12,6 +12,7 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.liamgleeson.vibeyfin.data.api.ApiError
 import com.liamgleeson.vibeyfin.domain.LiveDiagnostics
+import com.liamgleeson.vibeyfin.domain.NowPlayingState
 import com.liamgleeson.vibeyfin.domain.PlayMethod
 import com.liamgleeson.vibeyfin.testing.FakeJellyfin
 import com.liamgleeson.vibeyfin.testing.HLS_PATH
@@ -636,6 +637,44 @@ class PlaybackViewModelTest {
 
         val stopped = bodyOf(jellyfin.awaitRequests("POST", "/Sessions/Playing/Stopped").single())
         assertEquals(120_000_000L, stopped.getValue("PositionTicks").jsonPrimitive.long)
+    }
+
+    private fun clearableViewModel(store: ViewModelStore): PlaybackViewModel = ViewModelProvider.create(
+        store,
+        object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =
+                PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.nowPlaying, app.binge) as T
+        },
+    )[PlaybackViewModel::class]
+
+    @Test
+    fun leavingTheScreenWithoutClosingClearsNowPlaying() = runTest {
+        server()
+        val store = ViewModelStore()
+        val viewModel = clearableViewModel(store)
+        viewModel.uiState.first { it.stream != null }
+        viewModel.onPlaying(1_000)
+        assertNotNull(app.nowPlaying.state.value)
+
+        store.clear()
+
+        assertNull(app.nowPlaying.state.value)
+    }
+
+    @Test
+    fun leavingTheScreenKeepsNowPlayingOfAnotherItem() = runTest {
+        server()
+        val store = ViewModelStore()
+        val viewModel = clearableViewModel(store)
+        viewModel.uiState.first { it.stream != null }
+        viewModel.onPlaying(1_000)
+        // Another player already shows something else.
+        app.nowPlaying.update(NowPlayingState("other", "Other", null, playing = true, positionMs = 0))
+
+        store.clear()
+
+        assertEquals("other", app.nowPlaying.state.value?.itemId)
     }
 
     // -- audio and subtitle selection --
