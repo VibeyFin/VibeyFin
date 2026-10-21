@@ -153,6 +153,9 @@ object Strings {
     /** The player button that turns the video into a small window over other apps. */
     val pictureInPicture = "Picture in picture"
 
+    /** The name of the Android notification channel for the media controls shown while a video plays. */
+    val playbackNotificationChannel = "Playback"
+
     /** One spoken phrase for a label and its value, "Bitrate, 4.5 Mbps", where the two are drawn apart. */
     fun labelled(label: String, value: String) = "$label, $value"
 
