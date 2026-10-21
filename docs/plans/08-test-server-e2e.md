@@ -67,7 +67,7 @@ without a full design interview: every call marked *(my call)* is a guess for th
 
 ## Risks
 
-- The server image and plugin versions drift. The image tag is pinned; the plugin is installed by
+- The server image and plugin versions drift. The image follows the floating `12` tag (owner's call: any 12.x), so a fresh pull can change the server; the plugin is installed by
   version in `start.sh`.
 - Trickplay and segment generation are asynchronous, so tests must poll with a bound.
 - A CI that has no podman can't run level 2; it stays a local check until one does.

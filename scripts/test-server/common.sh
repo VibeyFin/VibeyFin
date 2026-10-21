@@ -1,5 +1,5 @@
 # Shared settings for the local test server scripts. Sourced, not executed.
-JF_IMAGE="docker.io/jellyfin/jellyfin:12.2.20261005-225228"
+JF_IMAGE="docker.io/jellyfin/jellyfin:12"
 JF_NAME="vibeyfin-jellyfin"
 JF_PORT="8196"
 JF_URL="http://localhost:${JF_PORT}"

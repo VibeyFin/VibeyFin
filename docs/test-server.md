@@ -9,8 +9,8 @@ scripts/test-server/start.sh   # idempotent: generates media, starts, completes 
 ```
 
 - URL: `http://localhost:8196` (from the Android emulator use `http://10.0.2.2:8196`)
-- Container: `vibeyfin-jellyfin`, image `docker.io/jellyfin/jellyfin:12.2.20261005-225228` (reports
-  version 12.2.0; there is no plain `12.2.0` tag, so the dated build is pinned)
+- Container: `vibeyfin-jellyfin`, image `docker.io/jellyfin/jellyfin:12` (the floating major tag: any 12.x
+  build, so a fresh pull can move to a newer one; it was 12.2.0 when this was written)
 - User `admin`, password `vibeyfin-test` (throwaway value for this local server only)
 - Stop with `podman stop vibeyfin-jellyfin`. Reset with `podman rm -f vibeyfin-jellyfin && rm -rf scripts/test-server/data/config scripts/test-server/data/cache`.
 
