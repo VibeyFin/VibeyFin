@@ -8,7 +8,7 @@
 
 **Tech Stack:** Kotlin 2.4, Ktor + kotlinx.serialization, Room KMP (schema v3), Koin, Media3 1.11.1 (+ `media3-session`), Jetpack Compose, SwiftUI/AVKit, `kotlin.test` + Ktor `MockEngine`.
 
-**Spec:** `docs/superpowers/specs/2026-10-20-player-polish-design.md` (read it with this plan). Project plans live in `docs/plans/` (CLAUDE.md), so this is plan 06, not under `docs/superpowers/plans/`.
+**Spec:** `docs/superpowers/specs/2026-10-20-player-polish-design.md` (read it with this plan). Project plans live in `docs/plans/` (CLAUDE.md), so this is plan 07, not under `docs/superpowers/plans/`.
 
 **Status (2026-10-21):** Phases A to H are built on `feature/player-polish`, rebased onto Phase 2. Android is verified on an emulator
 against the Task 1 test server; iOS is built and was driven on the simulator for Home, speed, the badge, the still-watching

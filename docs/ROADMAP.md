@@ -116,7 +116,7 @@ _Exit: finish an episode on one device, resume on another._
 - [x] HDR / Dolby Vision passthrough where the platform supports it — _Android draws HDR on a `SurfaceView`
   layout and SDR on the `TextureView` one (`player_view_surface.xml`, `player_view_texture.xml`); iOS leaves
   AVPlayer's HDR alone. The choice and playback are verified; **real HDR output is not**, because neither simulator
-  reports an HDR display (plan 06)_
+  reports an HDR display (plan 07)_
 - [x] Binge UX: "are you still watching?" (auto-advance itself is Phase 2) — _per-profile setting, Off or after 2 to 5 episodes, default 3_
 - [x] Playback speed (Media3 `setPlaybackSpeed`, AVPlayer `rate`)
 - [x] Picture-in-picture (both platforms, plus a button in the player). The iOS mini player is the open item below. Leaving the player while something plays keeps it playing in

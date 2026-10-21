@@ -1,11 +1,11 @@
-# Plan 07: The test server as the repo's standard for end-to-end checks
+# Plan 08: The test server as the repo's standard for end-to-end checks
 
 Goal: every feature that touches the Jellyfin API or the player is verified against the local
-test server (`scripts/test-server/`) built in plan 06, using generated media with known contents,
+test server (`scripts/test-server/`) built in plan 07, using generated media with known contents,
 and the checks that can be automated run from one Gradle task. New features add their fixtures to the
 server instead of improvising them.
 
-**Status (2026-10-20):** queued, nothing built. Not started until plan 06 (Phase 3) is done. Written
+**Status (2026-10-20):** queued, nothing built. Not started until plan 07 (Phase 3) is done. Written
 without a full design interview: every call marked *(my call)* is a guess for the owner to confirm.
 
 ## Why
@@ -33,7 +33,7 @@ without a full design interview: every call marked *(my call)* is a guess for th
   no segments, no trickplay, a file AVPlayer can't open (MKV), DTS audio, text and image subtitles, a
   truncated file; and behaviours: a 401 on the stream only, a dropped connection, a slow response
   (a small proxy in front of the server, scripted).
-- **Plan 06's deferred items from the test server** are handled here: write the media to a temp name then
+- **Plan 07's deferred items from the test server** are handled here: write the media to a temp name then
   move it, build the auth header once, drop the no-op `|| true`.
 
 ## Phase A: Convention and catalogue
