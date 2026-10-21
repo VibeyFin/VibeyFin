@@ -336,8 +336,8 @@ The per-profile `allowTranscoding` flag is scrapped everywhere: no other Jellyfi
   4K, HD) on the item page and in the player.
 - **PiP, `Stopped`, mini player groundwork (F):** entering PiP is not backgrounding (the session carries on; closing the window
   sends one `Stopped`, expanding sends nothing); `media3-session` and a `MediaSession` on Android (media keys and the PiP window's
-  controls) with a media notification posted in-process by Media3's `PlayerNotificationManager` (play and pause in the shade
-  and on the lock screen, channel "Playback", made and removed with the player screen); PiP on the `AVPlayerLayer` and
+  controls) with a media notification posted in-process by Media3's `PlayerNotificationManager` (play and pause in the shade,
+  channel "Playback", shown only while the player screen is in front or in a PiP window); PiP on the `AVPlayerLayer` and
   now-playing info on iOS; a PiP button in the player on both platforms (hidden where the device has no PiP); `MiniPlayerView` and
   `NowPlayingModel` built but not mounted.
 - **"Are you still watching?" (G):** redesigned around Phase 2's countdown, which lives in `PlaybackViewModel`: a countdown that
@@ -359,8 +359,11 @@ The per-profile `allowTranscoding` flag is scrapped everywhere: no other Jellyfi
   `MediaSession` through Media3's `PlayerNotificationManager` (in `media3-ui`, no new dependency), on its own channel named from
   `Strings.playbackNotificationChannel`. Checked on the API 37 emulator: the shade shows the media controls with the title, Pause
   and Play from them pause and resume the player, and the notification goes when the player closes. It needs no
-  `POST_NOTIFICATIONS` (media session notifications are exempt). Left out: no foreground service, so once the player screen
-  is gone (the app in the background without PiP pauses anyway) there is no notification; the lock screen was not checked.
+  `POST_NOTIFICATIONS` (media session notifications are exempt). It exists only while the player screen is resumed or in a PiP
+  window: leaving the app without PiP (Home on a paused video, the lock button) pauses the video and sends `Stopped`, so the
+  notification is taken down and comes back when the player resumes, and a play from a media key or another session command is
+  ignored meanwhile. Checked on the API 37 emulator with `dumpsys notification` and `cmd media_session dispatch play`. So there
+  are no lock-screen controls, by design. Left out: no foreground service and no background audio.
 - **Android still-watching prompt:** the Settings picker was seen; the prompt itself was not (the emulator lost its connection to
   the server mid-run). The same logic is covered by the shared tests and was seen end to end on iOS.
 - **iOS, not seen running:** stats overlay, skip button, scrub previews, trickplay fallbacks. Built, and the shared logic is tested.
