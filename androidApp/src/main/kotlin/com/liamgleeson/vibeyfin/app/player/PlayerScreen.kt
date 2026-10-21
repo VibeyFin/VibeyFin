@@ -66,9 +66,11 @@ import com.liamgleeson.vibeyfin.R
 import com.liamgleeson.vibeyfin.app.components.LoadError
 import com.liamgleeson.vibeyfin.app.theme.screenMargin
 import com.liamgleeson.vibeyfin.domain.LiveDiagnostics
+import com.liamgleeson.vibeyfin.ui.common.Strings
 import com.liamgleeson.vibeyfin.ui.home.HomeExit
 import com.liamgleeson.vibeyfin.ui.playback.PlaybackStream
 import com.liamgleeson.vibeyfin.ui.playback.PlaybackViewModel
+import com.liamgleeson.vibeyfin.ui.playback.TrackOption
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlin.concurrent.thread
@@ -226,8 +228,14 @@ fun PlayerRoute(
         if (stream != null) player.applyTrackSelection(stream, state.audioTracks, state.subtitleTracks)
     }
     var showTracks by remember { mutableStateOf(false) }
+    var showSpeeds by remember { mutableStateOf(false) }
+    // The chosen speed, now and for each stream the player opens (a retry, the next episode).
+    LaunchedEffect(stream?.id, state.speed) { player.setPlaybackSpeed(state.speed) }
     // A new stream (the next episode) takes the track sheet with it: it listed the old one's tracks.
-    LaunchedEffect(stream?.id) { showTracks = false }
+    LaunchedEffect(stream?.id) {
+        showTracks = false
+        showSpeeds = false
+    }
 
     // Playback stats: what the player measures goes to the shared code, only while the overlay is on and
     // only when it changed. Dropped frames and bandwidth arrive as events; the rest is read off the player.
@@ -311,9 +319,12 @@ fun PlayerRoute(
                     durationMs = durationMs,
                     playing = playing,
                     hasTrackChoices = state.hasTrackChoices && state.message == null,
+                    badge = state.badge,
+                    speedLabel = Strings.speedValue(state.speed),
                     trickplay = trickplay,
                     onClose = close,
                     onTracks = { showTracks = true },
+                    onSpeed = { showSpeeds = true },
                     onTogglePlay = {
                         player.playWhenReady = !player.playWhenReady
                         interactions++
@@ -352,6 +363,16 @@ fun PlayerRoute(
         }
         if (!leaving && (state.loading || (buffering && state.stream != null))) {
             CircularProgressIndicator(Modifier.align(Alignment.Center), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (showSpeeds && !leaving) {
+            SpeedSheet(
+                speeds = state.speeds.mapIndexed { index, speed -> TrackOption(index, Strings.speedValue(speed), speed == state.speed) },
+                onSelect = {
+                    viewModel.onSelectSpeed(state.speeds[it])
+                    showSpeeds = false
+                },
+                onDismiss = { showSpeeds = false },
+            )
         }
         if (showTracks && !leaving) {
             TrackSheet(

@@ -1309,6 +1309,70 @@ class PlaybackViewModelTest {
     }
 
     @Test
+    fun `selecting a speed updates state`() = runTest {
+        server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+        assertEquals(1f, vm.uiState.value.speed)
+
+        vm.onSelectSpeed(1.5f)
+
+        assertEquals(1.5f, vm.uiState.value.speed)
+    }
+
+    @Test
+    fun `an unsupported speed is ignored`() = runTest {
+        server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+        vm.onSelectSpeed(2f)
+
+        vm.onSelectSpeed(3f)
+
+        assertEquals(2f, vm.uiState.value.speed)
+    }
+
+    @Test
+    fun `the speed is kept when the stream is opened again`() = runTest {
+        server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+        vm.onSelectSpeed(1.25f)
+
+        vm.onFailed(PlaybackFailure.Network)
+        val reopened = vm.uiState.first { it.stream?.id == 2 }
+
+        assertEquals(1.25f, reopened.speed)
+    }
+
+    @Test
+    fun `speed resets to 1 for a new item`() = runTest {
+        val jellyfin = seriesServer()
+        val vm = viewModel()
+        playing(vm, jellyfin)
+        vm.onSelectSpeed(2f)
+
+        vm.onPlayNow()
+        val next = vm.uiState.first { it.stream?.id == 2 }
+
+        assertEquals(1f, next.speed)
+    }
+
+    @Test
+    fun `progress reports are unaffected by the speed`() = runTest {
+        val jellyfin = server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+        vm.onPlaying(0)
+        vm.onSelectSpeed(2f)
+        vm.onPaused(12_000)
+
+        val progress = bodyOf(jellyfin.awaitRequests("POST", "/Sessions/Playing/Progress").first())
+        assertEquals(12_000L * 10_000, progress["PositionTicks"]!!.jsonPrimitive.long)
+        assertEquals(1, jellyfin.requestsTo("POST", "/Sessions/Playing").size)
+    }
+
+    @Test
     fun `skip with no offer does nothing`() = runTest {
         val vm = serverWithSegments(segmentJson("Intro", 10_000, 90_000))
         vm.onPosition(200_000)

@@ -9,10 +9,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -60,8 +63,13 @@ fun PlayerControls(
     playing: Boolean,
     /** Whether there are audio or subtitle tracks to choose from, which adds the button for them. */
     hasTrackChoices: Boolean,
+    /** The picture's one badge ("4K", "HDR10"); null shows none. */
+    badge: String?,
+    /** The chosen playback speed as a label ("1.5x"), which is also the speed button. */
+    speedLabel: String,
     onClose: () -> Unit,
     onTracks: () -> Unit,
+    onSpeed: () -> Unit,
     onTogglePlay: () -> Unit,
     /** The user is dragging the scrubber, or has let go (false); the controls must not hide meanwhile. */
     onScrubbing: (Boolean) -> Unit,
@@ -71,9 +79,26 @@ fun PlayerControls(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxSize()) {
-        TopBar(title, subtitle, hasTrackChoices, onClose, onTracks, Modifier.align(Alignment.TopStart))
+        TopBar(
+            title,
+            subtitle,
+            hasTrackChoices,
+            badge,
+            speedLabel,
+            onClose,
+            onTracks,
+            onSpeed,
+            Modifier.align(Alignment.TopStart)
+        )
         PlayPauseButton(playing, onTogglePlay, Modifier.align(Alignment.Center))
-        Scrubber(positionMs, durationMs, trickplay, onScrubbing, onSeek, Modifier.align(Alignment.BottomCenter))
+        Scrubber(
+            positionMs,
+            durationMs,
+            trickplay,
+            onScrubbing,
+            onSeek,
+            Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
 
@@ -92,8 +117,11 @@ private fun TopBar(
     title: String,
     subtitle: String?,
     hasTrackChoices: Boolean,
+    badge: String?,
+    speedLabel: String,
     onClose: () -> Unit,
     onTracks: () -> Unit,
+    onSpeed: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -101,7 +129,12 @@ private fun TopBar(
             .fillMaxWidth()
             .background(scrimBand(atTop = true))
             .safeDrawingPadding()
-            .padding(start = screenMargin() - ChipInset, end = screenMargin(), top = VibeyFinTokens.Space.s2, bottom = VibeyFinTokens.Space.s5),
+            .padding(
+                start = screenMargin() - ChipInset,
+                end = screenMargin(),
+                top = VibeyFinTokens.Space.s2,
+                bottom = VibeyFinTokens.Space.s5
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BackButton(onClick = onClose)
@@ -126,9 +159,84 @@ private fun TopBar(
                 )
             }
         }
+        if (badge != null) {
+            Spacer(Modifier.width(VibeyFinTokens.Space.s3))
+            Text(
+                text = badge,
+                style = MaterialTheme.typography.labelMedium,
+                color = VibeyFinTokens.Colors.ink,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(VibeyFinTokens.Colors.scrim)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+            )
+        }
+        Spacer(Modifier.width(VibeyFinTokens.Space.s3))
+        TextChipButton(speedLabel, Strings.speed, onSpeed)
         if (hasTrackChoices) {
             Spacer(Modifier.width(VibeyFinTokens.Space.s3))
-            ChipButton(painterResource(R.drawable.ic_subtitles), Strings.audioAndSubtitles, onTracks)
+            ChipButton(
+                painterResource(R.drawable.ic_subtitles),
+                Strings.audioAndSubtitles,
+                onTracks
+            )
+        }
+    }
+}
+
+/** [ChipButton] with a word in place of a glyph: 48 dp to touch, 40 dp to look at, wider for longer text. */
+@Composable
+private fun TextChipButton(text: String, description: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .widthIn(min = 48.dp)
+            .clip(CircleShape)
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .height(40.dp)
+                .widthIn(min = 40.dp)
+                .clip(CircleShape)
+                .background(VibeyFinTokens.Colors.scrim)
+                .padding(horizontal = 12.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"),
+                color = VibeyFinTokens.Colors.ink,
+                modifier = Modifier.semantics { contentDescription = "$description, $text" },
+            )
+        }
+    }
+}
+
+/** The back button's twin: a glyph on a round chip over the scrim, 48 dp to touch and 40 dp to look at. */
+@Composable
+private fun ChipButton(icon: Int, description: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(VibeyFinTokens.Colors.scrim),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = description,
+                tint = VibeyFinTokens.Colors.ink,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
@@ -165,7 +273,8 @@ private fun Scrubber(
     // While the thumb is held, show where it is, not where the video is.
     var dragged by remember { mutableStateOf<Float?>(null) }
     val known = durationMs > 0
-    val shown = (dragged ?: positionMs.toFloat()).coerceIn(0f, if (known) durationMs.toFloat() else 1f)
+    val shown =
+        (dragged ?: positionMs.toFloat()).coerceIn(0f, if (known) durationMs.toFloat() else 1f)
     val shownMs = shown.toLong()
     // The thumbnail for where the thumb is; null until its tile arrives, and when there is none.
     var thumbnail by remember(trickplay) { mutableStateOf<ImageBitmap?>(null) }
@@ -186,40 +295,51 @@ private fun Scrubber(
             .padding(top = VibeyFinTokens.Space.s4),
     ) {
         Box {
-        Slider(
-            value = if (known) shown else 0f,
-            onValueChange = {
-                if (dragged == null) onScrubbing(true)
-                dragged = it
-            },
-            onValueChangeFinished = {
-                dragged?.let { onSeek(it.toLong()) }
-                dragged = null
-                onScrubbing(false)
-            },
-            valueRange = 0f..(if (known) durationMs.toFloat() else 1f),
-            enabled = known,
-            colors = SliderDefaults.colors(
-                thumbColor = VibeyFinTokens.Colors.accent,
-                activeTrackColor = VibeyFinTokens.Colors.accent,
-                inactiveTrackColor = VibeyFinTokens.Colors.progressTrack,
-                disabledThumbColor = VibeyFinTokens.Colors.progressTrack,
-                disabledActiveTrackColor = VibeyFinTokens.Colors.progressTrack,
-                disabledInactiveTrackColor = VibeyFinTokens.Colors.progressTrack,
-            ),
-            modifier = Modifier.fillMaxWidth().semantics {
-                contentDescription = Strings.playbackPosition
-                stateDescription = Strings.positionDescription(shownMs, durationMs)
-            },
-        )
-        val preview = thumbnail
-        if (dragged != null && preview != null && known) {
-            ScrubPreview(preview, Strings.clock(shownMs), shown / durationMs, Modifier.align(Alignment.TopStart))
-        }
+            Slider(
+                value = if (known) shown else 0f,
+                onValueChange = {
+                    if (dragged == null) onScrubbing(true)
+                    dragged = it
+                },
+                onValueChangeFinished = {
+                    dragged?.let { onSeek(it.toLong()) }
+                    dragged = null
+                    onScrubbing(false)
+                },
+                valueRange = 0f..(if (known) durationMs.toFloat() else 1f),
+                enabled = known,
+                colors = SliderDefaults.colors(
+                    thumbColor = VibeyFinTokens.Colors.accent,
+                    activeTrackColor = VibeyFinTokens.Colors.accent,
+                    inactiveTrackColor = VibeyFinTokens.Colors.progressTrack,
+                    disabledThumbColor = VibeyFinTokens.Colors.progressTrack,
+                    disabledActiveTrackColor = VibeyFinTokens.Colors.progressTrack,
+                    disabledInactiveTrackColor = VibeyFinTokens.Colors.progressTrack,
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription = Strings.playbackPosition
+                        stateDescription = Strings.positionDescription(shownMs, durationMs)
+                    },
+            )
+            val preview = thumbnail
+            if (dragged != null && preview != null && known) {
+                ScrubPreview(
+                    preview,
+                    Strings.clock(shownMs),
+                    shown / durationMs,
+                    Modifier.align(Alignment.TopStart)
+                )
+            }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(Strings.clock(shownMs), style = TimeStyle, color = VibeyFinTokens.Colors.ink)
-            if (known) Text(Strings.timeLeft(shownMs, durationMs), style = TimeStyle, color = VibeyFinTokens.Colors.ink)
+            if (known) Text(
+                Strings.timeLeft(shownMs, durationMs),
+                style = TimeStyle,
+                color = VibeyFinTokens.Colors.ink
+            )
         }
     }
 }

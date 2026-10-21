@@ -63,6 +63,28 @@ fun TrackSheet(
     }
 }
 
+/** The playback speeds in a bottom sheet, one list with a check on the one in use. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SpeedSheet(
+    speeds: List<TrackOption>,
+    onSelect: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Section(
+            Strings.speed,
+            speeds,
+            onSelect,
+            Modifier.navigationBarsPadding().padding(horizontal = VibeyFinTokens.Space.s2, vertical = VibeyFinTokens.Space.s2),
+        )
+    }
+}
+
 @Composable
 private fun Section(title: String, options: List<TrackOption>, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.verticalScroll(rememberScrollState())) {

@@ -1,9 +1,12 @@
 package com.liamgleeson.vibeyfin.ui.item
 
+import com.liamgleeson.vibeyfin.domain.DynamicRange
+import com.liamgleeson.vibeyfin.domain.VideoFormat
 import com.liamgleeson.vibeyfin.domain.model.ItemKind
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class ItemFactsTest {
     private fun item(
@@ -14,12 +17,51 @@ class ItemFactsTest {
         ageRating: String? = null,
         seasonNumber: Int? = null,
         episodeNumber: Int? = null,
+        videoFormat: VideoFormat? = null,
     ) = MediaItem(
         id = "i", title = "T", kind = kind, isFolder = false, year = year, runtimeMinutes = runtimeMinutes,
         genres = emptyList(), overview = null, rating = rating, ageRating = ageRating, seriesName = null,
         seasonNumber = seasonNumber, episodeNumber = episodeNumber, posterAspectRatio = 1f, posterUrl = null,
-        backdropUrl = null,
+        backdropUrl = null, videoFormat = videoFormat,
     )
+
+    private fun video(range: DynamicRange = DynamicRange.Sdr, width: Int = 1920, height: Int = 1080) =
+        VideoFormat(codec = "hevc", width = width, height = height, dynamicRange = range, frameRate = 24f, bitrateKbps = null)
+
+    @Test
+    fun `Dolby Vision wins over resolution`() {
+        assertEquals("Dolby Vision", item(videoFormat = video(DynamicRange.DolbyVision, 3840, 2160)).formatBadge())
+    }
+
+    @Test
+    fun `HDR10 and HLG are named`() {
+        assertEquals("HDR10", item(videoFormat = video(DynamicRange.Hdr10)).formatBadge())
+        assertEquals("HLG", item(videoFormat = video(DynamicRange.Hlg, 3840, 2160)).formatBadge())
+    }
+
+    @Test
+    fun `4K SDR shows 4K`() {
+        assertEquals("4K", item(videoFormat = video(width = 3840, height = 2160)).formatBadge())
+        assertEquals("4K", item(videoFormat = video(width = 3840, height = 1600)).formatBadge())
+    }
+
+    @Test
+    fun `1080p and 720p show HD and smaller shows nothing`() {
+        assertEquals("HD", item(videoFormat = video()).formatBadge())
+        assertEquals("HD", item(videoFormat = video(width = 1280, height = 720)).formatBadge())
+        assertNull(item(videoFormat = video(width = 720, height = 480)).formatBadge())
+    }
+
+    @Test
+    fun `no video stream shows no badge`() {
+        assertNull(item(videoFormat = null).formatBadge())
+    }
+
+    @Test
+    fun `only one badge`() {
+        // HDR 4K is a single string, not "4K HDR10".
+        assertEquals("HDR10", item(videoFormat = video(DynamicRange.Hdr10, 3840, 2160)).formatBadge())
+    }
 
     @Test
     fun aMovieShowsYearAgeRatingRuntimeAndScoreInThatOrder() {

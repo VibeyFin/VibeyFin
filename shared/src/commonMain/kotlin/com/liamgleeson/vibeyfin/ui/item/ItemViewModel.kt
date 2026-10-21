@@ -33,6 +33,9 @@ data class ItemUiState(
     /** Set when the session ended and the screen must be left. */
     val exit: HomeExit? = null,
 ) {
+    /** The one badge for the picture ("4K", "Dolby Vision"), shown beside the facts; null when there is none. */
+    val badge: String? get() = item?.formatBadge()
+
     /** The server says the user has watched it: the page shows a check icon beside the facts. */
     val watched: Boolean get() = item?.played == true
 

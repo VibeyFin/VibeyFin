@@ -106,6 +106,78 @@ struct PlayerTrackMenu: View {
     }
 }
 
+/// The playback speed: a capsule button with the current speed that opens a menu of the speeds. The
+/// labels are the shared model's own wording; only the section title is set here.
+struct PlayerSpeedMenu: View {
+    let speeds: [Float]
+    let selected: Float
+    let onSelect: (Float) -> Void
+    /// See `PlayerTrackMenu.onTouch`.
+    var onTouch: () -> Void = {}
+
+    var body: some View {
+        Menu {
+            Picker(
+                Strings.shared.speed.titleCased(),
+                selection: Binding(get: { selected }, set: onSelect)
+            ) {
+                ForEach(speeds, id: \.self) { speed in
+                    Text(Strings.shared.speedValue(speed: speed)).tag(speed)
+                }
+            }
+        } label: {
+            Text(Strings.shared.speedValue(speed: selected))
+                .font(.subheadline.weight(.semibold).monospacedDigit())
+                .foregroundStyle(.primary)
+                .padding(.horizontal, Space.s3)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Capsule())
+                .modifier(CapsuleBackdrop())
+        }
+        .modifier(PlayerCapsuleStyle())
+        .simultaneousGesture(TapGesture().onEnded(onTouch))
+        .accessibilityLabel("\(Strings.shared.speed), \(Strings.shared.speedValue(speed: selected))")
+    }
+}
+
+/// The scrim behind a capsule control before iOS 26, where the glass style draws its own.
+private struct CapsuleBackdrop: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+        } else {
+            content.background(Capsule().fill(Brand.scrim))
+        }
+    }
+}
+
+private struct PlayerCapsuleStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .buttonStyle(.glass)
+                .buttonBorderShape(.capsule)
+        } else {
+            content.buttonStyle(PressableButtonStyle())
+        }
+    }
+}
+
+/// The picture's one badge ("4K", "HDR10"), on the scrim so it reads over any video.
+struct FormatBadge: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, Space.s2)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(Brand.scrim))
+            .accessibilityLabel(text)
+    }
+}
+
 /// Groups the player's glass controls so they blend and share one render pass on iOS 26. Before
 /// that there is nothing to group.
 struct PlayerGlassGroup<Content: View>: View {

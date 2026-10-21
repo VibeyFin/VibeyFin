@@ -333,6 +333,15 @@ final class PlayerController: ObservableObject {
         player.pause()
     }
 
+    /// Plays at `speed` from now on. `defaultRate` is what `play()` starts at, so a pause and resume (or a
+    /// seek that resumes) keeps it; setting `rate` straight away would start a paused video, so it only
+    /// changes the live rate while playing.
+    func setSpeed(_ speed: Float) {
+        guard player.defaultRate != speed else { return }
+        player.defaultRate = speed
+        if isPlaying { player.rate = speed }
+    }
+
     func togglePlayPause() {
         if isPlaying { pause() } else { play() }
     }

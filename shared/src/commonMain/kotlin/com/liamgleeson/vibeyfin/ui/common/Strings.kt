@@ -199,6 +199,26 @@ object Strings {
         SegmentType.Unknown -> ""
     }
 
+    // Format badges
+    val badgeDolbyVision = "Dolby Vision"
+    val badgeHdr10 = "HDR10"
+    val badgeHlg = "HLG"
+    val badge4k = "4K"
+    val badgeHd = "HD"
+
+    val speed = "Speed"
+
+    /** `1x`, `0.75x`, `1.5x`. */
+    fun speedValue(speed: Float): String {
+        val hundredths = (speed * 100).roundToInt()
+        val text = when {
+            hundredths % 100 == 0 -> (hundredths / 100).toString()
+            hundredths % 10 == 0 -> "${hundredths / 100}.${(hundredths % 100) / 10}"
+            else -> "${hundredths / 100}.${(hundredths % 100).toString().padStart(2, '0')}"
+        }
+        return "${text}x"
+    }
+
     /** A track the file gives no name or language for. */
     fun track(index: Int) = "Track ${index + 1}"
 

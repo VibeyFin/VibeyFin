@@ -1,7 +1,10 @@
 package com.liamgleeson.vibeyfin.ui.item
 
+import com.liamgleeson.vibeyfin.domain.DynamicRange
+import com.liamgleeson.vibeyfin.domain.VideoFormat
 import com.liamgleeson.vibeyfin.domain.model.ItemKind
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
+import com.liamgleeson.vibeyfin.ui.common.Strings
 
 /** The short facts under a title, in reading order: "S1 E3", year, age rating, runtime, rating. */
 internal fun MediaItem.facts(): List<String> = listOfNotNull(
@@ -11,6 +14,18 @@ internal fun MediaItem.facts(): List<String> = listOfNotNull(
     runtimeMinutes?.let(::runtimeText),
     rating?.let { "★ ${oneDecimal(it)}" },
 )
+
+/** The one badge for the picture: Dolby Vision, HDR10, HLG, then 4K, then HD; null when there is no video stream or it is smaller. */
+internal fun MediaItem.formatBadge(): String? = videoFormat?.badge()
+
+internal fun VideoFormat.badge(): String? = when {
+    dynamicRange == DynamicRange.DolbyVision -> Strings.badgeDolbyVision
+    dynamicRange == DynamicRange.Hdr10 -> Strings.badgeHdr10
+    dynamicRange == DynamicRange.Hlg -> Strings.badgeHlg
+    (width ?: 0) >= 3200 || (height ?: 0) >= 2000 -> Strings.badge4k
+    (width ?: 0) >= 1200 || (height ?: 0) >= 700 -> Strings.badgeHd
+    else -> null
+}
 
 internal fun MediaItem.episodeLabel(): String? {
     if (kind != ItemKind.Episode || episodeNumber == null) return null

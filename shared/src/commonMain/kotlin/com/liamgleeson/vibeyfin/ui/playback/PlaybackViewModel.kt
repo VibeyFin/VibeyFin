@@ -27,6 +27,7 @@ import com.liamgleeson.vibeyfin.ui.common.LoadMessages
 import com.liamgleeson.vibeyfin.ui.common.Strings
 import com.liamgleeson.vibeyfin.ui.common.sessionEnded
 import com.liamgleeson.vibeyfin.ui.home.HomeExit
+import com.liamgleeson.vibeyfin.ui.item.badge
 import com.liamgleeson.vibeyfin.ui.item.episodeLabel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -156,10 +157,20 @@ data class PlaybackUiState(
     val pendingSeekMs: Long? = null,
     /** The scrub-preview thumbnails of the playing media source; null when the server made none or can't be asked. */
     val trickplay: TrickplayTrack? = null,
+    /** The speed the user chose, one of [PLAYBACK_SPEEDS]; the player plays at it. */
+    val speed: Float = 1f,
+    /** The one badge for the picture ("4K", "HDR10"); null when there is none to show. */
+    val badge: String? = null,
 ) {
+    /** The speeds to pick from. */
+    val speeds: List<Float> get() = PLAYBACK_SPEEDS
+
     /** Whether there is anything to choose between, so the player shows its audio and subtitles control. */
     val hasTrackChoices: Boolean get() = audioTracks.isNotEmpty() || subtitleTracks.isNotEmpty()
 }
+
+/** The speeds the player offers. */
+val PLAYBACK_SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
 
 /** Resuming starts this long before where the user stopped, so the scene they left is in view again. */
 const val RESUME_REWIND_MS = 5_000L
@@ -302,6 +313,12 @@ class PlaybackViewModel(
         } else {
             reopen(current, audio = audioNow, subtitle = target)
         }
+    }
+
+    /** Plays at [speed], if it is one of [PLAYBACK_SPEEDS]. Position reports stay in media time. */
+    fun onSelectSpeed(speed: Float) {
+        if (speed !in PLAYBACK_SPEEDS) return
+        content.update { if (it.speed == speed) it else it.copy(speed = speed) }
     }
 
     /** What the player measures about the stream, as often as it likes; values it can't give are null. */
@@ -573,7 +590,7 @@ class PlaybackViewModel(
         segmentsRequested = false
         trickplayFor = null
         content.update {
-            it.copy(loading = true, stream = null, upNext = null, skipOffer = null, trickplay = null, audioTracks = emptyList(), subtitleTracks = emptyList(), message = null, finished = false)
+            it.copy(loading = true, stream = null, upNext = null, skipOffer = null, trickplay = null, speed = 1f, badge = null, audioTracks = emptyList(), subtitleTracks = emptyList(), message = null, finished = false)
         }
         begin(target, honourStartOver = false)
     }
@@ -689,6 +706,7 @@ class PlaybackViewModel(
                                 audioInPlayer = ready.method == PlayMethod.DirectPlay,
                             ),
                             diagnostics = ready.toDiagnostics(audioNow),
+                            badge = ready.videoFormat?.badge(),
                             audioTracks = ready.audioTracks.toAudioOptions(),
                             subtitleTracks = ready.subtitleTracks.toSubtitleOptions(),
                         )

@@ -118,6 +118,7 @@ struct PlayerView: View {
             updateTrickplay(state)
             controller.wantAudio(audioChoice(in: state))
             controller.wantDiagnostics(state?.showDiagnostics == true)
+            controller.setSpeed(state?.speed ?? 1)
         }
         .onChange(of: controller.isPlaying) { isPlaying in
             if isPlaying {
@@ -208,6 +209,20 @@ struct PlayerView: View {
             }
             .padding(.top, Space.s1)
             Spacer(minLength: 0)
+            if let badge = state?.badge {
+                FormatBadge(text: badge).padding(.top, Space.s1)
+            }
+            if let state {
+                PlayerSpeedMenu(
+                    speeds: state.speeds.map { $0.floatValue },
+                    selected: state.speed,
+                    onSelect: { speed in
+                        model.selectSpeed(speed)
+                        scheduleHide()
+                    },
+                    onTouch: { hideTask?.cancel() }
+                )
+            }
             if let state, state.hasTrackChoices {
                 PlayerTrackMenu(
                     audio: state.audioTracks,

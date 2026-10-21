@@ -76,6 +76,11 @@ final class PlaybackObservable: ObservableObject {
         model.onSelectAudio(index: index)
     }
 
+    /// Plays at `speed`, one of the state's `speeds`.
+    func selectSpeed(_ speed: Float) {
+        model.onSelectSpeed(speed: speed)
+    }
+
     /// Shows the subtitle track with this `TrackOption.index`; the "Off" row's index turns them off.
     func selectSubtitle(_ index: Int32) {
         model.onSelectSubtitle(index: index)
