@@ -311,13 +311,13 @@ final class PlayerController: ObservableObject {
         let snapshot = DiagnosticsSnapshot(
             videoCodec: trackInfo.videoCodec,
             audioCodec: trackInfo.audioCodec,
-            width: size.width > 0 ? Int32(size.width) : nil,
-            height: size.height > 0 ? Int32(size.height) : nil,
+            width: Self.positiveInt32(Double(size.width)),
+            height: Self.positiveInt32(Double(size.height)),
             frameRate: trackInfo.frameRate,
             bitrateKbps: latest.flatMap { Self.kbps($0.indicatedBitrate) },
-            droppedFrames: dropped.isEmpty ? nil : Int32(dropped.reduce(0, +)),
+            droppedFrames: dropped.isEmpty ? nil : Int32(clamping: dropped.reduce(0, &+)),
             throughputKbps: latest.flatMap { Self.kbps($0.observedBitrate) },
-            bufferMs: buffered.flatMap { $0.isFinite ? Int64(max(0, $0) * 1000) : nil }
+            bufferMs: buffered.flatMap { $0.isFinite ? Int64(min(max(0, $0) * 1000, Double(Int32.max))) : nil }
         )
         guard snapshot != lastDiagnostics else { return }
         lastDiagnostics = snapshot
@@ -336,7 +336,14 @@ final class PlayerController: ObservableObject {
 
     /// AVFoundation uses -1 or 0 for "not known".
     private static func kbps(_ bitsPerSecond: Double) -> Int32? {
-        bitsPerSecond > 0 ? Int32(bitsPerSecond / 1000) : nil
+        positiveInt32(bitsPerSecond / 1000)
+    }
+
+    /// `value` as an `Int32` when it is a positive, finite number; nil otherwise, and `Int32.max` above it.
+    /// `Int32(_:)` traps on infinity, NaN or anything out of range, and AVFoundation can report those.
+    private static func positiveInt32(_ value: Double) -> Int32? {
+        guard value.isFinite, value > 0 else { return nil }
+        return value >= Double(Int32.max) ? Int32.max : Int32(value)
     }
 
     // MARK: - Commands
