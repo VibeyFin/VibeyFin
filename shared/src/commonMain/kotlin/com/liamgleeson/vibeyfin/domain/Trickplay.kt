@@ -46,7 +46,7 @@ data class TrickplayTrack(
 data class TrickplayThumb(val tileIndex: Int, val column: Int, val row: Int)
 
 internal fun Collection<TrickplayInfoDto>.toTrickplayTrack(mediaSourceId: String): TrickplayTrack? {
-    val info = filter { it.interval > 0 && it.tileWidth > 0 && it.tileHeight > 0 }
+    val info = filter { it.interval > 0 && it.tileWidth > 0 && it.tileHeight > 0 && it.width > 0 && it.height > 0 }
         .minByOrNull { abs(it.width - TRICKPLAY_TARGET_WIDTH) } ?: return null
     return TrickplayTrack(
         mediaSourceId = mediaSourceId,

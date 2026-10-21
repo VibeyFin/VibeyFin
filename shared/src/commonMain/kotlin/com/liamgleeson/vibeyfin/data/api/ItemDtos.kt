@@ -43,16 +43,19 @@ data class UserItemDataDto(
 )
 
 
-/** One set of trickplay thumbnails: [thumbnailCount] pictures of [width] by [height], packed into tiles of [tileWidth] by [tileHeight]. */
+/**
+ * One set of trickplay thumbnails: [thumbnailCount] pictures of [width] by [height], packed into tiles of [tileWidth] by [tileHeight].
+ * A field the server leaves out is 0, so one odd entry doesn't fail the whole item; a set missing its sizes or interval is never used.
+ */
 @Serializable
 data class TrickplayInfoDto(
-    @SerialName("Width") val width: Int,
-    @SerialName("Height") val height: Int,
-    @SerialName("TileWidth") val tileWidth: Int,
-    @SerialName("TileHeight") val tileHeight: Int,
-    @SerialName("ThumbnailCount") val thumbnailCount: Int,
+    @SerialName("Width") val width: Int = 0,
+    @SerialName("Height") val height: Int = 0,
+    @SerialName("TileWidth") val tileWidth: Int = 0,
+    @SerialName("TileHeight") val tileHeight: Int = 0,
+    @SerialName("ThumbnailCount") val thumbnailCount: Int = 0,
     /** Milliseconds between two thumbnails. */
-    @SerialName("Interval") val interval: Int,
+    @SerialName("Interval") val interval: Int = 0,
 )
 
 /** `BaseItemDtoQueryResult`: one page of items and how many there are in all. */

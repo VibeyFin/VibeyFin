@@ -366,8 +366,7 @@ The per-profile `allowTranscoding` flag is scrapped everywhere: no other Jellyfi
   counts media-key and PiP window controls as input).
 - **Test coverage gaps:** no Room migration test (`MigrationTestHelper` would be a new dependency); `StatsFeed` and the iOS
   `PlayerController` have no unit tests.
-- **Deferred review minors:** `TrickplayInfoDto` fields lack defaults (a malformed entry fails the whole `/Items` decode);
-  `trickplay()` refetches the item; plan-side codec, size and bitrate are the source's until live values arrive on a transcode; the
+- **Deferred review minors:** `trickplay()` refetches the item; plan-side codec, size and bitrate are the source's until live values arrive on a transcode; the
   paused buffer figure on iOS goes stale; the stats tick throttle and the 72 dp overlay inset are hand-picked; the skip button's lift
   constants are hand-picked (check landscape and Dynamic Type); the speed sheet opens full height in landscape on Android;
   `serverWithSegments` in the tests uses a 200 ms real-time spin; the iOS still-watching buttons differ slightly in height and the

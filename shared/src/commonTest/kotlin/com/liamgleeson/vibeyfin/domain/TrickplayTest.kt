@@ -1,7 +1,9 @@
 package com.liamgleeson.vibeyfin.domain
 
+import com.liamgleeson.vibeyfin.data.api.TrickplayInfoDto
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class TrickplayTest {
     /** 250 thumbnails, one every 10 seconds, in tiles of 10 columns by 10 rows (100 thumbnails a tile). */
@@ -15,6 +17,14 @@ class TrickplayTest {
         thumbnailCount = 250,
         intervalMs = 10_000L,
     )
+
+    @Test
+    fun anEntryWithMissingSizesIsSkipped() {
+        val partial = TrickplayInfoDto(width = 320, tileWidth = 10, tileHeight = 10, thumbnailCount = 250, interval = 10_000)
+
+        assertNull(listOf(partial).toTrickplayTrack("ms-1"))
+        assertNull(listOf(TrickplayInfoDto()).toTrickplayTrack("ms-1"))
+    }
 
     @Test
     fun locatesThumbnailInsideTheRightTile() {
