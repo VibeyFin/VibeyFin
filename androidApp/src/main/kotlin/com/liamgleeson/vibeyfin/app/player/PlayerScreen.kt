@@ -166,7 +166,7 @@ fun PlayerRoute(
             }
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-                // Play and pause from the notification, a headset or a media key count as the viewer being there;
+                // Play and pause from the picture-in-picture window, a headset or a media key count as the viewer being there;
                 // the pause for the "still watching?" question is ours, not theirs.
                 if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST && !stillWatchingNow) viewModel.onUserInteraction()
                 playing = playWhenReady
@@ -304,9 +304,11 @@ fun PlayerRoute(
 
     // Leaving the app turns the screen into a picture-in-picture window while something plays. The video
     // carries on and so does the session; closing the window ends it, expanding it brings the screen back.
+    // A paused video (by the viewer, or for the still-watching question, which a window would hide) stops
+    // as before instead.
     val videoRatio = state.diagnostics?.let { d -> if ((d.width ?: 0) > 0 && (d.height ?: 0) > 0) d.width!!.toFloat() / d.height!! else null } ?: (16f / 9f)
     val pip = rememberPlayerPip(
-        enabled = state.stream != null && state.message == null && !leaving,
+        enabled = state.stream != null && state.message == null && !leaving && playing && !state.stillWatching,
         aspectRatio = videoRatio,
         onEntered = { viewModel.onEnteredPictureInPicture(player.currentPosition) },
         onLeft = { closed ->
