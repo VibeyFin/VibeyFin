@@ -2,6 +2,7 @@ package com.liamgleeson.vibeyfin.app.player
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.os.SystemClock
 import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -147,14 +148,15 @@ fun StillWatchingPrompt(onContinue: () -> Unit, onStop: () -> Unit, modifier: Mo
  * The scrub-preview thumbnails of one playback: fetches the tile images with the stream's headers,
  * keeps them decoded, and crops one thumbnail out by the shared maths. Make a new one for a new
  * track (another episode); dropping it from composition drops the cache. A tile that fails to load
- * is remembered as missing, so scrubbing carries on with the timestamp alone.
+ * counts as missing for a short while (scrubbing carries on with the timestamp alone), then it is tried again.
  */
 class TrickplayTiles(private val context: Context, private val track: TrickplayTrack, private val headers: Map<String, String>) {
     // Bounded by bytes; a tile that falls out is fetched again when it is needed.
     private val tiles = object : LruCache<Int, Bitmap>(CACHE_BYTES) {
         override fun sizeOf(key: Int, value: Bitmap): Int = value.byteCount
     }
-    private val failed = ConcurrentHashMap.newKeySet<Int>()
+    /** When each tile failed, on [SystemClock.elapsedRealtime]. */
+    private val failed = ConcurrentHashMap<Int, Long>()
 
     /** Which tile image holds the thumbnail for [positionMs]. */
     fun tileAt(positionMs: Long): Int = track.locate(positionMs).tileIndex
@@ -174,7 +176,11 @@ class TrickplayTiles(private val context: Context, private val track: TrickplayT
     }
 
     private suspend fun load(index: Int): Bitmap? {
-        if (index in failed) return null
+        val failedAt = failed[index]
+        if (failedAt != null) {
+            if (!track.mayRetryTile(failedAt, SystemClock.elapsedRealtime())) return null
+            failed.remove(index)
+        }
         val request = ImageRequest.Builder(context)
             .data(track.tileUrl(index))
             .httpHeaders(NetworkHeaders.Builder().apply { headers.forEach { (name, value) -> set(name, value) } }.build())
@@ -185,7 +191,7 @@ class TrickplayTiles(private val context: Context, private val track: TrickplayT
             .build()
         val result = SingletonImageLoader.get(context).execute(request)
         val bitmap = (result as? SuccessResult)?.image?.toBitmap()
-        if (bitmap == null) failed += index else tiles.put(index, bitmap)
+        if (bitmap == null) failed[index] = SystemClock.elapsedRealtime() else tiles.put(index, bitmap)
         return bitmap
     }
 }

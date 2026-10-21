@@ -122,13 +122,15 @@ struct StillWatchingPrompt: View {
 /// The scrub-preview thumbnails of one playback: fetches the tile images with the stream's headers,
 /// keeps them decoded in a small in-memory cache, and crops one thumbnail out by the shared maths.
 /// Make a new one for a new track (the next episode); letting go of it drops the cache. A tile that
-/// can't be loaded is remembered as missing, so scrubbing carries on with the timestamp alone.
+/// can't be loaded counts as missing for a short while (scrubbing carries on with the timestamp alone),
+/// then it is tried again.
 @MainActor
 final class TrickplayTiles {
     private let track: TrickplayTrack
     private let headers: [String: String]
     private let tiles = NSCache<NSNumber, TileBox>()
-    private var failed = Set<Int>()
+    /// When each tile failed, in milliseconds of system uptime.
+    private var failed: [Int: Int64] = [:]
     private var loading: [Int: Task<CGImage?, Never>] = [:]
 
     init(track: TrickplayTrack, headers: [String: String]) {
@@ -155,7 +157,10 @@ final class TrickplayTiles {
 
     private func tile(_ index: Int) async -> CGImage? {
         if let cached = tiles.object(forKey: NSNumber(value: index)) { return cached.image }
-        if failed.contains(index) { return nil }
+        if let failedAt = failed[index] {
+            guard track.mayRetryTile(failedAtMs: failedAt, nowMs: Self.nowMs()) else { return nil }
+            failed[index] = nil
+        }
         if let running = loading[index] { return await running.value }
         // The download and the JPEG decode (a tile is a few megapixels) happen off the main actor.
         let task = Task.detached { [track, headers] () -> CGImage? in
@@ -173,10 +178,15 @@ final class TrickplayTiles {
         if let image {
             tiles.setObject(TileBox(image), forKey: NSNumber(value: index), cost: image.bytesPerRow * image.height)
         } else {
-            failed.insert(index)
+            failed[index] = Self.nowMs()
         }
         return image
     }
+}
+
+extension TrickplayTiles {
+    /// A monotonic clock in milliseconds, for timing failed tiles.
+    fileprivate static func nowMs() -> Int64 { Int64(ProcessInfo.processInfo.systemUptime * 1000) }
 }
 
 private final class TileBox {

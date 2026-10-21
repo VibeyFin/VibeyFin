@@ -3,7 +3,9 @@ package com.liamgleeson.vibeyfin.domain
 import com.liamgleeson.vibeyfin.data.api.TrickplayInfoDto
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class TrickplayTest {
     /** 250 thumbnails, one every 10 seconds, in tiles of 10 columns by 10 rows (100 thumbnails a tile). */
@@ -17,6 +19,13 @@ class TrickplayTest {
         thumbnailCount = 250,
         intervalMs = 10_000L,
     )
+
+    @Test
+    fun aTileThatFailedIsTriedAgainAfterAShortWhile() {
+        assertFalse(track.mayRetryTile(failedAtMs = 1_000, nowMs = 1_000))
+        assertFalse(track.mayRetryTile(failedAtMs = 1_000, nowMs = 1_000 + TRICKPLAY_TILE_RETRY_MS - 1))
+        assertTrue(track.mayRetryTile(failedAtMs = 1_000, nowMs = 1_000 + TRICKPLAY_TILE_RETRY_MS))
+    }
 
     @Test
     fun anEntryWithMissingSizesIsSkipped() {
