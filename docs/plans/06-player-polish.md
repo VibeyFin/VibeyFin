@@ -282,6 +282,8 @@ The per-profile `allowTranscoding` flag is scrapped everywhere: no other Jellyfi
 
 **Phase G done when:** tests pass and the fake-driven check above is recorded; stop for review.
 
+**Done (Phase G), as built:** the prompt gates Phase 2's in-ViewModel countdown (no `NextUpSource`, no fake): a countdown that runs out counts as an auto advance, any input resets the count, and at the threshold the card is replaced by the prompt. Driven for real with the four-episode test show (`docs/test-server.md`, setting at After 2 episodes, about 8 minutes hands-off). iOS: verified (prompt at 2:31 of episode 3, video paused, "Keep watching" resumed and the card came back). Android: Settings picker verified; the prompt itself was **not** seen on the emulator (it lost its connection to the server mid-run); covered by the shared tests only.
+
 ---
 
 ## Phase H: HDR
