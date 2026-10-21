@@ -336,7 +336,8 @@ The per-profile `allowTranscoding` flag is scrapped everywhere: no other Jellyfi
   4K, HD) on the item page and in the player.
 - **PiP, `Stopped`, mini player groundwork (F):** entering PiP is not backgrounding (the session carries on; closing the window
   sends one `Stopped`, expanding sends nothing); `media3-session` and a `MediaSession` on Android (media keys and the PiP window's
-  controls; no media notification, see below); PiP on the `AVPlayerLayer` and
+  controls) with a media notification posted in-process by Media3's `PlayerNotificationManager` (play and pause in the shade
+  and on the lock screen, channel "Playback", made and removed with the player screen); PiP on the `AVPlayerLayer` and
   now-playing info on iOS; a PiP button in the player on both platforms (hidden where the device has no PiP); `MiniPlayerView` and
   `NowPlayingModel` built but not mounted.
 - **"Are you still watching?" (G):** redesigned around Phase 2's countdown, which lives in `PlaybackViewModel`: a countdown that
@@ -351,14 +352,15 @@ The per-profile `allowTranscoding` flag is scrapped everywhere: no other Jellyfi
   the choice of layout and that playback works were checked.
 - **Mini player (iOS):** not mounted; finished when the app's tab bar mounts it in `.tabViewBottomAccessory`, it is checked on the
   simulator, and play and pause reach the player (`NowPlaying` has state and a restore request but no command yet).
-  Android has no in-app mini player by decision (PiP only; there is no media notification either, see below).
+  Android has no in-app mini player by decision (PiP and the media notification only).
 - **iOS PiP:** the simulator reports PiP as unsupported, so the PiP button is hidden there and nothing of it ran. The delegate wiring,
   automatic start, close sending one `Stopped` and tap-to-restore are unverified.
-- **Android media notification (any Android version):** not shown. A bare `MediaSession` in an activity posts no notification;
-  Media3 posts one only from a `MediaSessionService`, so there are no media controls in the notification shade or on the lock
-  screen. Showing them needs the player to live in a `MediaSessionService` (a manifest entry and a `mediaPlayback` foreground
-  service), which is left out. Hardware media keys and the PiP window's controls do work (checked). The spec's "MediaSession
-  notification with play and pause" and Task 14's "notification play/pause works" are therefore not met.
+- **Android media notification:** shown, without a service. `PlayerSession.kt` posts a MediaStyle notification tied to the
+  `MediaSession` through Media3's `PlayerNotificationManager` (in `media3-ui`, no new dependency), on its own channel named from
+  `Strings.playbackNotificationChannel`. Checked on the API 37 emulator: the shade shows the media controls with the title, Pause
+  and Play from them pause and resume the player, and the notification goes when the player closes. It needs no
+  `POST_NOTIFICATIONS` (media session notifications are exempt). Left out: no foreground service, so once the player screen
+  is gone (the app in the background without PiP pauses anyway) there is no notification; the lock screen was not checked.
 - **Android still-watching prompt:** the Settings picker was seen; the prompt itself was not (the emulator lost its connection to
   the server mid-run). The same logic is covered by the shared tests and was seen end to end on iOS.
 - **iOS, not seen running:** stats overlay, skip button, scrub previews, trickplay fallbacks. Built, and the shared logic is tested.

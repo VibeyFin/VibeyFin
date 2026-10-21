@@ -126,8 +126,8 @@ _Exit: finish an episode on one device, resume on another._
   ends (Phase 1 sends it on backgrounding today). iOS 26+ also shows a mini player in
   `.tabViewBottomAccessory` while PiP or audio continues, and tapping it returns to the full player
   (`docs/design/ios.md`); below iOS 26 it is PiP only. **Decided:** Android stops at PiP, with no in-app mini player.
-  Its `MediaSession` drives media keys and the PiP window's controls but posts **no media notification** (nothing in the
-  shade or on the lock screen): that needs the player in a `MediaSessionService`, which is left out. iOS PiP is built but was never seen running (the simulator reports PiP as
+  Its `MediaSession` drives media keys, the PiP window's controls and a media notification with play and pause (posted
+  in-process by Media3's `PlayerNotificationManager` while the player screen is open; no service). iOS PiP is built but was never seen running (the simulator reports PiP as
   unsupported).
 - [ ] **The iOS mini player is built but not mounted** (`MiniPlayerView`, fed by `NowPlayingModel`): the app has
   no tab bar yet. It is finished when the tab bar mounts it with `.tabViewBottomAccessory` and it is
