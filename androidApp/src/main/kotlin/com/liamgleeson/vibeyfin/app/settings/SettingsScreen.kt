@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -37,6 +35,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liamgleeson.vibeyfin.app.theme.screenMargin
 import com.liamgleeson.vibeyfin.app.components.BackButtonSpace
 import com.liamgleeson.vibeyfin.app.components.FloatingBackButton
+import com.liamgleeson.vibeyfin.app.components.VibeyFinMenu
+import com.liamgleeson.vibeyfin.app.components.VibeyFinMenuItem
 import com.liamgleeson.vibeyfin.app.theme.VibeyFinTokens
 import com.liamgleeson.vibeyfin.ui.common.Strings
 import com.liamgleeson.vibeyfin.ui.settings.SettingsUiState
@@ -154,22 +154,21 @@ private fun ThresholdRow(title: String, help: String, value: Int, onChange: (Int
                 Text(text = title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
                 Text(text = help, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(
-                text = thresholdLabel(value),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            THRESHOLD_CHOICES.forEach { choice ->
-                DropdownMenuItem(
-                    text = { Text(thresholdLabel(choice)) },
-                    trailingIcon = { if (choice == value) Icon(Icons.Filled.Check, contentDescription = null) },
-                    onClick = {
-                        open = false
-                        onChange(choice)
-                    },
+            // The menu hangs from the value on the right, where the eye is, not from the row's left edge.
+            Box {
+                Text(
+                    text = thresholdLabel(value),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                VibeyFinMenu(expanded = open, onDismiss = { open = false }) {
+                    THRESHOLD_CHOICES.forEach { choice ->
+                        VibeyFinMenuItem(thresholdLabel(choice), if (choice == value) Icons.Filled.Check else null) {
+                            open = false
+                            onChange(choice)
+                        }
+                    }
+                }
             }
         }
     }
