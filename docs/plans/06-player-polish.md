@@ -10,6 +10,11 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-20-player-polish-design.md` (read it with this plan). Project plans live in `docs/plans/` (CLAUDE.md), so this is plan 06, not under `docs/superpowers/plans/`.
 
+**Status (2026-10-21):** Phases A to H are built on `feature/player-polish`, rebased onto Phase 2. Android is verified on an emulator
+against the Task 1 test server; iOS is built and was driven on the simulator for Home, speed, the badge, the still-watching
+prompt and its setting, but PiP, the stats overlay, skip, scrub previews and the mini player were **not** seen running on iOS
+(see "What was left out"). No real device was used on either platform.
+
 ## Global Constraints
 
 - Phase order: **one phase at a time; build, test, summarise, stop for review** (CLAUDE.md). `./gradlew :shared:allTests` and `./gradlew :androidApp:assembleDebug` pass before a phase is done. iOS is built in Xcode and run on the simulator; say plainly what was only compiled.
@@ -315,3 +320,56 @@ The per-profile `allowTranscoding` flag is scrapped everywhere: no other Jellyfi
 3. Make Phase 2's auto-advance countdown check `BingeCounter.shouldAsk(threshold)` first; confirm their countdown is not in `PlaybackUiState`.
 4. Reconcile the `PlaybackViewModel` stop path (Task 13) with Phase 2's pending-record write; re-run `PlaybackViewModelTest`.
 5. Re-run the binge flow end to end on the Task 1 server and update the "unverified" notes.
+
+---
+
+## What was built (2026-10-21)
+
+- **Foundations (A):** stream, trickplay and segment DTOs and calls; per-profile `showPlaybackStats` and `bingeThreshold`
+  columns (schema v4 after the rebase); `BingeCounter` and `NowPlaying` as Koin singles; the local test server
+  (`scripts/test-server/`, `docs/test-server.md`) with chapters, segments, trickplay, HDR10 media and four episodes.
+- **Stats overlay (B):** `PlaybackDiagnostics` (plan values plus what each player measures), an overlay on both platforms behind
+  a per-profile setting. The per-profile `allowTranscoding` setting was removed (owner decision, Task 6c).
+- **Skip intro and credits (C), trickplay (D):** segments in `PlaybackUiState.skipOffer` with a skip button that never
+  auto-skips; scrub previews cut out of the server's tiles with a bounded tile cache (Android) and off-main decoding (iOS).
+- **Speed and badge (E):** six speeds, kept across a retry and reset for a new item; one format badge (Dolby Vision, HDR10, HLG,
+  4K, HD) on the item page and in the player.
+- **PiP, `Stopped`, mini player groundwork (F):** entering PiP is not backgrounding (the session carries on; closing the window
+  sends one `Stopped`, expanding sends nothing); `media3-session` and a `MediaSession` on Android; PiP on the `AVPlayerLayer` and
+  now-playing info on iOS; a PiP button in the player on both platforms (hidden where the device has no PiP); `MiniPlayerView` and
+  `NowPlayingModel` built but not mounted.
+- **"Are you still watching?" (G):** redesigned around Phase 2's countdown, which lives in `PlaybackViewModel`: a countdown that
+  runs out counts as an auto advance, any input resets the count, and at the threshold the prompt replaces the card and pauses the
+  video. `NextUpSource` was deleted. Settings pickers (Off, 2 to 5) on both platforms.
+- **HDR (H):** `PlaybackStream.dynamicRange`; Android draws HDR and Dolby Vision on a `SurfaceView` layout and keeps the
+  `TextureView` (and plan 03's transition) for SDR; iOS has nothing defeating AVPlayer's HDR and logs what the display offers.
+
+## What was left out
+
+- **Real HDR output:** neither simulator reports an HDR display (Android: `display HDR: none`, iOS: `display HDR: none`), so only
+  the choice of layout and that playback works were checked.
+- **Mini player (iOS):** not mounted; finished when the app's tab bar mounts it in `.tabViewBottomAccessory`, it is checked on the
+  simulator, and play and pause reach the player (`NowPlaying` has state and a restore request but no command yet).
+  Android has no in-app mini player by decision (PiP and the media notification only).
+- **iOS PiP:** the simulator reports PiP as unsupported, so the PiP button is hidden there and nothing of it ran. The delegate wiring,
+  automatic start, close sending one `Stopped` and tap-to-restore are unverified.
+- **Android notification below Android 13:** the `MediaSession` has no foreground service, so the media controls rely on the system
+  drawing them from the session (Android 13 and later). Hardware media keys and the PiP window's controls work (checked).
+- **Android still-watching prompt:** the Settings picker was seen; the prompt itself was not (the emulator lost its connection to
+  the server mid-run). The same logic is covered by the shared tests and was seen end to end on iOS.
+- **iOS, not seen running:** stats overlay, skip button, scrub previews, trickplay fallbacks. Built, and the shared logic is tested.
+- **iOS remote controls:** play and pause from the lock screen or the PiP window do not reset the still-watching count (Android
+  counts media-key and notification controls as input).
+- **Test coverage gaps:** no Room migration test (`MigrationTestHelper` would be a new dependency); `StatsFeed` and the iOS
+  `PlayerController` have no unit tests.
+- **Deferred review minors:** `TrickplayInfoDto` fields lack defaults (a malformed entry fails the whole `/Items` decode);
+  `trickplay()` refetches the item; plan-side codec, size and bitrate are the source's until live values arrive on a transcode; the
+  paused buffer figure on iOS goes stale; the stats tick throttle and the 72 dp overlay inset are hand-picked; the skip button's lift
+  constants are hand-picked (check landscape and Dynamic Type); the speed sheet opens full height in landscape on Android;
+  `serverWithSegments` in the tests uses a 200 ms real-time spin; the iOS still-watching buttons differ slightly in height and the
+  glass symbols take the accent tint.
+- **Known test flakiness:** `UdpLanDiscoveryTest.aServerHeardSeveralTimesIsReportedOnce`, `AppModuleTest` on the iOS simulator target
+  ("no such table: servers") and one JVM crash in `:shared:allTests` each failed once and passed on a rerun.
+- **Seen, not part of this plan:** the server logs a `stopped playback at 0ms` and a second `started playback` right after each play
+  begins (the player renegotiates its first stream).
+- **Rebase checklist:** done after Phase 2 landed, with the Phase G redesign above in place of items 2, 3 and 5.
