@@ -255,6 +255,7 @@ The per-profile `allowTranscoding` flag is scrapped everywhere: no other Jellyfi
 - [ ] **Step 3: Verify (simulator):** PiP starts on leaving the app, stays alive, close sends one `Stopped`, tap restores; the mini player renders in its preview only. Report it as "built, not verified in place".
 - [ ] **Step 4:** Add to the roadmap and this plan: the mini player is finished when the tab bar mounts it (`.tabViewBottomAccessory`) and it is checked on the simulator; whoever builds the tab bar owns that.
 - [ ] **Step 5: Commit:** `feat: add picture-in-picture on iOS`; `feat: add mini player view (not mounted)`.
+- Done (Phase F): the mini player (`MiniPlayerView`, `NowPlayingModel`) is **not finished** until the tab bar mounts it with `.tabViewBottomAccessory`, it is checked on the simulator, and play and pause reach the player (`NowPlaying` carries state and the restore request, no command yet). Whoever builds the tab bar owns that (also in `docs/ROADMAP.md`).
 
 **Phase F done when:** tests pass, both verified as above; stop for review.
 

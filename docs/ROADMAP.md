@@ -127,6 +127,9 @@ _Exit: finish an episode on one device, resume on another._
   (`docs/design/ios.md`); below iOS 26 it is PiP only. **Open question:** `docs/design/android.md` has
   PiP and the `MediaSession` notification but no mini player; decide whether Android gets an in-app
   bar above the `NavigationBar` or stops at PiP and the notification
+  **The iOS mini player is built but not mounted** (`MiniPlayerView`, fed by `NowPlayingModel`): the app has
+  no tab bar yet. It is finished when the tab bar mounts it with `.tabViewBottomAccessory` and it is
+  checked on the simulator, with a play and pause command from it to the player; whoever builds the tab bar owns that.
 - [ ] HDR and format badge on the detail page and in the player, from `MediaStreams`
   (`VideoRangeType`, codec, resolution)
 
