@@ -3,6 +3,7 @@ package com.liamgleeson.vibeyfin.app.player
 import android.net.Uri
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.exoplayer.ExoPlayer
 import com.liamgleeson.vibeyfin.domain.SubtitleFile
@@ -17,9 +18,10 @@ private fun subtitleId(index: Int) = "vibeyfin-subtitle-$index"
  * The stream as a Media3 item. Every subtitle the server sends as a file goes in with the video and
  * none is shown yet: [applyTrackSelection] picks one, and switching later needs no new item.
  */
-fun PlaybackStream.toMediaItem(): MediaItem =
+fun PlaybackStream.toMediaItem(title: String? = null, subtitle: String? = null): MediaItem =
     MediaItem.Builder()
         .setUri(url)
+        .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setSubtitle(subtitle).build())
         .setSubtitleConfigurations(subtitleFiles.map { it.toConfiguration() })
         .build()
 

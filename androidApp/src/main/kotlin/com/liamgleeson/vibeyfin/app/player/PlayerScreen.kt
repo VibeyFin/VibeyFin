@@ -207,7 +207,7 @@ fun PlayerRoute(
             player.stop()
         } else {
             Log.d(TIMING_TAG, "stream ready ${SystemClock.elapsedRealtime() - openedAt} ms after the screen opened (negotiation done)")
-            open(player, http, stream)
+            open(player, http, stream, state.title, state.subtitle)
             viewModel.onPlaying(stream.startPositionMs)
         }
     }
@@ -269,15 +269,41 @@ fun PlayerRoute(
         }
     }
 
+    rememberPlayerSession(player)
+
+    // Leaving the app turns the screen into a picture-in-picture window while something plays. The video
+    // carries on and so does the session; closing the window ends it, expanding it brings the screen back.
+    val videoRatio = state.diagnostics?.let { d -> if ((d.width ?: 0) > 0 && (d.height ?: 0) > 0) d.width!!.toFloat() / d.height!! else null } ?: (16f / 9f)
+    val pip = rememberPlayerPip(
+        enabled = state.stream != null && state.message == null && !leaving,
+        aspectRatio = videoRatio,
+        onEntered = { viewModel.onEnteredPictureInPicture(player.currentPosition) },
+        onLeft = { closed ->
+            viewModel.onLeftPictureInPicture(player.currentPosition, closed)
+            if (closed) {
+                // The session is over; the screen goes with the window.
+                leaving = true
+                player.stop()
+            }
+        },
+    )
+    // The video ended in the window: there is nothing left to show in it, so it goes away.
+    LaunchedEffect(state.finished, pip.active) {
+        if (state.finished && pip.active) context.findActivity()?.moveTaskToBack(true)
+    }
+
     // Leaving the app pauses the video and tells the server it stopped; the user plays on when back.
     // ON_PAUSE, not ON_STOP: the stop can arrive seconds late, and by then the video surface is gone
     // and a player still decoding into it fails.
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
+        // Not while it turns into a picture-in-picture window, which plays on.
+        if (context.findActivity()?.isInPictureInPictureMode == true) return@LifecycleEventEffect
         player.pause()
         viewModel.onBackgrounded(player.currentPosition)
     }
 
     var controlsVisible by remember { mutableStateOf(true) }
+    LaunchedEffect(pip.active) { if (pip.active) controlsVisible = false }
     var interactions by remember { mutableIntStateOf(0) }
     var scrubbing by remember { mutableStateOf(false) }
     val screenReaderOn = remember(context) {
@@ -310,7 +336,7 @@ fun PlayerRoute(
                 }
             },
         )
-        if (!leaving) {
+        if (!leaving && !pip.active) {
             AnimatedVisibility(visible = controlsVisible || state.message != null, enter = fadeIn(), exit = fadeOut()) {
                 PlayerControls(
                     title = state.title,
@@ -345,7 +371,7 @@ fun PlayerRoute(
         // Stays up when the controls hide, but not under an error, which fills the same part of the screen.
         // It takes no touches, so taps still reach the player.
         val diagnostics = state.diagnostics
-        if (!leaving && state.showDiagnostics && diagnostics != null && state.message == null) {
+        if (!leaving && !pip.active && state.showDiagnostics && diagnostics != null && state.message == null) {
             StatsOverlay(
                 diagnostics,
                 Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(start = screenMargin(), top = STATS_TOP_INSET),
@@ -353,7 +379,7 @@ fun PlayerRoute(
         }
         // Offered for the whole segment, controls up or not; above the scrubber while that shows.
         val skip = state.skipOffer
-        if (!leaving && skip != null && state.message == null) {
+        if (!leaving && !pip.active && skip != null && state.message == null) {
             val lift by animateDpAsState(if (controlsVisible) SKIP_LIFT_WITH_CONTROLS else 0.dp, label = "skipLift")
             SkipButton(
                 label = skip.label,
@@ -364,7 +390,7 @@ fun PlayerRoute(
         if (!leaving && (state.loading || (buffering && state.stream != null))) {
             CircularProgressIndicator(Modifier.align(Alignment.Center), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (showSpeeds && !leaving) {
+        if (showSpeeds && !leaving && !pip.active) {
             SpeedSheet(
                 speeds = state.speeds.mapIndexed { index, speed -> TrackOption(index, Strings.speedValue(speed), speed == state.speed) },
                 onSelect = {
@@ -374,7 +400,7 @@ fun PlayerRoute(
                 onDismiss = { showSpeeds = false },
             )
         }
-        if (showTracks && !leaving) {
+        if (showTracks && !leaving && !pip.active) {
             TrackSheet(
                 audio = state.audioTracks,
                 subtitles = state.subtitleTracks,
@@ -395,7 +421,7 @@ fun PlayerRoute(
         var lastUpNext by remember { mutableStateOf<UpNext?>(null) }
         state.upNext?.let { lastUpNext = it }
         AnimatedVisibility(
-            visible = state.upNext != null && !leaving && state.message == null,
+            visible = state.upNext != null && !leaving && !pip.active && state.message == null,
             enter = scaleIn(tween(UP_NEXT_MS), initialScale = UP_NEXT_START_SCALE) + fadeIn(tween(UP_NEXT_MS)),
             exit = scaleOut(tween(UP_NEXT_EXIT_MS), targetScale = UP_NEXT_START_SCALE) + fadeOut(tween(UP_NEXT_EXIT_MS)),
             modifier = Modifier.align(Alignment.BottomEnd).safeDrawingPadding().padding(end = screenMargin(), bottom = 72.dp),
@@ -496,10 +522,10 @@ private fun buildPlayer(context: Context, http: DefaultHttpDataSource.Factory): 
         }
 
 @androidx.annotation.OptIn(UnstableApi::class)
-private fun open(player: ExoPlayer, http: DefaultHttpDataSource.Factory, stream: PlaybackStream) {
+private fun open(player: ExoPlayer, http: DefaultHttpDataSource.Factory, stream: PlaybackStream, title: String, subtitle: String?) {
     // The factory is read when the player opens the URL, so the headers go in before the item does.
     http.setDefaultRequestProperties(stream.headers)
-    player.setMediaItem(stream.toMediaItem(), stream.startPositionMs)
+    player.setMediaItem(stream.toMediaItem(title, subtitle), stream.startPositionMs)
     player.prepare()
     player.playWhenReady = true
 }
@@ -573,7 +599,7 @@ private fun rememberPlayerWindow(): PlayerWindow? {
 /** Tablets keep the orientation they are held in. */
 private const val TABLET_WIDTH_DP = 600
 
-private tailrec fun Context.findActivity(): Activity? = when (this) {
+internal tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null
