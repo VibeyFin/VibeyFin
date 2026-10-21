@@ -2,6 +2,8 @@
 # Generates test media with the ffmpeg inside the Jellyfin image (nothing needed on the host).
 #   shows/Test Show/Season 01/Test Show S01E01.mkv   3 min, chapters Intro 0:10-0:40, Credits 2:30-end
 #   shows/Test Show/Season 01/Test Show S01E02.mkv   second episode, same chapters
+#   shows/Test Show/Season 01/Test Show S01E03.mkv   third and fourth: with "After 2 episodes" the still-watching
+#   shows/Test Show/Season 01/Test Show S01E04.mkv   prompt appears in the third, because a fourth follows it
 #   movies/HDR Sample (2026)/HDR Sample (2026).mkv   20 s HEVC HDR10 (10-bit, bt2020 / smpte2084)
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
@@ -50,6 +52,8 @@ episode() { # $1 = output file name, $2 = test pattern
 }
 episode "Test Show S01E01.mkv" testsrc2
 episode "Test Show S01E02.mkv" smptebars
+episode "Test Show S01E03.mkv" rgbtestsrc
+episode "Test Show S01E04.mkv" smptehdbars
 
 if [ ! -f "${HDR_DIR}/HDR Sample (2026).mkv" ]; then
   ff -f lavfi -i "testsrc2=size=1280x720:rate=24:duration=20,format=yuv420p10le,setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc:range=tv" \
