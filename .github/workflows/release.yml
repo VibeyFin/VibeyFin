@@ -38,11 +38,11 @@ jobs:
             -PversionName="$VERSION" -PversionCode="${{ github.run_number }}"
 
       - name: Create release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          cp androidApp/build/outputs/apk/release/androidApp-release.apk "VibeyFin-${GITHUB_REF_NAME}.apk"
-          FLAGS=""
-          case "$GITHUB_REF_NAME" in *-*) FLAGS="--prerelease" ;; esac
-          gh release create "$GITHUB_REF_NAME" "VibeyFin-${GITHUB_REF_NAME}.apk" \
-            --title "$GITHUB_REF_NAME" --generate-notes $FLAGS
+        uses: ncipollo/release-action@v1.20.0
+        with:
+          artifacts: androidApp/build/outputs/apk/release/androidApp-release.apk
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generateReleaseNotes: true
+          allowUpdates: true
+          removeArtifacts: true
+          replacesArtifacts: true
