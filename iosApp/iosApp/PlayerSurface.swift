@@ -6,6 +6,8 @@ import UIKit
 /// scrims) is SwiftUI in `PlayerView`.
 struct PlayerSurface: UIViewRepresentable {
     let player: AVPlayer
+    /// Hands over the video's layer once, for picture-in-picture.
+    var onLayer: (AVPlayerLayer) -> Void = { _ in }
 
     func makeUIView(context: Context) -> PlayerLayerView {
         let view = PlayerLayerView()
@@ -14,6 +16,7 @@ struct PlayerSurface: UIViewRepresentable {
         view.backgroundColor = .systemBackground
         // The controls carry the accessibility; the picture is not an element of its own.
         view.isAccessibilityElement = false
+        onLayer(view.playerLayer)
         return view
     }
 

@@ -23,17 +23,18 @@ struct SettingsView: View {
                 }
                 .tint(Color(.label))
                 if model.state?.hasProfile == true {
-                    Toggle(isOn: allowTranscoding) {
+                    Toggle(isOn: showPlaybackStats) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(Strings.shared.allowTranscodingTitle)
+                            Text(Strings.shared.playbackStatsTitle)
                                 .font(.headline)
                                 .foregroundStyle(.primary)
-                            Text(Strings.shared.allowTranscodingHelp)
+                            Text(Strings.shared.playbackStatsHelp)
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
                     }
                     .tint(Color(.label))
+                    bingeThresholdRow
                 }
                 Spacer()
             }
@@ -48,10 +49,39 @@ struct SettingsView: View {
         .toolbarRole(.editor)
     }
 
-    private var allowTranscoding: Binding<Bool> {
+    /// Off, or after 2 to 5 episodes in a row, as a menu on the row.
+    private var bingeThresholdRow: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Strings.shared.stillWatchingTitle)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text(Strings.shared.stillWatchingHelp)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: Space.s3)
+            Picker(Strings.shared.stillWatchingTitle, selection: bingeThreshold) {
+                ForEach([0, 2, 3, 4, 5] as [Int32], id: \.self) { choice in
+                    Text(choice == 0 ? Strings.shared.stillWatchingOff : Strings.shared.stillWatchingAfter(n: choice)).tag(choice)
+                }
+            }
+            .pickerStyle(.menu)
+            .tint(Color(.secondaryLabel))
+        }
+    }
+
+    private var bingeThreshold: Binding<Int32> {
         Binding(
-            get: { model.state?.allowTranscoding ?? false },
-            set: { model.setAllowTranscoding($0) }
+            get: { model.state?.bingeThreshold ?? 3 },
+            set: { model.setBingeThreshold($0) }
+        )
+    }
+
+    private var showPlaybackStats: Binding<Bool> {
+        Binding(
+            get: { model.state?.showPlaybackStats ?? false },
+            set: { model.setShowPlaybackStats($0) }
         )
     }
 

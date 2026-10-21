@@ -1,5 +1,6 @@
 import Shared
 import SwiftUI
+import UIKit
 
 /// The symbol of a round player control, sized to touch and growing with Dynamic Type. Before iOS 26
 /// it sits on a scrim disc; on iOS 26 the glass button style draws the disc.
@@ -105,6 +106,78 @@ struct PlayerTrackMenu: View {
     }
 }
 
+/// The playback speed: a capsule button with the current speed that opens a menu of the speeds. The
+/// labels are the shared model's own wording; only the section title is set here.
+struct PlayerSpeedMenu: View {
+    let speeds: [Float]
+    let selected: Float
+    let onSelect: (Float) -> Void
+    /// See `PlayerTrackMenu.onTouch`.
+    var onTouch: () -> Void = {}
+
+    var body: some View {
+        Menu {
+            Picker(
+                Strings.shared.speed.titleCased(),
+                selection: Binding(get: { selected }, set: onSelect)
+            ) {
+                ForEach(speeds, id: \.self) { speed in
+                    Text(Strings.shared.speedValue(speed: speed)).tag(speed)
+                }
+            }
+        } label: {
+            Text(Strings.shared.speedValue(speed: selected))
+                .font(.subheadline.weight(.semibold).monospacedDigit())
+                .foregroundStyle(.primary)
+                .padding(.horizontal, Space.s3)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Capsule())
+                .modifier(CapsuleBackdrop())
+        }
+        .modifier(PlayerCapsuleStyle())
+        .simultaneousGesture(TapGesture().onEnded(onTouch))
+        .accessibilityLabel(Strings.shared.labelled(label: Strings.shared.speed, value: Strings.shared.speedValue(speed: selected)))
+    }
+}
+
+/// The scrim behind a capsule control before iOS 26, where the glass style draws its own.
+private struct CapsuleBackdrop: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+        } else {
+            content.background(Capsule().fill(Brand.scrim))
+        }
+    }
+}
+
+private struct PlayerCapsuleStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .buttonStyle(.glass)
+                .buttonBorderShape(.capsule)
+        } else {
+            content.buttonStyle(PressableButtonStyle())
+        }
+    }
+}
+
+/// The picture's one badge ("4K", "HDR10"), on the scrim so it reads over any video.
+struct FormatBadge: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, Space.s2)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(Brand.scrim))
+            .accessibilityLabel(text)
+    }
+}
+
 /// Groups the player's glass controls so they blend and share one render pass on iOS 26. Before
 /// that there is nothing to group.
 struct PlayerGlassGroup<Content: View>: View {
@@ -131,8 +204,11 @@ struct PlayerScrubber: View {
     let onCommit: (TimeInterval) -> Void
     /// A step of a VoiceOver swipe up or down on the scrubber.
     var accessibilityStep: TimeInterval = 10
+    /// The thumbnails to preview while dragging; nil shows the timestamp alone.
+    var trickplay: TrickplayTiles?
 
     @State private var isDragging = false
+    @State private var thumbnail: UIImage?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -159,6 +235,17 @@ struct PlayerScrubber: View {
             )
         }
         .frame(height: 44)
+        .overlay(alignment: .topLeading) { preview }
+        .task(id: PreviewKey(dragging: isDragging, second: position.isFinite ? Int(position) : 0)) {
+            guard isDragging, let trickplay else {
+                thumbnail = nil
+                return
+            }
+            let image = await trickplay.thumbnail(atMs: PlayerTime.milliseconds(position))
+            // A newer drag position has cancelled this task; its answer must not replace the newer one.
+            guard !Task.isCancelled else { return }
+            thumbnail = image
+        }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: isDragging)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Strings.shared.playbackPosition)
@@ -171,6 +258,26 @@ struct PlayerScrubber: View {
             case .increment: onCommit(min(position + accessibilityStep, duration))
             case .decrement: onCommit(max(position - accessibilityStep, 0))
             @unknown default: break
+            }
+        }
+    }
+
+    private struct PreviewKey: Equatable {
+        let dragging: Bool
+        let second: Int
+    }
+
+    /// Above the bar, centred on the finger but kept inside the bar's width so it never leaves the screen.
+    @ViewBuilder private var preview: some View {
+        if isDragging, let thumbnail, duration > 0 {
+            GeometryReader { geometry in
+                let width = geometry.size.width
+                let fraction = min(max(position / duration, 0), 1)
+                let x = min(max(width * fraction - ScrubPreview.width / 2, 0), max(width - ScrubPreview.width, 0))
+                ScrubPreview(thumbnail: thumbnail, time: Strings.shared.clock(milliseconds: PlayerTime.milliseconds(position)))
+                    .alignmentGuide(.top) { $0[.bottom] }
+                    .offset(x: x)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
     }

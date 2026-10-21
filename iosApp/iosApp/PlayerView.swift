@@ -7,6 +7,7 @@ import UIKit
 struct PlayerView: View {
     @StateObject private var model: PlaybackObservable
     @StateObject private var controller = PlayerController()
+    @StateObject private var pip = PlayerPictureInPicture()
 
     /// Called when the session ended and the player has closed.
     let onExit: (HomeExit) -> Void
@@ -19,9 +20,19 @@ struct PlayerView: View {
     /// The second under the finger while the scrubber is dragged.
     @State private var scrubPosition: TimeInterval?
     @State private var hideTask: Task<Void, Never>?
+    /// The video was playing when "Are you still watching?" paused it.
+    @State private var pausedForPrompt = false
+    /// The skip seek handed to the player last, until the model's state has cleared it.
+    @State private var lastSkipSeekMs: Int64?
+    /// The scrub-preview tiles of the playing item; a new item gets its own, which drops the old cache.
+    @State private var trickplayTiles: TrickplayTiles?
+    /// Going to the background, held back while automatic picture-in-picture may still announce itself.
+    @State private var pendingBackground: Task<Void, Never>?
 
     /// How long the controls stay after the last touch while playing.
     private let hideDelay: UInt64 = 3_000_000_000
+    /// How long the background waits for automatic picture-in-picture to start before it pauses.
+    private let pictureInPictureGrace: UInt64 = 500_000_000
 
     /// Resumes where the server says the user stopped, unless `startOver`.
     init(itemId: String, startOver: Bool = false, onExit: @escaping (HomeExit) -> Void) {
@@ -37,7 +48,7 @@ struct PlayerView: View {
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
-            PlayerSurface(player: controller.player).ignoresSafeArea()
+            PlayerSurface(player: controller.player, onLayer: { pip.attach(to: $0) }).ignoresSafeArea()
             // A touch anywhere on the video shows or hides the controls.
             Color.clear
                 .contentShape(Rectangle())
@@ -55,6 +66,21 @@ struct PlayerView: View {
                     controls
                         .transition(.opacity)
                 }
+                // Offered for the whole segment, controls up or not; above the scrubber while that shows.
+                if let offer = state?.skipOffer {
+                    skipButton(offer)
+                }
+                // Stays up when the controls hide; an error fills the same part of the screen.
+                if state?.showDiagnostics == true, let diagnostics = state?.diagnostics {
+                    statsOverlay(diagnostics)
+                }
+            }
+            if state?.stillWatching == true {
+                StillWatchingPrompt(
+                    onContinue: { model.continueWatching() },
+                    onStop: { model.stopWatching() }
+                )
+                .transition(.opacity)
             }
             // The next episode, in the last seconds of this one, whether or not the controls are up.
             if let upNext = state?.upNext, state?.message == nil {
@@ -75,13 +101,16 @@ struct PlayerView: View {
         .persistentSystemOverlays(controlsVisible ? .automatic : .hidden)
         .onAppear {
             bindPlayer()
+            bindPictureInPicture()
             model.start()
             controller.activateAudioSession()
             OrientationLock.lockLandscape()
         }
         .onDisappear {
             hideTask?.cancel()
-            controller.tearDown()
+            pendingBackground?.cancel()
+            // The window plays on without this screen being visible; it is torn down when the window closes.
+            if !pip.isActive { controller.tearDown() }
             OrientationLock.restore()
         }
         .onReceive(model.$state) { state in
@@ -90,7 +119,25 @@ struct PlayerView: View {
             } else if state?.message != nil {
                 controller.clear()
             }
+            // A skip: the shared model asks for a seek. It goes through the same path as the scrubber, so
+            // the player's seek callback reports it to the server.
+            // Each request is acted on once: a state that arrives before the model has cleared it carries
+            // the same value again, which is skipped.
+            if let seekTo = state?.pendingSeekMs?.int64Value {
+                if seekTo != lastSkipSeekMs {
+                    lastSkipSeekMs = seekTo
+                    controller.seek(to: TimeInterval(seekTo) / 1000)
+                    model.seekHandled()
+                }
+            } else {
+                lastSkipSeekMs = nil
+            }
+            updateTrickplay(state)
             controller.wantAudio(audioChoice(in: state))
+            controller.wantDiagnostics(state?.showDiagnostics == true)
+            controller.setSpeed(state?.speed ?? 1)
+            applyStillWatching(state?.stillWatching == true)
+            controller.setNowPlaying(title: state?.title, subtitle: state?.subtitle)
         }
         .onChange(of: controller.isPlaying) { isPlaying in
             if isPlaying {
@@ -104,18 +151,35 @@ struct PlayerView: View {
         .onChange(of: scenePhase) { phase in
             // The home screen or the lock button: the video stops and the server is told. Only the
             // background counts; a pulled-down notification centre is `.inactive` and playback goes on.
-            if phase == .background {
-                controller.pause()
-                model.backgrounded(controller.currentMilliseconds)
+            if phase == .background && !pip.isActive {
+                if pip.mayStartAutomatically(whilePlaying: controller.isPlaying) {
+                    // Automatic picture-in-picture may announce itself just before or just after the
+                    // background (the order isn't documented), so the pause waits for it a moment.
+                    pendingBackground?.cancel()
+                    pendingBackground = Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: pictureInPictureGrace)
+                        guard !Task.isCancelled else { return }
+                        pendingBackground = nil
+                        if !pip.isActive && UIApplication.shared.applicationState == .background { leaveForBackground() }
+                    }
+                } else {
+                    leaveForBackground()
+                }
             } else if phase == .active {
+                pendingBackground?.cancel()
+                pendingBackground = nil
                 showControls()
             }
         }
         .onChange(of: model.state?.finished == true) { finished in
-            if finished { dismiss() }
+            if finished {
+                pip.stop()
+                dismiss()
+            }
         }
         .onChange(of: model.state?.exit != nil) { hasExit in
             if hasExit, let exit = model.state?.exit {
+                pip.stop()
                 dismiss()
                 onExit(exit)
             }
@@ -139,7 +203,10 @@ struct PlayerView: View {
                             systemName: controller.isPlaying ? "pause.fill" : "play.fill",
                             label: controller.isPlaying ? Strings.shared.pause : Strings.shared.play,
                             font: .largeTitle,
-                            action: { controller.togglePlayPause() }
+                            action: {
+                                model.userInteraction()
+                                controller.togglePlayPause()
+                            }
                         )
                     }
                 }
@@ -181,6 +248,33 @@ struct PlayerView: View {
             }
             .padding(.top, Space.s1)
             Spacer(minLength: 0)
+            if let badge = state?.badge {
+                FormatBadge(text: badge).padding(.top, Space.s1)
+            }
+            if let state {
+                PlayerSpeedMenu(
+                    speeds: state.speeds.map { $0.floatValue },
+                    selected: state.speed,
+                    onSelect: { speed in
+                        model.selectSpeed(speed)
+                        scheduleHide()
+                    },
+                    onTouch: {
+                        model.userInteraction()
+                        hideTask?.cancel()
+                    }
+                )
+            }
+            if pip.isSupported {
+                PlayerIconButton(
+                    systemName: "pip.enter",
+                    label: Strings.shared.pictureInPicture,
+                    action: {
+                        model.userInteraction()
+                        pip.start()
+                    }
+                )
+            }
             if let state, state.hasTrackChoices {
                 PlayerTrackMenu(
                     audio: state.audioTracks,
@@ -193,10 +287,23 @@ struct PlayerView: View {
                         model.selectSubtitle(index)
                         scheduleHide()
                     },
-                    onTouch: { hideTask?.cancel() }
+                    onTouch: {
+                        model.userInteraction()
+                        hideTask?.cancel()
+                    }
                 )
             }
         }
+    }
+
+    /// A new item's trickplay gets new tiles, so the previous episode's thumbnails never show; none clears them.
+    private func updateTrickplay(_ state: PlaybackUiState?) {
+        guard let track = state?.trickplay, !track.tilesUrl.isEmpty else {
+            if trickplayTiles != nil { trickplayTiles = nil }
+            return
+        }
+        guard let headers = state?.stream?.headers, trickplayTiles?.isFor(track) != true else { return }
+        trickplayTiles = TrickplayTiles(track: track, headers: headers)
     }
 
     private var bottomBar: some View {
@@ -205,6 +312,7 @@ struct PlayerView: View {
                 position: shownPosition,
                 duration: controller.duration,
                 onScrub: { seconds in
+                    model.userInteraction()
                     scrubPosition = seconds
                     hideTask?.cancel()
                 },
@@ -212,7 +320,8 @@ struct PlayerView: View {
                     scrubPosition = nil
                     controller.seek(to: seconds)
                     scheduleHide()
-                }
+                },
+                trickplay: trickplayTiles
             )
             HStack {
                 Text(Strings.shared.clock(milliseconds: PlayerTime.milliseconds(shownPosition)))
@@ -228,6 +337,33 @@ struct PlayerView: View {
             .monospacedDigit()
             .foregroundStyle(.secondary)
         }
+    }
+
+    /// Top leading, under the close button and title row.
+    private func statsOverlay(_ diagnostics: PlaybackDiagnostics) -> some View {
+        VStack {
+            HStack {
+                StatsOverlay(diagnostics: diagnostics)
+                Spacer(minLength: 0)
+            }
+            Spacer(minLength: 0)
+        }
+        .screenMargin()
+        .padding(.top, Space.s7 + Space.s4)
+        .allowsHitTesting(false)
+    }
+
+    /// Bottom trailing; rises above the scrubber and the times while the controls show.
+    private func skipButton(_ offer: SkipOffer) -> some View {
+        VStack {
+            Spacer(minLength: 0)
+            HStack {
+                Spacer(minLength: 0)
+                SkipButton(label: offer.label) { model.skip() }
+            }
+        }
+        .screenMargin()
+        .padding(.bottom, controlsVisible ? Space.s7 + Space.s6 : Space.s4)
     }
 
     // MARK: - Errors
@@ -263,8 +399,43 @@ struct PlayerView: View {
             seeked: { model.seeked($0) },
             position: { model.position($0) },
             ended: { model.ended($0) },
-            failed: { model.failed($0) }
+            failed: { model.failed($0) },
+            diagnostics: { model.diagnostics($0) }
         )
+    }
+
+    /// "Are you still watching?" pauses the video; "Keep watching" plays on. A pause the viewer made is left alone.
+    private func applyStillWatching(_ asking: Bool) {
+        guard asking != pausedForPrompt else { return }
+        if asking {
+            pausedForPrompt = controller.isPlaying
+            controller.pause()
+        } else if pausedForPrompt {
+            pausedForPrompt = false
+            controller.play()
+        }
+    }
+
+    /// Tells the shared model when the picture-in-picture window starts and how it ends. Dismissing the
+    /// window ends the session, so the screen goes with it; expanding it leaves everything as it is.
+    private func bindPictureInPicture() {
+        pip.entered = { model.enteredPictureInPicture(controller.currentMilliseconds) }
+        pip.left = { closed in
+            model.leftPictureInPicture(controller.currentMilliseconds, closed: closed)
+            if closed { dismiss() }
+        }
+        // The window never came up: the model must stop treating the player as in picture-in-picture,
+        // and if the app already went to the background meanwhile, that is handled now as it would have been.
+        pip.failedToStart = {
+            model.leftPictureInPicture(controller.currentMilliseconds, closed: false)
+            if UIApplication.shared.applicationState == .background { leaveForBackground() }
+        }
+    }
+
+    /// The app went to the background without a picture-in-picture window: the video stops and the server is told.
+    private func leaveForBackground() {
+        controller.pause()
+        model.backgrounded(controller.currentMilliseconds)
     }
 
     /// What the player has to choose itself: the selected audio track of a direct play. The server
@@ -282,6 +453,7 @@ struct PlayerView: View {
     }
 
     private func toggleControls() {
+        model.userInteraction()
         if controlsVisible {
             hideTask?.cancel()
             setControlsVisible(false)

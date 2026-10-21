@@ -52,6 +52,31 @@ final class PlaybackObservable: ObservableObject {
         model.onClosed(positionMs: positionMs)
     }
 
+    /// The picture-in-picture window appeared.
+    func enteredPictureInPicture(_ positionMs: Int64) {
+        model.onEnteredPictureInPicture(positionMs: positionMs)
+    }
+
+    /// It went away: dismissed (`closed`, which ends the session) or expanded back into the app.
+    func leftPictureInPicture(_ positionMs: Int64, closed: Bool) {
+        model.onLeftPictureInPicture(positionMs: positionMs, closed: closed)
+    }
+
+    /// The viewer touched or pressed something: the count towards "Are you still watching?" starts over.
+    func userInteraction() {
+        model.onUserInteraction()
+    }
+
+    /// "Keep watching" on the prompt.
+    func continueWatching() {
+        model.onContinueWatching()
+    }
+
+    /// "Stop watching" on the prompt: the same as closing the player.
+    func stopWatching() {
+        model.onStopWatching()
+    }
+
     /// "Play now" on the next-episode card.
     func playNow() {
         model.onPlayNow()
@@ -66,9 +91,19 @@ final class PlaybackObservable: ObservableObject {
         model.onFailed(failure: failure)
     }
 
+    /// What the player measures about the stream, for the stats overlay.
+    func diagnostics(_ live: LiveDiagnostics) {
+        model.diagnostics(live: live)
+    }
+
     /// Plays the audio track with this `TrackOption.index`.
     func selectAudio(_ index: Int32) {
         model.onSelectAudio(index: index)
+    }
+
+    /// Plays at `speed`, one of the state's `speeds`.
+    func selectSpeed(_ speed: Float) {
+        model.onSelectSpeed(speed: speed)
     }
 
     /// Shows the subtitle track with this `TrackOption.index`; the "Off" row's index turns them off.
@@ -78,6 +113,16 @@ final class PlaybackObservable: ObservableObject {
 
     func retry() {
         model.onRetry()
+    }
+
+    /// The viewer tapped the skip button; the model answers with a seek to the segment's end.
+    func skip() {
+        model.onSkip()
+    }
+
+    /// The seek the model asked for has been handed to the player.
+    func seekHandled() {
+        model.onSeekHandled()
     }
 
     deinit {

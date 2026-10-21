@@ -1,5 +1,6 @@
 package com.liamgleeson.vibeyfin.ios
 
+import com.liamgleeson.vibeyfin.domain.LiveDiagnostics
 import com.liamgleeson.vibeyfin.ui.playback.PlaybackFailure
 import com.liamgleeson.vibeyfin.ui.playback.PlaybackUiState
 import com.liamgleeson.vibeyfin.ui.playback.PlaybackViewModel
@@ -25,11 +26,20 @@ class PlaybackModel(itemId: String, startOver: Boolean) {
 
     fun onPosition(positionMs: Long) = host.viewModel.onPosition(positionMs)
 
+    fun onSkip() = host.viewModel.onSkip()
+
+    fun onSeekHandled() = host.viewModel.onSeekHandled()
+
     fun onEnded(positionMs: Long) = host.viewModel.onEnded(positionMs)
 
     fun onBackgrounded(positionMs: Long) = host.viewModel.onBackgrounded(positionMs)
 
     fun onClosed(positionMs: Long) = host.viewModel.onClosed(positionMs)
+
+    fun onEnteredPictureInPicture(positionMs: Long) = host.viewModel.onEnteredPictureInPicture(positionMs)
+
+    /** [closed]: the window was dismissed (the session ends); otherwise it was expanded back. */
+    fun onLeftPictureInPicture(positionMs: Long, closed: Boolean) = host.viewModel.onLeftPictureInPicture(positionMs, closed)
 
     fun onFailed(failure: PlaybackFailure) = host.viewModel.onFailed(failure)
 
@@ -38,9 +48,19 @@ class PlaybackModel(itemId: String, startOver: Boolean) {
     /** [index] is a track's index, or -1 for no subtitles. */
     fun onSelectSubtitle(index: Int) = host.viewModel.onSelectSubtitle(index)
 
+    fun onSelectSpeed(speed: Float) = host.viewModel.onSelectSpeed(speed)
+
+    fun onUserInteraction() = host.viewModel.onUserInteraction()
+
+    fun onContinueWatching() = host.viewModel.onContinueWatching()
+
+    fun onStopWatching() = host.viewModel.onStopWatching()
+
     fun onPlayNow() = host.viewModel.onPlayNow()
 
     fun onWatchCredits() = host.viewModel.onWatchCredits()
+
+    fun diagnostics(live: LiveDiagnostics) = host.viewModel.onDiagnostics(live)
 
     fun onRetry() = host.viewModel.onRetry()
 

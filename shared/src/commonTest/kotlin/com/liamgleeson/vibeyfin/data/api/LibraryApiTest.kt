@@ -69,7 +69,7 @@ class LibraryApiTest {
         val query = jellyfin.requestsTo("GET", "/Items").single().query
         assertEquals("m1", query["ids"])
         assertEquals("u1", query["userId"])
-        assertEquals("Overview,Genres", query["fields"])
+        assertEquals("Overview,Genres,MediaStreams,Trickplay", query["fields"])
     }
 
     @Test
@@ -82,6 +82,18 @@ class LibraryApiTest {
         assertEquals(emptyList(), item.genres)
         assertEquals(emptyMap(), item.imageTags)
         assertFalse(item.isFolder)
+    }
+
+    @Test
+    fun aPartialTrickplayEntryDoesNotFailTheItem() = runTest {
+        server.on("GET", "/Items", Reply.json("""{"Items":[{"Id":"m1","Trickplay":{"src1":{"320":{"Width":320}}}}]}"""))
+
+        val item = api.itemsById("m1", "u1").success().items.single()
+
+        val info = item.trickplay.getValue("src1").getValue("320")
+        assertEquals(320, info.width)
+        assertEquals(0, info.thumbnailCount)
+        assertEquals(0, info.interval)
     }
 
     @Test

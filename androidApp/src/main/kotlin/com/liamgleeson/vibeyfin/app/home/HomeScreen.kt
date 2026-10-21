@@ -25,10 +25,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -66,6 +68,8 @@ import com.liamgleeson.vibeyfin.app.components.ArtworkTile
 import com.liamgleeson.vibeyfin.app.components.ContinueCard
 import com.liamgleeson.vibeyfin.app.components.ContinueSkeletonCards
 import com.liamgleeson.vibeyfin.app.components.LoadError
+import com.liamgleeson.vibeyfin.app.components.VibeyFinMenu
+import com.liamgleeson.vibeyfin.app.components.VibeyFinMenuItem
 import com.liamgleeson.vibeyfin.app.theme.VibeyFinTokens
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
 import com.liamgleeson.vibeyfin.ui.common.Strings
@@ -329,19 +333,11 @@ private fun ProfileMenu(
                 modifier = Modifier.clearAndSetSemantics { },
             )
         }
-        DropdownMenu(
-            expanded = open,
-            onDismissRequest = { open = false },
-        ) {
-            MenuItem(Strings.switchProfile) { open = false; onSwitchProfile() }
-            MenuItem(Strings.switchServer) { open = false; onSwitchServer() }
-            MenuItem(Strings.settings) { open = false; onSettings() }
-            MenuItem(Strings.signOut) { open = false; onSignOut() }
+        VibeyFinMenu(expanded = open, onDismiss = { open = false }) {
+            VibeyFinMenuItem(Strings.switchProfile, Icons.Filled.Person) { open = false; onSwitchProfile() }
+            VibeyFinMenuItem(Strings.switchServer, Icons.Filled.Refresh) { open = false; onSwitchServer() }
+            VibeyFinMenuItem(Strings.settings, Icons.Filled.Settings) { open = false; onSettings() }
+            VibeyFinMenuItem(Strings.signOut, Icons.AutoMirrored.Filled.ExitToApp) { open = false; onSignOut() }
         }
     }
-}
-
-@Composable
-private fun MenuItem(label: String, onClick: () -> Unit) {
-    DropdownMenuItem(text = { Text(label) }, onClick = onClick)
 }

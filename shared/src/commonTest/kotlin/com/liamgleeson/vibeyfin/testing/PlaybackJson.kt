@@ -17,9 +17,19 @@ fun mediaSourceJson(
     /** What the server says is selected: the user's choice if the request named this source, else its own pick. */
     defaultAudio: Int? = null,
     defaultSubtitle: Int? = null,
+    /** The video stream's picture: size and the server's `VideoRangeType` (`SDR`, `HDR10`, `DOVIWithHDR10`, `HLG`, ...); null leaves it out. */
+    videoWidth: Int? = null,
+    videoHeight: Int? = null,
+    videoRangeType: String? = null,
 ): String {
     fun string(value: String?) = value?.let { "\"$it\"" } ?: "null"
-    val allStreams = listOf("""{"Index":0,"Type":"Video","Codec":"h264"}""") + streams
+    val video = listOfNotNull(
+        """"Index":0,"Type":"Video","Codec":"h264"""",
+        videoWidth?.let { """"Width":$it""" },
+        videoHeight?.let { """"Height":$it""" },
+        videoRangeType?.let { """"VideoRangeType":"$it"""" },
+    ).joinToString(",", "{", "}")
+    val allStreams = listOf(video) + streams
     return """{"Id":"$id","Container":${string(container)},"ETag":${string(etag)},"RunTimeTicks":${runtimeTicks ?: "null"},""" +
         """"SupportsDirectPlay":$directPlay,"SupportsDirectStream":$directStream,"SupportsTranscoding":${transcodingUrl != null},""" +
         """"TranscodingUrl":${string(transcodingUrl)},"TranscodingSubProtocol":${if (transcodingUrl != null) "\"hls\"" else "null"},""" +
@@ -62,3 +72,11 @@ fun playbackInfoJson(vararg sources: String, playSessionId: String? = "ps-1", er
 
 /** The path the server gives for an HLS transcode, as 10.10 does: relative, with its own key. */
 const val HLS_PATH = "/videos/m1/master.m3u8?MediaSourceId=ms-1&PlaySessionId=ps-1&ApiKey=server-key"
+
+/** A `/MediaSegments/{id}` answer. */
+fun segmentsJson(vararg segments: String) =
+    """{"Items":[${segments.joinToString(",")}],"TotalRecordCount":${segments.size},"StartIndex":0}"""
+
+/** One marked segment of "m1", from [startMs] to [endMs]. */
+fun segmentJson(type: String, startMs: Long, endMs: Long) =
+    """{"Id":"s-$type","ItemId":"m1","Type":"$type","StartTicks":${startMs * 10_000},"EndTicks":${endMs * 10_000}}"""

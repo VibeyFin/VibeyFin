@@ -100,11 +100,14 @@ struct ItemView: View {
         Text(item.title)
             .font(.title2.bold())
             .foregroundStyle(.primary)
-        if !facts.isEmpty || state.watched {
+        if !facts.isEmpty || state.watched || state.badge != nil {
             HStack(spacing: Space.s2) {
                 Text(facts.joined(separator: "  ·  "))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                if let badge = state.badge {
+                    FormatBadge(text: badge)
+                }
                 // Watched is an icon, in the secondary ink: aqua never signals status.
                 if state.watched {
                     Image(systemName: "checkmark.circle.fill")

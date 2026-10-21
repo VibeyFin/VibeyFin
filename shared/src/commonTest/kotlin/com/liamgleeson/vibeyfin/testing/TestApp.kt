@@ -5,10 +5,12 @@ import com.liamgleeson.vibeyfin.data.db.VibeyFinDatabase
 import com.liamgleeson.vibeyfin.data.prefs.DataStoreDevicePreferences
 import com.liamgleeson.vibeyfin.domain.AccountRepository
 import com.liamgleeson.vibeyfin.domain.AuthRepository
+import com.liamgleeson.vibeyfin.domain.BingeCounter
 import com.liamgleeson.vibeyfin.domain.ConnectionManager
 import com.liamgleeson.vibeyfin.domain.LibraryRepository
 import com.liamgleeson.vibeyfin.domain.PROGRESS_INTERVAL
 import com.liamgleeson.vibeyfin.domain.PendingReports
+import com.liamgleeson.vibeyfin.domain.NowPlaying
 import com.liamgleeson.vibeyfin.domain.PlaybackRecovery
 import com.liamgleeson.vibeyfin.domain.PlaybackReporter
 import com.liamgleeson.vibeyfin.domain.PlaybackRepository
@@ -49,7 +51,9 @@ class TestApp {
     val watch = WatchRepository(connection, watchChanges)
     val capabilities = FakePlaybackCapabilities()
     val profileSettings = ProfileSettings(database.accountDao(), connection)
-    val playback = PlaybackRepository(connection, capabilities, ClientInfoProvider(FakeDeviceInfo(), preferences), profileSettings)
+    val nowPlaying = NowPlaying()
+    val binge = BingeCounter()
+    val playback = PlaybackRepository(connection, capabilities, ClientInfoProvider(FakeDeviceInfo(), preferences))
 
     val pending = PendingReports(database.pendingReportDao(), clock)
     val recovery = PlaybackRecovery(pending, connection)
@@ -66,14 +70,12 @@ class TestApp {
 
     /**
      * Saves a server and a profile with a session, and signs in as it ("Alex" on "Home", token-1).
-     * The profile allows transcoding unless [allowTranscoding] says otherwise, which is not how a new profile starts.
      */
-    suspend fun signedIn(address: String = "http://nas:8096", allowTranscoding: Boolean = true): FakeServer {
+    suspend fun signedIn(address: String = "http://nas:8096"): FakeServer {
         val server = serverAt(address)
         server.on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex"}"""))
         accounts.saveSession("srv-1", "u1", "Alex", null, "token-1")
         connection.activate("srv-1", "u1")
-        profileSettings.setAllowTranscoding(allowTranscoding)
         return server
     }
 

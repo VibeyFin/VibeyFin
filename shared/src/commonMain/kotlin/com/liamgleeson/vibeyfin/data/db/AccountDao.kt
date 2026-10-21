@@ -25,11 +25,17 @@ abstract class AccountDao {
     @Query("UPDATE accounts SET lastUsedAt = :at WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun markUsed(serverId: String, userId: String, at: Long)
 
-    @Query("SELECT allowTranscoding FROM account_settings WHERE serverId = :serverId AND userId = :userId")
-    abstract fun observeAllowTranscoding(serverId: String, userId: String): Flow<Boolean?>
+    @Query("SELECT showPlaybackStats FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeShowPlaybackStats(serverId: String, userId: String): Flow<Boolean?>
 
-    @Query("UPDATE account_settings SET allowTranscoding = :value WHERE serverId = :serverId AND userId = :userId")
-    abstract suspend fun setAllowTranscoding(serverId: String, userId: String, value: Boolean)
+    @Query("UPDATE account_settings SET showPlaybackStats = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setShowPlaybackStats(serverId: String, userId: String, value: Boolean)
+
+    @Query("SELECT bingeThreshold FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeBingeThreshold(serverId: String, userId: String): Flow<Int?>
+
+    @Query("UPDATE account_settings SET bingeThreshold = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setBingeThreshold(serverId: String, userId: String, value: Int)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract suspend fun insertAccount(account: AccountEntity): Long

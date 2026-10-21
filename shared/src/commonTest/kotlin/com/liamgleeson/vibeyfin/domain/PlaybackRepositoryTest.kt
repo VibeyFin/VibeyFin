@@ -36,8 +36,8 @@ class PlaybackRepositoryTest {
         return (negotiation as? PlaybackNegotiation.Ready)?.plan ?: fail("Expected a plan, got $negotiation")
     }
 
-    private suspend fun answerWith(json: String, allowTranscoding: Boolean = true) {
-        app.signedIn(allowTranscoding = allowTranscoding).on("POST", "/Items/m1/PlaybackInfo", Reply.json(json))
+    private suspend fun answerWith(json: String) {
+        app.signedIn().on("POST", "/Items/m1/PlaybackInfo", Reply.json(json))
     }
 
     private fun requestBody(): JsonObject =
@@ -173,18 +173,40 @@ class PlaybackRepositoryTest {
     }
 
     @Test
-    fun withTranscodingOffAFileThatPlaysAsItIsStillPlays() = runTest {
-        answerWith(playbackInfoJson(mediaSourceJson(container = "mp4", transcodingUrl = HLS_PATH)), allowTranscoding = false)
+    fun `transcodes when the device can't play the file`() = runTest {
+        answerWith(
+            playbackInfoJson(
+                mediaSourceJson(
+                    container = "mkv", directPlay = false, directStream = false,
+                    transcodingUrl = "$HLS_PATH&TranscodeReasons=ContainerNotSupported,VideoCodecNotSupported",
+                ),
+            ),
+        )
+
+        assertEquals(PlayMethod.Transcode, ready().method)
+    }
+
+    @Test
+    fun `transcodes when a subtitle has to be burned in`() = runTest {
+        answerWith(
+            playbackInfoJson(mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = "$HLS_PATH&TranscodeReasons=SubtitleCodecNotSupported")),
+        )
+
+        assertEquals(PlayMethod.Transcode, ready().method)
+    }
+
+    @Test
+    fun `a file that plays as it is still plays directly`() = runTest {
+        answerWith(playbackInfoJson(mediaSourceJson(container = "mp4", transcodingUrl = HLS_PATH)))
 
         assertEquals(PlayMethod.DirectPlay, ready().method)
     }
 
     @Test
-    fun withTranscodingOffARemuxOrAnAudioConversionIsStillTaken() = runTest {
+    fun `a remux or an audio conversion is a direct stream`() = runTest {
         val reasons = "&TranscodeReasons=ContainerNotSupported,AudioCodecNotSupported"
         answerWith(
             playbackInfoJson(mediaSourceJson(container = "mkv", directPlay = false, directStream = true, transcodingUrl = HLS_PATH + reasons)),
-            allowTranscoding = false,
         )
 
         val plan = ready()
@@ -194,44 +216,8 @@ class PlaybackRepositoryTest {
     }
 
     @Test
-    fun withTranscodingOffAStreamThatWouldReencodeTheVideoNeedsTranscoding() = runTest {
-        answerWith(
-            playbackInfoJson(
-                mediaSourceJson(
-                    container = "mkv", directPlay = false, directStream = false,
-                    transcodingUrl = "$HLS_PATH&TranscodeReasons=ContainerNotSupported,VideoCodecNotSupported",
-                ),
-            ),
-            allowTranscoding = false,
-        )
-
-        assertEquals(PlaybackNegotiation.NeedsTranscoding, app.playback.negotiate("m1"))
-    }
-
-    @Test
-    fun withTranscodingOffASubtitleBurnedInCountsAsReencodingTheVideo() = runTest {
-        answerWith(
-            playbackInfoJson(mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = "$HLS_PATH&TranscodeReasons=SubtitleCodecNotSupported")),
-            allowTranscoding = false,
-        )
-
-        assertEquals(PlaybackNegotiation.NeedsTranscoding, app.playback.negotiate("m1"))
-    }
-
-    @Test
-    fun withTranscodingOnAVideoReencodeIsTaken() = runTest {
-        answerWith(
-            playbackInfoJson(
-                mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = "$HLS_PATH&TranscodeReasons=VideoCodecNotSupported"),
-            ),
-        )
-
-        assertEquals(PlayMethod.Transcode, ready().method)
-    }
-
-    @Test
-    fun withTranscodingOffNothingTheServerCanDeliverIsStillNoCompatibleStream() = runTest {
-        answerWith(playbackInfoJson(mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = null)), allowTranscoding = false)
+    fun `nothing the server can deliver is no compatible stream`() = runTest {
+        answerWith(playbackInfoJson(mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = null)))
 
         assertEquals(PlaybackNegotiation.NoCompatibleStream, app.playback.negotiate("m1"))
     }
@@ -362,8 +348,8 @@ class PlaybackRepositoryTest {
 
         assertEquals(
             listOf(
-                PlaybackTrack(1, "English - AAC - Stereo - Default", selected = false),
-                PlaybackTrack(2, "Spanish - AAC - Stereo", selected = true),
+                PlaybackTrack(1, "English - AAC - Stereo - Default", selected = false, codec = "aac"),
+                PlaybackTrack(2, "Spanish - AAC - Stereo", selected = true, codec = "aac"),
             ),
             plan.audioTracks,
         )
@@ -522,5 +508,109 @@ class PlaybackRepositoryTest {
         ready()
 
         assertTrue("SubtitleProfiles" !in requestBody().getValue("DeviceProfile").jsonObject)
+    }
+
+    private suspend fun formatOf(rangeType: String?): VideoFormat =
+        answerWith(playbackInfoJson(mediaSourceJson(videoWidth = 3840, videoHeight = 2160, videoRangeType = rangeType)))
+            .let { ready().videoFormat ?: fail("Expected a video format") }
+
+    @Test
+    fun videoFormatReadsVideoRangeType() = runTest {
+        val format = formatOf("HDR10")
+
+        assertEquals(DynamicRange.Hdr10, format.dynamicRange)
+        assertEquals("h264", format.codec)
+        assertEquals(3840, format.width)
+        assertEquals(2160, format.height)
+    }
+
+    @Test
+    fun videoFormatMapsEveryRangeType() = runTest {
+        val expected = mapOf(
+            "HDR10" to DynamicRange.Hdr10,
+            "HDR10Plus" to DynamicRange.Hdr10,
+            "DOVI" to DynamicRange.DolbyVision,
+            "DOVIWithHDR10" to DynamicRange.DolbyVision,
+            "HLG" to DynamicRange.Hlg,
+            "SDR" to DynamicRange.Sdr,
+            "Unknown" to DynamicRange.Sdr,
+        )
+        for ((wire, range) in expected) {
+            assertEquals(range, formatOf(wire).dynamicRange, wire)
+        }
+    }
+
+    @Test
+    fun videoFormatIsSdrWhenTheServerGivesNoRangeType() = runTest {
+        assertEquals(DynamicRange.Sdr, formatOf(null).dynamicRange)
+    }
+
+    private fun segmentsJson(vararg items: String) =
+        """{"Items":[${items.joinToString(",")}],"TotalRecordCount":${items.size},"StartIndex":0}"""
+
+    private fun segmentJson(type: String, startTicks: Long, endTicks: Long) =
+        """{"Id":"s-$type","ItemId":"m1","Type":"$type","StartTicks":$startTicks,"EndTicks":$endTicks}"""
+
+    @Test
+    fun segmentsAreMappedFromTicks() = runTest {
+        app.signedIn().on(
+            "GET",
+            "/MediaSegments/m1",
+            Reply.json(
+                segmentsJson(
+                    segmentJson("Intro", 10_000_000L, 905_000_000L),
+                    segmentJson("Outro", 54_000_000_000L, 60_000_000_000L),
+                    segmentJson("Mystery", 0L, 10_000_000L),
+                ),
+            ),
+        )
+
+        val segments = app.playback.segments("m1")
+
+        assertEquals(
+            listOf(
+                MediaSegment(SegmentType.Intro, 1_000L, 90_500L),
+                MediaSegment(SegmentType.Outro, 5_400_000L, 6_000_000L),
+                MediaSegment(SegmentType.Unknown, 0L, 1_000L),
+            ),
+            segments,
+        )
+    }
+
+    @Test
+    fun segmentsAreEmptyWhenTheServerAnswers404() = runTest {
+        app.signedIn().on("GET", "/MediaSegments/m1", Reply.status(HttpStatusCode.NotFound))
+
+        assertEquals(emptyList(), app.playback.segments("m1"))
+    }
+
+    private fun trickplayItemJson(trickplay: String) =
+        """{"Items":[{"Id":"m1","Name":"Film","Type":"Movie","Trickplay":$trickplay}],"TotalRecordCount":1,"StartIndex":0}"""
+
+    private fun infoJson(width: Int) =
+        """"$width":{"Width":$width,"Height":${width * 9 / 16},"TileWidth":10,"TileHeight":10,"ThumbnailCount":250,"Interval":10000,"Bandwidth":1}"""
+
+    @Test
+    fun trickplayPicksTheWidthClosestTo320() = runTest {
+        app.signedIn().on(
+            "GET",
+            "/Items",
+            Reply.json(trickplayItemJson("""{"ms-1":{${infoJson(160)},${infoJson(400)},${infoJson(640)}},"ms-2":{${infoJson(320)}}}""")),
+        )
+
+        val track = app.playback.trickplay("m1", "ms-1") ?: fail("Expected a track")
+
+        assertEquals(400, track.width)
+        assertEquals(225, track.thumbHeight)
+        assertEquals("ms-1", track.mediaSourceId)
+        assertEquals(10_000L, track.intervalMs)
+        assertEquals("http://nas:8096/Videos/m1/Trickplay/400/3.jpg?mediaSourceId=ms-1", track.tileUrl(3))
+    }
+
+    @Test
+    fun trickplayIsNullWhenTheSourceHasNone() = runTest {
+        app.signedIn().on("GET", "/Items", Reply.json(trickplayItemJson("""{"ms-2":{${infoJson(320)}}}""")))
+
+        assertEquals(null, app.playback.trickplay("m1", "ms-1"))
     }
 }

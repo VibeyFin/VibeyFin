@@ -3,15 +3,27 @@ package com.liamgleeson.vibeyfin.ui.playback
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liamgleeson.vibeyfin.data.api.ApiResult
+import com.liamgleeson.vibeyfin.domain.BingeCounter
 import com.liamgleeson.vibeyfin.domain.ConnectionManager
+import com.liamgleeson.vibeyfin.domain.DynamicRange
 import com.liamgleeson.vibeyfin.domain.LibraryRepository
+import com.liamgleeson.vibeyfin.domain.LiveDiagnostics
+import com.liamgleeson.vibeyfin.domain.NowPlaying
+import com.liamgleeson.vibeyfin.domain.NowPlayingState
+import com.liamgleeson.vibeyfin.domain.PlaybackDiagnostics
+import com.liamgleeson.vibeyfin.domain.ProfileSettings
+import com.liamgleeson.vibeyfin.domain.toDiagnostics
+import com.liamgleeson.vibeyfin.domain.withLive
 import com.liamgleeson.vibeyfin.domain.PlayMethod
 import com.liamgleeson.vibeyfin.domain.PlaybackNegotiation
 import com.liamgleeson.vibeyfin.domain.PlaybackPlan
 import com.liamgleeson.vibeyfin.domain.PlaybackReporter
 import com.liamgleeson.vibeyfin.domain.PlaybackRepository
+import com.liamgleeson.vibeyfin.domain.MediaSegment
 import com.liamgleeson.vibeyfin.domain.PlaybackTrack
+import com.liamgleeson.vibeyfin.domain.SegmentType
 import com.liamgleeson.vibeyfin.domain.SubtitleFile
+import com.liamgleeson.vibeyfin.domain.TrickplayTrack
 import com.liamgleeson.vibeyfin.domain.WatchRepository
 import com.liamgleeson.vibeyfin.domain.model.ItemKind
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
@@ -19,6 +31,7 @@ import com.liamgleeson.vibeyfin.ui.common.LoadMessages
 import com.liamgleeson.vibeyfin.ui.common.Strings
 import com.liamgleeson.vibeyfin.ui.common.sessionEnded
 import com.liamgleeson.vibeyfin.ui.home.HomeExit
+import com.liamgleeson.vibeyfin.ui.item.badge
 import com.liamgleeson.vibeyfin.ui.item.episodeLabel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -54,6 +67,11 @@ data class PlaybackStream(
      * list, which is the file's order. When false, the server already chose the audio in the stream.
      */
     val audioInPlayer: Boolean = false,
+    /**
+     * The picture's range as the server describes the file. A player that can draw HDR only through its
+     * own surface (Android's `SurfaceView`) chooses that for anything but [DynamicRange.Sdr].
+     */
+    val dynamicRange: DynamicRange = DynamicRange.Sdr,
 )
 
 /**
@@ -115,6 +133,9 @@ data class TrackOption(
 /** The index of the "Off" row in the subtitle picker. */
 const val SUBTITLES_OFF = PlaybackRepository.SUBTITLES_OFF
 
+/** The button to jump over the part of the video that is playing: [label] says what, [toMs] is where it ends. */
+data class SkipOffer(val label: String, val toMs: Long)
+
 data class PlaybackUiState(
     /** Asking the server how to play the item. */
     val loading: Boolean = true,
@@ -135,10 +156,34 @@ data class PlaybackUiState(
     val finished: Boolean = false,
     /** Set when the session ended and the screen must be left. */
     val exit: HomeExit? = null,
+    /** What the stats overlay shows for the current stream; null while there is none. */
+    val diagnostics: PlaybackDiagnostics? = null,
+    /** The signed-in profile wants the stats overlay. */
+    val showDiagnostics: Boolean = false,
+    /** Set while an intro, recap or the like is playing; stays for the whole segment. */
+    val skipOffer: SkipOffer? = null,
+    /** Where the player should seek to now (set by `onSkip`); it clears this with `onSeekHandled`. */
+    val pendingSeekMs: Long? = null,
+    /** The scrub-preview thumbnails of the playing media source; null when the server made none or can't be asked. */
+    val trickplay: TrickplayTrack? = null,
+    /** The speed the user chose, one of [PLAYBACK_SPEEDS]; the player plays at it. */
+    val speed: Float = 1f,
+    /** The one badge for the picture ("4K", "HDR10"); null when there is none to show. */
+    val badge: String? = null,
+    /** The player is in a picture-in-picture window; the screen is gone but the session goes on. */
+    val inPictureInPicture: Boolean = false,
+    /** Several episodes in a row started by themselves: the player is paused and asks whether to go on. */
+    val stillWatching: Boolean = false,
 ) {
+    /** The speeds to pick from. */
+    val speeds: List<Float> get() = PLAYBACK_SPEEDS
+
     /** Whether there is anything to choose between, so the player shows its audio and subtitles control. */
     val hasTrackChoices: Boolean get() = audioTracks.isNotEmpty() || subtitleTracks.isNotEmpty()
 }
+
+/** The speeds the player offers. */
+val PLAYBACK_SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
 
 /** Resuming starts this long before where the user stopped, so the scene they left is in view again. */
 const val RESUME_REWIND_MS = 5_000L
@@ -167,7 +212,7 @@ const val RESUME_REWIND_MS = 5_000L
  * report a small position and overwrite the real one.
  *
  * Auto-advance: for an episode, the next one is looked up in the background. In the last 30 s of an
- * episode (the card is Phase 3's Outro segment once there is one) [PlaybackUiState.upNext] counts down
+ * episode (always that window; an Outro segment doesn't move it) [PlaybackUiState.upNext] counts down
  * 10 s and then plays the next episode in this same ViewModel, so neither native player is rebuilt: the
  * finished one is reported stopped at its end, so the server marks it watched, and the stream changes.
  * [onWatchCredits] dismisses the card for this episode; [onPlayNow] doesn't wait. A video under three
@@ -180,6 +225,9 @@ class PlaybackViewModel(
     private val reporter: PlaybackReporter,
     connection: ConnectionManager,
     private val watch: WatchRepository,
+    private val profileSettings: ProfileSettings,
+    private val nowPlaying: NowPlaying,
+    private val binge: BingeCounter,
     private val retryDelays: List<Duration> = NETWORK_RETRY_DELAYS,
     private val startOver: Boolean = false,
     private val autoAdvance: Boolean = true,
@@ -188,11 +236,14 @@ class PlaybackViewModel(
 ) : ViewModel() {
     private val content = MutableStateFlow(PlaybackUiState())
 
-    val uiState: StateFlow<PlaybackUiState> = combine(content, connection.sessionEnded()) { content, exit ->
-        content.copy(exit = exit)
+    val uiState: StateFlow<PlaybackUiState> = combine(content, connection.sessionEnded(), profileSettings.showPlaybackStats) { content, exit, showStats ->
+        content.copy(exit = exit, showDiagnostics = showStats ?: false)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlaybackUiState())
 
     private var lastPositionMs = 0L
+
+    /** The player is playing (not paused), as last told; what [nowPlaying] shows. */
+    private var playingNow = false
 
     /** The item has been read, so where to start is known and a retry doesn't need to ask again. */
     private var started = false
@@ -209,12 +260,27 @@ class PlaybackViewModel(
     /** The item played to its end, so a dismissed card now means leaving. */
     private var ended = false
 
+    private var inPictureInPicture = false
+
+    /** Episodes in a row before the player asks "Are you still watching?"; kept up to date from the profile's settings. */
+    private var bingeThreshold = ProfileSettings.DEFAULT_BINGE_THRESHOLD
+
     private var countdown: Job? = null
     private var method: PlayMethod? = null
     private var streams = 0
 
+    /** The item's marked segments; loaded once, by the first [open]. */
+    private var segments: List<MediaSegment> = emptyList()
+    private var segmentsRequested = false
+
+    /** The item and media source the trickplay was asked for, so a re-opened stream of the same one doesn't ask again. */
+    private var trickplayFor: Pair<String, String>? = null
+
     /** What the current stream plays. Null while there is none. */
     private var plan: PlaybackPlan? = null
+
+    /** What the player last measured for this stream; cleared with a new one. */
+    private var liveDiagnostics: LiveDiagnostics? = null
 
     /** The audio and subtitle tracks selected now; a null subtitle is none. */
     private var audioNow: Int? = null
@@ -242,6 +308,9 @@ class PlaybackViewModel(
     private class TrackChoice(val mediaSourceId: String, val audio: Int?, val subtitle: Int)
 
     init {
+        viewModelScope.launch {
+            profileSettings.bingeThreshold.collect { bingeThreshold = it ?: ProfileSettings.DEFAULT_BINGE_THRESHOLD }
+        }
         start()
     }
 
@@ -272,28 +341,60 @@ class PlaybackViewModel(
         }
     }
 
+    /** Plays at [speed], if it is one of [PLAYBACK_SPEEDS]. Position reports stay in media time. */
+    fun onSelectSpeed(speed: Float) {
+        if (speed !in PLAYBACK_SPEEDS) return
+        binge.interacted()
+        content.update { if (it.speed == speed) it else it.copy(speed = speed) }
+    }
+
+    /** What the player measures about the stream, as often as it likes; values it can't give are null. */
+    fun onDiagnostics(live: LiveDiagnostics) {
+        liveDiagnostics = live
+        refreshDiagnostics()
+    }
+
     /** The player is playing: it started, or resumed. */
     fun onPlaying(positionMs: Long) {
         lastPositionMs = positionMs
+        playingNow = true
         reporter.playing(positionMs)
+        publishNowPlaying()
     }
 
     fun onPaused(positionMs: Long) {
         lastPositionMs = positionMs
+        playingNow = false
         reporter.paused(positionMs)
+        publishNowPlaying()
     }
 
     fun onSeeked(positionMs: Long) {
         lastPositionMs = positionMs
         reporter.seeked(positionMs)
         checkUpNext(positionMs)
+        refreshSkipOffer()
+    }
+
+    /** The user chose the skip button: the player is asked to seek to the end of the segment. */
+    fun onSkip() {
+        val offer = content.value.skipOffer ?: return
+        binge.interacted()
+        content.update { it.copy(pendingSeekMs = offer.toMs) }
+    }
+
+    /** The player has done the seek it was asked for. */
+    fun onSeekHandled() {
+        content.update { if (it.pendingSeekMs == null) it else it.copy(pendingSeekMs = null) }
     }
 
     /** The current position, as often as the player knows it (about once a second). */
     fun onPosition(positionMs: Long) {
         lastPositionMs = positionMs
         reporter.position(positionMs)
+        publishNowPlaying()
         checkUpNext(positionMs)
+        refreshSkipOffer()
         if ((networkRetries > 0 || reauthorized) && positionMs - failedAtMs >= RECOVERED_AFTER_MS) {
             networkRetries = 0
             reauthorized = false
@@ -307,11 +408,12 @@ class PlaybackViewModel(
     fun onEnded(positionMs: Long) {
         lastPositionMs = positionMs
         reporter.stop(positionMs)
+        nowPlaying.clear()
         ended = true
         val upcoming = next
         if (autoAdvance && upcoming != null && !upNextDismissed) {
             // Already counting down: the video ended under it, so there is nothing left to wait for.
-            if (countdown != null) onPlayNow() else startCountdown(upcoming)
+            if (countdown != null) playNext(byItself = true) else startCountdown(upcoming)
             return
         }
         content.update { it.copy(finished = true) }
@@ -322,8 +424,11 @@ class PlaybackViewModel(
      * starts anew, and a card that was counting goes with it (it returns if the end is still near).
      */
     fun onBackgrounded(positionMs: Long) {
+        // A picture-in-picture window keeps playing; it ends the session when it is closed.
+        if (inPictureInPicture) return
         lastPositionMs = positionMs
         reporter.stop(positionMs)
+        nowPlaying.clear()
         cancelCountdown()
         if (ended) content.update { it.copy(finished = true) }
     }
@@ -332,7 +437,51 @@ class PlaybackViewModel(
     fun onClosed(positionMs: Long) {
         lastPositionMs = positionMs
         reporter.stop(positionMs)
+        nowPlaying.clear()
+        binge.reset()
         cancelCountdown()
+    }
+
+    /** The viewer touched or pressed something: whatever was counted towards "Are you still watching?" starts over. */
+    fun onUserInteraction() = binge.interacted()
+
+    /**
+     * "Keep watching" on the prompt: the count starts over, the player carries on, and the card comes back
+     * in its window. If the episode already ended (the prompt came at its end), the card counts down to
+     * the next one now, since there is nothing left to play.
+     */
+    fun onContinueWatching() {
+        binge.reset()
+        content.update { it.copy(stillWatching = false) }
+        val upcoming = next
+        if (ended && autoAdvance && upcoming != null && !upNextDismissed) {
+            if (countdown == null) startCountdown(upcoming)
+            return
+        }
+        checkUpNext(lastPositionMs)
+    }
+
+    /** "Stop" on the prompt: the same as closing the player. */
+    fun onStopWatching() {
+        onClosed(lastPositionMs)
+        content.update { it.copy(stillWatching = false, finished = true) }
+    }
+
+    /** The screen became a picture-in-picture window: playback and reporting carry on, nothing is stopped. */
+    fun onEnteredPictureInPicture(positionMs: Long) {
+        lastPositionMs = positionMs
+        inPictureInPicture = true
+        content.update { it.copy(inPictureInPicture = true) }
+    }
+
+    /**
+     * The picture-in-picture window went away. [closed]: the user dismissed it, which ends the session
+     * like closing the player. Otherwise it was expanded back to the full player and nothing is reported.
+     */
+    fun onLeftPictureInPicture(positionMs: Long, closed: Boolean) {
+        inPictureInPicture = false
+        content.update { it.copy(inPictureInPicture = false) }
+        if (closed) onClosed(positionMs)
     }
 
     /** The player couldn't play the stream, for the reason [failure]. Ignored when no stream is open. */
@@ -365,11 +514,11 @@ class PlaybackViewModel(
         cancelCountdown()
         networkRetries++
         reporter.paused(lastPositionMs)
-        content.update { it.copy(loading = true, stream = null, message = null) }
+        content.update { it.copy(loading = true, stream = null, message = null, pendingSeekMs = null) }
         viewModelScope.launch {
             delay(wait)
             content.update {
-                it.copy(loading = false, stream = failed.copy(id = ++streams, startPositionMs = lastPositionMs))
+                it.copy(loading = false, pendingSeekMs = null, stream = failed.copy(id = ++streams, startPositionMs = lastPositionMs))
             }
         }
     }
@@ -401,7 +550,7 @@ class PlaybackViewModel(
         reporter.stop(lastPositionMs, failed = true)
         method = null
         this.lostConnection = lostConnection
-        content.update { it.copy(stream = null, loading = false, message = message) }
+        content.update { it.copy(stream = null, loading = false, message = message, pendingSeekMs = null) }
     }
 
     override fun onCleared() {
@@ -409,6 +558,7 @@ class PlaybackViewModel(
         // is queued, `Stopped` included, is still sent after the screen's scope is gone.
         reporter.stop(lastPositionMs)
         reporter.close()
+        nowPlaying.clear(itemId)
     }
 
     /** Reads the item for its title and where the user stopped, then opens it there. */
@@ -454,7 +604,7 @@ class PlaybackViewModel(
     private fun checkUpNext(positionMs: Long) {
         val upcoming = next ?: return
         val runtime = item?.runtimeMs ?: return
-        if (!autoAdvance || upNextDismissed || ended) return
+        if (!autoAdvance || upNextDismissed || ended || content.value.stillWatching) return
         val remaining = runtime - positionMs
         if (countdown == null) {
             if (runtime >= MIN_AUTO_ADVANCE_RUNTIME_MS && remaining <= UP_NEXT_WINDOW_MS) startCountdown(upcoming)
@@ -464,32 +614,47 @@ class PlaybackViewModel(
     }
 
     private fun startCountdown(upcoming: MediaItem) {
+        // Enough episodes in a row on their own: ask instead of counting down to another one.
+        if (binge.shouldAsk(bingeThreshold)) {
+            content.update { it.copy(stillWatching = true, upNext = null) }
+            return
+        }
         countdown = viewModelScope.launch {
             for (left in UP_NEXT_SECONDS downTo 1) {
-                content.update { it.copy(upNext = upcoming.toUpNext(left)) }
+                // The card and "Skip credits" sit in the same corner, so the card takes it away in the same update.
+                content.update { it.copy(upNext = upcoming.toUpNext(left), skipOffer = skipOfferNow(cardShowing = true)) }
                 delay(countdownStep)
             }
             countdown = null
-            advance()
+            playNext(byItself = true)
         }
     }
 
     private fun cancelCountdown() {
         countdown?.cancel()
         countdown = null
-        content.update { it.copy(upNext = null) }
+        content.update { it.copy(upNext = null, skipOffer = skipOfferNow(cardShowing = false)) }
     }
 
     /** "Play now" on the card: the next episode starts without waiting for the countdown. */
     fun onPlayNow() {
         if (next == null) return
+        binge.interacted()
+        playNext(byItself = false)
+    }
+
+    /** Moves on to [next]. [byItself]: nobody asked for it, so it counts towards "Are you still watching?". */
+    private fun playNext(byItself: Boolean) {
+        if (next == null) return
         countdown?.cancel()
         countdown = null
+        if (byItself) binge.autoAdvanced()
         advance()
     }
 
     /** "Watch credits" on the card: it goes, and this episode plays out. If it already ended, the screen closes. */
     fun onWatchCredits() {
+        binge.interacted()
         upNextDismissed = true
         cancelCountdown()
         if (ended) content.update { it.copy(finished = true) }
@@ -517,8 +682,12 @@ class PlaybackViewModel(
         networkRetries = 0
         reauthorized = false
         lostConnection = false
+        // Segments and trickplay belong to the item, so the next episode asks for its own.
+        segments = emptyList()
+        segmentsRequested = false
+        trickplayFor = null
         content.update {
-            it.copy(loading = true, stream = null, upNext = null, audioTracks = emptyList(), subtitleTracks = emptyList(), message = null, finished = false)
+            it.copy(loading = true, stream = null, upNext = null, skipOffer = null, trickplay = null, speed = 1f, badge = null, stillWatching = false, audioTracks = emptyList(), subtitleTracks = emptyList(), message = null, finished = false)
         }
         begin(target, honourStartOver = false)
     }
@@ -539,6 +708,7 @@ class PlaybackViewModel(
         val updated = current.copy(audioStreamIndex = audioNow, subtitleStreamIndex = subtitleNow)
         plan = updated
         reporter.begin(updated)
+        refreshDiagnostics()
         content.update {
             it.copy(
                 audioTracks = it.audioTracks.map { track -> track.copy(selected = track.index == audioNow) },
@@ -557,15 +727,72 @@ class PlaybackViewModel(
         open(startAtMs = lastPositionMs)
     }
 
+    /** The plan's diagnostics with whatever the player measured on top. */
+    private fun publishNowPlaying() {
+        val shown = item ?: return
+        val state = content.value
+        nowPlaying.update(NowPlayingState(shown.id, state.title, state.subtitle, playingNow, lastPositionMs))
+    }
+
+    private fun refreshDiagnostics() {
+        val current = plan ?: return
+        val base = current.toDiagnostics(audioNow)
+        val merged = liveDiagnostics?.let(base::withLive) ?: base
+        content.update { it.copy(diagnostics = merged) }
+    }
+
     /** Keeps what is selected, so the next negotiation (a retry, the transcode fallback) asks for the same. */
     private fun remember(current: PlaybackPlan) {
         choice = TrackChoice(current.mediaSourceId, audioNow, subtitleNow ?: SUBTITLES_OFF)
     }
 
+    /** Off the critical path: a slow or failed call only means there is nothing to skip. Once per item. */
+    private fun loadSegments() {
+        if (segmentsRequested) return
+        segmentsRequested = true
+        viewModelScope.launch {
+            segments = playback.segments(itemId)
+            refreshSkipOffer()
+        }
+    }
+
+    /** Off the critical path, like [loadSegments]: a slow or failed call only means no scrub preview. Once per item and media source. */
+    private fun loadTrickplay(mediaSourceId: String) {
+        val key = itemId to mediaSourceId
+        if (trickplayFor == key) return
+        trickplayFor = key
+        content.update { if (it.trickplay == null) it else it.copy(trickplay = null) }
+        viewModelScope.launch {
+            val track = playback.trickplay(key.first, mediaSourceId)
+            // Only if the user is still on what this was asked for.
+            if (trickplayFor == key) content.update { it.copy(trickplay = track) }
+        }
+    }
+
+    private fun refreshSkipOffer() {
+        content.update {
+            val offer = skipOfferNow(cardShowing = it.upNext != null)
+            if (it.skipOffer == offer) it else it.copy(skipOffer = offer)
+        }
+    }
+
+    /**
+     * The offer for [lastPositionMs]: the skippable segment playing now, the one that ends last if several.
+     * No "Skip credits" while the up-next card shows ([cardShowing]): the card already offers what comes after them.
+     */
+    private fun skipOfferNow(cardShowing: Boolean): SkipOffer? {
+        val playing = segments
+            .filter { it.type != SegmentType.Unknown && lastPositionMs >= it.startMs && lastPositionMs < it.endMs }
+            .filter { !(cardShowing && it.type == SegmentType.Outro) }
+            .maxByOrNull { it.endMs }
+        return playing?.let { SkipOffer(Strings.skip(it.type), it.endMs) }
+    }
+
     private fun open(startAtMs: Long) {
         // A stream that restarts (a retry, a track change) is not the end of the episode.
         cancelCountdown()
-        content.update { it.copy(loading = true, stream = null, message = null) }
+        content.update { it.copy(loading = true, stream = null, message = null, pendingSeekMs = null) }
+        loadSegments()
         viewModelScope.launch {
             val picked = choice
             val negotiation = playback.negotiate(itemId, transcodeOnly, picked?.mediaSourceId, picked?.audio, picked?.subtitle)
@@ -577,9 +804,12 @@ class PlaybackViewModel(
                     audioNow = ready.audioStreamIndex
                     subtitleNow = ready.subtitleStreamIndex
                     reporter.begin(ready)
+                    liveDiagnostics = null
+                    loadTrickplay(ready.mediaSourceId)
                     content.update {
                         it.copy(
                             loading = false,
+                            pendingSeekMs = null,
                             stream = PlaybackStream(
                                 id = ++streams,
                                 url = ready.url,
@@ -587,7 +817,10 @@ class PlaybackViewModel(
                                 startPositionMs = startAtMs,
                                 subtitleFiles = ready.subtitleFiles,
                                 audioInPlayer = ready.method == PlayMethod.DirectPlay,
+                                dynamicRange = ready.videoFormat?.dynamicRange ?: DynamicRange.Sdr,
                             ),
+                            diagnostics = ready.toDiagnostics(audioNow),
+                            badge = ready.videoFormat?.badge(),
                             audioTracks = ready.audioTracks.toAudioOptions(),
                             subtitleTracks = ready.subtitleTracks.toSubtitleOptions(),
                         )
@@ -595,8 +828,6 @@ class PlaybackViewModel(
                 }
                 PlaybackNegotiation.NoCompatibleStream ->
                     content.update { it.copy(loading = false, message = LoadMessages.NO_COMPATIBLE_STREAM) }
-                PlaybackNegotiation.NeedsTranscoding ->
-                    content.update { it.copy(loading = false, message = LoadMessages.TRANSCODING_NEEDED) }
                 is PlaybackNegotiation.Failed ->
                     content.update { it.copy(loading = false, message = LoadMessages.forError(result.error)) }
             }

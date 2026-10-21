@@ -106,28 +106,35 @@ _Exit: play a movie and an episode, direct and transcoded, with position reporte
 _Exit: finish an episode on one device, resume on another._
 
 ### Phase 3 — Player polish
-- [ ] Playback stats overlay, early in the phase: off by default behind a setting, driven by a shared
+- [x] Playback stats overlay, early in the phase: off by default behind a setting, driven by a shared
   `PlaybackDiagnostics` state that Media3's analytics listener fills on Android and the player item's
   access log fills on iOS. It shows direct play, direct stream or transcode and the transcode reasons the
   server puts in the stream URL, codecs, resolution, frame rate, bitrate, dropped frames, network
   throughput and buffer health. It also makes real-device passes measurable
-- [ ] Skip Intro / Credits via Media Segments (all types; skip + ask-to-skip)
-- [ ] Trickplay scrub-preview thumbnails
-- [ ] HDR / Dolby Vision passthrough where the platform supports it — _the Android player draws on a
-  `TextureView` (plan 03), which can't pass HDR through; this means going back to a `SurfaceView` and
-  redoing the exit transition (`res/layout/player_view_texture.xml`, `PlayerScreen.kt`)_
-- [ ] Binge UX: "are you still watching?" (auto-advance itself is Phase 2)
-- [ ] Playback speed (Media3 `setPlaybackSpeed`, AVPlayer `rate`)
-- [ ] Picture-in-picture and mini player: leaving the player while something plays keeps it playing in
+- [x] Skip Intro / Credits via Media Segments (all types; skip + ask-to-skip)
+- [x] Trickplay scrub-preview thumbnails
+- [x] HDR / Dolby Vision passthrough where the platform supports it — _Android draws HDR on a `SurfaceView`
+  layout and SDR on the `TextureView` one (`player_view_surface.xml`, `player_view_texture.xml`); iOS leaves
+  AVPlayer's HDR alone. The choice and playback are verified; **real HDR output is not**, because neither simulator
+  reports an HDR display (plan 07)_
+- [x] Binge UX: "are you still watching?" (auto-advance itself is Phase 2) — _per-profile setting, Off or after 2 to 5 episodes, default 3_
+- [x] Playback speed (Media3 `setPlaybackSpeed`, AVPlayer `rate`)
+- [x] Picture-in-picture (both platforms, plus a button in the player). The iOS mini player is the open item below. Leaving the player while something plays keeps it playing in
   the system's PiP window (Android: `setAutoEnterEnabled` on 12+ with the Media3 `PlayerSurface`; iOS:
   `AVPictureInPictureController` on the `AVPlayerLayer`). Entering PiP is not backgrounding: the
   progress beacon keeps running and `Stopped` goes out only when the PiP window is closed or playback
   ends (Phase 1 sends it on backgrounding today). iOS 26+ also shows a mini player in
   `.tabViewBottomAccessory` while PiP or audio continues, and tapping it returns to the full player
-  (`docs/design/ios.md`); below iOS 26 it is PiP only. **Open question:** `docs/design/android.md` has
-  PiP and the `MediaSession` notification but no mini player; decide whether Android gets an in-app
-  bar above the `NavigationBar` or stops at PiP and the notification
-- [ ] HDR and format badge on the detail page and in the player, from `MediaStreams`
+  (`docs/design/ios.md`); below iOS 26 it is PiP only. **Decided:** Android stops at PiP, with no in-app mini player.
+  Its `MediaSession` drives media keys, the PiP window's controls and a media notification with play and pause (posted
+  in-process by Media3's `PlayerNotificationManager` only while the player screen is in front or in a PiP window; in the
+  background without PiP the video pauses, the notification goes and play commands are ignored; no service, no lock-screen
+  controls). iOS PiP is built but was never seen running (the simulator reports PiP as
+  unsupported).
+- [ ] **The iOS mini player is built but not mounted** (`MiniPlayerView`, fed by `NowPlayingModel`): the app has
+  no tab bar yet. It is finished when the tab bar mounts it with `.tabViewBottomAccessory` and it is
+  checked on the simulator, with a play and pause command from it to the player; whoever builds the tab bar owns that.
+- [x] HDR and format badge on the detail page and in the player, from `MediaStreams`
   (`VideoRangeType`, codec, resolution)
 
 _Exit: skip-intro and scrub previews working end to end._

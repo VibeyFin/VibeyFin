@@ -22,8 +22,13 @@ final class SettingsObservable: ObservableObject {
         model.onAlwaysAskChanged(value: value)
     }
 
-    func setAllowTranscoding(_ value: Bool) {
-        model.onAllowTranscodingChanged(value: value)
+    func setShowPlaybackStats(_ value: Bool) {
+        model.onShowPlaybackStatsChanged(value: value)
+    }
+
+    /// 0 is off, otherwise 2 to 5 episodes in a row.
+    func setBingeThreshold(_ value: Int32) {
+        model.onBingeThresholdChanged(value: value)
     }
 
     deinit {

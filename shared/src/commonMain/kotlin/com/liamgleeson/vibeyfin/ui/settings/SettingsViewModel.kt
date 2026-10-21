@@ -15,8 +15,10 @@ data class SettingsUiState(
     val alwaysAskWhoIsWatching: Boolean = false,
     /** Whether there is a signed-in profile whose settings are shown below the device ones. */
     val hasProfile: Boolean = false,
-    /** The profile lets the server transcode when the device can't play a file as it is. */
-    val allowTranscoding: Boolean = false,
+    /** The player shows its stats overlay. */
+    val showPlaybackStats: Boolean = false,
+    /** Episodes in a row before "Still watching?"; 0 is off. */
+    val bingeThreshold: Int = ProfileSettings.DEFAULT_BINGE_THRESHOLD,
 )
 
 /** Device-wide settings from [DevicePreferences] and the signed-in profile's from the database, one column per option. */
@@ -26,12 +28,14 @@ class SettingsViewModel(
 ) : ViewModel() {
     val uiState: StateFlow<SettingsUiState> = combine(
         preferences.alwaysAskWhoIsWatching,
-        profileSettings.allowTranscoding,
-    ) { alwaysAsk, allowTranscoding ->
+        profileSettings.showPlaybackStats,
+        profileSettings.bingeThreshold,
+    ) { alwaysAsk, showStats, threshold ->
         SettingsUiState(
             alwaysAskWhoIsWatching = alwaysAsk,
-            hasProfile = allowTranscoding != null,
-            allowTranscoding = allowTranscoding ?: false,
+            hasProfile = showStats != null || threshold != null,
+            showPlaybackStats = showStats ?: false,
+            bingeThreshold = threshold ?: ProfileSettings.DEFAULT_BINGE_THRESHOLD,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -39,7 +43,11 @@ class SettingsViewModel(
         viewModelScope.launch { preferences.setAlwaysAskWhoIsWatching(value) }
     }
 
-    fun onAllowTranscodingChanged(value: Boolean) {
-        viewModelScope.launch { profileSettings.setAllowTranscoding(value) }
+    fun onShowPlaybackStatsChanged(value: Boolean) {
+        viewModelScope.launch { profileSettings.setShowPlaybackStats(value) }
+    }
+
+    fun onBingeThresholdChanged(value: Int) {
+        viewModelScope.launch { profileSettings.setBingeThreshold(value) }
     }
 }

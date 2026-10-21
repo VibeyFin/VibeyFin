@@ -134,6 +134,15 @@ data class MediaStreamDto(
     @SerialName("DeliveryMethod") val deliveryMethod: String? = null,
     /** A path on the server for an `External` subtitle. */
     @SerialName("DeliveryUrl") val deliveryUrl: String? = null,
+    /** For video: the picture size in pixels. */
+    @SerialName("Width") val width: Int? = null,
+    @SerialName("Height") val height: Int? = null,
+    /** For video: `SDR`, `HDR10`, `HDR10Plus`, `HLG`, `DOVI`, `DOVIWithHDR10` and so on; absent on servers before 10.9. */
+    @SerialName("VideoRangeType") val videoRangeType: String? = null,
+    /** In bits per second. */
+    @SerialName("BitRate") val bitRate: Int? = null,
+    @SerialName("RealFrameRate") val realFrameRate: Float? = null,
+    @SerialName("BitDepth") val bitDepth: Int? = null,
 )
 
 /** The body of `POST /Sessions/Playing`. */

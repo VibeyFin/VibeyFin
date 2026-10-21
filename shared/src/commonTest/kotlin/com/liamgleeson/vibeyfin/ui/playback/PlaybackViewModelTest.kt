@@ -6,10 +6,14 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineStart
 import androidx.lifecycle.ViewModel
+import com.liamgleeson.vibeyfin.domain.DynamicRange
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.liamgleeson.vibeyfin.data.api.ApiError
+import com.liamgleeson.vibeyfin.domain.LiveDiagnostics
+import com.liamgleeson.vibeyfin.domain.NowPlayingState
+import com.liamgleeson.vibeyfin.domain.PlayMethod
 import com.liamgleeson.vibeyfin.testing.FakeJellyfin
 import com.liamgleeson.vibeyfin.testing.HLS_PATH
 import com.liamgleeson.vibeyfin.testing.TICKS_PER_MINUTE
@@ -21,6 +25,8 @@ import com.liamgleeson.vibeyfin.testing.itemJson
 import com.liamgleeson.vibeyfin.testing.itemsJson
 import com.liamgleeson.vibeyfin.testing.mediaSourceJson
 import com.liamgleeson.vibeyfin.testing.playbackInfoJson
+import com.liamgleeson.vibeyfin.testing.segmentJson
+import com.liamgleeson.vibeyfin.testing.segmentsJson
 import com.liamgleeson.vibeyfin.testing.subtitleStreamJson
 import com.liamgleeson.vibeyfin.ui.common.LoadMessages
 import com.liamgleeson.vibeyfin.ui.common.Strings
@@ -31,14 +37,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.yield
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
@@ -56,6 +66,7 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.TimeSource
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlaybackViewModelTest {
@@ -73,7 +84,8 @@ class PlaybackViewModelTest {
     @AfterTest
     fun tearDown() = runTest {
         viewModels.stopAll()
-        reporterScope.cancel()
+        // Wait for the reporters too: one still writing to the database as it closes crashes the JVM.
+        reporterScope.coroutineContext.job.cancelAndJoin()
         Dispatchers.resetMain()
         app.close()
     }
@@ -88,7 +100,7 @@ class PlaybackViewModelTest {
         countdownStep: Duration = 1.hours,
     ) = viewModels.track(
         PlaybackViewModel(
-            id, app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch,
+            id, app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.nowPlaying, app.binge,
             retryDelays, startOver, autoAdvance, countdownStep,
         ),
     )
@@ -97,9 +109,10 @@ class PlaybackViewModelTest {
     private suspend fun server(
         info: String = playbackInfoJson(mediaSourceJson()),
         item: String = itemJson("m1", "Heat", year = 1995),
-        allowTranscoding: Boolean = true,
+        segments: Reply? = null,
     ): FakeJellyfin {
-        val server = app.signedIn(allowTranscoding = allowTranscoding)
+        val server = app.signedIn()
+        if (segments != null) server.on("GET", "/MediaSegments/m1", segments)
         server.on("GET", "/Items", Reply.json(itemsJson(item)))
         server.on("POST", "/Items/m1/PlaybackInfo", Reply.json(info))
         server.on("POST", "/Sessions/Playing", Reply.noContent())
@@ -109,6 +122,78 @@ class PlaybackViewModelTest {
     }
 
     private fun bodyOf(request: com.liamgleeson.vibeyfin.testing.RecordedRequest) = Json.parseToJsonElement(request.body).jsonObject
+
+    private val noLive = LiveDiagnostics(null, null, null, null, null, null, null, null, null)
+
+    @Test
+    fun `diagnostics start from the plan`() = runTest {
+        server(info = playbackInfoJson(mediaSourceJson(videoWidth = 1920, videoHeight = 1080, streams = listOf(audioStreamJson(1, codec = "eac3")), defaultAudio = 1)))
+
+        val diagnostics = assertNotNull(viewModel().uiState.first { it.diagnostics != null }.diagnostics)
+
+        assertEquals(PlayMethod.DirectPlay, diagnostics.method)
+        assertEquals("h264", diagnostics.videoCodec)
+        assertEquals("eac3", diagnostics.audioCodec)
+        assertEquals(1920, diagnostics.width)
+        assertEquals(1080, diagnostics.height)
+        assertEquals(emptyList(), diagnostics.transcodeReasons)
+    }
+
+    @Test
+    fun `a transcode lists the reasons from the stream URL`() = runTest {
+        server(
+            info = playbackInfoJson(
+                mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = "$HLS_PATH&TranscodeReasons=VideoCodecNotSupported,AudioCodecNotSupported"),
+            ),
+        )
+
+        val diagnostics = assertNotNull(viewModel().uiState.first { it.diagnostics != null }.diagnostics)
+
+        assertEquals(PlayMethod.Transcode, diagnostics.method)
+        assertEquals(listOf("VideoCodecNotSupported", "AudioCodecNotSupported"), diagnostics.transcodeReasons)
+    }
+
+    @Test
+    fun `live values merge without losing the plan's`() = runTest {
+        server(info = playbackInfoJson(mediaSourceJson(videoWidth = 1920, videoHeight = 1080)))
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.diagnostics != null }
+
+        viewModel.onDiagnostics(noLive.copy(droppedFrames = 4, throughputKbps = 9000, width = 1280))
+        val diagnostics = assertNotNull(viewModel.uiState.first { it.diagnostics?.droppedFrames == 4 }.diagnostics)
+
+        assertEquals(1280, diagnostics.width)
+        assertEquals(1080, diagnostics.height)
+        assertEquals("h264", diagnostics.videoCodec)
+        assertEquals(9000, diagnostics.throughputKbps)
+        assertEquals(PlayMethod.DirectPlay, diagnostics.method)
+    }
+
+    @Test
+    fun `showDiagnostics follows the profile setting`() = runTest {
+        server()
+        val viewModel = viewModel()
+        assertEquals(false, viewModel.uiState.first { it.stream != null }.showDiagnostics)
+
+        app.profileSettings.setShowPlaybackStats(true)
+        assertTrue(viewModel.uiState.first { it.showDiagnostics }.showDiagnostics)
+
+        app.profileSettings.setShowPlaybackStats(false)
+        assertEquals(false, viewModel.uiState.first { !it.showDiagnostics }.showDiagnostics)
+    }
+
+    @Test
+    fun `missing values stay null`() = runTest {
+        server()
+
+        val diagnostics = assertNotNull(viewModel().uiState.first { it.diagnostics != null }.diagnostics)
+
+        assertNull(diagnostics.width)
+        assertNull(diagnostics.audioCodec)
+        assertNull(diagnostics.droppedFrames)
+        assertNull(diagnostics.throughputKbps)
+        assertNull(diagnostics.bufferMs)
+    }
 
     @Test
     fun isLoadingUntilTheServerHasAnswered() {
@@ -292,41 +377,17 @@ class PlaybackViewModelTest {
     }
 
     @Test
-    fun aDirectPlayThatFailsWithTranscodingOffTakesARemuxButNotAReencode() = runTest {
-        server(allowTranscoding = false)
-        val viewModel = viewModel()
-        viewModel.uiState.first { it.stream != null }
-        viewModel.onPlaying(0)
-
-        app.jellyfin.server("http://nas:8096").on(
-            "POST", "/Items/m1/PlaybackInfo",
-            Reply.json(
-                playbackInfoJson(
-                    mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = "$HLS_PATH&TranscodeReasons=VideoCodecNotSupported"),
-                    playSessionId = "ps-2",
-                ),
-            ),
-        )
-        viewModel.onFailed(PlaybackFailure.Unsupported)
-
-        val state = viewModel.uiState.first { it.message != null }
-        assertEquals(LoadMessages.TRANSCODING_NEEDED, state.message)
-        assertNull(state.stream)
-    }
-
-    @Test
-    fun aFileOnlyAVideoReencodeCanPlayWithTranscodingOffSaysTranscodingIsNeeded() = runTest {
+    fun `a file only a video reencode can play transcodes without any setting`() = runTest {
         server(
             info = playbackInfoJson(
                 mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = "$HLS_PATH&TranscodeReasons=VideoCodecNotSupported"),
             ),
-            allowTranscoding = false,
         )
 
-        val state = viewModel().uiState.first { it.message != null }
+        val state = viewModel().uiState.first { it.stream != null }
 
-        assertEquals(LoadMessages.TRANSCODING_NEEDED, state.message)
-        assertNull(state.stream)
+        assertNull(state.message)
+        assertEquals(PlayMethod.Transcode, state.diagnostics?.method)
     }
 
     @Test
@@ -569,7 +630,7 @@ class PlaybackViewModelTest {
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =
-                    PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch) as T
+                    PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.nowPlaying, app.binge) as T
             },
         )[PlaybackViewModel::class]
         viewModel.uiState.first { it.stream != null }
@@ -580,6 +641,44 @@ class PlaybackViewModelTest {
 
         val stopped = bodyOf(jellyfin.awaitRequests("POST", "/Sessions/Playing/Stopped").single())
         assertEquals(120_000_000L, stopped.getValue("PositionTicks").jsonPrimitive.long)
+    }
+
+    private fun clearableViewModel(store: ViewModelStore): PlaybackViewModel = ViewModelProvider.create(
+        store,
+        object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =
+                PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.nowPlaying, app.binge) as T
+        },
+    )[PlaybackViewModel::class]
+
+    @Test
+    fun leavingTheScreenWithoutClosingClearsNowPlaying() = runTest {
+        server()
+        val store = ViewModelStore()
+        val viewModel = clearableViewModel(store)
+        viewModel.uiState.first { it.stream != null }
+        viewModel.onPlaying(1_000)
+        assertNotNull(app.nowPlaying.state.value)
+
+        store.clear()
+
+        assertNull(app.nowPlaying.state.value)
+    }
+
+    @Test
+    fun leavingTheScreenKeepsNowPlayingOfAnotherItem() = runTest {
+        server()
+        val store = ViewModelStore()
+        val viewModel = clearableViewModel(store)
+        viewModel.uiState.first { it.stream != null }
+        viewModel.onPlaying(1_000)
+        // Another player already shows something else.
+        app.nowPlaying.update(NowPlayingState("other", "Other", null, playing = true, positionMs = 0))
+
+        store.clear()
+
+        assertEquals("other", app.nowPlaying.state.value?.itemId)
     }
 
     // -- audio and subtitle selection --
@@ -1156,9 +1255,11 @@ class PlaybackViewModelTest {
         assertNotNull(seen.last().upNext)
 
         viewModel.onBackgrounded(tenMinutes - 25_000)
-        withContext(Dispatchers.Default) { delay(200) }
+        // The countdown runs on virtual time: had it survived, this would play it to its end.
+        advanceUntilIdle()
 
         assertNull(seen.last().upNext)
+        assertEquals(0, app.binge.count.value)
         assertEquals("Heat", seen.last().title)
         assertEquals(0, jellyfin.requestsTo("POST", "/Items/e2/PlaybackInfo").size)
     }
@@ -1189,5 +1290,610 @@ class PlaybackViewModelTest {
         viewModel.onPosition(tenMinutes - 20_000)
 
         assertEquals(10, assertNotNull(seen.last().upNext).secondsLeft)
+    }
+
+    private suspend fun serverWithSegments(vararg segments: String): PlaybackViewModel {
+        server(segments = Reply.json(segmentsJson(*segments)))
+        return viewModel().also { vm ->
+            vm.uiState.first { it.stream != null }
+            // The segments come in a separate call; wait until it has been made, so the first position isn't checked before it.
+            while (app.jellyfin.requestsTo("GET", "/MediaSegments/m1").isEmpty()) yield()
+            // Stopgap: the request is recorded before its reply is read, and nothing observable says when the
+            // segments were applied (the offer depends on the position), so keep the scheduler turning for a
+            // moment of real time instead.
+            val until = TimeSource.Monotonic.markNow() + 200.milliseconds
+            while (until.hasNotPassedNow()) yield()
+        }
+    }
+
+    @Test
+    fun `offer appears inside an intro and stays for the whole segment`() = runTest {
+        val vm = serverWithSegments(segmentJson("Intro", 10_000, 90_000))
+
+        vm.onPosition(5_000)
+        assertNull(vm.uiState.value.skipOffer)
+        vm.onPosition(10_000)
+        assertEquals(SkipOffer("Skip intro", 90_000), vm.uiState.value.skipOffer)
+        vm.onPosition(50_000)
+        assertEquals(SkipOffer("Skip intro", 90_000), vm.uiState.value.skipOffer)
+        vm.onPosition(89_999)
+        assertNotNull(vm.uiState.value.skipOffer)
+        vm.onPosition(90_000)
+        assertNull(vm.uiState.value.skipOffer)
+    }
+
+    @Test
+    fun `no offer outside any segment`() = runTest {
+        val vm = serverWithSegments(segmentJson("Intro", 10_000, 90_000))
+
+        vm.onPosition(200_000)
+
+        assertNull(vm.uiState.value.skipOffer)
+    }
+
+    @Test
+    fun `outro offers Skip credits`() = runTest {
+        val vm = serverWithSegments(segmentJson("Outro", 5_400_000, 6_000_000))
+
+        vm.onPosition(5_500_000)
+
+        assertEquals(SkipOffer("Skip credits", 6_000_000), vm.uiState.value.skipOffer)
+    }
+
+    @Test
+    fun `skip credits gives way to the up next card and comes back without it`() = runTest {
+        val jellyfin = seriesServer()
+        jellyfin.server("http://nas:8096").on("GET", "/MediaSegments/m1", Reply.json(segmentsJson(segmentJson("Outro", tenMinutes - 60_000, tenMinutes))))
+        val viewModel = viewModel()
+        val seen = playing(viewModel, jellyfin)
+        jellyfin.awaitRequests("GET", "/MediaSegments/m1")
+
+        viewModel.onPosition(tenMinutes - 45_000)
+        assertEquals(SkipOffer("Skip credits", tenMinutes), seen.last().skipOffer)
+        viewModel.onPosition(tenMinutes - 30_000)
+        assertNotNull(seen.last().upNext)
+        assertNull(seen.last().skipOffer)
+        // Both overlays never show at once, not even for one state.
+        assertTrue(seen.none { it.upNext != null && it.skipOffer != null })
+
+        viewModel.onWatchCredits()
+        assertNull(seen.last().upNext)
+        assertEquals(SkipOffer("Skip credits", tenMinutes), seen.last().skipOffer)
+    }
+
+    @Test
+    fun `an intro offer is not hidden by the up next card`() = runTest {
+        val jellyfin = seriesServer()
+        jellyfin.server("http://nas:8096").on("GET", "/MediaSegments/m1", Reply.json(segmentsJson(segmentJson("Recap", tenMinutes - 60_000, tenMinutes - 10_000))))
+        val viewModel = viewModel()
+        val seen = playing(viewModel, jellyfin)
+        jellyfin.awaitRequests("GET", "/MediaSegments/m1")
+
+        viewModel.onPosition(tenMinutes - 25_000)
+
+        assertNotNull(seen.last().upNext)
+        assertNotNull(seen.last().skipOffer)
+    }
+
+    @Test
+    fun `skip sets a seek to the segment end`() = runTest {
+        val vm = serverWithSegments(segmentJson("Intro", 10_000, 90_000))
+        vm.onPosition(20_000)
+
+        vm.onSkip()
+        assertEquals(90_000L, vm.uiState.value.pendingSeekMs)
+
+        vm.onSeekHandled()
+        assertNull(vm.uiState.value.pendingSeekMs)
+        vm.onPosition(90_500)
+        assertNull(vm.uiState.value.skipOffer)
+    }
+
+    @Test
+    fun `selecting a speed updates state`() = runTest {
+        server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+        assertEquals(1f, vm.uiState.value.speed)
+
+        vm.onSelectSpeed(1.5f)
+
+        assertEquals(1.5f, vm.uiState.value.speed)
+    }
+
+    @Test
+    fun `an unsupported speed is ignored`() = runTest {
+        server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+        vm.onSelectSpeed(2f)
+
+        vm.onSelectSpeed(3f)
+
+        assertEquals(2f, vm.uiState.value.speed)
+    }
+
+    @Test
+    fun `the speed is kept when the stream is opened again`() = runTest {
+        server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+        vm.onSelectSpeed(1.25f)
+
+        vm.onFailed(PlaybackFailure.Network)
+        val reopened = vm.uiState.first { it.stream?.id == 2 }
+
+        assertEquals(1.25f, reopened.speed)
+    }
+
+    @Test
+    fun `speed resets to 1 for a new item`() = runTest {
+        val jellyfin = seriesServer()
+        val vm = viewModel()
+        playing(vm, jellyfin)
+        vm.onSelectSpeed(2f)
+
+        vm.onPlayNow()
+        val next = vm.uiState.first { it.stream?.id == 2 }
+
+        assertEquals(1f, next.speed)
+    }
+
+    @Test
+    fun `progress reports are unaffected by the speed`() = runTest {
+        val jellyfin = server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+        vm.onPlaying(0)
+        vm.onSelectSpeed(2f)
+        vm.onPaused(12_000)
+
+        val progress = bodyOf(jellyfin.awaitRequests("POST", "/Sessions/Playing/Progress").first())
+        assertEquals(12_000L * 10_000, progress["PositionTicks"]!!.jsonPrimitive.long)
+        assertEquals(1, jellyfin.requestsTo("POST", "/Sessions/Playing").size)
+    }
+
+    /**
+     * Returns once the reporter has handled everything [vm] sent it so far: reports go out one at a time
+     * in order, so a seek's Progress reaching the server means a Stopped sent before it would have too.
+     * Needs a started session.
+     */
+    private suspend fun afterEarlierReports(vm: PlaybackViewModel, jellyfin: FakeJellyfin) {
+        val before = jellyfin.requestsTo("POST", "/Sessions/Playing/Progress").size
+        vm.onSeeked(5_500)
+        jellyfin.awaitRequests("POST", "/Sessions/Playing/Progress", count = before + 1)
+    }
+
+    @Test
+    fun `entering PiP does not send Stopped`() = runTest {
+        val jellyfin = server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+        vm.onPlaying(0)
+
+        vm.onEnteredPictureInPicture(5_000)
+        vm.onBackgrounded(5_000)
+        val state = vm.uiState.first { it.inPictureInPicture }
+
+        afterEarlierReports(vm, jellyfin)
+        assertTrue(state.inPictureInPicture)
+        assertTrue(jellyfin.requestsTo("POST", "/Sessions/Playing/Stopped").isEmpty())
+    }
+
+    @Test
+    fun `progress keeps flowing in PiP`() = runTest {
+        val jellyfin = server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+        vm.onPlaying(0)
+        vm.onEnteredPictureInPicture(5_000)
+
+        vm.onPaused(7_000)
+
+        val progress = bodyOf(jellyfin.awaitRequests("POST", "/Sessions/Playing/Progress").first())
+        assertEquals(true, progress.getValue("IsPaused").jsonPrimitive.boolean)
+    }
+
+    @Test
+    fun `closing the PiP window sends one Stopped`() = runTest {
+        val jellyfin = server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+        vm.onPlaying(0)
+        vm.onEnteredPictureInPicture(5_000)
+
+        vm.onLeftPictureInPicture(9_000, closed = true)
+        vm.onClosed(9_000)
+
+        jellyfin.awaitRequests("POST", "/Sessions/Playing/Stopped")
+        // Playing again starts a new session: its Start is sent only after every report before it.
+        vm.onPlaying(9_000)
+        jellyfin.awaitRequests("POST", "/Sessions/Playing", count = 2)
+        assertEquals(1, jellyfin.requestsTo("POST", "/Sessions/Playing/Stopped").size)
+        assertFalse(vm.uiState.first { !it.inPictureInPicture }.inPictureInPicture)
+    }
+
+    @Test
+    fun `expanding from PiP sends nothing and keeps the session`() = runTest {
+        val jellyfin = server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+        vm.onPlaying(0)
+        vm.onEnteredPictureInPicture(5_000)
+
+        vm.onLeftPictureInPicture(6_000, closed = false)
+
+        afterEarlierReports(vm, jellyfin)
+        assertTrue(jellyfin.requestsTo("POST", "/Sessions/Playing/Stopped").isEmpty())
+        // The session is the same one: backgrounding now stops it as usual.
+        vm.onBackgrounded(6_500)
+        jellyfin.awaitRequests("POST", "/Sessions/Playing/Stopped")
+        assertEquals(1, jellyfin.requestsTo("POST", "/Sessions/Playing").size)
+    }
+
+    @Test
+    fun `backgrounding without PiP still sends Stopped`() = runTest {
+        val jellyfin = server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+        vm.onPlaying(0)
+
+        vm.onBackgrounded(4_000)
+
+        assertEquals(1, jellyfin.awaitRequests("POST", "/Sessions/Playing/Stopped").size)
+    }
+
+    @Test
+    fun `NowPlaying reflects play and pause and clears on close`() = runTest {
+        server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+
+        vm.onPlaying(1_000)
+        val playing = assertNotNull(app.nowPlaying.state.value)
+        assertEquals("m1", playing.itemId)
+        assertEquals("Heat", playing.title)
+        assertTrue(playing.playing)
+
+        vm.onPaused(2_000)
+        val paused = assertNotNull(app.nowPlaying.state.value)
+        assertFalse(paused.playing)
+        assertEquals(2_000L, paused.positionMs)
+
+        vm.onClosed(2_000)
+        assertNull(app.nowPlaying.state.value)
+    }
+
+    // "Are you still watching?": the card's countdown is held back once enough episodes started by themselves.
+
+    private suspend fun TestScope.nearTheEnd(viewModel: PlaybackViewModel, jellyfin: FakeJellyfin): MutableList<PlaybackUiState> {
+        val seen = playing(viewModel, jellyfin)
+        viewModel.onPosition(tenMinutes - 30_000)
+        return seen
+    }
+
+    @Test
+    fun `a countdown that runs out counts as an auto advance`() = runTest {
+        val jellyfin = seriesServer()
+        val vm = viewModel(countdownStep = 1.milliseconds)
+        val seen = playing(vm, jellyfin)
+
+        vm.onPosition(tenMinutes - 30_000)
+        vm.uiState.first { it.stream?.id == 2 }
+
+        assertEquals(1, app.binge.count.value)
+        assertFalse(seen.last().stillWatching)
+    }
+
+    @Test
+    fun `play now is an interaction and resets the count`() = runTest {
+        val jellyfin = seriesServer()
+        app.binge.autoAdvanced()
+        val vm = viewModel(countdownStep = 1.hours)
+        val seen = nearTheEnd(vm, jellyfin)
+        assertNotNull(seen.last().upNext)
+
+        vm.onPlayNow()
+
+        assertEquals(0, app.binge.count.value)
+    }
+
+    @Test
+    fun `the prompt replaces the countdown after three auto advances`() = runTest {
+        val jellyfin = seriesServer()
+        repeat(3) { app.binge.autoAdvanced() }
+        val vm = viewModel(countdownStep = 1.milliseconds)
+        val seen = nearTheEnd(vm, jellyfin)
+
+        vm.uiState.first { it.stillWatching }
+        // A countdown would run on virtual time: this plays any that was started to its end.
+        advanceUntilIdle()
+
+        assertTrue(seen.last().stillWatching)
+        assertNull(seen.last().upNext)
+        // Nothing advanced on its own.
+        assertEquals(1, seen.last().stream?.id)
+    }
+
+    @Test
+    fun `threshold 0 never prompts`() = runTest {
+        val jellyfin = seriesServer()
+        app.profileSettings.setBingeThreshold(0)
+        repeat(10) { app.binge.autoAdvanced() }
+        val vm = viewModel(countdownStep = 1.hours)
+        val seen = nearTheEnd(vm, jellyfin)
+
+        assertNotNull(seen.last().upNext)
+        assertFalse(seen.last().stillWatching)
+    }
+
+    @Test
+    fun `threshold 2 prompts after two`() = runTest {
+        val jellyfin = seriesServer()
+        app.profileSettings.setBingeThreshold(2)
+        app.binge.autoAdvanced()
+        val vm = viewModel(countdownStep = 1.hours)
+        val seen = nearTheEnd(vm, jellyfin)
+        assertNotNull(seen.last().upNext)
+        assertFalse(seen.last().stillWatching)
+        // One more by itself, in the next episode's player, and it asks.
+        app.binge.autoAdvanced()
+        val second = viewModel(countdownStep = 1.hours)
+        val seenSecond = nearTheEnd(second, jellyfin)
+
+        second.uiState.first { it.stillWatching }
+        assertTrue(seenSecond.last().stillWatching)
+    }
+
+    @Test
+    fun `interaction resets the count`() = runTest {
+        server()
+        repeat(2) { app.binge.autoAdvanced() }
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+
+        vm.onUserInteraction()
+
+        assertEquals(0, app.binge.count.value)
+    }
+
+    @Test
+    fun `the next episode keeps the count`() = runTest {
+        // Auto advance happens in the same player, so starting the next episode must not reset the count.
+        val jellyfin = seriesServer()
+        val vm = viewModel(countdownStep = 1.milliseconds)
+        playing(vm, jellyfin)
+        vm.onPosition(tenMinutes - 30_000)
+        vm.uiState.first { it.stream?.id == 2 }
+
+        vm.onPlaying(0)
+        vm.onPosition(5_000)
+
+        assertEquals(1, app.binge.count.value)
+    }
+
+    @Test
+    fun `closing the player resets the count`() = runTest {
+        server()
+        repeat(2) { app.binge.autoAdvanced() }
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+
+        vm.onClosed(1_000)
+
+        assertEquals(0, app.binge.count.value)
+    }
+
+    @Test
+    fun `continue clears the prompt and the count and the countdown carries on`() = runTest {
+        val jellyfin = seriesServer()
+        repeat(3) { app.binge.autoAdvanced() }
+        val vm = viewModel(countdownStep = 1.hours)
+        val seen = nearTheEnd(vm, jellyfin)
+        vm.uiState.first { it.stillWatching }
+
+        vm.onContinueWatching()
+        vm.onPosition(tenMinutes - 25_000)
+
+        assertEquals(0, app.binge.count.value)
+        assertFalse(seen.last().stillWatching)
+        assertNotNull(seen.last().upNext)
+    }
+
+    @Test
+    fun `continue after the episode ended counts down to the next one`() = runTest {
+        val jellyfin = seriesServer()
+        repeat(3) { app.binge.autoAdvanced() }
+        val vm = viewModel(countdownStep = 1.milliseconds)
+        val seen = playing(vm, jellyfin)
+        // The end came before any countdown (a seek to the end, a short episode): the prompt asks there.
+        vm.onEnded(tenMinutes)
+        vm.uiState.first { it.stillWatching }
+
+        vm.onContinueWatching()
+        vm.uiState.first { it.stream?.id == 2 }
+
+        assertFalse(seen.last().stillWatching)
+        assertFalse(seen.last().finished)
+        // The count was just reset, and the countdown that ran out counts as one auto advance.
+        assertEquals(1, app.binge.count.value)
+    }
+
+    @Test
+    fun `stop watching ends the session and closes the screen`() = runTest {
+        val jellyfin = seriesServer()
+        repeat(3) { app.binge.autoAdvanced() }
+        val vm = viewModel(countdownStep = 1.hours)
+        val seen = nearTheEnd(vm, jellyfin)
+        vm.uiState.first { it.stillWatching }
+
+        vm.onStopWatching()
+
+        jellyfin.awaitRequests("POST", "/Sessions/Playing/Stopped")
+        assertTrue(seen.last().finished)
+        assertFalse(seen.last().stillWatching)
+        assertEquals(0, app.binge.count.value)
+    }
+
+    @Test
+    fun `the stream carries the dynamic range of the plan`() = runTest {
+        server(info = playbackInfoJson(mediaSourceJson(videoWidth = 3840, videoHeight = 2160, videoRangeType = "DOVIWithHDR10")))
+
+        val stream = assertNotNull(viewModel().uiState.first { it.stream != null }.stream)
+
+        assertEquals(DynamicRange.DolbyVision, stream.dynamicRange)
+    }
+
+    @Test
+    fun `an SDR or unknown picture is SDR`() = runTest {
+        server(info = playbackInfoJson(mediaSourceJson(videoRangeType = "SDR")))
+        assertEquals(DynamicRange.Sdr, assertNotNull(viewModel().uiState.first { it.stream != null }.stream).dynamicRange)
+    }
+
+    @Test
+    fun `a stream with no video information is SDR`() = runTest {
+        server()
+        assertEquals(DynamicRange.Sdr, assertNotNull(viewModel().uiState.first { it.stream != null }.stream).dynamicRange)
+    }
+
+    @Test
+    fun `skip with no offer does nothing`() = runTest {
+        val vm = serverWithSegments(segmentJson("Intro", 10_000, 90_000))
+        vm.onPosition(200_000)
+
+        vm.onSkip()
+
+        assertNull(vm.uiState.value.pendingSeekMs)
+    }
+
+    @Test
+    fun `no segments means no offer and no error`() = runTest {
+        val vm = serverWithSegments()
+
+        vm.onPosition(20_000)
+
+        assertNull(vm.uiState.value.skipOffer)
+        assertNull(vm.uiState.value.message)
+    }
+
+    @Test
+    fun `a seek past the segment removes the offer`() = runTest {
+        val vm = serverWithSegments(segmentJson("Intro", 10_000, 90_000))
+        vm.onPosition(20_000)
+        assertNotNull(vm.uiState.value.skipOffer)
+
+        vm.onSeeked(300_000)
+
+        assertNull(vm.uiState.value.skipOffer)
+    }
+
+    @Test
+    fun `Unknown segments never offer`() = runTest {
+        val vm = serverWithSegments(segmentJson("Mystery", 10_000, 90_000))
+
+        vm.onPosition(20_000)
+
+        assertNull(vm.uiState.value.skipOffer)
+    }
+
+    @Test
+    fun `overlapping segments offer the one that ends last`() = runTest {
+        val vm = serverWithSegments(segmentJson("Intro", 10_000, 60_000), segmentJson("Recap", 0, 90_000))
+
+        vm.onPosition(20_000)
+
+        assertEquals(SkipOffer("Skip recap", 90_000), vm.uiState.value.skipOffer)
+    }
+
+    @Test
+    fun `a failing segments call does not stop playback from starting`() = runTest {
+        server(segments = Reply.status(HttpStatusCode.InternalServerError))
+        val vm = viewModel()
+
+        val state = vm.uiState.first { it.stream != null }
+        vm.onPosition(20_000)
+
+        assertNull(state.message)
+        assertNull(vm.uiState.value.skipOffer)
+    }
+
+    @Test
+    fun `segments are fetched once even when the stream is opened again`() = runTest {
+        val vm = serverWithSegments(segmentJson("Intro", 10_000, 90_000))
+
+        vm.onFailed(PlaybackFailure.Unauthorized)
+        vm.uiState.first { it.stream != null && it.stream?.id == 2 }
+
+        assertEquals(1, app.jellyfin.requestsTo("GET", "/MediaSegments/m1").size)
+    }
+
+    @Test
+    fun `a skip asked for during a network retry is dropped when the stream comes back`() = runTest {
+        val vm = serverWithSegments(segmentJson("Intro", 10_000, 90_000))
+        vm.onPosition(20_000)
+
+        vm.onFailed(PlaybackFailure.Network)
+        vm.onSkip()
+        vm.uiState.first { it.stream?.id == 2 }
+
+        assertNull(vm.uiState.value.pendingSeekMs)
+    }
+
+    private fun trickplayInfo(width: Int) =
+        """"$width":{"Width":$width,"Height":${width * 9 / 16},"TileWidth":10,"TileHeight":10,"ThumbnailCount":250,"Interval":10000,"Bandwidth":1}"""
+
+    /** [item] with trickplay thumbnails for each of [sources] (media source ids), as the server sends them. */
+    private fun withTrickplay(item: String, vararg sources: String) =
+        item.dropLast(1) + ""","Trickplay":{${sources.joinToString(",") { """"$it":{${trickplayInfo(320)}}""" }}}}"""
+
+    @Test
+    fun `trickplay is loaded for the played media source`() = runTest {
+        server(item = withTrickplay(itemJson("m1", "Heat", year = 1995), "ms-1", "ms-2"))
+
+        val track = assertNotNull(viewModel().uiState.first { it.trickplay != null }.trickplay)
+
+        assertEquals("ms-1", track.mediaSourceId)
+        assertEquals(320, track.width)
+        assertEquals(10_000L, track.intervalMs)
+    }
+
+    @Test
+    fun `no trickplay entry leaves it null`() = runTest {
+        server()
+        val vm = viewModel()
+
+        vm.uiState.first { it.stream != null }
+        withContext(Dispatchers.Default) { delay(100) }
+
+        assertNull(vm.uiState.value.trickplay)
+        assertNull(vm.uiState.value.message)
+    }
+
+    @Test
+    fun `trickplay for another media source is ignored`() = runTest {
+        server(item = withTrickplay(itemJson("m1", "Heat", year = 1995), "ms-2"))
+        val vm = viewModel()
+
+        vm.uiState.first { it.stream != null }
+        withContext(Dispatchers.Default) { delay(100) }
+
+        assertNull(vm.uiState.value.trickplay)
+    }
+
+    @Test
+    fun `the next episode loads its own trickplay and never shows the previous one`() = runTest {
+        val jellyfin = seriesServer(first = withTrickplay(episode("m1", 1), "ms-1"))
+        val viewModel = viewModel(countdownStep = 1.milliseconds)
+        val seen = playing(viewModel, jellyfin)
+        assertNotNull(viewModel.uiState.value.trickplay)
+        val asked = jellyfin.requestsTo("GET", "/Items").size
+
+        viewModel.onPosition(tenMinutes - 30_000)
+        viewModel.uiState.first { it.title == "Northbound" && it.stream != null }
+        jellyfin.awaitRequests("GET", "/Items", count = asked + 1)
+
+        // Asked again, for the new episode; and while it was switching nothing from the old one was left.
+        assertEquals(1, jellyfin.requestsTo("GET", "/Items").count { it.query["ids"] == "e2" })
+        assertTrue(seen.filter { it.title == "Northbound" && it.stream == null }.all { it.trickplay == null })
     }
 }

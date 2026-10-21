@@ -21,6 +21,8 @@ data class PlaybackTrack(
     /** The name the server (or the file) gives it, such as `English - Dolby Digital - 5.1`; null if it gives none. */
     val name: String?,
     val selected: Boolean,
+    /** The file's codec for this track (`eac3`); null for a subtitle or when the server doesn't say. */
+    val codec: String? = null,
 )
 
 /** A text subtitle the server sends as a file, for the player to load next to the video. */
@@ -56,6 +58,8 @@ data class PlaybackPlan(
     /** The audio and subtitle tracks this stream plays, for the reports; null for none. */
     val audioStreamIndex: Int? = null,
     val subtitleStreamIndex: Int? = null,
+    /** The picture of the file, for the player's format badges; null when the server doesn't describe a video stream. */
+    val videoFormat: VideoFormat? = null,
 )
 
 /** The outcome of asking the server how to play an item. */
@@ -64,9 +68,6 @@ sealed interface PlaybackNegotiation {
 
     /** The server found no way to deliver the item to this device. */
     data object NoCompatibleStream : PlaybackNegotiation
-
-    /** Only re-encoding the video would play it, and the profile doesn't allow that. */
-    data object NeedsTranscoding : PlaybackNegotiation
 
     data class Failed(val error: ApiError) : PlaybackNegotiation
 }

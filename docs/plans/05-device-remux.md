@@ -6,6 +6,8 @@ profile can choose to have the **server** do that work instead. Android already 
 directly (ExoPlayer plus the ffmpeg audio decoder), so there the choice only decides whether the server
 may re-encode video.
 
+**Needs redesign (2026-10-20):** the owner scrapped the per-profile `allowTranscoding` flag (plan 07, Task 6c: no other Jellyfin client has such a setting). This plan's "On this device / On the server" choice was built on it, so its Decisions, Phase B and the questions below must be redone without a setting before any work starts.
+
 **Status (2026-10-20):** planned, nothing built. This plan was written without a design interview: every
 call marked *(my call)* is a guess for the owner to confirm or change. It follows the video-only
 transcoding setting added in plan 03's follow-up work (`ProfileSettings.allowTranscoding`).

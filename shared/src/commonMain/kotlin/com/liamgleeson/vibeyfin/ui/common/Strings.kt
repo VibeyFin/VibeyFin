@@ -1,5 +1,9 @@
 package com.liamgleeson.vibeyfin.ui.common
 
+import com.liamgleeson.vibeyfin.domain.PlayMethod
+import com.liamgleeson.vibeyfin.domain.SegmentType
+import kotlin.math.roundToInt
+
 /**
  * Every piece of text the apps show: titles, labels, buttons, help text, empty states and
  * accessibility descriptions. Screens on both platforms read from here and hold no string
@@ -146,6 +150,131 @@ object Strings {
     val subtitlesOff = "Off"
     val audioAndSubtitles = "Audio and subtitles"
 
+    /** The player button that turns the video into a small window over other apps. */
+    val pictureInPicture = "Picture in picture"
+
+    /** The name of the Android notification channel for the media controls shown while a video plays. */
+    val playbackNotificationChannel = "Playback"
+
+    /** One spoken phrase for a label and its value, "Bitrate, 4.5 Mbps", where the two are drawn apart. */
+    fun labelled(label: String, value: String) = "$label, $value"
+
+    // Playback stats
+    fun statsMethod(method: PlayMethod) = when (method) {
+        PlayMethod.DirectPlay -> "Direct play"
+        PlayMethod.DirectStream -> "Direct stream"
+        PlayMethod.Transcode -> "Transcode"
+    }
+    val statsLabelMethod = "Method"
+    val statsLabelReasons = "Reasons"
+    val statsLabelVideo = "Video"
+    val statsLabelAudio = "Audio"
+    val statsLabelResolution = "Resolution"
+    val statsLabelFrameRate = "Frame rate"
+    val statsLabelBitrate = "Bitrate"
+    val statsLabelDroppedFrames = "Dropped frames"
+    val statsLabelThroughput = "Throughput"
+    val statsLabelBuffer = "Buffer"
+
+    /** Shown for a stat nobody can tell. */
+    val statsUnavailable = "–"
+
+    /**
+     * The short codec name the stats overlay shows ("h264", "eac3 atmos"), the same on both platforms.
+     * [code] is what the player reports: a MIME type on Android (`video/avc`), a FourCC on iOS (`avc1`).
+     * An unknown one is shown as the player gave it, without its `video/` or `x-` prefix; null for none.
+     */
+    fun codecName(code: String?): String? {
+        val key = code?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return null
+        return CODEC_NAMES[key] ?: key.substringAfter('/').removePrefix("x-")
+    }
+
+    private val CODEC_NAMES = mapOf(
+        // Android MIME types
+        "video/avc" to "h264",
+        "video/hevc" to "hevc",
+        "video/av01" to "av1",
+        "video/x-vnd.on2.vp9" to "vp9",
+        "video/x-vnd.on2.vp8" to "vp8",
+        "video/mp4v-es" to "mpeg4",
+        "video/dolby-vision" to "dolby vision",
+        "audio/mp4a-latm" to "aac",
+        "audio/ac3" to "ac3",
+        "audio/eac3" to "eac3",
+        "audio/eac3-joc" to "eac3 atmos",
+        "audio/true-hd" to "truehd",
+        "audio/vnd.dts" to "dts",
+        "audio/vnd.dts.hd" to "dts-hd",
+        "audio/mpeg" to "mp3",
+        "audio/opus" to "opus",
+        "audio/vorbis" to "vorbis",
+        "audio/flac" to "flac",
+        // Apple FourCCs
+        "avc1" to "h264",
+        "avc3" to "h264",
+        "hvc1" to "hevc",
+        "hev1" to "hevc",
+        "dvh1" to "dolby vision",
+        "dvhe" to "dolby vision",
+        "av01" to "av1",
+        "vp09" to "vp9",
+        "vp08" to "vp8",
+        "mp4v" to "mpeg4",
+        "mp4a" to "aac",
+        "ac-3" to "ac3",
+        "ec-3" to "eac3",
+        ".mp3" to "mp3",
+    )
+
+    fun statsResolution(width: Int, height: Int) = "$width × $height"
+
+    /** `24 fps`, `23.98 fps`: two decimals at most, none when the rate is whole. */
+    fun statsFrameRate(framesPerSecond: Float): String {
+        val hundredths = (framesPerSecond * 100).roundToInt()
+        val text = if (hundredths % 100 == 0) (hundredths / 100).toString() else (hundredths / 100f).toString()
+        return "$text fps"
+    }
+
+    /** `850 kbps` below a megabit, `4.5 Mbps` from there. Used for bitrate and throughput. */
+    fun statsBitrate(kbps: Int) =
+        if (kbps < 1000) "$kbps kbps" else "${kbps / 1000}.${(kbps % 1000) / 100} Mbps"
+
+    /** `12.3 s` of video buffered ahead. */
+    fun statsBuffer(milliseconds: Long): String {
+        val tenths = (milliseconds.coerceAtLeast(0) / 100)
+        return "${tenths / 10}.${tenths % 10} s"
+    }
+
+    /** The button that jumps over a marked part of the video. */
+    fun skip(type: SegmentType): String = when (type) {
+        SegmentType.Intro -> "Skip intro"
+        SegmentType.Outro -> "Skip credits"
+        SegmentType.Recap -> "Skip recap"
+        SegmentType.Preview -> "Skip preview"
+        SegmentType.Commercial -> "Skip ad"
+        SegmentType.Unknown -> ""
+    }
+
+    // Format badges
+    val badgeDolbyVision = "Dolby Vision"
+    val badgeHdr10 = "HDR10"
+    val badgeHlg = "HLG"
+    val badge4k = "4K"
+    val badgeHd = "HD"
+
+    val speed = "Speed"
+
+    /** `1x`, `0.75x`, `1.5x`. */
+    fun speedValue(speed: Float): String {
+        val hundredths = (speed * 100).roundToInt()
+        val text = when {
+            hundredths % 100 == 0 -> (hundredths / 100).toString()
+            hundredths % 10 == 0 -> "${hundredths / 100}.${(hundredths % 100) / 10}"
+            else -> "${hundredths / 100}.${(hundredths % 100).toString().padStart(2, '0')}"
+        }
+        return "${text}x"
+    }
+
     /** A track the file gives no name or language for. */
     fun track(index: Int) = "Track ${index + 1}"
 
@@ -170,8 +299,17 @@ object Strings {
     val alwaysAskWhoIsWatchingTitle = "Always ask who's watching"
     val alwaysAskWhoIsWatchingHelp =
         "Show the profile screen every time the app opens instead of going straight to the last profile."
-    val allowTranscodingTitle = "Allow video transcoding"
-    val allowTranscodingHelp =
-        "Let the server re-encode video your device can't play. This is hard on a small server. " +
-            "When off, the server still repackages files and converts audio. Applies to this profile."
+    val playbackStatsTitle = "Show playback stats"
+    val playbackStatsHelp =
+        "Show codec, bitrate and how the server is delivering the video in the player. Applies to this profile."
+    val stillWatchingTitle = "Ask if you're still watching"
+    val stillWatchingHelp =
+        "Pause and ask after several episodes in a row so the next one doesn't play to an empty room. Applies to this profile."
+    val stillWatchingOff = "Off"
+
+    /** The question that pauses the player after several episodes in a row. */
+    val stillWatchingPrompt = "Are you still watching?"
+    val stillWatchingContinue = "Keep watching"
+    val stillWatchingStop = "Stop watching"
+    fun stillWatchingAfter(n: Int) = "After $n episodes"
 }
