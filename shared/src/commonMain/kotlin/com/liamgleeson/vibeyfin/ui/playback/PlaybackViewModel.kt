@@ -6,6 +6,8 @@ import com.liamgleeson.vibeyfin.data.api.ApiResult
 import com.liamgleeson.vibeyfin.domain.ConnectionManager
 import com.liamgleeson.vibeyfin.domain.LibraryRepository
 import com.liamgleeson.vibeyfin.domain.LiveDiagnostics
+import com.liamgleeson.vibeyfin.domain.NowPlaying
+import com.liamgleeson.vibeyfin.domain.NowPlayingState
 import com.liamgleeson.vibeyfin.domain.PlaybackDiagnostics
 import com.liamgleeson.vibeyfin.domain.ProfileSettings
 import com.liamgleeson.vibeyfin.domain.toDiagnostics
@@ -161,6 +163,8 @@ data class PlaybackUiState(
     val speed: Float = 1f,
     /** The one badge for the picture ("4K", "HDR10"); null when there is none to show. */
     val badge: String? = null,
+    /** The player is in a picture-in-picture window; the screen is gone but the session goes on. */
+    val inPictureInPicture: Boolean = false,
 ) {
     /** The speeds to pick from. */
     val speeds: List<Float> get() = PLAYBACK_SPEEDS
@@ -213,6 +217,7 @@ class PlaybackViewModel(
     connection: ConnectionManager,
     private val watch: WatchRepository,
     profileSettings: ProfileSettings,
+    private val nowPlaying: NowPlaying,
     private val retryDelays: List<Duration> = NETWORK_RETRY_DELAYS,
     private val startOver: Boolean = false,
     private val autoAdvance: Boolean = true,
@@ -226,6 +231,9 @@ class PlaybackViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlaybackUiState())
 
     private var lastPositionMs = 0L
+
+    /** The player is playing (not paused), as last told; what [nowPlaying] shows. */
+    private var playingNow = false
 
     /** The item has been read, so where to start is known and a retry doesn't need to ask again. */
     private var started = false
@@ -241,6 +249,8 @@ class PlaybackViewModel(
 
     /** The item played to its end, so a dismissed card now means leaving. */
     private var ended = false
+
+    private var inPictureInPicture = false
 
     private var countdown: Job? = null
     private var method: PlayMethod? = null
@@ -330,12 +340,16 @@ class PlaybackViewModel(
     /** The player is playing: it started, or resumed. */
     fun onPlaying(positionMs: Long) {
         lastPositionMs = positionMs
+        playingNow = true
         reporter.playing(positionMs)
+        publishNowPlaying()
     }
 
     fun onPaused(positionMs: Long) {
         lastPositionMs = positionMs
+        playingNow = false
         reporter.paused(positionMs)
+        publishNowPlaying()
     }
 
     fun onSeeked(positionMs: Long) {
@@ -360,6 +374,7 @@ class PlaybackViewModel(
     fun onPosition(positionMs: Long) {
         lastPositionMs = positionMs
         reporter.position(positionMs)
+        publishNowPlaying()
         checkUpNext(positionMs)
         refreshSkipOffer()
         if ((networkRetries > 0 || reauthorized) && positionMs - failedAtMs >= RECOVERED_AFTER_MS) {
@@ -375,6 +390,7 @@ class PlaybackViewModel(
     fun onEnded(positionMs: Long) {
         lastPositionMs = positionMs
         reporter.stop(positionMs)
+        nowPlaying.clear()
         ended = true
         val upcoming = next
         if (autoAdvance && upcoming != null && !upNextDismissed) {
@@ -390,8 +406,11 @@ class PlaybackViewModel(
      * starts anew, and a card that was counting goes with it (it returns if the end is still near).
      */
     fun onBackgrounded(positionMs: Long) {
+        // A picture-in-picture window keeps playing; it ends the session when it is closed.
+        if (inPictureInPicture) return
         lastPositionMs = positionMs
         reporter.stop(positionMs)
+        nowPlaying.clear()
         cancelCountdown()
         if (ended) content.update { it.copy(finished = true) }
     }
@@ -400,7 +419,25 @@ class PlaybackViewModel(
     fun onClosed(positionMs: Long) {
         lastPositionMs = positionMs
         reporter.stop(positionMs)
+        nowPlaying.clear()
         cancelCountdown()
+    }
+
+    /** The screen became a picture-in-picture window: playback and reporting carry on, nothing is stopped. */
+    fun onEnteredPictureInPicture(positionMs: Long) {
+        lastPositionMs = positionMs
+        inPictureInPicture = true
+        content.update { it.copy(inPictureInPicture = true) }
+    }
+
+    /**
+     * The picture-in-picture window went away. [closed]: the user dismissed it, which ends the session
+     * like closing the player. Otherwise it was expanded back to the full player and nothing is reported.
+     */
+    fun onLeftPictureInPicture(positionMs: Long, closed: Boolean) {
+        inPictureInPicture = false
+        content.update { it.copy(inPictureInPicture = false) }
+        if (closed) onClosed(positionMs)
     }
 
     /** The player couldn't play the stream, for the reason [failure]. Ignored when no stream is open. */
@@ -631,6 +668,12 @@ class PlaybackViewModel(
     }
 
     /** The plan's diagnostics with whatever the player measured on top. */
+    private fun publishNowPlaying() {
+        val shown = item ?: return
+        val state = content.value
+        nowPlaying.update(NowPlayingState(shown.id, state.title, state.subtitle, playingNow, lastPositionMs))
+    }
+
     private fun refreshDiagnostics() {
         val current = plan ?: return
         val base = current.toDiagnostics(audioNow)

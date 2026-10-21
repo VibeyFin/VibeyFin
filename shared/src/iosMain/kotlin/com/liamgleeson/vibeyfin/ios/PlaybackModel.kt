@@ -36,6 +36,11 @@ class PlaybackModel(itemId: String, startOver: Boolean) {
 
     fun onClosed(positionMs: Long) = host.viewModel.onClosed(positionMs)
 
+    fun onEnteredPictureInPicture(positionMs: Long) = host.viewModel.onEnteredPictureInPicture(positionMs)
+
+    /** [closed]: the window was dismissed (the session ends); otherwise it was expanded back. */
+    fun onLeftPictureInPicture(positionMs: Long, closed: Boolean) = host.viewModel.onLeftPictureInPicture(positionMs, closed)
+
     fun onFailed(failure: PlaybackFailure) = host.viewModel.onFailed(failure)
 
     fun onSelectAudio(index: Int) = host.viewModel.onSelectAudio(index)

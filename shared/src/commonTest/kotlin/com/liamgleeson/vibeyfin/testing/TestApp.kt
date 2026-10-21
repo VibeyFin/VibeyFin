@@ -9,6 +9,7 @@ import com.liamgleeson.vibeyfin.domain.ConnectionManager
 import com.liamgleeson.vibeyfin.domain.LibraryRepository
 import com.liamgleeson.vibeyfin.domain.PROGRESS_INTERVAL
 import com.liamgleeson.vibeyfin.domain.PendingReports
+import com.liamgleeson.vibeyfin.domain.NowPlaying
 import com.liamgleeson.vibeyfin.domain.PlaybackRecovery
 import com.liamgleeson.vibeyfin.domain.PlaybackReporter
 import com.liamgleeson.vibeyfin.domain.PlaybackRepository
@@ -49,6 +50,7 @@ class TestApp {
     val watch = WatchRepository(connection, watchChanges)
     val capabilities = FakePlaybackCapabilities()
     val profileSettings = ProfileSettings(database.accountDao(), connection)
+    val nowPlaying = NowPlaying()
     val playback = PlaybackRepository(connection, capabilities, ClientInfoProvider(FakeDeviceInfo(), preferences))
 
     val pending = PendingReports(database.pendingReportDao(), clock)

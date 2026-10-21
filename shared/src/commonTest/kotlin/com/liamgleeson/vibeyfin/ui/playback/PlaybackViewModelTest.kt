@@ -94,7 +94,7 @@ class PlaybackViewModelTest {
         countdownStep: Duration = 1.hours,
     ) = viewModels.track(
         PlaybackViewModel(
-            id, app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings,
+            id, app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.nowPlaying,
             retryDelays, startOver, autoAdvance, countdownStep,
         ),
     )
@@ -624,7 +624,7 @@ class PlaybackViewModelTest {
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =
-                    PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings) as T
+                    PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.nowPlaying) as T
             },
         )[PlaybackViewModel::class]
         viewModel.uiState.first { it.stream != null }
@@ -1370,6 +1370,104 @@ class PlaybackViewModelTest {
         val progress = bodyOf(jellyfin.awaitRequests("POST", "/Sessions/Playing/Progress").first())
         assertEquals(12_000L * 10_000, progress["PositionTicks"]!!.jsonPrimitive.long)
         assertEquals(1, jellyfin.requestsTo("POST", "/Sessions/Playing").size)
+    }
+
+    @Test
+    fun `entering PiP does not send Stopped`() = runTest {
+        val jellyfin = server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+        vm.onPlaying(0)
+
+        vm.onEnteredPictureInPicture(5_000)
+        vm.onBackgrounded(5_000)
+        val state = vm.uiState.first { it.inPictureInPicture }
+
+        withContext(Dispatchers.Default) { delay(150) }
+        assertTrue(state.inPictureInPicture)
+        assertTrue(jellyfin.requestsTo("POST", "/Sessions/Playing/Stopped").isEmpty())
+    }
+
+    @Test
+    fun `progress keeps flowing in PiP`() = runTest {
+        val jellyfin = server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+        vm.onPlaying(0)
+        vm.onEnteredPictureInPicture(5_000)
+
+        vm.onPaused(7_000)
+
+        val progress = bodyOf(jellyfin.awaitRequests("POST", "/Sessions/Playing/Progress").first())
+        assertEquals(true, progress.getValue("IsPaused").jsonPrimitive.boolean)
+    }
+
+    @Test
+    fun `closing the PiP window sends one Stopped`() = runTest {
+        val jellyfin = server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+        vm.onPlaying(0)
+        vm.onEnteredPictureInPicture(5_000)
+
+        vm.onLeftPictureInPicture(9_000, closed = true)
+        vm.onClosed(9_000)
+
+        jellyfin.awaitRequests("POST", "/Sessions/Playing/Stopped")
+        withContext(Dispatchers.Default) { delay(150) }
+        assertEquals(1, jellyfin.requestsTo("POST", "/Sessions/Playing/Stopped").size)
+        assertFalse(vm.uiState.first { !it.inPictureInPicture }.inPictureInPicture)
+    }
+
+    @Test
+    fun `expanding from PiP sends nothing and keeps the session`() = runTest {
+        val jellyfin = server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+        vm.onPlaying(0)
+        vm.onEnteredPictureInPicture(5_000)
+
+        vm.onLeftPictureInPicture(6_000, closed = false)
+
+        withContext(Dispatchers.Default) { delay(150) }
+        assertTrue(jellyfin.requestsTo("POST", "/Sessions/Playing/Stopped").isEmpty())
+        // The session is the same one: backgrounding now stops it as usual.
+        vm.onBackgrounded(6_500)
+        jellyfin.awaitRequests("POST", "/Sessions/Playing/Stopped")
+        assertEquals(1, jellyfin.requestsTo("POST", "/Sessions/Playing").size)
+    }
+
+    @Test
+    fun `backgrounding without PiP still sends Stopped`() = runTest {
+        val jellyfin = server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+        vm.onPlaying(0)
+
+        vm.onBackgrounded(4_000)
+
+        assertEquals(1, jellyfin.awaitRequests("POST", "/Sessions/Playing/Stopped").size)
+    }
+
+    @Test
+    fun `NowPlaying reflects play and pause and clears on close`() = runTest {
+        server()
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+
+        vm.onPlaying(1_000)
+        val playing = assertNotNull(app.nowPlaying.state.value)
+        assertEquals("m1", playing.itemId)
+        assertEquals("Heat", playing.title)
+        assertTrue(playing.playing)
+
+        vm.onPaused(2_000)
+        val paused = assertNotNull(app.nowPlaying.state.value)
+        assertFalse(paused.playing)
+        assertEquals(2_000L, paused.positionMs)
+
+        vm.onClosed(2_000)
+        assertNull(app.nowPlaying.state.value)
     }
 
     @Test
