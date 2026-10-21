@@ -32,6 +32,12 @@ final class PlayerPictureInPicture: NSObject, ObservableObject, AVPictureInPictu
     }
 
     /// Turns the video into the window now, as leaving the app would.
+    /// Whether the system may open the window by itself as the app leaves: supported, possible now, and playing.
+    func mayStartAutomatically(whilePlaying playing: Bool) -> Bool {
+        guard playing, let controller else { return false }
+        return controller.canStartPictureInPictureAutomaticallyFromInline && controller.isPictureInPicturePossible
+    }
+
     func start() {
         guard let controller, controller.isPictureInPicturePossible else { return }
         controller.startPictureInPicture()

@@ -26,9 +26,13 @@ struct PlayerView: View {
     @State private var lastSkipSeekMs: Int64?
     /// The scrub-preview tiles of the playing item; a new item gets its own, which drops the old cache.
     @State private var trickplayTiles: TrickplayTiles?
+    /// Going to the background, held back while automatic picture-in-picture may still announce itself.
+    @State private var pendingBackground: Task<Void, Never>?
 
     /// How long the controls stay after the last touch while playing.
     private let hideDelay: UInt64 = 3_000_000_000
+    /// How long the background waits for automatic picture-in-picture to start before it pauses.
+    private let pictureInPictureGrace: UInt64 = 500_000_000
 
     /// Resumes where the server says the user stopped, unless `startOver`.
     init(itemId: String, startOver: Bool = false, onExit: @escaping (HomeExit) -> Void) {
@@ -104,6 +108,7 @@ struct PlayerView: View {
         }
         .onDisappear {
             hideTask?.cancel()
+            pendingBackground?.cancel()
             // The window plays on without this screen being visible; it is torn down when the window closes.
             if !pip.isActive { controller.tearDown() }
             OrientationLock.restore()
@@ -147,9 +152,22 @@ struct PlayerView: View {
             // The home screen or the lock button: the video stops and the server is told. Only the
             // background counts; a pulled-down notification centre is `.inactive` and playback goes on.
             if phase == .background && !pip.isActive {
-                controller.pause()
-                model.backgrounded(controller.currentMilliseconds)
+                if pip.mayStartAutomatically(whilePlaying: controller.isPlaying) {
+                    // Automatic picture-in-picture may announce itself just before or just after the
+                    // background (the order isn't documented), so the pause waits for it a moment.
+                    pendingBackground?.cancel()
+                    pendingBackground = Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: pictureInPictureGrace)
+                        guard !Task.isCancelled else { return }
+                        pendingBackground = nil
+                        if !pip.isActive && UIApplication.shared.applicationState == .background { leaveForBackground() }
+                    }
+                } else {
+                    leaveForBackground()
+                }
             } else if phase == .active {
+                pendingBackground?.cancel()
+                pendingBackground = nil
                 showControls()
             }
         }
@@ -410,11 +428,14 @@ struct PlayerView: View {
         // and if the app already went to the background meanwhile, that is handled now as it would have been.
         pip.failedToStart = {
             model.leftPictureInPicture(controller.currentMilliseconds, closed: false)
-            if UIApplication.shared.applicationState == .background {
-                controller.pause()
-                model.backgrounded(controller.currentMilliseconds)
-            }
+            if UIApplication.shared.applicationState == .background { leaveForBackground() }
         }
+    }
+
+    /// The app went to the background without a picture-in-picture window: the video stops and the server is told.
+    private func leaveForBackground() {
+        controller.pause()
+        model.backgrounded(controller.currentMilliseconds)
     }
 
     /// What the player has to choose itself: the selected audio track of a direct play. The server
