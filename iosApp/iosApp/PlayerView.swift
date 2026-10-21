@@ -7,6 +7,7 @@ import UIKit
 struct PlayerView: View {
     @StateObject private var model: PlaybackObservable
     @StateObject private var controller = PlayerController()
+    @StateObject private var pip = PlayerPictureInPicture()
 
     /// Called when the session ended and the player has closed.
     let onExit: (HomeExit) -> Void
@@ -41,7 +42,7 @@ struct PlayerView: View {
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
-            PlayerSurface(player: controller.player).ignoresSafeArea()
+            PlayerSurface(player: controller.player, onLayer: { pip.attach(to: $0) }).ignoresSafeArea()
             // A touch anywhere on the video shows or hides the controls.
             Color.clear
                 .contentShape(Rectangle())
@@ -87,13 +88,15 @@ struct PlayerView: View {
         .persistentSystemOverlays(controlsVisible ? .automatic : .hidden)
         .onAppear {
             bindPlayer()
+            bindPictureInPicture()
             model.start()
             controller.activateAudioSession()
             OrientationLock.lockLandscape()
         }
         .onDisappear {
             hideTask?.cancel()
-            controller.tearDown()
+            // The window plays on without this screen being visible; it is torn down when the window closes.
+            if !pip.isActive { controller.tearDown() }
             OrientationLock.restore()
         }
         .onReceive(model.$state) { state in
@@ -119,6 +122,7 @@ struct PlayerView: View {
             controller.wantAudio(audioChoice(in: state))
             controller.wantDiagnostics(state?.showDiagnostics == true)
             controller.setSpeed(state?.speed ?? 1)
+            controller.setNowPlaying(title: state?.title, subtitle: state?.subtitle)
         }
         .onChange(of: controller.isPlaying) { isPlaying in
             if isPlaying {
@@ -132,7 +136,7 @@ struct PlayerView: View {
         .onChange(of: scenePhase) { phase in
             // The home screen or the lock button: the video stops and the server is told. Only the
             // background counts; a pulled-down notification centre is `.inactive` and playback goes on.
-            if phase == .background {
+            if phase == .background && !pip.isActive {
                 controller.pause()
                 model.backgrounded(controller.currentMilliseconds)
             } else if phase == .active {
@@ -140,10 +144,14 @@ struct PlayerView: View {
             }
         }
         .onChange(of: model.state?.finished == true) { finished in
-            if finished { dismiss() }
+            if finished {
+                pip.stop()
+                dismiss()
+            }
         }
         .onChange(of: model.state?.exit != nil) { hasExit in
             if hasExit, let exit = model.state?.exit {
+                pip.stop()
                 dismiss()
                 onExit(exit)
             }
@@ -346,6 +354,16 @@ struct PlayerView: View {
             failed: { model.failed($0) },
             diagnostics: { model.diagnostics($0) }
         )
+    }
+
+    /// Tells the shared model when the picture-in-picture window starts and how it ends. Dismissing the
+    /// window ends the session, so the screen goes with it; expanding it leaves everything as it is.
+    private func bindPictureInPicture() {
+        pip.entered = { model.enteredPictureInPicture(controller.currentMilliseconds) }
+        pip.left = { closed in
+            model.leftPictureInPicture(controller.currentMilliseconds, closed: closed)
+            if closed { dismiss() }
+        }
     }
 
     /// What the player has to choose itself: the selected audio track of a direct play. The server

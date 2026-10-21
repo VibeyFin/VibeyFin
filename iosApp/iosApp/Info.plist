@@ -18,6 +18,12 @@
 		<key>UIColorName</key>
 		<string>LaunchBackground</string>
 	</dict>
+	<!-- PiP needs the audio background mode. It is not a promise of background audio: leaving the app
+	     without a picture-in-picture window still pauses the video. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<!-- Bricolage Grotesque, the brand display face (see Theme.swift). -->
 	<key>UIAppFonts</key>
 	<array>

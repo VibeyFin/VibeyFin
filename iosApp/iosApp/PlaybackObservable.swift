@@ -52,6 +52,16 @@ final class PlaybackObservable: ObservableObject {
         model.onClosed(positionMs: positionMs)
     }
 
+    /// The picture-in-picture window appeared.
+    func enteredPictureInPicture(_ positionMs: Int64) {
+        model.onEnteredPictureInPicture(positionMs: positionMs)
+    }
+
+    /// It went away: dismissed (`closed`, which ends the session) or expanded back into the app.
+    func leftPictureInPicture(_ positionMs: Int64, closed: Bool) {
+        model.onLeftPictureInPicture(positionMs: positionMs, closed: closed)
+    }
+
     /// "Play now" on the next-episode card.
     func playNow() {
         model.onPlayNow()

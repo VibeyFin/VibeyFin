@@ -1,6 +1,7 @@
 import AVFoundation
 import Combine
 import Foundation
+import MediaPlayer
 import OSLog
 import Shared
 
@@ -167,6 +168,8 @@ final class PlayerController: ObservableObject {
     /// Stops everything and silences the events. Called when the screen goes away.
     func tearDown() {
         events = PlayerEvents()
+        nowPlayingTitle = nil
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         clear()
         playerSubscriptions.removeAll()
         position = 0
@@ -439,6 +442,34 @@ final class PlayerController: ObservableObject {
         }
     }
 
+    // MARK: - Now playing
+
+    private var nowPlayingTitle: String?
+    private var nowPlayingSubtitle: String?
+
+    /// What the lock screen and the picture-in-picture window call the video.
+    func setNowPlaying(title: String?, subtitle: String?) {
+        guard title != nowPlayingTitle || subtitle != nowPlayingSubtitle else { return }
+        nowPlayingTitle = title
+        nowPlayingSubtitle = subtitle
+        updateNowPlayingInfo()
+    }
+
+    private func updateNowPlayingInfo() {
+        guard let title = nowPlayingTitle, !title.isEmpty, openedStreamId != nil else {
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+            return
+        }
+        var info: [String: Any] = [
+            MPMediaItemPropertyTitle: title,
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: position,
+            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? Double(player.defaultRate) : 0,
+        ]
+        if let subtitle = nowPlayingSubtitle { info[MPMediaItemPropertyArtist] = subtitle }
+        if duration > 0 { info[MPMediaItemPropertyPlaybackDuration] = duration }
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+
     private func tick(_ time: CMTime) {
         guard time.isNumeric, openedStreamId != nil else { return }
         // While a seek is pending the player still reports the old time; keep showing the target.
@@ -450,6 +481,7 @@ final class PlayerController: ObservableObject {
         if second != lastPushedSecond {
             lastPushedSecond = second
             events.position(currentMilliseconds)
+            updateNowPlayingInfo()
         }
     }
 
