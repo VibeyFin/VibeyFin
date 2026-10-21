@@ -92,7 +92,7 @@ fun AddServerScreen(
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(VibeyFinTokens.Space.s5))
 
                 OutlinedTextField(
                     value = state.address,
@@ -111,7 +111,7 @@ fun AddServerScreen(
                     ),
                     keyboardActions = KeyboardActions(onGo = { onConnect() }),
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(VibeyFinTokens.Space.s4))
 
                 // Connect is the main action until a server has been found; then it's Add server.
                 if (found == null) {
@@ -121,7 +121,7 @@ fun AddServerScreen(
                         // Stays enabled while checking so the busy button keeps its colours; the
                         // view model ignores a second tap.
                         enabled = state.canConnect || checking,
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge),
                     ) {
                         if (checking) {
                             CircularProgressIndicator(
@@ -129,7 +129,7 @@ fun AddServerScreen(
                                 strokeWidth = 2.dp,
                                 color = MaterialTheme.colorScheme.onPrimary,
                             )
-                            Spacer(Modifier.size(12.dp))
+                            Spacer(Modifier.size(VibeyFinTokens.Space.s3))
                             Text(Strings.connecting)
                         } else {
                             Text(Strings.connect)
@@ -139,16 +139,16 @@ fun AddServerScreen(
 
                 when (val step = state.step) {
                     is AddServerStep.Failed -> {
-                        Spacer(Modifier.height(24.dp))
+                        Spacer(Modifier.height(VibeyFinTokens.Space.s5))
                         ErrorCard(step.issue.message())
                     }
 
                     is AddServerStep.Found -> {
                         FoundCard(step)
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(VibeyFinTokens.Space.s4))
                         Button(
                             onClick = onConfirm,
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge),
                         ) {
                             Text(
                                 when {
@@ -171,11 +171,11 @@ fun AddServerScreen(
 @Composable
 private fun FoundCard(found: AddServerStep.Found) {
     Surface(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = VibeyFinTokens.Space.s2),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md),
     ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // The server answered: a check and the word, in the text colour. Aqua is for the primary action.
                 Icon(
@@ -184,14 +184,14 @@ private fun FoundCard(found: AddServerStep.Found) {
                     tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(16.dp),
                 )
-                Spacer(Modifier.size(8.dp))
+                Spacer(Modifier.size(VibeyFinTokens.Space.s2))
                 Text(
                     text = Strings.found,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(VibeyFinTokens.Space.s1))
             Text(
                 text = found.server.name,
                 style = MaterialTheme.typography.headlineSmall,
@@ -215,7 +215,7 @@ private fun FoundCard(found: AddServerStep.Found) {
                 )
             }
             if (found.alreadySaved) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(VibeyFinTokens.Space.s2))
                 Text(
                     text = Strings.alreadySaved(found.addressIsNew),
                     style = MaterialTheme.typography.bodySmall,
@@ -233,7 +233,7 @@ private fun ErrorCard(message: String) {
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md),
     ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
             Text(
                 text = Strings.cantConnectTitle,
                 style = MaterialTheme.typography.titleMedium,

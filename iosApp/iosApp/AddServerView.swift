@@ -146,7 +146,7 @@ private struct ErrorCard: View {
 
     var body: some View {
         Card {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Space.s2) {
                 Text(Strings.shared.cantConnectTitle)
                     .font(.headline)
                     .foregroundStyle(Color(.systemRed))

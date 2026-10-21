@@ -38,6 +38,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.liamgleeson.vibeyfin.R
 import com.liamgleeson.vibeyfin.app.components.BackButton
+import com.liamgleeson.vibeyfin.app.components.ChipButton
+import com.liamgleeson.vibeyfin.app.components.ChipInset
 import com.liamgleeson.vibeyfin.app.theme.VibeyFinTokens
 import com.liamgleeson.vibeyfin.app.theme.screenMargin
 import com.liamgleeson.vibeyfin.ui.common.Strings
@@ -95,7 +97,7 @@ private fun TopBar(
             .fillMaxWidth()
             .background(scrimBand(atTop = true))
             .safeDrawingPadding()
-            .padding(start = screenMargin() - 4.dp, end = screenMargin(), top = 8.dp, bottom = 24.dp),
+            .padding(start = screenMargin() - ChipInset, end = screenMargin(), top = VibeyFinTokens.Space.s2, bottom = VibeyFinTokens.Space.s5),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BackButton(onClick = onClose)
@@ -122,28 +124,7 @@ private fun TopBar(
         }
         if (hasTrackChoices) {
             Spacer(Modifier.width(VibeyFinTokens.Space.s3))
-            ChipButton(R.drawable.ic_subtitles, Strings.audioAndSubtitles, onTracks)
-        }
-    }
-}
-
-/** The back button's twin: a glyph on a round chip over the scrim, 48 dp to touch and 40 dp to look at. */
-@Composable
-private fun ChipButton(icon: Int, description: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier.size(48.dp).clip(CircleShape).clickable(role = Role.Button, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            modifier = Modifier.size(40.dp).clip(CircleShape).background(VibeyFinTokens.Colors.scrim),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = description,
-                tint = VibeyFinTokens.Colors.ink,
-                modifier = Modifier.size(20.dp),
-            )
+            ChipButton(painterResource(R.drawable.ic_subtitles), Strings.audioAndSubtitles, onTracks)
         }
     }
 }
@@ -186,8 +167,8 @@ private fun Scrubber(
             .fillMaxWidth()
             .background(scrimBand(atTop = false))
             .safeDrawingPadding()
-            .padding(horizontal = screenMargin(), vertical = 8.dp)
-            .padding(top = 16.dp),
+            .padding(horizontal = screenMargin(), vertical = VibeyFinTokens.Space.s2)
+            .padding(top = VibeyFinTokens.Space.s4),
     ) {
         Slider(
             value = if (known) shown else 0f,

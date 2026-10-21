@@ -34,4 +34,12 @@ class StringsTest {
         assertEquals("Resume · 1m left", Strings.resumeTimeLeft(10_000L))
         assertEquals("Resume · 1m left", Strings.resumeTimeLeft(-5_000L))
     }
+
+    @Test
+    fun theTimeLeftInThePlayerStartsWithATrueMinusNotAHyphen() {
+        assertEquals("\u22121:12", Strings.timeLeft(positionMs = 48_000, durationMs = 120_000))
+        assertEquals("\u22121:24:30", Strings.timeLeft(positionMs = 0, durationMs = (84 * 60 + 30) * 1000L))
+        // Past the end it stops at zero rather than counting up.
+        assertEquals("\u22120:00", Strings.timeLeft(positionMs = 130_000, durationMs = 120_000))
+    }
 }

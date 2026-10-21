@@ -49,6 +49,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.layout.layout
@@ -136,7 +139,7 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top,
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
+                Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1), modifier = Modifier.weight(1f)) {
                     Text(
                         text = state.userName?.let { Strings.greeting(it) } ?: Strings.home,
                         style = MaterialTheme.typography.headlineSmall,
@@ -238,7 +241,7 @@ private fun LazyGridScope.fullWidth(key: String, content: @Composable () -> Unit
 
 @Composable
 private fun SectionTitle(text: String) {
-    Text(text = text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(text = text, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
 }
 
 /** The row of what the user is in the middle of. Its cards run past the grid's margins to the screen edge. */
@@ -314,13 +317,16 @@ private fun ProfileMenu(
                 .size(VibeyFinTokens.Size.touch)
                 .clip(CircleShape)
                 .background(VibeyFinTokens.Colors.surface3)
-                .clickable { open = true },
+                .clickable(role = Role.Button) { open = true }
+                // Named for the person, as on iOS; the letter on it would only be read as "A".
+                .semantics { contentDescription = userName.orEmpty() },
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = userName?.take(1)?.uppercase().orEmpty(),
                 style = MaterialTheme.typography.titleMedium,
                 color = VibeyFinTokens.Colors.ink,
+                modifier = Modifier.clearAndSetSemantics { },
             )
         }
         DropdownMenu(

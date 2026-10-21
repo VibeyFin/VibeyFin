@@ -1,52 +1,26 @@
 package com.liamgleeson.vibeyfin.app.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import com.liamgleeson.vibeyfin.app.theme.VibeyFinTokens
 import com.liamgleeson.vibeyfin.app.theme.screenMargin
 import com.liamgleeson.vibeyfin.ui.common.Strings
 
 /**
- * An arrow on a round chip over the content, on the scrim so it reads over any artwork, with no
- * label; it has a name for screen readers. Screens show it through [FloatingBackButton], not in a row of their own.
+ * An arrow on a round [ChipButton] over the content, with no label; it has a name for screen readers.
+ * Screens show it through [FloatingBackButton], not in a row of their own.
  */
 @Composable
 fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    // 48 dp to touch, 40 dp to look at.
-    Box(
-        modifier = modifier.size(48.dp).clip(CircleShape).clickable(role = Role.Button, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(VibeyFinTokens.Colors.scrim),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = Strings.back,
-                tint = VibeyFinTokens.Colors.ink,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-    }
+    ChipButton(rememberVectorPainter(Icons.AutoMirrored.Filled.ArrowBack), Strings.back, onClick, modifier)
 }
 
 /**
@@ -59,9 +33,9 @@ fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
 fun BoxScope.FloatingBackButton(onClick: () -> Unit) {
     BackButton(
         onClick = onClick,
-        modifier = Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(start = screenMargin() - 4.dp, top = 8.dp),
+        modifier = Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(start = screenMargin() - ChipInset, top = VibeyFinTokens.Space.s2),
     )
 }
 
 /** The height at the top of a screen's content kept clear for the button: 8 dp above it, 48 dp of it, 8 dp below. */
-val BackButtonSpace = 64.dp
+val BackButtonSpace = VibeyFinTokens.Size.touch + VibeyFinTokens.Space.s2 * 2

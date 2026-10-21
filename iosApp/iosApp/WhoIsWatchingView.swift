@@ -127,11 +127,14 @@ private struct UnreachableBanner: View {
     }
 }
 
+/// The side of a profile's square, and of the "Quick Connect" and "Other user" tiles beside it.
+private let avatarSize: CGFloat = 104
+
 private struct ProfileTile: View {
     let profile: Profile
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: Space.s2) {
             ZStack(alignment: .bottomTrailing) {
                 Avatar(profile: profile)
                 if profile.locked {
@@ -174,7 +177,7 @@ private struct Avatar: View {
                 initial
             }
         }
-        .frame(width: 104, height: 104)
+        .frame(width: avatarSize, height: avatarSize)
         .clipShape(RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
     }
 
@@ -184,12 +187,12 @@ private struct Avatar: View {
             .foregroundStyle(.primary)
     }
 
-    /// A muted, stable colour per name. Swift's own hashing changes on every launch, so this adds
-    /// up the characters instead.
+    /// A muted, stable colour per name (the `avatar-1` to `avatar-6` tokens). Swift's own hashing
+    /// changes on every launch, so this adds up the characters instead.
     private var tint: Color {
-        let tints: [UInt32] = [0x3A4A6B, 0x4B3F6B, 0x3F6B5E, 0x6B4B3F, 0x6B3F55, 0x55633F]
+        let tints = Brand.avatars
         let sum = profile.name.lowercased().unicodeScalars.reduce(0) { ($0 &* 31) &+ Int($1.value) }
-        return Color(hex: tints[abs(sum) % tints.count])
+        return tints[abs(sum) % tints.count]
     }
 }
 
@@ -199,14 +202,14 @@ private struct ActionTile: View {
     let symbol: String
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: Space.s2) {
             ZStack {
                 RoundedRectangle(cornerRadius: Radius.card, style: .continuous).fill(Color(.systemGray4))
                 Text(symbol)
                     .font(.largeTitle.weight(.heavy))
                     .foregroundStyle(.secondary)
             }
-            .frame(width: 104, height: 104)
+            .frame(width: avatarSize, height: avatarSize)
             Text(label.titleCased())
                 .font(.headline)
                 .foregroundStyle(.secondary)
@@ -323,7 +326,7 @@ private struct QuickConnectSheetView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     Text(code)
-                        .font(.system(.largeTitle, design: .rounded).weight(.heavy))
+                        .font(.largeTitle.weight(.heavy))
                         .monospacedDigit()
                         .tracking(2)
                         .foregroundStyle(.primary)

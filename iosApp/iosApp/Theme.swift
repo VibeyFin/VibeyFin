@@ -16,6 +16,15 @@ enum Brand {
     static let scrim = Color(hex: 0x000000, alpha: 0.78)
     static let scrimStrong = Color(hex: 0x000000, alpha: 0.9)
     static let progressTrack = Color(hex: 0xFFFFFF, alpha: 0.3)
+
+    /// Profile tile grounds, picked from the user's name; the initial sits on one in `.primary`.
+    static let avatar1 = Color(hex: 0x3A4A6B)
+    static let avatar2 = Color(hex: 0x4B3F6B)
+    static let avatar3 = Color(hex: 0x3F6B5E)
+    static let avatar4 = Color(hex: 0x6B4B3F)
+    static let avatar5 = Color(hex: 0x6B3F55)
+    static let avatar6 = Color(hex: 0x55633F)
+    static let avatars = [avatar1, avatar2, avatar3, avatar4, avatar5, avatar6]
 }
 
 enum Space {

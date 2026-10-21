@@ -45,6 +45,12 @@ class DesignTokensTest {
         "scrim-strong" to colors.scrimStrong,
         "progress-track" to colors.progressTrack,
         "focus" to colors.focus,
+        "avatar-1" to colors.avatar1,
+        "avatar-2" to colors.avatar2,
+        "avatar-3" to colors.avatar3,
+        "avatar-4" to colors.avatar4,
+        "avatar-5" to colors.avatar5,
+        "avatar-6" to colors.avatar6,
     )
 
     // glass is a preview stand-in (Android never uses glass); positive is an alias of ink.
@@ -94,6 +100,7 @@ class DesignTokensTest {
         val size = family("size")
         assertEquals(px(size, "touch-android"), VibeyFinTokens.Size.touch)
         assertEquals(px(size, "button-android"), VibeyFinTokens.Size.button)
+        assertEquals(px(size, "button-android-lg"), VibeyFinTokens.Size.buttonLarge)
         assertEquals(px(size, "poster-w"), VibeyFinTokens.Size.posterWidth)
         assertEquals(px(size, "thumb-w"), VibeyFinTokens.Size.thumbWidth)
     }
@@ -104,6 +111,12 @@ class DesignTokensTest {
         fun ms(name: String) = json.getValue(name).getValue("value").jsonPrimitive.content.removeSuffix("ms").toInt()
         assertEquals(ms("dur-base"), VibeyFinTokens.Motion.baseMs)
         assertEquals(ms("dur-hero"), VibeyFinTokens.Motion.heroMs)
+    }
+
+    @Test
+    fun theAvatarListHoldsTheSixTokensInOrder() {
+        val colors = VibeyFinTokens.Colors
+        assertEquals(listOf(colors.avatar1, colors.avatar2, colors.avatar3, colors.avatar4, colors.avatar5, colors.avatar6), colors.avatars)
     }
 
     @Test

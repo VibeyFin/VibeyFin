@@ -34,6 +34,8 @@ for swift_name, token in [
     ('accent', 'accent'), ('onAccent', 'on-accent'), ('accentSoft', 'accent-soft'),
     ('onAccentSoft', 'on-accent-soft'), ('scrim', 'scrim'), ('scrimStrong', 'scrim-strong'),
     ('progressTrack', 'progress-track'),
+    ('avatar1', 'avatar-1'), ('avatar2', 'avatar-2'), ('avatar3', 'avatar-3'),
+    ('avatar4', 'avatar-4'), ('avatar5', 'avatar-5'), ('avatar6', 'avatar-6'),
 ]:
     m = re.search(r'static let %s = Color\(hex: 0x([0-9A-Fa-f]{6})(?:, alpha: ([\d.]+))?\)' % swift_name, brand)
     if not m:
