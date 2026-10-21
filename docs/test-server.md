@@ -29,6 +29,33 @@ access on). Two libraries, both with trickplay extraction on (`EnableTrickplayIm
 names the first episode "Episode 1" and the HDR movie "HDR" because there is no online metadata
 match; the file names are what the scripts own.
 
+## Fixture catalogue
+
+Every file `make-media.sh` creates, by stable name. Tests and manual checks refer to a fixture by
+this name; renaming or changing one is a reviewed change. All paths are under
+`scripts/test-server/data/media/`.
+
+| Fixture | File | What it is | Needed by |
+| --- | --- | --- | --- |
+| `show-e01` | `shows/Test Show/Season 01/Test Show S01E01.mkv` | 3 min, 640x360 H.264 (`testsrc2`), 440 Hz AAC, chapters `Scene 1` / `Intro` 0:10-0:40 / `Episode` / `Credits` 2:30-end | Skip intro and credits segments, trickplay, chapters, resume, next episode |
+| `show-e02` | `shows/Test Show/Season 01/Test Show S01E02.mkv` | Same as `show-e01`, pattern `smptebars` | Next episode, watch status |
+| `show-e03` | `shows/Test Show/Season 01/Test Show S01E03.mkv` | Same as `show-e01`, pattern `rgbtestsrc` | "Are you still watching?" (the prompt appears here with the setting at After 2 episodes) |
+| `show-e04` | `shows/Test Show/Season 01/Test Show S01E04.mkv` | Same as `show-e01`, pattern `smptehdbars` | Makes the prompt in `show-e03` appear: the prompt needs a next episode |
+| `movie-hdr` | `movies/HDR Sample (2026)/HDR Sample (2026).mkv` | 20 s, 1280x720 HEVC 10-bit, bt2020 / smpte2084, mastering metadata, 330 Hz AAC | HDR10 badge, HDR to SDR handling in negotiation |
+
+## Adding a fixture
+
+1. Add it to `make-media.sh`, skipping the file if it already exists (so `start.sh` stays idempotent).
+   Generate it with the ffmpeg in the Jellyfin image and pick values you can assert exactly: known
+   duration, known chapter times, one distinguishing pattern or tone.
+2. Put it under a library path `start.sh` already adds (`shows` or `movies`), or add the library in
+   `start.sh`. Name files the way Jellyfin parses them (`Name SxxEyy.mkv`, `Name (Year).mkv`).
+3. Add a row to the catalogue above: stable name, path, what it contains, and the feature that needs
+   it. Update the library table and the header comment of `make-media.sh` too.
+4. Run `scripts/test-server/start.sh` against a fresh `data/` and check the item in Jellyfin with the
+   commands under "Checking it".
+5. If the fixture exists for a failure case, say which behaviour the app should show for it.
+
 ## Media segments: a plugin is needed
 
 Jellyfin 12.2.0 ships **no segment provider** (the plugin list is only metadata providers), so a
