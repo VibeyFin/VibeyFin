@@ -6,25 +6,6 @@ import kotlin.test.assertNull
 
 class PlayerDiagnosticsTest {
     @Test
-    fun codecNamesAreShort() {
-        assertEquals("h264", codecName("video/avc"))
-        assertEquals("hevc", codecName("video/hevc"))
-        assertEquals("aac", codecName("audio/mp4a-latm"))
-        assertEquals("eac3 atmos", codecName("audio/eac3-joc"))
-    }
-
-    @Test
-    fun anUnknownTypeShowsItsSubtype() {
-        assertEquals("whatever", codecName("audio/x-whatever"))
-    }
-
-    @Test
-    fun noTypeIsNoName() {
-        assertNull(codecName(null))
-        assertNull(codecName("garbage"))
-    }
-
-    @Test
     fun notKnownValuesBecomeNull() {
         assertNull(knownKbps(-1))
         assertNull(knownKbps(0L))

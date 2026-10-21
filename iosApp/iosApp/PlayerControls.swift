@@ -136,7 +136,7 @@ struct PlayerSpeedMenu: View {
         }
         .modifier(PlayerCapsuleStyle())
         .simultaneousGesture(TapGesture().onEnded(onTouch))
-        .accessibilityLabel("\(Strings.shared.speed), \(Strings.shared.speedValue(speed: selected))")
+        .accessibilityLabel(Strings.shared.labelled(label: Strings.shared.speed, value: Strings.shared.speedValue(speed: selected)))
     }
 }
 

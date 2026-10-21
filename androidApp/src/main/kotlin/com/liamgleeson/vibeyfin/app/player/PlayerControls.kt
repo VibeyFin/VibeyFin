@@ -206,7 +206,7 @@ private fun TextChipButton(text: String, description: String, onClick: () -> Uni
                 text = text,
                 style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"),
                 color = VibeyFinTokens.Colors.ink,
-                modifier = Modifier.semantics { contentDescription = "$description, $text" },
+                modifier = Modifier.semantics { contentDescription = Strings.labelled(description, text) },
             )
         }
     }

@@ -84,7 +84,7 @@ fun StatsOverlay(diagnostics: PlaybackDiagnostics, modifier: Modifier = Modifier
         rows.forEach { (label, value) ->
             // One spoken phrase per row, "Bitrate, 4.5 Mbps", instead of two separate texts.
             Row(
-                Modifier.clearAndSetSemantics { contentDescription = "$label, $value" },
+                Modifier.clearAndSetSemantics { contentDescription = Strings.labelled(label, value) },
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(

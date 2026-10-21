@@ -153,6 +153,9 @@ object Strings {
     /** The player button that turns the video into a small window over other apps. */
     val pictureInPicture = "Picture in picture"
 
+    /** One spoken phrase for a label and its value, "Bitrate, 4.5 Mbps", where the two are drawn apart. */
+    fun labelled(label: String, value: String) = "$label, $value"
+
     // Playback stats
     fun statsMethod(method: PlayMethod) = when (method) {
         PlayMethod.DirectPlay -> "Direct play"
@@ -172,6 +175,53 @@ object Strings {
 
     /** Shown for a stat nobody can tell. */
     val statsUnavailable = "–"
+
+    /**
+     * The short codec name the stats overlay shows ("h264", "eac3 atmos"), the same on both platforms.
+     * [code] is what the player reports: a MIME type on Android (`video/avc`), a FourCC on iOS (`avc1`).
+     * An unknown one is shown as the player gave it, without its `video/` or `x-` prefix; null for none.
+     */
+    fun codecName(code: String?): String? {
+        val key = code?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return null
+        return CODEC_NAMES[key] ?: key.substringAfter('/').removePrefix("x-")
+    }
+
+    private val CODEC_NAMES = mapOf(
+        // Android MIME types
+        "video/avc" to "h264",
+        "video/hevc" to "hevc",
+        "video/av01" to "av1",
+        "video/x-vnd.on2.vp9" to "vp9",
+        "video/x-vnd.on2.vp8" to "vp8",
+        "video/mp4v-es" to "mpeg4",
+        "video/dolby-vision" to "dolby vision",
+        "audio/mp4a-latm" to "aac",
+        "audio/ac3" to "ac3",
+        "audio/eac3" to "eac3",
+        "audio/eac3-joc" to "eac3 atmos",
+        "audio/true-hd" to "truehd",
+        "audio/vnd.dts" to "dts",
+        "audio/vnd.dts.hd" to "dts-hd",
+        "audio/mpeg" to "mp3",
+        "audio/opus" to "opus",
+        "audio/vorbis" to "vorbis",
+        "audio/flac" to "flac",
+        // Apple FourCCs
+        "avc1" to "h264",
+        "avc3" to "h264",
+        "hvc1" to "hevc",
+        "hev1" to "hevc",
+        "dvh1" to "dolby vision",
+        "dvhe" to "dolby vision",
+        "av01" to "av1",
+        "vp09" to "vp9",
+        "vp08" to "vp8",
+        "mp4v" to "mpeg4",
+        "mp4a" to "aac",
+        "ac-3" to "ac3",
+        "ec-3" to "eac3",
+        ".mp3" to "mp3",
+    )
 
     fun statsResolution(width: Int, height: Int) = "$width × $height"
 

@@ -246,10 +246,10 @@ final class PlayerController: ObservableObject {
                 let fourCC = descriptions.first.map { Self.fourCC(CMFormatDescriptionGetMediaSubType($0)) }
                 switch track.mediaType {
                 case .video where info.videoCodec == nil:
-                    info.videoCodec = fourCC.map(Self.codecName)
+                    info.videoCodec = Strings.shared.codecName(code: fourCC)
                     if let rate = try? await track.load(.nominalFrameRate), rate > 0 { info.frameRate = rate }
                 case .audio where info.audioCodec == nil:
-                    info.audioCodec = fourCC.map(Self.codecName)
+                    info.audioCodec = Strings.shared.codecName(code: fourCC)
                 default: break
                 }
             }
@@ -272,27 +272,6 @@ final class PlayerController: ObservableObject {
     private static func fourCC(_ code: FourCharCode) -> String {
         let bytes = [24, 16, 8, 0].map { UInt8((code >> $0) & 0xFF) }
         return String(decoding: bytes, as: UTF8.self)
-    }
-
-    /// The short names the Android player shows: `avc1` is "h264", `mp4a` is "aac".
-    private static func codecName(_ fourCC: String) -> String {
-        switch fourCC.lowercased() {
-        case "avc1", "avc3": return "h264"
-        case "hvc1", "hev1": return "hevc"
-        case "dvh1", "dvhe": return "dolby vision"
-        case "av01": return "av1"
-        case "vp09": return "vp9"
-        case "vp08": return "vp8"
-        case "mp4v": return "mpeg4"
-        case "mp4a": return "aac"
-        case "ac-3": return "ac3"
-        case "ec-3": return "eac3"
-        case "alac": return "alac"
-        case "flac": return "flac"
-        case "opus": return "opus"
-        case ".mp3": return "mp3"
-        default: return fourCC.trimmingCharacters(in: .whitespaces).lowercased()
-        }
     }
 
     /// Reads the item's access log, size and buffer, and tells the shared model when something changed.

@@ -4,6 +4,7 @@ import com.liamgleeson.vibeyfin.domain.PlayMethod
 import com.liamgleeson.vibeyfin.domain.SegmentType
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class StringsTest {
     @Test
@@ -80,5 +81,42 @@ class StringsTest {
         assertEquals("Skip recap", Strings.skip(SegmentType.Recap))
         assertEquals("Skip preview", Strings.skip(SegmentType.Preview))
         assertEquals("Skip ad", Strings.skip(SegmentType.Commercial))
+    }
+
+    @Test
+    fun codecNamesAreShortFromAnAndroidMimeType() {
+        assertEquals("h264", Strings.codecName("video/avc"))
+        assertEquals("hevc", Strings.codecName("video/hevc"))
+        assertEquals("aac", Strings.codecName("audio/mp4a-latm"))
+        assertEquals("eac3 atmos", Strings.codecName("audio/eac3-joc"))
+        assertEquals("dolby vision", Strings.codecName("video/dolby-vision"))
+    }
+
+    @Test
+    fun codecNamesAreTheSameFromAnAppleFourCC() {
+        assertEquals("h264", Strings.codecName("avc1"))
+        assertEquals("hevc", Strings.codecName("hvc1"))
+        assertEquals("hevc", Strings.codecName("hev1"))
+        assertEquals("dolby vision", Strings.codecName("dvh1"))
+        assertEquals("aac", Strings.codecName("mp4a"))
+        assertEquals("eac3", Strings.codecName("ec-3"))
+        assertEquals("mp3", Strings.codecName(".mp3"))
+    }
+
+    @Test
+    fun anUnknownCodecShowsWhatThePlayerSaid() {
+        assertEquals("whatever", Strings.codecName("audio/x-whatever"))
+        assertEquals("abcd", Strings.codecName("ABCD "))
+    }
+
+    @Test
+    fun noCodecIsNoName() {
+        assertNull(Strings.codecName(null))
+        assertNull(Strings.codecName("  "))
+    }
+
+    @Test
+    fun aLabelAndItsValueAreOneSpokenPhrase() {
+        assertEquals("Bitrate, 4.5 Mbps", Strings.labelled("Bitrate", "4.5 Mbps"))
     }
 }
