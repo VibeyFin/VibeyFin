@@ -1335,6 +1335,41 @@ class PlaybackViewModelTest {
     }
 
     @Test
+    fun `skip credits gives way to the up next card and comes back without it`() = runTest {
+        val jellyfin = seriesServer()
+        jellyfin.server("http://nas:8096").on("GET", "/MediaSegments/m1", Reply.json(segmentsJson(segmentJson("Outro", tenMinutes - 60_000, tenMinutes))))
+        val viewModel = viewModel()
+        val seen = playing(viewModel, jellyfin)
+        jellyfin.awaitRequests("GET", "/MediaSegments/m1")
+
+        viewModel.onPosition(tenMinutes - 45_000)
+        assertEquals(SkipOffer("Skip credits", tenMinutes), seen.last().skipOffer)
+        viewModel.onPosition(tenMinutes - 30_000)
+        assertNotNull(seen.last().upNext)
+        assertNull(seen.last().skipOffer)
+        // Both overlays never show at once, not even for one state.
+        assertTrue(seen.none { it.upNext != null && it.skipOffer != null })
+
+        viewModel.onWatchCredits()
+        assertNull(seen.last().upNext)
+        assertEquals(SkipOffer("Skip credits", tenMinutes), seen.last().skipOffer)
+    }
+
+    @Test
+    fun `an intro offer is not hidden by the up next card`() = runTest {
+        val jellyfin = seriesServer()
+        jellyfin.server("http://nas:8096").on("GET", "/MediaSegments/m1", Reply.json(segmentsJson(segmentJson("Recap", tenMinutes - 60_000, tenMinutes - 10_000))))
+        val viewModel = viewModel()
+        val seen = playing(viewModel, jellyfin)
+        jellyfin.awaitRequests("GET", "/MediaSegments/m1")
+
+        viewModel.onPosition(tenMinutes - 25_000)
+
+        assertNotNull(seen.last().upNext)
+        assertNotNull(seen.last().skipOffer)
+    }
+
+    @Test
     fun `skip sets a seek to the segment end`() = runTest {
         val vm = serverWithSegments(segmentJson("Intro", 10_000, 90_000))
         vm.onPosition(20_000)

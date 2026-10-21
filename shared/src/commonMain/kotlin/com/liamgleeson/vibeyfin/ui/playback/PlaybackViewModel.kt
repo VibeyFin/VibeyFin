@@ -621,7 +621,8 @@ class PlaybackViewModel(
         }
         countdown = viewModelScope.launch {
             for (left in UP_NEXT_SECONDS downTo 1) {
-                content.update { it.copy(upNext = upcoming.toUpNext(left)) }
+                // The card and "Skip credits" sit in the same corner, so the card takes it away in the same update.
+                content.update { it.copy(upNext = upcoming.toUpNext(left), skipOffer = skipOfferNow(cardShowing = true)) }
                 delay(countdownStep)
             }
             countdown = null
@@ -632,7 +633,7 @@ class PlaybackViewModel(
     private fun cancelCountdown() {
         countdown?.cancel()
         countdown = null
-        content.update { it.copy(upNext = null) }
+        content.update { it.copy(upNext = null, skipOffer = skipOfferNow(cardShowing = false)) }
     }
 
     /** "Play now" on the card: the next episode starts without waiting for the countdown. */
@@ -768,13 +769,23 @@ class PlaybackViewModel(
         }
     }
 
-    /** The offer for [lastPositionMs]: the skippable segment playing now, the one that ends last if several. */
     private fun refreshSkipOffer() {
+        content.update {
+            val offer = skipOfferNow(cardShowing = it.upNext != null)
+            if (it.skipOffer == offer) it else it.copy(skipOffer = offer)
+        }
+    }
+
+    /**
+     * The offer for [lastPositionMs]: the skippable segment playing now, the one that ends last if several.
+     * No "Skip credits" while the up-next card shows ([cardShowing]): the card already offers what comes after them.
+     */
+    private fun skipOfferNow(cardShowing: Boolean): SkipOffer? {
         val playing = segments
             .filter { it.type != SegmentType.Unknown && lastPositionMs >= it.startMs && lastPositionMs < it.endMs }
+            .filter { !(cardShowing && it.type == SegmentType.Outro) }
             .maxByOrNull { it.endMs }
-        val offer = playing?.let { SkipOffer(Strings.skip(it.type), it.endMs) }
-        content.update { if (it.skipOffer == offer) it else it.copy(skipOffer = offer) }
+        return playing?.let { SkipOffer(Strings.skip(it.type), it.endMs) }
     }
 
     private fun open(startAtMs: Long) {
