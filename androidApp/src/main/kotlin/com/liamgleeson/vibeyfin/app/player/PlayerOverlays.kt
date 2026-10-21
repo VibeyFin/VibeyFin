@@ -6,13 +6,17 @@ import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -102,6 +107,39 @@ fun StatsOverlay(diagnostics: PlaybackDiagnostics, modifier: Modifier = Modifier
 fun SkipButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     FilledTonalButton(onClick = onClick, modifier = modifier.height(VibeyFinTokens.Size.touch)) {
         Text(label)
+    }
+}
+
+/**
+ * "Are you still watching?" over the paused video, after several episodes in a row that started by
+ * themselves. It covers the picture and takes every touch, so nothing underneath is pressed by accident.
+ * Keeping on is the one primary action; stopping is the quiet one.
+ */
+@Composable
+fun StillWatchingPrompt(onContinue: () -> Unit, onStop: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(VibeyFinTokens.Colors.scrim)
+            // The picture beneath is not touched while the question is up.
+            .pointerInput(Unit) { detectTapGestures { } },
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
+            Text(
+                text = Strings.stillWatchingPrompt,
+                style = MaterialTheme.typography.headlineSmall,
+                color = VibeyFinTokens.Colors.ink,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
+                FilledTonalButton(onClick = onStop, modifier = Modifier.height(VibeyFinTokens.Size.touch)) {
+                    Text(Strings.stillWatchingStop)
+                }
+                Button(onClick = onContinue, modifier = Modifier.height(VibeyFinTokens.Size.touch)) {
+                    Text(Strings.stillWatchingContinue)
+                }
+            }
+        }
     }
 }
 

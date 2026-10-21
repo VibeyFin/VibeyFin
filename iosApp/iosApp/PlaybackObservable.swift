@@ -62,6 +62,21 @@ final class PlaybackObservable: ObservableObject {
         model.onLeftPictureInPicture(positionMs: positionMs, closed: closed)
     }
 
+    /// The viewer touched or pressed something: the count towards "Are you still watching?" starts over.
+    func userInteraction() {
+        model.onUserInteraction()
+    }
+
+    /// "Keep watching" on the prompt.
+    func continueWatching() {
+        model.onContinueWatching()
+    }
+
+    /// "Stop watching" on the prompt: the same as closing the player.
+    func stopWatching() {
+        model.onStopWatching()
+    }
+
     /// "Play now" on the next-episode card.
     func playNow() {
         model.onPlayNow()

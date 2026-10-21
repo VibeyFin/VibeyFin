@@ -26,6 +26,11 @@ final class SettingsObservable: ObservableObject {
         model.onShowPlaybackStatsChanged(value: value)
     }
 
+    /// 0 is off, otherwise 2 to 5 episodes in a row.
+    func setBingeThreshold(_ value: Int32) {
+        model.onBingeThresholdChanged(value: value)
+    }
+
     deinit {
         model.close()
     }

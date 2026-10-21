@@ -94,7 +94,7 @@ class PlaybackViewModelTest {
         countdownStep: Duration = 1.hours,
     ) = viewModels.track(
         PlaybackViewModel(
-            id, app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.nowPlaying,
+            id, app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.nowPlaying, app.binge,
             retryDelays, startOver, autoAdvance, countdownStep,
         ),
     )
@@ -624,7 +624,7 @@ class PlaybackViewModelTest {
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =
-                    PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.nowPlaying) as T
+                    PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.nowPlaying, app.binge) as T
             },
         )[PlaybackViewModel::class]
         viewModel.uiState.first { it.stream != null }
@@ -1468,6 +1468,157 @@ class PlaybackViewModelTest {
 
         vm.onClosed(2_000)
         assertNull(app.nowPlaying.state.value)
+    }
+
+    // "Are you still watching?": the card's countdown is held back once enough episodes started by themselves.
+
+    private suspend fun TestScope.nearTheEnd(viewModel: PlaybackViewModel, jellyfin: FakeJellyfin): MutableList<PlaybackUiState> {
+        val seen = playing(viewModel, jellyfin)
+        viewModel.onPosition(tenMinutes - 30_000)
+        return seen
+    }
+
+    @Test
+    fun `a countdown that runs out counts as an auto advance`() = runTest {
+        val jellyfin = seriesServer()
+        val vm = viewModel(countdownStep = 1.milliseconds)
+        val seen = playing(vm, jellyfin)
+
+        vm.onPosition(tenMinutes - 30_000)
+        vm.uiState.first { it.stream?.id == 2 }
+
+        assertEquals(1, app.binge.count.value)
+        assertFalse(seen.last().stillWatching)
+    }
+
+    @Test
+    fun `play now is an interaction and resets the count`() = runTest {
+        val jellyfin = seriesServer()
+        app.binge.autoAdvanced()
+        val vm = viewModel(countdownStep = 1.hours)
+        val seen = nearTheEnd(vm, jellyfin)
+        assertNotNull(seen.last().upNext)
+
+        vm.onPlayNow()
+
+        assertEquals(0, app.binge.count.value)
+    }
+
+    @Test
+    fun `the prompt replaces the countdown after three auto advances`() = runTest {
+        val jellyfin = seriesServer()
+        repeat(3) { app.binge.autoAdvanced() }
+        val vm = viewModel(countdownStep = 1.milliseconds)
+        val seen = nearTheEnd(vm, jellyfin)
+
+        vm.uiState.first { it.stillWatching }
+        withContext(Dispatchers.Default) { delay(100) }
+
+        assertTrue(seen.last().stillWatching)
+        assertNull(seen.last().upNext)
+        // Nothing advanced on its own.
+        assertEquals(1, seen.last().stream?.id)
+    }
+
+    @Test
+    fun `threshold 0 never prompts`() = runTest {
+        val jellyfin = seriesServer()
+        app.profileSettings.setBingeThreshold(0)
+        repeat(10) { app.binge.autoAdvanced() }
+        val vm = viewModel(countdownStep = 1.hours)
+        val seen = nearTheEnd(vm, jellyfin)
+
+        assertNotNull(seen.last().upNext)
+        assertFalse(seen.last().stillWatching)
+    }
+
+    @Test
+    fun `threshold 2 prompts after two`() = runTest {
+        val jellyfin = seriesServer()
+        app.profileSettings.setBingeThreshold(2)
+        app.binge.autoAdvanced()
+        val vm = viewModel(countdownStep = 1.hours)
+        val seen = nearTheEnd(vm, jellyfin)
+        assertNotNull(seen.last().upNext)
+        assertFalse(seen.last().stillWatching)
+        // One more by itself, in the next episode's player, and it asks.
+        app.binge.autoAdvanced()
+        val second = viewModel(countdownStep = 1.hours)
+        val seenSecond = nearTheEnd(second, jellyfin)
+
+        second.uiState.first { it.stillWatching }
+        assertTrue(seenSecond.last().stillWatching)
+    }
+
+    @Test
+    fun `interaction resets the count`() = runTest {
+        server()
+        repeat(2) { app.binge.autoAdvanced() }
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+
+        vm.onUserInteraction()
+
+        assertEquals(0, app.binge.count.value)
+    }
+
+    @Test
+    fun `a new view model for the next episode keeps the count`() = runTest {
+        val jellyfin = seriesServer()
+        val first = viewModel(countdownStep = 1.milliseconds)
+        playing(first, jellyfin)
+        first.onPosition(tenMinutes - 30_000)
+        first.uiState.first { it.stream?.id == 2 }
+        assertEquals(1, app.binge.count.value)
+
+        val second = viewModel()
+        second.uiState.first { it.stream != null }
+
+        assertEquals(1, app.binge.count.value)
+    }
+
+    @Test
+    fun `closing the player resets the count`() = runTest {
+        server()
+        repeat(2) { app.binge.autoAdvanced() }
+        val vm = viewModel()
+        vm.uiState.first { it.stream != null }
+
+        vm.onClosed(1_000)
+
+        assertEquals(0, app.binge.count.value)
+    }
+
+    @Test
+    fun `continue clears the prompt and the count and the countdown carries on`() = runTest {
+        val jellyfin = seriesServer()
+        repeat(3) { app.binge.autoAdvanced() }
+        val vm = viewModel(countdownStep = 1.hours)
+        val seen = nearTheEnd(vm, jellyfin)
+        vm.uiState.first { it.stillWatching }
+
+        vm.onContinueWatching()
+        vm.onPosition(tenMinutes - 25_000)
+
+        assertEquals(0, app.binge.count.value)
+        assertFalse(seen.last().stillWatching)
+        assertNotNull(seen.last().upNext)
+    }
+
+    @Test
+    fun `stop watching ends the session and closes the screen`() = runTest {
+        val jellyfin = seriesServer()
+        repeat(3) { app.binge.autoAdvanced() }
+        val vm = viewModel(countdownStep = 1.hours)
+        val seen = nearTheEnd(vm, jellyfin)
+        vm.uiState.first { it.stillWatching }
+
+        vm.onStopWatching()
+
+        jellyfin.awaitRequests("POST", "/Sessions/Playing/Stopped")
+        assertTrue(seen.last().finished)
+        assertFalse(seen.last().stillWatching)
+        assertEquals(0, app.binge.count.value)
     }
 
     @Test

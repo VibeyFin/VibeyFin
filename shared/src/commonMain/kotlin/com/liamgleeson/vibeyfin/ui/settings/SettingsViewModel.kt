@@ -18,7 +18,7 @@ data class SettingsUiState(
     /** The player shows its stats overlay. */
     val showPlaybackStats: Boolean = false,
     /** Episodes in a row before "Still watching?"; 0 is off. */
-    val bingeThreshold: Int = 3,
+    val bingeThreshold: Int = ProfileSettings.DEFAULT_BINGE_THRESHOLD,
 )
 
 /** Device-wide settings from [DevicePreferences] and the signed-in profile's from the database, one column per option. */
@@ -35,7 +35,7 @@ class SettingsViewModel(
             alwaysAskWhoIsWatching = alwaysAsk,
             hasProfile = showStats != null || threshold != null,
             showPlaybackStats = showStats ?: false,
-            bingeThreshold = threshold ?: 3,
+            bingeThreshold = threshold ?: ProfileSettings.DEFAULT_BINGE_THRESHOLD,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 

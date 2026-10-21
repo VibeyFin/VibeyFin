@@ -20,6 +20,8 @@ struct PlayerView: View {
     /// The second under the finger while the scrubber is dragged.
     @State private var scrubPosition: TimeInterval?
     @State private var hideTask: Task<Void, Never>?
+    /// The video was playing when "Are you still watching?" paused it.
+    @State private var pausedForPrompt = false
     /// The skip seek handed to the player last, until the model's state has cleared it.
     @State private var lastSkipSeekMs: Int64?
     /// The scrub-preview tiles of the playing item; a new item gets its own, which drops the old cache.
@@ -68,6 +70,13 @@ struct PlayerView: View {
                 if state?.showDiagnostics == true, let diagnostics = state?.diagnostics {
                     statsOverlay(diagnostics)
                 }
+            }
+            if state?.stillWatching == true {
+                StillWatchingPrompt(
+                    onContinue: { model.continueWatching() },
+                    onStop: { model.stopWatching() }
+                )
+                .transition(.opacity)
             }
             // The next episode, in the last seconds of this one, whether or not the controls are up.
             if let upNext = state?.upNext, state?.message == nil {
@@ -122,6 +131,7 @@ struct PlayerView: View {
             controller.wantAudio(audioChoice(in: state))
             controller.wantDiagnostics(state?.showDiagnostics == true)
             controller.setSpeed(state?.speed ?? 1)
+            applyStillWatching(state?.stillWatching == true)
             controller.setNowPlaying(title: state?.title, subtitle: state?.subtitle)
         }
         .onChange(of: controller.isPlaying) { isPlaying in
@@ -175,7 +185,10 @@ struct PlayerView: View {
                             systemName: controller.isPlaying ? "pause.fill" : "play.fill",
                             label: controller.isPlaying ? Strings.shared.pause : Strings.shared.play,
                             font: .largeTitle,
-                            action: { controller.togglePlayPause() }
+                            action: {
+                                model.userInteraction()
+                                controller.togglePlayPause()
+                            }
                         )
                     }
                 }
@@ -228,14 +241,20 @@ struct PlayerView: View {
                         model.selectSpeed(speed)
                         scheduleHide()
                     },
-                    onTouch: { hideTask?.cancel() }
+                    onTouch: {
+                        model.userInteraction()
+                        hideTask?.cancel()
+                    }
                 )
             }
             if pip.isSupported {
                 PlayerIconButton(
                     systemName: "pip.enter",
                     label: Strings.shared.pictureInPicture,
-                    action: { pip.start() }
+                    action: {
+                        model.userInteraction()
+                        pip.start()
+                    }
                 )
             }
             if let state, state.hasTrackChoices {
@@ -250,7 +269,10 @@ struct PlayerView: View {
                         model.selectSubtitle(index)
                         scheduleHide()
                     },
-                    onTouch: { hideTask?.cancel() }
+                    onTouch: {
+                        model.userInteraction()
+                        hideTask?.cancel()
+                    }
                 )
             }
         }
@@ -272,6 +294,7 @@ struct PlayerView: View {
                 position: shownPosition,
                 duration: controller.duration,
                 onScrub: { seconds in
+                    model.userInteraction()
                     scrubPosition = seconds
                     hideTask?.cancel()
                 },
@@ -363,6 +386,18 @@ struct PlayerView: View {
         )
     }
 
+    /// "Are you still watching?" pauses the video; "Keep watching" plays on. A pause the viewer made is left alone.
+    private func applyStillWatching(_ asking: Bool) {
+        guard asking != pausedForPrompt else { return }
+        if asking {
+            pausedForPrompt = controller.isPlaying
+            controller.pause()
+        } else if pausedForPrompt {
+            pausedForPrompt = false
+            controller.play()
+        }
+    }
+
     /// Tells the shared model when the picture-in-picture window starts and how it ends. Dismissing the
     /// window ends the session, so the screen goes with it; expanding it leaves everything as it is.
     private func bindPictureInPicture() {
@@ -388,6 +423,7 @@ struct PlayerView: View {
     }
 
     private func toggleControls() {
+        model.userInteraction()
         if controlsVisible {
             hideTask?.cancel()
             setControlsVisible(false)

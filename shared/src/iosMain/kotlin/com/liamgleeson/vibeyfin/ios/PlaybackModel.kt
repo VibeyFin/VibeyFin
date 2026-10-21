@@ -50,6 +50,12 @@ class PlaybackModel(itemId: String, startOver: Boolean) {
 
     fun onSelectSpeed(speed: Float) = host.viewModel.onSelectSpeed(speed)
 
+    fun onUserInteraction() = host.viewModel.onUserInteraction()
+
+    fun onContinueWatching() = host.viewModel.onContinueWatching()
+
+    fun onStopWatching() = host.viewModel.onStopWatching()
+
     fun onPlayNow() = host.viewModel.onPlayNow()
 
     fun onWatchCredits() = host.viewModel.onWatchCredits()

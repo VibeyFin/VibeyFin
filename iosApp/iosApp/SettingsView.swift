@@ -34,6 +34,7 @@ struct SettingsView: View {
                         }
                     }
                     .tint(Color(.label))
+                    bingeThresholdRow
                 }
                 Spacer()
             }
@@ -46,6 +47,35 @@ struct SettingsView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         // Only the chevron, no "Back" label. The swipe from the edge still goes back.
         .toolbarRole(.editor)
+    }
+
+    /// Off, or after 2 to 5 episodes in a row, as a menu on the row.
+    private var bingeThresholdRow: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Strings.shared.stillWatchingTitle)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text(Strings.shared.stillWatchingHelp)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: Space.s3)
+            Picker(Strings.shared.stillWatchingTitle, selection: bingeThreshold) {
+                ForEach([0, 2, 3, 4, 5] as [Int32], id: \.self) { choice in
+                    Text(choice == 0 ? Strings.shared.stillWatchingOff : Strings.shared.stillWatchingAfter(n: choice)).tag(choice)
+                }
+            }
+            .pickerStyle(.menu)
+            .tint(Color(.secondaryLabel))
+        }
+    }
+
+    private var bingeThreshold: Binding<Int32> {
+        Binding(
+            get: { model.state?.bingeThreshold ?? 3 },
+            set: { model.setBingeThreshold($0) }
+        )
     }
 
     private var showPlaybackStats: Binding<Bool> {

@@ -253,5 +253,10 @@ object Strings {
     val stillWatchingHelp =
         "Pause and ask after several episodes in a row so the next one doesn't play to an empty room. Applies to this profile."
     val stillWatchingOff = "Off"
+
+    /** The question that pauses the player after several episodes in a row. */
+    val stillWatchingPrompt = "Are you still watching?"
+    val stillWatchingContinue = "Keep watching"
+    val stillWatchingStop = "Stop watching"
     fun stillWatchingAfter(n: Int) = "After $n episodes"
 }

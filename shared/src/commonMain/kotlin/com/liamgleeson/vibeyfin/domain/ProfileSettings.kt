@@ -42,7 +42,8 @@ class ProfileSettings(
         .distinctUntilChanged()
         .flatMapLatest { account -> if (account == null) flowOf(null) else observe(dao, account) }
 
-    private companion object {
+    companion object {
+        /** Episodes in a row before the player asks "Are you still watching?". */
         const val DEFAULT_BINGE_THRESHOLD = 3
     }
 }

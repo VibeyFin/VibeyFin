@@ -124,6 +124,7 @@ fun PlayerRoute(
     val http = remember { DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(CONNECT_TIMEOUT_MS) }
     val player = remember { buildPlayer(context, http) }
 
+    val stillWatchingNow by rememberUpdatedState(state.stillWatching)
     var playing by remember { mutableStateOf(true) }
     var buffering by remember { mutableStateOf(true) }
     var positionMs by remember { mutableLongStateOf(0L) }
@@ -158,6 +159,9 @@ fun PlayerRoute(
             }
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                // Play and pause from the notification, a headset or a media key count as the viewer being there;
+                // the pause for the "still watching?" question is ours, not theirs.
+                if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST && !stillWatchingNow) viewModel.onUserInteraction()
                 playing = playWhenReady
                 if (playWhenReady) viewModel.onPlaying(player.currentPosition) else viewModel.onPaused(player.currentPosition)
             }
@@ -271,6 +275,18 @@ fun PlayerRoute(
 
     rememberPlayerSession(player)
 
+    // "Are you still watching?" pauses the video; "Keep watching" plays on, "Stop" leaves.
+    var pausedForPrompt by remember { mutableStateOf(false) }
+    LaunchedEffect(state.stillWatching) {
+        if (state.stillWatching) {
+            pausedForPrompt = player.playWhenReady
+            player.pause()
+        } else if (pausedForPrompt) {
+            pausedForPrompt = false
+            player.play()
+        }
+    }
+
     // Leaving the app turns the screen into a picture-in-picture window while something plays. The video
     // carries on and so does the session; closing the window ends it, expanding it brings the screen back.
     val videoRatio = state.diagnostics?.let { d -> if ((d.width ?: 0) > 0 && (d.height ?: 0) > 0) d.width!!.toFloat() / d.height!! else null } ?: (16f / 9f)
@@ -331,6 +347,7 @@ fun PlayerRoute(
         Box(
             Modifier.fillMaxSize().pointerInput(Unit) {
                 detectTapGestures {
+                    viewModel.onUserInteraction()
                     controlsVisible = !controlsVisible
                     interactions++
                 }
@@ -349,18 +366,34 @@ fun PlayerRoute(
                     speedLabel = Strings.speedValue(state.speed),
                     trickplay = trickplay,
                     onClose = close,
-                    onTracks = { showTracks = true },
-                    onSpeed = { showSpeeds = true },
-                    onPip = if (pip.available && state.stream != null) pip::enter else null,
+                    onTracks = {
+                        viewModel.onUserInteraction()
+                        showTracks = true
+                    },
+                    onSpeed = {
+                        viewModel.onUserInteraction()
+                        showSpeeds = true
+                    },
+                    onPip = if (pip.available && state.stream != null) {
+                        {
+                            viewModel.onUserInteraction()
+                            pip.enter()
+                        }
+                    } else {
+                        null
+                    },
                     onTogglePlay = {
+                        viewModel.onUserInteraction()
                         player.playWhenReady = !player.playWhenReady
                         interactions++
                     },
                     onScrubbing = {
+                        viewModel.onUserInteraction()
                         scrubbing = it
                         interactions++
                     },
                     onSeek = {
+                        viewModel.onUserInteraction()
                         seekAt = SystemClock.elapsedRealtime()
                         // The scrubber shows this until the next tick, so it doesn't fall back to the old position.
                         positionMs = it
@@ -390,6 +423,9 @@ fun PlayerRoute(
         }
         if (!leaving && (state.loading || (buffering && state.stream != null))) {
             CircularProgressIndicator(Modifier.align(Alignment.Center), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (state.stillWatching && !leaving && !pip.active) {
+            StillWatchingPrompt(onContinue = viewModel::onContinueWatching, onStop = viewModel::onStopWatching)
         }
         if (showSpeeds && !leaving && !pip.active) {
             SpeedSheet(

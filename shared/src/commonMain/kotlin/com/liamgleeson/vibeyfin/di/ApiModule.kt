@@ -9,8 +9,6 @@ import com.liamgleeson.vibeyfin.domain.AuthRepository
 import com.liamgleeson.vibeyfin.domain.BingeCounter
 import com.liamgleeson.vibeyfin.domain.ConnectionManager
 import com.liamgleeson.vibeyfin.domain.LibraryRepository
-import com.liamgleeson.vibeyfin.domain.NextUpSource
-import com.liamgleeson.vibeyfin.domain.NoNextUpSource
 import com.liamgleeson.vibeyfin.domain.NowPlaying
 import com.liamgleeson.vibeyfin.domain.PlaybackRecovery
 import com.liamgleeson.vibeyfin.domain.PlaybackReporter
@@ -65,9 +63,7 @@ fun apiModule() = module {
     // One per player: it holds what that playback has reported so far.
     factory { PlaybackReporter(get(), get(ApplicationScope), get(), get(), get()) }
 
-    // Replace this binding with Phase 2's real implementation on rebase.
-    single<NextUpSource> { NoNextUpSource() }
-    // Singles: both must survive a new PlaybackViewModel per episode.
+    // Singles: both must survive a new PlaybackViewModel.
     single { BingeCounter() }
     single { NowPlaying() }
 }

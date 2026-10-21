@@ -87,6 +87,38 @@ private struct SkipButtonStyle: ViewModifier {
     }
 }
 
+/// "Are you still watching?" over the paused video, after several episodes in a row that started by
+/// themselves. It covers the picture and takes every touch. Keeping on is the one primary action;
+/// stopping is the quiet one. The wording is the shared model's.
+struct StillWatchingPrompt: View {
+    let onContinue: () -> Void
+    let onStop: () -> Void
+
+    var body: some View {
+        ZStack {
+            Brand.scrim.ignoresSafeArea()
+            VStack(spacing: Space.s4) {
+                Text(Strings.shared.stillWatchingPrompt)
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.center)
+                HStack(spacing: Space.s3) {
+                    SkipButton(label: Strings.shared.stillWatchingStop, action: onStop)
+                    PrimaryButton(action: onContinue) {
+                        Text(Strings.shared.stillWatchingContinue.titleCased())
+                    }
+                    .fixedSize()
+                }
+            }
+            .padding(Space.s5)
+        }
+        // Nothing underneath is pressed while the question is up.
+        .contentShape(Rectangle())
+        .onTapGesture {}
+        .accessibilityElement(children: .contain)
+    }
+}
+
 /// The scrub-preview thumbnails of one playback: fetches the tile images with the stream's headers,
 /// keeps them decoded in a small in-memory cache, and crops one thumbnail out by the shared maths.
 /// Make a new one for a new track (the next episode); letting go of it drops the cache. A tile that

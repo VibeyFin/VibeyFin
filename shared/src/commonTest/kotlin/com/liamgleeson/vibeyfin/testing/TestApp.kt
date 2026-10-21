@@ -5,6 +5,7 @@ import com.liamgleeson.vibeyfin.data.db.VibeyFinDatabase
 import com.liamgleeson.vibeyfin.data.prefs.DataStoreDevicePreferences
 import com.liamgleeson.vibeyfin.domain.AccountRepository
 import com.liamgleeson.vibeyfin.domain.AuthRepository
+import com.liamgleeson.vibeyfin.domain.BingeCounter
 import com.liamgleeson.vibeyfin.domain.ConnectionManager
 import com.liamgleeson.vibeyfin.domain.LibraryRepository
 import com.liamgleeson.vibeyfin.domain.PROGRESS_INTERVAL
@@ -51,6 +52,7 @@ class TestApp {
     val capabilities = FakePlaybackCapabilities()
     val profileSettings = ProfileSettings(database.accountDao(), connection)
     val nowPlaying = NowPlaying()
+    val binge = BingeCounter()
     val playback = PlaybackRepository(connection, capabilities, ClientInfoProvider(FakeDeviceInfo(), preferences))
 
     val pending = PendingReports(database.pendingReportDao(), clock)

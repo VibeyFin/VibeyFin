@@ -3,6 +3,7 @@ package com.liamgleeson.vibeyfin.ui.playback
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liamgleeson.vibeyfin.data.api.ApiResult
+import com.liamgleeson.vibeyfin.domain.BingeCounter
 import com.liamgleeson.vibeyfin.domain.ConnectionManager
 import com.liamgleeson.vibeyfin.domain.LibraryRepository
 import com.liamgleeson.vibeyfin.domain.LiveDiagnostics
@@ -165,6 +166,8 @@ data class PlaybackUiState(
     val badge: String? = null,
     /** The player is in a picture-in-picture window; the screen is gone but the session goes on. */
     val inPictureInPicture: Boolean = false,
+    /** Several episodes in a row started by themselves: the player is paused and asks whether to go on. */
+    val stillWatching: Boolean = false,
 ) {
     /** The speeds to pick from. */
     val speeds: List<Float> get() = PLAYBACK_SPEEDS
@@ -216,8 +219,9 @@ class PlaybackViewModel(
     private val reporter: PlaybackReporter,
     connection: ConnectionManager,
     private val watch: WatchRepository,
-    profileSettings: ProfileSettings,
+    private val profileSettings: ProfileSettings,
     private val nowPlaying: NowPlaying,
+    private val binge: BingeCounter,
     private val retryDelays: List<Duration> = NETWORK_RETRY_DELAYS,
     private val startOver: Boolean = false,
     private val autoAdvance: Boolean = true,
@@ -251,6 +255,9 @@ class PlaybackViewModel(
     private var ended = false
 
     private var inPictureInPicture = false
+
+    /** Episodes in a row before the player asks "Are you still watching?"; kept up to date from the profile's settings. */
+    private var bingeThreshold = ProfileSettings.DEFAULT_BINGE_THRESHOLD
 
     private var countdown: Job? = null
     private var method: PlayMethod? = null
@@ -295,6 +302,9 @@ class PlaybackViewModel(
     private class TrackChoice(val mediaSourceId: String, val audio: Int?, val subtitle: Int)
 
     init {
+        viewModelScope.launch {
+            profileSettings.bingeThreshold.collect { bingeThreshold = it ?: ProfileSettings.DEFAULT_BINGE_THRESHOLD }
+        }
         start()
     }
 
@@ -328,6 +338,7 @@ class PlaybackViewModel(
     /** Plays at [speed], if it is one of [PLAYBACK_SPEEDS]. Position reports stay in media time. */
     fun onSelectSpeed(speed: Float) {
         if (speed !in PLAYBACK_SPEEDS) return
+        binge.interacted()
         content.update { if (it.speed == speed) it else it.copy(speed = speed) }
     }
 
@@ -362,6 +373,7 @@ class PlaybackViewModel(
     /** The user chose the skip button: the player is asked to seek to the end of the segment. */
     fun onSkip() {
         val offer = content.value.skipOffer ?: return
+        binge.interacted()
         content.update { it.copy(pendingSeekMs = offer.toMs) }
     }
 
@@ -395,7 +407,7 @@ class PlaybackViewModel(
         val upcoming = next
         if (autoAdvance && upcoming != null && !upNextDismissed) {
             // Already counting down: the video ended under it, so there is nothing left to wait for.
-            if (countdown != null) onPlayNow() else startCountdown(upcoming)
+            if (countdown != null) playNext(byItself = true) else startCountdown(upcoming)
             return
         }
         content.update { it.copy(finished = true) }
@@ -420,7 +432,24 @@ class PlaybackViewModel(
         lastPositionMs = positionMs
         reporter.stop(positionMs)
         nowPlaying.clear()
+        binge.reset()
         cancelCountdown()
+    }
+
+    /** The viewer touched or pressed something: whatever was counted towards "Are you still watching?" starts over. */
+    fun onUserInteraction() = binge.interacted()
+
+    /** "Keep watching" on the prompt: the count starts over, the player carries on, and the card comes back in its window. */
+    fun onContinueWatching() {
+        binge.reset()
+        content.update { it.copy(stillWatching = false) }
+        checkUpNext(lastPositionMs)
+    }
+
+    /** "Stop" on the prompt: the same as closing the player. */
+    fun onStopWatching() {
+        onClosed(lastPositionMs)
+        content.update { it.copy(stillWatching = false, finished = true) }
     }
 
     /** The screen became a picture-in-picture window: playback and reporting carry on, nothing is stopped. */
@@ -559,7 +588,7 @@ class PlaybackViewModel(
     private fun checkUpNext(positionMs: Long) {
         val upcoming = next ?: return
         val runtime = item?.runtimeMs ?: return
-        if (!autoAdvance || upNextDismissed || ended) return
+        if (!autoAdvance || upNextDismissed || ended || content.value.stillWatching) return
         val remaining = runtime - positionMs
         if (countdown == null) {
             if (runtime >= MIN_AUTO_ADVANCE_RUNTIME_MS && remaining <= UP_NEXT_WINDOW_MS) startCountdown(upcoming)
@@ -569,13 +598,18 @@ class PlaybackViewModel(
     }
 
     private fun startCountdown(upcoming: MediaItem) {
+        // Enough episodes in a row on their own: ask instead of counting down to another one.
+        if (binge.shouldAsk(bingeThreshold)) {
+            content.update { it.copy(stillWatching = true, upNext = null) }
+            return
+        }
         countdown = viewModelScope.launch {
             for (left in UP_NEXT_SECONDS downTo 1) {
                 content.update { it.copy(upNext = upcoming.toUpNext(left)) }
                 delay(countdownStep)
             }
             countdown = null
-            advance()
+            playNext(byItself = true)
         }
     }
 
@@ -588,13 +622,22 @@ class PlaybackViewModel(
     /** "Play now" on the card: the next episode starts without waiting for the countdown. */
     fun onPlayNow() {
         if (next == null) return
+        binge.interacted()
+        playNext(byItself = false)
+    }
+
+    /** Moves on to [next]. [byItself]: nobody asked for it, so it counts towards "Are you still watching?". */
+    private fun playNext(byItself: Boolean) {
+        if (next == null) return
         countdown?.cancel()
         countdown = null
+        if (byItself) binge.autoAdvanced()
         advance()
     }
 
     /** "Watch credits" on the card: it goes, and this episode plays out. If it already ended, the screen closes. */
     fun onWatchCredits() {
+        binge.interacted()
         upNextDismissed = true
         cancelCountdown()
         if (ended) content.update { it.copy(finished = true) }
@@ -627,7 +670,7 @@ class PlaybackViewModel(
         segmentsRequested = false
         trickplayFor = null
         content.update {
-            it.copy(loading = true, stream = null, upNext = null, skipOffer = null, trickplay = null, speed = 1f, badge = null, audioTracks = emptyList(), subtitleTracks = emptyList(), message = null, finished = false)
+            it.copy(loading = true, stream = null, upNext = null, skipOffer = null, trickplay = null, speed = 1f, badge = null, stillWatching = false, audioTracks = emptyList(), subtitleTracks = emptyList(), message = null, finished = false)
         }
         begin(target, honourStartOver = false)
     }
