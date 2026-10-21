@@ -212,7 +212,7 @@ const val RESUME_REWIND_MS = 5_000L
  * report a small position and overwrite the real one.
  *
  * Auto-advance: for an episode, the next one is looked up in the background. In the last 30 s of an
- * episode (the card is Phase 3's Outro segment once there is one) [PlaybackUiState.upNext] counts down
+ * episode (always that window; an Outro segment doesn't move it) [PlaybackUiState.upNext] counts down
  * 10 s and then plays the next episode in this same ViewModel, so neither native player is rebuilt: the
  * finished one is reported stopped at its end, so the server marks it watched, and the stream changes.
  * [onWatchCredits] dismisses the card for this episode; [onPlayNow] doesn't wait. A video under three

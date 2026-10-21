@@ -34,8 +34,8 @@ abstract class VibeyFinDatabase : RoomDatabase() {
 }
 
 /**
- * Version 3 is unreleased: it adds the stats and binge columns and drops `allowTranscoding`, a flag
- * the released version 2 already has.
+ * The move to version 4: it adds the stats and binge columns and drops `allowTranscoding`, a flag
+ * version 3 still has.
  */
 @DeleteColumn(tableName = "account_settings", columnName = "allowTranscoding")
 class DropAllowTranscoding : AutoMigrationSpec
