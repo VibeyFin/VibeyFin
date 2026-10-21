@@ -62,7 +62,7 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(VibeyFinTokens.Space.s5))
                 SwitchRow(
                     title = Strings.alwaysAskWhoIsWatchingTitle,
                     help = Strings.alwaysAskWhoIsWatchingHelp,
@@ -70,7 +70,7 @@ fun SettingsScreen(
                     onCheckedChange = onAlwaysAskChanged,
                 )
                 if (state.hasProfile) {
-                    Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(VibeyFinTokens.Space.s5))
                     SwitchRow(
                         title = Strings.allowTranscodingTitle,
                         help = Strings.allowTranscodingHelp,
@@ -96,7 +96,7 @@ private fun SwitchRow(title: String, help: String, checked: Boolean, onCheckedCh
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Column(modifier = Modifier.weight(1f).padding(end = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(modifier = Modifier.weight(1f).padding(end = VibeyFinTokens.Space.s4), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,

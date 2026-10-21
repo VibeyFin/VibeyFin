@@ -1,12 +1,20 @@
 import SwiftUI
+import UIKit
 import Shared
 
-/// Artwork at `aspectRatio`, or the title on a plain `surface-2` tile when there is none. The tile's
-/// own colour shows while an image loads or if it fails.
+/// Artwork at `aspectRatio`, or the title on a plain `surface-2` tile when there is none. While the image
+/// loads, or if it fails, the tile shows `blurHash` (the server's blurred stand-in for the picture) and the
+/// picture fades in over it; without a hash the tile's own colour shows.
 struct Artwork: View {
     let url: String?
     let title: String
     let aspectRatio: CGFloat
+    var blurHash: String? = nil
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// `dur-base` in `design/tokens.json`; no fade when the system asks for Reduce Motion.
+    private var fade: Animation? { reduceMotion ? nil : .easeIn(duration: 0.2) }
 
     var body: some View {
         // The colour sets the size from the aspect ratio; the image fills it and is cropped to it.
@@ -14,11 +22,19 @@ struct Artwork: View {
             .aspectRatio(aspectRatio, contentMode: .fit)
             .overlay {
                 if let url = url.flatMap(URL.init(string:)) {
-                    AsyncImage(url: url) { phase in
-                        if let image = phase.image {
-                            image.resizable().scaledToFill()
-                        } else {
-                            Color.clear
+                    ZStack {
+                        if let blurHash, let blurred = BlurHashCache.image(for: blurHash, aspectRatio: aspectRatio) {
+                            Image(uiImage: blurred)
+                                .resizable()
+                                .interpolation(.medium)
+                                .scaledToFill()
+                        }
+                        AsyncImage(url: url, transaction: Transaction(animation: fade)) { phase in
+                            if let image = phase.image {
+                                image.resizable().scaledToFill().transition(.opacity)
+                            } else {
+                                Color.clear
+                            }
                         }
                     }
                 } else {
@@ -34,13 +50,31 @@ struct Artwork: View {
     }
 }
 
+/// Decodes each BlurHash once: a grid redraws its tiles often, and the picture only depends on the hash and the shape.
+private enum BlurHashCache {
+    private static let images = NSCache<NSString, UIImage>()
+
+    static func image(for hash: String, aspectRatio: CGFloat) -> UIImage? {
+        let key = "\(hash)@\(aspectRatio)" as NSString
+        if let cached = images.object(forKey: key) { return cached }
+        guard let image = BlurHashImages.shared.image(hash: hash, aspectRatio: Float(aspectRatio)) else { return nil }
+        images.setObject(image, forKey: key)
+        return image
+    }
+}
+
 /// A poster or a library tile with its title underneath, unless the picture already says it.
 struct ArtworkTile: View {
     let item: MediaItem
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s2) {
-            Artwork(url: item.posterUrl, title: item.title, aspectRatio: CGFloat(item.posterAspectRatio))
+            Artwork(
+                url: item.posterUrl,
+                title: item.title,
+                aspectRatio: CGFloat(item.posterAspectRatio),
+                blurHash: item.posterBlurHash
+            )
                 .overlay(alignment: .topTrailing) {
                     if item.played { WatchedBadge().padding(Space.s2) }
                 }

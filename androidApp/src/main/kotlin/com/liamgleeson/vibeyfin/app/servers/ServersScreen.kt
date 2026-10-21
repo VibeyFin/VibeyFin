@@ -82,12 +82,12 @@ private fun EmptyServers(state: ServersUiState, onAddServer: () -> Unit, onSearc
             style = BrandDisplay,
             color = MaterialTheme.colorScheme.onBackground,
         )
-        Spacer(Modifier.height(32.dp))
-        Button(onClick = onAddServer, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+        Spacer(Modifier.height(VibeyFinTokens.Space.s6))
+        Button(onClick = onAddServer, modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge)) {
             Text(Strings.addServer)
         }
         if (state.canSearch) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(VibeyFinTokens.Space.s4))
             if (state.searching) {
                 SearchingLabel()
             } else {
@@ -113,16 +113,16 @@ private fun ServerList(
     onSearchAgain: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = screenMargin())) {
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(VibeyFinTokens.Space.s6))
         Text(
             text = Strings.servers,
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground,
         )
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(VibeyFinTokens.Space.s5))
         LazyColumn(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         ) {
             items(state.servers, key = { "saved-${it.id}" }) { server -> ServerRow(server) { onOpenServer(server) } }
             if (state.canSearch) {
@@ -141,7 +141,7 @@ private fun ServerList(
         }
         FilledTonalButton(
             onClick = onAddServer,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp).height(VibeyFinTokens.Size.touch),
+            modifier = Modifier.fillMaxWidth().padding(vertical = VibeyFinTokens.Space.s4).height(VibeyFinTokens.Size.touch),
         ) {
             Text(Strings.addServer)
         }
@@ -151,7 +151,7 @@ private fun ServerList(
 @Composable
 private fun NearbyHeader(searching: Boolean, onSearchAgain: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 12.dp).height(40.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = VibeyFinTokens.Space.s3).height(VibeyFinTokens.Size.button),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -178,7 +178,7 @@ private fun SearchingLabel() {
             strokeWidth = 2.dp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.size(8.dp))
+        Spacer(Modifier.size(VibeyFinTokens.Space.s2))
         Text(
             text = Strings.searching,
             style = MaterialTheme.typography.bodyMedium,
@@ -242,7 +242,7 @@ private fun DiscoveredRow(server: DiscoveredServer, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Spacer(Modifier.size(16.dp))
+            Spacer(Modifier.size(VibeyFinTokens.Space.s4))
             Text(
                 text = Strings.addToServers,
                 style = MaterialTheme.typography.titleSmall,

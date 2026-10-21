@@ -10,6 +10,7 @@ version `1792521935-239c`). `design/tokens.json` is the token source of truth.
   detail screens
 - `guardrails.md`: screen behaviour both apps must share
 - `jellyfin-mapping.md`: which server data drives which UI
+- `review.md`: living design review of the built UI against these docs, with each finding's status
 
 The artifact's own architecture notes (SKIE, KMP-NativeCoroutines, generated token files) are not
 followed here: see `docs/plans/04-design-system.md` for what this project does instead.

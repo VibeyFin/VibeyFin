@@ -367,9 +367,11 @@ private fun open(player: ExoPlayer, http: DefaultHttpDataSource.Factory, stream:
 
 /**
  * Full screen while the player is up: system bars hidden (a swipe from the edge brings them back for
- * a moment) and, on a phone, landscape. [restore] puts both back as they were, which also leaves the
- * user's rotation lock alone. It is called as the player starts to leave, so the screen underneath
- * is turning upright while the app's slide transition shows it, and again (harmlessly) on the way out.
+ * a moment), the screen kept on (no touches arrive while watching, so it would dim and sleep otherwise;
+ * Media3's PlayerView leaves that to the app) and, on a phone, landscape. [restore] puts all three back as
+ * they were, which also leaves the user's rotation lock alone. It is called as the player starts to leave,
+ * so the screen underneath is turning upright while the app's slide transition shows it, and again
+ * (harmlessly) on the way out.
  */
 private class PlayerWindow(private val activity: Activity) {
     private val previousOrientation = activity.requestedOrientation
@@ -381,6 +383,8 @@ private class PlayerWindow(private val activity: Activity) {
     fun apply() {
         if (applied) return
         applied = true
+        // For as long as the player is up, paused or not: the window flag only counts while the app is in front.
+        activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         // Turning the phone as the player opens or closes cross-fades instead of spinning a snapshot.
         setRotationAnimation(WindowManager.LayoutParams.ROTATION_ANIMATION_CROSSFADE)
         if (activity.resources.configuration.smallestScreenWidthDp < TABLET_WIDTH_DP) {
@@ -398,6 +402,7 @@ private class PlayerWindow(private val activity: Activity) {
     fun restore() {
         if (!applied) return
         applied = false
+        activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         controller.show(WindowInsetsCompat.Type.systemBars())
         thread(name = "restore-orientation") { activity.requestedOrientation = previousOrientation }
     }

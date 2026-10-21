@@ -47,6 +47,12 @@ data class MediaItem(
     val played: Boolean = false,
     /** A 16:9 picture for a card: the item's Thumb, else its Backdrop, else its Primary image. */
     val landscapeUrl: String? = null,
+    /** The BlurHash of [posterUrl]'s picture, drawn in its place while it loads. */
+    val posterBlurHash: String? = null,
+    /** The BlurHash of [backdropUrl]'s picture. */
+    val backdropBlurHash: String? = null,
+    /** The BlurHash of [landscapeUrl]'s picture, whichever image type that turned out to be. */
+    val landscapeBlurHash: String? = null,
 ) {
     /** How far in the user is, from 0 to 1; null when they haven't started or the length isn't known. */
     val progress: Float?

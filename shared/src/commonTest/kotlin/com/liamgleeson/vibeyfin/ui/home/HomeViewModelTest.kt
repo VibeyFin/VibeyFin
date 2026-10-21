@@ -232,6 +232,7 @@ class HomeViewModelTest {
     private val halfWatched = itemJson(
         "e1", "Pilot", type = "Episode", seriesName = "Show", seriesId = "s1", seasonNumber = 2, episodeNumber = 5,
         runtimeTicks = 40 * TICKS_PER_MINUTE, positionTicks = 10 * TICKS_PER_MINUTE, thumbTag = "t", year = 2020,
+        blurHashes = mapOf("Thumb" to mapOf("t" to "LEHV6nWB2yk8pyo0adR*.7kCMdnj")),
     )
     private val nextEpisode = itemJson(
         "e9", "Opener", type = "Episode", seriesName = "Other", seriesId = "s2", seasonNumber = 1, episodeNumber = 1,
@@ -256,6 +257,7 @@ class HomeViewModelTest {
         assertEquals(0.25f, started.progress)
         assertEquals("Show, S2 E5, 25% watched", started.accessibilityLabel)
         assertEquals("http://nas:8096/Items/e1/Images/Thumb?tag=t&maxWidth=640", started.imageUrl)
+        assertEquals("LEHV6nWB2yk8pyo0adR*.7kCMdnj", started.imageBlurHash)
         assertEquals("Other", next.title)
         assertEquals("S1 E1 · Opener", next.subtitle)
         // A next-up card has no bar: nothing has been watched of it.

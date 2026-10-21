@@ -86,6 +86,8 @@ data class UpNext(
     val title: String,
     /** A 16:9 picture, or null when the server has none. */
     val imageUrl: String?,
+    /** The BlurHash of [imageUrl]'s picture, drawn while it loads; null when the server sent none. */
+    val imageBlurHash: String?,
     /** Whole seconds until it starts on its own. */
     val secondsLeft: Int,
 )
@@ -522,7 +524,14 @@ class PlaybackViewModel(
     }
 
     private fun MediaItem.toUpNext(secondsLeft: Int) =
-        UpNext(id = id, label = episodeLabel(), title = title, imageUrl = landscapeUrl, secondsLeft = secondsLeft)
+        UpNext(
+            id = id,
+            label = episodeLabel(),
+            title = title,
+            imageUrl = landscapeUrl,
+            imageBlurHash = landscapeBlurHash,
+            secondsLeft = secondsLeft,
+        )
 
     /** The player does the switching: only the picker and the reports change, the stream stays. */
     private fun applySelection(current: PlaybackPlan) {

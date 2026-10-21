@@ -116,7 +116,7 @@ private fun Title(title: String) {
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground,
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(VibeyFinTokens.Space.s4))
     }
 }
 
@@ -153,7 +153,7 @@ private fun ItemGrid(
         }
         if (state.loadingMore) {
             item(span = { GridItemSpan(maxLineSpan) }, key = "loading-more") {
-                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxWidth().padding(VibeyFinTokens.Space.s4), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -163,6 +163,6 @@ private fun ItemGrid(
                 LoadError(Strings.loadMoreFailed, onRetry)
             }
         }
-        item(span = { GridItemSpan(maxLineSpan) }, key = "bottom-space") { Spacer(Modifier.height(24.dp)) }
+        item(span = { GridItemSpan(maxLineSpan) }, key = "bottom-space") { Spacer(Modifier.height(VibeyFinTokens.Space.s5)) }
     }
 }

@@ -19,6 +19,8 @@ data class BaseItemDto(
     @SerialName("OfficialRating") val officialRating: String? = null,
     @SerialName("ImageTags") val imageTags: Map<String, String> = emptyMap(),
     @SerialName("BackdropImageTags") val backdropImageTags: List<String> = emptyList(),
+    /** BlurHash strings by image type, then by image tag: `{"Primary": {"<tag>": "<hash>"}}`. */
+    @SerialName("ImageBlurHashes") val imageBlurHashes: Map<String, Map<String, String>> = emptyMap(),
     @SerialName("PrimaryImageAspectRatio") val primaryImageAspectRatio: Double? = null,
     @SerialName("SeriesName") val seriesName: String? = null,
     @SerialName("ParentIndexNumber") val parentIndexNumber: Int? = null,

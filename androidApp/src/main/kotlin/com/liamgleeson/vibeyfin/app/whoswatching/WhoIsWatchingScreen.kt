@@ -67,6 +67,9 @@ import com.liamgleeson.vibeyfin.ui.whoswatching.WhoIsWatchingViewModel
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
+/** The side of a profile's square, and of the "Quick Connect" and "Other user" tiles beside it. */
+private val AVATAR_SIZE = 104.dp
+
 @Composable
 fun WhoIsWatchingRoute(
     serverId: String,
@@ -108,15 +111,15 @@ fun WhoIsWatchingScreen(
             Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = screenMargin())) {
                 if (state.loading) {
                     Header(state, onRetry)
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(VibeyFinTokens.Space.s4))
                     Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else {
                     LazyVerticalGrid(
-                        columns = GridCells.Adaptive(120.dp),
-                        verticalArrangement = Arrangement.spacedBy(24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        columns = GridCells.Adaptive(AVATAR_SIZE + VibeyFinTokens.Space.s4),
+                        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s5),
+                        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
                         modifier = Modifier.fillMaxSize(),
                     ) {
                         // The heading is part of the grid, beneath the button, and scrolls up under it.
@@ -132,7 +135,7 @@ fun WhoIsWatchingScreen(
                         item(key = "other-user") {
                             ActionTile(Strings.otherUser, symbol = "+", enabled = !state.signingIn, onClick = onOtherUser)
                         }
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "bottom-space") { Spacer(Modifier.height(24.dp)) }
+                        item(span = { GridItemSpan(maxLineSpan) }, key = "bottom-space") { Spacer(Modifier.height(VibeyFinTokens.Space.s5)) }
                     }
                 }
             }
@@ -170,11 +173,11 @@ private fun Header(state: WhoIsWatchingUiState, onRetry: () -> Unit) {
             color = MaterialTheme.colorScheme.onBackground,
         )
         if (!state.loading && !state.serverReachable) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(VibeyFinTokens.Space.s4))
             UnreachableBanner(onRetry)
         }
         state.error.takeIf { state.sheet == null }?.let {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(VibeyFinTokens.Space.s2))
             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
         }
     }
@@ -183,11 +186,11 @@ private fun Header(state: WhoIsWatchingUiState, onRetry: () -> Unit) {
 @Composable
 private fun UnreachableBanner(onRetry: () -> Unit) {
     Surface(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(bottom = VibeyFinTokens.Space.s4),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md),
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(modifier = Modifier.padding(VibeyFinTokens.Space.s4), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
             Text(
                 text = Strings.cantReachServerTitle,
                 style = MaterialTheme.typography.titleSmall,
@@ -208,7 +211,7 @@ private fun ProfileTile(profile: Profile, enabled: Boolean, onClick: () -> Unit)
     Column(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).clickable(enabled = enabled, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
     ) {
         Box {
             Avatar(profile)
@@ -244,7 +247,7 @@ private fun ProfileTile(profile: Profile, enabled: Boolean, onClick: () -> Unit)
 private fun Avatar(profile: Profile) {
     var pictureShown by remember(profile.avatarUrl) { mutableStateOf(false) }
     Box(
-        modifier = Modifier.size(104.dp).clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).background(tintFor(profile.name)),
+        modifier = Modifier.size(AVATAR_SIZE).clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).background(tintFor(profile.name)),
         contentAlignment = Alignment.Center,
     ) {
         // The letter goes once the picture is there; pictures with transparent areas would show it through.
@@ -273,10 +276,10 @@ private fun ActionTile(label: String, symbol: String, enabled: Boolean, onClick:
     Column(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).clickable(enabled = enabled, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
     ) {
         Box(
-            modifier = Modifier.size(104.dp).clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).background(VibeyFinTokens.Colors.surface3),
+            modifier = Modifier.size(AVATAR_SIZE).clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).background(VibeyFinTokens.Colors.surface3),
             contentAlignment = Alignment.Center,
         ) {
             Text(symbol, style = MaterialTheme.typography.displaySmall, color = VibeyFinTokens.Colors.inkMuted)
@@ -290,10 +293,10 @@ private fun ActionTile(label: String, symbol: String, enabled: Boolean, onClick:
     }
 }
 
-/** A muted, stable colour per name, so the same person always gets the same square. */
+/** A muted, stable colour per name (the `avatar-1` to `avatar-6` tokens), so the same person always gets the same square. */
 private fun tintFor(name: String): Color {
-    val tints = listOf(0xFF3A4A6B, 0xFF4B3F6B, 0xFF3F6B5E, 0xFF6B4B3F, 0xFF6B3F55, 0xFF55633F)
-    return Color(tints[(name.lowercase().hashCode() and 0x7FFFFFFF) % tints.size])
+    val tints = VibeyFinTokens.Colors.avatars
+    return tints[(name.lowercase().hashCode() and 0x7FFFFFFF) % tints.size]
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -323,8 +326,8 @@ private fun SignInSheet(
 @Composable
 private fun QuickConnectContent(sheet: SignInSheet.QuickConnect, onRetry: () -> Unit, onDismiss: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s2),
+        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
     ) {
         Text(
             text = Strings.quickConnect,
@@ -355,7 +358,7 @@ private fun QuickConnectContent(sheet: SignInSheet.QuickConnect, onRetry: () -> 
         TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
             Text(Strings.cancel, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(VibeyFinTokens.Space.s2))
     }
 }
 
@@ -367,7 +370,7 @@ private fun WaitingLabel(text: String) {
             strokeWidth = 2.dp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.size(8.dp))
+        Spacer(Modifier.size(VibeyFinTokens.Space.s2))
         Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -393,8 +396,8 @@ private fun PasswordContent(
             }
         }
         Column(
-            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s2),
+            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
         ) {
             Text(
                 text = if (sheet is SignInSheet.Password) Strings.signInAs(sheet.profile.name) else Strings.signInAsAnotherUser,
@@ -441,7 +444,7 @@ private fun PasswordContent(
                 onClick = { submit() },
                 // Stays enabled while signing in so the busy button keeps its colours; submit() ignores it.
                 enabled = canSubmit || signingIn,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge),
             ) {
                 if (signingIn) {
                     CircularProgressIndicator(
@@ -449,7 +452,7 @@ private fun PasswordContent(
                         strokeWidth = 2.dp,
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
-                    Spacer(Modifier.size(12.dp))
+                    Spacer(Modifier.size(VibeyFinTokens.Space.s3))
                     Text(Strings.signingIn)
                 } else {
                     Text(Strings.signIn)
@@ -458,7 +461,7 @@ private fun PasswordContent(
             TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
                 Text(Strings.cancel, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(VibeyFinTokens.Space.s2))
         }
     }
 }

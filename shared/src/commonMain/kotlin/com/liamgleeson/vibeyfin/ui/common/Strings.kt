@@ -160,8 +160,8 @@ object Strings {
         return if (hours > 0) "$hours:$mm:$ss" else "$mm:$ss"
     }
 
-    /** How much of the video is left, shown opposite the elapsed time: `-1:12`. */
-    fun timeLeft(positionMs: Long, durationMs: Long) = "-" + clock((durationMs - positionMs).coerceAtLeast(0))
+    /** How much of the video is left, shown opposite the elapsed time: `−1:12`, with a true minus sign (U+2212), not a hyphen. */
+    fun timeLeft(positionMs: Long, durationMs: Long) = "\u2212" + clock((durationMs - positionMs).coerceAtLeast(0))
 
     /** What a screen reader says for the scrubber. */
     fun positionDescription(positionMs: Long, durationMs: Long) = "${clock(positionMs)} of ${clock(durationMs)}"

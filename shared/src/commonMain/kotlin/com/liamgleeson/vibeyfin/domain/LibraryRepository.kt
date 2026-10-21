@@ -72,6 +72,12 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
     val posterTag = imageTags["Primary"]
     val backdropTag = backdropImageTags.firstOrNull()
     val thumbTag = imageTags["Thumb"]
+    val landscape = when {
+        thumbTag != null -> "Thumb" to thumbTag
+        backdropTag != null -> "Backdrop" to backdropTag
+        posterTag != null -> "Primary" to posterTag
+        else -> null
+    }
     return MediaItem(
         id = id,
         title = name.orEmpty(),
@@ -95,8 +101,13 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
         // A finished item has no position to resume from, whatever the server last stored.
         resumePositionMs = userData?.takeIf { !it.played }?.let { it.playbackPositionTicks / TICKS_PER_MILLISECOND } ?: 0,
         played = userData?.played == true,
-        landscapeUrl = thumbTag?.let { itemImageUrl(baseUrl, id, "Thumb", it, LANDSCAPE_WIDTH) }
-            ?: backdropTag?.let { itemImageUrl(baseUrl, id, "Backdrop", it, LANDSCAPE_WIDTH) }
-            ?: posterTag?.let { itemImageUrl(baseUrl, id, "Primary", it, LANDSCAPE_WIDTH) },
+        landscapeUrl = landscape?.let { (type, tag) -> itemImageUrl(baseUrl, id, type, tag, LANDSCAPE_WIDTH) },
+        posterBlurHash = posterTag?.let { blurHash("Primary", it) },
+        backdropBlurHash = backdropTag?.let { blurHash("Backdrop", it) },
+        landscapeBlurHash = landscape?.let { (type, tag) -> blurHash(type, tag) },
     )
 }
+
+/** The BlurHash the server sent for the image of [type] with [tag]; the tag keeps it from belonging to an older picture. */
+private fun BaseItemDto.blurHash(type: String, tag: String): String? =
+    imageBlurHashes[type]?.get(tag)?.takeIf { it.isNotBlank() }

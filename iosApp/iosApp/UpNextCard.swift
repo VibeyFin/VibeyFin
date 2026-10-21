@@ -12,7 +12,7 @@ struct UpNextCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s3) {
             HStack(spacing: Space.s3) {
-                Artwork(url: upNext.imageUrl, title: upNext.title, aspectRatio: 16.0 / 9.0)
+                Artwork(url: upNext.imageUrl, title: upNext.title, aspectRatio: 16.0 / 9.0, blurHash: upNext.imageBlurHash)
                     .frame(width: 112)
                     .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {

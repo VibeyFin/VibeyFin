@@ -33,6 +33,15 @@ object VibeyFinTokens {
         val scrimStrong = Color(0xE6000000)
         val progressTrack = Color(0x4DDDE4E2)
         val focus = Color(0xFFDDE4E2)
+
+        /** Profile tile grounds, picked from the user's name; the initial sits on one in [ink]. */
+        val avatar1 = Color(0xFF3A4A6B)
+        val avatar2 = Color(0xFF4B3F6B)
+        val avatar3 = Color(0xFF3F6B5E)
+        val avatar4 = Color(0xFF6B4B3F)
+        val avatar5 = Color(0xFF6B3F55)
+        val avatar6 = Color(0xFF55633F)
+        val avatars = listOf(avatar1, avatar2, avatar3, avatar4, avatar5, avatar6)
     }
 
     object Space {
@@ -56,6 +65,7 @@ object VibeyFinTokens {
     object Size {
         val touch = 48.dp
         val button = 40.dp
+        val buttonLarge = 56.dp
         val posterWidth = 112.dp
         val thumbWidth = 224.dp
     }

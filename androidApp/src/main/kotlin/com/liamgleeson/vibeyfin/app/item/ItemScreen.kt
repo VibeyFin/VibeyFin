@@ -1,7 +1,6 @@
 package com.liamgleeson.vibeyfin.app.item
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Box
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -26,6 +24,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -45,13 +44,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liamgleeson.vibeyfin.R
 import com.liamgleeson.vibeyfin.app.theme.screenMargin
 import com.liamgleeson.vibeyfin.app.components.Artwork
 import com.liamgleeson.vibeyfin.app.components.BackButtonSpace
+import com.liamgleeson.vibeyfin.app.components.ChipButton
+import com.liamgleeson.vibeyfin.app.components.ChipInset
 import com.liamgleeson.vibeyfin.app.components.ActionSnackbar
 import com.liamgleeson.vibeyfin.app.components.FloatingBackButton
 import com.liamgleeson.vibeyfin.app.components.LoadError
@@ -127,9 +127,9 @@ private fun ItemDetails(item: MediaItem, state: ItemUiState, onPlay: (startOver:
     val facts = state.facts
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = screenMargin()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
     ) {
-        Spacer(Modifier.height(BackButtonSpace - 12.dp))
+        Spacer(Modifier.height(BackButtonSpace - VibeyFinTokens.Space.s3))
         // A wide backdrop when the server has one; otherwise the item's own picture at its own shape.
         val picture = item.backdropUrl ?: item.posterUrl
         if (picture != null) {
@@ -138,6 +138,7 @@ private fun ItemDetails(item: MediaItem, state: ItemUiState, onPlay: (startOver:
                 url = picture,
                 title = item.title,
                 aspectRatio = ratio,
+                blurHash = if (item.backdropUrl != null) item.backdropBlurHash else item.posterBlurHash,
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork)),
             )
         }
@@ -172,13 +173,13 @@ private fun ItemDetails(item: MediaItem, state: ItemUiState, onPlay: (startOver:
             Text(
                 text = item.genres.joinToString("  ·  "),
                 style = MaterialTheme.typography.bodyMedium,
-                color = VibeyFinTokens.Colors.ink,
+                color = MaterialTheme.colorScheme.onBackground,
             )
         }
         item.overview?.let {
             Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(VibeyFinTokens.Space.s5))
     }
 }
 
@@ -190,13 +191,13 @@ private fun ItemDetails(item: MediaItem, state: ItemUiState, onPlay: (startOver:
 @Composable
 private fun PlayButtons(label: String, canStartOver: Boolean, onPlay: (startOver: Boolean) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3), modifier = Modifier.fillMaxWidth()) {
-        Button(onClick = { onPlay(false) }, modifier = Modifier.weight(1f).height(56.dp)) {
+        Button(onClick = { onPlay(false) }, modifier = Modifier.weight(1f).height(VibeyFinTokens.Size.buttonLarge)) {
             Icon(painter = painterResource(R.drawable.ic_play), contentDescription = null)
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(VibeyFinTokens.Space.s2))
             Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
         if (canStartOver) {
-            FilledTonalIconButton(onClick = { onPlay(true) }, modifier = Modifier.size(56.dp)) {
+            FilledTonalIconButton(onClick = { onPlay(true) }, modifier = Modifier.size(VibeyFinTokens.Size.buttonLarge)) {
                 Icon(imageVector = Icons.Default.Refresh, contentDescription = Strings.startOver)
             }
         }
@@ -207,23 +208,13 @@ private fun PlayButtons(label: String, canStartOver: Boolean, onPlay: (startOver
 @Composable
 private fun BoxScope.OverflowMenu(markLabel: String, markIcon: ImageVector, onTogglePlayed: () -> Unit) {
     var open by remember { mutableStateOf(false) }
-    Box(Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(end = screenMargin() - 4.dp, top = 8.dp)) {
-        Box(
-            modifier = Modifier.size(48.dp).clip(CircleShape).clickable(role = Role.Button) { open = true },
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                modifier = Modifier.size(40.dp).clip(CircleShape).background(VibeyFinTokens.Colors.scrim),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = Strings.moreActions,
-                    tint = VibeyFinTokens.Colors.ink,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-        }
+    Box(
+        Modifier
+            .align(Alignment.TopEnd)
+            .safeDrawingPadding()
+            .padding(end = screenMargin() - ChipInset, top = VibeyFinTokens.Space.s2),
+    ) {
+        ChipButton(rememberVectorPainter(Icons.Default.MoreVert), Strings.moreActions, onClick = { open = true })
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
                 text = { Text(markLabel) },

@@ -23,6 +23,8 @@ fun itemJson(
     /** Where the user stopped; with [played] this becomes the item's `UserData`. */
     positionTicks: Long? = null,
     played: Boolean? = null,
+    /** `ImageBlurHashes` as the server sends it: image type, then image tag, then the hash. */
+    blurHashes: Map<String, Map<String, String>> = emptyMap(),
 ): String {
     fun string(value: String?) = value?.let { "\"$it\"" } ?: "null"
     val fields = listOf(
@@ -38,6 +40,11 @@ fun itemJson(
         """"OfficialRating":${string(officialRating)}""",
         """"ImageTags":{${listOfNotNull(primaryTag?.let { "\"Primary\":\"$it\"" }, thumbTag?.let { "\"Thumb\":\"$it\"" }).joinToString(",")}}""",
         """"BackdropImageTags":[${backdropTag?.let { "\"$it\"" } ?: ""}]""",
+        """"ImageBlurHashes":{${
+            blurHashes.entries.joinToString(",") { (type, byTag) ->
+                "\"$type\":{${byTag.entries.joinToString(",") { (tag, hash) -> "\"$tag\":\"$hash\"" }}}"
+            }
+        }}""",
         """"PrimaryImageAspectRatio":${aspectRatio ?: "null"}""",
         """"SeriesName":${string(seriesName)}""",
         """"ParentIndexNumber":${seasonNumber ?: "null"}""",
