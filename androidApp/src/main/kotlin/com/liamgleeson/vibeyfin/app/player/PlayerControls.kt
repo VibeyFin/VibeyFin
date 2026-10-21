@@ -70,6 +70,8 @@ fun PlayerControls(
     onClose: () -> Unit,
     onTracks: () -> Unit,
     onSpeed: () -> Unit,
+    /** Turns the video into a picture-in-picture window; null when the device can't. */
+    onPip: (() -> Unit)?,
     onTogglePlay: () -> Unit,
     /** The user is dragging the scrubber, or has let go (false); the controls must not hide meanwhile. */
     onScrubbing: (Boolean) -> Unit,
@@ -79,16 +81,7 @@ fun PlayerControls(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxSize()) {
-        TopBar(
-            title,
-            subtitle,
-            hasTrackChoices,
-            badge,
-            speedLabel,
-            onClose,
-            onTracks,
-            onSpeed,
-            Modifier.align(Alignment.TopStart)
+        TopBar(title, subtitle, hasTrackChoices, badge, speedLabel, onClose, onTracks, onSpeed, onPip, Modifier.align(Alignment.TopStart)
         )
         PlayPauseButton(playing, onTogglePlay, Modifier.align(Alignment.Center))
         Scrubber(
@@ -122,6 +115,7 @@ private fun TopBar(
     onClose: () -> Unit,
     onTracks: () -> Unit,
     onSpeed: () -> Unit,
+    onPip: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -173,6 +167,10 @@ private fun TopBar(
         }
         Spacer(Modifier.width(VibeyFinTokens.Space.s3))
         TextChipButton(speedLabel, Strings.speed, onSpeed)
+        if (onPip != null) {
+            Spacer(Modifier.width(VibeyFinTokens.Space.s3))
+            ChipButton(R.drawable.ic_pip, Strings.pictureInPicture, onPip)
+        }
         if (hasTrackChoices) {
             Spacer(Modifier.width(VibeyFinTokens.Space.s3))
             ChipButton(

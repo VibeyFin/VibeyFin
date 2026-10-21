@@ -7,6 +7,8 @@ import UIKit
 final class PlayerPictureInPicture: NSObject, ObservableObject, AVPictureInPictureControllerDelegate {
     /// The window is up or about to be.
     @Published private(set) var isActive = false
+    /// This device can show the window, so the player offers a button for it. False on the simulator.
+    @Published private(set) var isSupported = false
 
     /// The window is about to appear.
     var entered: () -> Void = {}
@@ -24,6 +26,13 @@ final class PlayerPictureInPicture: NSObject, ObservableObject, AVPictureInPictu
         pip?.delegate = self
         pip?.canStartPictureInPictureAutomaticallyFromInline = true
         controller = pip
+        isSupported = pip != nil
+    }
+
+    /// Turns the video into the window now, as leaving the app would.
+    func start() {
+        guard let controller, controller.isPictureInPicturePossible else { return }
+        controller.startPictureInPicture()
     }
 
     /// Closes the window without reporting it: the caller has ended the session itself.

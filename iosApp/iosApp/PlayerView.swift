@@ -231,6 +231,13 @@ struct PlayerView: View {
                     onTouch: { hideTask?.cancel() }
                 )
             }
+            if pip.isSupported {
+                PlayerIconButton(
+                    systemName: "pip.enter",
+                    label: Strings.shared.pictureInPicture,
+                    action: { pip.start() }
+                )
+            }
             if let state, state.hasTrackChoices {
                 PlayerTrackMenu(
                     audio: state.audioTracks,

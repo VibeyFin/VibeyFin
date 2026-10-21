@@ -150,6 +150,9 @@ object Strings {
     val subtitlesOff = "Off"
     val audioAndSubtitles = "Audio and subtitles"
 
+    /** The player button that turns the video into a small window over other apps. */
+    val pictureInPicture = "Picture in picture"
+
     // Playback stats
     fun statsMethod(method: PlayMethod) = when (method) {
         PlayMethod.DirectPlay -> "Direct play"

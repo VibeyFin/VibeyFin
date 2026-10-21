@@ -21,9 +21,17 @@ import androidx.lifecycle.Lifecycle
 
 /** Whether the player is in a picture-in-picture window now. */
 @Stable
-class PlayerPip internal constructor() {
+class PlayerPip internal constructor(
+    /** The device can show a picture-in-picture window, so the player offers a button for it. */
+    val available: Boolean,
+) {
     var active by mutableStateOf(false)
         internal set
+
+    internal var enterAction: () -> Unit = {}
+
+    /** Turns the screen into the window now, as leaving the app would. */
+    fun enter() = enterAction()
 }
 
 /** The widest and narrowest windows Android accepts. */
@@ -53,13 +61,15 @@ fun rememberPlayerPip(
 ): PlayerPip {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() as? ComponentActivity }
-    val pip = remember { PlayerPip() }
     val available = activity?.packageManager?.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE) == true
+    val pip = remember(available) { PlayerPip(available) }
     val canEnter = enabled && available
     val currentEnabled by rememberUpdatedState(canEnter)
     val currentRatio by rememberUpdatedState(aspectRatio)
     val entered by rememberUpdatedState(onEntered)
     val left by rememberUpdatedState(onLeft)
+
+    pip.enterAction = { activity?.enterPictureInPictureMode(pipParams(currentRatio, autoEnter = false)) }
 
     LaunchedEffect(canEnter, aspectRatio) {
         if (available) activity?.setPictureInPictureParams(pipParams(aspectRatio, autoEnter = canEnter))

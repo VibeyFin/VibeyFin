@@ -351,6 +351,7 @@ fun PlayerRoute(
                     onClose = close,
                     onTracks = { showTracks = true },
                     onSpeed = { showSpeeds = true },
+                    onPip = if (pip.available && state.stream != null) pip::enter else null,
                     onTogglePlay = {
                         player.playWhenReady = !player.playWhenReady
                         interactions++
