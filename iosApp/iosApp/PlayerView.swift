@@ -406,6 +406,15 @@ struct PlayerView: View {
             model.leftPictureInPicture(controller.currentMilliseconds, closed: closed)
             if closed { dismiss() }
         }
+        // The window never came up: the model must stop treating the player as in picture-in-picture,
+        // and if the app already went to the background meanwhile, that is handled now as it would have been.
+        pip.failedToStart = {
+            model.leftPictureInPicture(controller.currentMilliseconds, closed: false)
+            if UIApplication.shared.applicationState == .background {
+                controller.pause()
+                model.backgrounded(controller.currentMilliseconds)
+            }
+        }
     }
 
     /// What the player has to choose itself: the selected audio track of a direct play. The server

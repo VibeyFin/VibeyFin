@@ -14,6 +14,8 @@ final class PlayerPictureInPicture: NSObject, ObservableObject, AVPictureInPictu
     var entered: () -> Void = {}
     /// The window went away; `closed` is false when it was expanded back into the app.
     var left: (_ closed: Bool) -> Void = { _ in }
+    /// The window was announced with `entered` but never appeared: the video is still inline.
+    var failedToStart: () -> Void = {}
 
     private var controller: AVPictureInPictureController?
     private var restoring = false
@@ -55,7 +57,10 @@ final class PlayerPictureInPicture: NSObject, ObservableObject, AVPictureInPictu
         _ controller: AVPictureInPictureController,
         failedToStartPictureInPictureWithError error: Error
     ) {
+        let announced = isActive && !silenced
         isActive = false
+        restoring = false
+        if announced { failedToStart() }
     }
 
     /// Tapping the window: the player screen never went away, so there is nothing to put back.
