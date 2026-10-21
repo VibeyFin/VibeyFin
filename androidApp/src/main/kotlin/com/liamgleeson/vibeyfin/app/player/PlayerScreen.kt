@@ -11,6 +11,7 @@ import android.util.Log
 import android.view.Display
 import android.view.LayoutInflater
 import android.view.View
+import android.graphics.Rect
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityManager
 import androidx.activity.compose.BackHandler
@@ -42,6 +43,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
@@ -307,7 +310,9 @@ fun PlayerRoute(
     // A paused video (by the viewer, or for the still-watching question, which a window would hide) stops
     // as before instead.
     val videoRatio = state.diagnostics?.let { d -> if ((d.width ?: 0) > 0 && (d.height ?: 0) > 0) d.width!!.toFloat() / d.height!! else null } ?: (16f / 9f)
+    var screenBounds by remember { mutableStateOf<Rect?>(null) }
     val pip = rememberPlayerPip(
+        sourceRect = screenBounds?.let { videoRect(it, videoRatio) },
         enabled = state.stream != null && state.message == null && !leaving && playing && !state.stillWatching,
         aspectRatio = videoRatio,
         onEntered = { viewModel.onEnteredPictureInPicture(player.currentPosition) },
@@ -349,7 +354,12 @@ fun PlayerRoute(
         }
     }
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    Box(
+        Modifier.fillMaxSize().background(Color.Black).onGloballyPositioned {
+            val b = it.boundsInWindow()
+            screenBounds = Rect(b.left.toInt(), b.top.toInt(), b.right.toInt(), b.bottom.toInt())
+        },
+    ) {
         // Inflated, because the surface type can only be set from XML. SDR video is drawn on a TextureView, which
         // slides and fades with the screen (player_view_texture.xml); HDR and Dolby Vision need a SurfaceView to
         // reach the display (player_view_surface.xml), which does not, so it is hidden as the screen is left.
@@ -657,6 +667,18 @@ private fun rememberPlayerWindow(): PlayerWindow? {
         }
     }
     return window
+}
+
+/** Where a video of [ratio] sits, letterboxed and centred, in [bounds]. */
+private fun videoRect(bounds: Rect, ratio: Float): Rect {
+    val width = bounds.width()
+    val height = bounds.height()
+    if (width <= 0 || height <= 0) return bounds
+    val fitWidth = if (width.toFloat() / height > ratio) (height * ratio).toInt() else width
+    val fitHeight = if (width.toFloat() / height > ratio) height else (width / ratio).toInt()
+    val left = bounds.left + (width - fitWidth) / 2
+    val top = bounds.top + (height - fitHeight) / 2
+    return Rect(left, top, left + fitWidth, top + fitHeight)
 }
 
 /** Tablets keep the orientation they are held in. */

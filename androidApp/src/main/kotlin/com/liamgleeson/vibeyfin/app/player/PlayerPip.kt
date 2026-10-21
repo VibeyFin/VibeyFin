@@ -2,6 +2,7 @@ package com.liamgleeson.vibeyfin.app.player
 
 import android.app.PictureInPictureParams
 import android.content.pm.PackageManager
+import android.graphics.Rect
 import android.os.Build
 import android.util.Rational
 import androidx.activity.ComponentActivity
@@ -38,10 +39,12 @@ class PlayerPip internal constructor(
 private const val MIN_RATIO = 0.42f
 private const val MAX_RATIO = 2.39f
 
-private fun pipParams(aspectRatio: Float, autoEnter: Boolean): PictureInPictureParams {
+private fun pipParams(aspectRatio: Float, autoEnter: Boolean, sourceRect: Rect?): PictureInPictureParams {
     val ratio = aspectRatio.coerceIn(MIN_RATIO, MAX_RATIO)
     return PictureInPictureParams.Builder()
         .setAspectRatio(Rational((ratio * 1000).toInt(), 1000))
+        // Where the video is on screen, so the window grows out of it and shrinks back into it.
+        .apply { if (sourceRect != null) setSourceRectHint(sourceRect) }
         .apply { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) setAutoEnterEnabled(autoEnter) }
         .build()
 }
@@ -50,12 +53,14 @@ private fun pipParams(aspectRatio: Float, autoEnter: Boolean): PictureInPictureP
  * Picture-in-picture for the player: while [enabled] (something is playing), leaving the app turns the
  * screen into a window that keeps playing. From Android 12 the system does it by itself; before that the
  * activity is asked as the user leaves. [onEntered] and [onLeft] say what happened; [onLeft] says whether
- * the window was dismissed (closed) or expanded back to the app (not closed).
+ * the window was dismissed (closed) or expanded back to the app (not closed). [sourceRect] is the video's
+ * rectangle in the window, which the system animates from and to.
  */
 @Composable
 fun rememberPlayerPip(
     enabled: Boolean,
     aspectRatio: Float,
+    sourceRect: Rect?,
     onEntered: () -> Unit,
     onLeft: (closed: Boolean) -> Unit,
 ): PlayerPip {
@@ -66,13 +71,14 @@ fun rememberPlayerPip(
     val canEnter = enabled && available
     val currentEnabled by rememberUpdatedState(canEnter)
     val currentRatio by rememberUpdatedState(aspectRatio)
+    val currentRect by rememberUpdatedState(sourceRect)
     val entered by rememberUpdatedState(onEntered)
     val left by rememberUpdatedState(onLeft)
 
-    pip.enterAction = { activity?.enterPictureInPictureMode(pipParams(currentRatio, autoEnter = false)) }
+    pip.enterAction = { activity?.enterPictureInPictureMode(pipParams(currentRatio, autoEnter = false, currentRect)) }
 
-    LaunchedEffect(canEnter, aspectRatio) {
-        if (available) activity?.setPictureInPictureParams(pipParams(aspectRatio, autoEnter = canEnter))
+    LaunchedEffect(canEnter, aspectRatio, sourceRect) {
+        if (available) activity?.setPictureInPictureParams(pipParams(aspectRatio, autoEnter = canEnter, sourceRect))
     }
     DisposableEffect(activity, available) {
         if (activity == null || !available) return@DisposableEffect onDispose {}
@@ -88,7 +94,7 @@ fun rememberPlayerPip(
         // Before Android 12 there is no automatic entry.
         val userLeaves = Runnable {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S && currentEnabled) {
-                activity.enterPictureInPictureMode(pipParams(currentRatio, autoEnter = false))
+                activity.enterPictureInPictureMode(pipParams(currentRatio, autoEnter = false, currentRect))
             }
         }
         activity.addOnPictureInPictureModeChangedListener(modeChanged)
@@ -97,7 +103,7 @@ fun rememberPlayerPip(
             activity.removeOnPictureInPictureModeChangedListener(modeChanged)
             activity.removeOnUserLeaveHintListener(userLeaves)
             // Other screens must not turn into a window.
-            activity.setPictureInPictureParams(pipParams(currentRatio, autoEnter = false))
+            activity.setPictureInPictureParams(pipParams(currentRatio, autoEnter = false, currentRect))
         }
     }
     return pip
