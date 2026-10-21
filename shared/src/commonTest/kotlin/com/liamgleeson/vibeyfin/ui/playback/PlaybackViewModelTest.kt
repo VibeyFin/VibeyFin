@@ -37,11 +37,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -81,7 +84,8 @@ class PlaybackViewModelTest {
     @AfterTest
     fun tearDown() = runTest {
         viewModels.stopAll()
-        reporterScope.cancel()
+        // Wait for the reporters too: one still writing to the database as it closes crashes the JVM.
+        reporterScope.coroutineContext.job.cancelAndJoin()
         Dispatchers.resetMain()
         app.close()
     }
@@ -1251,9 +1255,11 @@ class PlaybackViewModelTest {
         assertNotNull(seen.last().upNext)
 
         viewModel.onBackgrounded(tenMinutes - 25_000)
-        withContext(Dispatchers.Default) { delay(200) }
+        // The countdown runs on virtual time: had it survived, this would play it to its end.
+        advanceUntilIdle()
 
         assertNull(seen.last().upNext)
+        assertEquals(0, app.binge.count.value)
         assertEquals("Heat", seen.last().title)
         assertEquals(0, jellyfin.requestsTo("POST", "/Items/e2/PlaybackInfo").size)
     }
@@ -1447,6 +1453,17 @@ class PlaybackViewModelTest {
         assertEquals(1, jellyfin.requestsTo("POST", "/Sessions/Playing").size)
     }
 
+    /**
+     * Returns once the reporter has handled everything [vm] sent it so far: reports go out one at a time
+     * in order, so a seek's Progress reaching the server means a Stopped sent before it would have too.
+     * Needs a started session.
+     */
+    private suspend fun afterEarlierReports(vm: PlaybackViewModel, jellyfin: FakeJellyfin) {
+        val before = jellyfin.requestsTo("POST", "/Sessions/Playing/Progress").size
+        vm.onSeeked(5_500)
+        jellyfin.awaitRequests("POST", "/Sessions/Playing/Progress", count = before + 1)
+    }
+
     @Test
     fun `entering PiP does not send Stopped`() = runTest {
         val jellyfin = server()
@@ -1458,7 +1475,7 @@ class PlaybackViewModelTest {
         vm.onBackgrounded(5_000)
         val state = vm.uiState.first { it.inPictureInPicture }
 
-        withContext(Dispatchers.Default) { delay(150) }
+        afterEarlierReports(vm, jellyfin)
         assertTrue(state.inPictureInPicture)
         assertTrue(jellyfin.requestsTo("POST", "/Sessions/Playing/Stopped").isEmpty())
     }
@@ -1489,7 +1506,9 @@ class PlaybackViewModelTest {
         vm.onClosed(9_000)
 
         jellyfin.awaitRequests("POST", "/Sessions/Playing/Stopped")
-        withContext(Dispatchers.Default) { delay(150) }
+        // Playing again starts a new session: its Start is sent only after every report before it.
+        vm.onPlaying(9_000)
+        jellyfin.awaitRequests("POST", "/Sessions/Playing", count = 2)
         assertEquals(1, jellyfin.requestsTo("POST", "/Sessions/Playing/Stopped").size)
         assertFalse(vm.uiState.first { !it.inPictureInPicture }.inPictureInPicture)
     }
@@ -1504,7 +1523,7 @@ class PlaybackViewModelTest {
 
         vm.onLeftPictureInPicture(6_000, closed = false)
 
-        withContext(Dispatchers.Default) { delay(150) }
+        afterEarlierReports(vm, jellyfin)
         assertTrue(jellyfin.requestsTo("POST", "/Sessions/Playing/Stopped").isEmpty())
         // The session is the same one: backgrounding now stops it as usual.
         vm.onBackgrounded(6_500)
@@ -1587,7 +1606,8 @@ class PlaybackViewModelTest {
         val seen = nearTheEnd(vm, jellyfin)
 
         vm.uiState.first { it.stillWatching }
-        withContext(Dispatchers.Default) { delay(100) }
+        // A countdown would run on virtual time: this plays any that was started to its end.
+        advanceUntilIdle()
 
         assertTrue(seen.last().stillWatching)
         assertNull(seen.last().upNext)
@@ -1638,16 +1658,16 @@ class PlaybackViewModelTest {
     }
 
     @Test
-    fun `a new view model for the next episode keeps the count`() = runTest {
+    fun `the next episode keeps the count`() = runTest {
+        // Auto advance happens in the same player, so starting the next episode must not reset the count.
         val jellyfin = seriesServer()
-        val first = viewModel(countdownStep = 1.milliseconds)
-        playing(first, jellyfin)
-        first.onPosition(tenMinutes - 30_000)
-        first.uiState.first { it.stream?.id == 2 }
-        assertEquals(1, app.binge.count.value)
+        val vm = viewModel(countdownStep = 1.milliseconds)
+        playing(vm, jellyfin)
+        vm.onPosition(tenMinutes - 30_000)
+        vm.uiState.first { it.stream?.id == 2 }
 
-        val second = viewModel()
-        second.uiState.first { it.stream != null }
+        vm.onPlaying(0)
+        vm.onPosition(5_000)
 
         assertEquals(1, app.binge.count.value)
     }
@@ -1866,10 +1886,11 @@ class PlaybackViewModelTest {
         val viewModel = viewModel(countdownStep = 1.milliseconds)
         val seen = playing(viewModel, jellyfin)
         assertNotNull(viewModel.uiState.value.trickplay)
+        val asked = jellyfin.requestsTo("GET", "/Items").size
 
         viewModel.onPosition(tenMinutes - 30_000)
         viewModel.uiState.first { it.title == "Northbound" && it.stream != null }
-        withContext(Dispatchers.Default) { delay(100) }
+        jellyfin.awaitRequests("GET", "/Items", count = asked + 1)
 
         // Asked again, for the new episode; and while it was switching nothing from the old one was left.
         assertEquals(1, jellyfin.requestsTo("GET", "/Items").count { it.query["ids"] == "e2" })
