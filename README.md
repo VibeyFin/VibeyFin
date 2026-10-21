@@ -60,8 +60,8 @@ Android:
 ```
 
 iOS: open `iosApp/iosApp.xcodeproj` in Xcode and run. Xcode builds the shared framework itself
-(`./gradlew :shared:embedAndSignAppleFrameworkForXcode`). To run on a device, set `TEAM_ID` in
-`iosApp/Configuration/Config.xcconfig`; the simulator doesn't need it.
+(`./gradlew :shared:embedAndSignAppleFrameworkForXcode`). To run on a device, put `TEAM_ID=<your team>` in
+`iosApp/Configuration/Local.xcconfig` (git-ignored); the simulator doesn't need it.
 
 ## Tests
 

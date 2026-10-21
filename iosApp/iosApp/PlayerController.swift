@@ -44,7 +44,7 @@ final class PlayerController: ObservableObject {
     let player = AVPlayer()
 
     /// Timings for the slow-load and slow-seek reports.
-    private static let timing = Logger(subsystem: "com.liamgleeson.vibeyfin", category: "timing")
+    private static let timing = Logger(subsystem: "app.vibeyfin", category: "timing")
     private var openedAt: CFTimeInterval = 0
 
     /// Seconds. Follows the player about twice a second.

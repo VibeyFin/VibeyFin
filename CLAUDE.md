@@ -11,7 +11,7 @@ The app should become very configurable over time, so settings live per profile 
   DI and the ViewModels with their UI state. No UI toolkit. Source sets: `commonMain`,
   `androidMain`, `iosMain`, `commonTest`, `androidHostTest`, `androidDeviceTest`.
 - `androidApp/`: the native Android app: Jetpack Compose screens, navigation and theme (package
-  `com.liamgleeson.vibeyfin.app`), plus Activity, manifest and icons. AGP 9 does not allow the KMP
+  `app.vibeyfin.app`), plus Activity, manifest and icons. AGP 9 does not allow the KMP
   plugin and `com.android.application` in one module, which is why this is separate.
 - `iosApp/`: the native iOS app in SwiftUI (Xcode project with synchronized folders). It reads
   shared state through the facades in `shared/src/iosMain/.../ios`.

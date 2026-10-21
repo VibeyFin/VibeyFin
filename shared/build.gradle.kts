@@ -16,7 +16,7 @@ kotlin {
     }
 
     android {
-        namespace = "com.liamgleeson.vibeyfin.shared"
+        namespace = "app.vibeyfin.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 
@@ -135,13 +135,16 @@ val sqliteHostNativesDir = run {
     val arch = System.getProperty("os.arch").lowercase()
     val osName = if ("mac" in os) "osx" else if ("win" in os) "windows" else "linux"
     val archName = if (arch == "aarch64" || arch == "arm64") "arm64" else "x64"
+
     layout.buildDirectory.dir("sqlite-host-natives/natives/${osName}_$archName")
 }
 
 tasks.withType<Test>().configureEach {
     if (name == "testAndroidHostTest") {
         dependsOn(unpackSqliteHostNatives)
+
         val nativesDir = sqliteHostNativesDir
+
         doFirst {
             val existing = systemProperties["java.library.path"]?.toString()
             val path = listOfNotNull(existing, nativesDir.get().asFile.path).joinToString(File.pathSeparator)

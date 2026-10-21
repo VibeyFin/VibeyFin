@@ -1,0 +1,238 @@
+package app.vibeyfin.app.item
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.vibeyfin.R
+import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.app.components.Artwork
+import app.vibeyfin.app.components.BackButtonSpace
+import app.vibeyfin.app.components.ChipButton
+import app.vibeyfin.app.components.ChipInset
+import app.vibeyfin.app.components.ActionSnackbar
+import app.vibeyfin.app.components.FloatingBackButton
+import app.vibeyfin.app.components.LoadError
+import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.domain.model.MediaItem
+import app.vibeyfin.ui.home.HomeExit
+import app.vibeyfin.ui.item.ItemUiState
+import app.vibeyfin.ui.common.Strings
+import app.vibeyfin.ui.item.ItemViewModel
+import org.koin.androidx.compose.koinViewModel
+import org.koin.core.parameter.parametersOf
+
+@Composable
+fun ItemRoute(
+    itemId: String,
+    onBack: () -> Unit,
+    onPlay: (startOver: Boolean) -> Unit,
+    onExit: (HomeExit) -> Unit,
+    viewModel: ItemViewModel = koinViewModel(parameters = { parametersOf(itemId) }),
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(state.exit) {
+        state.exit?.let(onExit)
+    }
+    ItemScreen(
+        state = state,
+        onBack = onBack,
+        onPlay = onPlay,
+        onRetry = viewModel::onRetry,
+        onTogglePlayed = viewModel::onTogglePlayed,
+        onRetryAction = viewModel::onRetryAction,
+        onDismissMessage = viewModel::onDismissMessage,
+    )
+}
+
+@Composable
+fun ItemScreen(
+    state: ItemUiState,
+    onBack: () -> Unit,
+    onPlay: (startOver: Boolean) -> Unit,
+    onRetry: () -> Unit,
+    onTogglePlayed: () -> Unit,
+    onRetryAction: () -> Unit,
+    onDismissMessage: () -> Unit,
+) {
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Box(Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+                val item = state.item
+                when {
+                    state.loading -> {
+                        Spacer(Modifier.height(BackButtonSpace))
+                        Box(Modifier.fillMaxWidth().height(240.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    state.message != null -> {
+                        Spacer(Modifier.height(BackButtonSpace))
+                        LoadError(message = state.message!!, onRetry = onRetry, modifier = Modifier.padding(horizontal = screenMargin()))
+                    }
+                    item != null -> ItemDetails(item, state, onPlay)
+                }
+            }
+            FloatingBackButton(onBack)
+            if (state.canPlay) OverflowMenu(state.markLabel, if (state.item?.played == true) Icons.Default.Clear else Icons.Default.Check, onTogglePlayed)
+            ActionSnackbar(state.actionMessage, onRetry = onRetryAction, onDismiss = onDismissMessage)
+        }
+    }
+}
+
+@Composable
+private fun ItemDetails(item: MediaItem, state: ItemUiState, onPlay: (startOver: Boolean) -> Unit) {
+    val facts = state.facts
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = screenMargin()),
+        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+    ) {
+        Spacer(Modifier.height(BackButtonSpace - VibeyFinTokens.Space.s3))
+        // A wide backdrop when the server has one; otherwise the item's own picture at its own shape.
+        val picture = item.backdropUrl ?: item.posterUrl
+        if (picture != null) {
+            val ratio = if (item.backdropUrl != null) 16f / 9f else item.posterAspectRatio
+            Artwork(
+                url = picture,
+                title = item.title,
+                aspectRatio = ratio,
+                blurHash = if (item.backdropUrl != null) item.backdropBlurHash else item.posterBlurHash,
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork)),
+            )
+        }
+        item.seriesName?.let {
+            Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Text(
+            text = item.title,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        if (facts.isNotEmpty() || state.watched || state.badge != null) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
+                Text(
+                    text = facts.joinToString("  ·  "),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                state.badge?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .padding(horizontal = VibeyFinTokens.Space.s2, vertical = VibeyFinTokens.Space.s1),
+                    )
+                }
+                // Watched is an icon, in ink: aqua never signals status.
+                if (state.watched) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = Strings.watched,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        }
+        if (state.canPlay) PlayButtons(state.playLabel, state.canStartOver, onPlay)
+        if (item.genres.isNotEmpty()) {
+            Text(
+                text = item.genres.joinToString("  ·  "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+        item.overview?.let {
+            Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
+        }
+        Spacer(Modifier.height(VibeyFinTokens.Space.s5))
+    }
+}
+
+/**
+ * The one filled action on the page: aqua, 56 dp tall, reading "Play" or "Resume · 38m left". "Start over"
+ * sits beside it as a round icon-only secondary button (a circular arrow), only when there is something
+ * to resume.
+ */
+@Composable
+private fun PlayButtons(label: String, canStartOver: Boolean, onPlay: (startOver: Boolean) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3), modifier = Modifier.fillMaxWidth()) {
+        Button(onClick = { onPlay(false) }, modifier = Modifier.weight(1f).height(VibeyFinTokens.Size.buttonLarge)) {
+            Icon(painter = painterResource(R.drawable.ic_play), contentDescription = null)
+            Spacer(Modifier.width(VibeyFinTokens.Space.s2))
+            Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        }
+        if (canStartOver) {
+            FilledTonalIconButton(onClick = { onPlay(true) }, modifier = Modifier.size(VibeyFinTokens.Size.buttonLarge)) {
+                Icon(imageVector = Icons.Default.Refresh, contentDescription = Strings.startOver)
+            }
+        }
+    }
+}
+
+/** The "⋮" chip in the top-right corner, opposite the back button, and the menu it opens: Mark as watched or unwatched. */
+@Composable
+private fun BoxScope.OverflowMenu(markLabel: String, markIcon: ImageVector, onTogglePlayed: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box(
+        Modifier
+            .align(Alignment.TopEnd)
+            .safeDrawingPadding()
+            .padding(end = screenMargin() - ChipInset, top = VibeyFinTokens.Space.s2),
+    ) {
+        ChipButton(rememberVectorPainter(Icons.Default.MoreVert), Strings.moreActions, onClick = { open = true })
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text(markLabel) },
+                leadingIcon = { Icon(imageVector = markIcon, contentDescription = null) },
+                onClick = { open = false; onTogglePlayed() },
+            )
+        }
+    }
+}

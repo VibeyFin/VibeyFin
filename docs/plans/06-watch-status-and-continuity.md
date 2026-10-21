@@ -5,8 +5,8 @@ let them mark things watched, and move on to the next episode by itself. Logic i
 
 **Status (2026-10-20):** approved. All five phases (A to E) are done; this is for review. Each phase stops for review.
 
-Paths: `C/` = `shared/src/commonMain/kotlin/com/liamgleeson/vibeyfin`, `T/` = `shared/src/commonTest/...` (same package),
-`A/` = `androidApp/src/main/kotlin/com/liamgleeson/vibeyfin/app`, `I/` = `iosApp/iosApp`, `X/` = `shared/src/iosMain/.../ios`.
+Paths: `C/` = `shared/src/commonMain/kotlin/app/vibeyfin`, `T/` = `shared/src/commonTest/...` (same package),
+`A/` = `androidApp/src/main/kotlin/app/vibeyfin/app`, `I/` = `iosApp/iosApp`, `X/` = `shared/src/iosMain/.../ios`.
 
 ## Context
 
