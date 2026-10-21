@@ -23,9 +23,9 @@ import androidx.media3.ui.PlayerNotificationManager
 import com.liamgleeson.vibeyfin.ui.common.Strings
 
 private var nextSessionId = 0
+private var nextNotificationId = 1
 
 private const val CHANNEL_ID = "playback"
-private const val NOTIFICATION_ID = 1
 
 /**
  * The media session of the player screen, and the media notification that goes with it, both made
@@ -66,7 +66,8 @@ fun rememberPlayerSession(player: Player) {
                 .setName(Strings.playbackNotificationChannel)
                 .build(),
         )
-        val notification = PlayerNotificationManager.Builder(context, NOTIFICATION_ID, CHANNEL_ID)
+        // Its own id, so a closing screen taking its notification down can't take a newer screen's with it.
+        val notification = PlayerNotificationManager.Builder(context, nextNotificationId++, CHANNEL_ID)
             .setMediaDescriptionAdapter(Description(context))
             .build()
             .apply {
