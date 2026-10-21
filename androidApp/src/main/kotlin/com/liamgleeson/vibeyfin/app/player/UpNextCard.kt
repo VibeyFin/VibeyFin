@@ -48,6 +48,7 @@ fun UpNextCard(upNext: UpNext, onPlayNow: () -> Unit, onWatchCredits: () -> Unit
                 url = upNext.imageUrl,
                 title = upNext.title,
                 aspectRatio = 16f / 9f,
+                blurHash = upNext.imageBlurHash,
                 modifier = Modifier.width(112.dp).clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork)),
             )
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {

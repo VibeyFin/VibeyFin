@@ -18,6 +18,8 @@ data class ContinueCard(
     val subtitle: String?,
     /** A 16:9 picture, or null when the server has none. */
     val imageUrl: String?,
+    /** The BlurHash of [imageUrl]'s picture, drawn while it loads; null when the server sent none. */
+    val imageBlurHash: String?,
     /** How far in the user is, from 0 to 1, for something in progress. Null for a Next Up card, which has no bar. */
     val progress: Float?,
     /** What a screen reader says: "{title}, {year or episode}, {n}% watched". */
@@ -55,6 +57,7 @@ internal fun MediaItem.toContinueCard(): ContinueCard {
         title = title,
         subtitle = subtitle,
         imageUrl = landscapeUrl,
+        imageBlurHash = landscapeBlurHash,
         progress = progress,
         accessibilityLabel = Strings.continueCardLabel(title, label ?: year?.toString(), percent),
     )

@@ -1,5 +1,6 @@
 package com.liamgleeson.vibeyfin.app.components
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,23 +20,33 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.liamgleeson.vibeyfin.app.theme.VibeyFinTokens
+import com.liamgleeson.vibeyfin.app.theme.animationsEnabled
 import com.liamgleeson.vibeyfin.domain.model.MediaItem
+import com.liamgleeson.vibeyfin.ui.common.BlurHash
 import com.liamgleeson.vibeyfin.ui.common.Strings
 
 /**
- * Artwork at [aspectRatio], or the title on a plain `surface-2` tile when there is none. The tile's
- * own colour shows through while an image loads or if it fails. Give [description] when the title
- * isn't written next to the image, so a screen reader still has a name for it.
+ * Artwork at [aspectRatio], or the title on a plain `surface-2` tile when there is none. While the image
+ * loads, or if it fails, the tile shows [blurHash] (the server's blurred stand-in for the picture) and the
+ * picture fades in over it; without a hash the tile's own colour shows through. Give [description] when
+ * the title isn't written next to the image, so a screen reader still has a name for it.
  */
 @Composable
 fun Artwork(
@@ -44,16 +55,26 @@ fun Artwork(
     aspectRatio: Float,
     modifier: Modifier = Modifier,
     description: String? = null,
+    blurHash: String? = null,
 ) {
     Box(
         modifier = modifier.aspectRatio(aspectRatio).background(VibeyFinTokens.Colors.surface2),
         contentAlignment = Alignment.Center,
     ) {
         if (url != null) {
+            val blurred = rememberBlurHashPainter(blurHash, aspectRatio)
+            val context = LocalPlatformContext.current
+            val fadeMs = if (animationsEnabled()) VibeyFinTokens.Motion.baseMs else 0
+            val request = remember(context, url, fadeMs) {
+                ImageRequest.Builder(context).data(url).crossfade(fadeMs).build()
+            }
             AsyncImage(
-                model = url,
+                model = request,
                 contentDescription = description,
                 contentScale = ContentScale.Crop,
+                placeholder = blurred,
+                // A failed picture keeps the blur it was already showing rather than going flat.
+                error = blurred,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
@@ -69,6 +90,16 @@ fun Artwork(
         }
     }
 }
+
+/** The blurred picture for [blurHash], decoded once per hash at the shape of the tile; null when there is none or it is unusable. */
+@Composable
+private fun rememberBlurHashPainter(blurHash: String?, aspectRatio: Float): Painter? =
+    remember(blurHash, aspectRatio) {
+        blurHash?.let { BlurHash.decode(it, aspectRatio) }?.let { image ->
+            val bitmap = Bitmap.createBitmap(image.pixels, image.width, image.height, Bitmap.Config.ARGB_8888)
+            BitmapPainter(bitmap.asImageBitmap())
+        }
+    }
 
 /** The check on a watched poster's top-right corner, on the scrim so it reads over any picture. */
 @Composable
@@ -102,6 +133,7 @@ fun ArtworkTile(item: MediaItem, onClick: () -> Unit, modifier: Modifier = Modif
                 url = item.posterUrl,
                 title = item.title,
                 aspectRatio = item.posterAspectRatio,
+                blurHash = item.posterBlurHash,
                 modifier = Modifier.fillMaxWidth(),
             )
             if (item.played) WatchedBadge(Modifier.align(Alignment.TopEnd).padding(VibeyFinTokens.Space.s2))

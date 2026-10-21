@@ -14,7 +14,7 @@ struct ContinueCardTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s2) {
             Button(action: onPlay) {
-                Artwork(url: card.imageUrl, title: card.title, aspectRatio: 16.0 / 9.0)
+                Artwork(url: card.imageUrl, title: card.title, aspectRatio: 16.0 / 9.0, blurHash: card.imageBlurHash)
                     .overlay { PlayDisc() }
                     .overlay(alignment: .bottom) {
                         if let progress = card.progress {

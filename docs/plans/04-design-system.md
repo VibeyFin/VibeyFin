@@ -158,7 +158,8 @@ screen uses it yet (add it with the feature that needs it):
 - Hero, `ContinueCard`, Continue watching and Next up rows (roadmap Phase 2 data).
 - `PlayerControls`, skip buttons, trickplay, mini player (plan 03 Phases B and C, deferred).
 - Long-press quick actions (context menu / bottom sheet), swipe actions, haptics, casting, PiP.
-- BlurHash image loading (needs the Coil / iOS loader decision CLAUDE.md says to ask about).
+- ~~BlurHash image loading~~ Done afterwards (`docs/design/review.md` #12) with no loader change: Coil's
+  `placeholder` + `crossfade` on Android, `AsyncImage` over the decoded hash on iOS.
 - App icon recolour.
 
 ## Risks

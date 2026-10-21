@@ -53,7 +53,7 @@ A selected chip swaps the row sources above for the filtered ones. Nothing is st
 
 - `GET /Items/{id}/Images/{type}?fillWidth={px}&quality=90&tag={imageTag}` — always pass the tag (cache key) and the rendered width × density.
 - Poster → `Primary`. Thumbnail → `Thumb`, else `Backdrop`, else episode `Primary`. Hero → `Backdrop` + `Logo`.
-- Placeholder color from `ImageBlurHashes` on the item.
+- Placeholder color from `ImageBlurHashes` on the item: `{"<ImageType>": {"<imageTag>": "<hash>"}}`, so look it up by the same type and tag as the URL (an older picture's hash can sit beside the current one). `BlurHash.decode` (shared) turns it into a 32-px picture at the tile's shape; the real image fades in over it (`dur-base`, none with Reduce Motion).
 
 ## Playback
 

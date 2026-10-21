@@ -59,7 +59,13 @@ fun ContinueCard(card: ContinueCard, onClick: () -> Unit, onLongClick: () -> Uni
         ) {
             // Rounded again inside the outer clip: a pressed card shrinks, and its corners shrink with it.
             Box(Modifier.clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
-                Artwork(url = card.imageUrl, title = card.title, aspectRatio = CARD_ASPECT, modifier = Modifier.fillMaxWidth())
+                Artwork(
+                    url = card.imageUrl,
+                    title = card.title,
+                    aspectRatio = CARD_ASPECT,
+                    blurHash = card.imageBlurHash,
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 PlayDisc(Modifier.align(Alignment.Center))
                 card.progress?.let { ProgressBar(it, Modifier.align(Alignment.BottomStart)) }
             }
@@ -166,7 +172,7 @@ private fun SkeletonLine(width: androidx.compose.ui.unit.Dp, style: androidx.com
         Box(
             Modifier
                 .matchParentSize()
-                .padding(vertical = 4.dp)
+                .padding(vertical = VibeyFinTokens.Space.s1)
                 .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Xs))
                 .background(VibeyFinTokens.Colors.surface2),
         )

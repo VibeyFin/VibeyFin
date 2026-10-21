@@ -86,10 +86,10 @@ struct ItemView: View {
         let facts = state.facts
         // A wide backdrop when the server has one; otherwise the item's own picture at its own shape.
         if let backdrop = item.backdropUrl {
-            Artwork(url: backdrop, title: item.title, aspectRatio: 16.0 / 9.0)
+            Artwork(url: backdrop, title: item.title, aspectRatio: 16.0 / 9.0, blurHash: item.backdropBlurHash)
                 .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
         } else if let poster = item.posterUrl {
-            Artwork(url: poster, title: item.title, aspectRatio: CGFloat(item.posterAspectRatio))
+            Artwork(url: poster, title: item.title, aspectRatio: CGFloat(item.posterAspectRatio), blurHash: item.posterBlurHash)
                 .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
         }
         if let seriesName = item.seriesName {

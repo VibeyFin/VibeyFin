@@ -321,4 +321,72 @@ class LibraryRepositoryTest {
             urls,
         )
     }
+
+    @Test
+    fun eachPictureCarriesTheBlurHashOfItsOwnTag() = runTest {
+        val server = app.signedIn()
+        server.on(
+            "GET", "/Items",
+            Reply.json(
+                itemsJson(
+                    itemJson(
+                        "a", thumbTag = "t", backdropTag = "b", primaryTag = "p",
+                        blurHashes = mapOf(
+                            // An older picture's hash sits beside the current one and must not be used.
+                            "Primary" to mapOf("old" to "STALE", "p" to "POSTER"),
+                            "Backdrop" to mapOf("b" to "BACKDROP"),
+                            "Thumb" to mapOf("t" to "THUMB"),
+                            "Logo" to mapOf("l" to "LOGO"),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val item = app.library.children("folder").success().items.single()
+
+        assertEquals("POSTER", item.posterBlurHash)
+        assertEquals("BACKDROP", item.backdropBlurHash)
+        assertEquals("THUMB", item.landscapeBlurHash)
+    }
+
+    @Test
+    fun theLandscapeBlurHashBelongsToWhicheverPictureTheLandscapeUrlUses() = runTest {
+        val server = app.signedIn()
+        server.on(
+            "GET", "/Items",
+            Reply.json(
+                itemsJson(
+                    itemJson("b", backdropTag = "b", primaryTag = "p", blurHashes = mapOf("Backdrop" to mapOf("b" to "BACKDROP"), "Primary" to mapOf("p" to "POSTER"))),
+                    itemJson("c", primaryTag = "p", blurHashes = mapOf("Primary" to mapOf("p" to "POSTER"))),
+                ),
+            ),
+        )
+
+        val (fromBackdrop, fromPoster) = app.library.children("folder").success().items
+
+        assertEquals("BACKDROP", fromBackdrop.landscapeBlurHash)
+        assertEquals("POSTER", fromPoster.landscapeBlurHash)
+    }
+
+    @Test
+    fun aPictureWithoutAUsableBlurHashHasNone() = runTest {
+        val server = app.signedIn()
+        server.on(
+            "GET", "/Items",
+            Reply.json(
+                itemsJson(
+                    // A picture the server never hashed, one whose hash is for another tag, one that is blank, and no picture.
+                    itemJson("a", primaryTag = "p"),
+                    itemJson("b", primaryTag = "p", blurHashes = mapOf("Primary" to mapOf("other" to "POSTER"))),
+                    itemJson("c", primaryTag = "p", blurHashes = mapOf("Primary" to mapOf("p" to "  "))),
+                    itemJson("d", blurHashes = mapOf("Primary" to mapOf("p" to "POSTER"))),
+                ),
+            ),
+        )
+
+        val items = app.library.children("folder").success().items
+
+        assertTrue(items.all { it.posterBlurHash == null && it.landscapeBlurHash == null && it.backdropBlurHash == null })
+    }
 }
