@@ -326,7 +326,7 @@ object Strings {
 
     /** The page of a movie, an episode or a show: its sections, and what the Play button says for a show. */
     val cast = "Cast"
-    val inCollections = "In collections"
+    val inCollections = "Collections"
 
     /** The actions under Play on an item's page. My List is the server's favourites. */
     val myList = "My List"
