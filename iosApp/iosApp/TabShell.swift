@@ -1,0 +1,102 @@
+import SwiftUI
+import Shared
+
+/// What opens inside a tab, over its root.
+enum TabRoute: Hashable {
+    case settings
+    /// What is inside a library, folder, series or season; `title` shows while it loads.
+    case children(parentId: String, title: String)
+    case item(itemId: String)
+}
+
+private enum MainTab: Hashable {
+    case home, library, downloads
+}
+
+/// Home, Library and Downloads, each with its own navigation stack, so a tab keeps its place while
+/// another is open. The system draws the bar (floating glass on iOS 26).
+struct TabShell: View {
+    /// Called when the tabs should be left: the user chose to, or the session ended.
+    let onExit: (HomeExit) -> Void
+
+    @State private var selection: MainTab = .home
+    @State private var homePath: [TabRoute] = []
+    @State private var libraryPath: [TabRoute] = []
+    @State private var downloadsPath: [TabRoute] = []
+
+    var body: some View {
+        TabView(selection: tappedSelection) {
+            stack($homePath) {
+                HomeView(
+                    onExit: onExit,
+                    onOpen: { open($0, in: $homePath) },
+                    onDetails: { homePath.append(.item(itemId: $0)) },
+                    onSettings: { homePath.append(.settings) }
+                )
+                .navigationBarBackButtonHidden(true)
+            }
+            .tabItem { Label(Strings.shared.tabHome.titleCased(), systemImage: "house") }
+            .tag(MainTab.home)
+
+            stack($libraryPath) { NotAvailableYetView() }
+                .tabItem { Label(Strings.shared.tabLibrary.titleCased(), systemImage: "play.rectangle.on.rectangle") }
+                .tag(MainTab.library)
+
+            stack($downloadsPath) { NotAvailableYetView() }
+                .tabItem { Label(Strings.shared.tabDownloads.titleCased(), systemImage: "arrow.down.circle") }
+                .tag(MainTab.downloads)
+        }
+    }
+
+    /// Choosing the tab you are already on goes back to its root.
+    private var tappedSelection: Binding<MainTab> {
+        Binding(
+            get: { selection },
+            set: { tab in
+                if tab == selection {
+                    switch tab {
+                    case .home: homePath = []
+                    case .library: libraryPath = []
+                    case .downloads: downloadsPath = []
+                    }
+                }
+                selection = tab
+            }
+        )
+    }
+
+    /// A folder opens its list; anything else opens its page.
+    private func open(_ item: MediaItem, in path: Binding<[TabRoute]>) {
+        path.wrappedValue.append(item.isFolder ? .children(parentId: item.id, title: item.title) : .item(itemId: item.id))
+    }
+
+    private func stack<Root: View>(_ path: Binding<[TabRoute]>, @ViewBuilder root: () -> Root) -> some View {
+        NavigationStack(path: path) {
+            root()
+                .navigationDestination(for: TabRoute.self) { route in
+                    switch route {
+                    case .settings:
+                        SettingsView()
+                    case .children(let parentId, let title):
+                        ChildrenView(parentId: parentId, title: title, onOpen: { open($0, in: path) }, onExit: onExit)
+                    case .item(let itemId):
+                        ItemView(itemId: itemId, onExit: onExit)
+                    }
+                }
+        }
+    }
+}
+
+/// What Library and Downloads show until their features land.
+private struct NotAvailableYetView: View {
+    var body: some View {
+        ZStack {
+            Color(.systemBackground).ignoresSafeArea()
+            Text(Strings.shared.notAvailableYet)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .screenMargin()
+        }
+    }
+}

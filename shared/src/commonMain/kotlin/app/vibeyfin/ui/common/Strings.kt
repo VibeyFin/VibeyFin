@@ -79,6 +79,15 @@ object Strings {
     // Home and browsing
     val home = "Home"
     val libraries = "Libraries"
+
+    /** The main navigation bar: its labels, and the name a screen reader gives the bar. */
+    val tabHome = "Home"
+    val tabLibrary = "Library"
+    val tabDownloads = "Downloads"
+    val mainNavigation = "Main navigation"
+
+    /** On the Library and Downloads tabs until their features land. */
+    val notAvailableYet = "Not available yet"
     val switchProfile = "Switch profile"
     val switchServer = "Switch server"
     val noLibraries = "This account has no libraries yet. Ask the server's admin to add one."

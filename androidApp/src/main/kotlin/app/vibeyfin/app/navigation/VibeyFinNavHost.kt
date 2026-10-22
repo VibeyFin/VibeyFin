@@ -8,7 +8,19 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.compose.navigation
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -56,107 +68,157 @@ private fun popExit() = slideOutHorizontally(tween(SLIDE_MS)) { it / SLIDE_FRACT
 @Composable
 fun VibeyFinNavHost() {
     val navController = rememberNavController()
-    // A folder opens its list; anything else opens its page.
+    // A folder opens its list; anything else opens its page. Both open inside the tab the user is on.
     val open: (MediaItem) -> Unit = { item ->
         navController.navigate(if (item.isFolder) Children(item.id, item.title) else Item(item.id))
     }
-    // Leaves Home and everything opened from it. Servers goes underneath "Who's watching?" so back
-    // from it has somewhere to go.
+    // Leaves the tabs and everything opened from them. Servers goes underneath "Who's watching?" so
+    // back from it has somewhere to go. The tabs' saved back stacks belong to this profile: dropped.
     val leave: (HomeExit) -> Unit = { exit ->
-        navController.navigate(Servers) { popUpTo(Home) { inclusive = true } }
+        navController.navigate(Servers) { popUpTo(navController.graph.id) }
+        Tab.entries.forEach { navController.clearBackStack(it.graph) }
         if (exit is HomeExit.WhoIsWatching) navController.navigate(WhoIsWatching(exit.serverId))
     }
-    NavHost(
-        navController = navController,
-        startDestination = Startup,
-        enterTransition = { enter(targetState) },
-        exitTransition = { exit(targetState) },
-        popEnterTransition = { popEnter() },
-        popExitTransition = { popExit() },
-        // The back gesture scrubs these two. Left alone they are the library's own scale-down, which
-        // looks nothing like the slide the back button plays, so they are the pop pair again.
-        predictivePopEnterTransition = { popEnter() },
-        predictivePopExitTransition = { popExit() },
-    ) {
-        composable<Startup> {
-            StartupRoute(
-                onDecided = { destination ->
-                    when (destination) {
-                        StartDestination.Servers ->
-                            navController.navigate(Servers) { popUpTo(Startup) { inclusive = true } }
-                        is StartDestination.WhoIsWatching -> {
-                            // Servers sits underneath so back from "Who's watching?" has somewhere to go.
-                            navController.navigate(Servers) { popUpTo(Startup) { inclusive = true } }
-                            navController.navigate(WhoIsWatching(destination.serverId))
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    // The bar belongs to the three tabs and what opens from them; sign-in, settings and the player are without it.
+    val currentTab = backStackEntry?.destination?.hierarchy?.let { path ->
+        Tab.entries.firstOrNull { tab -> path.any { it.hasRoute(tab.graph::class) } }
+    }
+    val select: (Tab) -> Unit = { tab ->
+        if (tab == currentTab) {
+            // Tapping the tab you are on goes back to its root.
+            navController.popBackStack(tab.root, inclusive = false)
+        } else {
+            navController.navigate(tab.graph) {
+                // Everything above the root graph is a tab's stack: keep it for when the tab returns.
+                popUpTo(navController.graph.id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
+    // Back from the root of Library or Downloads goes to Home, as on any app with a bar, not out of the app.
+    val atOtherRoot = currentTab != null && currentTab != Tab.Home && backStackEntry?.destination?.hasRoute(currentTab.root::class) == true
+    BackHandler(enabled = atOtherRoot) { select(Tab.Home) }
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        bottomBar = {
+            if (currentTab != null) MainNavigationBar(currentTab, select)
+        },
+    ) { padding ->
+        NavHost(
+            navController = navController,
+            modifier = Modifier.padding(padding).consumeWindowInsets(padding),
+            startDestination = Startup,
+            enterTransition = { enter(targetState) },
+            exitTransition = { exit(targetState) },
+            popEnterTransition = { popEnter() },
+            popExitTransition = { popExit() },
+            // The back gesture scrubs these two. Left alone they are the library's own scale-down, which
+            // looks nothing like the slide the back button plays, so they are the pop pair again.
+            predictivePopEnterTransition = { popEnter() },
+            predictivePopExitTransition = { popExit() },
+        ) {
+            composable<Startup> {
+                StartupRoute(
+                    onDecided = { destination ->
+                        when (destination) {
+                            StartDestination.Servers ->
+                                navController.navigate(Servers) { popUpTo(Startup) { inclusive = true } }
+                            is StartDestination.WhoIsWatching -> {
+                                // Servers sits underneath so back from "Who's watching?" has somewhere to go.
+                                navController.navigate(Servers) { popUpTo(Startup) { inclusive = true } }
+                                navController.navigate(WhoIsWatching(destination.serverId))
+                            }
+                            StartDestination.Home ->
+                                navController.navigate(HomeTab) { popUpTo(Startup) { inclusive = true } }
                         }
-                        StartDestination.Home ->
-                            navController.navigate(Home) { popUpTo(Startup) { inclusive = true } }
-                    }
-                },
-            )
+                    },
+                )
+            }
+            composable<Servers> {
+                ServersRoute(
+                    onOpenServer = { navController.navigate(WhoIsWatching(it.id)) },
+                    onAddServer = { navController.navigate(AddServer()) },
+                    onDiscoveredServer = { navController.navigate(AddServer(address = it.address)) },
+                )
+            }
+            composable<WhoIsWatching> { entry ->
+                WhoIsWatchingRoute(
+                    serverId = entry.toRoute<WhoIsWatching>().serverId,
+                    onBack = { navController.popBackStack() },
+                    // Home becomes the root: back from it leaves the app instead of returning to sign-in.
+                    onSignedIn = { navController.navigate(HomeTab) { popUpTo(Servers) { inclusive = true } } },
+                )
+            }
+            // One graph per tab, each with the screens that open inside it: the same Item and Children
+            // screens, once per graph, so each tab has its own back stack.
+            navigation<HomeTab>(startDestination = Home) {
+                composable<Home> {
+                    HomeRoute(
+                        onExit = leave,
+                        onOpen = open,
+                        // A Continue watching card plays at once; it never goes through the detail page.
+                        onPlay = { itemId -> navController.navigate(Player(itemId)) },
+                        onDetails = { itemId -> navController.navigate(Item(itemId)) },
+                        onSettings = { navController.navigate(Settings) },
+                    )
+                }
+                details(navController, leave)
+            }
+            navigation<LibraryTab>(startDestination = Library) {
+                composable<Library> { NotAvailableYet() }
+                details(navController, leave)
+            }
+            navigation<DownloadsTab>(startDestination = Downloads) {
+                composable<Downloads> { NotAvailableYet() }
+                details(navController, leave)
+            }
+            composable<Player> { entry ->
+                val route = entry.toRoute<Player>()
+                PlayerRoute(
+                    itemId = route.itemId,
+                    startOver = route.startOver,
+                    onBack = { navController.popBackStack() },
+                    onExit = leave,
+                )
+            }
+            composable<Settings> {
+                SettingsRoute(onBack = { navController.popBackStack() })
+            }
+            composable<AddServer> { entry ->
+                AddServerRoute(
+                    initialAddress = entry.toRoute<AddServer>().address,
+                    onBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
+                )
+            }
         }
-        composable<Servers> {
-            ServersRoute(
-                onOpenServer = { navController.navigate(WhoIsWatching(it.id)) },
-                onAddServer = { navController.navigate(AddServer()) },
-                onDiscoveredServer = { navController.navigate(AddServer(address = it.address)) },
-            )
-        }
-        composable<WhoIsWatching> { entry ->
-            WhoIsWatchingRoute(
-                serverId = entry.toRoute<WhoIsWatching>().serverId,
-                onBack = { navController.popBackStack() },
-                // Home becomes the root: back from it leaves the app instead of returning to sign-in.
-                onSignedIn = { navController.navigate(Home) { popUpTo(Servers) { inclusive = true } } },
-            )
-        }
-        composable<Home> {
-            HomeRoute(
-                onExit = leave,
-                onOpen = open,
-                // A Continue watching card plays at once; it never goes through the detail page.
-                onPlay = { itemId -> navController.navigate(Player(itemId)) },
-                onDetails = { itemId -> navController.navigate(Item(itemId)) },
-                onSettings = { navController.navigate(Settings) },
-            )
-        }
-        composable<Children> { entry ->
-            val route = entry.toRoute<Children>()
-            ChildrenRoute(
-                parentId = route.parentId,
-                title = route.title,
-                onBack = { navController.popBackStack() },
-                onOpen = open,
-                onExit = leave,
-            )
-        }
-        composable<Item> { entry ->
-            val itemId = entry.toRoute<Item>().itemId
-            ItemRoute(
-                itemId = itemId,
-                onBack = { navController.popBackStack() },
-                onPlay = { startOver -> navController.navigate(Player(itemId, startOver)) },
-                onExit = leave,
-            )
-        }
-        composable<Player> { entry ->
-            val route = entry.toRoute<Player>()
-            PlayerRoute(
-                itemId = route.itemId,
-                startOver = route.startOver,
-                onBack = { navController.popBackStack() },
-                onExit = leave,
-            )
-        }
-        composable<Settings> {
-            SettingsRoute(onBack = { navController.popBackStack() })
-        }
-        composable<AddServer> { entry ->
-            AddServerRoute(
-                initialAddress = entry.toRoute<AddServer>().address,
-                onBack = { navController.popBackStack() },
-                onSaved = { navController.popBackStack() },
-            )
-        }
+    }
+}
+
+/** What opens from a tab: a folder's list and an item's page, over the tab's own root. */
+private fun NavGraphBuilder.details(navController: NavHostController, leave: (HomeExit) -> Unit) {
+    val open: (MediaItem) -> Unit = { item ->
+        navController.navigate(if (item.isFolder) Children(item.id, item.title) else Item(item.id))
+    }
+    composable<Children> { entry ->
+        val route = entry.toRoute<Children>()
+        ChildrenRoute(
+            parentId = route.parentId,
+            title = route.title,
+            onBack = { navController.popBackStack() },
+            onOpen = open,
+            onExit = leave,
+        )
+    }
+    composable<Item> { entry ->
+        val itemId = entry.toRoute<Item>().itemId
+        ItemRoute(
+            itemId = itemId,
+            onBack = { navController.popBackStack() },
+            onPlay = { startOver -> navController.navigate(Player(itemId, startOver)) },
+            onExit = leave,
+        )
     }
 }
