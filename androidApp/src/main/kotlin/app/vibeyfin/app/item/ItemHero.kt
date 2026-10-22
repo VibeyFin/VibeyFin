@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -37,13 +38,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.vibeyfin.R
 import app.vibeyfin.app.components.Artwork
 import app.vibeyfin.app.theme.BrandDisplay
 import app.vibeyfin.app.theme.VibeyFinTokens
-import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.item.ItemUiState
@@ -52,83 +53,99 @@ import coil3.compose.AsyncImage
 /** Phones: the backdrop is cropped to 2:3, so the picture fills most of the first screen and runs under the status bar. */
 private const val HERO_ASPECT = 2f / 3f
 
+/** Tablets and unfolded foldables show the backdrop as it is, 16:9. */
+private const val HERO_ASPECT_WIDE = 16f / 9f
+
 /** Without a picture the hero is this much shorter. */
 private const val HERO_ASPECT_NO_PICTURE = 1.1f
 
 /**
- * The page's hero: the backdrop full-bleed with the title, the facts, the overview and Play laid over it. The text always
- * sits on the scrim: a band at the top for the back button, clear through the middle so the picture reads, then darker
- * towards the bottom where the text is, ending in the page's own colour.
+ * The page's hero. On a phone: the backdrop full-bleed with the title, the facts, the overview and Play laid over it,
+ * centred. On a tablet or an unfolded foldable ([wide]): the backdrop at its own 16:9 with the details in a left column over
+ * it. Either way the text sits on the scrim: dark where the text is, clear where the picture should read, ending in the
+ * page's own colour.
  */
 @Composable
-fun ItemHero(item: MediaItem, state: ItemUiState, onPlay: (startOver: Boolean) -> Unit) {
-    val margin = screenMargin()
+fun ItemHero(item: MediaItem, state: ItemUiState, wide: Boolean, margin: Dp, onPlay: (startOver: Boolean) -> Unit) {
     Box(Modifier.fillMaxWidth()) {
         val picture = item.backdropUrl ?: item.posterUrl
+        val aspect = if (wide) HERO_ASPECT_WIDE else HERO_ASPECT
         if (picture != null) {
             Artwork(
                 url = picture,
                 title = item.title,
-                aspectRatio = HERO_ASPECT,
+                aspectRatio = aspect,
                 blurHash = if (item.backdropUrl != null) item.backdropBlurHash else item.posterBlurHash,
                 modifier = Modifier.fillMaxWidth(),
             )
         } else {
             // Nothing to show behind the title: a plain tile, shorter than a picture would be, without the title written twice.
-            Box(Modifier.fillMaxWidth().aspectRatio(HERO_ASPECT_NO_PICTURE).background(VibeyFinTokens.Colors.surface2))
+            Box(Modifier.fillMaxWidth().aspectRatio(if (wide) HERO_ASPECT_WIDE else HERO_ASPECT_NO_PICTURE).background(VibeyFinTokens.Colors.surface2))
         }
-        Box(
-            Modifier.matchParentSize().background(
-                Brush.verticalGradient(
-                    0f to VibeyFinTokens.Colors.scrim,
-                    0.18f to Color.Transparent,
-                    0.40f to Color.Transparent,
-                    0.60f to VibeyFinTokens.Colors.scrim,
-                    0.82f to VibeyFinTokens.Colors.scrimStrong,
-                    1f to VibeyFinTokens.Colors.bg,
+        // The same scrim top and bottom on both; a tablet adds one from the left, behind its column of text.
+        val scrim = VibeyFinTokens.Colors.scrim
+        val scrimStrong = VibeyFinTokens.Colors.scrimStrong
+        val stops = if (wide) {
+            arrayOf(0f to scrim, 0.18f to Color.Transparent, 0.75f to Color.Transparent, 0.92f to scrim, 0.97f to scrimStrong, 1f to VibeyFinTokens.Colors.bg)
+        } else {
+            arrayOf(0f to scrim, 0.18f to Color.Transparent, 0.40f to Color.Transparent, 0.60f to scrim, 0.82f to scrimStrong, 1f to VibeyFinTokens.Colors.bg)
+        }
+        Box(Modifier.matchParentSize().background(Brush.verticalGradient(*stops)))
+        if (wide) {
+            Box(
+                Modifier.matchParentSize().background(
+                    Brush.horizontalGradient(
+                        0f to VibeyFinTokens.Colors.scrimStrong,
+                        0.3f to VibeyFinTokens.Colors.scrim,
+                        0.6f to Color.Transparent,
+                    ),
                 ),
-            ),
-        )
+            )
+        }
+        val alignment = if (wide) Alignment.Start else Alignment.CenterHorizontally
         Column(
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = margin).padding(bottom = VibeyFinTokens.Space.s4),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = (if (wide) Modifier.align(Alignment.BottomStart).fillMaxWidth(0.46f).widthIn(max = 520.dp) else Modifier.align(Alignment.BottomCenter).fillMaxWidth())
+                .padding(horizontal = margin)
+                .padding(bottom = VibeyFinTokens.Space.s4),
+            horizontalAlignment = alignment,
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         ) {
             item.seriesName?.let {
                 Text(it, style = MaterialTheme.typography.labelLarge, color = VibeyFinTokens.Colors.inkMuted)
             }
-            TitleArt(item)
-            FactsLine(state)
+            TitleArt(item, centered = !wide)
+            FactsLine(state, centered = !wide)
             if (item.genres.isNotEmpty()) {
                 Text(
                     text = item.genres.joinToString("  ·  "),
                     style = MaterialTheme.typography.bodyMedium,
                     color = VibeyFinTokens.Colors.inkMuted,
-                    textAlign = TextAlign.Center,
+                    textAlign = if (wide) TextAlign.Start else TextAlign.Center,
                 )
             }
             item.overview?.let { Overview(it) }
-            if (state.canPlay) PlayButtons(state.playLabel, state.canStartOver, onPlay)
+            if (state.canPlay) PlayButtons(state.playLabel, state.canStartOver, onPlay, fullWidth = !wide)
         }
     }
 }
 
 /** The title as its `Logo` image, centred and large; the `brand-display` title when the item has none. */
 @Composable
-private fun TitleArt(item: MediaItem) {
+private fun TitleArt(item: MediaItem, centered: Boolean) {
     if (item.logoUrl != null) {
         AsyncImage(
             model = item.logoUrl,
             contentDescription = item.title,
             contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxWidth(0.7f).heightIn(max = 112.dp),
+            alignment = if (centered) Alignment.Center else Alignment.CenterStart,
+            modifier = Modifier.fillMaxWidth(if (centered) 0.7f else 0.9f).heightIn(max = 112.dp),
         )
     } else {
         Text(
             text = item.title,
             style = BrandDisplay.copy(fontSize = 32.sp, lineHeight = 36.sp),
             color = VibeyFinTokens.Colors.ink,
-            textAlign = TextAlign.Center,
+            textAlign = if (centered) TextAlign.Center else TextAlign.Start,
             maxLines = 3,
             overflow = TextOverflow.Ellipsis,
         )
@@ -137,11 +154,11 @@ private fun TitleArt(item: MediaItem) {
 
 /** Year, rating, runtime (or seasons): centred under the title, with the picture badge and a check once it is watched. */
 @Composable
-private fun FactsLine(state: ItemUiState) {
+private fun FactsLine(state: ItemUiState, centered: Boolean) {
     if (state.facts.isEmpty() && !state.watched && state.badge == null) return
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2, Alignment.CenterHorizontally),
+        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2, if (centered) Alignment.CenterHorizontally else Alignment.Start),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(
@@ -199,9 +216,9 @@ private fun Overview(text: String) {
  * over" sits beside it as a round icon-only secondary button (a circular arrow), only when there is something to resume.
  */
 @Composable
-private fun PlayButtons(label: String, canStartOver: Boolean, onPlay: (startOver: Boolean) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3), modifier = Modifier.fillMaxWidth()) {
-        Button(onClick = { onPlay(false) }, modifier = Modifier.weight(1f).height(VibeyFinTokens.Size.buttonLarge)) {
+private fun PlayButtons(label: String, canStartOver: Boolean, onPlay: (startOver: Boolean) -> Unit, fullWidth: Boolean) {
+    Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3), modifier = if (fullWidth) Modifier.fillMaxWidth() else Modifier) {
+        Button(onClick = { onPlay(false) }, modifier = (if (fullWidth) Modifier.weight(1f) else Modifier.widthIn(min = 200.dp)).height(VibeyFinTokens.Size.buttonLarge)) {
             Icon(painter = painterResource(R.drawable.ic_play), contentDescription = null)
             Spacer(Modifier.width(VibeyFinTokens.Space.s2))
             Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)

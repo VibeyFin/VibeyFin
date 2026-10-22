@@ -163,14 +163,14 @@ _Starts after the state audit (see Cross-cutting)._
     libraries are untouched. A page has Sort (name, recently added, rating) and Genre buttons that open the
     player's picker sheet, and keeps its place when you come back from an item. The Categories sheet shows how many
     titles each genre holds
-- [ ] Detail page: metadata, cast, `/Items/{id}/Similar`. The page opens on a full-width cinematic
+- [x] Detail page (Android built, iOS next): metadata, cast, `/Items/{id}/Similar`; plan 11. On tablets and unfolded foldables a 16:9 backdrop with the details in a left column. The page opens on a full-width cinematic
   backdrop hero (`Backdrop` image) with a dark gradient overlay (the `scrim` token), and the movie
   details and action buttons are layered over the image: the `Logo` image as the title (the
   `brand-display` title when there is none), the facts line (year, rating, runtime, genres), the
   overview, then the actions, with Play / Resume as the one aqua primary button. Cast and similar
   items scroll below the hero. The bar over the hero is transparent (Android) or an inline title
   over the backdrop (iOS); text over the image always sits on the scrim
-- [ ] Series detail page: the same hero, then a row of season buttons (about four visible at a time,
+- [x] Series detail page (Android built, iOS next): the same hero, then a row of season buttons (about four visible at a time,
   scrolling sideways when there are more), similar to the Nuvio player. The selected season is
   marked and its episodes list below (`GET /Shows/{id}/Seasons`, `GET /Shows/{id}/Episodes?seasonId=`);
   picking another button swaps the list in place. The row opens on the season of the episode Play /

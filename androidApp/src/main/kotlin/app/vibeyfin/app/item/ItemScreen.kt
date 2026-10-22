@@ -2,6 +2,7 @@ package app.vibeyfin.app.item
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -31,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.components.ActionSnackbar
 import app.vibeyfin.app.components.BackButtonSpace
@@ -112,9 +114,13 @@ fun ItemScreen(
                     Spacer(Modifier.height(BackButtonSpace))
                     LoadError(message = state.message!!, onRetry = onRetry, modifier = Modifier.padding(horizontal = screenMargin()))
                 }
-                item != null -> ItemPage(
-                    item, state, onPlay, onPlayEpisode, onOpen, onToggleEpisodePlayed, onSelectSeason, onRetrySimilar, onRetrySeasons, onRetryEpisodes,
-                )
+                // A tablet, or a foldable unfolded, gets the wide layout; a phone, and a foldable closed, the narrow one.
+                item != null -> BoxWithConstraints(Modifier.fillMaxSize()) {
+                    ItemPage(
+                        item, state, wide = maxWidth >= WIDE_FROM, columns = if (maxWidth >= TWO_COLUMNS_FROM) 2 else 1,
+                        onPlay, onPlayEpisode, onOpen, onToggleEpisodePlayed, onSelectSeason, onRetrySimilar, onRetrySeasons, onRetryEpisodes,
+                    )
+                }
             }
             FloatingBackButton(onBack)
             if (state.canMark) OverflowMenu(state.markLabel, if (state.item?.played == true) Icons.Default.Clear else Icons.Default.Check, onTogglePlayed)
@@ -123,11 +129,23 @@ fun ItemScreen(
     }
 }
 
+/** From this width the page uses its tablet layout: the backdrop at 16:9 with the details in a column on the left. */
+private val WIDE_FROM = 600.dp
+
+/** From this width a season's episodes sit in two columns. */
+private val TWO_COLUMNS_FROM = 840.dp
+
+private val POSTER_WIDE = 168.dp
+private val CAST_TILE_NARROW = 88.dp
+private val CAST_TILE_WIDE = 112.dp
+
 /** The hero under the status bar, then what the page has below it: a show's seasons and episodes, the cast, more like this, the file's details. */
 @Composable
 private fun ItemPage(
     item: MediaItem,
     state: ItemUiState,
+    wide: Boolean,
+    columns: Int,
     onPlay: (startOver: Boolean) -> Unit,
     onPlayEpisode: (String) -> Unit,
     onOpen: (MediaItem) -> Unit,
@@ -137,19 +155,20 @@ private fun ItemPage(
     onRetrySeasons: () -> Unit,
     onRetryEpisodes: () -> Unit,
 ) {
-    val margin = screenMargin()
+    // Larger margins and posters on a tablet (`screens.md`).
+    val margin = if (wide) VibeyFinTokens.Space.s6 else screenMargin()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        ItemHero(item, state, onPlay)
+        ItemHero(item, state, wide, margin, onPlay)
         Column(
             modifier = Modifier.padding(horizontal = margin, vertical = VibeyFinTokens.Space.s5),
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s5),
         ) {
             if (item.kind == ItemKind.Series) {
-                SeasonsSection(state.seasons, margin, onSelectSeason, onPlayEpisode, onToggleEpisodePlayed, onRetrySeasons, onRetryEpisodes)
+                SeasonsSection(state.seasons, margin, columns, onSelectSeason, onPlayEpisode, onToggleEpisodePlayed, onRetrySeasons, onRetryEpisodes)
             }
-            if (item.cast.isNotEmpty()) CastSection(item.cast, margin)
+            if (item.cast.isNotEmpty()) CastSection(item.cast, margin, tile = if (wide) CAST_TILE_WIDE else CAST_TILE_NARROW)
             state.similar?.takeIf { it.isVisible }?.let { row ->
-                MediaRowSection(row, margin, onOpen, onSeeAll = null, onRetry = onRetrySimilar)
+                MediaRowSection(row, margin, onOpen, onSeeAll = null, onRetry = onRetrySimilar, tileWidth = if (wide) POSTER_WIDE else VibeyFinTokens.Size.posterWidth)
             }
             if (state.technical.isNotEmpty()) TechnicalInfo(state.technical)
             Spacer(Modifier.height(VibeyFinTokens.Space.s5))

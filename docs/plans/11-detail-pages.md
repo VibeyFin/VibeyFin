@@ -4,7 +4,7 @@ Goal: a movie, an episode and a series each open on a cinematic page: a full-ble
 title, the facts, the overview and one aqua Play / Resume button over it, then the cast and "More like this"; a series
 adds a row of season buttons and the selected season's episodes. Android and iOS.
 
-**Status (2026-10-22):** written, nothing built. Calls marked *(my call)* are guesses for the owner to confirm.
+**Status (2026-10-22):** Phases A and B built (A with tests; B run on the Android emulator against the test server, including a simulated unfolded-foldable screen); C (iOS) not started. Calls marked *(my call)* are guesses for the owner to confirm.
 
 **Specs:** `docs/ROADMAP.md` Phase 4 "Detail page" and "Series detail page", `docs/design/screens.md` "Detail",
 "Series detail", "Episode row", `guardrails.md`, `jellyfin-mapping.md` "Detail".
@@ -46,7 +46,7 @@ adds a row of season buttons and the selected season's episodes. Android and iOS
    left, and two lines of synopsis; the next-up episode is marked current. Tapping one plays it. Long-press has the
    watched toggle *(my call)*. Download is not shown (offline is a later phase).
 9. **Technical info** (video, audio, subtitles, file) collapsed at the bottom *(my call: only when the item has streams)*.
-10. **Tablets and landscape** keep the phone layout for now. The tablet hero is the width-class work in the design review.
+10. **Tablets and unfolded foldables** (width from 600dp, `BoxWithConstraints`, no new dependency; `horizontalSizeClass == .regular` on iOS) get the tablet layout of `screens.md`: the backdrop at its own 16:9, the details in a left column about 46% wide (max 520) over a scrim from the left, Play not full width, larger margins and posters (168), the cast at 112, and a season's episodes in two columns from 840dp. This was added after the owner saw the phone layout stretched on a Z Fold. The main navigation stays at the bottom for now (the top placement is the width-class work in the design review).
 11. **Facts line** adds the number of seasons for a series ("3 seasons") instead of a runtime.
 
 ## Phase A: Shared

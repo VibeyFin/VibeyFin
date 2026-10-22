@@ -71,9 +71,6 @@ import app.vibeyfin.ui.item.SeasonsState
 import app.vibeyfin.ui.item.TechnicalLine
 import coil3.compose.AsyncImage
 
-/** A season's width in the row of season buttons is its label; this is the gap that makes the next one peek. */
-private val CAST_TILE = 88.dp
-
 /**
  * A show's seasons as a row of buttons (the selected one in `accent-soft`, aqua stays for Play), then the selected season's
  * episodes. The row opens scrolled to the season Play starts in; another season swaps the list in place and the old list
@@ -83,6 +80,7 @@ private val CAST_TILE = 88.dp
 fun SeasonsSection(
     seasons: SeasonsState,
     margin: Dp,
+    columns: Int,
     onSelect: (String) -> Unit,
     onPlayEpisode: (String) -> Unit,
     onToggleEpisodePlayed: (String) -> Unit,
@@ -103,7 +101,7 @@ fun SeasonsSection(
             }
         }
         if (seasons.seasons.isNotEmpty() && !seasons.loading && seasons.message == null) {
-            EpisodeList(seasons, onPlayEpisode, onToggleEpisodePlayed, onRetryEpisodes)
+            EpisodeList(seasons, columns, onPlayEpisode, onToggleEpisodePlayed, onRetryEpisodes)
         }
     }
 }
@@ -153,7 +151,7 @@ private fun SeasonButtons(seasons: SeasonsState, margin: Dp, onSelect: (String) 
 
 /** The selected season's episodes; while another season loads the old list stays, dimmed. */
 @Composable
-private fun EpisodeList(seasons: SeasonsState, onPlay: (String) -> Unit, onToggleWatched: (String) -> Unit, onRetry: () -> Unit) {
+private fun EpisodeList(seasons: SeasonsState, columns: Int, onPlay: (String) -> Unit, onToggleWatched: (String) -> Unit, onRetry: () -> Unit) {
     val episodes = seasons.episodes
     Column(
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
@@ -164,8 +162,16 @@ private fun EpisodeList(seasons: SeasonsState, onPlay: (String) -> Unit, onToggl
             episodes.items.isEmpty() && episodes.loading -> repeat(3) { EpisodeSkeleton() }
             episodes.items.isEmpty() -> Text(Strings.noEpisodes, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             else -> Column(Modifier.alpha(if (episodes.loading) 0.5f else 1f), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-                episodes.items.forEach { episode ->
-                    EpisodeRow(episode, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) })
+                // Two columns when the screen is wide enough; a short last row keeps its cell's width.
+                episodes.items.chunked(columns).forEach { pair ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4), modifier = Modifier.fillMaxWidth()) {
+                        pair.forEach { episode ->
+                            Box(Modifier.weight(1f)) {
+                                EpisodeRow(episode, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) })
+                            }
+                        }
+                        repeat(columns - pair.size) { Box(Modifier.weight(1f)) {} }
+                    }
                 }
             }
         }
@@ -258,7 +264,7 @@ private fun EpisodeRow(episode: MediaItem, current: Boolean, onPlay: () -> Unit,
 
 /** A row of the actors: a round picture, the name and the part they play. A person with no picture is a grey disc with initials. */
 @Composable
-fun CastSection(cast: List<CastMember>, margin: Dp) {
+fun CastSection(cast: List<CastMember>, margin: Dp, tile: Dp) {
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         SectionTitle(Strings.cast, modifier = Modifier.semantics { heading() })
         LazyRow(
@@ -266,19 +272,19 @@ fun CastSection(cast: List<CastMember>, margin: Dp) {
             contentPadding = PaddingValues(horizontal = margin),
             horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         ) {
-            items(cast, key = { it.id }) { person -> CastTile(person) }
+            items(cast, key = { it.id }) { person -> CastTile(person, tile) }
         }
     }
 }
 
 @Composable
-private fun CastTile(person: CastMember) {
+private fun CastTile(person: CastMember, tile: Dp) {
     Column(
-        modifier = Modifier.width(CAST_TILE),
+        modifier = Modifier.width(tile),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
     ) {
-        Box(Modifier.size(CAST_TILE).clip(CircleShape).background(VibeyFinTokens.Colors.surface2), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(tile).clip(CircleShape).background(VibeyFinTokens.Colors.surface2), contentAlignment = Alignment.Center) {
             Text(initials(person.name), style = MaterialTheme.typography.titleMedium, color = VibeyFinTokens.Colors.inkMuted)
             if (person.imageUrl != null) {
                 AsyncImage(model = person.imageUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.matchSize())

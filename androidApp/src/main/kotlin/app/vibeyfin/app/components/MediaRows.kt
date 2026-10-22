@@ -57,7 +57,15 @@ const val ROW_FADE_MS = 250
 
 /** A row of posters under a header with "See all": loading is grey posters, a failure says why with Try again. */
 @Composable
-fun MediaRowSection(row: MediaRow, margin: Dp, onOpen: (MediaItem) -> Unit, onSeeAll: ((SeeAll) -> Unit)?, onRetry: () -> Unit) {
+fun MediaRowSection(
+    row: MediaRow,
+    margin: Dp,
+    onOpen: (MediaItem) -> Unit,
+    onSeeAll: ((SeeAll) -> Unit)?,
+    onRetry: () -> Unit,
+    // Posters are 112 on a phone and larger on a tablet (`screens.md`).
+    tileWidth: Dp = VibeyFinTokens.Size.posterWidth,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             // One line, so a long library name never makes the header taller.
@@ -74,7 +82,7 @@ fun MediaRowSection(row: MediaRow, margin: Dp, onOpen: (MediaItem) -> Unit, onSe
         val phase = if (row.loading) RowPhase.Loading else if (row.message != null) RowPhase.Failed else RowPhase.Ready
         Crossfade(targetState = phase, animationSpec = tween(ROW_FADE_MS), modifier = Modifier.animateContentSize(tween(ROW_FADE_MS))) { shown ->
             when (shown) {
-                RowPhase.Loading -> PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin))
+                RowPhase.Loading -> PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin), tileWidth = tileWidth)
                 RowPhase.Failed -> LoadError(row.message ?: "", onRetry)
                 RowPhase.Ready -> LazyRow(
                     modifier = Modifier.bleed(margin),
@@ -82,7 +90,7 @@ fun MediaRowSection(row: MediaRow, margin: Dp, onOpen: (MediaItem) -> Unit, onSe
                     horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
                 ) {
                     items(row.items, key = { it.id }) { item ->
-                        ArtworkTile(item, onClick = { onOpen(item) }, modifier = Modifier.width(VibeyFinTokens.Size.posterWidth), captionLines = POSTER_CAPTION_LINES)
+                        ArtworkTile(item, onClick = { onOpen(item) }, modifier = Modifier.width(tileWidth), captionLines = POSTER_CAPTION_LINES)
                     }
                 }
             }
