@@ -43,9 +43,9 @@ import app.vibeyfin.ui.home.CategoryButton
 import app.vibeyfin.ui.home.FilterDropdown
 
 /**
- * Shows, Movies, New, Studios and Categories as one scrolling row of M3 chips. Every chip opens something: the
- * first three open their page; Studios and Categories carry a chevron and open a dropdown with search first, which
- * is how they differ. None of them stays selected, because Home itself is never filtered. Aqua is not used here.
+ * Shows, Movies, New and Categories as one scrolling row of M3 chips. Every chip opens something: the
+ * first three open their page; Categories carries a chevron and opens a dropdown with search first, which is
+ * how it differs. None of them stays selected, because Home itself is never filtered. Aqua is not used here.
  * Margins come from [contentPadding] so the row can run to the screen edge.
  */
 @Composable
@@ -95,8 +95,8 @@ fun CategoryButtonRow(
 }
 
 /**
- * The Studios or Categories list as a dropdown under its chip, with a search field that narrows the list as you
- * type. Picking an entry opens that studio's or genre's page. Loading is grey lines, an empty list says so, a
+ * The Categories list as a dropdown under its chip, with a search field that narrows the list as you
+ * type. Picking an entry opens that genre's page. Loading is grey lines, an empty list says so, a
  * failure offers Try again.
  */
 @Composable

@@ -18,11 +18,10 @@ Which server data drives which piece of UI. All of this lives in the shared Kotl
 | --- | --- | --- |
 | Shows | `GET /Items?recursive=true&includeItemTypes=Series&sortBy=SortName` | Opens a page titled "Shows". |
 | Movies | `GET /Items?recursive=true&includeItemTypes=Movie&sortBy=SortName` | Opens a page titled "Movies". |
-| New | `GET /Items` sorted by `DateCreated` descending (`fields=DateCreated`), cut to the last 30 days on the client | Checked against the 12.2 OpenAPI spec: `GET /Items` has `minDateLastSaved` (when metadata was last saved), not a creation date. Newest first, so the list ends at the first item older than 30 days. |
-| Studios | `GET /Studios` for the dropdown; `studioIds` on `GET /Items` for the page | The dropdown sorts by name on the client (the endpoint has no sort). The page is titled with the studio. |
+| New | `GET /Items` sorted by `ProductionYear,PremiereDate` descending | By release year, newest first, not by when it was added to the server. Items with no year come last. |
 | Categories | `GET /Genres` for the dropdown; `genreIds` on `GET /Items` for the page | The page is titled with the genre ("Action"). |
 
-Every page is `GET /Items` across every library (movies and shows for a studio or a genre), a page of 60 at a
+Every page is `GET /Items` across every library (movies and shows for a genre), a page of 60 at a
 time. Home's own rows (Continue watching, libraries) are not filtered, so none of the endpoints behind them change.
 
 ## Detail

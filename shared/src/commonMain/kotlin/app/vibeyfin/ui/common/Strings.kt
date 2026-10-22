@@ -90,23 +90,21 @@ object Strings {
     val filterShows = "Shows"
     val filterMovies = "Movies"
     val filterNew = "New"
-    val filterStudios = "Studios"
     val filterCategories = "Categories"
 
     /** What a screen reader says for the group of category buttons. */
     val filterHome = "Filter Home"
 
-    /** What a screen reader says for a button that opens a dropdown of studios or genres. */
+    /** What a screen reader says for a button that opens a dropdown of genres. */
     fun opensList(label: String) = "$label, opens a list"
 
-    /** The placeholder of the search field in the Studios and Categories dropdowns. */
+    /** The placeholder of the search field in the Categories dropdown. */
     val filterSearch = "Search"
 
-    /** In the Studios and Categories dropdowns when what was typed matches nothing. */
+    /** In the Categories dropdown when what was typed matches nothing. */
     val nothingFound = "Nothing matches that."
 
-    /** In the Studios and Categories dropdowns when the server has none. */
-    val noStudios = "This server has no studios."
+    /** In the Categories dropdown when the server has none. */
     val noCategories = "This server has no categories."
 
     /** On the Library and Downloads tabs until their features land. */

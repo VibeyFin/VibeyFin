@@ -9,13 +9,11 @@ import app.vibeyfin.data.api.itemImageUrl
 import app.vibeyfin.data.api.itemsById
 import app.vibeyfin.data.api.map
 import app.vibeyfin.data.api.userViews
-import app.vibeyfin.data.api.studios
 import app.vibeyfin.data.api.genres
 import app.vibeyfin.data.api.filteredItems
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.ItemPage
 import app.vibeyfin.domain.model.MediaItem
-import kotlin.time.Instant
 
 /**
  * What is on the server for the signed-in profile: its libraries, what is inside them, and one
@@ -45,11 +43,6 @@ class LibraryRepository(private val connection: ConnectionManager) {
         }
     }
 
-    /** The studios to pick from, by name. */
-    suspend fun studios(): ApiResult<List<FilterOption>> = call { api, userId ->
-        api.studios(userId).map { result -> result.items.toOptions() }
-    }
-
     /** The genres to pick from, by name. */
     suspend fun genres(): ApiResult<List<FilterOption>> = call { api, userId ->
         api.genres(userId).map { result -> result.items.toOptions() }
@@ -57,11 +50,10 @@ class LibraryRepository(private val connection: ConnectionManager) {
 
     /**
      * One page of the category page for [filter], across every library: Shows (series), Movies, New, or a
-     * studio's or genre's movies and shows. New is newest added first and ends at [NEW_WINDOW] before [now];
-     * the server can't cut by creation date, so the page is cut here and the list ends at the first older item.
-     * The rest are by name.
+     * genre's movies and shows. New is by release year, newest first, then by premiere date within a
+     * year; the rest are by name.
      */
-    suspend fun filteredPage(filter: HomeFilter, now: Instant, startIndex: Int = 0, limit: Int = PAGE_SIZE): ApiResult<ItemPage> =
+    suspend fun filteredPage(filter: HomeFilter, startIndex: Int = 0, limit: Int = PAGE_SIZE): ApiResult<ItemPage> =
         call { api, userId ->
             val types = when (filter) {
                 HomeFilter.Shows -> listOf("Series")
@@ -70,21 +62,13 @@ class LibraryRepository(private val connection: ConnectionManager) {
             }
             val newest = filter == HomeFilter.New
             api.filteredItems(
-                userId, types, (filter as? HomeFilter.Genre)?.id, (filter as? HomeFilter.Studio)?.id,
-                sortBy = if (newest) "DateCreated" else "SortName",
+                userId, types, (filter as? HomeFilter.Genre)?.id,
+                sortBy = if (newest) "ProductionYear,PremiereDate" else "SortName",
                 sortOrder = if (newest) "Descending" else "Ascending",
                 startIndex = startIndex,
                 limit = limit,
             ).map { result ->
-                val items = result.items.map { it.toMediaItem(api.baseUrl) }
-                if (!newest) {
-                    ItemPage(items, result.totalRecordCount, result.startIndex)
-                } else {
-                    val recent = items.takeWhile { it.isNew(now) }
-                    // Newest first: the first older item ends the list, so it is as long as what is kept so far.
-                    val total = if (recent.size < items.size) startIndex + recent.size else result.totalRecordCount
-                    ItemPage(recent, total, result.startIndex)
-                }
+                ItemPage(result.items.map { it.toMediaItem(api.baseUrl) }, result.totalRecordCount, result.startIndex)
             }
         }
 
@@ -153,16 +137,12 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
         backdropBlurHash = backdropTag?.let { blurHash("Backdrop", it) },
         landscapeBlurHash = landscape?.let { (type, tag) -> blurHash(type, tag) },
         videoFormat = mediaStreams.firstOrNull { it.type == "Video" }?.toVideoFormat(),
-        dateCreated = dateCreated?.let { runCatching { Instant.parse(it) }.getOrNull() },
     )
 }
 
 /** The BlurHash the server sent for the image of [type] with [tag]; the tag keeps it from belonging to an older picture. */
 private fun BaseItemDto.blurHash(type: String, tag: String): String? =
     imageBlurHashes[type]?.get(tag)?.takeIf { it.isNotBlank() }
-
-/** Added within [NEW_WINDOW] before [now]. An item the server gave no date for is not new. */
-internal fun MediaItem.isNew(now: Instant): Boolean = dateCreated?.let { it >= now - NEW_WINDOW } == true
 
 private fun List<BaseItemDto>.toOptions(): List<FilterOption> =
     mapNotNull { dto -> dto.name?.takeIf { it.isNotBlank() }?.let { FilterOption(dto.id, it) } }

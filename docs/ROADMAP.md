@@ -150,13 +150,12 @@ _Starts after the state audit (see Cross-cutting)._
   The Search tab joins with unified search below. Nothing else is built in this item
 - [ ] Home rows: Latest, genres, My Media, plus Continue Watching (which holds Next Up)
 - [ ] Home category buttons under the header, Netflix-style, as one horizontally scrolling row in this
-  fixed order (configurable in Phase 7): **Shows**, **Movies**, **New**, **Studios**, **Categories**. Home itself
-  is never filtered; every button opens a page of its own, titled with its name:
-  - **Shows**, **Movies** and **New** open that page at once. New is titles added in the last 30 days, newest
-    first, by `DateCreated` (the OpenAPI spec has no creation-date filter on `GET /Items`, so it is cut on the client)
-  - **Studios** and **Categories** carry a chevron and open a dropdown with search (`GET /Studios`,
-    `GET /Genres`); the entry picked, a studio or a genre such as "Action", opens a page with that name and its
-    media (`GET /Items?StudioIds=` / `GenreIds=`)
+  fixed order (configurable in Phase 7): **Shows**, **Movies**, **New**, **Categories**. Home itself is never
+  filtered; every button opens a page of its own, titled with its name:
+  - **Shows**, **Movies** and **New** open that page at once. New is movies and shows by release year, newest
+    first (`GET /Items` sorted by `ProductionYear,PremiereDate`, descending)
+  - **Categories** carries a chevron and opens a dropdown with search (`GET /Genres`); the genre picked, such as
+    "Action", opens a page with that name and its media (`GET /Items?GenreIds=`)
   - a page is a grid of posters like a folder's list, paged, with the five states; Home's Continue watching and
     libraries are untouched
 - [ ] Detail page: metadata, cast, `/Items/{id}/Similar`. The page opens on a full-width cinematic
@@ -187,7 +186,7 @@ _Starts after the state audit (see Cross-cutting)._
 - [ ] My List (Favorites), thumbs (`UserData.likes`)
 - [ ] Tile trailers (`LocalTrailers` / `RemoteTrailers`, content-dependent)
 
-_Exit: switch tabs with their own back stacks, open the Shows, Movies, New, a studio and a genre pages from Home,
+_Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a genre page from Home,
 and see the mini player on iOS 26._
 
 ### Phase 6 — Accounts & polish

@@ -53,16 +53,16 @@ That is why the first chapter is named `Scene 1`. Names must be real words the p
 lookup) and a `tvshow.nfo` for Test Show. After adding them to an existing server run a library refresh
 (`POST /Library/Refresh`).
 
-| Title | Studio | Genres | Added |
-| --- | --- | --- | --- |
-| Neon Night (2026) | A24 | Drama, Thriller | now |
-| Quiet Harbor (2025) | Neon | Drama | now |
-| Old Classic (1999) | Neon | Science Fiction | file set 60 days old, so "New" leaves it out |
-| Test Show | A24 | Drama | now |
-| HDR Sample (2026) | none | none | now |
+| Title | Year | Genres |
+| --- | --- | --- |
+| Neon Night (2026) | 2026 | Drama, Thriller |
+| HDR Sample (2026) | 2026 | none |
+| Quiet Harbor (2025) | 2025 | Drama |
+| Test Show | 2024 | Drama |
+| Old Classic (1999) | 1999 | Science Fiction |
 
-So Studios lists A24 and Neon, Categories lists Drama, Science Fiction and Thriller, and "New" shows everything
-but Old Classic.
+So Categories lists Drama, Science Fiction and Thriller, and "New" lists them 2026, 2026, 2025, 2024, 1999. (The
+`.nfo` files also set studios A24 and Neon; the app has no studio filter now.)
 
 ## Checking it
 

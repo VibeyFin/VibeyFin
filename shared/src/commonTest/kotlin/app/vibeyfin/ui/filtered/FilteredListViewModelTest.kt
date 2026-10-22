@@ -43,7 +43,7 @@ class FilteredListViewModelTest {
     }
 
     private fun viewModel(filter: HomeFilter) =
-        viewModels.track(FilteredListViewModel(filter, app.library, app.connection, app.clock))
+        viewModels.track(FilteredListViewModel(filter, app.library, app.connection))
 
     private fun FakeServer.listOf(all: List<String>, pageSize: Int) =
         on("GET", "/Items") { request ->
@@ -53,13 +53,12 @@ class FilteredListViewModelTest {
         }
 
     @Test
-    fun theTitleIsTheButtonOrTheStudioOrGenreName() = runTest {
+    fun theTitleIsTheButtonOrTheGenreName() = runTest {
         app.signedIn().listOf(emptyList(), 60)
 
         assertEquals("Shows", viewModel(HomeFilter.Shows).title)
         assertEquals("Movies", viewModel(HomeFilter.Movies).title)
         assertEquals("New", viewModel(HomeFilter.New).title)
-        assertEquals("A24", viewModel(HomeFilter.Studio("st1", "A24")).title)
         assertEquals("Action", viewModel(HomeFilter.Genre("g1", "Action")).title)
     }
 
@@ -95,7 +94,7 @@ class FilteredListViewModelTest {
     fun aPageWithNothingInItIsEmptyNotLoading() = runTest {
         app.signedIn().listOf(emptyList(), 60)
 
-        val state = viewModel(HomeFilter.Studio("st1", "A24")).uiState.first { !it.loading }
+        val state = viewModel(HomeFilter.Genre("g-empty", "Western")).uiState.first { !it.loading }
 
         assertTrue(state.isEmpty)
     }

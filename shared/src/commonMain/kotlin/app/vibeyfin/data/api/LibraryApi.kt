@@ -40,10 +40,6 @@ suspend fun JellyfinApi.itemsById(id: String, userId: String): ApiResult<ItemsRe
 fun itemImageUrl(baseUrl: String, itemId: String, type: String, tag: String, maxWidth: Int): String =
     "$baseUrl/Items/$itemId/Images/$type?tag=$tag&maxWidth=$maxWidth"
 
-/** `GET /Studios`: the studios behind the movies and shows [userId] can see. The server has no sort option here. */
-suspend fun JellyfinApi.studios(userId: String): ApiResult<ItemsResultDto> =
-    get("/Studios", mapOf("userId" to userId, "includeItemTypes" to "Movie,Series"), retry = true)
-
 /** `GET /Genres`: the genres of the movies and shows [userId] can see, by name. */
 suspend fun JellyfinApi.genres(userId: String): ApiResult<ItemsResultDto> = get(
     "/Genres",
@@ -52,14 +48,13 @@ suspend fun JellyfinApi.genres(userId: String): ApiResult<ItemsResultDto> = get(
 )
 
 /**
- * `GET /Items` across every library, for one category page: a type, a genre or a studio, a page at a time.
- * [genreId] and [studioId] are the server's own filters; `DateCreated` is asked for so "New" can cut the list.
+ * `GET /Items` across every library, for one category page: a type or a genre, a page at a time.
+ * [genreId] is the server's own filter; [sortBy] is a comma-separated list of the server's sort keys.
  */
 suspend fun JellyfinApi.filteredItems(
     userId: String,
     types: List<String>,
     genreId: String?,
-    studioId: String?,
     sortBy: String,
     sortOrder: String,
     startIndex: Int,
@@ -72,11 +67,9 @@ suspend fun JellyfinApi.filteredItems(
         put("includeItemTypes", types.joinToString(","))
         put("sortBy", sortBy)
         put("sortOrder", sortOrder)
-        put("fields", "DateCreated")
         put("startIndex", startIndex.toString())
         put("limit", limit.toString())
         genreId?.let { put("genreIds", it) }
-        studioId?.let { put("studioIds", it) }
     },
     retry = true,
 )

@@ -18,7 +18,7 @@ The Home tab: the same content, rows and rules on both platforms, with native ch
 
 ### Category buttons
 
-The row at the top of Home, Netflix-style: **Shows**, **Movies**, **New**, **Studios**, **Categories**, in that
+The row at the top of Home, Netflix-style: **Shows**, **Movies**, **New**, **Categories**, in that
 fixed order (configurable in Phase 7). Home itself is never filtered: every button opens something of its own.
 
 **Provide:** the buttons (`id`, `label`, whether it opens a dropdown), the open dropdown with its entries, and
@@ -26,28 +26,27 @@ handlers for a tap and for picking an entry.
 
 - One horizontally scrolling row; the next button always peeks. Nothing stays selected, and there is no clear (×).
 - **Shows**, **Movies** and **New** open a category page at once, titled with their name.
-- **Studios** and **Categories** are different, and look it: they carry a chevron and open a dropdown under the
-  button, with a search field on top. Picking an entry (a studio, a genre such as "Action") opens a category page
-  titled with its name.
+- **Categories** is different, and looks it: it carries a chevron and opens a dropdown under the button, with a
+  search field on top. Picking a genre (such as "Action") opens a category page titled with its name.
 - iOS: a horizontal `ScrollView` of capsule buttons, 36pt tall with a 44pt hit area, `surface-2`
-  (`tertiarySystemBackground`) with `ink`; Studios and Categories add a trailing `chevron.down`. A capsule on the
+  (`tertiarySystemBackground`) with `ink`; Categories adds a trailing `chevron.down`. A capsule on the
   system background, never glass. The dropdown is a popover under the button (a sheet on compact widths) with a
   search field and a list of names.
-- Android: a `LazyRow` of M3 `AssistChip`s, outlined in `line-strong` with `ink-muted`; Studios and Categories add a
+- Android: a `LazyRow` of M3 `AssistChip`s, outlined in `line-strong` with `ink-muted`; Categories adds a
   trailing dropdown arrow and open a `DropdownMenu` with a search field above a scrolling list.
 - The dropdown: loading shows grey lines, an empty list says so, what was typed matching nothing says so, a failure
   offers Try again. Each list is fetched once per session.
-- Both: aqua is not used in this row or the dropdowns. Accessibility: the row is a group named "Filter Home"; a
-  button that opens a dropdown says "Studios, opens a list".
+- Both: aqua is not used in this row or the dropdown. Accessibility: the row is a group named "Filter Home"; a
+  button that opens a dropdown says "Categories, opens a list".
 
 ### Category page
 
-The page a button or a dropdown entry opens.
+The page a button or the dropdown opens.
 
 - A new screen over Home with the bar kept (the tabs' own back stack): a back button, the **name as the title**
-  ("Shows", "Movies", "New", "A24", "Action"), then a grid of posters, the same grid as a folder's list.
-- **Shows** are series by name; **Movies** are movies by name; **New** is movies and shows added in the last 30
-  days, newest first; a studio or a genre is its movies and shows by name.
+  ("Shows", "Movies", "New", "Action"), then a grid of posters, the same grid as a folder's list.
+- **Shows** are series by name; **Movies** are movies by name; **New** is movies and shows by release year,
+  newest first; a genre is its movies and shows by name.
 - Posters open the item's page or a folder's list, like anywhere else. More load as the end comes into view.
 - Loading is grey posters, an empty page says so, a failure offers Try again, a rejected session leaves to "Who's
   watching?".

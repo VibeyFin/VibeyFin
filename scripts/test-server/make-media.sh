@@ -6,8 +6,8 @@
 #   shows/Test Show/Season 01/Test Show S01E04.mkv   prompt appears in the third, because a fourth follows it
 #   movies/HDR Sample (2026)/HDR Sample (2026).mkv   20 s HEVC HDR10 (10-bit, bt2020 / smpte2084)
 #   movies/Neon Night (2026), Quiet Harbor (2025), Old Classic (1999)   5 s clips with a movie.nfo each, for the Home
-#     category buttons: studios A24 and Neon, genres Drama, Thriller and Science Fiction. Old Classic's file is set
-#     60 days old so "New" leaves it out. Jellyfin reads the .nfo as local metadata (no online lookup).
+#     category buttons: genres Drama, Thriller and Science Fiction, and release years 2026 to 1999 for "New".
+#     Jellyfin reads the .nfo as local metadata (no online lookup).
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 

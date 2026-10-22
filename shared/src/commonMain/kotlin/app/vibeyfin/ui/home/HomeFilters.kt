@@ -4,14 +4,11 @@ import app.vibeyfin.domain.FilterOption
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.ui.common.Strings
 
-/** The five buttons under Home's header, in the order they are shown. */
+/** The four buttons under Home's header, in the order they are shown. */
 enum class CategoryKind {
     Shows,
     Movies,
     New,
-
-    /** Opens a dropdown of studios; the pick opens that studio's page. */
-    Studios,
 
     /** Opens a dropdown of genres; the pick opens that genre's page. */
     Categories,
@@ -24,7 +21,7 @@ data class CategoryButton(
     val opensDropdown: Boolean,
 )
 
-/** The Studios or Categories dropdown: loading, its entries, or why they didn't load. The screen filters [options] by what is typed. */
+/** The Categories dropdown: loading, its entries, or why they didn't load. The screen filters [options] by what is typed. */
 data class FilterDropdown(
     val kind: CategoryKind,
     val title: String,
@@ -35,23 +32,21 @@ data class FilterDropdown(
     /** The server answered and has nothing to pick from. */
     val isEmpty: Boolean get() = !loading && message == null && options.isEmpty()
 
-    val emptyText: String get() = if (kind == CategoryKind.Studios) Strings.noStudios else Strings.noCategories
+    val emptyText: String get() = Strings.noCategories
 }
 
 internal fun categoryButtons(): List<CategoryButton> = listOf(
     CategoryButton(CategoryKind.Shows, Strings.filterShows, opensDropdown = false),
     CategoryButton(CategoryKind.Movies, Strings.filterMovies, opensDropdown = false),
     CategoryButton(CategoryKind.New, Strings.filterNew, opensDropdown = false),
-    CategoryButton(CategoryKind.Studios, Strings.filterStudios, opensDropdown = true),
     CategoryButton(CategoryKind.Categories, Strings.filterCategories, opensDropdown = true),
 )
 
-/** The name at the top of a category page: the button's own, or the studio's or genre's name. */
+/** The name at the top of a category page: the button's own, or the genre's name. */
 val HomeFilter.title: String
     get() = when (this) {
         HomeFilter.Shows -> Strings.filterShows
         HomeFilter.Movies -> Strings.filterMovies
         HomeFilter.New -> Strings.filterNew
-        is HomeFilter.Studio -> name
         is HomeFilter.Genre -> name
     }

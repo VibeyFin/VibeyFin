@@ -23,7 +23,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** Home's category buttons: Shows, Movies and New open their page; Studios and Categories open a dropdown first. */
+/** Home's category buttons: Shows, Movies and New open their page; Categories opens a dropdown first. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeFilterViewModelTest {
     private val app = TestApp()
@@ -44,14 +44,12 @@ class HomeFilterViewModelTest {
     private fun viewModel() = viewModels.track(HomeViewModel(app.connection, app.library, app.watch, app.watchChanges, app.clock))
 
     private suspend fun server(
-        studios: Reply = Reply.json(itemsJson(itemJson("st2", "Neon", type = "Studio"), itemJson("st1", "A24", type = "Studio"))),
-        genres: Reply = Reply.json(itemsJson(itemJson("g1", "Drama", type = "Genre"))),
+        genres: Reply = Reply.json(itemsJson(itemJson("g2", "Thriller", type = "Genre"), itemJson("g1", "Drama", type = "Genre"))),
     ): FakeServer {
         val server = app.signedIn()
         server.on("GET", "/UserViews", Reply.json(itemsJson(itemJson("lib", "Movies", type = "CollectionFolder", isFolder = true))))
         server.on("GET", "/UserItems/Resume", Reply.json(itemsJson()))
         server.on("GET", "/Shows/NextUp", Reply.json(itemsJson()))
-        server.on("GET", "/Studios", studios)
         server.on("GET", "/Genres", genres)
         return server
     }
@@ -59,13 +57,13 @@ class HomeFilterViewModelTest {
     private suspend fun HomeViewModel.loaded() = uiState.first { it.serverId != null && !it.loadingLibraries && !it.continueRow.loading }
 
     @Test
-    fun homeShowsTheFiveButtonsInOrderAndOnlyTwoOpenADropdown() = runTest {
+    fun homeShowsTheFourButtonsInOrderAndOnlyTwoOpenADropdown() = runTest {
         server()
 
         val state = viewModel().loaded()
 
-        assertEquals(listOf("Shows", "Movies", "New", "Studios", "Categories"), state.buttons.map { it.label })
-        assertEquals(listOf(false, false, false, true, true), state.buttons.map { it.opensDropdown })
+        assertEquals(listOf("Shows", "Movies", "New", "Categories"), state.buttons.map { it.label })
+        assertEquals(listOf(false, false, false, true), state.buttons.map { it.opensDropdown })
         assertNull(state.dropdown)
         assertNull(state.openList)
     }
@@ -91,22 +89,22 @@ class HomeFilterViewModelTest {
     }
 
     @Test
-    fun theStudiosDropdownListsStudiosByNameAndPickingOneOpensItsPage() = runTest {
+    fun theCategoriesDropdownListsGenresByNameAndPickingOneOpensItsPage() = runTest {
         server()
         val viewModel = viewModel()
         viewModel.loaded()
 
-        viewModel.onCategory(CategoryKind.Studios)
+        viewModel.onCategory(CategoryKind.Categories)
         assertNull(viewModel.uiState.value.openList)
         val dropdown = assertNotNull(viewModel.uiState.first { it.dropdown?.loading == false }.dropdown)
 
-        assertEquals("Studios", dropdown.title)
-        assertEquals(listOf("A24", "Neon"), dropdown.options.map { it.name })
+        assertEquals("Categories", dropdown.title)
+        assertEquals(listOf("Drama", "Thriller"), dropdown.options.map { it.name })
 
-        viewModel.onPickOption("st1")
+        viewModel.onPickOption("g1")
         val state = viewModel.uiState.value
 
-        assertEquals(HomeFilter.Studio("st1", "A24"), state.openList)
+        assertEquals(HomeFilter.Genre("g1", "Drama"), state.openList)
         assertNull(state.dropdown)
     }
 
@@ -124,7 +122,7 @@ class HomeFilterViewModelTest {
 
         viewModel.onCategory(CategoryKind.Categories)
         // Opened again, the list comes from memory: it is already there and the server was asked once.
-        assertEquals(listOf("Drama"), viewModel.uiState.value.dropdown?.options?.map { it.name })
+        assertEquals(listOf("Drama", "Thriller"), viewModel.uiState.value.dropdown?.options?.map { it.name })
         assertEquals(1, app.jellyfin.requestsTo("GET", "/Genres").size)
         assertTrue(server.address.isNotEmpty())
     }
@@ -149,16 +147,16 @@ class HomeFilterViewModelTest {
     }
 
     @Test
-    fun anEmptyStudiosListSaysSo() = runTest {
-        server(studios = Reply.json(itemsJson()))
+    fun anEmptyGenresListSaysSo() = runTest {
+        server(genres = Reply.json(itemsJson()))
         val viewModel = viewModel()
         viewModel.loaded()
 
-        viewModel.onCategory(CategoryKind.Studios)
+        viewModel.onCategory(CategoryKind.Categories)
         val dropdown = assertNotNull(viewModel.uiState.first { it.dropdown?.loading == false }.dropdown)
 
         assertTrue(dropdown.isEmpty)
-        assertEquals("This server has no studios.", dropdown.emptyText)
+        assertEquals("This server has no categories.", dropdown.emptyText)
     }
 
     @Test
@@ -167,7 +165,7 @@ class HomeFilterViewModelTest {
         val viewModel = viewModel()
         viewModel.loaded()
 
-        viewModel.onCategory(CategoryKind.Studios)
+        viewModel.onCategory(CategoryKind.Categories)
         viewModel.onDismissDropdown()
 
         assertNull(viewModel.uiState.value.dropdown)

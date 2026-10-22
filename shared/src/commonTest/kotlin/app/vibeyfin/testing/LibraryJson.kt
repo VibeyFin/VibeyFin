@@ -23,8 +23,6 @@ fun itemJson(
     /** Where the user stopped; with [played] this becomes the item's `UserData`. */
     positionTicks: Long? = null,
     played: Boolean? = null,
-    /** When the item was added, as the server writes it (ISO-8601). */
-    dateCreated: String? = null,
     /** `ImageBlurHashes` as the server sends it: image type, then image tag, then the hash. */
     blurHashes: Map<String, Map<String, String>> = emptyMap(),
 ): String {
@@ -59,7 +57,6 @@ fun itemJson(
                 """{"PlaybackPositionTicks":${positionTicks ?: 0},"Played":${played ?: false}}"""
             }
         }""",
-        """"DateCreated":${string(dateCreated)}""",
         """"SomethingWeDontRead":true""",
     )
     return fields.joinToString(prefix = "{", postfix = "}")

@@ -58,7 +58,7 @@ data class HomeUiState(
     val exit: HomeExit? = null,
     /** The category buttons under the header, in order. */
     val buttons: List<CategoryButton> = categoryButtons(),
-    /** The Studios or Categories dropdown while it is open. */
+    /** The Categories dropdown while it is open. */
     val dropdown: FilterDropdown? = null,
     /** Set when a category page should open (a button or a dropdown entry was chosen); the screen calls `onListOpened`. */
     val openList: HomeFilter? = null,
@@ -101,7 +101,6 @@ class HomeViewModel(
     private val categoryUi = MutableStateFlow(CategoryUi())
     private var dropdownJob: Job? = null
     // The dropdowns' lists, fetched once per session when first opened.
-    private var studioOptions: List<FilterOption>? = null
     private var genreOptions: List<FilterOption>? = null
 
     private val screen = combine(connection.state, exit, libraries, continueRow, refreshing) { state, exit, libraries, continueRow, refreshing ->
@@ -138,10 +137,9 @@ class HomeViewModel(
                 .filterNotNull()
                 .distinctUntilChanged()
                 .collectLatest {
-                    // Another profile or address has its own studios and genres.
+                    // Another profile or address has its own genres.
                     dropdownJob?.cancel()
                     categoryUi.value = CategoryUi()
-                    studioOptions = null
                     genreOptions = null
                     coroutineScope {
                         launch { loadLibraries() }
@@ -271,7 +269,7 @@ class HomeViewModel(
             CategoryKind.Shows -> categoryUi.update { it.copy(openList = HomeFilter.Shows) }
             CategoryKind.Movies -> categoryUi.update { it.copy(openList = HomeFilter.Movies) }
             CategoryKind.New -> categoryUi.update { it.copy(openList = HomeFilter.New) }
-            CategoryKind.Studios, CategoryKind.Categories -> openDropdown(kind)
+            CategoryKind.Categories -> openDropdown()
         }
     }
 
@@ -279,7 +277,7 @@ class HomeViewModel(
     fun onPickOption(id: String) {
         val dropdown = categoryUi.value.dropdown ?: return
         val option = dropdown.options.firstOrNull { it.id == id } ?: return
-        val filter = if (dropdown.kind == CategoryKind.Studios) HomeFilter.Studio(option.id, option.name) else HomeFilter.Genre(option.id, option.name)
+        val filter = HomeFilter.Genre(option.id, option.name)
         dropdownJob?.cancel()
         categoryUi.value = CategoryUi(openList = filter)
     }
@@ -296,33 +294,31 @@ class HomeViewModel(
     fun onRetryDropdown() {
         val dropdown = categoryUi.value.dropdown ?: return
         categoryUi.update { it.copy(dropdown = dropdown.copy(loading = true, message = null)) }
-        loadDropdown(dropdown.kind)
+        loadDropdown()
     }
 
-    private fun openDropdown(kind: CategoryKind) {
-        val cached = if (kind == CategoryKind.Studios) studioOptions else genreOptions
+    private fun openDropdown() {
+        val cached = genreOptions
         categoryUi.update {
             it.copy(
                 dropdown = FilterDropdown(
-                    kind = kind,
-                    title = if (kind == CategoryKind.Studios) Strings.filterStudios else Strings.filterCategories,
+                    kind = CategoryKind.Categories,
+                    title = Strings.filterCategories,
                     options = cached.orEmpty(),
                     loading = cached == null,
                 ),
             )
         }
-        if (cached == null) loadDropdown(kind)
+        if (cached == null) loadDropdown()
     }
 
-    private fun loadDropdown(kind: CategoryKind) {
+    private fun loadDropdown() {
         dropdownJob?.cancel()
         dropdownJob = viewModelScope.launch {
-            val result = if (kind == CategoryKind.Studios) library.studios() else library.genres()
-            if (result is ApiResult.Success) {
-                if (kind == CategoryKind.Studios) studioOptions = result.value else genreOptions = result.value
-            }
+            val result = library.genres()
+            if (result is ApiResult.Success) genreOptions = result.value
             categoryUi.update { ui ->
-                val dropdown = ui.dropdown?.takeIf { it.kind == kind } ?: return@update ui
+                val dropdown = ui.dropdown ?: return@update ui
                 ui.copy(
                     dropdown = when (result) {
                         is ApiResult.Success -> dropdown.copy(options = result.value, loading = false, message = null)

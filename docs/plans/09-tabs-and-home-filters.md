@@ -1,12 +1,13 @@
 # Plan 09: Tabs and Home category buttons (first part of roadmap Phase 4)
 
 > **Changed 2026-10-22 at the owner's request:** the buttons no longer filter Home in place. Each opens a category page
-> titled with its name; Studios and Categories are a dropdown with search first. Decisions 5 to 9 and Phases B to D below
+> titled with its name; Categories is a dropdown with search first. Later the same day: the Studios button was removed, and
+> New became by release year, newest first, instead of added in the last 30 days. Decisions 5 to 9 and Phases B to D below
 > describe the first design (in-place filtering); read them with this note. What replaced them is in `screens.md`
 > "Category buttons" and "Category page", and in `FilteredListViewModel`.
 
 Goal: Home, Library and Downloads as three tabs with their own back stacks, and the Home category
-buttons (Shows, Movies, New, Studios, Categories) that filter Home in place, on Android and iOS.
+buttons (Shows, Movies, New, Categories) that filter Home in place, on Android and iOS.
 
 **Status (2026-10-22):** Phases A, B and C built on `feature/tabs-and-home-filters` (A run on the Android emulator, iOS only parsed; B is `shared/` with tests; C run on the emulator against the test server); D not started. The state audit (skeletons) is done on
 `feature/state-audit`; this plan builds on it. Calls marked *(my call)* are guesses for the owner to confirm.
