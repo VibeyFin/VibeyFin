@@ -320,9 +320,9 @@ private fun EpisodeCard(episode: MediaItem, width: Dp, current: Boolean, onPlay:
     }
 }
 
-/** A row of the actors: a round picture, the name and the part they play. A person with no picture is a grey disc with initials. */
+/** A row of the actors: a round picture, the name and the part they play; one opens their page. A person with no picture is a grey disc with initials. */
 @Composable
-fun CastSection(cast: List<CastMember>, margin: Dp, tile: Dp) {
+fun CastSection(cast: List<CastMember>, margin: Dp, tile: Dp, onOpenPerson: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         SectionTitle(Strings.cast, modifier = Modifier.semantics { heading() })
         LazyRow(
@@ -330,15 +330,19 @@ fun CastSection(cast: List<CastMember>, margin: Dp, tile: Dp) {
             contentPadding = PaddingValues(horizontal = margin),
             horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         ) {
-            items(cast.distinctBy { it.id }, key = { it.id }) { person -> CastTile(person, tile) }
+            items(cast.distinctBy { it.id }, key = { it.id }) { person -> CastTile(person, tile, onClick = { onOpenPerson(person.id) }) }
         }
     }
 }
 
 @Composable
-private fun CastTile(person: CastMember, tile: Dp) {
+private fun CastTile(person: CastMember, tile: Dp, onClick: () -> Unit) {
     Column(
-        modifier = Modifier.width(tile),
+        modifier = Modifier
+            .width(tile)
+            .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = Strings.personDescription(person.name, person.role) },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
     ) {

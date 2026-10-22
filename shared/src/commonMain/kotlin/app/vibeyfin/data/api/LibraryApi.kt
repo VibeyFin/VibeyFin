@@ -102,6 +102,24 @@ suspend fun JellyfinApi.seasonsOf(userId: String, seriesId: String): ApiResult<I
 suspend fun JellyfinApi.episodesOfSeason(userId: String, seriesId: String, seasonId: String): ApiResult<ItemsResultDto> =
     get("/Shows/$seriesId/Episodes", mapOf("userId" to userId, "seasonId" to seasonId, "fields" to "Overview"), retry = true)
 
+/** `GET /Items?personIds=`: the movies and shows in the library that [personId] appears in, newest first. */
+suspend fun JellyfinApi.itemsOfPerson(userId: String, personId: String): ApiResult<ItemsResultDto> = get(
+    "/Items",
+    mapOf(
+        "userId" to userId,
+        "personIds" to personId,
+        "recursive" to "true",
+        "includeItemTypes" to "Movie,Series",
+        "sortBy" to "PremiereDate,SortName",
+        "sortOrder" to "Descending",
+    ),
+    retry = true,
+)
+
+/** `GET /Items/{id}/SpecialFeatures`: behind the scenes, extras and the like; a plain list, not a page. */
+suspend fun JellyfinApi.specialFeatures(userId: String, id: String): ApiResult<List<BaseItemDto>> =
+    get("/Items/$id/SpecialFeatures", mapOf("userId" to userId), retry = true)
+
 /** `GET /Items/{id}/Collections`: the collections (box sets) the item is part of. */
 suspend fun JellyfinApi.collectionsOf(userId: String, id: String): ApiResult<ItemsResultDto> =
     get("/Items/$id/Collections", mapOf("userId" to userId), retry = true)

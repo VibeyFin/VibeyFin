@@ -67,6 +67,8 @@ data class ItemUiState(
     val similar: MediaRow? = null,
     /** "In collections": the box sets the item is part of; not [MediaRow.isVisible] when it is in none. Null until the page is read. */
     val collections: MediaRow? = null,
+    /** "Extras": behind the scenes and the like; not [MediaRow.isVisible] when the item has none. Null until the page is read. */
+    val extras: MediaRow? = null,
     /** A show's seasons and episodes. */
     val seasons: SeasonsState = SeasonsState(),
     /** Set when the session ended and the screen must be left. */
@@ -147,6 +149,11 @@ class ItemViewModel(
     /** "Try again" on "More like this". */
     fun onRetrySimilar() {
         viewModelScope.launch { loadSimilar() }
+    }
+
+    /** "Try again" on "Extras". */
+    fun onRetryExtras() {
+        viewModelScope.launch { loadExtras() }
     }
 
     /** "Try again" on "In collections". */
@@ -294,6 +301,7 @@ class ItemViewModel(
                         if (item.localTrailerCount > 0) launch { loadLocalTrailer() }
                         // Movies and shows can be in collections; an episode or a season is not.
                         if (item.kind == ItemKind.Movie || item.kind == ItemKind.Series) launch { loadCollections() }
+                        if (item.kind == ItemKind.Movie || item.kind == ItemKind.Series) launch { loadExtras() }
                         if (item.kind == ItemKind.Series) launch { loadSeasons() }
                     }
                 }
@@ -305,6 +313,19 @@ class ItemViewModel(
     private suspend fun loadLocalTrailer() {
         val trailer = (library.localTrailer(itemId) as? ApiResult.Success)?.value ?: return
         content.update { it.copy(trailer = Trailer.Local(trailer.id)) }
+    }
+
+    private suspend fun loadExtras() {
+        content.update { it.copy(extras = MediaRow("extras", Strings.extras, loading = true)) }
+        val result = library.specialFeatures(itemId)
+        content.update {
+            it.copy(
+                extras = when (result) {
+                    is ApiResult.Success -> MediaRow("extras", Strings.extras, items = result.value, loading = false)
+                    is ApiResult.Failure -> MediaRow("extras", Strings.extras, loading = false, message = LoadMessages.forError(result.error))
+                },
+            )
+        }
     }
 
     private suspend fun loadCollections() {

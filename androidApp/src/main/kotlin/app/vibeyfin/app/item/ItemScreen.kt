@@ -1,5 +1,6 @@
 package app.vibeyfin.app.item
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -66,6 +67,8 @@ fun ItemRoute(
     onOpen: (MediaItem) -> Unit,
     /** An episode's or a season's page leads back to its show. */
     onOpenSeries: (String) -> Unit,
+    /** A cast member's picture or name opens their page. */
+    onOpenPerson: (String) -> Unit,
     onExit: (HomeExit) -> Unit,
     viewModel: ItemViewModel = koinViewModel(parameters = { parametersOf(itemId) }),
 ) {
@@ -80,6 +83,7 @@ fun ItemRoute(
         onPlayEpisode = { episodeId -> onPlay(episodeId, false) },
         onOpen = onOpen,
         onOpenSeries = onOpenSeries,
+        onOpenPerson = onOpenPerson,
         onToggleFavorite = viewModel::onToggleFavorite,
         onRetry = viewModel::onRetry,
         onTogglePlayed = viewModel::onTogglePlayed,
@@ -87,6 +91,7 @@ fun ItemRoute(
         onSelectSeason = viewModel::onSelectSeason,
         onRetrySimilar = viewModel::onRetrySimilar,
         onRetryCollections = viewModel::onRetryCollections,
+        onRetryExtras = viewModel::onRetryExtras,
         onRetrySeasons = viewModel::onRetrySeasons,
         onRetryEpisodes = viewModel::onRetryEpisodes,
         onRetryAction = viewModel::onRetryAction,
@@ -102,6 +107,7 @@ fun ItemScreen(
     onPlayEpisode: (String) -> Unit,
     onOpen: (MediaItem) -> Unit,
     onOpenSeries: (String) -> Unit,
+    onOpenPerson: (String) -> Unit,
     onToggleFavorite: () -> Unit,
     onRetry: () -> Unit,
     onTogglePlayed: () -> Unit,
@@ -109,6 +115,7 @@ fun ItemScreen(
     onSelectSeason: (String) -> Unit,
     onRetrySimilar: () -> Unit,
     onRetryCollections: () -> Unit,
+    onRetryExtras: () -> Unit,
     onRetrySeasons: () -> Unit,
     onRetryEpisodes: () -> Unit,
     onRetryAction: () -> Unit,
@@ -130,7 +137,7 @@ fun ItemScreen(
                 item != null -> BoxWithConstraints(Modifier.fillMaxSize()) {
                     ItemPage(
                         item, state, wide = maxWidth >= WIDE_FROM, screenWidth = maxWidth, screenHeight = maxHeight,
-                        onPlay, onPlayEpisode, onOpen, onOpenSeries, onToggleFavorite, onTogglePlayed, onToggleEpisodePlayed, onSelectSeason, onRetrySimilar, onRetryCollections, onRetrySeasons, onRetryEpisodes,
+                        onPlay, onPlayEpisode, onOpen, onOpenSeries, onToggleFavorite, onTogglePlayed, onToggleEpisodePlayed, onSelectSeason, onRetrySimilar, onRetryCollections, onRetrySeasons, onRetryEpisodes, onOpenPerson, onRetryExtras,
                     )
                 }
             }
@@ -145,6 +152,8 @@ private val WIDE_FROM = 600.dp
 
 private val POSTER_WIDE = 168.dp
 private val CAST_TILE_NARROW = 88.dp
+private val EXTRA_NARROW = 200.dp
+private val EXTRA_WIDE = 260.dp
 private val CAST_TILE_WIDE = 112.dp
 
 /**
@@ -172,6 +181,8 @@ private fun ItemPage(
     onRetryCollections: () -> Unit,
     onRetrySeasons: () -> Unit,
     onRetryEpisodes: () -> Unit,
+    onOpenPerson: (String) -> Unit,
+    onRetryExtras: () -> Unit,
 ) {
     // Larger margins and posters on a tablet (`screens.md`).
     val margin = if (wide) VibeyFinTokens.Space.s6 else screenMargin()
@@ -183,8 +194,12 @@ private fun ItemPage(
             if (item.kind == ItemKind.Series) {
                 SeasonsSection(state.seasons, margin, wide, onSelectSeason, onPlayEpisode, onToggleEpisodePlayed, onRetrySeasons, onRetryEpisodes)
             }
-            if (item.cast.isNotEmpty()) CastSection(item.cast, margin, tile = if (wide) CAST_TILE_WIDE else CAST_TILE_NARROW)
+            if (item.cast.isNotEmpty()) CastSection(item.cast, margin, tile = if (wide) CAST_TILE_WIDE else CAST_TILE_NARROW, onOpenPerson = onOpenPerson)
             // The collections it is part of: a poster each, and one opens the collection's members.
+            // Behind the scenes and the like: wide tiles, as they are clips, not posters.
+            state.extras?.takeIf { it.isVisible }?.let { row ->
+                MediaRowSection(row, margin, onOpen, onSeeAll = null, onRetry = onRetryExtras, tileWidth = if (wide) EXTRA_WIDE else EXTRA_NARROW)
+            }
             state.collections?.takeIf { it.isVisible }?.let { row ->
                 MediaRowSection(row, margin, onOpen, onSeeAll = null, onRetry = onRetryCollections, tileWidth = if (wide) POSTER_WIDE else VibeyFinTokens.Size.posterWidth)
             }
@@ -197,9 +212,19 @@ private fun ItemPage(
     }
     val scroll = rememberScrollState()
     if (!wide) {
-        Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
-            ItemHero(item, state, margin, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer = onPlayEpisode, onTogglePlayed = onTogglePlayed)
-            sections()
+        // The picture is pinned behind the page and shrinks faster than the text scrolls, so the page's own content is reached
+        // without scrolling past the whole picture; what scrolls up covers it.
+        val heroHeight = minOf(screenWidth * PHONE_HERO_BY_WIDTH, screenHeight * PHONE_HERO_BY_HEIGHT)
+        Box(Modifier.fillMaxSize()) {
+            CollapsingBackdrop(item, heroHeight, scroll)
+            Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
+                Box(Modifier.fillMaxWidth().height(heroHeight)) {
+                    Column(Modifier.align(Alignment.BottomCenter).padding(horizontal = margin).padding(bottom = VibeyFinTokens.Space.s4)) {
+                        HeroDetails(item, state, centered = true, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer = onPlayEpisode, onTogglePlayed = onTogglePlayed)
+                    }
+                }
+                Box(Modifier.fillMaxWidth().background(VibeyFinTokens.Colors.bg)) { sections() }
+            }
         }
         return
     }
@@ -218,6 +243,10 @@ private fun ItemPage(
         }
     }
 }
+
+/** A phone's picture is this tall relative to the width, and at most this share of the screen. */
+private const val PHONE_HERO_BY_WIDTH = 1.4f
+private const val PHONE_HERO_BY_HEIGHT = 0.62f
 
 /** How far the page has to scroll for the backdrop to be fully darkened: the first screen. */
 private const val FIRST_SCREEN = 0.7f

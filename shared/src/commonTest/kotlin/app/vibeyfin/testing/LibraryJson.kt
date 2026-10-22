@@ -42,6 +42,9 @@ fun itemJson(
     /** On a genre: how many movies and shows carry it (`fields=ItemCounts`). */
     movieCount: Int? = null,
     seriesCount: Int? = null,
+    /** On a person: the birth date, as the server sends it. */
+    premiereDate: String? = null,
+    productionLocations: List<String> = emptyList(),
     /** `ImageBlurHashes` as the server sends it: image type, then image tag, then the hash. */
     blurHashes: Map<String, Map<String, String>> = emptyMap(),
 ): String {
@@ -84,6 +87,8 @@ fun itemJson(
         """"SeriesCount":${seriesCount ?: "null"}""",
         """"People":[${people.joinToString(",")}]""",
         """"ChildCount":${childCount ?: "null"}""",
+        """"PremiereDate":${string(premiereDate)}""",
+        """"ProductionLocations":[${productionLocations.joinToString(",") { "\"$it\"" }}]""",
         """"SomethingWeDontRead":true""",
     )
     return fields.joinToString(prefix = "{", postfix = "}")

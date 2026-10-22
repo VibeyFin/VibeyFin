@@ -41,6 +41,10 @@ data object Startup
 @Serializable
 data object Settings
 
+/** A cast member's page: their biography and what they appear in. */
+@Serializable
+data class Person(val personId: String)
+
 /** What is inside a library, folder, series or season. [title] is shown at the top while it loads. */
 @Serializable
 data class Children(val parentId: String, val title: String)

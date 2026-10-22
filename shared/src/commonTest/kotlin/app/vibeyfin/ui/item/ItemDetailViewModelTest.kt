@@ -300,6 +300,7 @@ class ItemDetailViewModelTest {
         server.on("GET", "/Items", Reply.json(itemsJson(item)))
         server.on("GET", "/Items/m1/Similar", Reply.json(itemsJson()))
         server.on("GET", "/Items/m1/Collections", Reply.json(itemsJson()))
+        server.on("GET", "/Items/m1/SpecialFeatures", Reply.json("[]"))
         return server
     }
 
@@ -414,5 +415,25 @@ class ItemDetailViewModelTest {
         val state = viewModel("show").shown()
 
         assertEquals(listOf("Specials", "Season 1", "Season 2"), state.seasons.seasons.map { it.seasonLabel })
+    }
+
+    @Test
+    fun extrasAreAskedForAndShownAsARowOrHiddenWhenThereAreNone() = runTest {
+        val server = movieServer(itemJson("m1", "Heat"))
+        server.on("GET", "/Items/m1/SpecialFeatures", Reply.json("[" + itemJson("x1", "Making of", type = "Video") + "]"))
+
+        val state = viewModel("m1").uiState.first { it.extras?.loading == false }
+
+        assertEquals(listOf("x1"), state.extras?.items?.map { it.id })
+        assertTrue(state.extras?.isVisible == true)
+    }
+
+    @Test
+    fun noExtrasLeavesNoRow() = runTest {
+        movieServer(itemJson("m1", "Heat"))
+
+        val state = viewModel("m1").uiState.first { it.extras?.loading == false }
+
+        assertFalse(state.extras?.isVisible == true)
     }
 }

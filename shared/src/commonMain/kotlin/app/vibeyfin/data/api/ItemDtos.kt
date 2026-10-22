@@ -43,6 +43,10 @@ data class BaseItemDto(
     /** On a genre: how many movies and shows carry it; only sent when asked for (`fields=ItemCounts`). */
     @SerialName("MovieCount") val movieCount: Int? = null,
     @SerialName("SeriesCount") val seriesCount: Int? = null,
+    /** On a person: the birth date (`1999-10-17T00:00:00.0000000Z`); on a title, its release date. */
+    @SerialName("PremiereDate") val premiereDate: String? = null,
+    /** On a person: where they were born. */
+    @SerialName("ProductionLocations") val productionLocations: List<String> = emptyList(),
     /** The tracks of the item's file; only sent when asked for (see `DETAIL_FIELDS`). */
     @SerialName("MediaStreams") val mediaStreams: List<MediaStreamDto> = emptyList(),
     /** Trickplay thumbnails by media source id, then by width in pixels; only sent when asked for. */

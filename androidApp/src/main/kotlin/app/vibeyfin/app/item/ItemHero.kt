@@ -3,6 +3,8 @@ package app.vibeyfin.app.item
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.layout
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.graphicsLayer
@@ -152,6 +154,49 @@ fun ItemBackdrop(item: MediaItem, screenWidth: Dp, screenHeight: Dp, progress: F
         Box(Modifier.matchParentSize().background(VibeyFinTokens.Colors.bg.copy(alpha = MAX_DARKEN * progress.coerceIn(0f, 1f))))
     }
 }
+
+/**
+ * A phone's picture: pinned at the top, [height] tall, and shrinking from the bottom as the page scrolls, faster than the text
+ * moves, so the page's content comes up without scrolling past all of it. A scrim under the text fades it into the page.
+ */
+@Composable
+fun CollapsingBackdrop(item: MediaItem, height: Dp, scroll: androidx.compose.foundation.ScrollState) {
+    val fullPx = with(androidx.compose.ui.platform.LocalDensity.current) { height.roundToPx() }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            // Read in the layout step, so scrolling re-measures this box and nothing else.
+            .layout { measurable, constraints ->
+                val shown = (fullPx - (scroll.value * COLLAPSE_RATE).toInt()).coerceIn(0, fullPx)
+                val placeable = measurable.measure(constraints.copy(minHeight = shown, maxHeight = shown))
+                layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+            }
+            .clipToBounds(),
+    ) {
+        val picture = item.backdropUrl ?: item.posterUrl
+        if (picture != null) {
+            Artwork(
+                url = picture,
+                title = item.title,
+                aspectRatio = 2f / 3f,
+                blurHash = if (item.backdropUrl != null) item.backdropBlurHash else item.posterBlurHash,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Box(Modifier.fillMaxSize().background(VibeyFinTokens.Colors.surface2))
+        }
+        val scrim = VibeyFinTokens.Colors.scrim
+        val scrimStrong = VibeyFinTokens.Colors.scrimStrong
+        Box(
+            Modifier.matchParentSize().background(
+                Brush.verticalGradient(0f to scrim, 0.18f to Color.Transparent, 0.40f to Color.Transparent, 0.60f to scrim, 0.82f to scrimStrong, 1f to VibeyFinTokens.Colors.bg),
+            ),
+        )
+    }
+}
+
+/** The picture shrinks this many times faster than the page scrolls. */
+private const val COLLAPSE_RATE = 1.7f
 
 /** How dark the backdrop gets once the page has scrolled a screen: nearly the page's own colour, with a hint of the picture left. */
 private const val MAX_DARKEN = 0.94f

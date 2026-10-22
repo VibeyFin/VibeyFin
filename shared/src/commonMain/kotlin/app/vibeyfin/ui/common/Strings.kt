@@ -345,6 +345,14 @@ object Strings {
     val technicalInfo = "Technical info"
     val more = "More"
     val less = "Less"
+    /** A cast member's page. */
+    fun born(year: Int) = "Born $year"
+    val appearsIn = "Appears in"
+    val noAppearances = "Nothing in your library yet."
+    val noBiography = "No biography on the server."
+    fun personDescription(name: String, role: String?) = if (role.isNullOrBlank()) "$name, opens their page" else "$name as $role, opens their page"
+    val extras = "Extras"
+
     /** The sub-headings of a collection's members. */
     val collectionMovies = "Movies"
     val collectionShows = "Shows"

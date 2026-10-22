@@ -11,6 +11,9 @@ import app.vibeyfin.data.api.map
 import app.vibeyfin.data.api.userViews
 import app.vibeyfin.data.api.genres
 import app.vibeyfin.data.api.collectionsOf
+import app.vibeyfin.data.api.itemsOfPerson
+import app.vibeyfin.data.api.specialFeatures
+import app.vibeyfin.domain.model.Person
 import app.vibeyfin.data.api.localTrailers
 import app.vibeyfin.data.api.latestItems
 import app.vibeyfin.data.api.seasonsOf
@@ -58,6 +61,26 @@ class LibraryRepository(private val connection: ConnectionManager) {
     /** The trailer the server itself holds for [id], or null when it has none. */
     suspend fun localTrailer(id: String): ApiResult<MediaItem?> = call { api, userId ->
         api.localTrailers(userId, id).map { items -> items.firstOrNull()?.toMediaItem(api.baseUrl) }
+    }
+
+    /** [id]'s own page: a cast member's biography and picture. A person the server doesn't know is [ApiError.NotFound]. */
+    suspend fun person(id: String): ApiResult<Person> = call { api, userId ->
+        when (val result = api.itemsById(id, userId)) {
+            is ApiResult.Failure -> result
+            is ApiResult.Success -> result.value.items.firstOrNull()
+                ?.let { ApiResult.Success(it.toPerson(api.baseUrl)) }
+                ?: ApiResult.Failure(ApiError.NotFound)
+        }
+    }
+
+    /** The movies and shows in the library that [personId] appears in, newest first. */
+    suspend fun appearancesOf(personId: String): ApiResult<List<MediaItem>> = call { api, userId ->
+        api.itemsOfPerson(userId, personId).map { result -> result.items.map { it.toMediaItem(api.baseUrl) } }
+    }
+
+    /** Behind the scenes and extras of [id]; each is a video that plays from its own page. */
+    suspend fun specialFeatures(id: String): ApiResult<List<MediaItem>> = call { api, userId ->
+        api.specialFeatures(userId, id).map { items -> items.map { it.toMediaItem(api.baseUrl) } }
     }
 
     /** The collections (box sets) [id] is part of, each one a folder that opens its members. */
@@ -151,6 +174,19 @@ private const val CAST_WIDTH = 200
 private const val TALL = 2f / 3f
 private const val WIDE = 16f / 9f
 private const val TICKS_PER_MINUTE = 600_000_000L
+
+private fun BaseItemDto.toPerson(baseUrl: String): Person {
+    val tag = imageTags["Primary"]
+    return Person(
+        id = id,
+        name = name.orEmpty(),
+        overview = overview?.takeIf { it.isNotBlank() },
+        bornYear = premiereDate?.take(4)?.toIntOrNull(),
+        birthplace = productionLocations.firstOrNull()?.takeIf { it.isNotBlank() },
+        imageUrl = tag?.let { itemImageUrl(baseUrl, id, "Primary", it, POSTER_WIDTH) },
+        imageBlurHash = tag?.let { blurHash("Primary", it) },
+    )
+}
 
 internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
     val kind = when (type) {

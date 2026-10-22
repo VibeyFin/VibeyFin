@@ -27,6 +27,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import app.vibeyfin.app.addserver.AddServerRoute
 import app.vibeyfin.app.children.ChildrenRoute
+import app.vibeyfin.app.person.PersonRoute
 import app.vibeyfin.app.filtered.FilteredListRoute
 import app.vibeyfin.app.home.HomeRoute
 import app.vibeyfin.app.item.ItemRoute
@@ -232,6 +233,15 @@ private fun NavGraphBuilder.details(navController: NavHostController, leave: (Ho
             onPlay = { playId, startOver -> navController.navigate(Player(playId, startOver)) },
             onOpen = open,
             onOpenSeries = { seriesId -> navController.navigate(Item(seriesId)) },
+            onOpenPerson = { personId -> navController.navigate(Person(personId)) },
+            onExit = leave,
+        )
+    }
+    composable<Person> { entry ->
+        PersonRoute(
+            personId = entry.toRoute<Person>().personId,
+            onBack = { navController.popBackStack() },
+            onOpen = open,
             onExit = leave,
         )
     }
