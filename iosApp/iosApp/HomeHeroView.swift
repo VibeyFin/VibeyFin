@@ -55,12 +55,14 @@ struct HomeHeroView: View {
                 PrimaryButton(action: onPlay) {
                     Label(Strings.shared.play.titleCased(), systemImage: "play.fill")
                 }
+                // A size smaller than the page's large buttons: they sit on a picture.
+                .controlSize(.regular)
                 // Not aqua: aqua is the one primary action. A soft, see-through button over the picture.
                 Button(action: onMyList) {
                     Label(Strings.shared.myList.titleCased(), systemImage: item.isFavorite ? "checkmark" : "plus")
                         .font(.body.weight(.medium))
                         .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .frame(maxWidth: .infinity, minHeight: 40)
                         .background(Capsule().fill(Color.white.opacity(0.2)))
                 }
                 .buttonStyle(PressableButtonStyle())
