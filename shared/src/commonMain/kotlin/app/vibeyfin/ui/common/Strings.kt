@@ -101,6 +101,9 @@ object Strings {
     /** What a screen reader says while the Continue watching row is still loading. */
     val loadingContinueWatching = "Loading Continue watching"
 
+    /** What a screen reader says while a screen shows grey placeholders instead of its content. */
+    val loadingPage = "Loading"
+
     /**
      * What a screen reader says for a Continue watching card: the title, what it is (the episode, or
      * a movie's year) and, for something in progress, how far in the user is.

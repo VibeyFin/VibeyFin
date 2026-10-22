@@ -30,7 +30,7 @@ struct ItemView: View {
                             LoadErrorView(message: message, onRetry: { model.retry() })
                         }
                     } else {
-                        LoadingIndicator()
+                        ItemSkeleton()
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

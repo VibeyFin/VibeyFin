@@ -163,18 +163,3 @@ fun ContinueSkeletonCards(modifier: Modifier = Modifier) {
         }
     }
 }
-
-/** A grey bar as tall as one line of [style], so the skeleton is exactly as tall as the real card. */
-@Composable
-private fun SkeletonLine(width: androidx.compose.ui.unit.Dp, style: androidx.compose.ui.text.TextStyle) {
-    Box(Modifier.width(width)) {
-        Text(text = "", style = style, minLines = 1)
-        Box(
-            Modifier
-                .matchParentSize()
-                .padding(vertical = VibeyFinTokens.Space.s1)
-                .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Xs))
-                .background(VibeyFinTokens.Colors.surface2),
-        )
-    }
-}

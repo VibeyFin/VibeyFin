@@ -93,7 +93,7 @@ struct HomeView: View {
                 .sectionTitle()
                 .padding(.bottom, Space.s3)
             if state.loadingLibraries {
-                LoadingIndicator()
+                PosterSkeletonGrid(count: 4, minimumWidth: 150, aspectRatio: 16.0 / 9.0)
             } else if let message = state.librariesMessage {
                 LoadErrorView(message: message, onRetry: { model.retryLibraries() })
             } else if state.libraries.isEmpty {

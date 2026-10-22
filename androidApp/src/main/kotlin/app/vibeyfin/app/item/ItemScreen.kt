@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalIconButton
@@ -55,6 +54,7 @@ import app.vibeyfin.app.components.ChipButton
 import app.vibeyfin.app.components.ChipInset
 import app.vibeyfin.app.components.ActionSnackbar
 import app.vibeyfin.app.components.FloatingBackButton
+import app.vibeyfin.app.components.ItemSkeleton
 import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.model.MediaItem
@@ -105,9 +105,7 @@ fun ItemScreen(
                 when {
                     state.loading -> {
                         Spacer(Modifier.height(BackButtonSpace))
-                        Box(Modifier.fillMaxWidth().height(240.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        ItemSkeleton(Modifier.padding(horizontal = screenMargin()))
                     }
                     state.message != null -> {
                         Spacer(Modifier.height(BackButtonSpace))

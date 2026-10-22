@@ -70,9 +70,7 @@ struct WhoIsWatchingView: View {
                         .foregroundStyle(Color(.systemRed))
                 }
                 if state.loading {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .frame(maxWidth: .infinity, minHeight: 160)
+                    ProfileSkeletonGrid(avatarSize: avatarSize)
                 } else {
                     grid(state)
                 }

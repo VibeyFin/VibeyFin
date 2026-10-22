@@ -33,6 +33,7 @@ import app.vibeyfin.app.components.ArtworkTile
 import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.LoadError
+import app.vibeyfin.app.components.skeletonTiles
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.children.ChildrenUiState
 import app.vibeyfin.ui.children.ChildrenViewModel
@@ -80,11 +81,15 @@ fun ChildrenScreen(
         Box(Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = screenMargin())) {
                 when {
-                    state.loading -> {
-                        Title(title)
-                        Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                    state.loading -> LazyVerticalGrid(
+                        columns = GridCells.Adaptive(130.dp),
+                        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
+                        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+                        userScrollEnabled = false,
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title) }
+                        skeletonTiles()
                     }
                     state.message != null -> {
                         Title(title)

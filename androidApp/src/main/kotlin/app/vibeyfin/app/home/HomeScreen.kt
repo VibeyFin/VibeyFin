@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Check
@@ -68,6 +67,7 @@ import app.vibeyfin.app.components.ArtworkTile
 import app.vibeyfin.app.components.ContinueCard
 import app.vibeyfin.app.components.ContinueSkeletonCards
 import app.vibeyfin.app.components.LoadError
+import app.vibeyfin.app.components.skeletonTiles
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.theme.VibeyFinTokens
@@ -286,11 +286,7 @@ private fun Modifier.bleed(by: Dp) = layout { measurable, constraints ->
 
 private fun LazyGridScope.libraries(state: HomeUiState, onOpen: (MediaItem) -> Unit, onRetry: () -> Unit) {
     when {
-        state.loadingLibraries -> fullWidth(key = "libraries-state") {
-            Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
+        state.loadingLibraries -> skeletonTiles(count = 4, aspectRatio = 16f / 9f)
         state.librariesMessage != null -> fullWidth(key = "libraries-state") { LoadError(state.librariesMessage!!, onRetry) }
         state.libraries.isEmpty() -> fullWidth(key = "libraries-state") {
             Text(

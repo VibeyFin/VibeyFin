@@ -31,7 +31,7 @@ struct ChildrenView: View {
                     if let state = model.state {
                         content(state)
                     } else {
-                        LoadingIndicator()
+                        PosterSkeletonGrid(minimumWidth: 130)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -52,7 +52,7 @@ struct ChildrenView: View {
     @ViewBuilder
     private func content(_ state: ChildrenUiState) -> some View {
         if state.loading {
-            LoadingIndicator()
+            PosterSkeletonGrid(minimumWidth: 130)
         } else if let message = state.message {
             LoadErrorView(message: message, onRetry: { model.retry() })
         } else if state.isEmpty {
