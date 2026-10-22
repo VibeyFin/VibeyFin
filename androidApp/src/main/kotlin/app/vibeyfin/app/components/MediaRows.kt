@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
@@ -79,6 +80,8 @@ fun MediaRowSection(
         }
         // The grey posters give way to the real ones with a short fade, and the row grows or shrinks smoothly if its
         // height differs.
+        // Without repeats (the list keys must be unique), worked out once per list, not on every redraw.
+        val tiles = remember(row.items) { row.items.distinctBy { it.id } }
         val phase = if (row.loading) RowPhase.Loading else if (row.message != null) RowPhase.Failed else RowPhase.Ready
         Crossfade(targetState = phase, animationSpec = tween(ROW_FADE_MS), modifier = Modifier.animateContentSize(tween(ROW_FADE_MS))) { shown ->
             when (shown) {
@@ -89,7 +92,7 @@ fun MediaRowSection(
                     contentPadding = PaddingValues(horizontal = margin),
                     horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
                 ) {
-                    items(row.items.distinctBy { it.id }, key = { it.id }) { item ->
+                    items(tiles, key = { it.id }, contentType = { "poster" }) { item ->
                         ArtworkTile(item, onClick = { onOpen(item) }, modifier = Modifier.width(tileWidth), captionLines = POSTER_CAPTION_LINES)
                     }
                 }

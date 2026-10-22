@@ -336,7 +336,7 @@ private fun Content(
 
 private fun LazyGridScope.fullWidth(key: String, content: @Composable () -> Unit) {
     // Rows that arrive, leave or change height slide and fade into place instead of snapping, so nothing jumps.
-    item(key = key, span = { GridItemSpan(maxLineSpan) }) { Box(Modifier.animateItem()) { content() } }
+    item(key = key, span = { GridItemSpan(maxLineSpan) }, contentType = "row") { Box(Modifier.animateItem()) { content() } }
 }
 
 /** The row of what the user is in the middle of. Its cards run past the grid's margins to the screen edge. */

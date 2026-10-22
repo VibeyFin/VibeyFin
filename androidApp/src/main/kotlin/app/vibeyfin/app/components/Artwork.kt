@@ -38,6 +38,10 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.animationsEnabled
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.BlurHash
 import app.vibeyfin.ui.common.Strings
@@ -91,15 +95,30 @@ fun Artwork(
     }
 }
 
-/** The blurred picture for [blurHash], decoded once per hash at the shape of the tile; null when there is none or it is unusable. */
+/** Decoded blurred pictures by hash and shape, so a tile that scrolls back into view finds its own at once. */
+private val blurHashCache = android.util.LruCache<String, BitmapPainter>(BLUR_HASH_CACHE_SIZE)
+private const val BLUR_HASH_CACHE_SIZE = 300
+
+/**
+ * The blurred picture for [blurHash], at the shape of the tile; null when there is none or it is unusable. It is decoded off the
+ * main thread (a screen of tiles decoded during a scroll costs frames) and kept in a cache, so only the first sight of a tile waits:
+ * for a frame or two its colour shows, then the blur.
+ */
 @Composable
-private fun rememberBlurHashPainter(blurHash: String?, aspectRatio: Float): Painter? =
-    remember(blurHash, aspectRatio) {
-        blurHash?.let { BlurHash.decode(it, aspectRatio) }?.let { image ->
-            val bitmap = Bitmap.createBitmap(image.pixels, image.width, image.height, Bitmap.Config.ARGB_8888)
-            BitmapPainter(bitmap.asImageBitmap())
+private fun rememberBlurHashPainter(blurHash: String?, aspectRatio: Float): Painter? {
+    if (blurHash == null) return null
+    val key = "$blurHash@$aspectRatio"
+    val painter by produceState<BitmapPainter?>(initialValue = blurHashCache.get(key), key) {
+        if (value != null) return@produceState
+        value = withContext(Dispatchers.Default) {
+            BlurHash.decode(blurHash, aspectRatio)?.let { image ->
+                val bitmap = Bitmap.createBitmap(image.pixels, image.width, image.height, Bitmap.Config.ARGB_8888)
+                BitmapPainter(bitmap.asImageBitmap()).also { blurHashCache.put(key, it) }
+            }
         }
     }
+    return painter
+}
 
 /** The check on a watched poster's top-right corner, on the scrim so it reads over any picture. */
 @Composable

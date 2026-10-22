@@ -4,6 +4,10 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+composeCompiler {
+    stabilityConfigurationFiles.add(layout.projectDirectory.file("compose_stability.conf"))
+}
+
 android {
     namespace = "app.vibeyfin"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -34,6 +38,14 @@ android {
         release {
             isMinifyEnabled = false
             signingConfigs.findByName("release")?.let { signingConfig = it }
+        }
+        // What to install to judge how smooth the app is: the release build (not debuggable, so Compose and the runtime skip their
+        // debug checks and the JIT works fully), signed with the debug key so it installs. `./gradlew :androidApp:installPerf`.
+        create("perf") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
+            applicationIdSuffix = ""
         }
     }
 
