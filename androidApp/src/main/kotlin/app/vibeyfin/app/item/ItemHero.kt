@@ -202,7 +202,7 @@ fun HeroDetails(
             )
         }
         item.overview?.let { Overview(it) }
-        if (state.canPlay) PlayButtons(state.playLabel, state.canStartOver, onPlay, fullWidth = centered)
+        if (state.canPlay) PlayButtons(state.playLabel, state.canStartOver, onPlay, fullWidth = true)
         ActionButtons(state, centered = centered, onToggleFavorite, onPlayTrailer, onTogglePlayed)
     }
 }
@@ -215,7 +215,7 @@ fun HeroDetails(
 private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorite: () -> Unit, onPlayTrailer: (String) -> Unit, onTogglePlayed: () -> Unit) {
     val uriHandler = LocalUriHandler.current
     // Four equal columns, as on other streaming apps: My List, Trailer, Watched, Download. A missing trailer leaves its column empty.
-    // Only the actions that exist are drawn, so three share the width as evenly as four. On a phone they fill the width; on a tablet they sit at the start, under the text and Play.
+    // Only the actions that exist are drawn, so three share the width as evenly as four. They fill the width of the column, the same as the text and Play above them, on a phone and on a tablet.
     Row(modifier = Modifier.fillMaxWidth()) {
         ActionButton(
             centered = centered,
@@ -249,8 +249,6 @@ private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorit
     }
 }
 
-private val ACTION_WIDTH = 84.dp
-
 /** One action: the icon over its label, in a quarter of the row. */
 @Composable
 private fun RowScope.ActionButton(label: String, description: String, icon: androidx.compose.ui.graphics.painter.Painter, centered: Boolean, popKey: Boolean? = null, onClick: () -> Unit) {
@@ -267,7 +265,7 @@ private fun RowScope.ActionButton(label: String, description: String, icon: andr
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
         modifier = Modifier
-            .then(if (centered) Modifier.weight(1f) else Modifier.width(ACTION_WIDTH))
+            .weight(1f)
             .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description }
