@@ -136,6 +136,8 @@ object Strings {
     val continueWatching = "Continue watching"
     /** The label of the Watched button under Play; its state is the tick. */
     val watchedAction = "Watched"
+    val markSeriesWatched = "Mark series as watched"
+    val markSeriesUnwatched = "Mark series as unwatched"
     val markWatched = "Mark as watched"
     val markUnwatched = "Mark as unwatched"
     val details = "Details"

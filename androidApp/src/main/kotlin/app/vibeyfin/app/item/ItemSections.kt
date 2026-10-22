@@ -150,7 +150,9 @@ private fun SeasonButtons(seasons: SeasonsState, margin: Dp, onSelect: (String) 
     }
 }
 
-/** The selected season's episodes; while another season loads the old list stays, dimmed. */
+private data class EpisodePhase(val seasonId: String?, val loading: Boolean, val failed: Boolean)
+
+/** The selected season's episodes; choosing another season fades to its loading cards, then to its episodes. */
 @Composable
 private fun EpisodeList(seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay: (String) -> Unit, onToggleWatched: (String) -> Unit, onRetry: () -> Unit) {
     val episodes = seasons.episodes
@@ -159,31 +161,33 @@ private fun EpisodeList(seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         modifier = Modifier.animateContentSize(tween(ROW_FADE_MS)),
     ) {
-        when {
-            episodes.message != null -> LoadError(episodes.message!!, onRetry)
-            episodes.items.isEmpty() && episodes.loading ->
-                Row(Modifier.bleed(margin).padding(horizontal = margin), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
-                    repeat(3) { EpisodeCardSkeleton(cardWidth) }
-                }
-            episodes.items.isEmpty() -> Text(Strings.noEpisodes, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            // The episodes scroll sideways as cards, bigger on a tablet.
-            else -> {
-                val listState = rememberLazyListState()
-                // A season opens at the episode Play will start, so the one being watched is in view; another season opens at its first.
-                val firstId = episodes.items.first().id
-                LaunchedEffect(firstId) {
-                    val at = episodes.items.indexOfFirst { it.id == seasons.startEpisode?.id }
-                    listState.scrollToItem(if (at > 0) at else 0)
-                }
-                LazyRow(
-                state = listState,
-                modifier = Modifier.bleed(margin).alpha(if (episodes.loading) 0.5f else 1f),
-                contentPadding = PaddingValues(horizontal = margin),
-                horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
-            ) {
-                items(episodes.items, key = { it.id }) { episode ->
-                    EpisodeCard(episode, cardWidth, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) })
-                }
+        // The list crossfades between a season loading and a season shown, so a tap never snaps.
+        Crossfade(targetState = EpisodePhase(seasons.selectedId, episodes.loading && episodes.items.isEmpty(), episodes.message != null), animationSpec = tween(ROW_FADE_MS), label = "episodes") { phase ->
+            when {
+                phase.failed -> LoadError(episodes.message ?: "", onRetry)
+                phase.loading ->
+                    Row(Modifier.bleed(margin).padding(horizontal = margin), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
+                        repeat(3) { EpisodeCardSkeleton(cardWidth) }
+                    }
+                episodes.items.isEmpty() -> Text(Strings.noEpisodes, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                else -> {
+                    val listState = rememberLazyListState()
+                    // A season opens at the episode Play will start, so the one being watched is in view; another season opens at its first.
+                    val firstId = episodes.items.first().id
+                    LaunchedEffect(firstId) {
+                        val at = episodes.items.indexOfFirst { it.id == seasons.startEpisode?.id }
+                        listState.scrollToItem(if (at > 0) at else 0)
+                    }
+                    LazyRow(
+                        state = listState,
+                        modifier = Modifier.bleed(margin),
+                        contentPadding = PaddingValues(horizontal = margin),
+                        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
+                    ) {
+                        items(episodes.items.distinctBy { it.id }, key = { it.id }) { episode ->
+                            EpisodeCard(episode, cardWidth, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) })
+                        }
+                    }
                 }
             }
         }
@@ -285,7 +289,7 @@ fun CastSection(cast: List<CastMember>, margin: Dp, tile: Dp) {
             contentPadding = PaddingValues(horizontal = margin),
             horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         ) {
-            items(cast, key = { it.id }) { person -> CastTile(person, tile) }
+            items(cast.distinctBy { it.id }, key = { it.id }) { person -> CastTile(person, tile) }
         }
     }
 }

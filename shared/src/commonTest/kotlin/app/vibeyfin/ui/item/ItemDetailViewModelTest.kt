@@ -167,16 +167,22 @@ class ItemDetailViewModelTest {
     }
 
     @Test
-    fun aShowIsNotMarkedWatchedAsAWhole() = runTest {
-        server()
+    fun aShowCanBeMarkedWatchedAsAWhole() = runTest {
+        val server = server()
+        server.on("POST", "/UserPlayedItems/show", Reply.json("""{"Played":true}"""))
+        val viewModel = viewModel("show")
 
-        val state = viewModel("show").shown()
+        val state = viewModel.shown()
+        viewModel.onTogglePlayed()
 
-        assertFalse(state.canMark)
+        assertTrue(state.canMark)
+        assertEquals("Mark series as watched", state.markLabel)
+        assertTrue(viewModel.uiState.value.watched)
+        awaitRequests("POST", "/UserPlayedItems/show")
     }
 
     @Test
-    fun anotherSeasonSwapsTheListAndKeepsTheOldOneUntilItArrives() = runTest {
+    fun anotherSeasonSwapsTheListWhenItArrives() = runTest {
         val server = server()
         val viewModel = viewModel("show")
         viewModel.shown()

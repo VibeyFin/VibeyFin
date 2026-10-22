@@ -226,10 +226,10 @@ private fun ItemGrid(
                         modifier = Modifier.padding(top = VibeyFinTokens.Space.s2),
                     )
                 }
-                items(members, key = { it.id }) { member -> ArtworkTile(member, onClick = { onOpen(member) }) }
+                items(members.distinctBy { it.id }, key = { it.id }) { member -> ArtworkTile(member, onClick = { onOpen(member) }) }
             }
         } else {
-            items(state.items, key = { it.id }) { item ->
+            items(state.items.distinctBy { it.id }, key = { it.id }) { item ->
                 ArtworkTile(item, onClick = { onOpen(item) })
             }
         }

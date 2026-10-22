@@ -82,7 +82,12 @@ data class ItemUiState(
     val isFavorite: Boolean get() = item?.isFavorite == true
 
     /** The menu entry that flips the watched mark, worded for what it will do. */
-    val markLabel: String get() = if (item?.played == true) Strings.markUnwatched else Strings.markWatched
+    val markLabel: String
+        get() = when {
+            isSeries -> if (item?.played == true) Strings.markSeriesUnwatched else Strings.markSeriesWatched
+            item?.played == true -> Strings.markUnwatched
+            else -> Strings.markWatched
+        }
 
     /** The file's details, collapsed at the bottom of the page; empty when the server sent none. */
     val technical: List<TechnicalLine> get() = item?.technicalLines().orEmpty()
@@ -95,8 +100,8 @@ data class ItemUiState(
     /** Whether the page offers Play. */
     val canPlay: Boolean get() = playTarget != null
 
-    /** Whether the menu offers "Mark as watched": for the item itself, not for a show. */
-    val canMark: Boolean get() = item?.canPlay == true
+    /** Whether the page offers the watched mark: for the item itself, and for a show as a whole (all its episodes). */
+    val canMark: Boolean get() = item?.canPlay == true || isSeries
 
     private val resuming: Boolean get() = playTarget?.let { !it.played && it.resumePositionMs > 0 } == true
 
@@ -167,7 +172,8 @@ class ItemViewModel(
         val current = content.value.seasons
         if (!force && current.selectedId == seasonId) return
         episodesJob?.cancel()
-        content.update { it.copy(seasons = it.seasons.copy(selectedId = seasonId, episodes = it.seasons.episodes.copy(loading = true, message = null))) }
+        // The old season's cards go at once, so the page shows the new season loading, not the old one under another name.
+        content.update { it.copy(seasons = it.seasons.copy(selectedId = seasonId, episodes = EpisodeList(loading = true))) }
         episodesJob = viewModelScope.launch { loadEpisodes(seasonId, setStart = false) }
     }
 
@@ -196,7 +202,7 @@ class ItemViewModel(
      */
     fun onTogglePlayed() {
         val before = content.value.item ?: return
-        if (!before.canPlay || writing) return
+        if (!(before.canPlay || before.kind == ItemKind.Series) || writing) return
         writing = true
         val target = !before.played
         val shown = before.copy(played = target, resumePositionMs = 0)
@@ -206,6 +212,9 @@ class ItemViewModel(
             writing = false
             if (result is ApiResult.Failure) {
                 content.update { it.copy(item = before, facts = before.facts(), actionMessage = failureMessage(result.error, target)) }
+            } else if (before.kind == ItemKind.Series) {
+                // Every episode changed with it: the list's marks and what Play starts are read again.
+                loadSeasons()
             }
         }
     }

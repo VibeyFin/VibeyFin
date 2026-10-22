@@ -89,7 +89,7 @@ fun MediaRowSection(
                     contentPadding = PaddingValues(horizontal = margin),
                     horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
                 ) {
-                    items(row.items, key = { it.id }) { item ->
+                    items(row.items.distinctBy { it.id }, key = { it.id }) { item ->
                         ArtworkTile(item, onClick = { onOpen(item) }, modifier = Modifier.width(tileWidth), captionLines = POSTER_CAPTION_LINES)
                     }
                 }

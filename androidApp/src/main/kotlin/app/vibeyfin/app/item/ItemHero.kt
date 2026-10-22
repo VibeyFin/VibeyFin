@@ -3,6 +3,11 @@ package app.vibeyfin.app.item
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +29,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.filled.Refresh
@@ -213,7 +219,8 @@ private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorit
         ActionButton(
             label = Strings.myList,
             description = Strings.myListAction(state.isFavorite),
-            icon = rememberVectorPainter(if (state.isFavorite) Icons.Default.Check else Icons.Default.Add),
+            icon = rememberVectorPainter(if (state.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder),
+            popKey = state.isFavorite,
             onClick = onToggleFavorite,
         )
         val trailer = state.trailer
@@ -232,6 +239,7 @@ private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorit
                 label = Strings.watchedAction,
                 description = state.markLabel,
                 icon = rememberVectorPainter(if (state.watched) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle),
+                popKey = state.watched,
                 onClick = onTogglePlayed,
             )
         } else {
@@ -244,7 +252,16 @@ private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorit
 
 /** One action: the icon over its label, in a quarter of the row. */
 @Composable
-private fun RowScope.ActionButton(label: String, description: String, icon: androidx.compose.ui.graphics.painter.Painter, onClick: () -> Unit) {
+private fun RowScope.ActionButton(label: String, description: String, icon: androidx.compose.ui.graphics.painter.Painter, popKey: Boolean? = null, onClick: () -> Unit) {
+    // A toggle springs when it flips: it swells, then settles with a little bounce.
+    val pop = remember { Animatable(1f) }
+    var first by remember { mutableStateOf(true) }
+    LaunchedEffect(popKey) {
+        if (first) { first = false; return@LaunchedEffect }
+        if (popKey == null) return@LaunchedEffect
+        pop.snapTo(0.6f)
+        pop.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+    }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
@@ -255,7 +272,7 @@ private fun RowScope.ActionButton(label: String, description: String, icon: andr
             .semantics { contentDescription = description }
             .padding(vertical = VibeyFinTokens.Space.s2),
     ) {
-        Icon(painter = icon, contentDescription = null, tint = VibeyFinTokens.Colors.ink, modifier = Modifier.size(30.dp))
+        Icon(painter = icon, contentDescription = null, tint = VibeyFinTokens.Colors.ink, modifier = Modifier.size(30.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value })
         Text(label, style = MaterialTheme.typography.labelLarge, color = VibeyFinTokens.Colors.inkMuted, maxLines = 1)
     }
 }

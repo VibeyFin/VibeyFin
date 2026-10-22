@@ -234,7 +234,8 @@ struct HeroDetailsView: View {
             actionButton(
                 label: Strings.shared.myList,
                 description: Strings.shared.myListAction(onList: state.isFavorite),
-                systemImage: state.isFavorite ? "checkmark" : "plus",
+                systemImage: state.isFavorite ? "heart.fill" : "heart",
+                pop: state.isFavorite,
                 action: onToggleFavorite
             )
             if let trailer = state.trailer {
@@ -253,6 +254,7 @@ struct HeroDetailsView: View {
                     label: Strings.shared.watchedAction,
                     description: state.markLabel,
                     systemImage: state.watched ? "checkmark.circle.fill" : "checkmark.circle",
+                    pop: state.watched,
                     action: onTogglePlayed
                 )
             } else {
@@ -264,10 +266,15 @@ struct HeroDetailsView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func actionButton(label: String, description: String, systemImage: String, action: @escaping () -> Void) -> some View {
+    private func actionButton(label: String, description: String, systemImage: String, pop: Bool? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: Space.s1) {
-                Image(systemName: systemImage).font(.title2)
+                Image(systemName: systemImage)
+                    .font(.title2)
+                    // A toggle springs when it flips.
+                    .id(systemImage)
+                    .transition(.scale.combined(with: .opacity))
+                    .animation(.spring(response: 0.3, dampingFraction: 0.45), value: pop)
                 Text(label.titleCased()).font(.caption)
             }
             .foregroundStyle(.secondary)

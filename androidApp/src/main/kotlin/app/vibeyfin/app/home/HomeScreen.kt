@@ -361,7 +361,7 @@ private fun ContinueWatching(row: ContinueRow, margin: Dp, onPlay: (String) -> U
                         contentPadding = PaddingValues(horizontal = margin),
                         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
                     ) {
-                        items(row.cards, key = { it.id }) { card -> ContinueCard(card, onClick = { onPlay(card.id) }, onLongClick = { onLongPress(card) }) }
+                        items(row.cards.distinctBy { it.id }, key = { it.id }) { card -> ContinueCard(card, onClick = { onPlay(card.id) }, onLongClick = { onLongPress(card) }) }
                     }
                 }
             }
