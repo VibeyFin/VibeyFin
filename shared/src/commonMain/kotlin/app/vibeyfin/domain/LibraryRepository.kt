@@ -10,6 +10,8 @@ import app.vibeyfin.data.api.itemsById
 import app.vibeyfin.data.api.map
 import app.vibeyfin.data.api.userViews
 import app.vibeyfin.data.api.genres
+import app.vibeyfin.data.api.collectionsOf
+import app.vibeyfin.data.api.localTrailers
 import app.vibeyfin.data.api.latestItems
 import app.vibeyfin.data.api.seasonsOf
 import app.vibeyfin.data.api.episodesOfSeason
@@ -51,6 +53,16 @@ class LibraryRepository(private val connection: ConnectionManager) {
     /** What the server thinks is like [id], at most [limit]: "More like this". */
     suspend fun similar(id: String, limit: Int = SIMILAR_LIMIT): ApiResult<List<MediaItem>> = call { api, userId ->
         api.similarItems(userId, id, limit).map { result -> result.items.map { it.toMediaItem(api.baseUrl) } }
+    }
+
+    /** The trailer the server itself holds for [id], or null when it has none. */
+    suspend fun localTrailer(id: String): ApiResult<MediaItem?> = call { api, userId ->
+        api.localTrailers(userId, id).map { items -> items.firstOrNull()?.toMediaItem(api.baseUrl) }
+    }
+
+    /** The collections (box sets) [id] is part of, each one a folder that opens its members. */
+    suspend fun collectionsOf(id: String): ApiResult<List<MediaItem>> = call { api, userId ->
+        api.collectionsOf(userId, id).map { result -> result.items.map { it.toMediaItem(api.baseUrl) } }
     }
 
     /** A show's seasons in the server's order, Specials included. */
@@ -195,6 +207,9 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
             }
         },
         seasonCount = if (kind == ItemKind.Series) childCount else null,
+        isFavorite = userData?.isFavorite == true,
+        localTrailerCount = localTrailerCount ?: 0,
+        remoteTrailerUrl = remoteTrailers.firstNotNullOfOrNull { trailer -> trailer.url?.takeIf { it.startsWith("https://") || it.startsWith("http://") } },
     )
 }
 

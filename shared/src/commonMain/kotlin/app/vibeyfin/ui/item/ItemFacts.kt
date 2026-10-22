@@ -37,6 +37,14 @@ internal fun MediaItem.technicalLines(): List<TechnicalLine> {
     return if (parts.isEmpty()) emptyList() else listOf(TechnicalLine(Strings.technicalVideo, parts.joinToString(" · ")))
 }
 
+/** What a season's button says: "Season 3" whatever the server calls it ("Series 3", "Season 3"), and "Specials" for 0. */
+val MediaItem.seasonLabel: String
+    get() = when (val number = seasonIndex) {
+        null -> title
+        0 -> Strings.specials
+        else -> Strings.season(number)
+    }
+
 /** On a season: its number, as the server calls it (0 is Specials). The server sends it in the field an episode uses for its own number. */
 internal val MediaItem.seasonIndex: Int? get() = if (kind == ItemKind.Season) episodeNumber else null
 

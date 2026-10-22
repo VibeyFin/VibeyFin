@@ -1,46 +1,63 @@
 import SwiftUI
 import Shared
 
-/// One item's page: picture, title, the short facts, genres, Play and the overview.
+/// One item's page: a hero (the backdrop with the title, facts, overview and Play over it), then for a show its seasons and
+/// episodes, the cast, what is like it, and the file's details. On a regular width (iPad, a large iPhone in landscape) the
+/// hero is the backdrop at 16:9 with the details in a left column.
 struct ItemView: View {
     @StateObject private var model: ItemObservable
-    @State private var showsPlayer = false
-    @State private var startsOver = false
+    @State private var playing: PlayRequest?
+    @State private var scrollOffset: CGFloat = 0
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     private let itemId: String
 
+    /// Opens another item from "More like this".
+    let onOpen: (MediaItem) -> Void
+    /// An episode's or a season's page leads back to its show.
+    let onOpenSeries: (String) -> Void
     /// Called when the session ended and the screen must be left.
     let onExit: (HomeExit) -> Void
 
-    init(itemId: String, onExit: @escaping (HomeExit) -> Void) {
+    private struct PlayRequest: Identifiable {
+        let id: String
+        let startOver: Bool
+    }
+
+    init(itemId: String, onOpen: @escaping (MediaItem) -> Void, onOpenSeries: @escaping (String) -> Void, onExit: @escaping (HomeExit) -> Void) {
         _model = StateObject(wrappedValue: ItemObservable(itemId: itemId))
         self.itemId = itemId
+        self.onOpen = onOpen
+        self.onOpenSeries = onOpenSeries
         self.onExit = onExit
     }
+
+    private var wide: Bool { sizeClass == .regular }
 
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: Space.s3) {
-                    if let state = model.state, !state.loading {
-                        if let item = state.item {
-                            details(item, state: state)
-                        } else if let message = state.message {
-                            LoadErrorView(message: message, onRetry: { model.retry() })
-                        }
-                    } else {
-                        ItemSkeleton()
+            if let state = model.state, !state.loading {
+                if let item = state.item {
+                    page(item, state: state)
+                } else if let message = state.message {
+                    ScrollView {
+                        LoadErrorView(message: message, onRetry: { model.retry() })
+                            .screenMargin()
+                            .padding(.vertical, Space.s5)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .screenMargin()
-                .padding(.vertical, Space.s5)
+            } else {
+                ScrollView {
+                    ItemSkeleton()
+                        .screenMargin()
+                        .padding(.vertical, Space.s5)
+                }
             }
         }
         .onAppear { model.start() }
-        .fullScreenCover(isPresented: $showsPlayer) {
-            PlayerView(itemId: itemId, startOver: startsOver, onExit: onExit)
+        .fullScreenCover(item: $playing) { request in
+            PlayerView(itemId: request.id, startOver: request.startOver, onExit: onExit)
         }
         .failureBanner(
             model.state?.actionMessage,
@@ -48,8 +65,8 @@ struct ItemView: View {
             onDismiss: { model.dismissMessage() }
         )
         .toolbar {
-            // Mark as watched or unwatched, worded for what it will do.
-            if let state = model.state, state.canPlay {
+            // Mark as watched or unwatched, worded for what it will do. Not for a show as a whole.
+            if let state = model.state, state.canMark {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Button {
@@ -76,71 +93,110 @@ struct ItemView: View {
         }
     }
 
-    private func play(startOver: Bool) {
-        startsOver = startOver
-        showsPlayer = true
+    /// What Play opens the player on: the item, or for a show its next episode.
+    private func play(startOver: Bool, state: ItemUiState) {
+        playing = PlayRequest(id: state.playTarget?.id ?? itemId, startOver: startOver)
     }
 
-    @ViewBuilder
-    private func details(_ item: MediaItem, state: ItemUiState) -> some View {
-        let facts = state.facts
-        // A wide backdrop when the server has one; otherwise the item's own picture at its own shape.
-        if let backdrop = item.backdropUrl {
-            Artwork(url: backdrop, title: item.title, aspectRatio: 16.0 / 9.0, blurHash: item.backdropBlurHash)
-                .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
-        } else if let poster = item.posterUrl {
-            Artwork(url: poster, title: item.title, aspectRatio: CGFloat(item.posterAspectRatio), blurHash: item.posterBlurHash)
-                .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
-        }
-        if let seriesName = item.seriesName {
-            Text(seriesName)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-        }
-        Text(item.title)
-            .font(.title2.bold())
-            .foregroundStyle(.primary)
-        if !facts.isEmpty || state.watched || state.badge != nil {
-            HStack(spacing: Space.s2) {
-                Text(facts.joined(separator: "  ·  "))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                if let badge = state.badge {
-                    FormatBadge(text: badge)
-                }
-                // Watched is an icon, in the secondary ink: aqua never signals status.
-                if state.watched {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .accessibilityLabel(Strings.shared.watched)
-                }
+    private func page(_ item: MediaItem, state: ItemUiState) -> some View {
+        let sections = VStack(alignment: .leading, spacing: Space.s5) {
+            if item.kind == ItemKind.series {
+                SeasonsSectionView(
+                    seasons: state.seasons,
+                    wide: wide,
+                    onSelect: { model.selectSeason($0) },
+                    onPlay: { playing = PlayRequest(id: $0, startOver: false) },
+                    onToggleWatched: { model.toggleEpisodePlayed($0) },
+                    onRetrySeasons: { model.retrySeasons() },
+                    onRetryEpisodes: { model.retryEpisodes() }
+                )
+            }
+            if !item.cast.isEmpty {
+                CastSectionView(cast: item.cast, tile: wide ? 112 : 88)
+            }
+            // The collections it is part of: a poster each, and one opens the collection's members.
+            if let collections = state.collections, collections.isVisible {
+                MediaRowView(row: collections, onOpen: onOpen, onSeeAll: { _ in }, onRetry: { model.retryCollections() }, tileWidth: wide ? 168 : 112)
+                    .padding(.horizontal, -Space.s4)
+            }
+            if let similar = state.similar, similar.isVisible {
+                MediaRowView(row: similar, onOpen: onOpen, onSeeAll: { _ in }, onRetry: { model.retrySimilar() }, tileWidth: wide ? 168 : 112)
+                    .padding(.horizontal, -Space.s4)
+            }
+            if !state.technical.isEmpty {
+                TechnicalInfoView(lines: state.technical)
             }
         }
-        if !item.genres.isEmpty {
-            Text(item.genres.joined(separator: "  ·  "))
-                .font(.subheadline)
-                .foregroundStyle(.primary)
-        }
-        // The one filled action on the page: the aqua capsule.
-        // "Play" or "Resume · 38m left", with a round "start over" arrow beside it only when there is something to resume.
-        if state.canPlay {
-            HStack(spacing: Space.s3) {
-                PrimaryButton(action: { play(startOver: false) }) {
-                    Label(state.playLabel.titleCased(), systemImage: "play.fill")
-                }
-                if state.canStartOver {
-                    IconSecondaryButton(systemImage: "arrow.counterclockwise", label: Strings.shared.startOver) {
-                        play(startOver: true)
+        .screenMargin()
+        .padding(.vertical, Space.s5)
+        let playHere: (Bool) -> Void = { play(startOver: $0, state: state) }
+        let playTrailer: (String) -> Void = { playing = PlayRequest(id: $0, startOver: false) }
+        return Group {
+            if wide {
+                wideLayout(item, state: state, sections: sections, onPlay: playHere, onPlayTrailer: playTrailer)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ItemHeroView(
+                            item: item,
+                            state: state,
+                            onPlay: playHere,
+                            onOpenSeries: onOpenSeries,
+                            onToggleFavorite: { model.toggleFavorite() },
+                            onPlayTrailer: playTrailer
+                        )
+                        sections
                     }
                 }
+                .ignoresSafeArea(edges: .top)
             }
-            .padding(.vertical, Space.s1)
-        }
-        if let overview = item.overview {
-            Text(overview)
-                .font(.body)
-                .foregroundStyle(.primary)
         }
     }
+
+    /// The backdrop fills the screen and stays put; the first screen leaves it clear with the details in a column on the left, and
+    /// the rest scrolls up over it while it darkens.
+    private func wideLayout<Sections: View>(
+        _ item: MediaItem,
+        state: ItemUiState,
+        sections: Sections,
+        onPlay: @escaping (Bool) -> Void,
+        onPlayTrailer: @escaping (String) -> Void
+    ) -> some View {
+        GeometryReader { proxy in
+            ZStack {
+                WideItemBackdrop(item: item, progress: scrollOffset / max(proxy.size.height * 0.7, 1))
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        // Reports how far the page has scrolled.
+                        Color.clear
+                            .frame(height: 0)
+                            .background(GeometryReader { inner in
+                                Color.clear.preference(key: ScrollOffsetKey.self, value: -inner.frame(in: .named("itemScroll")).minY)
+                            })
+                        // The top of the first screen is the picture, clear; the details sit at the bottom of it.
+                        Color.clear.frame(height: proxy.size.height * 0.3)
+                        HeroDetailsView(
+                            item: item,
+                            state: state,
+                            centered: false,
+                            onPlay: onPlay,
+                            onOpenSeries: onOpenSeries,
+                            onToggleFavorite: { model.toggleFavorite() },
+                            onPlayTrailer: onPlayTrailer
+                        )
+                        .frame(maxWidth: min(proxy.size.width * 0.46, 520), alignment: .leading)
+                        .padding(.horizontal, Space.s6)
+                        sections
+                    }
+                }
+                .coordinateSpace(name: "itemScroll")
+                .onPreferenceChange(ScrollOffsetKey.self) { scrollOffset = max($0, 0) }
+            }
+        }
+    }
+}
+
+private struct ScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }

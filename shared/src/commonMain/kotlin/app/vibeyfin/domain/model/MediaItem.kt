@@ -65,6 +65,12 @@ data class MediaItem(
     val cast: List<CastMember> = emptyList(),
     /** On a series: how many seasons it has. */
     val seasonCount: Int? = null,
+    /** The user has put it on "My List" (the server's favourites). */
+    val isFavorite: Boolean = false,
+    /** How many trailers the server holds for it. */
+    val localTrailerCount: Int = 0,
+    /** The first trailer on the web, a page to open; null when the server knows none. */
+    val remoteTrailerUrl: String? = null,
 ) {
     /** How far in the user is, from 0 to 1; null when they haven't started or the length isn't known. */
     val progress: Float?

@@ -33,6 +33,12 @@ fun itemJson(
     /** Where the user stopped; with [played] this becomes the item's `UserData`. */
     positionTicks: Long? = null,
     played: Boolean? = null,
+    /** On "My List": the item's `UserData.IsFavorite`. */
+    favorite: Boolean? = null,
+    /** How many trailers the server holds (`LocalTrailerCount`). */
+    localTrailerCount: Int? = null,
+    /** Trailers on the web: the `Url` of each. */
+    remoteTrailers: List<String> = emptyList(),
     /** On a genre: how many movies and shows carry it (`fields=ItemCounts`). */
     movieCount: Int? = null,
     seriesCount: Int? = null,
@@ -66,12 +72,14 @@ fun itemJson(
         """"SeriesId":${string(seriesId)}""",
         """"SeriesPrimaryImageTag":${string(seriesPrimaryImageTag)}""",
         """"UserData":${
-            if (positionTicks == null && played == null) {
+            if (positionTicks == null && played == null && favorite == null) {
                 "null"
             } else {
-                """{"PlaybackPositionTicks":${positionTicks ?: 0},"Played":${played ?: false}}"""
+                """{"PlaybackPositionTicks":${positionTicks ?: 0},"Played":${played ?: false},"IsFavorite":${favorite ?: false}}"""
             }
         }""",
+        """"LocalTrailerCount":${localTrailerCount ?: "null"}""",
+        """"RemoteTrailers":[${remoteTrailers.joinToString(",") { "{\"Url\":\"$it\"}" }}]""",
         """"MovieCount":${movieCount ?: "null"}""",
         """"SeriesCount":${seriesCount ?: "null"}""",
         """"People":[${people.joinToString(",")}]""",

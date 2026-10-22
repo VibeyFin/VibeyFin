@@ -4,7 +4,7 @@ Goal: a movie, an episode and a series each open on a cinematic page: a full-ble
 title, the facts, the overview and one aqua Play / Resume button over it, then the cast and "More like this"; a series
 adds a row of season buttons and the selected season's episodes. Android and iOS.
 
-**Status (2026-10-22):** Phases A and B built (A with tests; B run on the Android emulator against the test server, including a simulated unfolded-foldable screen); C (iOS) not started. Calls marked *(my call)* are guesses for the owner to confirm.
+**Status (2026-10-22):** Phases A and B built (A with tests; B run on the Android emulator against the test server, including a simulated unfolded-foldable screen); C (iOS) is written and was only parsed (no Xcode). Calls marked *(my call)* are guesses for the owner to confirm.
 
 **Specs:** `docs/ROADMAP.md` Phase 4 "Detail page" and "Series detail page", `docs/design/screens.md` "Detail",
 "Series detail", "Episode row", `guardrails.md`, `jellyfin-mapping.md` "Detail".
@@ -28,8 +28,9 @@ adds a row of season buttons and the selected season's episodes. Android and iOS
    gradient so text always sits on `scrim`; the `Logo` image as the title, else the `brand-display` title; the facts line
    centred under it; the overview, 3 lines with "More"; Play / Resume full width, with a round "start over" beside it
    once there is something to resume. Mark as watched stays in the overflow menu.
-3. **Secondary actions (My List, Like, Trailer, Download) are not in this plan.** They are their own roadmap items
-   (My List and thumbs, trailers, offline); this page has room for them and shows none, so nothing is a dead button.
+3. **Actions under Play** *(added after review)*: My List (the server's favourite, optimistic, reverts with a message on failure),
+   Trailer (only when there is one: a trailer the server holds plays in the app, one on the web opens in the system viewer) and
+   Download (does nothing until offline lands). Like, Share and Cast stay out.
 4. **Cast** is `People` of type Actor and Guest star, round `Primary` image, name, role; a missing image is a grey disc with
    initials. A cast member does nothing when tapped until the Person page item lands *(my call)*, and is drawn as plain
    content, not a button.
@@ -47,6 +48,11 @@ adds a row of season buttons and the selected season's episodes. Android and iOS
    watched toggle *(my call)*. Download is not shown (offline is a later phase).
 9. **Technical info** (video, audio, subtitles, file) collapsed at the bottom *(my call: only when the item has streams)*.
 10. **Tablets and unfolded foldables** (width from 600dp, `BoxWithConstraints`, no new dependency; `horizontalSizeClass == .regular` on iOS) get the tablet layout of `screens.md`: the backdrop at its own 16:9, the details in a left column about 46% wide (max 520) over a scrim from the left, Play not full width, larger margins and posters (168), the cast at 112, and a season's episodes in two columns from 840dp. This was added after the owner saw the phone layout stretched on a Z Fold. The main navigation stays at the bottom for now (the top placement is the width-class work in the design review).
+12. **Reaching the show and collections** *(added after review)*: an episode's or season's page and a season's list lead back to the
+    series by its name; a movie or series shows the collections it is in (`GET /Items/{id}/Collections`) as a poster row.
+13. **Season buttons** always read "Season N" ("Specials" for 0). The overflow and long-press menus use the app's rounded menu.
+14. **Tablet backdrop and episodes** *(added after review)*: the backdrop fills the screen and stays put while the page scrolls over
+    it, darkening to nearly the page colour by 70% of a screen; a season's episodes are a horizontal row of large cards (320dp).
 11. **Facts line** adds the number of seasons for a series ("3 seasons") instead of a runtime.
 
 ## Phase A: Shared
@@ -78,5 +84,5 @@ adds a row of season buttons and the selected season's episodes. Android and iOS
 
 ## Out of scope
 
-My List, Like, Trailer, Download, Share and Cast buttons; the Person page; special features; tablet layout; shared-element
+Like, Share and Cast buttons; the Person page; special features; shared-element
 transitions and the ambient background (their own items).

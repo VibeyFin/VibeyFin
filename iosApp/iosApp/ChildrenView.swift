@@ -7,6 +7,8 @@ struct ChildrenView: View {
 
     let title: String
     let onOpen: (MediaItem) -> Void
+    /// A season's list leads back to its show.
+    var onOpenSeries: (String) -> Void = { _ in }
     /// Called when the session ended and the screen must be left.
     let onExit: (HomeExit) -> Void
 
@@ -14,8 +16,10 @@ struct ChildrenView: View {
         parentId: String,
         title: String,
         onOpen: @escaping (MediaItem) -> Void,
+        onOpenSeries: @escaping (String) -> Void = { _ in },
         onExit: @escaping (HomeExit) -> Void
     ) {
+        self.onOpenSeries = onOpenSeries
         _model = StateObject(wrappedValue: ChildrenObservable(parentId: parentId))
         self.title = title
         self.onOpen = onOpen
@@ -28,6 +32,21 @@ struct ChildrenView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Space.s4) {
                     Text(title).screenTitle()
+                    // A season's list leads back to its show.
+                    if let series = model.state?.series {
+                        Button { onOpenSeries(series.id) } label: {
+                            HStack(spacing: Space.s1) {
+                                Text(series.name)
+                                Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+                            }
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(PressableButtonStyle())
+                        .accessibilityLabel(Strings.shared.goToSeries(name: series.name))
+                    }
                     if let state = model.state {
                         content(state)
                     } else {

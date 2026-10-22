@@ -104,9 +104,9 @@ struct TabShell: View {
                     case .settings:
                         SettingsView()
                     case .children(let parentId, let title):
-                        ChildrenView(parentId: parentId, title: title, onOpen: { open($0, in: path) }, onExit: onExit)
+                        ChildrenView(parentId: parentId, title: title, onOpen: { open($0, in: path) }, onOpenSeries: { path.wrappedValue.append(.item(itemId: $0)) }, onExit: onExit)
                     case .item(let itemId):
-                        ItemView(itemId: itemId, onExit: onExit)
+                        ItemView(itemId: itemId, onOpen: { open($0, in: path) }, onOpenSeries: { path.wrappedValue.append(.item(itemId: $0)) }, onExit: onExit)
                     case .filtered:
                         if let filter = route.filter() {
                             FilteredListView(filter: filter, onOpen: { open($0, in: path) }, onExit: onExit)

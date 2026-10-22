@@ -36,6 +36,10 @@ data class BaseItemDto(
     @SerialName("People") val people: List<PersonDto> = emptyList(),
     /** On a series: how many seasons it has; only sent when asked for (`fields=ChildCount`). */
     @SerialName("ChildCount") val childCount: Int? = null,
+    /** How many trailers the server holds for the item itself (`GET /Items/{id}/LocalTrailers`). */
+    @SerialName("LocalTrailerCount") val localTrailerCount: Int? = null,
+    /** Trailers on the web, usually YouTube pages. */
+    @SerialName("RemoteTrailers") val remoteTrailers: List<TrailerDto> = emptyList(),
     /** On a genre: how many movies and shows carry it; only sent when asked for (`fields=ItemCounts`). */
     @SerialName("MovieCount") val movieCount: Int? = null,
     @SerialName("SeriesCount") val seriesCount: Int? = null,
@@ -43,6 +47,13 @@ data class BaseItemDto(
     @SerialName("MediaStreams") val mediaStreams: List<MediaStreamDto> = emptyList(),
     /** Trickplay thumbnails by media source id, then by width in pixels; only sent when asked for. */
     @SerialName("Trickplay") val trickplay: Map<String, Map<String, TrickplayInfoDto>> = emptyMap(),
+)
+
+/** A trailer on the web: [url] is a page to open. */
+@Serializable
+data class TrailerDto(
+    @SerialName("Url") val url: String? = null,
+    @SerialName("Name") val name: String? = null,
 )
 
 /** One person of an item's cast or crew: [type] is `Actor`, `GuestStar`, `Director`, `Writer`, ... */
@@ -62,6 +73,8 @@ data class UserItemDataDto(
     /** Where the user stopped, in 100 ns ticks; 0 when they haven't started it or have finished it. */
     @SerialName("PlaybackPositionTicks") val playbackPositionTicks: Long = 0,
     @SerialName("Played") val played: Boolean = false,
+    /** The user's favourite: "My List". */
+    @SerialName("IsFavorite") val isFavorite: Boolean = false,
 )
 
 

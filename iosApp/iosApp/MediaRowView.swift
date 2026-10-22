@@ -8,8 +8,9 @@ struct MediaRowView: View {
     let onOpen: (MediaItem) -> Void
     let onSeeAll: (SeeAll) -> Void
     let onRetry: () -> Void
+    /// Posters are 112 on a phone and larger on a tablet.
+    var tileWidth: CGFloat = 112
 
-    private let tileWidth: CGFloat = 112
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private enum Phase { case loading, failed, ready }

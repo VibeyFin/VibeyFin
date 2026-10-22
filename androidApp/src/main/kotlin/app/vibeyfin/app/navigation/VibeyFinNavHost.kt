@@ -211,6 +211,7 @@ private fun NavGraphBuilder.details(navController: NavHostController, leave: (Ho
             title = route.title,
             onBack = { navController.popBackStack() },
             onOpen = open,
+            onOpenSeries = { seriesId -> navController.navigate(Item(seriesId)) },
             onExit = leave,
         )
     }
@@ -230,6 +231,7 @@ private fun NavGraphBuilder.details(navController: NavHostController, leave: (Ho
             // The item itself, or for a show its next episode, or an episode tapped in a season's list.
             onPlay = { playId, startOver -> navController.navigate(Player(playId, startOver)) },
             onOpen = open,
+            onOpenSeries = { seriesId -> navController.navigate(Item(seriesId)) },
             onExit = leave,
         )
     }

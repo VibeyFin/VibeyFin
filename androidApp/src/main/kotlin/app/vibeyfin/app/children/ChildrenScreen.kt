@@ -20,6 +20,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.Icons
+import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -53,6 +58,8 @@ fun ChildrenRoute(
     title: String,
     onBack: () -> Unit,
     onOpen: (MediaItem) -> Unit,
+    /** A season's list leads back to its show. */
+    onOpenSeries: (String) -> Unit = {},
     onExit: (HomeExit) -> Unit,
     viewModel: ChildrenViewModel = koinViewModel(parameters = { parametersOf(parentId) }),
 ) {
@@ -67,6 +74,7 @@ fun ChildrenRoute(
         onOpen = onOpen,
         onLoadMore = viewModel::onLoadMore,
         onRetry = viewModel::onRetry,
+        onOpenSeries = onOpenSeries,
     )
 }
 
@@ -80,6 +88,8 @@ fun ChildrenScreen(
     onRetry: () -> Unit,
     // Buttons under the title that stay put while the list scrolls, such as a category page's Sort and Genre.
     controls: (@Composable () -> Unit)? = null,
+    // On a season's list: opens its show.
+    onOpenSeries: ((String) -> Unit)? = null,
 ) {
     // With controls the title is pinned above them; without, it is the first row of the list and scrolls away.
     val pinned = controls != null
@@ -113,7 +123,7 @@ fun ChildrenScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    else -> ItemGrid(title, state, onOpen, onLoadMore, onRetry, showTitle = !pinned)
+                    else -> ItemGrid(title, state, onOpen, onLoadMore, onRetry, showTitle = !pinned, onOpenSeries = onOpenSeries)
                 }
             }
             FloatingBackButton(onBack)
@@ -143,6 +153,7 @@ private fun ItemGrid(
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
     showTitle: Boolean,
+    onOpenSeries: ((String) -> Unit)?,
 ) {
     // Saved with the screen, so coming back from an item's page finds the list where it was left.
     val gridState = rememberLazyGridState()
@@ -165,6 +176,17 @@ private fun ItemGrid(
     ) {
         // The title is part of the list, beneath the button, and scrolls up under it.
         if (showTitle) item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title) }
+        // A season's list leads back to its show.
+        state.series?.let { series ->
+            if (onOpenSeries != null) {
+                item(span = { GridItemSpan(maxLineSpan) }, key = "series") {
+                    TextButton(onClick = { onOpenSeries(series.id) }, modifier = Modifier.semantics { contentDescription = Strings.goToSeries(series.name) }) {
+                        Text(series.name, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
         items(state.items, key = { it.id }) { item ->
             ArtworkTile(item, onClick = { onOpen(item) })
         }

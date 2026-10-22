@@ -31,6 +31,34 @@ final class ItemObservable: ObservableObject {
         model.onTogglePlayed()
     }
 
+    func toggleFavorite() {
+        model.onToggleFavorite()
+    }
+
+    func selectSeason(_ id: String) {
+        model.onSelectSeason(seasonId: id)
+    }
+
+    func toggleEpisodePlayed(_ id: String) {
+        model.onToggleEpisodePlayed(episodeId: id)
+    }
+
+    func retrySimilar() {
+        model.onRetrySimilar()
+    }
+
+    func retryCollections() {
+        model.onRetryCollections()
+    }
+
+    func retrySeasons() {
+        model.onRetrySeasons()
+    }
+
+    func retryEpisodes() {
+        model.onRetryEpisodes()
+    }
+
     func retryAction() {
         model.onRetryAction()
     }

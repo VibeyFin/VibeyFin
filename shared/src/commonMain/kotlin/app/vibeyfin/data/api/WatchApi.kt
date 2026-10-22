@@ -70,3 +70,14 @@ suspend fun JellyfinApi.episodesFrom(seriesId: String, startItemId: String, user
     mapOf("userId" to userId, "startItemId" to startItemId, "limit" to limit.toString()),
     retry = true,
 )
+
+/**
+ * `POST /UserFavoriteItems/{id}` puts [itemId] on [userId]'s "My List" (the server's favourites); `DELETE` takes it off. Doing
+ * either twice changes nothing, so, like the watched mark, it is retried like a read.
+ */
+suspend fun JellyfinApi.setFavorite(itemId: String, userId: String, favorite: Boolean): ApiResult<Unit> =
+    execute({ }, retry = true) {
+        method = if (favorite) HttpMethod.Post else HttpMethod.Delete
+        url("$baseUrl/UserFavoriteItems/$itemId")
+        parameter("userId", userId)
+    }

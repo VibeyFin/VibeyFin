@@ -43,6 +43,9 @@ class ChildrenViewModelTest {
         app.close()
     }
 
+    /** The requests for a page of a list; a season's list also reads its own item, which is not a page. */
+    private fun pageRequests() = app.jellyfin.requestsTo("GET", "/Items").filter { it.query["parentId"] != null }
+
     private fun viewModel(parentId: String = "folder-1") =
         viewModels.track(ChildrenViewModel(parentId, app.library, app.connection))
 
@@ -65,7 +68,7 @@ class ChildrenViewModelTest {
         assertEquals(listOf("a", "b"), state.items.map { it.id })
         assertFalse(state.hasMore)
         assertNull(state.message)
-        assertEquals("series-1", app.jellyfin.requestsTo("GET", "/Items").single().query["parentId"])
+        assertEquals("series-1", pageRequests().single().query["parentId"])
     }
 
     @Test
@@ -91,7 +94,7 @@ class ChildrenViewModelTest {
 
         assertEquals(listOf("a", "b", "c"), state.items.map { it.id })
         assertFalse(state.hasMore)
-        assertEquals(listOf("0", "2"), app.jellyfin.requestsTo("GET", "/Items").map { it.query["startIndex"] })
+        assertEquals(listOf("0", "2"), pageRequests().map { it.query["startIndex"] })
     }
 
     @Test
@@ -106,7 +109,7 @@ class ChildrenViewModelTest {
         viewModel.uiState.first { !it.loadingMore && it.items.size == 3 }
         viewModel.onLoadMore()
 
-        assertEquals(2, app.jellyfin.requestsTo("GET", "/Items").size)
+        assertEquals(2, pageRequests().size)
     }
 
     @Test
@@ -179,5 +182,34 @@ class ChildrenViewModelTest {
         // Nothing answers /Items yet; the first state is still the loading one.
         assertTrue(ChildrenUiState().loading)
         assertFalse(ChildrenUiState().isEmpty)
+    }
+
+    // A season's list leads back to its show.
+
+    private fun FakeServer.parent(item: String) = on("GET", "/Items") { request ->
+        if (request.query["ids"] != null) Reply.json(itemsJson(item)) else Reply.json(itemsJson(itemJson("e1", type = "Episode")))
+    }
+
+    @Test
+    fun aSeasonsListHasAWayToItsShow() = runTest {
+        app.signedIn().parent(itemJson("season-1", "Season 1", type = "Season", isFolder = true, seriesId = "show-1", seriesName = "Severance", episodeNumber = 1))
+
+        val state = viewModel("season-1").uiState.first { !it.loading && it.series != null }
+
+        assertEquals(SeriesLink("show-1", "Severance"), state.series)
+    }
+
+    @Test
+    fun aLibraryOrFolderHasNoSuchLink() = runTest {
+        val server = app.signedIn()
+        server.parent(itemJson("lib-1", "Movies", type = "CollectionFolder", isFolder = true))
+        val viewModel = viewModel("lib-1")
+
+        val state = viewModel.uiState.first { !it.loading }
+        // The lookup has answered by the time the second request is in.
+        app.jellyfin.awaitRequests("GET", "/Items", count = 2)
+
+        assertNull(state.series)
+        assertNull(viewModel.uiState.value.series)
     }
 }

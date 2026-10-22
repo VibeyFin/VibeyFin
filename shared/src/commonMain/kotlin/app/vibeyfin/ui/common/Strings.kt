@@ -326,6 +326,17 @@ object Strings {
 
     /** The page of a movie, an episode or a show: its sections, and what the Play button says for a show. */
     val cast = "Cast"
+    val inCollections = "In collections"
+
+    /** The actions under Play on an item's page. My List is the server's favourites. */
+    val myList = "My List"
+    fun myListAction(onList: Boolean) = if (onList) "Remove from My List" else "Add to My List"
+    val trailer = "Trailer"
+    val download = "Download"
+
+    /** What a season's button says: always "Season 3"; the server's own names ("Series 3", "Season 3") are not used. 0 is Specials. */
+    val specials = "Specials"
+    fun season(number: Int) = "Season $number"
     val moreLikeThis = "More like this"
     val technicalInfo = "Technical info"
     val more = "More"
@@ -333,6 +344,9 @@ object Strings {
     fun seasonCount(count: Int) = if (count == 1) "1 season" else "$count seasons"
     fun playEpisode(episode: String) = "Play $episode"
     fun resumeEpisodeFrom(episode: String, positionMs: Long) = "Resume $episode from ${clock(positionMs)}"
+
+    /** The link from an episode's or a season's page to its show: what a screen reader says for it. */
+    fun goToSeries(name: String) = "Go to $name"
 
     /** An episode's length in its row. */
     fun minutesShort(minutes: Int) = "$minutes min"

@@ -137,4 +137,58 @@ class DetailRepositoryTest {
 
         assertNull(app.watch.nextUpOf("s1").success())
     }
+
+    @Test
+    fun anItemCarriesWhetherItIsOnMyListAndItsTrailers() = runTest {
+        app.signedIn().on(
+            "GET", "/Items",
+            Reply.json(
+                itemsJson(
+                    itemJson(
+                        "m1", "Heat", favorite = true, localTrailerCount = 2,
+                        remoteTrailers = listOf("not a link", "https://www.youtube.com/watch?v=abc"),
+                    ),
+                ),
+            ),
+        )
+
+        val item = app.library.item("m1").success()
+
+        assertTrue(item.isFavorite)
+        assertEquals(2, item.localTrailerCount)
+        // The first address that is a web link.
+        assertEquals("https://www.youtube.com/watch?v=abc", item.remoteTrailerUrl)
+    }
+
+    @Test
+    fun anItemNotOnMyListWithNoTrailers() = runTest {
+        app.signedIn().on("GET", "/Items", Reply.json(itemsJson(itemJson("m1", "Heat"))))
+
+        val item = app.library.item("m1").success()
+
+        assertEquals(false, item.isFavorite)
+        assertEquals(0, item.localTrailerCount)
+        assertNull(item.remoteTrailerUrl)
+    }
+
+    @Test
+    fun theCollectionsAnItemIsInAreFoldersThatOpenTheirMembers() = runTest {
+        app.signedIn().on("GET", "/Items/m1/Collections", Reply.json(itemsJson(itemJson("box-1", "Neon Collection", type = "BoxSet", isFolder = true))))
+
+        val collections = app.library.collectionsOf("m1").success()
+
+        assertEquals(listOf("box-1"), collections.map { it.id })
+        assertTrue(collections.single().isFolder)
+        assertEquals("u1", query("/Items/m1/Collections")["userId"])
+    }
+
+    @Test
+    fun theLocalTrailerIsTheFirstOfTheServersAndNullWhenThereIsNone() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Items/m1/LocalTrailers", Reply.json("[${itemJson("t1", "Trailer", type = "Trailer")}]"))
+        server.on("GET", "/Items/m2/LocalTrailers", Reply.json("[]"))
+
+        assertEquals("t1", app.library.localTrailer("m1").success()?.id)
+        assertNull(app.library.localTrailer("m2").success())
+    }
 }

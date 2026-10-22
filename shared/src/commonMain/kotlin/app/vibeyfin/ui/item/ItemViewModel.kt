@@ -45,6 +45,13 @@ data class SeasonsState(
     val startEpisode: MediaItem? = null,
 )
 
+/** The trailer the page can play: one the server holds, which the player opens, or a page on the web, which the system opens. */
+sealed interface Trailer {
+    data class Local(val itemId: String) : Trailer
+
+    data class Remote(val url: String) : Trailer
+}
+
 data class ItemUiState(
     val item: MediaItem? = null,
     /** The short facts under the title: "S1 E3", year, age rating, runtime or seasons, rating. */
@@ -54,8 +61,12 @@ data class ItemUiState(
     val message: String? = null,
     /** A change that couldn't be saved on the server and was taken back, with what to try. */
     val actionMessage: String? = null,
+    /** The trailer under Play; null when there is none, and then the page has no Trailer button. */
+    val trailer: Trailer? = null,
     /** "More like this"; null until the page is read, and not [MediaRow.isVisible] when the server knows nothing like it. */
     val similar: MediaRow? = null,
+    /** "In collections": the box sets the item is part of; not [MediaRow.isVisible] when it is in none. Null until the page is read. */
+    val collections: MediaRow? = null,
     /** A show's seasons and episodes. */
     val seasons: SeasonsState = SeasonsState(),
     /** Set when the session ended and the screen must be left. */
@@ -66,6 +77,9 @@ data class ItemUiState(
 
     /** The server says the user has watched it: the page shows a check icon beside the facts. */
     val watched: Boolean get() = item?.played == true
+
+    /** On "My List" (a favourite). */
+    val isFavorite: Boolean get() = item?.isFavorite == true
 
     /** The menu entry that flips the watched mark, worded for what it will do. */
     val markLabel: String get() = if (item?.played == true) Strings.markUnwatched else Strings.markWatched
@@ -128,6 +142,11 @@ class ItemViewModel(
     /** "Try again" on "More like this". */
     fun onRetrySimilar() {
         viewModelScope.launch { loadSimilar() }
+    }
+
+    /** "Try again" on "In collections". */
+    fun onRetryCollections() {
+        viewModelScope.launch { loadCollections() }
     }
 
     /** "Try again" on a show's seasons. */
@@ -215,8 +234,39 @@ class ItemViewModel(
         else -> LoadMessages.MARK_UNWATCHED_FAILED
     }
 
-    /** "Try again" on the failure message: the page was taken back, so flipping again repeats the change. */
-    fun onRetryAction() = onTogglePlayed()
+    private var writingFavorite = false
+
+    /** Which change last failed, so "Try again" repeats that one. */
+    private var failedFavorite = false
+
+    /**
+     * Puts the item on "My List" or takes it off. The page shows the change at once and the server is told after; if that fails
+     * the page goes back and says so. A rejected token ends the session instead, so no message.
+     */
+    fun onToggleFavorite() {
+        val before = content.value.item ?: return
+        if (writingFavorite) return
+        writingFavorite = true
+        failedFavorite = false
+        val target = !before.isFavorite
+        content.update { it.copy(item = before.copy(isFavorite = target), actionMessage = null) }
+        viewModelScope.launch {
+            val result = watch.setFavorite(itemId, target)
+            writingFavorite = false
+            if (result is ApiResult.Failure) {
+                failedFavorite = result.error != ApiError.Unauthorized
+                val message = when {
+                    result.error == ApiError.Unauthorized -> null
+                    target -> LoadMessages.ADD_TO_MY_LIST_FAILED
+                    else -> LoadMessages.REMOVE_FROM_MY_LIST_FAILED
+                }
+                content.update { it.copy(item = it.item?.copy(isFavorite = before.isFavorite), actionMessage = message) }
+            }
+        }
+    }
+
+    /** "Try again" on the failure message: the page was taken back, so doing the change again repeats it. */
+    fun onRetryAction() = if (failedFavorite) onToggleFavorite() else onTogglePlayed()
 
     fun onDismissMessage() = content.update { it.copy(actionMessage = null) }
 
@@ -227,15 +277,37 @@ class ItemViewModel(
             when (val result = library.item(itemId)) {
                 is ApiResult.Success -> {
                     val item = result.value
-                    content.value = ItemUiState(item = item, facts = item.facts(), loading = false)
+                    content.value = ItemUiState(item = item, facts = item.facts(), loading = false, trailer = item.remoteTrailerUrl?.let { Trailer.Remote(it) })
                     // The rest of the page loads on its own: each part fails and retries alone.
                     coroutineScope {
                         launch { loadSimilar() }
+                        // A trailer the server holds plays in the app and wins over one on the web.
+                        if (item.localTrailerCount > 0) launch { loadLocalTrailer() }
+                        // Movies and shows can be in collections; an episode or a season is not.
+                        if (item.kind == ItemKind.Movie || item.kind == ItemKind.Series) launch { loadCollections() }
                         if (item.kind == ItemKind.Series) launch { loadSeasons() }
                     }
                 }
                 is ApiResult.Failure -> content.value = ItemUiState(loading = false, message = LoadMessages.forError(result.error))
             }
+        }
+    }
+
+    private suspend fun loadLocalTrailer() {
+        val trailer = (library.localTrailer(itemId) as? ApiResult.Success)?.value ?: return
+        content.update { it.copy(trailer = Trailer.Local(trailer.id)) }
+    }
+
+    private suspend fun loadCollections() {
+        content.update { it.copy(collections = MediaRow("collections", Strings.inCollections, loading = true)) }
+        val result = library.collectionsOf(itemId)
+        content.update {
+            it.copy(
+                collections = when (result) {
+                    is ApiResult.Success -> MediaRow("collections", Strings.inCollections, items = result.value, loading = false)
+                    is ApiResult.Failure -> MediaRow("collections", Strings.inCollections, loading = false, message = LoadMessages.forError(result.error))
+                },
+            )
         }
     }
 

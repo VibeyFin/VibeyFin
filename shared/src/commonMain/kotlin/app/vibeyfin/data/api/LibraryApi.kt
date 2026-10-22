@@ -101,3 +101,11 @@ suspend fun JellyfinApi.seasonsOf(userId: String, seriesId: String): ApiResult<I
 /** `GET /Shows/{id}/Episodes?seasonId=`: the episodes of one season, with their synopsis. */
 suspend fun JellyfinApi.episodesOfSeason(userId: String, seriesId: String, seasonId: String): ApiResult<ItemsResultDto> =
     get("/Shows/$seriesId/Episodes", mapOf("userId" to userId, "seasonId" to seasonId, "fields" to "Overview"), retry = true)
+
+/** `GET /Items/{id}/Collections`: the collections (box sets) the item is part of. */
+suspend fun JellyfinApi.collectionsOf(userId: String, id: String): ApiResult<ItemsResultDto> =
+    get("/Items/$id/Collections", mapOf("userId" to userId), retry = true)
+
+/** `GET /Items/{id}/LocalTrailers`: the trailers the server holds for the item, as playable items. */
+suspend fun JellyfinApi.localTrailers(userId: String, id: String): ApiResult<List<BaseItemDto>> =
+    get("/Items/$id/LocalTrailers", mapOf("userId" to userId), retry = true)

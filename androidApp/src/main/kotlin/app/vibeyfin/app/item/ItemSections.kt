@@ -29,8 +29,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -62,12 +60,15 @@ import app.vibeyfin.app.components.RowPhase
 import app.vibeyfin.app.components.SectionTitle
 import app.vibeyfin.app.components.SkeletonBlock
 import app.vibeyfin.app.components.SkeletonLine
+import app.vibeyfin.app.components.VibeyFinMenu
+import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.components.bleed
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.model.CastMember
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.item.SeasonsState
+import app.vibeyfin.ui.item.seasonLabel
 import app.vibeyfin.ui.item.TechnicalLine
 import coil3.compose.AsyncImage
 
@@ -80,7 +81,7 @@ import coil3.compose.AsyncImage
 fun SeasonsSection(
     seasons: SeasonsState,
     margin: Dp,
-    columns: Int,
+    wide: Boolean,
     onSelect: (String) -> Unit,
     onPlayEpisode: (String) -> Unit,
     onToggleEpisodePlayed: (String) -> Unit,
@@ -101,7 +102,7 @@ fun SeasonsSection(
             }
         }
         if (seasons.seasons.isNotEmpty() && !seasons.loading && seasons.message == null) {
-            EpisodeList(seasons, columns, onPlayEpisode, onToggleEpisodePlayed, onRetryEpisodes)
+            EpisodeList(seasons, wide, margin, onPlayEpisode, onToggleEpisodePlayed, onRetryEpisodes)
         }
     }
 }
@@ -131,7 +132,7 @@ private fun SeasonButtons(seasons: SeasonsState, margin: Dp, onSelect: (String) 
             FilterChip(
                 selected = selected,
                 onClick = { onSelect(season.id) },
-                label = { Text(season.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                label = { Text(season.seasonLabel, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 colors = FilterChipDefaults.filterChipColors(
                     labelColor = VibeyFinTokens.Colors.inkMuted,
                     selectedContainerColor = VibeyFinTokens.Colors.accentSoft,
@@ -143,7 +144,7 @@ private fun SeasonButtons(seasons: SeasonsState, margin: Dp, onSelect: (String) 
                     borderColor = VibeyFinTokens.Colors.lineStrong,
                     selectedBorderColor = VibeyFinTokens.Colors.accentSoft,
                 ),
-                modifier = Modifier.semantics { contentDescription = Strings.seasonDescription(season.title, selected) },
+                modifier = Modifier.semantics { contentDescription = Strings.seasonDescription(season.seasonLabel, selected) },
             )
         }
     }
@@ -151,7 +152,7 @@ private fun SeasonButtons(seasons: SeasonsState, margin: Dp, onSelect: (String) 
 
 /** The selected season's episodes; while another season loads the old list stays, dimmed. */
 @Composable
-private fun EpisodeList(seasons: SeasonsState, columns: Int, onPlay: (String) -> Unit, onToggleWatched: (String) -> Unit, onRetry: () -> Unit) {
+private fun EpisodeList(seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay: (String) -> Unit, onToggleWatched: (String) -> Unit, onRetry: () -> Unit) {
     val episodes = seasons.episodes
     Column(
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
@@ -159,19 +160,27 @@ private fun EpisodeList(seasons: SeasonsState, columns: Int, onPlay: (String) ->
     ) {
         when {
             episodes.message != null -> LoadError(episodes.message!!, onRetry)
-            episodes.items.isEmpty() && episodes.loading -> repeat(3) { EpisodeSkeleton() }
+            episodes.items.isEmpty() && episodes.loading -> if (wide) {
+                Row(Modifier.bleed(margin).padding(horizontal = margin), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
+                    repeat(3) { EpisodeCardSkeleton() }
+                }
+            } else {
+                repeat(3) { EpisodeSkeleton() }
+            }
             episodes.items.isEmpty() -> Text(Strings.noEpisodes, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // A tablet scrolls the episodes sideways, as bigger cards.
+            wide -> LazyRow(
+                modifier = Modifier.bleed(margin).alpha(if (episodes.loading) 0.5f else 1f),
+                contentPadding = PaddingValues(horizontal = margin),
+                horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
+            ) {
+                items(episodes.items, key = { it.id }) { episode ->
+                    EpisodeCard(episode, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) })
+                }
+            }
             else -> Column(Modifier.alpha(if (episodes.loading) 0.5f else 1f), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-                // Two columns when the screen is wide enough; a short last row keeps its cell's width.
-                episodes.items.chunked(columns).forEach { pair ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4), modifier = Modifier.fillMaxWidth()) {
-                        pair.forEach { episode ->
-                            Box(Modifier.weight(1f)) {
-                                EpisodeRow(episode, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) })
-                            }
-                        }
-                        repeat(columns - pair.size) { Box(Modifier.weight(1f)) {} }
-                    }
+                episodes.items.forEach { episode ->
+                    EpisodeRow(episode, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) })
                 }
             }
         }
@@ -191,6 +200,90 @@ private fun EpisodeSkeleton() {
 }
 
 private val EPISODE_THUMB = 132.dp
+
+/** A tablet's episode card is this wide; its picture is 16:9. */
+private val EPISODE_CARD = 320.dp
+
+@Composable
+private fun EpisodeCardSkeleton() {
+    Column(Modifier.width(EPISODE_CARD), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
+        SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(16f / 9f))
+        SkeletonLine(220.dp, MaterialTheme.typography.titleMedium)
+        SkeletonLine(96.dp, MaterialTheme.typography.bodyMedium)
+        SkeletonLine(280.dp, MaterialTheme.typography.bodyMedium)
+    }
+}
+
+/**
+ * An episode on a tablet: a large card in a row that scrolls sideways. The still on top (with a progress bar when it is part
+ * watched), then "4. Title" with a check once watched, how long it is or how much is left, and three lines of synopsis. The
+ * one Play starts is the current one. Tapping plays it; a long press offers the watched mark.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun EpisodeCard(episode: MediaItem, current: Boolean, onPlay: () -> Unit, onToggleWatched: () -> Unit) {
+    var menu by remember { mutableStateOf(false) }
+    Box {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
+            modifier = Modifier
+                .width(EPISODE_CARD)
+                .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
+                .background(if (current) VibeyFinTokens.Colors.surface2 else androidx.compose.ui.graphics.Color.Transparent)
+                .combinedClickable(role = Role.Button, onClick = onPlay, onLongClick = { menu = true })
+                .padding(VibeyFinTokens.Space.s2),
+        ) {
+            Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
+                Artwork(
+                    url = episode.landscapeUrl ?: episode.posterUrl,
+                    title = episode.title,
+                    aspectRatio = 16f / 9f,
+                    blurHash = episode.landscapeBlurHash,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                episode.progress?.let { progress ->
+                    Box(Modifier.align(Alignment.BottomStart).fillMaxWidth()) {
+                        Box(Modifier.fillMaxWidth().size(width = 0.dp, height = 4.dp).background(VibeyFinTokens.Colors.progressTrack))
+                        Box(Modifier.fillMaxWidth(progress).size(width = 0.dp, height = 4.dp).background(VibeyFinTokens.Colors.accent))
+                    }
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
+                Text(
+                    text = Strings.episodeTitle(episode.episodeNumber, episode.title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (episode.played) {
+                    Icon(Icons.Filled.CheckCircle, contentDescription = Strings.watched, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                }
+            }
+            val meta = when {
+                episode.progress != null && episode.runtimeMs != null -> Strings.timeLeftShort(episode.runtimeMs!! - episode.resumePositionMs)
+                else -> episode.runtimeMinutes?.let(Strings::minutesShort)
+            }
+            meta?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            // Always three lines, so every card in the row is the same height.
+            Text(
+                text = episode.overview.orEmpty(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                minLines = 3,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
+            VibeyFinMenuItem(
+                if (episode.played) Strings.markUnwatched else Strings.markWatched,
+                if (episode.played) Icons.Default.Clear else Icons.Default.Check,
+            ) { menu = false; onToggleWatched() }
+        }
+    }
+}
 
 /**
  * One episode: its still (with a progress bar when it is part watched), "4. Title", how long it is or how much is left, a check
@@ -252,12 +345,11 @@ private fun EpisodeRow(episode: MediaItem, current: Boolean, onPlay: () -> Unit,
                 }
             }
         }
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            DropdownMenuItem(
-                text = { Text(if (episode.played) Strings.markUnwatched else Strings.markWatched) },
-                leadingIcon = { Icon(if (episode.played) Icons.Default.Clear else Icons.Default.Check, contentDescription = null) },
-                onClick = { menu = false; onToggleWatched() },
-            )
+        VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
+            VibeyFinMenuItem(
+                if (episode.played) Strings.markUnwatched else Strings.markWatched,
+                if (episode.played) Icons.Default.Clear else Icons.Default.Check,
+            ) { menu = false; onToggleWatched() }
         }
     }
 }

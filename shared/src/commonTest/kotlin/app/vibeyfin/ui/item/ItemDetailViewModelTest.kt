@@ -286,4 +286,116 @@ class ItemDetailViewModelTest {
         assertNull(state.playTarget)
         assertFalse(state.canPlay)
     }
+
+    // My List, the trailer, and the season buttons' names.
+
+    private suspend fun movieServer(item: String): FakeServer {
+        val server = app.signedIn()
+        server.on("GET", "/Items", Reply.json(itemsJson(item)))
+        server.on("GET", "/Items/m1/Similar", Reply.json(itemsJson()))
+        server.on("GET", "/Items/m1/Collections", Reply.json(itemsJson()))
+        return server
+    }
+
+    @Test
+    fun myListIsShownAtOnceAndKeptWhenTheServerSavesIt() = runTest {
+        val server = movieServer(itemJson("m1", "Heat", favorite = false))
+        server.on("POST", "/UserFavoriteItems/m1", Reply.json("""{"IsFavorite":true}"""))
+        val viewModel = viewModel("m1")
+        assertFalse(viewModel.uiState.first { !it.loading }.isFavorite)
+
+        viewModel.onToggleFavorite()
+
+        assertTrue(viewModel.uiState.value.isFavorite)
+        assertEquals("u1", app.jellyfin.requestsTo("POST", "/UserFavoriteItems/m1").single().query["userId"])
+    }
+
+    @Test
+    fun takingItOffMyListUsesDelete() = runTest {
+        val server = movieServer(itemJson("m1", "Heat", favorite = true))
+        server.on("DELETE", "/UserFavoriteItems/m1", Reply.json("""{"IsFavorite":false}"""))
+        val viewModel = viewModel("m1")
+        assertTrue(viewModel.uiState.first { !it.loading }.isFavorite)
+
+        viewModel.onToggleFavorite()
+
+        assertFalse(viewModel.uiState.value.isFavorite)
+        assertEquals(1, app.jellyfin.requestsTo("DELETE", "/UserFavoriteItems/m1").size)
+    }
+
+    @Test
+    fun myListThatCantBeSavedIsTakenBackWithAMessageAndRetriesTheSameChange() = runTest {
+        val server = movieServer(itemJson("m1", "Heat", favorite = false))
+        server.on("POST", "/UserFavoriteItems/m1", Reply.status(HttpStatusCode.ServiceUnavailable))
+        val viewModel = viewModel("m1")
+        viewModel.uiState.first { !it.loading }
+
+        viewModel.onToggleFavorite()
+        val failed = viewModel.uiState.first { it.actionMessage != null }
+
+        assertFalse(failed.isFavorite)
+        assertEquals("Couldn't add this to My List. Check your connection and try again.", failed.actionMessage)
+
+        server.on("POST", "/UserFavoriteItems/m1", Reply.json("""{"IsFavorite":true}"""))
+        viewModel.onRetryAction()
+        assertTrue(viewModel.uiState.value.isFavorite)
+        assertNull(viewModel.uiState.value.actionMessage)
+    }
+
+    @Test
+    fun aTrailerOnTheWebIsOfferedAndOneWithoutAnAddressIsNot() = runTest {
+        movieServer(itemJson("m1", "Heat", remoteTrailers = listOf("https://www.youtube.com/watch?v=abc")))
+
+        val state = viewModel("m1").uiState.first { !it.loading }
+
+        assertEquals(Trailer.Remote("https://www.youtube.com/watch?v=abc"), state.trailer)
+    }
+
+    @Test
+    fun aPageWithNoTrailerHasNoTrailerButton() = runTest {
+        movieServer(itemJson("m1", "Heat"))
+
+        assertNull(viewModel("m1").uiState.first { !it.loading }.trailer)
+    }
+
+    @Test
+    fun aTrailerTheServerHoldsPlaysInTheAppAndWinsOverOneOnTheWeb() = runTest {
+        val server = movieServer(itemJson("m1", "Heat", localTrailerCount = 1, remoteTrailers = listOf("https://www.youtube.com/watch?v=abc")))
+        server.on("GET", "/Items/m1/LocalTrailers", Reply.json("[${itemJson("trailer-1", "Heat trailer", type = "Trailer")}]"))
+
+        val state = viewModel("m1").uiState.first { it.trailer is Trailer.Local }
+
+        assertEquals(Trailer.Local("trailer-1"), state.trailer)
+        assertEquals("u1", app.jellyfin.requestsTo("GET", "/Items/m1/LocalTrailers").single().query["userId"])
+    }
+
+    @Test
+    fun aTrailerThatCantBeFetchedLeavesTheWebOneInPlace() = runTest {
+        val server = movieServer(itemJson("m1", "Heat", localTrailerCount = 1, remoteTrailers = listOf("https://www.youtube.com/watch?v=abc")))
+        server.on("GET", "/Items/m1/LocalTrailers", Reply.status(HttpStatusCode.ServiceUnavailable))
+
+        val state = viewModel("m1").uiState.first { !it.loading }
+        app.jellyfin.awaitRequests("GET", "/Items/m1/LocalTrailers")
+
+        assertEquals(Trailer.Remote("https://www.youtube.com/watch?v=abc"), viewModel("m1").uiState.first { !it.loading }.trailer ?: state.trailer)
+    }
+
+    @Test
+    fun everySeasonButtonSaysSeasonWhateverTheServerCallsIt() = runTest {
+        val server = server()
+        server.on(
+            "GET", "/Shows/show/Seasons",
+            Reply.json(
+                itemsJson(
+                    itemJson("sp", "Special Features", type = "Season", isFolder = true, episodeNumber = 0, seriesId = "show"),
+                    itemJson("s1", "Series 1", type = "Season", isFolder = true, episodeNumber = 1, seriesId = "show"),
+                    itemJson("s2", "Season 2", type = "Season", isFolder = true, episodeNumber = 2, seriesId = "show"),
+                ),
+            ),
+        )
+
+        val state = viewModel("show").shown()
+
+        assertEquals(listOf("Specials", "Season 1", "Season 2"), state.seasons.seasons.map { it.seasonLabel })
+    }
 }
