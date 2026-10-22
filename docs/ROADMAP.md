@@ -177,9 +177,9 @@ _Starts after the state audit (see Cross-cutting)._
   Resume will start, and Play / Resume on the hero starts that episode
 - [ ] Unified search: `/Search/Hints` on one screen, with results grouped into Movies, Shows, Episodes,
   People and Collections; a person opens their page. Seerr adds a "not in your library" section in Phase 8
-- [ ] Person page: the biography (`Overview`, when the server's metadata providers supply one) and what
+- [x] Person page (Android built, iOS parsed; plan 12): the biography (`Overview`, when the server's metadata providers supply one) and what
   they appear in within the library (`GET /Items?PersonIds=`); cast on the detail page opens it
-- [ ] Special features (behind the scenes, extras) on the detail page (`GET /Items/{id}/SpecialFeatures`)
+- [x] Special features (behind the scenes, extras; plan 12) on the detail page (`GET /Items/{id}/SpecialFeatures`)
 - [ ] Library browse filters: genre, year and actor (`GET /Items` with `Genres`, `Years`, `PersonIds`) and
   a sort order
 - [ ] Shared-element transition from a poster to the detail hero, using each platform's own mechanism:

@@ -204,6 +204,7 @@ struct EpisodeCardView: View {
 struct CastSectionView: View {
     let cast: [CastMember]
     let tile: CGFloat
+    let onOpenPerson: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s3) {
@@ -213,6 +214,7 @@ struct CastSectionView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: Space.s3) {
                     ForEach(cast, id: \.id) { person in
+                        Button { onOpenPerson(person.id) } label: {
                         VStack(spacing: Space.s1) {
                             portrait(person)
                             // Names take two lines and roles one, always, so the row keeps one height.
@@ -228,7 +230,11 @@ struct CastSectionView: View {
                                 .lineLimit(1, reservesSpace: true)
                         }
                         .frame(width: tile)
+                        .contentShape(Rectangle())
+                        }
+                        .buttonStyle(PressableButtonStyle())
                         .accessibilityElement(children: .combine)
+                        .accessibilityHint(Strings.shared.personDescription(name: person.name, role: person.role))
                     }
                 }
             }

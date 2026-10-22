@@ -7,6 +7,8 @@ enum TabRoute: Hashable {
     /// What is inside a library, folder, series or season; `title` shows while it loads.
     case children(parentId: String, title: String)
     case item(itemId: String)
+    /// A cast member's page.
+    case person(personId: String)
     /// A category page: `kind` is `shows`, `movies`, `new` or `genre`; `id` and `name` are the genre's own.
     case filtered(kind: String, id: String?, name: String?)
 }
@@ -106,7 +108,9 @@ struct TabShell: View {
                     case .children(let parentId, let title):
                         ChildrenView(parentId: parentId, title: title, onOpen: { open($0, in: path) }, onOpenSeries: { path.wrappedValue.append(.item(itemId: $0)) }, onExit: onExit)
                     case .item(let itemId):
-                        ItemView(itemId: itemId, onOpen: { open($0, in: path) }, onOpenSeries: { path.wrappedValue.append(.item(itemId: $0)) }, onExit: onExit)
+                        ItemView(itemId: itemId, onOpen: { open($0, in: path) }, onOpenSeries: { path.wrappedValue.append(.item(itemId: $0)) }, onOpenPerson: { path.wrappedValue.append(.person(personId: $0)) }, onExit: onExit)
+                    case .person(let personId):
+                        PersonView(personId: personId, onOpen: { open($0, in: path) }, onExit: onExit)
                     case .filtered:
                         if let filter = route.filter() {
                             FilteredListView(filter: filter, onOpen: { open($0, in: path) }, onExit: onExit)

@@ -16,6 +16,7 @@ struct ItemView: View {
     let onOpen: (MediaItem) -> Void
     /// An episode's or a season's page leads back to its show.
     let onOpenSeries: (String) -> Void
+    let onOpenPerson: (String) -> Void
     /// Called when the session ended and the screen must be left.
     let onExit: (HomeExit) -> Void
 
@@ -24,11 +25,12 @@ struct ItemView: View {
         let startOver: Bool
     }
 
-    init(itemId: String, onOpen: @escaping (MediaItem) -> Void, onOpenSeries: @escaping (String) -> Void, onExit: @escaping (HomeExit) -> Void) {
+    init(itemId: String, onOpen: @escaping (MediaItem) -> Void, onOpenSeries: @escaping (String) -> Void, onOpenPerson: @escaping (String) -> Void, onExit: @escaping (HomeExit) -> Void) {
         _model = StateObject(wrappedValue: ItemObservable(itemId: itemId))
         self.itemId = itemId
         self.onOpen = onOpen
         self.onOpenSeries = onOpenSeries
+        self.onOpenPerson = onOpenPerson
         self.onExit = onExit
     }
 
@@ -92,7 +94,12 @@ struct ItemView: View {
                 )
             }
             if !item.cast.isEmpty {
-                CastSectionView(cast: item.cast, tile: wide ? 112 : 88)
+                CastSectionView(cast: item.cast, tile: wide ? 112 : 88, onOpenPerson: onOpenPerson)
+            }
+            // Behind the scenes and the like.
+            if let extras = state.extras, extras.isVisible {
+                MediaRowView(row: extras, onOpen: onOpen, onSeeAll: { _ in }, onRetry: { model.retryExtras() }, tileWidth: wide ? 260 : 200)
+                    .padding(.horizontal, -Space.s4)
             }
             // The collections it is part of: a poster each, and one opens the collection's members.
             if let collections = state.collections, collections.isVisible {

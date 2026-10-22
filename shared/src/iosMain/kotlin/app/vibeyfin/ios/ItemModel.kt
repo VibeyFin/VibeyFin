@@ -26,6 +26,8 @@ class ItemModel(itemId: String) {
 
     fun onRetryCollections() = host.viewModel.onRetryCollections()
 
+    fun onRetryExtras() = host.viewModel.onRetryExtras()
+
     fun onRetrySeasons() = host.viewModel.onRetrySeasons()
 
     fun onRetryEpisodes() = host.viewModel.onRetryEpisodes()
