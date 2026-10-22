@@ -78,9 +78,23 @@ extension Space {
 
 private struct ScreenMargin: ViewModifier {
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.screenMarginOverride) private var override
 
     func body(content: Content) -> some View {
-        content.padding(.horizontal, sizeClass == .regular ? Space.regularMargin : Space.s4)
+        content.padding(.horizontal, override ?? (sizeClass == .regular ? Space.regularMargin : Space.s4))
+    }
+}
+
+private struct ScreenMarginOverrideKey: EnvironmentKey {
+    static let defaultValue: CGFloat? = nil
+}
+
+extension EnvironmentValues {
+    /// A page that wants a different side margin than the screen's default (the item page's wide layout uses 32 pt) sets it here, and
+    /// every `screenMargin()` below it follows.
+    var screenMarginOverride: CGFloat? {
+        get { self[ScreenMarginOverrideKey.self] }
+        set { self[ScreenMarginOverrideKey.self] = newValue }
     }
 }
 

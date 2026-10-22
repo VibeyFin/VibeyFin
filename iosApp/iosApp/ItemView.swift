@@ -36,6 +36,9 @@ struct ItemView: View {
 
     private var wide: Bool { sizeClass == .regular }
 
+    /// The page's side margin: larger on a regular width, where the hero's column and everything under it line up on it.
+    private var margin: CGFloat { wide ? Space.s6 : Space.s4 }
+
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
@@ -85,6 +88,7 @@ struct ItemView: View {
                 SeasonsSectionView(
                     seasons: state.seasons,
                     wide: wide,
+                    margin: margin,
                     onSelect: { model.selectSeason($0) },
                     onPlay: { playing = PlayRequest(id: $0, startOver: false) },
                     onToggleWatched: { model.toggleEpisodePlayed($0) },
@@ -94,21 +98,21 @@ struct ItemView: View {
                 )
             }
             if !item.cast.isEmpty {
-                CastSectionView(cast: item.cast, tile: wide ? 112 : 88, onOpenPerson: onOpenPerson)
+                CastSectionView(cast: item.cast, tile: wide ? 112 : 88, margin: margin, onOpenPerson: onOpenPerson)
             }
             // Behind the scenes and the like.
             if let extras = state.extras, extras.isVisible {
                 MediaRowView(row: extras, onOpen: onOpen, onSeeAll: { _ in }, onRetry: { model.retryExtras() }, tileWidth: wide ? 260 : 200)
-                    .padding(.horizontal, -Space.s4)
+                    .padding(.horizontal, -margin)
             }
             // The collections it is part of: a poster each, and one opens the collection's members.
             if let collections = state.collections, collections.isVisible {
                 MediaRowView(row: collections, onOpen: onOpen, onSeeAll: { _ in }, onRetry: { model.retryCollections() }, tileWidth: wide ? 168 : 112)
-                    .padding(.horizontal, -Space.s4)
+                    .padding(.horizontal, -margin)
             }
             if let similar = state.similar, similar.isVisible {
                 MediaRowView(row: similar, onOpen: onOpen, onSeeAll: { _ in }, onRetry: { model.retrySimilar() }, tileWidth: wide ? 168 : 112)
-                    .padding(.horizontal, -Space.s4)
+                    .padding(.horizontal, -margin)
             }
             if !state.technical.isEmpty {
                 TechnicalInfoView(lines: state.technical)
@@ -125,6 +129,7 @@ struct ItemView: View {
                 phoneLayout(item, state: state, sections: sections, onPlay: playHere, onPlayTrailer: playTrailer)
             }
         }
+        .environment(\.screenMarginOverride, wide ? Space.s6 : nil)
     }
 
     /// The picture stays put behind the page and darkens; the text goes up over it, and the rest of the page covers it.
@@ -199,7 +204,7 @@ struct ItemView: View {
                             onTogglePlayed: { model.togglePlayed() }
                         )
                         .frame(maxWidth: min(proxy.size.width * 0.46, 520), alignment: .leading)
-                        .padding(.horizontal, Space.s6)
+                        .padding(.horizontal, margin)
                         sections
                     }
                 }

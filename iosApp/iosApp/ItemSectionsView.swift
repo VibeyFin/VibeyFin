@@ -8,6 +8,8 @@ struct SeasonsSectionView: View {
     let seasons: SeasonsState
     /// A regular width scrolls the episodes sideways, as bigger cards.
     let wide: Bool
+    /// The page's side margin: the rows run to the screen's edges and start in line with it.
+    let margin: CGFloat
     let onSelect: (String) -> Void
     let onPlay: (String) -> Void
     let onToggleWatched: (String) -> Void
@@ -70,7 +72,9 @@ struct SeasonsSectionView: View {
                         .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
                     }
                 }
+                .padding(.horizontal, margin)
             }
+            .padding(.horizontal, -margin)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(Strings.shared.seasonsDescription(count: Int32(seasons.seasons.count)))
             // Opens with the season Play starts in in view.
@@ -100,7 +104,9 @@ struct SeasonsSectionView: View {
                         SkeletonBlock().frame(width: cardWidth).aspectRatio(1.6, contentMode: .fit)
                     }
                 }
+                .padding(.horizontal, margin)
             }
+            .padding(.horizontal, -margin)
             .scrollDisabled(true)
         } else if list.items.isEmpty {
             Text(Strings.shared.noEpisodes)
@@ -122,7 +128,9 @@ struct SeasonsSectionView: View {
                             .id(episode.id)
                         }
                     }
+                    .padding(.horizontal, margin)
                 }
+                .padding(.horizontal, -margin)
                 // A season opens at the episode Play will start, so the one being watched is in view; another season at its first.
                 .onAppear { scrollToCurrent(proxy, list) }
                 .onChange(of: list.items.first?.id) { _ in scrollToCurrent(proxy, list) }
@@ -253,12 +261,9 @@ struct EpisodeCardView: View {
 struct CastSectionView: View {
     let cast: [CastMember]
     let tile: CGFloat
+    /// The page's side margin, so the row can run to the screen's edges and start in line with the title.
+    let margin: CGFloat
     let onOpenPerson: (String) -> Void
-
-    @Environment(\.horizontalSizeClass) private var sizeClass
-
-    /// The page's own side margin, so the row can run to the screen's edges and start in line with the title.
-    private var margin: CGFloat { sizeClass == .regular ? Space.regularMargin : Space.s4 }
 
     /// One tile per person: an actor with several parts is listed once, as on Android.
     private var people: [CastMember] {
