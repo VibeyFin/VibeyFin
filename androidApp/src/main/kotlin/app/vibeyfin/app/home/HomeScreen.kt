@@ -107,7 +107,7 @@ fun HomeRoute(
     }
     // Back from another screen, or from the background: something may have been watched elsewhere.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onForeground() }
-    // A category button or a dropdown entry was chosen: its page opens over Home.
+    // A category button or a genre in the sheet was chosen: its page opens over Home.
     LaunchedEffect(state.openList) {
         state.openList?.let {
             onOpenList(it)
@@ -127,8 +127,8 @@ fun HomeRoute(
         onRetryLibraries = viewModel::onRetryLibraries,
         onCategory = viewModel::onCategory,
         onPickOption = viewModel::onPickOption,
-        onDismissDropdown = viewModel::onDismissDropdown,
-        onRetryDropdown = viewModel::onRetryDropdown,
+        onDismissSheet = viewModel::onDismissSheet,
+        onRetrySheet = viewModel::onRetrySheet,
         onSwitchProfile = viewModel::onSwitchProfile,
         onSwitchServer = viewModel::onSwitchServer,
         onSettings = onSettings,
@@ -151,8 +151,8 @@ fun HomeScreen(
     onRetryLibraries: () -> Unit,
     onCategory: (CategoryKind) -> Unit,
     onPickOption: (String) -> Unit,
-    onDismissDropdown: () -> Unit,
-    onRetryDropdown: () -> Unit,
+    onDismissSheet: () -> Unit,
+    onRetrySheet: () -> Unit,
     onSwitchProfile: () -> Unit,
     onSwitchServer: () -> Unit,
     onSettings: () -> Unit,
@@ -194,7 +194,7 @@ fun HomeScreen(
             if (state.serverId != null) {
                 Content(
                     state, margin, onOpen, onPlay, { menuCard = it }, onRefresh, onRetryContinue, onRetryLibraries,
-                    onTap = { onCategory(it.kind) }, onPickOption, onDismissDropdown, onRetryDropdown,
+                    onTap = { onCategory(it.kind) },
                 )
             }
         }
@@ -202,6 +202,7 @@ fun HomeScreen(
             ActionSnackbar(state.actionMessage, onRetry = onRetryAction, onDismiss = onDismissMessage)
         }
     }
+    state.sheet?.let { sheet -> CategorySheet(sheet, onPickOption, onDismissSheet, onRetrySheet) }
     menuCard?.let { card ->
         ModalBottomSheet(onDismissRequest = { menuCard = null }) {
             Column(Modifier.padding(bottom = VibeyFinTokens.Space.s5)) {
@@ -246,9 +247,6 @@ private fun Content(
     onRetryContinue: () -> Unit,
     onRetryLibraries: () -> Unit,
     onTap: (CategoryButton) -> Unit,
-    onPickOption: (String) -> Unit,
-    onDismissDropdown: () -> Unit,
-    onRetryDropdown: () -> Unit,
 ) {
     val refreshState = rememberPullToRefreshState()
     PullToRefreshBox(
@@ -279,12 +277,8 @@ private fun Content(
             fullWidth(key = "categories") {
                 CategoryButtonRow(
                     buttons = state.buttons,
-                    dropdown = state.dropdown,
                     contentPadding = PaddingValues(horizontal = margin),
                     onTap = onTap,
-                    onPick = onPickOption,
-                    onDismiss = onDismissDropdown,
-                    onRetry = onRetryDropdown,
                     modifier = Modifier.bleed(margin),
                 )
             }

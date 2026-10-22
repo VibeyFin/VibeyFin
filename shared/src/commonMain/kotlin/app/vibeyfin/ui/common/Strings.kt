@@ -95,19 +95,13 @@ object Strings {
     /** What a screen reader says for the group of category buttons. */
     val filterHome = "Filter Home"
 
-    /** What a screen reader says for a button that opens a dropdown of genres. */
+    /** What a screen reader says for a button that opens a list of genres. */
     fun opensList(label: String) = "$label, opens a list"
-
-    /** The placeholder of the search field in the Categories dropdown. */
-    val filterSearch = "Search"
 
     /** The subtitle above the titles of the "New" page that have no release year. */
     val unknownYear = "Unknown year"
 
-    /** In the Categories dropdown when what was typed matches nothing. */
-    val nothingFound = "Nothing matches that."
-
-    /** In the Categories dropdown when the server has none. */
+    /** In the Categories sheet when the server has none. */
     val noCategories = "This server has no categories."
 
     /** On the Library and Downloads tabs until their features land. */

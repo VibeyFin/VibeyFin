@@ -58,15 +58,15 @@ data class HomeUiState(
     val exit: HomeExit? = null,
     /** The category buttons under the header, in order. */
     val buttons: List<CategoryButton> = categoryButtons(),
-    /** The Categories dropdown while it is open. */
-    val dropdown: FilterDropdown? = null,
-    /** Set when a category page should open (a button or a dropdown entry was chosen); the screen calls `onListOpened`. */
+    /** The Categories sheet while it is open. */
+    val sheet: FilterSheet? = null,
+    /** Set when a category page should open (a button or a sheet entry was chosen); the screen calls `onListOpened`. */
     val openList: HomeFilter? = null,
 )
 
-/** The dropdown and the page to open, which change together. */
+/** The sheet and the page to open, which change together. */
 private data class CategoryUi(
-    val dropdown: FilterDropdown? = null,
+    val sheet: FilterSheet? = null,
     val openList: HomeFilter? = null,
 )
 
@@ -99,8 +99,8 @@ class HomeViewModel(
     private val actionMessage = MutableStateFlow<String?>(null)
 
     private val categoryUi = MutableStateFlow(CategoryUi())
-    private var dropdownJob: Job? = null
-    // The dropdowns' lists, fetched once per session when first opened.
+    private var sheetJob: Job? = null
+    // The sheets' lists, fetched once per session when first opened.
     private var genreOptions: List<FilterOption>? = null
 
     private val screen = combine(connection.state, exit, libraries, continueRow, refreshing) { state, exit, libraries, continueRow, refreshing ->
@@ -126,7 +126,7 @@ class HomeViewModel(
     }
 
     val uiState: StateFlow<HomeUiState> = combine(screen, actionMessage, categoryUi) { screen, message, categories ->
-        screen.copy(actionMessage = message, dropdown = categories.dropdown, openList = categories.openList)
+        screen.copy(actionMessage = message, sheet = categories.sheet, openList = categories.openList)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     init {
@@ -138,7 +138,7 @@ class HomeViewModel(
                 .distinctUntilChanged()
                 .collectLatest {
                     // Another profile or address has its own genres.
-                    dropdownJob?.cancel()
+                    sheetJob?.cancel()
                     categoryUi.value = CategoryUi()
                     genreOptions = null
                     coroutineScope {
@@ -262,46 +262,46 @@ class HomeViewModel(
 
     /**
      * A tap on a category button. Shows, Movies and New open their page at once; Studios and Categories open a
-     * dropdown to pick from, and the pick opens the page.
+     * sheet to pick from, and the pick opens the page.
      */
     fun onCategory(kind: CategoryKind) {
         when (kind) {
             CategoryKind.Shows -> categoryUi.update { it.copy(openList = HomeFilter.Shows) }
             CategoryKind.Movies -> categoryUi.update { it.copy(openList = HomeFilter.Movies) }
             CategoryKind.New -> categoryUi.update { it.copy(openList = HomeFilter.New) }
-            CategoryKind.Categories -> openDropdown()
+            CategoryKind.Categories -> openSheet()
         }
     }
 
-    /** An entry of the open dropdown was chosen: its page opens and the dropdown closes. */
+    /** An entry of the open sheet was chosen: its page opens and the sheet closes. */
     fun onPickOption(id: String) {
-        val dropdown = categoryUi.value.dropdown ?: return
-        val option = dropdown.options.firstOrNull { it.id == id } ?: return
+        val sheet = categoryUi.value.sheet ?: return
+        val option = sheet.options.firstOrNull { it.id == id } ?: return
         val filter = HomeFilter.Genre(option.id, option.name)
-        dropdownJob?.cancel()
+        sheetJob?.cancel()
         categoryUi.value = CategoryUi(openList = filter)
     }
 
     /** The screen has opened the page asked for. */
     fun onListOpened() = categoryUi.update { it.copy(openList = null) }
 
-    fun onDismissDropdown() {
-        dropdownJob?.cancel()
-        categoryUi.update { it.copy(dropdown = null) }
+    fun onDismissSheet() {
+        sheetJob?.cancel()
+        categoryUi.update { it.copy(sheet = null) }
     }
 
-    /** "Try again" in the dropdown. */
-    fun onRetryDropdown() {
-        val dropdown = categoryUi.value.dropdown ?: return
-        categoryUi.update { it.copy(dropdown = dropdown.copy(loading = true, message = null)) }
-        loadDropdown()
+    /** "Try again" in the sheet. */
+    fun onRetrySheet() {
+        val sheet = categoryUi.value.sheet ?: return
+        categoryUi.update { it.copy(sheet = sheet.copy(loading = true, message = null)) }
+        loadSheet()
     }
 
-    private fun openDropdown() {
+    private fun openSheet() {
         val cached = genreOptions
         categoryUi.update {
             it.copy(
-                dropdown = FilterDropdown(
+                sheet = FilterSheet(
                     kind = CategoryKind.Categories,
                     title = Strings.filterCategories,
                     options = cached.orEmpty(),
@@ -309,20 +309,20 @@ class HomeViewModel(
                 ),
             )
         }
-        if (cached == null) loadDropdown()
+        if (cached == null) loadSheet()
     }
 
-    private fun loadDropdown() {
-        dropdownJob?.cancel()
-        dropdownJob = viewModelScope.launch {
+    private fun loadSheet() {
+        sheetJob?.cancel()
+        sheetJob = viewModelScope.launch {
             val result = library.genres()
             if (result is ApiResult.Success) genreOptions = result.value
             categoryUi.update { ui ->
-                val dropdown = ui.dropdown ?: return@update ui
+                val sheet = ui.sheet ?: return@update ui
                 ui.copy(
-                    dropdown = when (result) {
-                        is ApiResult.Success -> dropdown.copy(options = result.value, loading = false, message = null)
-                        is ApiResult.Failure -> dropdown.copy(loading = false, message = LoadMessages.forError(result.error))
+                    sheet = when (result) {
+                        is ApiResult.Success -> sheet.copy(options = result.value, loading = false, message = null)
+                        is ApiResult.Failure -> sheet.copy(loading = false, message = LoadMessages.forError(result.error))
                     },
                 )
             }

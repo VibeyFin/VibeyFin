@@ -23,7 +23,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** Home's category buttons: Shows, Movies and New open their page; Categories opens a dropdown first. */
+/** Home's category buttons: Shows, Movies and New open their page; Categories opens a sheet first. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeFilterViewModelTest {
     private val app = TestApp()
@@ -57,14 +57,14 @@ class HomeFilterViewModelTest {
     private suspend fun HomeViewModel.loaded() = uiState.first { it.serverId != null && !it.loadingLibraries && !it.continueRow.loading }
 
     @Test
-    fun homeShowsTheFourButtonsInOrderAndOnlyTwoOpenADropdown() = runTest {
+    fun homeShowsTheFourButtonsInOrderAndOnlyTwoOpenASheet() = runTest {
         server()
 
         val state = viewModel().loaded()
 
         assertEquals(listOf("Shows", "Movies", "New", "Categories"), state.buttons.map { it.label })
-        assertEquals(listOf(false, false, false, true), state.buttons.map { it.opensDropdown })
-        assertNull(state.dropdown)
+        assertEquals(listOf(false, false, false, true), state.buttons.map { it.opensSheet })
+        assertNull(state.sheet)
         assertNull(state.openList)
     }
 
@@ -85,62 +85,62 @@ class HomeFilterViewModelTest {
 
         viewModel.onCategory(CategoryKind.New)
         assertEquals(HomeFilter.New, viewModel.uiState.value.openList)
-        assertNull(viewModel.uiState.value.dropdown)
+        assertNull(viewModel.uiState.value.sheet)
     }
 
     @Test
-    fun theCategoriesDropdownListsGenresByNameAndPickingOneOpensItsPage() = runTest {
+    fun theCategoriesSheetListsGenresByNameAndPickingOneOpensItsPage() = runTest {
         server()
         val viewModel = viewModel()
         viewModel.loaded()
 
         viewModel.onCategory(CategoryKind.Categories)
         assertNull(viewModel.uiState.value.openList)
-        val dropdown = assertNotNull(viewModel.uiState.first { it.dropdown?.loading == false }.dropdown)
+        val sheet = assertNotNull(viewModel.uiState.first { it.sheet?.loading == false }.sheet)
 
-        assertEquals("Categories", dropdown.title)
-        assertEquals(listOf("Drama", "Thriller"), dropdown.options.map { it.name })
+        assertEquals("Categories", sheet.title)
+        assertEquals(listOf("Drama", "Thriller"), sheet.options.map { it.name })
 
         viewModel.onPickOption("g1")
         val state = viewModel.uiState.value
 
         assertEquals(HomeFilter.Genre("g1", "Drama"), state.openList)
-        assertNull(state.dropdown)
+        assertNull(state.sheet)
     }
 
     @Test
-    fun theCategoriesDropdownOpensAGenrePageAndIsFetchedOnce() = runTest {
+    fun theCategoriesSheetOpensAGenrePageAndIsFetchedOnce() = runTest {
         val server = server()
         val viewModel = viewModel()
         viewModel.loaded()
 
         viewModel.onCategory(CategoryKind.Categories)
-        viewModel.uiState.first { it.dropdown?.loading == false }
+        viewModel.uiState.first { it.sheet?.loading == false }
         viewModel.onPickOption("g1")
         assertEquals(HomeFilter.Genre("g1", "Drama"), viewModel.uiState.value.openList)
         viewModel.onListOpened()
 
         viewModel.onCategory(CategoryKind.Categories)
         // Opened again, the list comes from memory: it is already there and the server was asked once.
-        assertEquals(listOf("Drama", "Thriller"), viewModel.uiState.value.dropdown?.options?.map { it.name })
+        assertEquals(listOf("Drama", "Thriller"), viewModel.uiState.value.sheet?.options?.map { it.name })
         assertEquals(1, app.jellyfin.requestsTo("GET", "/Genres").size)
         assertTrue(server.address.isNotEmpty())
     }
 
     @Test
-    fun aDropdownThatFailsToLoadSaysSoAndRetries() = runTest {
+    fun aSheetThatFailsToLoadSaysSoAndRetries() = runTest {
         val server = server(genres = Reply.status(HttpStatusCode.ServiceUnavailable))
         val viewModel = viewModel()
         viewModel.loaded()
 
         viewModel.onCategory(CategoryKind.Categories)
-        val failed = assertNotNull(viewModel.uiState.first { it.dropdown?.loading == false }.dropdown)
+        val failed = assertNotNull(viewModel.uiState.first { it.sheet?.loading == false }.sheet)
 
         assertNotNull(failed.message)
 
         server.on("GET", "/Genres", Reply.json(itemsJson(itemJson("g1", "Drama", type = "Genre"))))
-        viewModel.onRetryDropdown()
-        val retried = assertNotNull(viewModel.uiState.first { it.dropdown?.options?.isNotEmpty() == true }.dropdown)
+        viewModel.onRetrySheet()
+        val retried = assertNotNull(viewModel.uiState.first { it.sheet?.options?.isNotEmpty() == true }.sheet)
 
         assertNull(retried.message)
         assertEquals(listOf("Drama"), retried.options.map { it.name })
@@ -153,22 +153,22 @@ class HomeFilterViewModelTest {
         viewModel.loaded()
 
         viewModel.onCategory(CategoryKind.Categories)
-        val dropdown = assertNotNull(viewModel.uiState.first { it.dropdown?.loading == false }.dropdown)
+        val sheet = assertNotNull(viewModel.uiState.first { it.sheet?.loading == false }.sheet)
 
-        assertTrue(dropdown.isEmpty)
-        assertEquals("This server has no categories.", dropdown.emptyText)
+        assertTrue(sheet.isEmpty)
+        assertEquals("This server has no categories.", sheet.emptyText)
     }
 
     @Test
-    fun dismissingTheDropdownOpensNothing() = runTest {
+    fun dismissingTheSheetOpensNothing() = runTest {
         server()
         val viewModel = viewModel()
         viewModel.loaded()
 
         viewModel.onCategory(CategoryKind.Categories)
-        viewModel.onDismissDropdown()
+        viewModel.onDismissSheet()
 
-        assertNull(viewModel.uiState.value.dropdown)
+        assertNull(viewModel.uiState.value.sheet)
         assertNull(viewModel.uiState.value.openList)
     }
 

@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import app.vibeyfin.app.components.OptionList
+import app.vibeyfin.app.components.OptionRow
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.playback.TrackOption
@@ -117,46 +119,9 @@ private fun KeepSystemBarsHidden() {
     }
 }
 
-/**
- * Scrolling past the end of a list must not pass on to the sheet, which would move with it. Leftovers
- * towards the end stop here; pulling down at the top still reaches the sheet, so a swipe down closes it.
- */
-private val KeepAtListEnd = object : NestedScrollConnection {
-    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource) =
-        if (available.y < 0f) available else Offset.Zero
-
-    override suspend fun onPostFling(consumed: Velocity, available: Velocity) =
-        if (available.y < 0f) available else Velocity.Zero
-}
-
 @Composable
 private fun Section(title: String, options: List<TrackOption>, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
-    // Lazy, so a file with dozens of subtitle tracks only builds the rows on screen as the sheet slides up.
-    // No stretch at the ends of the list.
-    CompositionLocalProvider(LocalOverscrollFactory provides null) {
-        LazyColumn(modifier.nestedScroll(remember { KeepAtListEnd })) {
-            item {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s2),
-                )
-            }
-            items(options, key = { it.index }) { option ->
-                ListItem(
-                    headlineContent = {
-                        // Half the width each, so a long server name may need a third line.
-                        Text(option.label, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                    },
-                    trailingContent = {
-                        // Only the chosen row has a mark; the others stay blank, so the state is not carried by colour.
-                        if (option.selected) Icon(Icons.Filled.Check, contentDescription = null, tint = VibeyFinTokens.Colors.ink)
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    modifier = Modifier.selectable(selected = option.selected, role = Role.RadioButton, onClick = { onSelect(option.index) }),
-                )
-            }
-        }
-    }
+    val rows = remember(options) { options.map { OptionRow(it.index.toString(), it.label, it.selected) } }
+    // Half the width each, so a long server name may need a third line.
+    OptionList(title, rows, onSelect = { onSelect(it.toInt()) }, modifier = modifier)
 }

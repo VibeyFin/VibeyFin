@@ -36,9 +36,9 @@ class HomeModel {
 
     fun onListOpened() = host.viewModel.onListOpened()
 
-    fun onDismissDropdown() = host.viewModel.onDismissDropdown()
+    fun onDismissSheet() = host.viewModel.onDismissSheet()
 
-    fun onRetryDropdown() = host.viewModel.onRetryDropdown()
+    fun onRetrySheet() = host.viewModel.onRetrySheet()
 
     fun close() = host.close()
 }

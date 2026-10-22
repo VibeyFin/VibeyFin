@@ -10,19 +10,19 @@ enum class CategoryKind {
     Movies,
     New,
 
-    /** Opens a dropdown of genres; the pick opens that genre's page. */
+    /** Opens a sheet of genres; the pick opens that genre's page. */
     Categories,
 }
 
-/** One category button, ready to draw. A button that [opensDropdown] looks different from the others: it has a chevron. */
+/** One category button, ready to draw. A button that [opensSheet] looks different from the others: it has a chevron. */
 data class CategoryButton(
     val kind: CategoryKind,
     val label: String,
-    val opensDropdown: Boolean,
+    val opensSheet: Boolean,
 )
 
-/** The Categories dropdown: loading, its entries, or why they didn't load. The screen filters [options] by what is typed. */
-data class FilterDropdown(
+/** The Categories sheet: loading, its entries, or why they didn't load. */
+data class FilterSheet(
     val kind: CategoryKind,
     val title: String,
     val options: List<FilterOption> = emptyList(),
@@ -36,10 +36,10 @@ data class FilterDropdown(
 }
 
 internal fun categoryButtons(): List<CategoryButton> = listOf(
-    CategoryButton(CategoryKind.Shows, Strings.filterShows, opensDropdown = false),
-    CategoryButton(CategoryKind.Movies, Strings.filterMovies, opensDropdown = false),
-    CategoryButton(CategoryKind.New, Strings.filterNew, opensDropdown = false),
-    CategoryButton(CategoryKind.Categories, Strings.filterCategories, opensDropdown = true),
+    CategoryButton(CategoryKind.Shows, Strings.filterShows, opensSheet = false),
+    CategoryButton(CategoryKind.Movies, Strings.filterMovies, opensSheet = false),
+    CategoryButton(CategoryKind.New, Strings.filterNew, opensSheet = false),
+    CategoryButton(CategoryKind.Categories, Strings.filterCategories, opensSheet = true),
 )
 
 /** The name at the top of a category page: the button's own, or the genre's name. */
