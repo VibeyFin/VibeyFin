@@ -23,6 +23,8 @@ struct MediaRowView: View {
             HStack {
                 Text(row.title)
                     .sectionTitle()
+                    // One line, so a long library name never makes the header taller.
+                    .lineLimit(1)
                     .accessibilityAddTraits(.isHeader)
                 Spacer()
                 if let seeAll = row.seeAll, !row.items.isEmpty {
@@ -53,7 +55,7 @@ struct MediaRowView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: Space.s3) {
                 ForEach(items, id: \.id) { item in
-                    Button { onOpen(item) } label: { ArtworkTile(item: item).frame(width: width) }
+                    Button { onOpen(item) } label: { ArtworkTile(item: item, captionLines: 2).frame(width: width) }
                         .buttonStyle(PressableButtonStyle())
                 }
             }
@@ -76,8 +78,9 @@ struct MyMediaView: View {
                 .sectionTitle()
                 .accessibilityAddTraits(.isHeader)
                 .screenMargin()
-            if state.loadingLibraries {
-                PosterSkeletonRow(count: 3, tileWidth: tileWidth, aspectRatio: 16.0 / 9.0)
+            if state.loadingMyMedia {
+                // Last to come in: grey tiles until every row above has finished.
+                PosterSkeletonRow(count: 3, tileWidth: tileWidth, aspectRatio: 16.0 / 9.0, captionLines: 1)
             } else if let message = state.librariesMessage {
                 LoadErrorView(message: message, onRetry: onRetry)
                     .screenMargin()
@@ -90,7 +93,7 @@ struct MyMediaView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: Space.s3) {
                         ForEach(state.libraries, id: \.id) { library in
-                            Button { onOpen(library) } label: { ArtworkTile(item: library).frame(width: tileWidth) }
+                            Button { onOpen(library) } label: { ArtworkTile(item: library, captionLines: 1).frame(width: tileWidth) }
                                 .buttonStyle(PressableButtonStyle())
                         }
                     }

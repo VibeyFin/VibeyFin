@@ -68,6 +68,8 @@ data class HomeUiState(
      * genres. Only rows worth showing (loading, failed or with items) are here, and at most [MAX_ROWS] in all.
      */
     val rows: List<MediaRow> = emptyList(),
+    /** My media waits for everything above it, so it comes in last: its grey tiles show until then. */
+    val loadingMyMedia: Boolean = false,
 )
 
 /** The sheet and the page to open, which change together. */
@@ -113,7 +115,13 @@ class HomeViewModel(
 
     private val latestRows = MutableStateFlow<List<MediaRow>>(emptyList())
     private val genreRows = MutableStateFlow<List<MediaRow>>(emptyList())
-    private val rows = combine(latestRows, genreRows) { latest, genres -> (latest + genres).filter { it.isVisible }.take(MAX_ROWS) }
+    // False from a new session until Continue watching has answered once; the rows below wait for it (a later retry of it
+    // does not hide them again).
+    private val continueAnswered = MutableStateFlow(false)
+    private val rows = combine(latestRows, genreRows, continueAnswered) { latest, genres, answered ->
+        // Shown from top to bottom: each waits for the rows above it, Continue watching first.
+        revealInOrder(latest + genres, aboveLoading = !answered).filter { it.isVisible }.take(MAX_ROWS)
+    }
 
     private val categoryUi = MutableStateFlow(CategoryUi())
     private var sheetJob: Job? = null
@@ -143,7 +151,13 @@ class HomeViewModel(
     }
 
     val uiState: StateFlow<HomeUiState> = combine(screen, actionMessage, categoryUi, rows) { screen, message, categories, rows ->
-        screen.copy(actionMessage = message, sheet = categories.sheet, openList = categories.openList, rows = rows)
+        screen.copy(
+            actionMessage = message,
+            sheet = categories.sheet,
+            openList = categories.openList,
+            rows = rows,
+            loadingMyMedia = screen.loadingLibraries || screen.continueRow.loading && screen.continueRow.cards.isEmpty() || rows.any { it.loading },
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     init {
@@ -160,6 +174,7 @@ class HomeViewModel(
                     genreOptions = null
                     latestRows.value = emptyList()
                     genreRows.value = emptyList()
+                    continueAnswered.value = false
                     coroutineScope {
                         launch {
                             loadLibraries()
@@ -295,6 +310,7 @@ class HomeViewModel(
         if (first) continueRow.value = ContinueRow(loading = true)
         val result = watch.continueWatching()
         continueLoadedAt = clock.now()
+        continueAnswered.value = true
         when (result) {
             is ApiResult.Success -> continueRow.value = ContinueRow(cards = result.value.map { it.toContinueCard() })
             is ApiResult.Failure -> if (first) continueRow.value = ContinueRow(message = LoadMessages.forError(result.error))

@@ -105,6 +105,8 @@ fun PosterSkeletonRow(
     count: Int = 4,
     tileWidth: Dp = VibeyFinTokens.Size.posterWidth,
     aspectRatio: Float = 2f / 3f,
+    // As many caption lines as the real tiles reserve, so the row keeps its height when they replace the grey ones.
+    captionLines: Int = 2,
 ) {
     androidx.compose.foundation.layout.Row(
         modifier = modifier.clearAndSetSemantics { contentDescription = Strings.loadingPage },
@@ -113,7 +115,9 @@ fun PosterSkeletonRow(
         repeat(count) {
             Column(Modifier.width(tileWidth), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
                 SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(aspectRatio))
-                SkeletonLine(72.dp, MaterialTheme.typography.titleSmall)
+                repeat(captionLines) { line ->
+                    SkeletonLine(if (line == 0) 72.dp else 48.dp, MaterialTheme.typography.titleSmall)
+                }
             }
         }
     }

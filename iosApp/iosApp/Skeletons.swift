@@ -93,6 +93,8 @@ struct PosterSkeletonRow: View {
     var count: Int = 4
     var tileWidth: CGFloat = 112
     var aspectRatio: CGFloat = 2.0 / 3.0
+    /// As many caption lines as the real tiles reserve, so the row keeps its height when they replace the grey ones.
+    var captionLines = 2
 
     var body: some View {
         // In a scroll view that never scrolls: fixed-width tiles can be wider than a phone, and laid out on their
@@ -102,7 +104,9 @@ struct PosterSkeletonRow: View {
                 ForEach(0..<count, id: \.self) { _ in
                     VStack(alignment: .leading, spacing: Space.s2) {
                         SkeletonBlock().aspectRatio(aspectRatio, contentMode: .fit)
-                        SkeletonLine()
+                        ForEach(0..<captionLines, id: \.self) { line in
+                            SkeletonLine(width: line == 0 ? 72 : 48)
+                        }
                     }
                     .frame(width: tileWidth, alignment: .leading)
                 }

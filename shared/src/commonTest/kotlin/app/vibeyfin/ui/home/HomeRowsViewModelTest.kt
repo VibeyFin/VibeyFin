@@ -1,6 +1,8 @@
 package app.vibeyfin.ui.home
 
 import app.vibeyfin.domain.HomeFilter
+import app.vibeyfin.domain.model.ItemKind
+import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.testing.FakeServer
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
@@ -224,5 +226,62 @@ class HomeRowsViewModelTest {
         assertEquals(listOf("New in lib-m"), movies.items.map { it.title })
         assertNull(movies.message)
         assertFalse(movies.loading)
+    }
+
+    // The rows come in from top to bottom.
+
+    private fun row(id: String, loading: Boolean = false, items: Int = 1) =
+        MediaRow(id, id, items = List(items) { n -> MediaItem(id = "$id-$n", title = "t", kind = ItemKind.Movie, isFolder = false, year = null, runtimeMinutes = null, genres = emptyList(), overview = null, rating = null, ageRating = null, seriesName = null, seasonNumber = null, episodeNumber = null, posterAspectRatio = 2f / 3f, posterUrl = null, backdropUrl = null) }, loading = loading)
+
+    @Test
+    fun aRowThatFinishedEarlyStaysGreyUntilTheRowsAboveHaveFinished() {
+        val rows = listOf(row("a", loading = true, items = 0), row("b"), row("c", loading = true, items = 0), row("d"))
+
+        val shown = revealInOrder(rows, aboveLoading = false)
+
+        assertEquals(listOf(true, true, true, true), shown.map { it.loading })
+        assertTrue(shown.all { it.items.isEmpty() })
+    }
+
+    @Test
+    fun rowsAreShownAsSoonAsEveryRowAboveThemIsDone() {
+        val rows = listOf(row("a"), row("b"), row("c", loading = true, items = 0), row("d"))
+
+        val shown = revealInOrder(rows, aboveLoading = false)
+
+        assertEquals(listOf(false, false, true, true), shown.map { it.loading })
+        assertEquals(1, shown[0].items.size)
+        assertEquals(1, shown[1].items.size)
+    }
+
+    @Test
+    fun nothingIsShownUntilContinueWatchingHasAnswered() {
+        val shown = revealInOrder(listOf(row("a"), row("b")), aboveLoading = true)
+
+        assertEquals(listOf(true, true), shown.map { it.loading })
+    }
+
+    @Test
+    fun aRowThatTurnsOutEmptyLeavesOnlyOnceItIsReached() {
+        val rows = listOf(row("a", loading = true, items = 0), row("empty", items = 0), row("b"))
+
+        // While "a" loads, the empty row is a grey row like the rest, so nothing below it moves yet.
+        val waiting = revealInOrder(rows, aboveLoading = false).filter { it.isVisible }
+        assertEquals(listOf("a", "empty", "b"), waiting.map { it.id })
+
+        // Once "a" is done the empty row is reached and goes.
+        val done = revealInOrder(listOf(row("a"), row("empty", items = 0), row("b")), aboveLoading = false).filter { it.isVisible }
+        assertEquals(listOf("a", "b"), done.map { it.id })
+    }
+
+    @Test
+    fun myMediaComesInLastAfterContinueWatchingAndEveryRow() = runTest {
+        server()
+        val viewModel = viewModel()
+
+        val done = viewModel.uiState.first { it.rows.size == 5 && it.rows.none { row -> row.loading } && !it.loadingMyMedia }
+
+        assertFalse(done.loadingMyMedia)
+        assertEquals(3, done.libraries.size)
     }
 }

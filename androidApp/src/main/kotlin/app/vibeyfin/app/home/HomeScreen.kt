@@ -64,6 +64,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -98,6 +99,9 @@ import org.koin.androidx.compose.koinViewModel
 
 /** The app logo at the top of Home. */
 private val LOGO_SIZE = 32.dp
+
+/** A poster's title always takes this many lines in a row, so the row keeps one height as it scrolls. */
+private const val POSTER_CAPTION_LINES = 2
 
 /** How many grey rows stand in for the rows that are still being worked out. */
 private const val PLACEHOLDER_ROWS = 2
@@ -331,8 +335,8 @@ private fun LazyGridScope.fullWidth(key: String, content: @Composable () -> Unit
 }
 
 @Composable
-private fun SectionTitle(text: String) {
-    Text(text = text, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
+private fun SectionTitle(text: String, maxLines: Int = Int.MAX_VALUE) {
+    Text(text = text, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
 }
 
 /** The row of what the user is in the middle of. Its cards run past the grid's margins to the screen edge. */
@@ -379,7 +383,8 @@ private fun Modifier.bleed(by: Dp) = layout { measurable, constraints ->
 private fun MediaRowSection(row: MediaRow, margin: Dp, onOpen: (MediaItem) -> Unit, onSeeAll: (SeeAll) -> Unit, onRetry: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Box(Modifier.weight(1f)) { SectionTitle(row.title) }
+            // One line, so a long library name never makes the header taller.
+            Box(Modifier.weight(1f)) { SectionTitle(row.title, maxLines = 1) }
             val target = row.seeAll
             if (target != null && row.items.isNotEmpty()) {
                 TextButton(onClick = { onSeeAll(target) }, modifier = Modifier.semantics { contentDescription = Strings.seeAllIn(row.title) }) {
@@ -400,7 +405,7 @@ private fun MediaRowSection(row: MediaRow, margin: Dp, onOpen: (MediaItem) -> Un
                     horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
                 ) {
                     items(row.items, key = { it.id }) { item ->
-                        ArtworkTile(item, onClick = { onOpen(item) }, modifier = Modifier.width(VibeyFinTokens.Size.posterWidth))
+                        ArtworkTile(item, onClick = { onOpen(item) }, modifier = Modifier.width(VibeyFinTokens.Size.posterWidth), captionLines = POSTER_CAPTION_LINES)
                     }
                 }
             }
@@ -428,13 +433,14 @@ private fun MyMedia(state: HomeUiState, margin: Dp, onOpen: (MediaItem) -> Unit,
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         SectionTitle(Strings.libraries)
         val phase = when {
-            state.loadingLibraries -> RowPhase.Loading
+            // Last to come in: grey tiles until every row above has finished.
+            state.loadingMyMedia -> RowPhase.Loading
             state.librariesMessage != null -> RowPhase.Failed
             else -> RowPhase.Ready
         }
         Crossfade(targetState = phase, animationSpec = tween(ROW_FADE_MS), modifier = Modifier.animateContentSize(tween(ROW_FADE_MS))) { shown ->
             when {
-                shown == RowPhase.Loading -> PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin), count = 3, tileWidth = LIBRARY_TILE_WIDTH, aspectRatio = 16f / 9f)
+                shown == RowPhase.Loading -> PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin), count = 3, tileWidth = LIBRARY_TILE_WIDTH, aspectRatio = 16f / 9f, captionLines = 1)
                 shown == RowPhase.Failed -> LoadError(state.librariesMessage ?: "", onRetry)
                 state.libraries.isEmpty() -> Text(
                     text = Strings.noLibraries,
@@ -447,7 +453,7 @@ private fun MyMedia(state: HomeUiState, margin: Dp, onOpen: (MediaItem) -> Unit,
                     horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
                 ) {
                     items(state.libraries, key = { it.id }) { library ->
-                        ArtworkTile(library, onClick = { onOpen(library) }, modifier = Modifier.width(LIBRARY_TILE_WIDTH))
+                        ArtworkTile(library, onClick = { onOpen(library) }, modifier = Modifier.width(LIBRARY_TILE_WIDTH), captionLines = 1)
                     }
                 }
             }

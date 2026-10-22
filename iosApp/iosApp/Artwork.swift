@@ -66,6 +66,9 @@ private enum BlurHashCache {
 /// A poster or a library tile with its title underneath, unless the picture already says it.
 struct ArtworkTile: View {
     let item: MediaItem
+    /// In a row that scrolls sideways: the caption always takes this many lines, so a long title in one tile never makes
+    /// the row taller (and pushes everything under it down) when it scrolls into view. 0 leaves it as it falls.
+    var captionLines = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s2) {
@@ -79,11 +82,12 @@ struct ArtworkTile: View {
                     if item.played { WatchedBadge().padding(Space.s2) }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
-            if !item.nameIsOnPoster {
-                Text(item.title)
+            if !item.nameIsOnPoster || captionLines > 0 {
+                // A tile whose picture already says its name keeps the same empty space, so the row stays one height.
+                Text(item.nameIsOnPoster ? "" : item.title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
-                    .lineLimit(2)
+                    .lineLimit(captionLines > 0 ? captionLines : 2, reservesSpace: captionLines > 0)
                     .multilineTextAlignment(.leading)
             }
         }

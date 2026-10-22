@@ -42,7 +42,13 @@ rows", `screens.md` "Home".
    shows no row.
 8. **Refresh:** pull to refresh reloads Continue watching first, then the other rows. A new profile or address
    reloads everything; Home itself never keeps old rows from another profile.
-9. **Row source of truth in `shared/`:** `HomeUiState.rows`, a list of `MediaRow` (id, title, items, loading, message,
+9. **Rows appear top to bottom** *(added after review)*: the rows still load at the same time, but each is shown as grey
+   posters until every row above it has finished, Continue watching first, and My media comes in last. A row that
+   turns out empty leaves only once it is reached, so nothing below it jumps. Rows that arrive or leave slide and fade.
+10. **A row keeps one height** *(added after review)*: a poster's caption always takes two lines in a row (one in My media),
+    and the grey posters reserve the same, so a long title scrolling into view never pushes the rows below it down.
+    A row's header is one line.
+11. **Row source of truth in `shared/`:** `HomeUiState.rows`, a list of `MediaRow` (id, title, items, loading, message,
    see-all target). The screens only draw rows and forward taps; the same row type will take Seerr rows in Phase 8 and
    the user's own rows in Phase 7.
 

@@ -99,4 +99,6 @@ for n in $(seq 1 24); do
   [ -f "${dir}/${name}.mkv" ] || cp "${MEDIA}/movies/Quiet Harbor (2025)/Quiet Harbor (2025).mkv" "${dir}/${name}.mkv"
   echo "<movie><title>Filler $(printf '%02d' "$n")</title><year>${year}</year><genre>${genre}</genre></movie>" > "${dir}/movie.nfo"
 done
+# A title long enough to wrap onto two lines in a poster tile, to check a row keeps one height as it scrolls.
+nfo_movie "The Extraordinarily Long Title Of A Film (2026)" "The Extraordinarily Long Title Of A Film That Keeps Going" 2026 "A24" "Drama"
 echo "Media ready under ${MEDIA}"

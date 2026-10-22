@@ -117,9 +117,13 @@ fun WatchedBadge(modifier: Modifier = Modifier) {
     }
 }
 
-/** A poster or a library tile with its title underneath, unless the picture already says it. */
+/**
+ * A poster or a library tile with its title underneath, unless the picture already says it. In a row that scrolls sideways
+ * pass [captionLines]: the caption then always takes that many lines, so a long title in one tile never makes the row taller
+ * (and pushes everything under it down) when it scrolls into view.
+ */
 @Composable
-fun ArtworkTile(item: MediaItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun ArtworkTile(item: MediaItem, onClick: () -> Unit, modifier: Modifier = Modifier, captionLines: Int = 0) {
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -138,12 +142,14 @@ fun ArtworkTile(item: MediaItem, onClick: () -> Unit, modifier: Modifier = Modif
             )
             if (item.played) WatchedBadge(Modifier.align(Alignment.TopEnd).padding(VibeyFinTokens.Space.s2))
         }
-        if (!item.nameIsOnPoster) {
+        if (!item.nameIsOnPoster || captionLines > 0) {
             Text(
-                text = item.title,
+                // A tile whose picture already says its name keeps the same empty space, so the row stays one height.
+                text = if (item.nameIsOnPoster) "" else item.title,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 2,
+                minLines = if (captionLines > 0) captionLines else 1,
+                maxLines = if (captionLines > 0) captionLines else 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }
