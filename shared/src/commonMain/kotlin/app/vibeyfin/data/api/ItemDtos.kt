@@ -29,6 +29,8 @@ data class BaseItemDto(
     @SerialName("IndexNumber") val indexNumber: Int? = null,
     /** For an episode or a season: the show it belongs to. */
     @SerialName("SeriesId") val seriesId: String? = null,
+    /** For an episode or a season: the tag of the show's own poster, which is the picture a row of shows wants. */
+    @SerialName("SeriesPrimaryImageTag") val seriesPrimaryImageTag: String? = null,
     @SerialName("UserData") val userData: UserItemDataDto? = null,
     /** On a genre: how many movies and shows carry it; only sent when asked for (`fields=ItemCounts`). */
     @SerialName("MovieCount") val movieCount: Int? = null,

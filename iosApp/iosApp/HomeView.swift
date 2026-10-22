@@ -10,6 +10,7 @@ struct HomeView: View {
     @StateObject private var model = HomeObservable()
     @Environment(\.scenePhase) private var scenePhase
     @State private var playing: PlayRequest?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Called when the screen should be left: the user chose to, or the session ended.
     let onExit: (HomeExit) -> Void
@@ -42,6 +43,12 @@ struct HomeView: View {
                                 onMarkWatched: { model.markWatched($0) },
                                 onRetry: { model.retryContinue() }
                             )
+                            // Until the libraries are known two grey rows hold the place, so the rows that replace
+                            // them don't push My media down from under the user's eyes.
+                            if state.loadingLibraries && state.rows.isEmpty {
+                                RowPlaceholder()
+                                RowPlaceholder()
+                            }
                             // Recently added in each library, then a few genres: each loads and fails on its own, and an
                             // empty one is not here.
                             ForEach(state.rows, id: \.id) { row in
@@ -57,12 +64,16 @@ struct HomeView: View {
                                     },
                                     onRetry: { model.retryRow(row.id) }
                                 )
+                                .transition(.opacity)
                             }
                             // The libraries close Home, as 16:9 tiles in one row.
                             MyMediaView(state: state, onOpen: onOpen, onRetry: { model.retryLibraries() })
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, Space.s5)
+                        // Rows that arrive, leave or change height slide and fade into place instead of snapping.
+                        .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: state.rows.map { $0.id })
+                        .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: state.continueRow.isVisible)
                     }
                     .refreshable { await model.refresh() }
                 }

@@ -1,5 +1,8 @@
 package app.vibeyfin.app.home
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -74,6 +77,7 @@ import app.vibeyfin.app.components.ContinueCard
 import app.vibeyfin.app.components.ContinueSkeletonCards
 import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.components.PosterSkeletonRow
+import app.vibeyfin.app.components.SkeletonLine
 import app.vibeyfin.app.components.skeletonTiles
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
@@ -94,6 +98,9 @@ import org.koin.androidx.compose.koinViewModel
 
 /** The app logo at the top of Home. */
 private val LOGO_SIZE = 32.dp
+
+/** How many grey rows stand in for the rows that are still being worked out. */
+private const val PLACEHOLDER_ROWS = 2
 
 /** A library's 16:9 tile in My media. */
 private val LIBRARY_TILE_WIDTH = 200.dp
@@ -301,6 +308,13 @@ private fun Content(
                 )
             }
             fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onLongPress, onRetryContinue) }
+            // Until the libraries are known two grey rows hold the place, so the rows that replace them don't push
+            // My media down from under the user's eyes.
+            if (state.loadingLibraries && state.rows.isEmpty()) {
+                repeat(PLACEHOLDER_ROWS) { index ->
+                    fullWidth(key = "placeholder-$index") { RowPlaceholder(margin) }
+                }
+            }
             // Recently added in each library, then a few genres: each loads and fails on its own, and an empty one is not here.
             state.rows.forEach { row ->
                 fullWidth(key = row.id) { MediaRowSection(row, margin, onOpen, onSeeAll, onRetry = { onRetryRow(row.id) }) }
@@ -312,7 +326,8 @@ private fun Content(
 }
 
 private fun LazyGridScope.fullWidth(key: String, content: @Composable () -> Unit) {
-    item(key = key, span = { GridItemSpan(maxLineSpan) }) { content() }
+    // Rows that arrive, leave or change height slide and fade into place instead of snapping, so nothing jumps.
+    item(key = key, span = { GridItemSpan(maxLineSpan) }) { Box(Modifier.animateItem()) { content() } }
 }
 
 @Composable
@@ -327,21 +342,24 @@ private fun ContinueWatching(row: ContinueRow, margin: Dp, onPlay: (String) -> U
     if (!row.isVisible) return
     Column(Modifier.padding(bottom = VibeyFinTokens.Space.s2), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         SectionTitle(Strings.continueWatching)
-        when {
-            row.loading -> ContinueSkeletonCards(Modifier.bleed(margin).padding(horizontal = margin))
-            row.message != null -> LoadError(row.message!!, onRetry)
-            else -> {
-                // A card that goes (marked watched) or comes back (the save failed) at the front would
-                // leave the list anchored on the card after it; start from the front again instead.
-                val listState = rememberLazyListState()
-                LaunchedEffect(row.cards.firstOrNull()?.id) { listState.scrollToItem(0) }
-                LazyRow(
-                state = listState,
-                modifier = Modifier.bleed(margin),
-                contentPadding = PaddingValues(horizontal = margin),
-                horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-            ) {
-                items(row.cards, key = { it.id }) { card -> ContinueCard(card, onClick = { onPlay(card.id) }, onLongClick = { onLongPress(card) }) }
+        val phase = if (row.loading) RowPhase.Loading else if (row.message != null) RowPhase.Failed else RowPhase.Ready
+        Crossfade(targetState = phase, animationSpec = tween(ROW_FADE_MS), modifier = Modifier.animateContentSize(tween(ROW_FADE_MS))) { shown ->
+            when (shown) {
+                RowPhase.Loading -> ContinueSkeletonCards(Modifier.bleed(margin).padding(horizontal = margin))
+                RowPhase.Failed -> LoadError(row.message ?: "", onRetry)
+                RowPhase.Ready -> {
+                    // A card that goes (marked watched) or comes back (the save failed) at the front would
+                    // leave the list anchored on the card after it; start from the front again instead.
+                    val listState = rememberLazyListState()
+                    LaunchedEffect(row.cards.firstOrNull()?.id) { listState.scrollToItem(0) }
+                    LazyRow(
+                        state = listState,
+                        modifier = Modifier.bleed(margin),
+                        contentPadding = PaddingValues(horizontal = margin),
+                        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+                    ) {
+                        items(row.cards, key = { it.id }) { card -> ContinueCard(card, onClick = { onPlay(card.id) }, onLongClick = { onLongPress(card) }) }
+                    }
                 }
             }
         }
@@ -369,19 +387,38 @@ private fun MediaRowSection(row: MediaRow, margin: Dp, onOpen: (MediaItem) -> Un
                 }
             }
         }
-        when {
-            row.loading -> PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin))
-            row.message != null -> LoadError(row.message!!, onRetry)
-            else -> LazyRow(
-                modifier = Modifier.bleed(margin),
-                contentPadding = PaddingValues(horizontal = margin),
-                horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-            ) {
-                items(row.items, key = { it.id }) { item ->
-                    ArtworkTile(item, onClick = { onOpen(item) }, modifier = Modifier.width(VibeyFinTokens.Size.posterWidth))
+        // The grey posters give way to the real ones with a short fade, and the row grows or shrinks smoothly if its
+        // height differs.
+        val phase = if (row.loading) RowPhase.Loading else if (row.message != null) RowPhase.Failed else RowPhase.Ready
+        Crossfade(targetState = phase, animationSpec = tween(ROW_FADE_MS), modifier = Modifier.animateContentSize(tween(ROW_FADE_MS))) { shown ->
+            when (shown) {
+                RowPhase.Loading -> PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin))
+                RowPhase.Failed -> LoadError(row.message ?: "", onRetry)
+                RowPhase.Ready -> LazyRow(
+                    modifier = Modifier.bleed(margin),
+                    contentPadding = PaddingValues(horizontal = margin),
+                    horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+                ) {
+                    items(row.items, key = { it.id }) { item ->
+                        ArtworkTile(item, onClick = { onOpen(item) }, modifier = Modifier.width(VibeyFinTokens.Size.posterWidth))
+                    }
                 }
             }
         }
+    }
+}
+
+private enum class RowPhase { Loading, Failed, Ready }
+
+/** The fade from a row's grey posters to its content. */
+private const val ROW_FADE_MS = 250
+
+/** A row's header and posters in grey, for the moment before the rows are known. */
+@Composable
+private fun RowPlaceholder(margin: Dp) {
+    Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
+        SkeletonLine(220.dp, MaterialTheme.typography.titleLarge)
+        PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin))
     }
 }
 
@@ -390,21 +427,28 @@ private fun MediaRowSection(row: MediaRow, margin: Dp, onOpen: (MediaItem) -> Un
 private fun MyMedia(state: HomeUiState, margin: Dp, onOpen: (MediaItem) -> Unit, onRetry: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         SectionTitle(Strings.libraries)
-        when {
-            state.loadingLibraries -> PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin), count = 3, tileWidth = LIBRARY_TILE_WIDTH, aspectRatio = 16f / 9f)
-            state.librariesMessage != null -> LoadError(state.librariesMessage!!, onRetry)
-            state.libraries.isEmpty() -> Text(
-                text = Strings.noLibraries,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            else -> LazyRow(
-                modifier = Modifier.bleed(margin),
-                contentPadding = PaddingValues(horizontal = margin),
-                horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-            ) {
-                items(state.libraries, key = { it.id }) { library ->
-                    ArtworkTile(library, onClick = { onOpen(library) }, modifier = Modifier.width(LIBRARY_TILE_WIDTH))
+        val phase = when {
+            state.loadingLibraries -> RowPhase.Loading
+            state.librariesMessage != null -> RowPhase.Failed
+            else -> RowPhase.Ready
+        }
+        Crossfade(targetState = phase, animationSpec = tween(ROW_FADE_MS), modifier = Modifier.animateContentSize(tween(ROW_FADE_MS))) { shown ->
+            when {
+                shown == RowPhase.Loading -> PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin), count = 3, tileWidth = LIBRARY_TILE_WIDTH, aspectRatio = 16f / 9f)
+                shown == RowPhase.Failed -> LoadError(state.librariesMessage ?: "", onRetry)
+                state.libraries.isEmpty() -> Text(
+                    text = Strings.noLibraries,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                else -> LazyRow(
+                    modifier = Modifier.bleed(margin),
+                    contentPadding = PaddingValues(horizontal = margin),
+                    horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+                ) {
+                    items(state.libraries, key = { it.id }) { library ->
+                        ArtworkTile(library, onClick = { onOpen(library) }, modifier = Modifier.width(LIBRARY_TILE_WIDTH))
+                    }
                 }
             }
         }

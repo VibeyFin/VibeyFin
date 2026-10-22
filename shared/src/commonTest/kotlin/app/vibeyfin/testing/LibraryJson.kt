@@ -21,6 +21,8 @@ fun itemJson(
     seasonNumber: Int? = null,
     episodeNumber: Int? = null,
     seriesId: String? = null,
+    /** For an episode or a season: the tag of the show's own poster. */
+    seriesPrimaryImageTag: String? = null,
     thumbTag: String? = null,
     /** Where the user stopped; with [played] this becomes the item's `UserData`. */
     positionTicks: Long? = null,
@@ -56,6 +58,7 @@ fun itemJson(
         """"ParentIndexNumber":${seasonNumber ?: "null"}""",
         """"IndexNumber":${episodeNumber ?: "null"}""",
         """"SeriesId":${string(seriesId)}""",
+        """"SeriesPrimaryImageTag":${string(seriesPrimaryImageTag)}""",
         """"UserData":${
             if (positionTicks == null && played == null) {
                 "null"

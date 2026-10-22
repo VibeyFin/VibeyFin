@@ -2,6 +2,7 @@ package app.vibeyfin.domain
 
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
+import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.itemJson
@@ -12,6 +13,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /** The server calls behind the Home category buttons: the Categories dropdown and the category pages. */
@@ -195,5 +197,63 @@ class HomeFilterRepositoryTest {
         assertEquals(listOf("Action" to 6, "Drama" to 9, "Sitcom" to 3), onNew.map { it.name to it.count })
         assertEquals(onNew, onHome)
         assertEquals(listOf("Movie,Series", "Movie,Series"), app.jellyfin.requestsTo("GET", "/Genres").map { it.query["includeItemTypes"] })
+    }
+
+    // Recently added shows the show, never an episode or a season.
+
+    @Test
+    fun aNewEpisodeAndANewSeasonAreShownAsTheirShowWithTheShowsPoster() = runTest {
+        app.signedIn().on(
+            "GET", "/Items/Latest",
+            Reply.json(
+                "[" + listOf(
+                    itemJson("ep1", "Pilot", type = "Episode", seriesId = "show-1", seriesName = "Severance", primaryTag = "episode-still", seriesPrimaryImageTag = "show-poster", seasonNumber = 1, episodeNumber = 1, year = 2022),
+                    itemJson("season-2", "Season 2", type = "Season", seriesId = "show-2", seriesName = "Andor", primaryTag = "season-cover", seriesPrimaryImageTag = "andor-poster"),
+                    itemJson("movie-1", "Heat", type = "Movie", primaryTag = "heat-poster", year = 1995),
+                ).joinToString(",") + "]",
+            ),
+        )
+
+        val items = app.library.latest("lib-s").success()
+
+        assertEquals(listOf("show-1", "show-2", "movie-1"), items.map { it.id })
+        assertEquals(listOf("Severance", "Andor", "Heat"), items.map { it.title })
+        assertEquals(listOf(ItemKind.Series, ItemKind.Series, ItemKind.Movie), items.map { it.kind })
+        // The show's own poster, not the still or the season's cover.
+        assertEquals("http://nas:8096/Items/show-1/Images/Primary?tag=show-poster&maxWidth=400", items[0].posterUrl)
+        assertEquals("http://nas:8096/Items/show-2/Images/Primary?tag=andor-poster&maxWidth=400", items[1].posterUrl)
+        assertEquals("http://nas:8096/Items/movie-1/Images/Primary?tag=heat-poster&maxWidth=400", items[2].posterUrl)
+        // A show opens its seasons, and is tall like a poster.
+        assertTrue(items[0].isFolder)
+        assertEquals(2f / 3f, items[0].posterAspectRatio)
+        assertNull(items[0].episodeNumber)
+    }
+
+    @Test
+    fun severalNewEpisodesOfOneShowAreOnePoster() = runTest {
+        app.signedIn().on(
+            "GET", "/Items/Latest",
+            Reply.json(
+                "[" + listOf(
+                    itemJson("ep3", "Three", type = "Episode", seriesId = "show-1", seriesName = "Severance", seriesPrimaryImageTag = "p"),
+                    itemJson("ep2", "Two", type = "Episode", seriesId = "show-1", seriesName = "Severance", seriesPrimaryImageTag = "p"),
+                    itemJson("show-2", "Andor", type = "Series", primaryTag = "andor"),
+                ).joinToString(",") + "]",
+            ),
+        )
+
+        val items = app.library.latest("lib-s").success()
+
+        assertEquals(listOf("show-1", "show-2"), items.map { it.id })
+    }
+
+    @Test
+    fun aShowWithNoPosterIsStillAShowWithNoPicture() = runTest {
+        app.signedIn().on("GET", "/Items/Latest", Reply.json("[${itemJson("ep1", "Pilot", type = "Episode", seriesId = "show-1", seriesName = "Severance", primaryTag = "still")}]"))
+
+        val show = app.library.latest("lib-s").success().single()
+
+        assertEquals("show-1", show.id)
+        assertNull(show.posterUrl)
     }
 }

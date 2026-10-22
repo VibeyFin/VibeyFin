@@ -46,7 +46,10 @@ class LibraryRepository(private val connection: ConnectionManager) {
 
     /** What was added to [libraryId] most recently, at most [limit], episodes grouped under their show. */
     suspend fun latest(libraryId: String, limit: Int = ROW_LIMIT): ApiResult<List<MediaItem>> = call { api, userId ->
-        api.latestItems(userId, libraryId, limit).map { items -> items.map { it.toMediaItem(api.baseUrl) } }
+        api.latestItems(userId, libraryId, limit).map { items ->
+            // A new episode or season is shown as its show, with the show's own poster, once however many are new.
+            items.map { it.asSeries(api.baseUrl) ?: it.toMediaItem(api.baseUrl) }.distinctBy { it.id }
+        }
     }
 
     /**
@@ -167,6 +170,36 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
 /** The BlurHash the server sent for the image of [type] with [tag]; the tag keeps it from belonging to an older picture. */
 private fun BaseItemDto.blurHash(type: String, tag: String): String? =
     imageBlurHashes[type]?.get(tag)?.takeIf { it.isNotBlank() }
+
+/**
+ * An episode or a season as the show it belongs to: the show's id and name, its poster, a folder that opens its
+ * seasons. Null for anything else, or when the server did not say which show it is.
+ */
+private fun BaseItemDto.asSeries(baseUrl: String): MediaItem? {
+    if ((type != "Episode" && type != "Season") || seriesId == null) return null
+    return toMediaItem(baseUrl).copy(
+        id = seriesId,
+        title = seriesName ?: name.orEmpty(),
+        kind = ItemKind.Series,
+        isFolder = true,
+        // The show's own pictures: this item's picture is a still or a season cover.
+        posterUrl = seriesPrimaryImageTag?.let { itemImageUrl(baseUrl, seriesId, "Primary", it, POSTER_WIDTH) },
+        posterAspectRatio = TALL,
+        posterBlurHash = null,
+        backdropUrl = null,
+        backdropBlurHash = null,
+        landscapeUrl = null,
+        landscapeBlurHash = null,
+        seriesName = null,
+        seasonNumber = null,
+        episodeNumber = null,
+        seriesId = null,
+        runtimeMs = null,
+        runtimeMinutes = null,
+        resumePositionMs = 0,
+        played = false,
+    )
+}
 
 /** Which titles a genre's count is made of. */
 private enum class GenreKind(val types: List<String>) {

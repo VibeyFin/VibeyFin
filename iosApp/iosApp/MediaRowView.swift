@@ -10,6 +10,13 @@ struct MediaRowView: View {
     let onRetry: () -> Void
 
     private let tileWidth: CGFloat = 112
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private enum Phase { case loading, failed, ready }
+
+    private var phase: Phase {
+        row.loading ? .loading : (row.message != nil ? .failed : .ready)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s3) {
@@ -26,15 +33,20 @@ struct MediaRowView: View {
                 }
             }
             .screenMargin()
-            if row.loading {
-                PosterSkeletonRow(tileWidth: tileWidth)
-            } else if let message = row.message {
-                LoadErrorView(message: message, onRetry: onRetry)
-                    .screenMargin()
-            } else {
-                tiles(row.items, width: tileWidth)
+            // The grey posters give way to the real ones with a short fade.
+            Group {
+                if row.loading {
+                    PosterSkeletonRow(tileWidth: tileWidth)
+                } else if let message = row.message {
+                    LoadErrorView(message: message, onRetry: onRetry)
+                        .screenMargin()
+                } else {
+                    tiles(row.items, width: tileWidth)
+                }
             }
+            .transition(.opacity)
         }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: phase)
     }
 
     private func tiles(_ items: [MediaItem], width: CGFloat) -> some View {
@@ -85,6 +97,17 @@ struct MyMediaView: View {
                     .screenMargin()
                 }
             }
+        }
+    }
+}
+
+/// A row's header and posters in grey, for the moment before the rows are known.
+struct RowPlaceholder: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.s3) {
+            SkeletonLine(font: .title3.bold(), width: 220)
+                .screenMargin()
+            PosterSkeletonRow()
         }
     }
 }
