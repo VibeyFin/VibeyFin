@@ -75,7 +75,9 @@ class FilteredListViewModel(
     private val sheet = MutableStateFlow<ListSheet?>(null)
     private val allYears = MutableStateFlow<List<String>>(emptyList())
     private val jumpTo = MutableStateFlow<String?>(null)
-    private var yearsLoaded = false
+    // The years of each selection (by genre id, empty for none), found once: the page's own items decide, so a genre has its own.
+    private val yearsBySelection = mutableMapOf<String, List<String>>()
+    private var yearsJob: Job? = null
     private var jumpJob: Job? = null
     private var genres: List<FilterOption>? = null
     private var sheetJob: Job? = null
@@ -171,7 +173,7 @@ class FilteredListViewModel(
                 selectedId = current.sort.name,
             )
             ListChipKind.Genre -> openLoaded(kind, Strings.genreTitle, genres != null, current.genre?.id.orEmpty(), Strings.allGenres) {
-                library.genres().also { if (it is ApiResult.Success) genres = it.value }
+                library.genres(filter).also { if (it is ApiResult.Success) genres = it.value }
             }
         }
     }
@@ -234,15 +236,26 @@ class FilteredListViewModel(
         }
     }
 
+    /** Finds every year of what the page now lists (its genre, if one is chosen); until then the strip shows the loaded years. */
     private fun loadYears() {
-        if (yearsLoaded) return
-        viewModelScope.launch {
-            when (val result = library.years()) {
+        yearsJob?.cancel()
+        val asked = selection.value
+        val key = asked.genre?.id.orEmpty()
+        yearsBySelection[key]?.let {
+            allYears.value = it
+            return
+        }
+        allYears.value = emptyList()
+        yearsJob = viewModelScope.launch {
+            val result = library.yearsOf(filter, asked.genre?.id)
+            if (selection.value.genre?.id.orEmpty() != key) return@launch
+            when (result) {
                 is ApiResult.Success -> {
-                    yearsLoaded = true
-                    allYears.value = result.value.map { it.toString() }
+                    val years = result.value.map { it.toString() }
+                    yearsBySelection[key] = years
+                    allYears.value = years
                 }
-                // The strip falls back to the years on the loaded pages.
+                // The strip lists the years on the loaded pages.
                 is ApiResult.Failure -> Unit
             }
         }

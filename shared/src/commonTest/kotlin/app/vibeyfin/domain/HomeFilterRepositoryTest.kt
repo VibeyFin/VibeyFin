@@ -159,11 +159,94 @@ class HomeFilterRepositoryTest {
         assertEquals("g1", query("/Items")["genreIds"])
     }
 
-    @Test
-    fun yearsAreTheNumericOnesNewestFirst() = runTest {
-        app.signedIn().on("GET", "/Years", Reply.json(itemsJson(itemJson("y1", "1999", type = "Year"), itemJson("y2", "2026", type = "Year"), itemJson("y3", "Unknown", type = "Year"))))
+    private val genresJson = itemsJson(
+        itemJson("g1", "Drama", type = "Genre", movieCount = 8, seriesCount = 1),
+        itemJson("g2", "Sitcom", type = "Genre", movieCount = 0, seriesCount = 3),
+        itemJson("g3", "Action", type = "Genre", movieCount = 6, seriesCount = 0),
+    )
 
-        assertEquals(listOf(2026, 1999), app.library.years().success())
-        assertEquals("Movie,Series", query("/Years")["includeItemTypes"])
+    @Test
+    fun theMoviesPageCountsOnlyMoviesAndLeavesOutGenresWithNone() = runTest {
+        app.signedIn().on("GET", "/Genres", Reply.json(genresJson))
+
+        val genres = app.library.genres(HomeFilter.Movies).success()
+
+        assertEquals(listOf("Action" to 6, "Drama" to 8), genres.map { it.name to it.count })
+        assertEquals("Movie", query("/Genres")["includeItemTypes"])
+    }
+
+    @Test
+    fun theShowsPageCountsOnlyShowsAndLeavesOutGenresWithNone() = runTest {
+        app.signedIn().on("GET", "/Genres", Reply.json(genresJson))
+
+        val genres = app.library.genres(HomeFilter.Shows).success()
+
+        assertEquals(listOf("Drama" to 1, "Sitcom" to 3), genres.map { it.name to it.count })
+        assertEquals("Series", query("/Genres")["includeItemTypes"])
+    }
+
+    @Test
+    fun newAndHomeCountMoviesAndShowsTogether() = runTest {
+        app.signedIn().on("GET", "/Genres", Reply.json(genresJson))
+
+        val onNew = app.library.genres(HomeFilter.New).success()
+        val onHome = app.library.genres().success()
+
+        assertEquals(listOf("Action" to 6, "Drama" to 9, "Sitcom" to 3), onNew.map { it.name to it.count })
+        assertEquals(onNew, onHome)
+        assertEquals(listOf("Movie,Series", "Movie,Series"), app.jellyfin.requestsTo("GET", "/Genres").map { it.query["includeItemTypes"] })
+    }
+
+    // The years of a page, read from its own items.
+
+    @Test
+    fun theYearsOfAPageAreThoseOfItsItemsDistinctNewestFirst() = runTest {
+        val server = app.signedIn()
+        val all = listOf(2026, 2026, 2025, null, 2025, 1999)
+        server.on("GET", "/Items") { request ->
+            val start = request.query["startIndex"]!!.toInt()
+            val page = all.drop(start).take(2)
+            Reply.json(itemsJson(*page.mapIndexed { i, year -> itemJson("t${start + i}", year = year) }.toTypedArray(), total = all.size, startIndex = start))
+        }
+
+        val years = app.library.yearsOf(HomeFilter.Movies, genreId = "g-action").success()
+
+        assertEquals(listOf(2026, 2025, 1999), years)
+        val requests = app.jellyfin.requestsTo("GET", "/Items").map { it.query }
+        assertEquals(3, requests.size)
+        assertEquals(listOf("0", "2", "4"), requests.map { it["startIndex"] })
+        assertEquals("Movie", requests.first()["includeItemTypes"])
+        assertEquals("g-action", requests.first()["genreIds"])
+        assertEquals("false", requests.first()["enableImages"])
+        assertEquals("ProductionYear,PremiereDate", requests.first()["sortBy"])
+    }
+
+    @Test
+    fun aGenresOwnPageScansThatGenre() = runTest {
+        app.signedIn().on("GET", "/Items", Reply.json(itemsJson(itemJson("a", year = 2001))))
+
+        assertEquals(listOf(2001), app.library.yearsOf(HomeFilter.Genre("g1", "Drama")).success())
+        assertEquals("g1", query("/Items")["genreIds"])
+    }
+
+    @Test
+    fun aScanThatFailsHalfwayKeepsTheYearsItFound() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Items") { request ->
+            if (request.query["startIndex"] == "0") {
+                Reply.json(itemsJson(itemJson("a", year = 2020), itemJson("b", year = 2019), total = 9))
+            } else {
+                Reply.status(HttpStatusCode.ServiceUnavailable)
+            }
+        }
+
+        assertEquals(listOf(2020, 2019), app.library.yearsOf(HomeFilter.New).success())
+    }
+
+    @Test
+    fun aScanThatFindsNothingBeforeFailingIsAFailure() = runTest {
+        app.signedIn().on("GET", "/Items", Reply.status(HttpStatusCode.ServiceUnavailable))
+
+        assertIs<ApiResult.Failure>(app.library.yearsOf(HomeFilter.New))
     }
 }

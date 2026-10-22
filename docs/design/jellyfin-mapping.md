@@ -23,9 +23,15 @@ Which server data drives which piece of UI. All of this lives in the shared Kotl
 
 A page's Sort and Genre buttons change the same call: Name is `sortBy=SortName` ascending, Release year is
 `ProductionYear,PremiereDate` descending, Rating is `CommunityRating,SortName` descending; Genre adds `genreIds=` (a
-genre's own page keeps its genre). The strip of years above a list ordered by year is `GET /Years` (items named by
-year, newest first); tapping a year not yet loaded pages `GET /Items` down to it. (`GET /Items/Filters` returned
-nothing on the 12.2 test server, so it is not used.)
+genre's own page keeps its genre). The Genre picker is `GET /Genres?fields=ItemCounts` with `includeItemTypes` set to
+the page's kind (Movie, Series, or both) and counts `MovieCount`, `SeriesCount` or their sum to match; a genre with
+none is left out.
+
+The strip of years above a list ordered by year is read from the page's own items: `GET /Items` with the page's type
+and genre, newest first, `enableImages=false&enableUserData=false`, 300 at a time (at most 30 requests), collecting
+each `ProductionYear`. `GET /Years` is not used: it ignores both the type and the genre, so it can't give the years of
+Shows or of one genre. Tapping a year not yet loaded pages the list down to it. (`GET /Items/Filters` returned nothing
+on the 12.2 test server, so it is not used either.)
 
 Every page is `GET /Items` across every library (movies and shows for a genre), a page of 60 at a
 time. Home's own rows (Continue watching, libraries) are not filtered, so none of the endpoints behind them change.

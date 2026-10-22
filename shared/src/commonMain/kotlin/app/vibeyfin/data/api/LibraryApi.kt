@@ -40,28 +40,15 @@ suspend fun JellyfinApi.itemsById(id: String, userId: String): ApiResult<ItemsRe
 fun itemImageUrl(baseUrl: String, itemId: String, type: String, tag: String, maxWidth: Int): String =
     "$baseUrl/Items/$itemId/Images/$type?tag=$tag&maxWidth=$maxWidth"
 
-/** `GET /Genres`: the genres of the movies and shows [userId] can see, by name, with how many titles each holds. */
-suspend fun JellyfinApi.genres(userId: String): ApiResult<ItemsResultDto> = get(
+/** `GET /Genres`: the genres of the [types] [userId] can see (`Movie`, `Series`), by name, with how many titles each holds. */
+suspend fun JellyfinApi.genres(userId: String, types: List<String> = listOf("Movie", "Series")): ApiResult<ItemsResultDto> = get(
     "/Genres",
     mapOf(
         "userId" to userId,
-        "includeItemTypes" to "Movie,Series",
+        "includeItemTypes" to types.joinToString(","),
         "sortBy" to "SortName",
         "sortOrder" to "Ascending",
         "fields" to "ItemCounts",
-    ),
-    retry = true,
-)
-
-/** `GET /Years`: the release years of the movies and shows [userId] can see, newest first, as items named by year. */
-suspend fun JellyfinApi.years(userId: String): ApiResult<ItemsResultDto> = get(
-    "/Years",
-    mapOf(
-        "userId" to userId,
-        "recursive" to "true",
-        "includeItemTypes" to "Movie,Series",
-        "sortBy" to "SortName",
-        "sortOrder" to "Descending",
     ),
     retry = true,
 )
@@ -78,6 +65,8 @@ suspend fun JellyfinApi.filteredItems(
     sortOrder: String,
     startIndex: Int,
     limit: Int,
+    // Only the year of each item is wanted (the strip of years): no pictures or watch state.
+    slim: Boolean = false,
 ): ApiResult<ItemsResultDto> = get(
     "/Items",
     buildMap {
@@ -89,6 +78,10 @@ suspend fun JellyfinApi.filteredItems(
         put("startIndex", startIndex.toString())
         put("limit", limit.toString())
         genreId?.let { put("genreIds", it) }
+        if (slim) {
+            put("enableImages", "false")
+            put("enableUserData", "false")
+        }
     },
     retry = true,
 )

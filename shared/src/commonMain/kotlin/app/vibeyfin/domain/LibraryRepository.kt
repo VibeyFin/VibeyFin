@@ -10,7 +10,6 @@ import app.vibeyfin.data.api.itemsById
 import app.vibeyfin.data.api.map
 import app.vibeyfin.data.api.userViews
 import app.vibeyfin.data.api.genres
-import app.vibeyfin.data.api.years
 import app.vibeyfin.data.api.filteredItems
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.ItemPage
@@ -44,14 +43,52 @@ class LibraryRepository(private val connection: ConnectionManager) {
         }
     }
 
-    /** The genres to pick from, by name, with how many titles each holds; a genre with none is left out. */
-    suspend fun genres(): ApiResult<List<FilterOption>> = call { api, userId ->
-        api.genres(userId).map { result -> result.items.toOptions() }
+    /**
+     * The genres to pick from, by name, with how many titles each holds. On the Movies page only movies are counted, on
+     * Shows only shows, and everywhere else (Home's Categories, New) both; a genre with none of the page's kind is left out.
+     */
+    suspend fun genres(filter: HomeFilter? = null): ApiResult<List<FilterOption>> = call { api, userId ->
+        val kind = when (filter) {
+            HomeFilter.Movies -> GenreKind.Movies
+            HomeFilter.Shows -> GenreKind.Shows
+            else -> GenreKind.Both
+        }
+        api.genres(userId, kind.types).map { result -> result.items.toOptions(kind) }
     }
 
-    /** The release years of the library, newest first: the strip above a page ordered by year lists them all. */
-    suspend fun years(): ApiResult<List<Int>> = call { api, userId ->
-        api.years(userId).map { result -> result.items.mapNotNull { it.name?.trim()?.toIntOrNull() }.distinct().sortedDescending() }
+    /**
+     * Every release year on the category page for [filter] (narrowed to [genreId] when given), newest first: the strip
+     * above a list ordered by year. The server has no list of years for a type and a genre together (`GET /Years` ignores
+     * both), so this reads the page's own items, newest first and without pictures, a few hundred at a time. A very large
+     * library stops after [YEAR_SCAN_PAGES] pages and the strip then lists the years found.
+     */
+    suspend fun yearsOf(filter: HomeFilter, genreId: String? = null): ApiResult<List<Int>> = call { api, userId ->
+        val types = when (filter) {
+            HomeFilter.Shows -> listOf("Series")
+            HomeFilter.Movies -> listOf("Movie")
+            else -> listOf("Movie", "Series")
+        }
+        val years = linkedSetOf<Int>()
+        var start = 0
+        var pages = 0
+        var failure: ApiResult.Failure? = null
+        while (pages < YEAR_SCAN_PAGES) {
+            val result = api.filteredItems(
+                userId, types, (filter as? HomeFilter.Genre)?.id ?: genreId,
+                sortBy = "ProductionYear,PremiereDate", sortOrder = "Descending", startIndex = start, limit = YEAR_SCAN_PAGE, slim = true,
+            )
+            if (result is ApiResult.Failure) {
+                failure = result
+                break
+            }
+            val page = (result as ApiResult.Success).value
+            page.items.forEach { item -> item.productionYear?.let { years.add(it) } }
+            start += page.items.size
+            pages++
+            if (page.items.isEmpty() || start >= page.totalRecordCount) break
+        }
+        // A failure with nothing found is a failure; with some years found they are still worth showing.
+        if (failure != null && years.isEmpty()) failure else ApiResult.Success(years.sortedDescending())
     }
 
     /**
@@ -92,6 +129,10 @@ class LibraryRepository(private val connection: ConnectionManager) {
 
     companion object {
         const val PAGE_SIZE = 60
+
+        /** How many items one request of the year scan asks for, and how many requests it makes at most. */
+        const val YEAR_SCAN_PAGE = 300
+        const val YEAR_SCAN_PAGES = 30
     }
 }
 
@@ -156,10 +197,22 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
 private fun BaseItemDto.blurHash(type: String, tag: String): String? =
     imageBlurHashes[type]?.get(tag)?.takeIf { it.isNotBlank() }
 
-private fun List<BaseItemDto>.toOptions(): List<FilterOption> =
+/** Which titles a genre's count is made of. */
+private enum class GenreKind(val types: List<String>) {
+    Movies(listOf("Movie")),
+    Shows(listOf("Series")),
+    Both(listOf("Movie", "Series")),
+}
+
+private fun List<BaseItemDto>.toOptions(kind: GenreKind): List<FilterOption> =
     mapNotNull { dto ->
         val name = dto.name?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-        // Counts are movies plus shows; when the server sent none, the genre is listed without a number.
-        val count = if (dto.movieCount != null || dto.seriesCount != null) (dto.movieCount ?: 0) + (dto.seriesCount ?: 0) else null
-        if (count == 0) null else FilterOption(dto.id, name, count)
+        // When the server sent no counts at all the genre is listed without a number.
+        val known = dto.movieCount != null || dto.seriesCount != null
+        val count = when (kind) {
+            GenreKind.Movies -> dto.movieCount ?: 0
+            GenreKind.Shows -> dto.seriesCount ?: 0
+            GenreKind.Both -> (dto.movieCount ?: 0) + (dto.seriesCount ?: 0)
+        }
+        if (known && count == 0) null else FilterOption(dto.id, name, count.takeIf { known })
     }.sortedBy { it.name.lowercase() }
