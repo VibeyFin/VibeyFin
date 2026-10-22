@@ -23,7 +23,7 @@ def call(path, token=None, body=None):
         return json.load(r)
 
 
-# name -> (path under /media, expected properties). Every key is checked.
+# name -> (path under /media, expected properties). Only the keys listed for a fixture are checked.
 EPISODE = dict(container="mkv", video="h264", audio=["aac"], subtitles=[], seconds=180,
                chapters=4, segments=["Intro", "Outro"], trickplay=True)
 CLIP = dict(container="mkv", video="h264", audio=["aac"], subtitles=[], seconds=20,
@@ -96,7 +96,9 @@ while True:
     for name, (path, want) in FIXTURES.items():
         item = items.get(path)
         if item is None:
-            report.append((name, path, "missing from the server", ["not in the library"])); failed = True; continue
+            report.append((name, path, "missing from the server", ["not in the library"]))
+            failed = True
+            continue
         problems = differences(want, actual(token, item))
         failed = failed or bool(problems)
         report.append((name, path, want, problems))
