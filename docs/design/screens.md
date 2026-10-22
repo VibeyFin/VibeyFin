@@ -46,7 +46,8 @@ The page a button or the dropdown opens.
 - A new screen over Home with the bar kept (the tabs' own back stack): a back button, the **name as the title**
   ("Shows", "Movies", "New", "Action"), then a grid of posters, the same grid as a folder's list.
 - **Shows** are series by name; **Movies** are movies by name; **New** is movies and shows by release year,
-  newest first; a genre is its movies and shows by name.
+  newest first, with the year as a subtitle above its titles ("2026", "2025", then "Unknown year" for titles with
+  none); a genre is its movies and shows by name.
 - Posters open the item's page or a folder's list, like anywhere else. More load as the end comes into view.
 - Loading is grey posters, an empty page says so, a failure offers Try again, a rejected session leaves to "Who's
   watching?".

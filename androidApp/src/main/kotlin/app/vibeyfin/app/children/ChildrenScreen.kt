@@ -25,6 +25,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.theme.VibeyFinTokens
@@ -125,6 +127,17 @@ private fun Title(title: String) {
     }
 }
 
+/** A subtitle that splits the list, such as a release year. */
+@Composable
+private fun YearHeading(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleLarge,
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier.semantics { heading() },
+    )
+}
+
 @Composable
 private fun ItemGrid(
     title: String,
@@ -153,8 +166,12 @@ private fun ItemGrid(
     ) {
         // The title is part of the list, beneath the button, and scrolls up under it.
         item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title) }
-        items(state.items, key = { it.id }) { item ->
-            ArtworkTile(item, onClick = { onOpen(item) })
+        state.items.forEach { item ->
+            // The "New" page names each release year above its titles.
+            state.headings[item.id]?.let { heading ->
+                item(span = { GridItemSpan(maxLineSpan) }, key = "heading-${item.id}") { YearHeading(heading) }
+            }
+            item(key = item.id) { ArtworkTile(item, onClick = { onOpen(item) }) }
         }
         if (state.loadingMore) {
             item(span = { GridItemSpan(maxLineSpan) }, key = "loading-more") {

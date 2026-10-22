@@ -153,7 +153,8 @@ _Starts after the state audit (see Cross-cutting)._
   fixed order (configurable in Phase 7): **Shows**, **Movies**, **New**, **Categories**. Home itself is never
   filtered; every button opens a page of its own, titled with its name:
   - **Shows**, **Movies** and **New** open that page at once. New is movies and shows by release year, newest
-    first (`GET /Items` sorted by `ProductionYear,PremiereDate`, descending)
+    first, with the year as a subtitle above its titles (`GET /Items` sorted by `ProductionYear,PremiereDate`,
+    descending)
   - **Categories** carries a chevron and opens a dropdown with search (`GET /Genres`); the genre picked, such as
     "Action", opens a page with that name and its media (`GET /Items?GenreIds=`)
   - a page is a grid of posters like a folder's list, paged, with the five states; Home's Continue watching and

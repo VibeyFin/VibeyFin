@@ -7,7 +7,9 @@ import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.ui.children.ChildrenUiState
+import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.LoadMessages
+import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
 import app.vibeyfin.ui.home.title
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,6 +53,7 @@ class FilteredListViewModel(
                     val items = it.items + result.value.items
                     it.copy(
                         items = items,
+                        headings = headingsFor(items),
                         hasMore = result.value.items.isNotEmpty() && items.size < result.value.total,
                         loadingMore = false,
                     )
@@ -71,11 +74,25 @@ class FilteredListViewModel(
             content.value = when (val result = library.filteredPage(filter, startIndex = 0)) {
                 is ApiResult.Success -> ChildrenUiState(
                     items = result.value.items,
+                    headings = headingsFor(result.value.items),
                     loading = false,
                     hasMore = result.value.hasMore,
                 )
                 is ApiResult.Failure -> ChildrenUiState(loading = false, message = LoadMessages.forError(result.error))
             }
         }
+    }
+
+    /** New is by release year, so each year gets a subtitle; the other pages are a plain list. */
+    private fun headingsFor(items: List<MediaItem>): Map<String, String> {
+        if (filter != HomeFilter.New) return emptyMap()
+        val headings = linkedMapOf<String, String>()
+        var shown: String? = null
+        for (item in items) {
+            val label = item.year?.toString() ?: Strings.unknownYear
+            if (label != shown) headings[item.id] = label
+            shown = label
+        }
+        return headings
     }
 }

@@ -122,4 +122,60 @@ class FilteredListViewModelTest {
 
         assertNotNull(state.exit)
     }
+
+    private fun FakeServer.years(vararg years: Int?) =
+        on("GET", "/Items") { request ->
+            val start = request.query["startIndex"]!!.toInt()
+            val page = years.drop(start).take(3)
+            Reply.json(
+                itemsJson(
+                    *page.mapIndexed { i, year -> itemJson("t${start + i}", year = year) }.toTypedArray(),
+                    total = years.size,
+                    startIndex = start,
+                ),
+            )
+        }
+
+    @Test
+    fun theNewPageNamesEachReleaseYearAboveItsTitles() = runTest {
+        app.signedIn().years(2026, 2026, 2025, 1999)
+        val viewModel = viewModel(HomeFilter.New)
+
+        val first = viewModel.uiState.first { !it.loading }
+        assertEquals(mapOf("t0" to "2026", "t2" to "2025"), first.headings)
+
+        viewModel.onLoadMore()
+        val all = viewModel.uiState.first { it.items.size == 4 }
+
+        assertEquals(mapOf("t0" to "2026", "t2" to "2025", "t3" to "1999"), all.headings)
+    }
+
+    @Test
+    fun aYearThatContinuesOverAPageGetsNoSecondSubtitle() = runTest {
+        app.signedIn().years(2026, 2026, 2026, 2026, 2025)
+        val viewModel = viewModel(HomeFilter.New)
+        viewModel.uiState.first { !it.loading }
+
+        viewModel.onLoadMore()
+        val all = viewModel.uiState.first { it.items.size == 5 }
+
+        assertEquals(mapOf("t0" to "2026", "t4" to "2025"), all.headings)
+    }
+
+    @Test
+    fun titlesWithNoYearAreGroupedAsUnknown() = runTest {
+        app.signedIn().years(2020, null)
+
+        val state = viewModel(HomeFilter.New).uiState.first { !it.loading }
+
+        assertEquals(mapOf("t0" to "2020", "t1" to "Unknown year"), state.headings)
+    }
+
+    @Test
+    fun theOtherPagesAreAPlainListWithNoSubtitles() = runTest {
+        app.signedIn().years(2026, 2025)
+
+        assertTrue(viewModel(HomeFilter.Movies).uiState.first { !it.loading }.headings.isEmpty())
+        assertTrue(viewModel(HomeFilter.Genre("g1", "Drama")).uiState.first { !it.loading }.headings.isEmpty())
+    }
 }

@@ -28,6 +28,11 @@ data class ChildrenUiState(
     val loadingMore: Boolean = false,
     /** The next page didn't load; the items so far stay, and `onRetry` asks again. */
     val loadMoreFailed: Boolean = false,
+    /**
+     * Subtitles that split the list: an item's id, then the text to show above it. Empty for a plain list;
+     * the "New" page has one per release year.
+     */
+    val headings: Map<String, String> = emptyMap(),
     /** Set when the session ended and the screen must be left. */
     val exit: HomeExit? = null,
 ) {

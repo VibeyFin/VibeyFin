@@ -101,6 +101,9 @@ object Strings {
     /** The placeholder of the search field in the Categories dropdown. */
     val filterSearch = "Search"
 
+    /** The subtitle above the titles of the "New" page that have no release year. */
+    val unknownYear = "Unknown year"
+
     /** In the Categories dropdown when what was typed matches nothing. */
     val nothingFound = "Nothing matches that."
 

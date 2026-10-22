@@ -118,17 +118,51 @@ struct ArtworkGrid: View {
     let minimumWidth: CGFloat
     let onOpen: (MediaItem) -> Void
     var onNearEnd: () -> Void = {}
+    /// Subtitles that split the list: an item's id, then the text above it (the "New" page names each year).
+    var headings: [String: String] = [:]
 
     /// Ask for the next page when one of this many last items scrolls into view.
     private let loadAhead = 6
 
+    /// The items in runs, each under its subtitle; one run with no subtitle for a plain list.
+    private var sections: [(title: String?, items: [MediaItem])] {
+        var result: [(title: String?, items: [MediaItem])] = []
+        for item in items {
+            if let title = headings[item.id] {
+                result.append((title: title, items: [item]))
+            } else if result.isEmpty {
+                result.append((title: nil, items: [item]))
+            } else {
+                result[result.count - 1].items.append(item)
+            }
+        }
+        return result
+    }
+
     var body: some View {
+        if headings.isEmpty {
+            grid(items)
+        } else {
+            LazyVStack(alignment: .leading, spacing: Space.s4) {
+                ForEach(Array(sections.enumerated()), id: \.offset) { _, section in
+                    if let title = section.title {
+                        Text(title)
+                            .sectionTitle()
+                            .accessibilityAddTraits(.isHeader)
+                    }
+                    grid(section.items)
+                }
+            }
+        }
+    }
+
+    private func grid(_ shown: [MediaItem]) -> some View {
         LazyVGrid(
             columns: [GridItem(.adaptive(minimum: minimumWidth), spacing: Space.s3, alignment: .top)],
             alignment: .leading,
             spacing: Space.s4
         ) {
-            ForEach(items, id: \.id) { item in
+            ForEach(shown, id: \.id) { item in
                 Button { onOpen(item) } label: { ArtworkTile(item: item) }
                     .buttonStyle(PressableButtonStyle())
                     .onAppear {
