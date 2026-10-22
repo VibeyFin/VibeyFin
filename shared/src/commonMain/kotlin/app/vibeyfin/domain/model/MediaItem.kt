@@ -59,6 +59,12 @@ data class MediaItem(
     val videoFormat: VideoFormat? = null,
     /** On a library: what it holds (`movies`, `tvshows`, `music`, ...); null for mixed content or anything that is not a library. */
     val collectionType: String? = null,
+    /** The item's `Logo` image (its title as artwork), when it has one. */
+    val logoUrl: String? = null,
+    /** The actors and guest stars, in the server's order; only on an item read for its page. */
+    val cast: List<CastMember> = emptyList(),
+    /** On a series: how many seasons it has. */
+    val seasonCount: Int? = null,
 ) {
     /** How far in the user is, from 0 to 1; null when they haven't started or the length isn't known. */
     val progress: Float?
@@ -78,6 +84,14 @@ data class MediaItem(
     /** Movies and episodes play. Other kinds, such as music or extras, are not offered yet. */
     val canPlay: Boolean get() = kind == ItemKind.Movie || kind == ItemKind.Episode
 }
+
+/** One person in an item's cast: [role] is the part they play; [imageUrl] is null when the server has no picture of them. */
+data class CastMember(
+    val id: String,
+    val name: String,
+    val role: String?,
+    val imageUrl: String?,
+)
 
 /** One page of a list that can be longer than we ask for at once. */
 data class ItemPage(

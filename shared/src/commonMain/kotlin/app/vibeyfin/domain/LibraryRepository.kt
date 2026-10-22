@@ -11,9 +11,13 @@ import app.vibeyfin.data.api.map
 import app.vibeyfin.data.api.userViews
 import app.vibeyfin.data.api.genres
 import app.vibeyfin.data.api.latestItems
+import app.vibeyfin.data.api.seasonsOf
+import app.vibeyfin.data.api.episodesOfSeason
+import app.vibeyfin.data.api.similarItems
 import app.vibeyfin.data.api.filteredItems
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.ItemPage
+import app.vibeyfin.domain.model.CastMember
 import app.vibeyfin.domain.model.MediaItem
 
 /**
@@ -42,6 +46,21 @@ class LibraryRepository(private val connection: ConnectionManager) {
                 ?.let { ApiResult.Success(it.toMediaItem(api.baseUrl)) }
                 ?: ApiResult.Failure(ApiError.NotFound)
         }
+    }
+
+    /** What the server thinks is like [id], at most [limit]: "More like this". */
+    suspend fun similar(id: String, limit: Int = SIMILAR_LIMIT): ApiResult<List<MediaItem>> = call { api, userId ->
+        api.similarItems(userId, id, limit).map { result -> result.items.map { it.toMediaItem(api.baseUrl) } }
+    }
+
+    /** A show's seasons in the server's order, Specials included. */
+    suspend fun seasons(seriesId: String): ApiResult<List<MediaItem>> = call { api, userId ->
+        api.seasonsOf(userId, seriesId).map { result -> result.items.map { it.toMediaItem(api.baseUrl) } }
+    }
+
+    /** The episodes of one season, in order, with their synopsis. */
+    suspend fun episodes(seriesId: String, seasonId: String): ApiResult<List<MediaItem>> = call { api, userId ->
+        api.episodesOfSeason(userId, seriesId, seasonId).map { result -> result.items.map { it.toMediaItem(api.baseUrl) } }
     }
 
     /** What was added to [libraryId] most recently, at most [limit], episodes grouped under their show. */
@@ -106,12 +125,17 @@ class LibraryRepository(private val connection: ConnectionManager) {
 
         /** A Home row holds at most this many items (`guardrails.md`). */
         const val ROW_LIMIT = 20
+
+        /** "More like this" holds this many posters. */
+        const val SIMILAR_LIMIT = 12
     }
 }
 
 private const val POSTER_WIDTH = 400
 private const val BACKDROP_WIDTH = 1280
 private const val LANDSCAPE_WIDTH = 640
+private const val LOGO_WIDTH = 640
+private const val CAST_WIDTH = 200
 private const val TALL = 2f / 3f
 private const val WIDE = 16f / 9f
 private const val TICKS_PER_MINUTE = 600_000_000L
@@ -164,6 +188,13 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
         landscapeBlurHash = landscape?.let { (type, tag) -> blurHash(type, tag) },
         videoFormat = mediaStreams.firstOrNull { it.type == "Video" }?.toVideoFormat(),
         collectionType = collectionType?.takeIf { it.isNotBlank() },
+        logoUrl = imageTags["Logo"]?.let { itemImageUrl(baseUrl, id, "Logo", it, LOGO_WIDTH) },
+        cast = people.filter { it.type == "Actor" || it.type == "GuestStar" }.mapNotNull { person ->
+            person.name?.takeIf { it.isNotBlank() }?.let { name ->
+                CastMember(person.id, name, person.role?.takeIf { it.isNotBlank() }, person.primaryImageTag?.let { itemImageUrl(baseUrl, person.id, "Primary", it, CAST_WIDTH) })
+            }
+        },
+        seasonCount = if (kind == ItemKind.Series) childCount else null,
     )
 }
 

@@ -11,9 +11,13 @@ internal fun MediaItem.facts(): List<String> = listOfNotNull(
     episodeLabel(),
     year?.toString(),
     ageRating,
-    runtimeMinutes?.let(::runtimeText),
+    // A show has seasons, not a runtime.
+    if (kind == ItemKind.Series) seasonCount?.let(Strings::seasonCount) else runtimeMinutes?.let(::runtimeText),
     rating?.let { "★ ${oneDecimal(it)}" },
 )
+
+/** On a season: its number, as the server calls it (0 is Specials). The server sends it in the field an episode uses for its own number. */
+internal val MediaItem.seasonIndex: Int? get() = if (kind == ItemKind.Season) episodeNumber else null
 
 /** The one badge for the picture: Dolby Vision, HDR10, HLG, then 4K, then HD; null when there is no video stream or it is smaller. */
 internal fun MediaItem.formatBadge(): String? = videoFormat?.badge()

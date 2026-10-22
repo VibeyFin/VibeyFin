@@ -115,7 +115,8 @@ class HomeRowsViewModelTest {
         viewModel().rowsLoaded(5)
 
         val latest = app.jellyfin.requestsTo("GET", "/Items/Latest").map { it.query }
-        assertEquals(listOf("lib-m", "lib-s"), latest.map { it["parentId"] })
+        // The libraries are asked at the same time, so in no fixed order.
+        assertEquals(listOf("lib-m", "lib-s"), latest.map { it["parentId"] }.sortedBy { it })
         assertEquals("20", latest.first()["limit"])
         val genre = app.jellyfin.requestsTo("GET", "/Items").map { it.query }.first { it["genreIds"] == "g-drama" }
         assertEquals("20", genre["limit"])

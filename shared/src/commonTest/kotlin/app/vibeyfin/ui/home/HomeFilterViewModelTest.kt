@@ -54,7 +54,8 @@ class HomeFilterViewModelTest {
         return server
     }
 
-    private suspend fun HomeViewModel.loaded() = uiState.first { it.serverId != null && !it.loadingLibraries && !it.continueRow.loading }
+    // Home's own rows have asked for the genres by now, so a sheet opened next is read from memory, not asked for again.
+    private suspend fun HomeViewModel.loaded() = uiState.first { it.serverId != null && !it.loadingLibraries && !it.continueRow.loading && !it.loadingMyMedia }
 
     @Test
     fun homeShowsTheFourButtonsInOrderAndOnlyTwoOpenASheet() = runTest {

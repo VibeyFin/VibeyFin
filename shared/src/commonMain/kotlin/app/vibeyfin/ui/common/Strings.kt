@@ -324,6 +324,27 @@ object Strings {
         return "${text}x"
     }
 
+    /** The page of a movie, an episode or a show: its sections, and what the Play button says for a show. */
+    val cast = "Cast"
+    val moreLikeThis = "More like this"
+    val technicalInfo = "Technical info"
+    val more = "More"
+    val less = "Less"
+    fun seasonCount(count: Int) = if (count == 1) "1 season" else "$count seasons"
+    fun playEpisode(episode: String) = "Play $episode"
+    fun resumeEpisodeFrom(episode: String, positionMs: Long) = "Resume $episode from ${clock(positionMs)}"
+
+    /** An episode in a season's list: "4. Title". */
+    fun episodeTitle(number: Int?, title: String) = if (number == null) title else "$number. $title"
+
+    /** What a screen reader says for a season button, and for the row of them. */
+    fun seasonDescription(name: String, selected: Boolean) = if (selected) "$name, selected" else name
+    fun seasonsDescription(count: Int) = "Seasons, $count"
+
+    /** In the season's list when it holds nothing, and when the show has no seasons. */
+    val noEpisodes = "There are no episodes in this season yet."
+    val noSeasons = "This show has no seasons yet."
+
     /** A track the file gives no name or language for. */
     fun track(index: Int) = "Track ${index + 1}"
 

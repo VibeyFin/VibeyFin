@@ -24,6 +24,12 @@ fun itemJson(
     /** For an episode or a season: the tag of the show's own poster. */
     seriesPrimaryImageTag: String? = null,
     thumbTag: String? = null,
+    /** The item's `Logo` image tag. */
+    logoTag: String? = null,
+    /** `People` as the server sends them: each from [personJson]. */
+    people: List<String> = emptyList(),
+    /** On a series: how many seasons (`fields=ChildCount`). */
+    childCount: Int? = null,
     /** Where the user stopped; with [played] this becomes the item's `UserData`. */
     positionTicks: Long? = null,
     played: Boolean? = null,
@@ -46,7 +52,7 @@ fun itemJson(
         """"Genres":[${genres.joinToString(",") { "\"$it\"" }}]""",
         """"CommunityRating":${communityRating ?: "null"}""",
         """"OfficialRating":${string(officialRating)}""",
-        """"ImageTags":{${listOfNotNull(primaryTag?.let { "\"Primary\":\"$it\"" }, thumbTag?.let { "\"Thumb\":\"$it\"" }).joinToString(",")}}""",
+        """"ImageTags":{${listOfNotNull(primaryTag?.let { "\"Primary\":\"$it\"" }, thumbTag?.let { "\"Thumb\":\"$it\"" }, logoTag?.let { "\"Logo\":\"$it\"" }).joinToString(",")}}""",
         """"BackdropImageTags":[${backdropTag?.let { "\"$it\"" } ?: ""}]""",
         """"ImageBlurHashes":{${
             blurHashes.entries.joinToString(",") { (type, byTag) ->
@@ -68,6 +74,8 @@ fun itemJson(
         }""",
         """"MovieCount":${movieCount ?: "null"}""",
         """"SeriesCount":${seriesCount ?: "null"}""",
+        """"People":[${people.joinToString(",")}]""",
+        """"ChildCount":${childCount ?: "null"}""",
         """"SomethingWeDontRead":true""",
     )
     return fields.joinToString(prefix = "{", postfix = "}")
@@ -79,3 +87,9 @@ fun itemsJson(vararg items: String, total: Int = items.size, startIndex: Int = 0
 
 /** Ticks in a minute: Jellyfin counts runtime in 100-nanosecond ticks. */
 const val TICKS_PER_MINUTE = 600_000_000L
+
+/** One person of an item's cast or crew, as the server sends them. */
+fun personJson(id: String, name: String, type: String = "Actor", role: String? = null, imageTag: String? = null): String {
+    fun string(value: String?) = value?.let { "\"$it\"" } ?: "null"
+    return """{"Id":"$id","Name":"$name","Type":"$type","Role":${string(role)},"PrimaryImageTag":${string(imageTag)}}"""
+}

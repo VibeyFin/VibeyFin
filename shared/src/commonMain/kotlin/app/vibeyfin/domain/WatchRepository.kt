@@ -6,6 +6,7 @@ import app.vibeyfin.data.api.ItemsResultDto
 import app.vibeyfin.data.api.JellyfinApi
 import app.vibeyfin.data.api.episodesFrom
 import app.vibeyfin.data.api.nextUp
+import app.vibeyfin.data.api.nextUpOf
 import app.vibeyfin.data.api.resumeItems
 import app.vibeyfin.data.api.setPlayed
 import app.vibeyfin.data.api.map
@@ -55,6 +56,14 @@ class WatchRepository(private val connection: ConnectionManager, private val cha
                 if (at < 0) null else episodes.getOrNull(at + 1)
             }
         }
+    }
+
+    /**
+     * The episode of [seriesId] to play next, a half-watched one included, or null when the show was never started or
+     * is finished (the page then offers its first episode).
+     */
+    suspend fun nextUpOf(seriesId: String): ApiResult<MediaItem?> = call { api, userId ->
+        api.nextUpOf(userId, seriesId).toItems(api).map { it.firstOrNull() }
     }
 
     /**

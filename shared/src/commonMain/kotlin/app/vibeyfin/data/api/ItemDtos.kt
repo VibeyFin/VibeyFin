@@ -32,6 +32,10 @@ data class BaseItemDto(
     /** For an episode or a season: the tag of the show's own poster, which is the picture a row of shows wants. */
     @SerialName("SeriesPrimaryImageTag") val seriesPrimaryImageTag: String? = null,
     @SerialName("UserData") val userData: UserItemDataDto? = null,
+    /** The cast and crew; only sent when asked for (`fields=People`, see `DETAIL_FIELDS`). */
+    @SerialName("People") val people: List<PersonDto> = emptyList(),
+    /** On a series: how many seasons it has; only sent when asked for (`fields=ChildCount`). */
+    @SerialName("ChildCount") val childCount: Int? = null,
     /** On a genre: how many movies and shows carry it; only sent when asked for (`fields=ItemCounts`). */
     @SerialName("MovieCount") val movieCount: Int? = null,
     @SerialName("SeriesCount") val seriesCount: Int? = null,
@@ -39,6 +43,17 @@ data class BaseItemDto(
     @SerialName("MediaStreams") val mediaStreams: List<MediaStreamDto> = emptyList(),
     /** Trickplay thumbnails by media source id, then by width in pixels; only sent when asked for. */
     @SerialName("Trickplay") val trickplay: Map<String, Map<String, TrickplayInfoDto>> = emptyMap(),
+)
+
+/** One person of an item's cast or crew: [type] is `Actor`, `GuestStar`, `Director`, `Writer`, ... */
+@Serializable
+data class PersonDto(
+    @SerialName("Id") val id: String,
+    @SerialName("Name") val name: String? = null,
+    /** The part they play, for an actor. */
+    @SerialName("Role") val role: String? = null,
+    @SerialName("Type") val type: String? = null,
+    @SerialName("PrimaryImageTag") val primaryImageTag: String? = null,
 )
 
 /** `UserItemDataDto`: what this user has done with an item. Only the fields we read. */

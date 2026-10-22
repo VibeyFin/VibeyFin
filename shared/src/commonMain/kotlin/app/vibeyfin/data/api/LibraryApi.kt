@@ -1,7 +1,7 @@
 package app.vibeyfin.data.api
 
 /** What an item's detail page needs beyond the list fields; the server leaves these out unless asked. */
-private const val DETAIL_FIELDS = "Overview,Genres,MediaStreams,Trickplay"
+private const val DETAIL_FIELDS = "Overview,Genres,MediaStreams,Trickplay,People,ChildCount"
 
 /**
  * `GET /UserViews`: the libraries [userId] can see. These are items too, so a library opens like
@@ -89,3 +89,15 @@ suspend fun JellyfinApi.latestItems(userId: String, parentId: String, limit: Int
     mapOf("userId" to userId, "parentId" to parentId, "limit" to limit.toString(), "groupItems" to "true"),
     retry = true,
 )
+
+/** `GET /Items/{id}/Similar`: what the server thinks is like the item, at most [limit]. */
+suspend fun JellyfinApi.similarItems(userId: String, id: String, limit: Int): ApiResult<ItemsResultDto> =
+    get("/Items/$id/Similar", mapOf("userId" to userId, "limit" to limit.toString()), retry = true)
+
+/** `GET /Shows/{id}/Seasons`: a show's seasons in the server's order, Specials included. */
+suspend fun JellyfinApi.seasonsOf(userId: String, seriesId: String): ApiResult<ItemsResultDto> =
+    get("/Shows/$seriesId/Seasons", mapOf("userId" to userId), retry = true)
+
+/** `GET /Shows/{id}/Episodes?seasonId=`: the episodes of one season, with their synopsis. */
+suspend fun JellyfinApi.episodesOfSeason(userId: String, seriesId: String, seasonId: String): ApiResult<ItemsResultDto> =
+    get("/Shows/$seriesId/Episodes", mapOf("userId" to userId, "seasonId" to seasonId, "fields" to "Overview"), retry = true)
