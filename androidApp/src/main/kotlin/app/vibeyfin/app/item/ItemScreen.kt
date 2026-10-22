@@ -48,6 +48,7 @@ import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.components.MediaRowSection
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
+import app.vibeyfin.app.navigation.sharedPoster
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.ItemKind
@@ -216,7 +217,8 @@ private fun ItemPage(
         // The picture stays put behind the page and darkens; the text goes up over it, and the rest of the page covers it.
         val heroHeight = screenWidth * PHONE_HERO_BY_WIDTH
         Box(Modifier.fillMaxSize()) {
-            PinnedBackdrop(item, heroHeight, scroll)
+            // The picture is where the tapped poster lands (and where it leaves from on the way back).
+            PinnedBackdrop(item, heroHeight, scroll, Modifier.sharedPoster(item.id, source = false))
             Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
                 // At least the picture's height; taller when the text needs more room, so nothing is cut off.
                 Box(Modifier.fillMaxWidth().heightIn(min = heroHeight)) {
@@ -233,7 +235,7 @@ private fun ItemPage(
     val firstScreenPx = with(LocalDensity.current) { (screenHeight * FIRST_SCREEN).toPx() }
     val progress = if (firstScreenPx > 0f) scroll.value / firstScreenPx else 0f
     Box(Modifier.fillMaxSize()) {
-        ItemBackdrop(item, screenWidth, screenHeight, progress, Modifier.fillMaxSize())
+        ItemBackdrop(item, screenWidth, screenHeight, progress, Modifier.fillMaxSize().sharedPoster(item.id, source = false))
         Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
             // The top of the first screen is the picture, clear; the details sit at the bottom of it.
             Spacer(Modifier.height(screenHeight * FIRST_SCREEN_CLEAR))

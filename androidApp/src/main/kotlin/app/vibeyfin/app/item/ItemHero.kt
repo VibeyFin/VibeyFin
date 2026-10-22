@@ -161,10 +161,10 @@ fun ItemBackdrop(item: MediaItem, screenWidth: Dp, screenHeight: Dp, progress: F
  * darkens ([scroll] against [height]) so what scrolls over it reads. A scrim under the text fades it into the page.
  */
 @Composable
-fun PinnedBackdrop(item: MediaItem, height: Dp, scroll: androidx.compose.foundation.ScrollState) {
+fun PinnedBackdrop(item: MediaItem, height: Dp, scroll: androidx.compose.foundation.ScrollState, modifier: Modifier = Modifier) {
     // Fully dark after about half the picture has scrolled by, so the page reads well before the picture is gone.
     val darkenOverPx = with(androidx.compose.ui.platform.LocalDensity.current) { height.toPx() } * DARKEN_OVER
-    Box(Modifier.fillMaxWidth().height(height)) {
+    Box(modifier.fillMaxWidth().height(height)) {
         val picture = item.backdropUrl ?: item.posterUrl
         if (picture != null) {
             Artwork(

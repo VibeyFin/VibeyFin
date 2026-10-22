@@ -1,5 +1,9 @@
+@file:OptIn(ExperimentalSharedTransitionApi::class)
+
 package app.vibeyfin.app.navigation
 
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -10,6 +14,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +53,9 @@ import app.vibeyfin.ui.home.HomeExit
 
 private const val SLIDE_MS = 180
 
+/** The detail page fades in over the shared poster-to-picture transition. */
+private const val DETAIL_FADE_MS = 140
+
 /** Switching tabs is a quick cross-fade, with no scale: it is a switch, not opening something. */
 private const val TAB_FADE_MS = 110
 
@@ -64,8 +72,13 @@ private fun NavBackStackEntry.opensPlayer() = destination.hasRoute<Player>()
 
 private fun NavBackStackEntry.isTabRoot() = destination.hasRoute<Home>() || destination.hasRoute<Search>() || destination.hasRoute<Library>() || destination.hasRoute<Downloads>()
 
+private fun NavBackStackEntry.isDetail() = destination.hasRoute<Item>()
+
 private fun enter(target: NavBackStackEntry) =
-    if (target.isTabRoot()) {
+    if (target.isDetail()) {
+        // The poster grows into the page's picture (a shared element), so the page itself only fades in under it.
+        fadeIn(tween(DETAIL_FADE_MS))
+    } else if (target.isTabRoot()) {
         fadeIn(tween(TAB_FADE_MS))
     } else if (target.opensPlayer()) {
         fadeIn(tween(PLAYER_FADE_MS))
@@ -74,11 +87,13 @@ private fun enter(target: NavBackStackEntry) =
     }
 
 /** The screen underneath stays put and fades out behind the one opening over it. */
-private fun exit(target: NavBackStackEntry) = fadeOut(tween(if (target.isTabRoot()) TAB_FADE_MS else if (target.opensPlayer()) PLAYER_FADE_MS else SLIDE_MS))
+private fun exit(target: NavBackStackEntry) = fadeOut(tween(if (target.isDetail()) DETAIL_FADE_MS else if (target.isTabRoot()) TAB_FADE_MS else if (target.opensPlayer()) PLAYER_FADE_MS else SLIDE_MS))
 
-private fun popEnter() = slideInHorizontally(tween(SLIDE_MS)) { -it / SLIDE_FRACTION } + fadeIn(tween(SLIDE_MS))
+private fun popEnter(leaving: NavBackStackEntry) =
+    if (leaving.isDetail()) fadeIn(tween(DETAIL_FADE_MS)) else slideInHorizontally(tween(SLIDE_MS)) { -it / SLIDE_FRACTION } + fadeIn(tween(SLIDE_MS))
 
-private fun popExit() = slideOutHorizontally(tween(SLIDE_MS)) { it / SLIDE_FRACTION } + fadeOut(tween(SLIDE_MS))
+private fun popExit(leaving: NavBackStackEntry) =
+    if (leaving.isDetail()) fadeOut(tween(DETAIL_FADE_MS)) else slideOutHorizontally(tween(SLIDE_MS)) { it / SLIDE_FRACTION } + fadeOut(tween(SLIDE_MS))
 
 @Composable
 fun VibeyFinNavHost() {
@@ -125,18 +140,20 @@ fun VibeyFinNavHost() {
             if (currentTab != null) MainNavigationBar(currentTab, select)
         },
     ) { padding ->
+        SharedTransitionLayout(Modifier.padding(padding).consumeWindowInsets(padding)) {
+        CompositionLocalProvider(LocalSharedTransitionScope provides this) {
         NavHost(
             navController = navController,
-            modifier = Modifier.padding(padding).consumeWindowInsets(padding),
+            modifier = Modifier,
             startDestination = Startup,
             enterTransition = { enter(targetState) },
             exitTransition = { exit(targetState) },
-            popEnterTransition = { popEnter() },
-            popExitTransition = { popExit() },
+            popEnterTransition = { popEnter(initialState) },
+            popExitTransition = { popExit(initialState) },
             // The back gesture scrubs these two. Left alone they are the library's own scale-down, which
             // looks nothing like the slide the back button plays, so they are the pop pair again.
-            predictivePopEnterTransition = { popEnter() },
-            predictivePopExitTransition = { popExit() },
+            predictivePopEnterTransition = { popEnter(initialState) },
+            predictivePopExitTransition = { popExit(initialState) },
         ) {
             composable<Startup> {
                 StartupRoute(
@@ -173,7 +190,7 @@ fun VibeyFinNavHost() {
             // One graph per tab, each with the screens that open inside it: the same Item and Children
             // screens, once per graph, so each tab has its own back stack.
             navigation<HomeTab>(startDestination = Home) {
-                composable<Home> {
+                sharedComposable<Home> {
                     HomeRoute(
                         onExit = leave,
                         onOpen = open,
@@ -187,7 +204,7 @@ fun VibeyFinNavHost() {
                 details(navController, leave)
             }
             navigation<SearchTab>(startDestination = Search) {
-                composable<Search> {
+                sharedComposable<Search> {
                     SearchRoute(
                         onOpenResult = { result ->
                             navController.navigate(
@@ -204,13 +221,13 @@ fun VibeyFinNavHost() {
                 details(navController, leave)
             }
             navigation<LibraryTab>(startDestination = Library) {
-                composable<Library> {
+                sharedComposable<Library> {
                     FilteredListRoute(filter = HomeFilter.Library, isRoot = true, onBack = {}, onOpen = open, onExit = leave)
                 }
                 details(navController, leave)
             }
             navigation<DownloadsTab>(startDestination = Downloads) {
-                composable<Downloads> { NotAvailableYet() }
+                sharedComposable<Downloads> { NotAvailableYet() }
                 details(navController, leave)
             }
             composable<Player> { entry ->
@@ -233,6 +250,8 @@ fun VibeyFinNavHost() {
                 )
             }
         }
+        }
+        }
     }
 }
 
@@ -241,7 +260,7 @@ private fun NavGraphBuilder.details(navController: NavHostController, leave: (Ho
     val open: (MediaItem) -> Unit = { item ->
         navController.navigate(if (item.opensList) Children(item.id, item.title, item.kind == ItemKind.Collection, item.backdropUrl ?: item.posterUrl) else Item(item.id))
     }
-    composable<Children> { entry ->
+    sharedComposable<Children> { entry ->
         val route = entry.toRoute<Children>()
         ChildrenRoute(
             parentId = route.parentId,
@@ -254,7 +273,7 @@ private fun NavGraphBuilder.details(navController: NavHostController, leave: (Ho
             onExit = leave,
         )
     }
-    composable<FilteredList> { entry ->
+    sharedComposable<FilteredList> { entry ->
         FilteredListRoute(
             filter = entry.toRoute<FilteredList>().toFilter(),
             onBack = { navController.popBackStack() },
@@ -262,7 +281,7 @@ private fun NavGraphBuilder.details(navController: NavHostController, leave: (Ho
             onExit = leave,
         )
     }
-    composable<Item> { entry ->
+    sharedComposable<Item> { entry ->
         val itemId = entry.toRoute<Item>().itemId
         ItemRoute(
             itemId = itemId,
@@ -275,7 +294,7 @@ private fun NavGraphBuilder.details(navController: NavHostController, leave: (Ho
             onExit = leave,
         )
     }
-    composable<Person> { entry ->
+    sharedComposable<Person> { entry ->
         PersonRoute(
             personId = entry.toRoute<Person>().personId,
             onBack = { navController.popBackStack() },

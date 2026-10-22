@@ -36,6 +36,8 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import app.vibeyfin.app.navigation.SharedPick
+import app.vibeyfin.app.navigation.sharedPoster
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.animationsEnabled
 import kotlinx.coroutines.withContext
@@ -147,11 +149,12 @@ fun ArtworkTile(item: MediaItem, onClick: () -> Unit, modifier: Modifier = Modif
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
-            .clickable(onClick = onClick)
+            // The poster grows into the detail page's picture; this tile is the one that does, from the moment it is tapped.
+            .clickable { SharedPick.itemId = item.id; onClick() }
             .semantics(mergeDescendants = true) { contentDescription = Strings.cardLabel(item.title, item.year) },
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
     ) {
-        Box(Modifier.clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
+        Box(Modifier.sharedPoster(item.id, source = true).clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
             Artwork(
                 url = item.posterUrl,
                 title = item.title,
