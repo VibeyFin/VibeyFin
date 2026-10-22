@@ -1,4 +1,5 @@
 import SwiftUI
+import Shared
 
 /// The app's mark: the play triangle of the app icon, on its own, for the top of Home. Drawn here so it
 /// takes the text colour and scales with Dynamic Type; when the icon is redesigned this follows it.

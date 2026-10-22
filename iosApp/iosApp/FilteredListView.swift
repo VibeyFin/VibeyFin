@@ -79,7 +79,7 @@ struct FilteredListView: View {
                             id: option.id,
                             label: option.name,
                             selected: option.id == sheet.selectedId,
-                            detail: option.count.map { String(truncating: $0) }
+                            detail: option.count.map { String($0.int32Value) }
                         )
                     },
                     loading: sheet.loading,

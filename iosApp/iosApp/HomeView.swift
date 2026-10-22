@@ -137,7 +137,7 @@ struct HomeView: View {
                         PickerRow(
                             id: option.id,
                             label: option.name,
-                            detail: option.count.map { String(truncating: $0) },
+                            detail: option.count.map { String($0.int32Value) },
                             description: option.count.map { Strings.shared.titleCount(name: option.name, count: $0.int32Value) }
                         )
                     },

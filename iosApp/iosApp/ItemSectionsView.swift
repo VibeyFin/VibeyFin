@@ -44,7 +44,7 @@ struct SeasonsSectionView: View {
                     ForEach(seasons.seasons, id: \.id) { season in
                         let selected = season.id == seasons.selectedId
                         Button { onSelect(season.id) } label: {
-                            Text(ItemFactsKt.getSeasonLabel(season))
+                            Text(season.seasonLabel)
                                 .font(.subheadline.weight(.medium))
                                 .foregroundStyle(selected ? Color(.systemBackground) : Color.primary)
                                 .padding(.horizontal, Space.s4)
@@ -55,7 +55,7 @@ struct SeasonsSectionView: View {
                         }
                         .buttonStyle(PressableButtonStyle())
                         .id(season.id)
-                        .accessibilityLabel(Strings.shared.seasonDescription(name: ItemFactsKt.getSeasonLabel(season), selected: selected))
+                        .accessibilityLabel(Strings.shared.seasonDescription(name: season.seasonLabel, selected: selected))
                         .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
                     }
                 }

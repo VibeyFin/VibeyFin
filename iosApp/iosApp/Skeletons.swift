@@ -1,4 +1,5 @@
 import SwiftUI
+import Shared
 
 // Grey stand-ins for content that is still loading: the same shapes as the real thing, so nothing moves
 // when it arrives. Not animated; looping motion is an opt-in setting (`brand.md`). A `ProgressView` is
