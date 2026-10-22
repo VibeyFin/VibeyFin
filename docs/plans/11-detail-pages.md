@@ -48,6 +48,10 @@ adds a row of season buttons and the selected season's episodes. Android and iOS
    watched toggle *(my call)*. Download is not shown (offline is a later phase).
 9. **Technical info** (video, audio, subtitles, file) collapsed at the bottom *(my call: only when the item has streams)*.
 10. **Tablets and unfolded foldables** (width from 600dp, `BoxWithConstraints`, no new dependency; `horizontalSizeClass == .regular` on iOS) get the tablet layout of `screens.md`: the backdrop at its own 16:9, the details in a left column about 46% wide (max 520) over a scrim from the left, Play not full width, larger margins and posters (168), the cast at 112, and a season's episodes in two columns from 840dp. This was added after the owner saw the phone layout stretched on a Z Fold. The main navigation stays at the bottom for now (the top placement is the width-class work in the design review).
+15. **Four actions, a collection page** *(added after review)*: the actions are four equal columns, My List (a plus, a tick once
+    on the list), Trailer, Watched (a tick, filled once watched; it replaces the overflow menu) and Download. A collection opens on
+    its own header (picture, title, "N titles", overview) with its movies and shows under sub-headings; on a wide screen the header
+    is a 21:9 picture with the text in a column on the left. Collections are always tall posters.
 12. **Reaching the show and collections** *(added after review)*: an episode's or season's page and a season's list lead back to the
     series by its name; a movie or series shows the collections it is in (`GET /Items/{id}/Collections`) as a poster row.
 13. **Season buttons** always read "Season N" ("Specials" for 0). The overflow and long-press menus use the app's rounded menu.

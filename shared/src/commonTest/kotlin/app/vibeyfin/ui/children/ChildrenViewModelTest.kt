@@ -212,4 +212,16 @@ class ChildrenViewModelTest {
         assertNull(state.series)
         assertNull(viewModel.uiState.value.series)
     }
+
+    @Test
+    fun aCollectionsListCarriesTheCollectionForItsHeader() = runTest {
+        app.signedIn().parent(itemJson("box-1", "Neon Collection", type = "BoxSet", isFolder = true))
+
+        val viewModel = viewModel("box-1")
+        viewModel.uiState.first { !it.loading }
+        val state = viewModel.uiState.first { !it.loading && it.collection != null }
+
+        assertEquals("Neon Collection", state.collection?.title)
+        assertNull(state.series)
+    }
 }

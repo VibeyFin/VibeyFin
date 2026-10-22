@@ -11,6 +11,7 @@ struct ItemHeroView: View {
     let onOpenSeries: (String) -> Void
     let onToggleFavorite: () -> Void
     let onPlayTrailer: (String) -> Void
+    let onTogglePlayed: () -> Void
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -40,7 +41,8 @@ struct ItemHeroView: View {
                 onPlay: onPlay,
                 onOpenSeries: onOpenSeries,
                 onToggleFavorite: onToggleFavorite,
-                onPlayTrailer: onPlayTrailer
+                onPlayTrailer: onPlayTrailer,
+                onTogglePlayed: onTogglePlayed
             )
             .padding(.horizontal, Space.s4)
             .padding(.bottom, Space.s4)
@@ -100,6 +102,7 @@ struct HeroDetailsView: View {
     let onOpenSeries: (String) -> Void
     let onToggleFavorite: () -> Void
     let onPlayTrailer: (String) -> Void
+    let onTogglePlayed: () -> Void
 
     @State private var overviewExpanded = false
     @Environment(\.openURL) private var openURL
@@ -223,15 +226,15 @@ struct HeroDetailsView: View {
         }
     }
 
-    /// The actions under Play, each an icon over a label: My List (the server's favourites), Trailer (only when there is one) and
-    /// Download (it does nothing yet). A trailer the server holds plays in the app; one on the web opens in the system's viewer.
+    /// The actions under Play, four equal columns, each an icon over a label: My List (the server's favourites), Trailer (only when
+    /// there is one), Watched (a tick) and Download (it does nothing yet). A trailer the server holds plays in the app; one on the
+    /// web opens in the system's viewer.
     private var actions: some View {
-        HStack(spacing: Space.s2) {
-            if !centered { EmptyView() }
+        HStack(spacing: 0) {
             actionButton(
                 label: Strings.shared.myList,
                 description: Strings.shared.myListAction(onList: state.isFavorite),
-                systemImage: state.isFavorite ? "heart.fill" : "heart",
+                systemImage: state.isFavorite ? "checkmark" : "plus",
                 action: onToggleFavorite
             )
             if let trailer = state.trailer {
@@ -242,21 +245,33 @@ struct HeroDetailsView: View {
                         openURL(url)
                     }
                 }
+            } else {
+                Color.clear.frame(maxWidth: .infinity, minHeight: 1)
+            }
+            if state.canMark {
+                actionButton(
+                    label: Strings.shared.watchedAction,
+                    description: state.markLabel,
+                    systemImage: state.watched ? "checkmark.circle.fill" : "checkmark.circle",
+                    action: onTogglePlayed
+                )
+            } else {
+                Color.clear.frame(maxWidth: .infinity, minHeight: 1)
             }
             // Offline is a later phase: the button is here, and does nothing yet.
             actionButton(label: Strings.shared.download, description: Strings.shared.download, systemImage: "arrow.down.to.line") {}
         }
-        .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
+        .frame(maxWidth: .infinity)
     }
 
     private func actionButton(label: String, description: String, systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: Space.s1) {
-                Image(systemName: systemImage).font(.title3)
+                Image(systemName: systemImage).font(.title2)
                 Text(label.titleCased()).font(.caption)
             }
             .foregroundStyle(.secondary)
-            .frame(minWidth: 72, minHeight: 56)
+            .frame(maxWidth: .infinity, minHeight: 56)
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableButtonStyle())

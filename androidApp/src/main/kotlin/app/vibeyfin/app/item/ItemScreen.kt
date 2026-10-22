@@ -130,12 +130,11 @@ fun ItemScreen(
                 item != null -> BoxWithConstraints(Modifier.fillMaxSize()) {
                     ItemPage(
                         item, state, wide = maxWidth >= WIDE_FROM, screenWidth = maxWidth, screenHeight = maxHeight,
-                        onPlay, onPlayEpisode, onOpen, onOpenSeries, onToggleFavorite, onToggleEpisodePlayed, onSelectSeason, onRetrySimilar, onRetryCollections, onRetrySeasons, onRetryEpisodes,
+                        onPlay, onPlayEpisode, onOpen, onOpenSeries, onToggleFavorite, onTogglePlayed, onToggleEpisodePlayed, onSelectSeason, onRetrySimilar, onRetryCollections, onRetrySeasons, onRetryEpisodes,
                     )
                 }
             }
             FloatingBackButton(onBack)
-            if (state.canMark) OverflowMenu(state.markLabel, if (state.item?.played == true) Icons.Default.Clear else Icons.Default.Check, onTogglePlayed)
             ActionSnackbar(state.actionMessage, onRetry = onRetryAction, onDismiss = onDismissMessage)
         }
     }
@@ -166,6 +165,7 @@ private fun ItemPage(
     onOpen: (MediaItem) -> Unit,
     onOpenSeries: (String) -> Unit,
     onToggleFavorite: () -> Unit,
+    onTogglePlayed: () -> Unit,
     onToggleEpisodePlayed: (String) -> Unit,
     onSelectSeason: (String) -> Unit,
     onRetrySimilar: () -> Unit,
@@ -198,7 +198,7 @@ private fun ItemPage(
     val scroll = rememberScrollState()
     if (!wide) {
         Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
-            ItemHero(item, state, margin, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer = onPlayEpisode)
+            ItemHero(item, state, margin, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer = onPlayEpisode, onTogglePlayed = onTogglePlayed)
             sections()
         }
         return
@@ -212,7 +212,7 @@ private fun ItemPage(
             // The top of the first screen is the picture, clear; the details sit at the bottom of it.
             Spacer(Modifier.height(screenHeight * FIRST_SCREEN_CLEAR))
             Column(Modifier.fillMaxWidth(0.46f).widthIn(max = 520.dp).padding(horizontal = margin)) {
-                HeroDetails(item, state, centered = false, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer = onPlayEpisode)
+                HeroDetails(item, state, centered = false, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer = onPlayEpisode, onTogglePlayed = onTogglePlayed)
             }
             sections()
         }
@@ -225,20 +225,3 @@ private const val FIRST_SCREEN = 0.7f
 /** The share of the first screen left clear above the details on a tablet. */
 private const val FIRST_SCREEN_CLEAR = 0.3f
 
-/** The "⋮" chip in the top-right corner, opposite the back button, and the menu it opens: Mark as watched or unwatched. */
-@Composable
-private fun BoxScope.OverflowMenu(markLabel: String, markIcon: ImageVector, onTogglePlayed: () -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    Box(
-        Modifier
-            .align(Alignment.TopEnd)
-            .safeDrawingPadding()
-            .padding(end = screenMargin() - ChipInset, top = VibeyFinTokens.Space.s2),
-    ) {
-        ChipButton(rememberVectorPainter(Icons.Default.MoreVert), Strings.moreActions, onClick = { open = true })
-        // The app's own menu: rounded corners, lifted off the picture, an icon on each row.
-        VibeyFinMenu(expanded = open, onDismiss = { open = false }) {
-            VibeyFinMenuItem(markLabel, markIcon) { open = false; onTogglePlayed() }
-        }
-    }
-}

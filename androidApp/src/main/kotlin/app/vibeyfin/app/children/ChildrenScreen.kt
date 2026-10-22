@@ -10,6 +10,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import app.vibeyfin.app.components.bleed
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -20,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.Icons
@@ -41,6 +48,7 @@ import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.components.skeletonTiles
+import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.children.ChildrenUiState
 import app.vibeyfin.ui.children.ChildrenViewModel
@@ -95,7 +103,13 @@ fun ChildrenScreen(
     val pinned = controls != null
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = screenMargin())) {
+            // A collection's header runs under the status bar, so it takes only the sides and the bottom.
+            val insets = if (state.collection != null) {
+                Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+            } else {
+                Modifier.safeDrawingPadding()
+            }
+            Column(modifier = Modifier.fillMaxSize().then(insets).padding(horizontal = screenMargin())) {
                 if (controls != null) {
                     Title(title)
                     controls()
@@ -157,6 +171,7 @@ private fun ItemGrid(
 ) {
     // Saved with the screen, so coming back from an item's page finds the list where it was left.
     val gridState = rememberLazyGridState()
+    val margin = screenMargin()
     val nearEnd by remember {
         derivedStateOf {
             val info = gridState.layoutInfo
@@ -169,13 +184,21 @@ private fun ItemGrid(
     }
     LazyVerticalGrid(
         state = gridState,
-        columns = GridCells.Adaptive(130.dp),
+        columns = GridCells.Adaptive(if (LocalConfiguration.current.screenWidthDp >= 600) 168.dp else 130.dp),
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         modifier = Modifier.fillMaxSize(),
     ) {
+        // A collection opens on its own header, under the status bar, in place of the plain title.
+        state.collection?.let { collection ->
+            item(span = { GridItemSpan(maxLineSpan) }, key = "collection") {
+                Box(Modifier.bleed(margin)) {
+                    CollectionHeader(collection, count = state.items.size, margin = margin)
+                }
+            }
+        }
         // The title is part of the list, beneath the button, and scrolls up under it.
-        if (showTitle) item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title) }
+        if (showTitle && state.collection == null) item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title) }
         // A season's list leads back to its show.
         state.series?.let { series ->
             if (onOpenSeries != null) {
@@ -187,8 +210,28 @@ private fun ItemGrid(
                 }
             }
         }
-        items(state.items, key = { it.id }) { item ->
-            ArtworkTile(item, onClick = { onOpen(item) })
+        if (state.collection != null) {
+            // A collection's members under sub-headings: its movies, then its shows, then whatever else it holds.
+            val groups = listOf(
+                Strings.collectionMovies to state.items.filter { it.kind == ItemKind.Movie },
+                Strings.collectionShows to state.items.filter { it.kind == ItemKind.Series },
+                Strings.collectionOther to state.items.filter { it.kind != ItemKind.Movie && it.kind != ItemKind.Series },
+            ).filter { it.second.isNotEmpty() }
+            groups.forEach { (heading, members) ->
+                item(span = { GridItemSpan(maxLineSpan) }, key = "heading-$heading") {
+                    Text(
+                        text = heading,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(top = VibeyFinTokens.Space.s2),
+                    )
+                }
+                items(members, key = { it.id }) { member -> ArtworkTile(member, onClick = { onOpen(member) }) }
+            }
+        } else {
+            items(state.items, key = { it.id }) { item ->
+                ArtworkTile(item, onClick = { onOpen(item) })
+            }
         }
         if (state.loadingMore) {
             item(span = { GridItemSpan(maxLineSpan) }, key = "loading-more") {

@@ -13,6 +13,9 @@ enum class ItemKind {
     Season,
     Episode,
 
+    /** A collection (box set): films or shows grouped by the server. */
+    Collection,
+
     /** Anything else; opens like a folder if the server says it holds items. */
     Other,
 }

@@ -1,0 +1,113 @@
+package app.vibeyfin.app.children
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.sp
+import app.vibeyfin.app.components.Artwork
+import app.vibeyfin.app.theme.BrandDisplay
+import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.domain.model.MediaItem
+import app.vibeyfin.ui.common.Strings
+
+private const val COLLECTION_HERO_ASPECT = 3f / 4f
+private const val COLLECTION_HERO_ASPECT_WIDE = 21f / 9f
+
+/** From this width the header is the tablet's: a wide picture with the details in a column on the left. */
+private const val WIDE_FROM_DP = 600
+
+/**
+ * A collection's header: its picture full-bleed under the status bar, fading into the page, with the title, how many titles it
+ * holds and the overview centred over the lower half. The members follow below as a poster grid.
+ */
+@Composable
+fun CollectionHeader(collection: MediaItem, count: Int, margin: Dp) {
+    val wide = LocalConfiguration.current.screenWidthDp >= WIDE_FROM_DP
+    val aspect = if (wide) COLLECTION_HERO_ASPECT_WIDE else COLLECTION_HERO_ASPECT
+    Box(Modifier.fillMaxWidth()) {
+        val picture = collection.backdropUrl ?: collection.posterUrl
+        if (picture != null) {
+            Artwork(
+                url = picture,
+                title = collection.title,
+                aspectRatio = aspect,
+                blurHash = if (collection.backdropUrl != null) collection.backdropBlurHash else collection.posterBlurHash,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } else {
+            Box(Modifier.fillMaxWidth().aspectRatio(aspect).background(VibeyFinTokens.Colors.surface2))
+        }
+        if (wide) {
+            // A scrim from the left behind the column of text.
+            Box(
+                Modifier.matchParentSize().background(
+                    Brush.horizontalGradient(0f to VibeyFinTokens.Colors.scrimStrong, 0.45f to VibeyFinTokens.Colors.scrim, 0.8f to Color.Transparent),
+                ),
+            )
+        }
+        Box(
+            Modifier.matchParentSize().background(
+                Brush.verticalGradient(
+                    0f to VibeyFinTokens.Colors.scrim,
+                    0.2f to Color.Transparent,
+                    0.45f to Color.Transparent,
+                    0.7f to VibeyFinTokens.Colors.scrim,
+                    0.88f to VibeyFinTokens.Colors.scrimStrong,
+                    1f to VibeyFinTokens.Colors.bg,
+                ),
+            ),
+        )
+        Column(
+            modifier = Modifier
+                .align(if (wide) Alignment.BottomStart else Alignment.BottomCenter)
+                .then(if (wide) Modifier.widthIn(max = 520.dp) else Modifier.fillMaxWidth())
+                .padding(horizontal = margin)
+                .padding(bottom = VibeyFinTokens.Space.s4),
+            horizontalAlignment = if (wide) Alignment.Start else Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
+        ) {
+            Text(
+                text = collection.title,
+                style = BrandDisplay.copy(fontSize = 34.sp, lineHeight = 38.sp),
+                color = VibeyFinTokens.Colors.ink,
+                textAlign = if (wide) TextAlign.Start else TextAlign.Center,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (count > 0) {
+                Text(
+                    text = Strings.collectionTitles(count),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = VibeyFinTokens.Colors.inkMuted,
+                )
+            }
+            collection.overview?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = VibeyFinTokens.Colors.ink,
+                    textAlign = if (wide) TextAlign.Start else TextAlign.Center,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}

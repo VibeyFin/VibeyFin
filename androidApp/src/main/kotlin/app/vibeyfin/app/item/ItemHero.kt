@@ -3,6 +3,7 @@ package app.vibeyfin.app.item
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,8 +23,10 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalIconButton
@@ -82,6 +85,7 @@ fun ItemHero(
     onOpenSeries: (String) -> Unit,
     onToggleFavorite: () -> Unit,
     onPlayTrailer: (String) -> Unit,
+    onTogglePlayed: () -> Unit,
 ) {
     Box(Modifier.fillMaxWidth()) {
         val picture = item.backdropUrl ?: item.posterUrl
@@ -109,7 +113,7 @@ fun ItemHero(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         ) {
-            HeroDetails(item, state, centered = true, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer)
+            HeroDetails(item, state, centered = true, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer, onTogglePlayed)
         }
     }
 }
@@ -155,6 +159,7 @@ fun HeroDetails(
     onOpenSeries: (String) -> Unit,
     onToggleFavorite: () -> Unit,
     onPlayTrailer: (String) -> Unit,
+    onTogglePlayed: () -> Unit,
 ) {
     Column(
         horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
@@ -192,7 +197,7 @@ fun HeroDetails(
         }
         item.overview?.let { Overview(it) }
         if (state.canPlay) PlayButtons(state.playLabel, state.canStartOver, onPlay, fullWidth = centered)
-        ActionButtons(state, centered = centered, onToggleFavorite, onPlayTrailer)
+        ActionButtons(state, centered = centered, onToggleFavorite, onPlayTrailer, onTogglePlayed)
     }
 }
 
@@ -201,45 +206,57 @@ fun HeroDetails(
  * Download (it does nothing yet). A trailer the server holds plays in the app; one on the web opens in the system's viewer.
  */
 @Composable
-private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorite: () -> Unit, onPlayTrailer: (String) -> Unit) {
+private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorite: () -> Unit, onPlayTrailer: (String) -> Unit, onTogglePlayed: () -> Unit) {
     val uriHandler = LocalUriHandler.current
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2, if (centered) Alignment.CenterHorizontally else Alignment.Start),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    // Four equal columns, as on other streaming apps: My List, Trailer, Watched, Download. A missing trailer leaves its column empty.
+    Row(modifier = Modifier.fillMaxWidth()) {
         ActionButton(
             label = Strings.myList,
             description = Strings.myListAction(state.isFavorite),
-            icon = rememberVectorPainter(if (state.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder),
-            selected = state.isFavorite,
+            icon = rememberVectorPainter(if (state.isFavorite) Icons.Default.Check else Icons.Default.Add),
             onClick = onToggleFavorite,
         )
-        state.trailer?.let { trailer ->
+        val trailer = state.trailer
+        if (trailer != null) {
             ActionButton(label = Strings.trailer, description = Strings.trailer, icon = painterResource(R.drawable.ic_trailer)) {
                 when (trailer) {
                     is Trailer.Local -> onPlayTrailer(trailer.itemId)
                     is Trailer.Remote -> uriHandler.openUri(trailer.url)
                 }
             }
+        } else {
+            Spacer(Modifier.weight(1f))
+        }
+        if (state.canMark) {
+            ActionButton(
+                label = Strings.watchedAction,
+                description = state.markLabel,
+                icon = rememberVectorPainter(if (state.watched) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle),
+                onClick = onTogglePlayed,
+            )
+        } else {
+            Spacer(Modifier.weight(1f))
         }
         // Offline is a later phase: the button is here, and does nothing yet.
         ActionButton(label = Strings.download, description = Strings.download, icon = painterResource(R.drawable.ic_download)) {}
     }
 }
 
+/** One action: the icon over its label, in a quarter of the row. */
 @Composable
-private fun ActionButton(label: String, description: String, icon: androidx.compose.ui.graphics.painter.Painter, selected: Boolean = false, onClick: () -> Unit) {
+private fun RowScope.ActionButton(label: String, description: String, icon: androidx.compose.ui.graphics.painter.Painter, onClick: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
         modifier = Modifier
-            .widthIn(min = 72.dp)
+            .weight(1f)
             .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description }
-            .padding(horizontal = VibeyFinTokens.Space.s3, vertical = VibeyFinTokens.Space.s2),
+            .padding(vertical = VibeyFinTokens.Space.s2),
     ) {
-        Icon(painter = icon, contentDescription = null, tint = if (selected) VibeyFinTokens.Colors.ink else VibeyFinTokens.Colors.inkMuted, modifier = Modifier.size(24.dp))
-        Text(label, style = MaterialTheme.typography.labelMedium, color = VibeyFinTokens.Colors.inkMuted, maxLines = 1)
+        Icon(painter = icon, contentDescription = null, tint = VibeyFinTokens.Colors.ink, modifier = Modifier.size(30.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = VibeyFinTokens.Colors.inkMuted, maxLines = 1)
     }
 }
 
@@ -272,7 +289,7 @@ private fun FactsLine(state: ItemUiState, centered: Boolean) {
     if (state.facts.isEmpty() && !state.watched && state.badge == null) return
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2, if (centered) Alignment.CenterHorizontally else Alignment.Start),
+        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3, if (centered) Alignment.CenterHorizontally else Alignment.Start),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(

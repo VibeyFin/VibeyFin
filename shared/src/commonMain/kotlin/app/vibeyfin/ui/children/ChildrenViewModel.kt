@@ -31,6 +31,8 @@ data class ChildrenUiState(
     val loadMoreFailed: Boolean = false,
     /** On a season's list: the show it belongs to, so the page can lead back to it. Null for anything else. */
     val series: SeriesLink? = null,
+    /** When the list is a collection's members: the collection itself, for its picture, title and overview. Null for anything else. */
+    val collection: MediaItem? = null,
     /** Set when the session ended and the screen must be left. */
     val exit: HomeExit? = null,
 ) {
@@ -57,10 +59,17 @@ class ChildrenViewModel(
         findSeries()
     }
 
-    /** A season's list offers a way to its show; for any other folder the lookup finds nothing and the page is as it was. */
+    /**
+     * A season's list offers a way to its show and a collection's list its own header; for any other folder the lookup finds
+     * nothing and the page is as it was.
+     */
     private fun findSeries() {
         viewModelScope.launch {
             val parent = (library.item(parentId) as? ApiResult.Success)?.value ?: return@launch
+            if (parent.kind == ItemKind.Collection) {
+                content.update { it.copy(collection = parent) }
+                return@launch
+            }
             val seriesId = parent.seriesId ?: return@launch
             if (parent.kind != ItemKind.Season) return@launch
             val link = SeriesLink(seriesId, parent.seriesName ?: parent.title)
@@ -94,8 +103,7 @@ class ChildrenViewModel(
     }
 
     private fun loadFirstPage() {
-        val series = content.value.series
-        content.value = ChildrenUiState(loading = true, series = series)
+        content.update { ChildrenUiState(loading = true, series = it.series, collection = it.collection) }
         viewModelScope.launch {
             content.value = when (val result = library.children(parentId, startIndex = 0)) {
                 is ApiResult.Success -> ChildrenUiState(
@@ -103,8 +111,9 @@ class ChildrenViewModel(
                     loading = false,
                     hasMore = result.value.hasMore,
                     series = content.value.series,
+                    collection = content.value.collection,
                 )
-                is ApiResult.Failure -> ChildrenUiState(loading = false, message = LoadMessages.forError(result.error), series = content.value.series)
+                is ApiResult.Failure -> ChildrenUiState(loading = false, message = LoadMessages.forError(result.error), series = content.value.series, collection = content.value.collection)
             }
         }
     }

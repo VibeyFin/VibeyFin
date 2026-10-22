@@ -160,6 +160,7 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
         "Series" -> ItemKind.Series
         "Season" -> ItemKind.Season
         "Episode" -> ItemKind.Episode
+        "BoxSet" -> ItemKind.Collection
         else -> ItemKind.Other
     }
     val posterTag = imageTags["Primary"]
@@ -186,7 +187,7 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
         seasonNumber = parentIndexNumber,
         episodeNumber = indexNumber,
         // A collection is always a tall poster, whatever shape its picture is (it is cropped to fit).
-        posterAspectRatio = if (type == "BoxSet") TALL else primaryImageAspectRatio?.toFloat()?.takeIf { it > 0f }
+        posterAspectRatio = if (kind == ItemKind.Collection) TALL else primaryImageAspectRatio?.toFloat()?.takeIf { it > 0f }
             ?: if (kind == ItemKind.Movie || kind == ItemKind.Series || kind == ItemKind.Season) TALL else WIDE,
         posterUrl = posterTag?.let { itemImageUrl(baseUrl, id, "Primary", it, POSTER_WIDTH) },
         backdropUrl = backdropTag?.let { itemImageUrl(baseUrl, id, "Backdrop", it, BACKDROP_WIDTH) },

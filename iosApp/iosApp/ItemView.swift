@@ -64,26 +64,6 @@ struct ItemView: View {
             onRetry: { model.retryAction() },
             onDismiss: { model.dismissMessage() }
         )
-        .toolbar {
-            // Mark as watched or unwatched, worded for what it will do. Not for a show as a whole.
-            if let state = model.state, state.canMark {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button {
-                            model.togglePlayed()
-                        } label: {
-                            Label(
-                                state.markLabel.titleCased(),
-                                systemImage: state.item?.played == true ? "xmark.circle" : "checkmark.circle"
-                            )
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
-                    .accessibilityLabel(Strings.shared.moreActions)
-                }
-            }
-        }
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         // Only the chevron, no "Back" label. The swipe from the edge still goes back.
@@ -143,7 +123,8 @@ struct ItemView: View {
                             onPlay: playHere,
                             onOpenSeries: onOpenSeries,
                             onToggleFavorite: { model.toggleFavorite() },
-                            onPlayTrailer: playTrailer
+                            onPlayTrailer: playTrailer,
+                            onTogglePlayed: { model.togglePlayed() }
                         )
                         sections
                     }
@@ -182,7 +163,8 @@ struct ItemView: View {
                             onPlay: onPlay,
                             onOpenSeries: onOpenSeries,
                             onToggleFavorite: { model.toggleFavorite() },
-                            onPlayTrailer: onPlayTrailer
+                            onPlayTrailer: onPlayTrailer,
+                            onTogglePlayed: { model.togglePlayed() }
                         )
                         .frame(maxWidth: min(proxy.size.width * 0.46, 520), alignment: .leading)
                         .padding(.horizontal, Space.s6)

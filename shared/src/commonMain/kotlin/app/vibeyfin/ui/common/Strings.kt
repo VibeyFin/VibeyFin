@@ -134,6 +134,8 @@ object Strings {
     fun greeting(name: String) = "Hi, $name"
 
     val continueWatching = "Continue watching"
+    /** The label of the Watched button under Play; its state is the tick. */
+    val watchedAction = "Watched"
     val markWatched = "Mark as watched"
     val markUnwatched = "Mark as unwatched"
     val details = "Details"
@@ -341,6 +343,11 @@ object Strings {
     val technicalInfo = "Technical info"
     val more = "More"
     val less = "Less"
+    /** The sub-headings of a collection's members. */
+    val collectionMovies = "Movies"
+    val collectionShows = "Shows"
+    val collectionOther = "More"
+    fun collectionTitles(count: Int) = if (count == 1) "1 title" else "$count titles"
     fun seasonCount(count: Int) = if (count == 1) "1 season" else "$count seasons"
     fun playEpisode(episode: String) = "Play $episode"
     fun resumeEpisodeFrom(episode: String, positionMs: Long) = "Resume $episode from ${clock(positionMs)}"

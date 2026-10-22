@@ -4,6 +4,8 @@ import Shared
 /// What is inside a library, folder, series or season. `title` shows while it loads.
 struct ChildrenView: View {
     @StateObject private var model: ChildrenObservable
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    private var wide: Bool { sizeClass == .regular }
 
     let title: String
     let onOpen: (MediaItem) -> Void
@@ -31,7 +33,13 @@ struct ChildrenView: View {
             Color(.systemBackground).ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: Space.s4) {
-                    Text(title).screenTitle()
+                    // A collection opens on its own header instead of the plain title.
+                    if let collection = model.state?.collection {
+                        CollectionHeaderView(collection: collection, count: Int(model.state?.items.count ?? 0))
+                            .padding(.horizontal, -Space.s4)
+                    } else {
+                        Text(title).screenTitle()
+                    }
                     // A season's list leads back to its show.
                     if let series = model.state?.series {
                         Button { onOpenSeries(series.id) } label: {
@@ -68,6 +76,17 @@ struct ChildrenView: View {
         }
     }
 
+    private func groups(_ state: ChildrenUiState) -> [(String, [MediaItem])] {
+        let movies = state.items.filter { $0.kind == ItemKind.movie }
+        let shows = state.items.filter { $0.kind == ItemKind.series }
+        let other = state.items.filter { $0.kind != ItemKind.movie && $0.kind != ItemKind.series }
+        return [
+            (Strings.shared.collectionMovies, movies),
+            (Strings.shared.collectionShows, shows),
+            (Strings.shared.collectionOther, other),
+        ].filter { !$0.1.isEmpty }
+    }
+
     @ViewBuilder
     private func content(_ state: ChildrenUiState) -> some View {
         if state.loading {
@@ -79,12 +98,20 @@ struct ChildrenView: View {
                 .font(.body)
                 .foregroundStyle(.secondary)
         } else {
-            ArtworkGrid(
-                items: state.items,
-                minimumWidth: 130,
-                onOpen: onOpen,
-                onNearEnd: { if state.hasMore { model.loadMore() } }
-            )
+            if state.collection != nil {
+                // A collection's members under sub-headings: its movies, then its shows, then whatever else it holds.
+                ForEach(groups(state), id: \.0) { group in
+                    Text(group.0).font(.title3.weight(.semibold))
+                    ArtworkGrid(items: group.1, minimumWidth: wide ? 168 : 130, onOpen: onOpen, onNearEnd: {})
+                }
+            } else {
+                ArtworkGrid(
+                    items: state.items,
+                    minimumWidth: 130,
+                    onOpen: onOpen,
+                    onNearEnd: { if state.hasMore { model.loadMore() } }
+                )
+            }
             if state.loadingMore {
                 LoadingIndicator()
             }
