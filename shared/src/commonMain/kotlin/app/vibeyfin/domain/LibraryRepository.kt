@@ -144,6 +144,7 @@ class LibraryRepository(private val connection: ConnectionManager) {
         api.filteredItems(
             userId, types, (filter as? HomeFilter.Genre)?.id ?: genreId,
             sortBy = sortBy, sortOrder = sortOrder, startIndex = startIndex, limit = limit,
+            favoritesOnly = filter == HomeFilter.MyList,
         ).map { result ->
             ItemPage(result.items.map { it.toMediaItem(api.baseUrl) }, result.totalRecordCount, result.startIndex)
         }

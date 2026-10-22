@@ -67,6 +67,8 @@ class HomeRowsViewModelTest {
         libs: List<String> = libraries,
         latest: (String) -> Reply = { library -> Reply.json("[${itemJson("new-$library", "New in $library")}]") },
         genreItems: (String?) -> Reply = { genre -> Reply.json(itemsJson(itemJson("top-$genre", "Top $genre"))) },
+        /** What the user has on My List; nothing by default, which leaves the row out. */
+        myList: Reply = Reply.json(itemsJson()),
     ): FakeServer {
         val server = app.signedIn()
         server.on("GET", "/UserViews", Reply.json(itemsJson(*libs.toTypedArray())))
@@ -74,7 +76,9 @@ class HomeRowsViewModelTest {
         server.on("GET", "/Shows/NextUp", Reply.json(itemsJson()))
         server.on("GET", "/Genres", Reply.json(genres))
         server.on("GET", "/Items/Latest") { request -> latest(request.query["parentId"].orEmpty()) }
-        server.on("GET", "/Items") { request -> genreItems(request.query["genreIds"]) }
+        server.on("GET", "/Items") { request ->
+            if (request.query["filters"] == "IsFavorite") myList else genreItems(request.query["genreIds"])
+        }
         return server
     }
 
@@ -94,6 +98,45 @@ class HomeRowsViewModelTest {
         )
         assertEquals(listOf("New in lib-m"), rows[0].items.map { it.title })
         assertEquals(listOf("Top g-drama"), rows[2].items.map { it.title })
+    }
+
+    @Test
+    fun myListIsTheFirstRowWhenSomethingIsOnIt() = runTest {
+        server(myList = Reply.json(itemsJson(itemJson("fav-1", "Heat"), itemJson("fav-2", "Ronin"))))
+
+        val rows = viewModel().rowsLoaded(6)
+
+        assertEquals("My List", rows.first().title)
+        assertEquals(listOf("fav-1", "fav-2"), rows.first().items.map { it.id })
+        assertEquals(SeeAll.MyList, rows.first().seeAll)
+        val request = app.jellyfin.requestsTo("GET", "/Items").map { it.query }.first { it["filters"] == "IsFavorite" }
+        assertEquals("20", request["limit"])
+        assertEquals("DateCreated", request["sortBy"])
+        assertEquals("Movie,Series", request["includeItemTypes"])
+    }
+
+    @Test
+    fun myListIsLeftOutWhileItIsEmpty() = runTest {
+        server()
+
+        val rows = viewModel().rowsLoaded(5)
+
+        assertTrue(rows.none { it.id == "my-list" })
+    }
+
+    @Test
+    fun aFavouriteChangedElsewhereUpdatesTheRow() = runTest {
+        val server = server()
+        val viewModel = viewModel()
+        viewModel.rowsLoaded(5)
+
+        server.on("GET", "/Items") { request ->
+            if (request.query["filters"] == "IsFavorite") Reply.json(itemsJson(itemJson("fav-1", "Heat"))) else Reply.json(itemsJson(itemJson("x", "X")))
+        }
+        app.watchChanges.changed()
+
+        val rows = viewModel.uiState.first { state -> state.rows.any { it.id == "my-list" && it.items.isNotEmpty() } }.rows
+        assertEquals("My List", rows.first().title)
     }
 
     @Test

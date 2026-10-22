@@ -8,6 +8,9 @@ sealed interface SeeAll {
     /** A library's own list. */
     data class Library(val library: MediaItem) : SeeAll
 
+    /** The user's My List page. */
+    data object MyList : SeeAll
+
     /** A genre's category page. */
     data class Genre(val filter: HomeFilter.Genre) : SeeAll
 }

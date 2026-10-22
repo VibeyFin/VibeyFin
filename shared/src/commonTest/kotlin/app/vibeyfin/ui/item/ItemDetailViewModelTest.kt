@@ -291,6 +291,8 @@ class ItemDetailViewModelTest {
         assertNull(state.seasons.message)
         assertNull(state.playTarget)
         assertFalse(state.canPlay)
+        // Nothing is coming, so no grey button waits for one.
+        assertFalse(state.playLoading)
     }
 
     // My List, the trailer, and the season buttons' names.
@@ -316,7 +318,11 @@ class ItemDetailViewModelTest {
     @Test
     fun myListIsShownAtOnceAndKeptWhenTheServerSavesIt() = runTest {
         val server = movieServer(itemJson("m1", "Heat", favorite = false))
-        server.on("POST", "/UserFavoriteItems/m1", Reply.json("""{"IsFavorite":true}"""))
+        // Saving it changes what the server answers next, as the real one does (a save also makes the page read the item again).
+        server.on("POST", "/UserFavoriteItems/m1") {
+            server.on("GET", "/Items", Reply.json(itemsJson(itemJson("m1", "Heat", favorite = true))))
+            Reply.json("""{"IsFavorite":true}""")
+        }
         val viewModel = viewModel("m1")
         assertFalse(viewModel.uiState.first { !it.loading }.isFavorite)
 
@@ -330,7 +336,10 @@ class ItemDetailViewModelTest {
     @Test
     fun takingItOffMyListUsesDelete() = runTest {
         val server = movieServer(itemJson("m1", "Heat", favorite = true))
-        server.on("DELETE", "/UserFavoriteItems/m1", Reply.json("""{"IsFavorite":false}"""))
+        server.on("DELETE", "/UserFavoriteItems/m1") {
+            server.on("GET", "/Items", Reply.json(itemsJson(itemJson("m1", "Heat", favorite = false))))
+            Reply.json("""{"IsFavorite":false}""")
+        }
         val viewModel = viewModel("m1")
         assertTrue(viewModel.uiState.first { !it.loading }.isFavorite)
 
@@ -354,7 +363,10 @@ class ItemDetailViewModelTest {
         assertFalse(failed.isFavorite)
         assertEquals("Couldn't add this to My List. Check your connection and try again.", failed.actionMessage)
 
-        server.on("POST", "/UserFavoriteItems/m1", Reply.json("""{"IsFavorite":true}"""))
+        server.on("POST", "/UserFavoriteItems/m1") {
+            server.on("GET", "/Items", Reply.json(itemsJson(itemJson("m1", "Heat", favorite = true))))
+            Reply.json("""{"IsFavorite":true}""")
+        }
         viewModel.onRetryAction()
         assertTrue(viewModel.uiState.first { it.isFavorite }.isFavorite)
         assertNull(viewModel.uiState.first { it.actionMessage == null }.actionMessage)
@@ -435,5 +447,20 @@ class ItemDetailViewModelTest {
         val state = viewModel("m1").uiState.first { it.extras?.loading == false }
 
         assertFalse(state.extras?.isVisible == true)
+    }
+
+    @Test
+    fun aShowsPlayButtonIsKeptASpaceUntilItsEpisodeIsKnownAndThenGivesWayToPlay() = runTest {
+        server()
+        val viewModel = viewModel("show")
+
+        val states = mutableListOf<ItemUiState>()
+        val shown = viewModel.uiState.first { it.item != null && !it.loading }.also { states += it }
+        val settled = viewModel.uiState.first { it.canPlay }
+
+        // Whatever the moment it was read, it never shows neither a button nor the place for one.
+        assertTrue(shown.canPlay || shown.playLoading)
+        assertFalse(settled.playLoading)
+        assertEquals("e11", settled.playTarget?.id)
     }
 }

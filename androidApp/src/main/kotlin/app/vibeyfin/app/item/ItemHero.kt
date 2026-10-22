@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.vibeyfin.R
 import app.vibeyfin.app.components.Artwork
+import app.vibeyfin.app.components.SkeletonBlock
 import app.vibeyfin.app.theme.BrandDisplay
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.model.MediaItem
@@ -243,7 +244,12 @@ fun HeroDetails(
             )
         }
         item.overview?.let { Overview(it) }
-        if (state.canPlay) PlayButtons(state.playLabel, state.canStartOver, onPlay, fullWidth = true)
+        // A show's Play waits for its next episode: a grey button of the same size holds its place, so it does not pop in.
+        if (state.canPlay) {
+            PlayButtons(state.playLabel, state.canStartOver, onPlay, fullWidth = true)
+        } else if (state.playLoading) {
+            SkeletonBlock(Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge), shape = RoundedCornerShape(50))
+        }
         ActionButtons(state, centered = centered, onToggleFavorite, onPlayTrailer, onTogglePlayed)
     }
 }

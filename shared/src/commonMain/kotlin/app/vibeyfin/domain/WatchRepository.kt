@@ -60,8 +60,12 @@ class WatchRepository(private val connection: ConnectionManager, private val cha
     }
 
     /** Puts [itemId] on "My List" or takes it off. The page has already shown the change; if this fails it takes it back. */
-    suspend fun setFavorite(itemId: String, favorite: Boolean): ApiResult<Unit> =
-        call { api, userId -> api.setFavorite(itemId, userId, favorite) }
+    suspend fun setFavorite(itemId: String, favorite: Boolean): ApiResult<Unit> {
+        val result = call { api, userId -> api.setFavorite(itemId, userId, favorite) }
+        // Home's My List row reads the favourites again.
+        if (result is ApiResult.Success) changes.changed()
+        return result
+    }
 
     /**
      * The episode of [seriesId] to play next, a half-watched one included, or null when the show was never started or

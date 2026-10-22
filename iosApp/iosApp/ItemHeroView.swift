@@ -141,8 +141,11 @@ struct HeroDetailsView: View {
             if let overview = item.overview {
                 overviewText(overview)
             }
+            // A show's Play waits for its next episode: a grey button of the same size holds its place, so it does not pop in.
             if state.canPlay {
                 playButtons
+            } else if state.playLoading {
+                SkeletonBlock().frame(maxWidth: .infinity).frame(height: 50).clipShape(Capsule())
             }
             actions
         }

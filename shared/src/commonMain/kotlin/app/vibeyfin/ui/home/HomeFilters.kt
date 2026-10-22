@@ -48,5 +48,6 @@ val HomeFilter.title: String
         HomeFilter.Shows -> Strings.filterShows
         HomeFilter.Movies -> Strings.filterMovies
         HomeFilter.New -> Strings.filterNew
+        HomeFilter.MyList -> Strings.myList
         is HomeFilter.Genre -> name
     }

@@ -61,6 +61,8 @@ struct HomeView: View {
                                             onOpen(library.library)
                                         } else if let genre = seeAll as? SeeAllGenre {
                                             onOpenList(genre.filter)
+                                        } else if seeAll is SeeAllMyList {
+                                            onOpenList(HomeFilterMyList.shared)
                                         }
                                     },
                                     onRetry: { model.retryRow(row.id) }

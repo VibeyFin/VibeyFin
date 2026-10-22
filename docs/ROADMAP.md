@@ -194,7 +194,7 @@ _Starts after the state audit (see Cross-cutting)._
   auto-rotating carousel. It sits under the category buttons and above Continue watching, which stays above the fold
   on a 6.1" phone; the image is a 4:5 crop on phones (`brand.md`). Play is the one aqua button; tapping the image
   opens the item's page. Optional by design, so Home looks right without it (no item qualifies, or a failure)
-- [ ] My List (Favorites), thumbs (`UserData.likes`)
+- [x] My List (Favorites; Home row + "See all" page, the detail page's heart, Android built and iOS parsed), thumbs (`UserData.likes`) still open
 - [ ] Tile trailers (`LocalTrailers` / `RemoteTrailers`, content-dependent)
 
 _Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a genre page from Home,

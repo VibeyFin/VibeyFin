@@ -67,6 +67,7 @@ internal fun HomeFilter.toRoute(): FilteredList = when (this) {
     HomeFilter.Shows -> FilteredList("shows")
     HomeFilter.Movies -> FilteredList("movies")
     HomeFilter.New -> FilteredList("new")
+    HomeFilter.MyList -> FilteredList("mylist")
     is HomeFilter.Genre -> FilteredList("genre", id, name)
 }
 
@@ -74,5 +75,6 @@ internal fun FilteredList.toFilter(): HomeFilter = when (kind) {
     "shows" -> HomeFilter.Shows
     "movies" -> HomeFilter.Movies
     "new" -> HomeFilter.New
+    "mylist" -> HomeFilter.MyList
     else -> HomeFilter.Genre(id.orEmpty(), name.orEmpty())
 }

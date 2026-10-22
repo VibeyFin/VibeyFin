@@ -43,6 +43,8 @@ data class SeasonsState(
     val episodes: EpisodeList = EpisodeList(),
     /** The episode Play starts: the show's next up, else its first. Marked current in the list. */
     val startEpisode: MediaItem? = null,
+    /** What Play starts is known (or known to be nothing): until then the page shows a grey button where Play will be. */
+    val playSettled: Boolean = false,
 )
 
 /** The trailer the page can play: one the server holds, which the player opens, or a page on the web, which the system opens. */
@@ -98,6 +100,9 @@ data class ItemUiState(
 
     /** What Play opens the player on: the item itself, or for a show the episode to watch next. */
     val playTarget: MediaItem? get() = if (isSeries) seasons.startEpisode else item?.takeIf { it.canPlay }
+
+    /** A show's Play is on its way: the page draws a grey button of the same size so Play does not pop in. */
+    val playLoading: Boolean get() = isSeries && playTarget == null && !seasons.playSettled
 
     /** Whether the page offers Play. */
     val canPlay: Boolean get() = playTarget != null
@@ -356,14 +361,15 @@ class ItemViewModel(
 
     /** The seasons and the episode to watch next, then the episodes of the season that episode is in. */
     private suspend fun loadSeasons() {
-        content.update { it.copy(seasons = SeasonsState(loading = true)) }
+        // A reload (after marking the whole show) keeps the Play button it had.
+        content.update { it.copy(seasons = SeasonsState(loading = true, startEpisode = it.seasons.startEpisode, playSettled = it.seasons.playSettled)) }
         val (seasons, next) = coroutineScope {
             val seasons = async { library.seasons(itemId) }
             val next = async { watch.nextUpOf(itemId) }
             seasons.await() to next.await()
         }
         if (seasons is ApiResult.Failure) {
-            content.update { it.copy(seasons = SeasonsState(message = LoadMessages.forError(seasons.error))) }
+            content.update { it.copy(seasons = SeasonsState(message = LoadMessages.forError(seasons.error), playSettled = true)) }
             return
         }
         val list = (seasons as ApiResult.Success).value
@@ -374,7 +380,14 @@ class ItemViewModel(
             ?: list.firstOrNull()
         // The episodes are already marked as loading, so the page never shows "no episodes" in between.
         content.update {
-            it.copy(seasons = SeasonsState(seasons = list, selectedId = opening?.id, startEpisode = nextEpisode, episodes = EpisodeList(loading = opening != null)))
+            it.copy(seasons = SeasonsState(
+                    seasons = list,
+                    selectedId = opening?.id,
+                    startEpisode = nextEpisode,
+                    episodes = EpisodeList(loading = opening != null),
+                    // With a next-up episode Play is known now; otherwise it waits for the first season's episodes.
+                    playSettled = nextEpisode != null || opening == null,
+                ))
         }
         if (opening != null) {
             loadEpisodes(opening.id, setStart = nextEpisode == null)
@@ -395,7 +408,7 @@ class ItemViewModel(
                         startEpisode = seasons.startEpisode ?: if (setStart) result.value.firstOrNull() else null,
                     )
                     is ApiResult.Failure -> seasons.copy(episodes = EpisodeList(message = LoadMessages.forError(result.error)))
-                },
+                }.let { it.copy(playSettled = true) },
             )
         }
     }

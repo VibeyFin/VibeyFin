@@ -151,6 +151,7 @@ fun HomeRoute(
             when (target) {
                 is SeeAll.Library -> onOpen(target.library)
                 is SeeAll.Genre -> onOpenList(target.filter)
+                SeeAll.MyList -> onOpenList(HomeFilter.MyList)
             }
         },
         onCategory = viewModel::onCategory,

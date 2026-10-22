@@ -10,6 +10,9 @@ sealed interface HomeFilter {
     /** Movies and shows by when they were added to the server, newest first. */
     data object New : HomeFilter
 
+    /** The titles the user put on My List (the server's favourites), movies and shows. */
+    data object MyList : HomeFilter
+
     data class Genre(val id: String, val name: String) : HomeFilter
 }
 
@@ -25,8 +28,8 @@ enum class PageSort {
     Rating,
 }
 
-/** New is what was added most recently; the other pages are by name. */
-val HomeFilter.defaultSort: PageSort get() = if (this == HomeFilter.New) PageSort.Added else PageSort.Name
+/** New and My List are by when they were added; the other pages are by name. */
+val HomeFilter.defaultSort: PageSort get() = if (this == HomeFilter.New || this == HomeFilter.MyList) PageSort.Added else PageSort.Name
 
 /** One entry of a picker sheet: the Categories sheet, and the genre and year pickers on a category page. [count] is how many titles it holds, when known. */
 data class FilterOption(val id: String, val name: String, val count: Int? = null)

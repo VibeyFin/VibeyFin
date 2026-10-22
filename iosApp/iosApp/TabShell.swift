@@ -21,6 +21,7 @@ private extension TabRoute {
         }
         if filter is HomeFilterMovies { return .filtered(kind: "movies", id: nil, name: nil) }
         if filter is HomeFilterNew { return .filtered(kind: "new", id: nil, name: nil) }
+        if filter is HomeFilterMyList { return .filtered(kind: "mylist", id: nil, name: nil) }
         return .filtered(kind: "shows", id: nil, name: nil)
     }
 
@@ -30,6 +31,7 @@ private extension TabRoute {
         switch kind {
         case "movies": return HomeFilterMovies.shared
         case "new": return HomeFilterNew.shared
+        case "mylist": return HomeFilterMyList.shared
         case "genre": return HomeFilterGenre(id: id ?? "", name: name ?? "")
         default: return HomeFilterShows.shared
         }

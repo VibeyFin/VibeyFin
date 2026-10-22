@@ -85,6 +85,9 @@ private const val MAX_ROWS = 10
 private const val MAX_LATEST_ROWS = 6
 private const val MAX_GENRE_ROWS = 3
 
+/** The id of the My List row, the first of Home's rows. */
+private const val MY_LIST_ID = "my-list"
+
 private data class Libraries(
     val items: List<MediaItem> = emptyList(),
     val loading: Boolean = false,
@@ -115,12 +118,14 @@ class HomeViewModel(
 
     private val latestRows = MutableStateFlow<List<MediaRow>>(emptyList())
     private val genreRows = MutableStateFlow<List<MediaRow>>(emptyList())
+    // The first row under Continue watching; hidden while the user has nothing on My List.
+    private val myListRow = MutableStateFlow<MediaRow?>(null)
     // False from a new session until Continue watching has answered once; the rows below wait for it (a later retry of it
     // does not hide them again).
     private val continueAnswered = MutableStateFlow(false)
-    private val rows = combine(latestRows, genreRows, continueAnswered) { latest, genres, answered ->
+    private val rows = combine(myListRow, latestRows, genreRows, continueAnswered) { myList, latest, genres, answered ->
         // Shown from top to bottom: each waits for the rows above it, Continue watching first.
-        revealInOrder(latest + genres, aboveLoading = !answered).filter { it.isVisible }.take(MAX_ROWS)
+        revealInOrder(listOfNotNull(myList) + latest + genres, aboveLoading = !answered).filter { it.isVisible }.take(MAX_ROWS)
     }
 
     private val categoryUi = MutableStateFlow(CategoryUi())
@@ -174,6 +179,7 @@ class HomeViewModel(
                     genreOptions = null
                     latestRows.value = emptyList()
                     genreRows.value = emptyList()
+                    myListRow.value = MediaRow(MY_LIST_ID, Strings.myList, seeAll = SeeAll.MyList)
                     continueAnswered.value = false
                     coroutineScope {
                         launch {
@@ -182,11 +188,18 @@ class HomeViewModel(
                         }
                         launch { loadContinue(first = true) }
                         launch { loadGenreRows(quiet = false) }
+                        launch { loadMyList(quiet = false) }
                     }
                 }
         }
         // What was watched changed (a play session ended, something was marked): bring the row up to date.
-        viewModelScope.launch { changes.events.collect { reloadContinue() } }
+        viewModelScope.launch {
+            changes.events.collect {
+                reloadContinue()
+                // A favourite may have changed too.
+                if (connection.state.value is ConnectionState.Connected) launch { loadMyList(quiet = true) }
+            }
+        }
     }
 
     fun onRetryLibraries() {
@@ -198,6 +211,11 @@ class HomeViewModel(
 
     /** "Try again" on one row: only it reloads. */
     fun onRetryRow(id: String) {
+        if (id == MY_LIST_ID) {
+            myListRow.update { it?.copy(loading = true, message = null) }
+            viewModelScope.launch { loadMyList(quiet = false) }
+            return
+        }
         val row = (latestRows.value + genreRows.value).firstOrNull { it.id == id } ?: return
         val to = row.seeAll
         viewModelScope.launch {
@@ -210,7 +228,7 @@ class HomeViewModel(
                     genreRows.updateRow(id) { it.copy(loading = true, message = null) }
                     loadGenreRow(to.filter, quiet = false)
                 }
-                null -> Unit
+                SeeAll.MyList, null -> Unit
             }
         }
     }
@@ -280,6 +298,7 @@ class HomeViewModel(
                         loadLatestRows(quiet = true)
                     }
                     launch { loadGenreRows(quiet = true) }
+                    launch { loadMyList(quiet = true) }
                 }
             } finally {
                 refreshing.value = false
@@ -373,6 +392,18 @@ class HomeViewModel(
             when (result) {
                 is ApiResult.Success -> row.copy(items = result.value.items, loading = false, message = null)
                 is ApiResult.Failure -> failed(row, result.error, quiet)
+            }
+        }
+    }
+
+    /** What is on My List, newest additions first; the row is hidden while it is empty. */
+    private suspend fun loadMyList(quiet: Boolean) {
+        val result = library.filteredPage(HomeFilter.MyList, PageSort.Added, limit = LibraryRepository.ROW_LIMIT)
+        myListRow.update { row ->
+            val base = row ?: MediaRow(MY_LIST_ID, Strings.myList, seeAll = SeeAll.MyList)
+            when (result) {
+                is ApiResult.Success -> base.copy(items = result.value.items, loading = false, message = null)
+                is ApiResult.Failure -> failed(base, result.error, quiet)
             }
         }
     }
