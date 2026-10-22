@@ -9,8 +9,9 @@ SwiftUI on iOS). Android ships first.
 
 ## Status
 
-The roadmap's Phase 0 is done: you can connect to a server, sign in, list its libraries and read an
-item's metadata. **There is no playback yet**, and no Seerr; see the [roadmap](docs/ROADMAP.md).
+The roadmap's Phases 0 to 3 are done: you can connect to a server, sign in, browse libraries, play
+movies and episodes, and pick up where you left off on any device. Phase 4 (the navigation bar, richer
+Home, search) is next; there is no Seerr yet. See the [roadmap](docs/ROADMAP.md).
 
 What works today:
 
@@ -24,11 +25,23 @@ What works today:
   watching". Passwords are never stored; tokens are encrypted at rest (Android Keystore, iOS
   Keychain).
 - **Libraries:** Home lists the profile's libraries. Folders, series and seasons open a paged grid,
-  and a movie or episode opens a page with its picture, facts, genres and overview.
+  and a movie or episode opens a page with its picture, facts, genres, overview and a format badge
+  (HDR, codec, resolution). BlurHash placeholders hold the space while artwork loads.
+- **Playback:** direct play with a transcode fallback, audio and subtitle choice, resume from the
+  server's position, auto-advance into the next episode, and a progress report to the server (also
+  sent after a crash). A lost connection is retried and then explained.
+- **Continue Watching:** one row for what's in progress and what's next, plus mark played or unplayed.
+- **Player extras:** skip intro and credits from the server's media segments, scrub previews
+  (trickplay), playback speed, HDR output, picture-in-picture (Android; iOS written but never seen
+  running), an optional stats overlay and "Are you still watching?" after a few episodes in a row.
+  Both are per-profile settings.
 
-Not built yet: playback, Continue Watching, search, downloads, Seerr. Android has been run against a
-real server; **the iOS app has only been compiled and type-checked, never built in Xcode**, so expect
-fixes on its first build.
+Not built yet: the navigation bar and search, downloads, Seerr. Android has been run on an emulator
+against a local test server (see [`docs/test-server.md`](docs/test-server.md)); no real device pass for
+HDR yet. **The iOS app has been built and driven on the simulator for Home, playback speed, the format
+badge and the still-watching prompt, but not for picture-in-picture, the stats overlay, skip or scrub
+previews**, so expect fixes when those are first seen running. The iOS mini
+player is built but not mounted, because the app has no tab bar yet.
 
 ## Project layout
 
@@ -37,9 +50,10 @@ fixes on its first build.
 | `shared/` | The Kotlin Multiplatform library: API client, storage, repositories, connection and session handling, and the ViewModels with their UI state. Logic only, no UI toolkit. |
 | `androidApp/` | The Android app: Compose screens, navigation, theme, Activity and manifest. |
 | `iosApp/` | The iOS app: SwiftUI screens, reading shared state through the Kotlin facades in `shared/src/iosMain`. |
-| `docs/` | The [roadmap](docs/ROADMAP.md) and the phase [plans](docs/plans). |
+| `docs/` | The [roadmap](docs/ROADMAP.md), the phase [plans](docs/plans), the [design system](docs/design/brand.md) and the [test server](docs/test-server.md). |
+| `scripts/` | Design drift and title-case checks, and a disposable local Jellyfin for testing (`scripts/test-server/`). |
 
-Targets are `androidTarget`, `iosArm64` and `iosSimulatorArm64`. Android needs API 26 or newer
+Targets are `androidTarget`, `iosArm64` and `iosSimulatorArm64`. The Android application ID and iOS bundle ID are `app.vibeyfin`. Android needs API 26 or newer
 (compile SDK 37, target SDK 36); iOS needs 16 or newer.
 
 ## Requirements
@@ -66,7 +80,7 @@ iOS: open `iosApp/iosApp.xcodeproj` in Xcode and run. Xcode builds the shared fr
 ## Tests
 
 ```sh
-./gradlew :shared:testAndroidHostTest          # the shared tests, on the JVM
+./gradlew :shared:testAndroidHostTest          # the shared tests, on the JVM (what CI runs)
 ./gradlew :shared:connectedAndroidDeviceTest   # the platform tests (Keystore vault, discovery, wiring) on a device or emulator
 ```
 
@@ -78,9 +92,24 @@ compiles for it with:
 ./gradlew :shared:compileKotlinIosSimulatorArm64 :shared:compileTestKotlinIosSimulatorArm64 :shared:compileKotlinIosArm64
 ```
 
+## CI and releases
+
+- **Pull requests** run `.github/workflows/pr.yml`: the shared and Android unit tests and a debug build,
+  on Ubuntu. (`allTests` also needs the iOS targets, which only run on macOS.)
+- **Releases** are made by pushing a tag: `git tag v0.2.0 && git push origin v0.2.0`.
+  `.github/workflows/release.yml` runs the tests, builds a signed release APK and publishes it as a
+  GitHub release. A tag with a suffix (`v0.2.0-beta.1`) is a pre-release. The version name comes from
+  the tag and the version code from the run number.
+- Signing needs four repository secrets: `RELEASE_KEYSTORE_BASE64` (the keystore, base64-encoded),
+  `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS` and `RELEASE_KEY_PASSWORD`. Without the keystore
+  the release build is unsigned, so local `assembleRelease` output won't install. Keep the keystore and
+  its passwords backed up: losing them means updates can't install over existing installs.
+- A release APK and a debug build share one package name but are signed with different keys, so
+  installing one over the other fails until the first is uninstalled.
+
 ## Built with
 
-Kotlin, Jetpack Compose and Material 3, SwiftUI, Ktor, kotlinx.serialization, Koin, Room (KMP) with
+Kotlin, Jetpack Compose and Material 3, SwiftUI, Media3 ExoPlayer and AVPlayer, Ktor, kotlinx.serialization, Koin, Room (KMP) with
 the bundled SQLite driver, DataStore, Coil, and the multiplatform lifecycle ViewModel. Versions are
 pinned in [`gradle/libs.versions.toml`](gradle/libs.versions.toml).
 
@@ -92,4 +121,5 @@ through a thin Ktor client.
 - [`docs/ROADMAP.md`](docs/ROADMAP.md): what is done and what comes next, including Seerr
   requests and recommendations (Phases 8 and 9).
 - [`docs/plans/`](docs/plans): how each stage was planned and what was verified.
+- [`docs/design/`](docs/design/brand.md): the design system, per platform.
 - [`CLAUDE.md`](CLAUDE.md): the project's conventions, product decisions and architecture rules.
