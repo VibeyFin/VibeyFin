@@ -1,12 +1,14 @@
 import SwiftUI
 import Shared
 
-/// The phone's hero: the backdrop full-bleed with the title, the facts, the overview and Play laid over it, centred. The text sits
-/// on the scrim: a band at the top for the bar, clear through the middle so the picture reads, then darker towards the bottom
-/// where the text is, ending in the page's own colour. (A regular width lays the page out differently: see `WideItemBackdrop`.)
+/// The phone's hero: the title, the facts, the overview and Play, centred at the bottom of a first screen as tall as the picture
+/// behind it (`PinnedItemBackdrop`), or taller when the text needs the room so nothing is cut off. The page scrolls this text up over
+/// the picture. (A regular width lays the page out differently: see `WideItemBackdrop`.)
 struct ItemHeroView: View {
     let item: MediaItem
     let state: ItemUiState
+    /// At least the picture's height.
+    let minHeight: CGFloat
     let onPlay: (Bool) -> Void
     let onOpenSeries: (String) -> Void
     let onToggleFavorite: () -> Void
@@ -14,13 +16,37 @@ struct ItemHeroView: View {
     let onTogglePlayed: () -> Void
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        HeroDetailsView(
+            item: item,
+            state: state,
+            centered: true,
+            onPlay: onPlay,
+            onOpenSeries: onOpenSeries,
+            onToggleFavorite: onToggleFavorite,
+            onPlayTrailer: onPlayTrailer,
+            onTogglePlayed: onTogglePlayed
+        )
+        .padding(.horizontal, Space.s4)
+        .padding(.bottom, Space.s4)
+        .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .bottom)
+    }
+}
+
+/// A phone's picture: pinned at the top, `height` tall (2:3), and staying put while the page scrolls: the text goes up over it, and it
+/// darkens (`progress`, 0 at the top to 1 once about half of it has scrolled by) so what scrolls over it reads. The scrim is a band at
+/// the top for the bar, clear through the middle so the picture reads, then darker towards the text, ending in the page's own colour.
+struct PinnedItemBackdrop: View {
+    let item: MediaItem
+    let height: CGFloat
+    let progress: CGFloat
+
+    var body: some View {
+        ZStack {
             if let url = item.backdropUrl ?? item.posterUrl {
                 Artwork(url: url, title: item.title, aspectRatio: 2.0 / 3.0, blurHash: item.backdropUrl != nil ? item.backdropBlurHash : item.posterBlurHash)
             } else {
-                // Nothing to show behind the title: a plain tile, shorter than a picture would be, without the title written twice.
+                // Nothing to show behind the title: a plain tile.
                 Color(.tertiarySystemBackground)
-                    .aspectRatio(1.1, contentMode: .fit)
             }
             LinearGradient(
                 stops: [
@@ -34,20 +60,11 @@ struct ItemHeroView: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
-            HeroDetailsView(
-                item: item,
-                state: state,
-                centered: true,
-                onPlay: onPlay,
-                onOpenSeries: onOpenSeries,
-                onToggleFavorite: onToggleFavorite,
-                onPlayTrailer: onPlayTrailer,
-                onTogglePlayed: onTogglePlayed
-            )
-            .padding(.horizontal, Space.s4)
-            .padding(.bottom, Space.s4)
+            // The darkening: from the picture as it is to nearly the page's own colour.
+            Color(.systemBackground).opacity(0.94 * Double(min(max(progress, 0), 1)))
         }
         .frame(maxWidth: .infinity)
+        .frame(height: height)
         .clipped()
     }
 }

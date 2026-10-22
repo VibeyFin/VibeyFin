@@ -122,24 +122,57 @@ struct ItemView: View {
             if wide {
                 wideLayout(item, state: state, sections: sections, onPlay: playHere, onPlayTrailer: playTrailer)
             } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ItemHeroView(
-                            item: item,
-                            state: state,
-                            onPlay: playHere,
-                            onOpenSeries: onOpenSeries,
-                            onToggleFavorite: { model.toggleFavorite() },
-                            onPlayTrailer: playTrailer,
-                            onTogglePlayed: { model.togglePlayed() }
-                        )
-                        sections
-                    }
-                }
-                .ignoresSafeArea(edges: .top)
+                phoneLayout(item, state: state, sections: sections, onPlay: playHere, onPlayTrailer: playTrailer)
             }
         }
     }
+
+    /// The picture stays put behind the page and darkens; the text goes up over it, and the rest of the page covers it.
+    private func phoneLayout<Sections: View>(
+        _ item: MediaItem,
+        state: ItemUiState,
+        sections: Sections,
+        onPlay: @escaping (Bool) -> Void,
+        onPlayTrailer: @escaping (String) -> Void
+    ) -> some View {
+        GeometryReader { proxy in
+            let heroHeight = proxy.size.width * Self.phoneHeroByWidth
+            ZStack(alignment: .top) {
+                PinnedItemBackdrop(item: item, height: heroHeight, progress: scrollOffset / max(heroHeight * Self.darkenOver, 1))
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        // Reports how far the page has scrolled.
+                        Color.clear
+                            .frame(height: 0)
+                            .background(GeometryReader { inner in
+                                Color.clear.preference(key: ScrollOffsetKey.self, value: -inner.frame(in: .named("itemScroll")).minY)
+                            })
+                        ItemHeroView(
+                            item: item,
+                            state: state,
+                            minHeight: heroHeight,
+                            onPlay: onPlay,
+                            onOpenSeries: onOpenSeries,
+                            onToggleFavorite: { model.toggleFavorite() },
+                            onPlayTrailer: onPlayTrailer,
+                            onTogglePlayed: { model.togglePlayed() }
+                        )
+                        sections
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(.systemBackground))
+                    }
+                }
+                .coordinateSpace(name: "itemScroll")
+                .onPreferenceChange(ScrollOffsetKey.self) { scrollOffset = max($0, 0) }
+            }
+        }
+        .ignoresSafeArea(edges: .top)
+    }
+
+    /// A phone's picture is 2:3: this tall relative to the width.
+    private static let phoneHeroByWidth: CGFloat = 1.5
+    /// The share of the picture that has to scroll by for it to be fully dark.
+    private static let darkenOver: CGFloat = 0.55
 
     /// The backdrop fills the screen and stays put; the first screen leaves it clear with the details in a column on the left, and
     /// the rest scrolls up over it while it darkens.

@@ -15,6 +15,10 @@ struct SeasonsSectionView: View {
     let onRetrySeasons: () -> Void
     let onRetryEpisodes: () -> Void
 
+    /// The episode area keeps the height of the tallest list it has shown, so choosing a season swaps its content in place and
+    /// nothing below it moves.
+    @State private var tallest: CGFloat = 0
+
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s3) {
             if seasons.loading {
@@ -32,6 +36,13 @@ struct SeasonsSectionView: View {
             } else {
                 seasonButtons
                 episodes
+                    .frame(minHeight: tallest, alignment: .top)
+                    .background(GeometryReader { proxy in
+                        Color.clear.preference(key: EpisodeHeightKey.self, value: proxy.size.height)
+                    })
+                    .onPreferenceChange(EpisodeHeightKey.self) { height in
+                        if !seasons.episodes.loading && height > tallest { tallest = height }
+                    }
             }
         }
         .animation(.easeOut(duration: 0.25), value: seasons.loading)
@@ -119,6 +130,11 @@ struct SeasonsSectionView: View {
             .opacity(list.loading ? 0.5 : 1)
         }
     }
+}
+
+private struct EpisodeHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
 /// An episode: a card in a row that scrolls sideways, all of it on the still. At the bottom, over a scrim: the "S1 E4" tag, the
