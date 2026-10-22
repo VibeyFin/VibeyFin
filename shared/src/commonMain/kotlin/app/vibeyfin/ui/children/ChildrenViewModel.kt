@@ -105,15 +105,20 @@ class ChildrenViewModel(
     private fun loadFirstPage() {
         content.update { ChildrenUiState(loading = true, series = it.series, collection = it.collection) }
         viewModelScope.launch {
-            content.value = when (val result = library.children(parentId, startIndex = 0)) {
-                is ApiResult.Success -> ChildrenUiState(
-                    items = result.value.items,
-                    loading = false,
-                    hasMore = result.value.hasMore,
-                    series = content.value.series,
-                    collection = content.value.collection,
-                )
-                is ApiResult.Failure -> ChildrenUiState(loading = false, message = LoadMessages.forError(result.error), series = content.value.series, collection = content.value.collection)
+            // Updated in one step: the lookup of the series or collection may land at any time, and must not be overwritten.
+            when (val result = library.children(parentId, startIndex = 0)) {
+                is ApiResult.Success -> content.update {
+                    ChildrenUiState(
+                        items = result.value.items,
+                        loading = false,
+                        hasMore = result.value.hasMore,
+                        series = it.series,
+                        collection = it.collection,
+                    )
+                }
+                is ApiResult.Failure -> content.update {
+                    ChildrenUiState(loading = false, message = LoadMessages.forError(result.error), series = it.series, collection = it.collection)
+                }
             }
         }
     }

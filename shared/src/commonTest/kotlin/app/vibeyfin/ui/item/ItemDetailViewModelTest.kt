@@ -349,8 +349,8 @@ class ItemDetailViewModelTest {
 
         server.on("POST", "/UserFavoriteItems/m1", Reply.json("""{"IsFavorite":true}"""))
         viewModel.onRetryAction()
-        assertTrue(viewModel.uiState.value.isFavorite)
-        assertNull(viewModel.uiState.value.actionMessage)
+        assertTrue(viewModel.uiState.first { it.isFavorite }.isFavorite)
+        assertNull(viewModel.uiState.first { it.actionMessage == null }.actionMessage)
     }
 
     @Test
