@@ -149,11 +149,19 @@ _Starts after the state audit (see Cross-cutting)._
   Downloads open an empty page that says "Not available yet" (text in `Strings`) until their features land.
   The Search tab joins with unified search below. Nothing else is built in this item
 - [ ] Home rows: Latest, genres, My Media, plus Continue Watching (which holds Next Up)
-- [ ] Home filter chips under the header, above the hero (`docs/design/screens.md` "Home"): Shows, Movies,
-  Collections (when the server has any), then the library's genres from `GET /Genres`, at most 12. One at a
-  time, none selected on launch, tapping the selected chip clears it. A chip limits the hero, Continue
-  Watching and every row to that type or genre; rows left empty hide. Capsules on iOS, M3 `FilterChip`s on
-  Android
+- [ ] Home category buttons under the header, Netflix-style, as one horizontally scrolling row in this
+  fixed order (configurable in Phase 7): **Shows**, **Movies**, **New**, **Studios**, **Categories**.
+  Every button filters Home in place:
+  - **Shows** and **Movies** limit Home to that type
+  - **New** limits Home to titles added recently (last 30 days, newest first, by `DateCreated`). **Check the
+    OpenAPI spec** for a creation-date filter on `GET /Items`; otherwise filter on the client
+  - **Studios** opens a sheet of studios (`GET /Studios`); picking one limits Home to it
+    (`GET /Items?StudioIds=`)
+  - **Categories** opens a sheet of the library's genres (`GET /Genres`); picking one limits Home to it
+  One filter at a time, none on launch; the active one shows as a selected button with a clear (×), and
+  Studios and Categories show the picked name in the button ("Studios: A24"). A filter limits the hero and
+  every row; rows left empty hide. **Check the OpenAPI spec** whether `/UserItems/Resume` and
+  `/Shows/NextUp` take type, genre and studio filters, or filter Continue Watching on the client
 - [ ] Detail page: metadata, cast, `/Items/{id}/Similar`. The page opens on a full-width cinematic
   backdrop hero (`Backdrop` image) with a dark gradient overlay (the `scrim` token), and the movie
   details and action buttons are layered over the image: the `Logo` image as the title (the
@@ -182,7 +190,8 @@ _Starts after the state audit (see Cross-cutting)._
 - [ ] My List (Favorites), thumbs (`UserData.likes`)
 - [ ] Tile trailers (`LocalTrailers` / `RemoteTrailers`, content-dependent)
 
-_Exit: browse, search, open a detail page, add to My List._
+_Exit: switch tabs with their own back stacks, filter Home by Shows, Movies, New, a studio and a genre, and
+see the mini player on iOS 26._
 
 ### Phase 6 — Accounts & polish
 - [ ] Profile picker: quick-switch between users, optional PIN (Jellyfin has no sub-profiles)
@@ -323,10 +332,10 @@ requestable._
   `Strings` / `LoadMessages`; especially the player and the beacon. Loading is a skeleton, not a spinner
   (`CircularProgressIndicator` / `ProgressView` only in the player, as `android.md` and `ios.md` already
   say). Part of every phase's definition of done.
-- **State audit (before Phase 4)** — a one-time task over the screens built so far (Home, library lists,
-  item page, player, Who's watching, servers): replace their spinners with skeletons and give each its
-  five states. Home, Item, Who's watching and Add server on Android, and several iOS screens, still use
-  spinners.
+- **State audit (before Phase 4)** — done on `feature/state-audit`: Home libraries, Item, library lists and
+  Who's watching load as skeletons on both platforms (`Skeletons.kt`, `Skeletons.swift`). Spinners stay only
+  for an action in progress: buttons, device search, "loading more", the player. Servers and Add server show
+  their results as they arrive and have no page-load state. Not seen running on iOS.
 - **Optimistic writes** — see Phase 2: every user-data write updates the UI at once and reverts with a
   message if it fails.
 - **Seerr is optional** — no Seerr screen, row or setting appears until one is connected, and a Seerr failure only affects its own rows.

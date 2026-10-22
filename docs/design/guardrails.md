@@ -5,7 +5,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 ## Home
 
 - **Must** order rows: hero (optional, max one) → Continue watching (Next up is part of it, not a row of its own) → Recently added (one row per library) → collections / genres.
-- **Must** show the filter chips under the header, above the hero: Shows, Movies, Collections (only when the server has any), then the library's genres, at most 12 chips. A type with no library gets no chip. One chip at a time, none selected on launch; tapping the selected chip clears it. A selected chip limits the hero, Continue watching and every row to that type or genre (empty rows hide, as always). Aqua is never used on the chips.
+- **Must** show the category buttons under the header, above the hero, as one scrolling row in this order: Shows, Movies, New, Studios, Categories. Shows and Movies limit Home to that type; New to titles added in the last 30 days; Studios and Categories open a sheet and limit Home to the picked studio or genre. One filter at a time, none on launch; the active button shows selected with a clear (×), and Studios and Categories show the picked name. A filter limits the hero and every row (empty rows hide, as always). Aqua is never used on the buttons.
 - **Must** show Continue watching above the fold on a 6.1" phone, even with the hero present.
 - **Must** hide empty rows. Never show a row that says "No items" on Home.
 - Each row holds at most 20 items, then a "See all" action in its header.

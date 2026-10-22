@@ -6,7 +6,7 @@ version `1792521935-239c`). `design/tokens.json` is the token source of truth.
 
 - `brand.md`: principles, shared vs native, voice, colour, type, space, artwork, icons
 - `ios.md`, `android.md`: native UI rules per platform
-- `screens.md`: reference layouts for Home (with the filter chips) and the detail, series detail and tablet
+- `screens.md`: reference layouts for Home (with the category buttons) and the detail, series detail and tablet
   detail screens
 - `guardrails.md`: screen behaviour both apps must share
 - `jellyfin-mapping.md`: which server data drives which UI

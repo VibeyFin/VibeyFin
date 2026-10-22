@@ -12,16 +12,22 @@ Which server data drives which piece of UI. All of this lives in the shared Kotl
 | My media | `GET /UserViews` | The user's libraries as 16:9 tiles; tap opens that library. |
 | My List | Items with `UserData.IsFavorite = true` | Jellyfin has no watchlist; VibeyFin uses Favorites for "My List". |
 
-### Home filter chips
+### Home category buttons
 
-| Chip | Source | Notes |
+| Button | Source | Notes |
 | --- | --- | --- |
-| Shows | `includeItemTypes=Series` on `GET /Items`; Continue watching keeps the episodes | No chip when `GET /UserViews` has no `tvshows` library. |
-| Movies | `includeItemTypes=Movie` on `GET /Items`; Continue watching keeps the movies | No chip when there is no `movies` library. |
-| Collections | `GET /Items?includeItemTypes=BoxSet&recursive=true` | No chip when it returns nothing. Shown as a row of collection posters. |
-| Genre | `GET /Genres` for the chips (server order, at most 12); `genreIds` on `GET /Items` for the rows | `GET /Items/Latest` has no genre filter, so a filtered "Recently added" row uses `GET /Items` sorted by `DateCreated`, newest first. Continue watching keeps items whose own genres, or their series' genres, include the genre. |
+| Shows | `includeItemTypes=Series` on `GET /Items`; Continue watching keeps the episodes | Limits Home to shows. |
+| Movies | `includeItemTypes=Movie` on `GET /Items`; Continue watching keeps the movies | Limits Home to movies. |
+| New | `GET /Items` sorted by `DateCreated` descending, limited to the last 30 days | Check the OpenAPI spec for a creation-date filter on `GET /Items`; otherwise filter on the client. |
+| Studios | `GET /Studios` for the sheet; `studioIds` on `GET /Items` for the rows | The button shows the picked studio's name. |
+| Categories | `GET /Genres` for the sheet; `genreIds` on `GET /Items` for the rows | The button shows the picked genre's name. |
 
-A selected chip swaps the row sources above for the filtered ones. Nothing is stored: Home opens unfiltered.
+`GET /Items/Latest` has no genre or studio filter, so a filtered "Recently added" row uses `GET /Items`
+sorted by `DateCreated`, newest first. Continue watching: check the OpenAPI spec whether
+`/UserItems/Resume` and `/Shows/NextUp` take type, genre and studio filters; otherwise filter on the
+client, keeping items whose own genres or studios, or their series', match.
+
+An active filter swaps the row sources above for the filtered ones. Nothing is stored: Home opens unfiltered.
 
 ## Detail
 

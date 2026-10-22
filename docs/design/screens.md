@@ -2,55 +2,65 @@
 
 Layouts for Home and the detail screens, the same on both platforms apart from the native chrome. These
 are reference screens, not components: build each from the parts named here (hero, `action` buttons,
-rows, `PosterCard`s, filter chips). Colours, type and controls come from `brand.md`, `ios.md` and
+rows, `PosterCard`s, category buttons). Colours, type and controls come from `brand.md`, `ios.md` and
 `android.md`; the rules from `guardrails.md`; the data from `jellyfin-mapping.md`.
 
 ## Home
 
 The Home tab: the same content, rows and rules on both platforms, with native chrome on each.
 
-- iOS: large title "Home" with the profile avatar and the filter chips under it; the backdrop and rows
+- iOS: large title "Home" with the profile avatar and the category buttons under it; the backdrop and rows
   scroll under the floating tab bar (the safe area provides the bottom inset).
-- Android: top app bar with the app name and avatar, the filter chips under it, rows scrolling above the
+- Android: top app bar with the app name and avatar, the category buttons under it, rows scrolling above the
   `NavigationBar` (`Scaffold`'s inner padding).
-- Same on both: filter chips → hero (optional) → Continue watching → Recently added. Aqua only on Play and
-  progress (plus native tinting on iOS). The chip row scrolls with the content.
+- Same on both: category buttons → hero (optional) → Continue watching → Recently added. Aqua only on Play and
+  progress (plus native tinting on iOS). The button row scrolls with the content.
 
-### Filter chips
+### Category buttons
 
-The filter row at the top of Home: Shows, Movies, Collections, then the library's genres.
+The row at the top of Home, Netflix-style: **Shows**, **Movies**, **New**, **Studios**, **Categories**, in
+that fixed order (configurable in Phase 7).
 
-**Provide:** the chips (`id`, `label`), the selected id (none = no filter) and a handler for a tap.
+**Provide:** the buttons (`id`, `label`), the active filter (none = no filter) with the picked name for
+Studios and Categories, and handlers for a tap, for picking from a sheet and for clearing.
 
-- Order: Shows and Movies first (only the types the user's libraries hold), Collections when the server
-  has any, then genres from `GET /Genres` in the server's order, at most 12. Labels exactly as Jellyfin
-  returns them ("Science Fiction").
-- One chip at a time, nothing selected by default. Tapping the selected chip clears it. The selected chip
-  scrolls into view; the next chip always peeks.
-- A filter limits the hero, Continue watching and every row to that type or genre; rows left empty are
-  hidden. Home opens unfiltered on every launch.
+- One horizontally scrolling row; the next button always peeks. The active button scrolls into view.
+- **Shows** and **Movies** limit Home to that type. **New** limits Home to titles added in the last 30
+  days, newest first. **Studios** and **Categories** open a sheet; picking an entry limits Home to that
+  studio or genre. Labels exactly as Jellyfin returns them ("Science Fiction", "A24").
+- One filter at a time, none on launch; Home opens unfiltered on every launch. Picking another button
+  replaces the active filter.
+- The active button is shown selected with a clear (×). Studios and Categories show the picked name in
+  the button ("Studios: A24"). Tapping the button's × clears the filter; tapping a selected Shows,
+  Movies or New button clears it too.
+- A filter limits the hero and every row; rows left empty are hidden.
 - iOS: a horizontal `ScrollView` of capsule buttons, 36pt tall with a 44pt hit area. Unselected on
   `surface-2` (`tertiarySystemBackground`) with `ink`; selected filled `ink` with `bg` text and a trailing
   `xmark`, the same selected look as the season buttons. A capsule on the system background, never glass.
+  Studios and Categories open a `.sheet` with a list (medium and large detents, grabber).
 - Android: a `LazyRow` of M3 `FilterChip`s, 32dp tall inside the 48dp touch target. Unselected outlined in
-  `line-strong` with `ink-muted`; selected `accent-soft` with `on-accent-soft` and M3's leading check.
-- Both: aqua is not used in this row. Accessibility: the row is a group named "Filter Home"; each chip is
-  a toggle button and says whether it is selected.
+  `line-strong` with `ink-muted`; selected `accent-soft` with `on-accent-soft` and a trailing close icon.
+  Studios and Categories open a `ModalBottomSheet` with a list.
+- Sheets: a plain list of names, the picked one marked with a check, a search field when the list is long.
+  Loading shows a spinner, an empty list says so in plain words, and a failure offers Retry.
+- Both: aqua is not used in this row or the sheets. Accessibility: the row is a group named "Filter
+  Home"; each button is a toggle button and says whether it is selected; Studios and Categories say they
+  open a list.
 
 ### Home with a filter
 
-Home with one chip selected, for a type (Shows) and for a genre (Drama).
+Home with one filter active, for a type (Shows), New, a studio (A24) and a genre (Drama).
 
-- The header, chip row, hero, Continue watching and rows keep their places and order. The selected chip is
-  the only change in the chrome, scrolled into view.
-- The hero, Continue watching and every row hold only items of that type or genre. A row with nothing left
-  is hidden, never shown empty. The hero is picked again from the filtered items (still one per session,
-  still a Backdrop and a Logo image).
+- The header, button row, hero and rows keep their places and order. The active button is the only change
+  in the chrome, scrolled into view.
+- The hero and every row hold only items matching the filter. A row with nothing left is hidden, never
+  shown empty. The hero is picked again from the filtered items (still one per session, still a Backdrop
+  and a Logo image).
 - Shows: Continue watching holds episodes and Next up; Movies holds movies only. A genre matches an item's
-  own genres, or its series' genres for an episode.
-- Tapping the selected chip clears the filter and restores the full Home, scrolled to the top.
-- Switching chips keeps the old content on screen until the new content has loaded (skeleton rows only on
-  the first load); nothing navigates and the tab bar stays as is.
+  own genres, or its series' genres for an episode. New is ordered by `DateCreated`, newest first.
+- Clearing the filter restores the full Home, scrolled to the top.
+- Switching filters keeps the old content on screen until the new content has loaded (skeleton rows only
+  on the first load); nothing navigates and the tab bar stays as is.
 
 ## Detail
 
