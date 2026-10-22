@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import app.vibeyfin.app.components.bleed
+import app.vibeyfin.app.components.MediaRowSection
+import app.vibeyfin.ui.home.MediaRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -172,6 +174,7 @@ private fun ItemGrid(
     // Saved with the screen, so coming back from an item's page finds the list where it was left.
     val gridState = rememberLazyGridState()
     val margin = screenMargin()
+    val wide = LocalConfiguration.current.screenWidthDp >= 600
     val nearEnd by remember {
         derivedStateOf {
             val info = gridState.layoutInfo
@@ -184,7 +187,7 @@ private fun ItemGrid(
     }
     LazyVerticalGrid(
         state = gridState,
-        columns = GridCells.Adaptive(if (LocalConfiguration.current.screenWidthDp >= 600) 168.dp else 130.dp),
+        columns = GridCells.Adaptive(if (wide) 168.dp else 130.dp),
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         modifier = Modifier.fillMaxSize(),
@@ -193,7 +196,7 @@ private fun ItemGrid(
         state.collection?.let { collection ->
             item(span = { GridItemSpan(maxLineSpan) }, key = "collection") {
                 Box(Modifier.bleed(margin)) {
-                    CollectionHeader(collection, count = state.items.size, margin = margin)
+                    CollectionHeader(collection, facts = state.collectionFacts, margin = margin)
                 }
             }
         }
@@ -218,15 +221,17 @@ private fun ItemGrid(
                 Strings.collectionOther to state.items.filter { it.kind != ItemKind.Movie && it.kind != ItemKind.Series },
             ).filter { it.second.isNotEmpty() }
             groups.forEach { (heading, members) ->
-                item(span = { GridItemSpan(maxLineSpan) }, key = "heading-$heading") {
-                    Text(
-                        text = heading,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(top = VibeyFinTokens.Space.s2),
+                // A row of posters per group, oldest first, as on Home: two huge posters in a grid look empty.
+                item(span = { GridItemSpan(maxLineSpan) }, key = "group-$heading") {
+                    MediaRowSection(
+                        row = MediaRow(heading, heading, items = members.sortedWith(compareBy({ it.year ?: Int.MAX_VALUE }, { it.title })), loading = false),
+                        margin = margin,
+                        onOpen = onOpen,
+                        onSeeAll = null,
+                        onRetry = {},
+                        tileWidth = if (wide) 168.dp else 132.dp,
                     )
                 }
-                items(members.distinctBy { it.id }, key = { it.id }) { member -> ArtworkTile(member, onClick = { onOpen(member) }) }
             }
         } else {
             items(state.items.distinctBy { it.id }, key = { it.id }) { item ->

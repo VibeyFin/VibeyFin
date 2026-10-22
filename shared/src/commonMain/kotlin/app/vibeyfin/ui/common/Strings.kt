@@ -349,6 +349,8 @@ object Strings {
     val collectionMovies = "Movies"
     val collectionShows = "Shows"
     val collectionOther = "More"
+    fun collectionMovieCount(count: Int) = if (count == 1) "1 movie" else "$count movies"
+    fun collectionShowCount(count: Int) = if (count == 1) "1 show" else "$count shows"
     fun collectionTitles(count: Int) = if (count == 1) "1 title" else "$count titles"
     fun seasonCount(count: Int) = if (count == 1) "1 season" else "$count seasons"
     fun playEpisode(episode: String) = "Play $episode"

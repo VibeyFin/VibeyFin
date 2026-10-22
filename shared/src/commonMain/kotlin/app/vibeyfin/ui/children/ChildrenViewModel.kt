@@ -8,6 +8,7 @@ import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.LoadMessages
+import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
 import app.vibeyfin.ui.home.HomeExit
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,6 +38,25 @@ data class ChildrenUiState(
     val exit: HomeExit? = null,
 ) {
     val isEmpty: Boolean get() = !loading && message == null && items.isEmpty()
+
+    /** A collection's facts line, "2 movies · 1 show · 1999–2026"; empty for anything else or before the members are in. */
+    val collectionFacts: List<String>
+        get() {
+            if (collection == null || items.isEmpty()) return emptyList()
+            val movies = items.count { it.kind == ItemKind.Movie }
+            val shows = items.count { it.kind == ItemKind.Series }
+            val years = items.mapNotNull { it.year }
+            val span = when {
+                years.isEmpty() -> null
+                years.min() == years.max() -> "${years.min()}"
+                else -> "${years.min()}\u2013${years.max()}"
+            }
+            return listOfNotNull(
+                movies.takeIf { it > 0 }?.let(Strings::collectionMovieCount),
+                shows.takeIf { it > 0 }?.let(Strings::collectionShowCount),
+                span,
+            ).ifEmpty { listOf(Strings.collectionTitles(items.size)) }
+        }
 }
 
 /** The show a season belongs to. */

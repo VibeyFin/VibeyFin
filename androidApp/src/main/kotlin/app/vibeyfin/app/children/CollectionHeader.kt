@@ -1,6 +1,12 @@
 package app.vibeyfin.app.children
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,7 +44,8 @@ private const val WIDE_FROM_DP = 600
  * holds and the overview centred over the lower half. The members follow below as a poster grid.
  */
 @Composable
-fun CollectionHeader(collection: MediaItem, count: Int, margin: Dp) {
+fun CollectionHeader(collection: MediaItem, facts: List<String>, margin: Dp) {
+    var expanded by remember { mutableStateOf(false) }
     val wide = LocalConfiguration.current.screenWidthDp >= WIDE_FROM_DP
     val aspect = if (wide) COLLECTION_HERO_ASPECT_WIDE else COLLECTION_HERO_ASPECT
     Box(Modifier.fillMaxWidth()) {
@@ -91,11 +98,12 @@ fun CollectionHeader(collection: MediaItem, count: Int, margin: Dp) {
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (count > 0) {
+            if (facts.isNotEmpty()) {
                 Text(
-                    text = Strings.collectionTitles(count),
+                    text = facts.joinToString("  \u00B7  "),
                     style = MaterialTheme.typography.titleSmall,
                     color = VibeyFinTokens.Colors.inkMuted,
+                    textAlign = if (wide) TextAlign.Start else TextAlign.Center,
                 )
             }
             collection.overview?.let {
@@ -104,9 +112,18 @@ fun CollectionHeader(collection: MediaItem, count: Int, margin: Dp) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = VibeyFinTokens.Colors.ink,
                     textAlign = if (wide) TextAlign.Start else TextAlign.Center,
-                    maxLines = 4,
+                    maxLines = if (expanded) Int.MAX_VALUE else 3,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.clickable { expanded = !expanded }.animateContentSize(),
                 )
+                if (it.length > 140) {
+                    Text(
+                        text = if (expanded) Strings.less else Strings.more,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = VibeyFinTokens.Colors.inkMuted,
+                        modifier = Modifier.clickable { expanded = !expanded }.padding(vertical = VibeyFinTokens.Space.s1),
+                    )
+                }
             }
         }
     }

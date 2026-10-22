@@ -215,8 +215,10 @@ fun HeroDetails(
 private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorite: () -> Unit, onPlayTrailer: (String) -> Unit, onTogglePlayed: () -> Unit) {
     val uriHandler = LocalUriHandler.current
     // Four equal columns, as on other streaming apps: My List, Trailer, Watched, Download. A missing trailer leaves its column empty.
+    // Only the actions that exist are drawn, so three share the width as evenly as four. On a phone they fill the width; on a tablet they sit at the start, under the text and Play.
     Row(modifier = Modifier.fillMaxWidth()) {
         ActionButton(
+            centered = centered,
             label = Strings.myList,
             description = Strings.myListAction(state.isFavorite),
             icon = rememberVectorPainter(if (state.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder),
@@ -225,34 +227,33 @@ private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorit
         )
         val trailer = state.trailer
         if (trailer != null) {
-            ActionButton(label = Strings.trailer, description = Strings.trailer, icon = painterResource(R.drawable.ic_trailer)) {
+            ActionButton(label = Strings.trailer, description = Strings.trailer, icon = painterResource(R.drawable.ic_trailer), centered = centered) {
                 when (trailer) {
                     is Trailer.Local -> onPlayTrailer(trailer.itemId)
                     is Trailer.Remote -> uriHandler.openUri(trailer.url)
                 }
             }
-        } else {
-            Spacer(Modifier.weight(1f))
         }
         if (state.canMark) {
             ActionButton(
+                centered = centered,
                 label = Strings.watchedAction,
                 description = state.markLabel,
                 icon = rememberVectorPainter(if (state.watched) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle),
                 popKey = state.watched,
                 onClick = onTogglePlayed,
             )
-        } else {
-            Spacer(Modifier.weight(1f))
         }
         // Offline is a later phase: the button is here, and does nothing yet.
-        ActionButton(label = Strings.download, description = Strings.download, icon = painterResource(R.drawable.ic_download)) {}
+        ActionButton(label = Strings.download, description = Strings.download, icon = painterResource(R.drawable.ic_download), centered = centered) {}
     }
 }
 
+private val ACTION_WIDTH = 84.dp
+
 /** One action: the icon over its label, in a quarter of the row. */
 @Composable
-private fun RowScope.ActionButton(label: String, description: String, icon: androidx.compose.ui.graphics.painter.Painter, popKey: Boolean? = null, onClick: () -> Unit) {
+private fun RowScope.ActionButton(label: String, description: String, icon: androidx.compose.ui.graphics.painter.Painter, centered: Boolean, popKey: Boolean? = null, onClick: () -> Unit) {
     // A toggle springs when it flips: it swells, then settles with a little bounce.
     val pop = remember { Animatable(1f) }
     var first by remember { mutableStateOf(true) }
@@ -266,7 +267,7 @@ private fun RowScope.ActionButton(label: String, description: String, icon: andr
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
         modifier = Modifier
-            .weight(1f)
+            .then(if (centered) Modifier.weight(1f) else Modifier.width(ACTION_WIDTH))
             .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description }
