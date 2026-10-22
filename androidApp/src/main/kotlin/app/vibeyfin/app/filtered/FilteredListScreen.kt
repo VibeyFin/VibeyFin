@@ -84,14 +84,13 @@ private fun ListChips(chips: List<ListChip>, onTap: (ListChip) -> Unit) {
                     )
                 } else {
                     AssistChipDefaults.assistChipColors(
+                        containerColor = VibeyFinTokens.Colors.surface2,
                         labelColor = VibeyFinTokens.Colors.inkMuted,
                         trailingIconContentColor = VibeyFinTokens.Colors.inkMuted,
                     )
                 },
-                border = AssistChipDefaults.assistChipBorder(
-                    enabled = true,
-                    borderColor = if (chip.active) VibeyFinTokens.Colors.accentSoft else VibeyFinTokens.Colors.lineStrong,
-                ),
+                // No outline: filled buttons, as on the Search tab.
+                border = null,
             )
         }
     }

@@ -353,6 +353,7 @@ object Strings {
     val clearSearch = "Clear"
     fun noSearchResults(query: String) = "Nothing found for \u201C$query\u201D"
     val noSearchResultsHelp = "Check the spelling, or try fewer words."
+    val searchAll = "All"
     val searchMovies = "Movies"
     val searchShows = "Shows"
     val searchEpisodes = "Episodes"

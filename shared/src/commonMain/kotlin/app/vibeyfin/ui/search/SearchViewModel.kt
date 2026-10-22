@@ -21,6 +21,12 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** Which matches the page lists: everything, or one kind. */
+enum class SearchFilter { All, Movies, Shows, Episodes, People, Collections }
+
+/** One filter button, ready to draw. */
+data class SearchChip(val filter: SearchFilter, val label: String, val selected: Boolean)
+
 /** The matches of one kind, under their heading. */
 data class SearchGroup(val kind: SearchKind, val title: String, val results: List<SearchResult>)
 
@@ -35,14 +41,31 @@ data class SearchUiState(
     val groups: List<SearchGroup> = emptyList(),
     /** The text the groups answer; empty until a search has come back. */
     val searched: String = "",
+    /** Which kind is listed; [SearchFilter.All] lists every group. */
+    val filter: SearchFilter = SearchFilter.All,
     /** Set when the session ended and the screen must be left. */
     val exit: HomeExit? = null,
 ) {
     /** The field is empty: the page invites a search. */
     val showsPrompt: Boolean get() = query.isBlank()
 
-    /** A search came back and held nothing. */
-    val noResults: Boolean get() = !showsPrompt && !loading && message == null && searched.isNotEmpty() && groups.isEmpty()
+    /** The groups the chosen filter lists. */
+    val visibleGroups: List<SearchGroup>
+        get() = if (filter == SearchFilter.All) groups else groups.filter { it.kind == filter.kind }
+
+    /** The buttons above the results: All, then a kind each. Only shown once something is typed. */
+    val chips: List<SearchChip>
+        get() = listOf(
+            SearchFilter.All to Strings.searchAll,
+            SearchFilter.Movies to Strings.searchMovies,
+            SearchFilter.Shows to Strings.searchShows,
+            SearchFilter.Episodes to Strings.searchEpisodes,
+            SearchFilter.People to Strings.searchPeople,
+            SearchFilter.Collections to Strings.searchCollections,
+        ).map { (filter, label) -> SearchChip(filter, label, selected = filter == this.filter) }
+
+    /** A search came back and held nothing in what the filter lists. */
+    val noResults: Boolean get() = !showsPrompt && !loading && message == null && searched.isNotEmpty() && visibleGroups.isEmpty()
 }
 
 /** Searches the library as the user types, a moment after the last key, and groups what matches. */
@@ -62,7 +85,7 @@ class SearchViewModel(
         job?.cancel()
         val term = text.trim()
         if (term.isEmpty()) {
-            content.value = SearchUiState(query = text)
+            content.value = SearchUiState(query = text, filter = content.value.filter)
             return
         }
         // What was found for the older text stays on screen, dimmed by `loading`, until the new answer replaces it.
@@ -71,6 +94,11 @@ class SearchViewModel(
             delay(DEBOUNCE_MS)
             search(term)
         }
+    }
+
+    /** A filter button was tapped: the same answer, narrowed to one kind or widened to all. */
+    fun onFilter(filter: SearchFilter) {
+        content.update { it.copy(filter = filter) }
     }
 
     /** "Clear": empties the field. */
@@ -107,3 +135,13 @@ class SearchViewModel(
         const val DEBOUNCE_MS = 300L
     }
 }
+
+private val SearchFilter.kind: SearchKind
+    get() = when (this) {
+        SearchFilter.Movies -> SearchKind.Movie
+        SearchFilter.Shows -> SearchKind.Show
+        SearchFilter.Episodes -> SearchKind.Episode
+        SearchFilter.People -> SearchKind.Person
+        SearchFilter.Collections -> SearchKind.Collection
+        SearchFilter.All -> error("All lists every kind")
+    }

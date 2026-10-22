@@ -20,6 +20,8 @@ final class SearchObservable: ObservableObject {
 
     func setQuery(_ text: String) { model.onQueryChange(text: text) }
 
+    func setFilter(_ filter: SearchFilter) { model.onFilter(filter: filter) }
+
     func retry() { model.onRetry() }
 
     deinit {

@@ -23,15 +23,38 @@ struct SearchView: View {
         }
     }
 
+    /// One button per kind, once something is typed: All lists every group, the others only theirs.
+    private func chips(_ state: SearchUiState) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Space.s2) {
+                ForEach(state.chips, id: \.filter) { chip in
+                    Button { model.setFilter(chip.filter) } label: {
+                        Text(chip.label.titleCased())
+                            .font(.subheadline.weight(.medium))
+                            .padding(.horizontal, Space.s3)
+                            .frame(minHeight: 36)
+                            .background(Capsule().fill(chip.selected ? Color(.secondarySystemFill) : Color(.tertiarySystemBackground)))
+                            .foregroundStyle(chip.selected ? Color.primary : Color.secondary)
+                    }
+                    .buttonStyle(PressableButtonStyle())
+                    .accessibilityAddTraits(chip.selected ? .isSelected : [])
+                }
+            }
+            .screenMargin()
+        }
+    }
+
     @ViewBuilder
     private var content: some View {
         if let state = model.state {
             if state.showsPrompt {
                 prompt(Strings.shared.searchPrompt, Strings.shared.searchPromptHelp)
+            } else if state.message == nil && state.noResults == false && state.groups.isEmpty {
+                VStack(spacing: Space.s3) { chips(state); skeleton }
             } else if let message = state.message {
                 LoadErrorView(message: message, onRetry: { model.retry() }).screenMargin()
             } else if state.noResults {
-                prompt(Strings.shared.noSearchResults(query: state.searched), Strings.shared.noSearchResultsHelp)
+                VStack(spacing: 0) { chips(state); prompt(Strings.shared.noSearchResults(query: state.searched), Strings.shared.noSearchResultsHelp) }
             } else if state.groups.isEmpty {
                 skeleton
             } else {
@@ -53,9 +76,11 @@ struct SearchView: View {
     }
 
     private func results(_ state: SearchUiState) -> some View {
+        VStack(spacing: Space.s2) {
+        chips(state)
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Space.s2) {
-                ForEach(state.groups, id: \.kind) { group in
+                ForEach(state.visibleGroups, id: \.kind) { group in
                     Text(group.title.titleCased())
                         .sectionTitle()
                         .padding(.top, Space.s3)
@@ -71,6 +96,7 @@ struct SearchView: View {
             .padding(.vertical, Space.s2)
             // The older answer stays while the next one is on its way, dimmed.
             .opacity(state.loading ? 0.5 : 1)
+        }
         }
     }
 

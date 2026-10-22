@@ -61,11 +61,13 @@ fun CategoryButtonRow(
                 } else {
                     null
                 },
+                // No outline: a filled button, as on the Search tab.
                 colors = AssistChipDefaults.assistChipColors(
+                    containerColor = VibeyFinTokens.Colors.surface2,
                     labelColor = VibeyFinTokens.Colors.inkMuted,
                     trailingIconContentColor = VibeyFinTokens.Colors.inkMuted,
                 ),
-                border = AssistChipDefaults.assistChipBorder(enabled = true, borderColor = VibeyFinTokens.Colors.lineStrong),
+                border = null,
                 modifier = if (button.opensSheet) {
                     Modifier.semantics { contentDescription = Strings.opensList(button.label) }
                 } else {

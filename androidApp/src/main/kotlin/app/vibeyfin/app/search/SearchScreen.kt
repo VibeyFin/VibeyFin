@@ -16,6 +16,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import app.vibeyfin.ui.search.SearchFilter
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -80,7 +85,7 @@ fun SearchRoute(
     LaunchedEffect(state.exit) {
         state.exit?.let(onExit)
     }
-    SearchScreen(state, viewModel::onQueryChange, viewModel::onClear, viewModel::onRetry, onOpenResult)
+    SearchScreen(state, viewModel::onQueryChange, viewModel::onClear, viewModel::onRetry, viewModel::onFilter, onOpenResult)
 }
 
 /** The Search tab: a field at the top, and under it what matches, grouped into movies, shows, episodes, people and collections. */
@@ -90,6 +95,7 @@ fun SearchScreen(
     onQueryChange: (String) -> Unit,
     onClear: () -> Unit,
     onRetry: () -> Unit,
+    onFilter: (SearchFilter) -> Unit,
     onOpenResult: (SearchResult) -> Unit,
 ) {
     val margin = screenMargin()
@@ -121,6 +127,29 @@ fun SearchScreen(
                 ),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = margin, vertical = VibeyFinTokens.Space.s3).focusRequester(focus),
             )
+            // One button per kind, once something is typed: All lists every group, the others only theirs.
+            if (!state.showsPrompt) {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = margin),
+                    horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = VibeyFinTokens.Space.s2),
+                ) {
+                    items(state.chips, key = { it.filter }) { chip ->
+                        FilterChip(
+                            selected = chip.selected,
+                            onClick = { onFilter(chip.filter) },
+                            label = { Text(chip.label, maxLines = 1) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = VibeyFinTokens.Colors.surface2,
+                                labelColor = VibeyFinTokens.Colors.inkMuted,
+                                selectedContainerColor = VibeyFinTokens.Colors.accentSoft,
+                                selectedLabelColor = VibeyFinTokens.Colors.onAccentSoft,
+                            ),
+                            border = null,
+                        )
+                    }
+                }
+            }
             when {
                 state.showsPrompt -> Prompt(Strings.searchPrompt, Strings.searchPromptHelp, margin)
                 state.message != null -> LoadError(state.message!!, onRetry, modifier = Modifier.padding(horizontal = margin))
@@ -152,10 +181,10 @@ private fun Results(state: SearchUiState, margin: androidx.compose.ui.unit.Dp, o
     // The older answer stays while the next one is on its way, dimmed.
     LazyColumn(
         modifier = Modifier.fillMaxSize().alpha(if (state.loading) 0.5f else 1f),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = margin, vertical = VibeyFinTokens.Space.s2),
+        contentPadding = PaddingValues(horizontal = margin, vertical = VibeyFinTokens.Space.s2),
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
     ) {
-        state.groups.forEach { group ->
+        state.visibleGroups.forEach { group ->
             item(key = "heading-${group.kind}") {
                 SectionTitle(group.title, modifier = Modifier.padding(top = VibeyFinTokens.Space.s3).semantics { heading() })
             }

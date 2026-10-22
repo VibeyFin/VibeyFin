@@ -155,4 +155,48 @@ class SearchViewModelTest {
 
         assertEquals(HomeExit.WhoIsWatching("srv-1"), state.exit)
     }
+
+    @Test
+    fun aFilterNarrowsTheAnswerToOneKindWithoutAskingAgain() = runTest {
+        server(hints(hint("m1", "Neon Night", "Movie"), hint("s1", "Neon Show", "Series"), hint("p1", "Neon Person", "Person")))
+        val viewModel = viewModel()
+        viewModel.onQueryChange("neon")
+        val all = viewModel.uiState.first { it.searched == "neon" && !it.loading }
+        assertEquals(listOf("All", "Movies", "Shows", "Episodes", "People", "Collections"), all.chips.map { it.label })
+        assertEquals(3, all.visibleGroups.size)
+
+        viewModel.onFilter(SearchFilter.People)
+
+        val people = viewModel.uiState.value
+        assertEquals(listOf(SearchKind.Person), people.visibleGroups.map { it.kind })
+        assertTrue(people.chips.single { it.selected }.filter == SearchFilter.People)
+        assertEquals(1, app.jellyfin.requestsTo("GET", "/Search/Hints").size)
+    }
+
+    @Test
+    fun aFilterWithNoMatchesSaysSoWhileAllStillHasThem() = runTest {
+        server(hints(hint("m1", "Neon Night", "Movie")))
+        val viewModel = viewModel()
+        viewModel.onQueryChange("neon")
+        viewModel.uiState.first { it.searched == "neon" && !it.loading }
+
+        viewModel.onFilter(SearchFilter.Collections)
+        assertTrue(viewModel.uiState.value.noResults)
+
+        viewModel.onFilter(SearchFilter.All)
+        assertFalse(viewModel.uiState.value.noResults)
+    }
+
+    @Test
+    fun theChosenFilterSurvivesANewSearchAndAClearedField() = runTest {
+        server(hints(hint("m1", "Neon Night", "Movie")))
+        val viewModel = viewModel()
+        viewModel.onFilter(SearchFilter.Movies)
+
+        viewModel.onQueryChange("neon")
+        viewModel.uiState.first { it.searched == "neon" && !it.loading }
+        viewModel.onClear()
+
+        assertEquals(SearchFilter.Movies, viewModel.uiState.value.filter)
+    }
 }
