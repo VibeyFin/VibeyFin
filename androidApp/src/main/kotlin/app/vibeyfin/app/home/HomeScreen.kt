@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -51,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -64,6 +66,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.R
 import app.vibeyfin.app.components.ActionSnackbar
 import app.vibeyfin.app.components.ArtworkTile
 import app.vibeyfin.app.components.ContinueCard
@@ -73,7 +76,6 @@ import app.vibeyfin.app.components.PosterSkeletonRow
 import app.vibeyfin.app.components.skeletonTiles
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
-import app.vibeyfin.app.theme.BrandWordmark
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
@@ -86,6 +88,9 @@ import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.home.HomeUiState
 import app.vibeyfin.ui.home.HomeViewModel
 import org.koin.androidx.compose.koinViewModel
+
+/** The app logo at the top of Home. */
+private val LOGO_SIZE = 32.dp
 
 @Composable
 fun HomeRoute(
@@ -162,19 +167,23 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top,
             ) {
-                // The app's wordmark at the left, the profile at the right, as in Netflix; the page's name is under them.
-                Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1), modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = Strings.appName,
-                        style = BrandWordmark,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        // A heading, not a button: it names the app and does nothing.
-                        modifier = Modifier.padding(top = VibeyFinTokens.Space.s2).semantics { heading() },
+                // The app's logo with the name of the page next to it, as in Netflix; the profile is at the right.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
+                    modifier = Modifier.weight(1f).heightIn(min = VibeyFinTokens.Size.touch),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_logo),
+                        contentDescription = Strings.appName,
+                        tint = VibeyFinTokens.Colors.ink,
+                        modifier = Modifier.size(LOGO_SIZE),
                     )
                     Text(
                         text = Strings.home,
                         style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.semantics { heading() },
                     )
                 }
                 ProfileMenu(state.userName, onSwitchProfile, onSwitchServer, onSettings, onSignOut)

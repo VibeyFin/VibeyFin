@@ -55,8 +55,6 @@ extension Font {
     /// `.tracking(-0.8)` at the call site (-0.02em at 40 pt).
     static let brandDisplay = Font.custom("BricolageGrotesque-96ptExtraBold", size: 40, relativeTo: .largeTitle)
 
-    /// The wordmark at the top of Home, smaller than the onboarding one. Apply `.tracking(-0.56)`.
-    static let brandWordmark = Font.custom("BricolageGrotesque-96ptExtraBold", size: 28, relativeTo: .title)
 }
 
 extension Color {

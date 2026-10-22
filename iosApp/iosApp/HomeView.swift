@@ -68,16 +68,12 @@ struct HomeView: View {
     }
 
     private var header: some View {
-        // The app's wordmark at the left, the profile at the right, as in Netflix; the page's name is under them.
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: Space.s1) {
-                Text(Strings.shared.appName)
-                    .font(.brandWordmark)
-                    .tracking(-0.56)
-                    .foregroundStyle(.primary)
-                    .accessibilityAddTraits(.isHeader)
-                Text(Strings.shared.home.titleCased()).screenTitle()
-            }
+        // The app's logo with the name of the page next to it, as in Netflix; the profile is at the right.
+        HStack(alignment: .center, spacing: Space.s3) {
+            AppLogo()
+            Text(Strings.shared.home.titleCased())
+                .screenTitle()
+                .accessibilityAddTraits(.isHeader)
             Spacer()
             profileMenu
         }
