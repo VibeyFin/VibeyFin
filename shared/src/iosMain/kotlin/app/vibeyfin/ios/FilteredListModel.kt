@@ -23,6 +23,8 @@ class FilteredListModel(filter: HomeFilter) {
 
     fun onChip(kind: ListChipKind) = host.viewModel.onChip(kind)
 
+    fun onSheetQuery(text: String) = host.viewModel.onSheetQuery(text)
+
     fun onPick(id: String) = host.viewModel.onPick(id)
 
     fun onDismissSheet() = host.viewModel.onDismissSheet()

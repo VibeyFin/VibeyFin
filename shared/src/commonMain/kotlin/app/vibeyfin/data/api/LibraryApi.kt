@@ -69,9 +69,15 @@ suspend fun JellyfinApi.filteredItems(
     favoritesOnly: Boolean = false,
     /** Extra fields the server leaves out of a list unless asked, comma-separated (`Genres`). */
     fields: String? = null,
+    /** Only titles from these production years. */
+    years: List<Int>? = null,
+    /** Only titles this person appears in. */
+    personId: String? = null,
 ): ApiResult<ItemsResultDto> = get(
     "/Items",
     buildMap {
+        years?.let { put("years", it.joinToString(",")) }
+        personId?.let { put("personIds", it) }
         put("userId", userId)
         if (favoritesOnly) put("filters", "IsFavorite")
         fields?.let { put("fields", it) }
@@ -107,6 +113,13 @@ suspend fun JellyfinApi.seasonsOf(userId: String, seriesId: String): ApiResult<I
 /** `GET /Shows/{id}/Episodes?seasonId=`: the episodes of one season, with their synopsis. */
 suspend fun JellyfinApi.episodesOfSeason(userId: String, seriesId: String, seasonId: String): ApiResult<ItemsResultDto> =
     get("/Shows/$seriesId/Episodes", mapOf("userId" to userId, "seasonId" to seasonId, "fields" to "Overview"), retry = true)
+
+/** `GET /Persons`: people whose name matches [term], at most [limit], by name. */
+suspend fun JellyfinApi.persons(userId: String, term: String, limit: Int): ApiResult<ItemsResultDto> = get(
+    "/Persons",
+    mapOf("userId" to userId, "searchTerm" to term, "limit" to limit.toString()),
+    retry = true,
+)
 
 /** `GET /Items?personIds=`: the movies and shows in the library that [personId] appears in, newest first. */
 suspend fun JellyfinApi.itemsOfPerson(userId: String, personId: String): ApiResult<ItemsResultDto> = get(

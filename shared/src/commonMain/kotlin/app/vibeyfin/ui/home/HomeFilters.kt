@@ -49,5 +49,6 @@ val HomeFilter.title: String
         HomeFilter.Movies -> Strings.filterMovies
         HomeFilter.New -> Strings.filterNew
         HomeFilter.MyList -> Strings.myList
+        HomeFilter.Library -> Strings.tabLibrary
         is HomeFilter.Genre -> name
     }

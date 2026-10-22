@@ -12,7 +12,7 @@ struct PickerRow: Identifiable {
     var description: String?
 }
 
-/// A list to pick from in a sheet: a title and one row per choice, a check on the one in use. Loading is grey lines,
+/// A list to pick from in a sheet: a title and one row per choice, the one in use lit as a soft pill. Loading is grey lines,
 /// an empty list says so, a failure offers Try again. Used by Home's Categories and by a category page's Sort and
 /// Genre. The player picks tracks from a `Menu`, but these lists load when opened and need those states.
 struct PickerSheetView: View {
@@ -23,6 +23,9 @@ struct PickerSheetView: View {
     let emptyText: String?
     let onPick: (String) -> Void
     let onRetry: () -> Void
+    /// A search field above the rows (the People filter): what was typed and who hears each change.
+    var search: Binding<String>? = nil
+    var searchHint = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s3) {
@@ -31,6 +34,18 @@ struct PickerSheetView: View {
                 .accessibilityAddTraits(.isHeader)
                 .padding(.horizontal, Space.s4)
                 .padding(.top, Space.s5)
+            if let search {
+                HStack(spacing: Space.s2) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                    TextField(searchHint, text: search)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+                .padding(.horizontal, Space.s3)
+                .frame(height: 44)
+                .background(Capsule().fill(Color(.tertiarySystemBackground)))
+                .padding(.horizontal, Space.s4)
+            }
             if loading {
                 VStack(alignment: .leading, spacing: Space.s3) {
                     ForEach(0..<5, id: \.self) { _ in
@@ -61,13 +76,15 @@ struct PickerSheetView: View {
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
-                            // Only the chosen row has a mark, so the state is not carried by colour.
-                            if row.selected {
-                                Image(systemName: "checkmark").foregroundStyle(.primary)
-                            }
                         }
+                        .fontWeight(row.selected ? .semibold : .regular)
+                        // The chosen row is lit as a soft rounded pill in the accent tint, with no tick.
+                        .padding(.horizontal, Space.s3)
+                        .padding(.vertical, Space.s2)
+                        .background(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous).fill(row.selected ? Brand.accentSoft : Color.clear))
                         .contentShape(Rectangle())
                     }
+                    .listRowBackground(Color.clear)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(row.description ?? row.label)
                     .accessibilityAddTraits(row.selected ? [.isButton, .isSelected] : .isButton)

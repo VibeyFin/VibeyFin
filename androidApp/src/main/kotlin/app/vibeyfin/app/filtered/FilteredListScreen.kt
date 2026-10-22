@@ -21,7 +21,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.children.ChildrenScreen
 import app.vibeyfin.app.components.OptionRow
+import app.vibeyfin.app.components.PickerSearch
 import app.vibeyfin.app.components.PickerSheet
+import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.model.MediaItem
@@ -42,6 +44,8 @@ fun FilteredListRoute(
     onBack: () -> Unit,
     onOpen: (MediaItem) -> Unit,
     onExit: (HomeExit) -> Unit,
+    /** The Library tab's root page: no back button. */
+    isRoot: Boolean = false,
     viewModel: FilteredListViewModel = koinViewModel(parameters = { parametersOf(filter) }),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -51,6 +55,9 @@ fun FilteredListRoute(
     ChildrenScreen(
         title = viewModel.title,
         state = state.list,
+        isRoot = isRoot,
+        // The count keeps its line (and its last value) while a filter reloads, so the page below never moves.
+        subtitle = if (isRoot) state.list.total?.let(Strings::libraryCount) ?: " " else null,
         onBack = onBack,
         onOpen = onOpen,
         onLoadMore = viewModel::onLoadMore,
@@ -60,7 +67,7 @@ fun FilteredListRoute(
         },
     )
     state.sheet?.let { sheet ->
-        ListPicker(sheet, onPick = viewModel::onPick, onDismiss = viewModel::onDismissSheet, onRetry = viewModel::onRetrySheet)
+        ListPicker(sheet, onPick = viewModel::onPick, onDismiss = viewModel::onDismissSheet, onRetry = viewModel::onRetrySheet, onQuery = viewModel::onSheetQuery)
     }
 }
 
@@ -102,7 +109,7 @@ private fun ListChips(chips: List<ListChip>, onTap: (ListChip) -> Unit) {
 }
 
 @Composable
-private fun ListPicker(sheet: ListSheet, onPick: (String) -> Unit, onDismiss: () -> Unit, onRetry: () -> Unit) {
+private fun ListPicker(sheet: ListSheet, onPick: (String) -> Unit, onDismiss: () -> Unit, onRetry: () -> Unit, onQuery: (String) -> Unit) {
     val rows = remember(sheet.options, sheet.selectedId) {
         sheet.options.map { option ->
             OptionRow(key = option.id, label = option.name, selected = option.id == sheet.selectedId, detail = option.count?.toString())
@@ -113,9 +120,11 @@ private fun ListPicker(sheet: ListSheet, onPick: (String) -> Unit, onDismiss: ()
         rows = rows,
         loading = sheet.loading,
         message = sheet.message,
-        emptyText = null,
+        // A search (People) says what to do or that nobody was found while it has no rows.
+        emptyText = if (sheet.searchable && sheet.options.isEmpty() && !sheet.loading && sheet.message == null) sheet.emptyText else null,
         onPick = onPick,
         onDismiss = onDismiss,
         onRetry = onRetry,
+        search = if (sheet.searchable) PickerSearch(sheet.query, sheet.hint, onQuery) else null,
     )
 }

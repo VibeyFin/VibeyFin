@@ -114,6 +114,32 @@ object Strings {
     val genreTitle = "Genre"
     val genreButton = "Genre"
     val allGenres = "All genres"
+    /** The Library page's extra filters. */
+    val yearButton = "Year"
+    val yearTitle = "Release year"
+    fun yearChip(label: String) = "Year: $label"
+    val allYears = "All years"
+    val decade2020s = "2020s"
+    val decade2010s = "2010s"
+    val decade2000s = "2000s"
+    val decade1990s = "1990s"
+    val decade1980s = "1980s"
+    val decadeOlder = "Before 1980"
+    val peopleButton = "People"
+    val peopleTitle = "People"
+    fun peopleChip(name: String) = "With $name"
+    val peopleSearchHint = "Search for an actor or a director"
+    val peoplePrompt = "Type a name to find someone."
+    val noPeopleFound = "Nobody by that name."
+    val allPeople = "Anyone"
+    val clearFilters = "Clear"
+
+    /** "1,284 titles" under the Library's title. */
+    fun libraryCount(count: Int): String {
+        val digits = count.toString()
+        val grouped = digits.reversed().chunked(3).joinToString(",").reversed()
+        return if (count == 1) "1 title" else "$grouped titles"
+    }
     fun sortChip(label: String) = "Sort: $label"
     fun genreChip(name: String) = "Genre: $name"
 

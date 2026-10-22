@@ -28,6 +28,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.draw.alpha
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -98,6 +101,10 @@ fun ChildrenRoute(
 fun ChildrenScreen(
     title: String,
     state: ChildrenUiState,
+    /** A tab's root page: no back button, and a larger title. */
+    isRoot: Boolean = false,
+    /** A soft line under the title, such as how many titles the Library holds. */
+    subtitle: String? = null,
     collectionHint: Boolean = false,
     imageHint: String? = null,
     onBack: () -> Unit,
@@ -122,12 +129,12 @@ fun ChildrenScreen(
             }
             Column(modifier = Modifier.fillMaxSize().then(insets).padding(horizontal = screenMargin())) {
                 if (controls != null) {
-                    Title(title)
+                    Title(title, subtitle, isRoot)
                     controls()
                 }
                 when {
                     state.loading -> LazyVerticalGrid(
-                        columns = GridCells.Adaptive(130.dp),
+                        columns = GridCells.Adaptive(if (isRoot) 104.dp else 130.dp),
                         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
                         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
                         userScrollEnabled = false,
@@ -139,40 +146,45 @@ fun ChildrenScreen(
                                 Box(Modifier.bleed(screenMargin())) { CollectionHeader(title, state.collection, emptyList(), screenMargin(), imageHint) }
                             }
                         } else if (!pinned) {
-                            item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title) }
+                            item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title, subtitle, isRoot) }
                         }
                         skeletonTiles()
                     }
                     state.message != null -> {
-                        if (!pinned) Title(title)
+                        if (!pinned) Title(title, subtitle, isRoot)
                         LoadError(state.message!!, onRetry)
                     }
                     state.isEmpty -> {
-                        if (!pinned) Title(title)
+                        if (!pinned) Title(title, subtitle, isRoot)
                         Text(
                             text = Strings.emptyFolder,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    else -> ItemGrid(title, state, collectionPage, imageHint, onOpen, onLoadMore, onRetry, showTitle = !pinned, onOpenSeries = onOpenSeries)
+                    else -> ItemGrid(title, state, collectionPage, imageHint, isRoot, onOpen, onLoadMore, onRetry, showTitle = !pinned, onOpenSeries = onOpenSeries)
                 }
             }
-            FloatingBackButton(onBack)
+            if (!isRoot) FloatingBackButton(onBack)
         }
     }
 }
 
 @Composable
-private fun Title(title: String) {
+private fun Title(title: String, subtitle: String?, isRoot: Boolean) {
     // A Column: as a lazy grid item, several loose children would be drawn on top of each other.
     Column {
-        Spacer(Modifier.height(BackButtonSpace))
+        // A tab's page has no back button above it.
+        Spacer(Modifier.height(if (isRoot) VibeyFinTokens.Space.s4 else BackButtonSpace))
         Text(
             text = title,
-            style = MaterialTheme.typography.headlineSmall,
+            style = if (isRoot) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground,
         )
+        // How many titles it holds, softly, under the name.
+        subtitle?.let {
+            Text(text = it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         Spacer(Modifier.height(VibeyFinTokens.Space.s4))
     }
 }
@@ -183,6 +195,7 @@ private fun ItemGrid(
     state: ChildrenUiState,
     collectionPage: Boolean,
     imageHint: String?,
+    isRoot: Boolean,
     onOpen: (MediaItem) -> Unit,
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
@@ -191,6 +204,12 @@ private fun ItemGrid(
 ) {
     // Saved with the screen, so coming back from an item's page finds the list where it was left.
     val gridState = rememberLazyGridState()
+    // A new list (a filter changed) starts at its top.
+    val firstId = state.items.firstOrNull()?.id
+    var firstShown by remember { mutableStateOf(true) }
+    LaunchedEffect(firstId) {
+        if (firstShown) firstShown = false else gridState.scrollToItem(0)
+    }
     val margin = screenMargin()
     val wide = LocalConfiguration.current.screenWidthDp >= 600
     val nearEnd by remember {
@@ -205,10 +224,11 @@ private fun ItemGrid(
     }
     LazyVerticalGrid(
         state = gridState,
-        columns = GridCells.Adaptive(if (wide) 168.dp else 130.dp),
+        // The old list stays, dimmed, until the new one is in: nothing jumps.
+        modifier = Modifier.fillMaxSize().alpha(if (state.refreshing) 0.45f else 1f),
+        columns = GridCells.Adaptive(if (isRoot) (if (wide) 140.dp else 104.dp) else if (wide) 168.dp else 130.dp),
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-        modifier = Modifier.fillMaxSize(),
     ) {
         // A collection opens on its own header, under the status bar, in place of the plain title.
         if (collectionPage) {
@@ -219,7 +239,7 @@ private fun ItemGrid(
             }
         }
         // The title is part of the list, beneath the button, and scrolls up under it.
-        if (showTitle && !collectionPage) item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title) }
+        if (showTitle && !collectionPage) item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title, null, false) }
         // A season's list leads back to its show.
         state.series?.let { series ->
             if (onOpenSeries != null) {

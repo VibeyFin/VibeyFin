@@ -34,6 +34,10 @@ data class ChildrenUiState(
     val series: SeriesLink? = null,
     /** When the list is a collection's members: the collection itself, for its picture, title and overview. Null for anything else. */
     val collection: MediaItem? = null,
+    /** How many items the list holds in all, when the server said (a category page shows it under its title). */
+    val total: Int? = null,
+    /** A new list is on its way (a filter changed) while the old one is still shown. */
+    val refreshing: Boolean = false,
     /** Set when the session ended and the screen must be left. */
     val exit: HomeExit? = null,
 ) {

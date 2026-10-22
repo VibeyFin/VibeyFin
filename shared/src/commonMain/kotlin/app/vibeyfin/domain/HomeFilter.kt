@@ -10,17 +10,36 @@ sealed interface HomeFilter {
     /** Movies and shows by when they were added to the server, newest first. */
     data object New : HomeFilter
 
+    /** Every movie and show in the library, to browse: the Library tab. */
+    data object Library : HomeFilter
+
     /** The titles the user put on My List (the server's favourites), movies and shows. */
     data object MyList : HomeFilter
 
     data class Genre(val id: String, val name: String) : HomeFilter
 }
 
-/** Narrows a page that lists movies and shows together (My List, New) to one of them. */
-enum class TypeFilter { Movies, Shows }
+/** Narrows a page that lists movies and shows together (My List, New, Library) to one kind; the Library also offers its collections. */
+enum class TypeFilter { Movies, Shows, Collections }
 
 /** The pages that list movies and shows together, and so offer the Movies and Shows buttons. */
-val HomeFilter.offersTypeFilter: Boolean get() = this == HomeFilter.MyList || this == HomeFilter.New
+val HomeFilter.offersTypeFilter: Boolean get() = this == HomeFilter.MyList || this == HomeFilter.New || this == HomeFilter.Library
+
+/** Only the Library page offers collections. */
+val HomeFilter.offersCollections: Boolean get() = this == HomeFilter.Library
+
+/** Only the Library page narrows by release year and by person. */
+val HomeFilter.offersYearAndPeople: Boolean get() = this == HomeFilter.Library
+
+/** A release-year range to browse by, newest first: the decades, then everything before the oldest of them. */
+enum class Decade(val years: IntRange) {
+    Twenties(2020..2029),
+    Tens(2010..2019),
+    Noughties(2000..2009),
+    Nineties(1990..1999),
+    Eighties(1980..1989),
+    Older(1900..1979),
+}
 
 /** How a category page is ordered. Every page starts at [defaultSort]; the page's Sort button changes it. */
 enum class PageSort {

@@ -22,6 +22,7 @@ private extension TabRoute {
         if filter is HomeFilterMovies { return .filtered(kind: "movies", id: nil, name: nil) }
         if filter is HomeFilterNew { return .filtered(kind: "new", id: nil, name: nil) }
         if filter is HomeFilterMyList { return .filtered(kind: "mylist", id: nil, name: nil) }
+        if filter is HomeFilterLibrary { return .filtered(kind: "library", id: nil, name: nil) }
         return .filtered(kind: "shows", id: nil, name: nil)
     }
 
@@ -32,6 +33,7 @@ private extension TabRoute {
         case "movies": return HomeFilterMovies.shared
         case "new": return HomeFilterNew.shared
         case "mylist": return HomeFilterMyList.shared
+        case "library": return HomeFilterLibrary.shared
         case "genre": return HomeFilterGenre(id: id ?? "", name: name ?? "")
         default: return HomeFilterShows.shared
         }
@@ -84,7 +86,7 @@ struct TabShell: View {
             .tabItem { Label(Strings.shared.tabSearch.titleCased(), systemImage: "magnifyingglass") }
             .tag(MainTab.search)
 
-            stack($libraryPath) { NotAvailableYetView() }
+            stack($libraryPath) { FilteredListView(filter: HomeFilterLibrary.shared, isRoot: true, onOpen: { open($0, in: $libraryPath) }, onExit: onExit) }
                 .tabItem { Label(Strings.shared.tabLibrary.titleCased(), systemImage: "play.rectangle.on.rectangle") }
                 .tag(MainTab.library)
 

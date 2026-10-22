@@ -34,6 +34,7 @@ import app.vibeyfin.app.search.SearchRoute
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.SearchKind
 import app.vibeyfin.app.filtered.FilteredListRoute
+import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.app.home.HomeRoute
 import app.vibeyfin.app.item.ItemRoute
 import app.vibeyfin.app.player.PlayerRoute
@@ -45,7 +46,10 @@ import app.vibeyfin.domain.StartDestination
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.home.HomeExit
 
-private const val SLIDE_MS = 280
+private const val SLIDE_MS = 180
+
+/** Switching tabs is a quick cross-fade, with no scale: it is a switch, not opening something. */
+private const val TAB_FADE_MS = 110
 
 /** Screens slide a fifth of their width, not all of it: enough to show direction without a long wait. */
 private const val SLIDE_FRACTION = 5
@@ -54,19 +58,23 @@ private const val SLIDE_FRACTION = 5
 private const val OPEN_START_SCALE = 0.92f
 
 /** The player is full-screen landscape video, so it only fades in: a scale would fight the rotation. */
-private const val PLAYER_FADE_MS = 220
+private const val PLAYER_FADE_MS = 160
 
 private fun NavBackStackEntry.opensPlayer() = destination.hasRoute<Player>()
 
+private fun NavBackStackEntry.isTabRoot() = destination.hasRoute<Home>() || destination.hasRoute<Search>() || destination.hasRoute<Library>() || destination.hasRoute<Downloads>()
+
 private fun enter(target: NavBackStackEntry) =
-    if (target.opensPlayer()) {
+    if (target.isTabRoot()) {
+        fadeIn(tween(TAB_FADE_MS))
+    } else if (target.opensPlayer()) {
         fadeIn(tween(PLAYER_FADE_MS))
     } else {
         scaleIn(tween(SLIDE_MS), initialScale = OPEN_START_SCALE) + fadeIn(tween(SLIDE_MS))
     }
 
 /** The screen underneath stays put and fades out behind the one opening over it. */
-private fun exit(target: NavBackStackEntry) = fadeOut(tween(if (target.opensPlayer()) PLAYER_FADE_MS else SLIDE_MS))
+private fun exit(target: NavBackStackEntry) = fadeOut(tween(if (target.isTabRoot()) TAB_FADE_MS else if (target.opensPlayer()) PLAYER_FADE_MS else SLIDE_MS))
 
 private fun popEnter() = slideInHorizontally(tween(SLIDE_MS)) { -it / SLIDE_FRACTION } + fadeIn(tween(SLIDE_MS))
 
@@ -196,7 +204,9 @@ fun VibeyFinNavHost() {
                 details(navController, leave)
             }
             navigation<LibraryTab>(startDestination = Library) {
-                composable<Library> { NotAvailableYet() }
+                composable<Library> {
+                    FilteredListRoute(filter = HomeFilter.Library, isRoot = true, onBack = {}, onOpen = open, onExit = leave)
+                }
                 details(navController, leave)
             }
             navigation<DownloadsTab>(startDestination = Downloads) {

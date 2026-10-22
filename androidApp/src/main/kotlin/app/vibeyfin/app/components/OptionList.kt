@@ -19,6 +19,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -43,8 +44,8 @@ data class OptionRow(
 )
 
 /**
- * A titled list of options for a bottom sheet, with a check on the chosen row (the player's audio, subtitle and
- * speed pickers, and Home's Categories). Only the chosen row has a mark, so the state is not carried by colour.
+ * A titled list of options for a bottom sheet, the chosen row lit as a soft pill (the player's audio, subtitle and
+ * speed pickers, Home's Categories and a category page's filters). The row is also marked selected for a screen reader.
  */
 @Composable
 fun OptionList(title: String, options: List<OptionRow>, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
@@ -62,21 +63,33 @@ fun OptionList(title: String, options: List<OptionRow>, onSelect: (String) -> Un
             }
             items(options, key = { it.key }) { option ->
                 ListItem(
-                    headlineContent = { Text(option.label, maxLines = 3, overflow = TextOverflow.Ellipsis) },
-                    trailingContent = if (option.selected || option.detail != null) {
+                    headlineContent = {
+                        Text(
+                            option.label,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                            fontWeight = if (option.selected) androidx.compose.ui.text.font.FontWeight.SemiBold else null,
+                        )
+                    },
+                    trailingContent = if (option.detail != null) {
                         {
                             Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3), verticalAlignment = Alignment.CenterVertically) {
                                 option.detail?.let {
                                     Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
-                                if (option.selected) Icon(Icons.Filled.Check, contentDescription = null, tint = VibeyFinTokens.Colors.ink)
                             }
                         }
                     } else {
                         null
                     },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    // The chosen row is lit as a soft rounded pill in the accent tint, with its label in that tint: no tick.
+                    colors = ListItemDefaults.colors(
+                        containerColor = if (option.selected) VibeyFinTokens.Colors.accentSoft else Color.Transparent,
+                        headlineColor = if (option.selected) VibeyFinTokens.Colors.onAccentSoft else MaterialTheme.colorScheme.onSurface,
+                    ),
                     modifier = Modifier
+                        .padding(horizontal = VibeyFinTokens.Space.s2)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
                         .selectable(selected = option.selected, role = Role.RadioButton, onClick = { onSelect(option.key) })
                         .semantics { option.description?.let { contentDescription = it } },
                 )

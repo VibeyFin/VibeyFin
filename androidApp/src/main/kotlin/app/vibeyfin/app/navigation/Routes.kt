@@ -34,7 +34,7 @@ data object DownloadsTab
 @Serializable
 data object Search
 
-/** The Library tab's root. A placeholder until the library browser lands. */
+/** The Library tab's root: every movie and show, to browse by type, genre, year, person and order. */
 @Serializable
 data object Library
 
@@ -75,6 +75,7 @@ internal fun HomeFilter.toRoute(): FilteredList = when (this) {
     HomeFilter.Movies -> FilteredList("movies")
     HomeFilter.New -> FilteredList("new")
     HomeFilter.MyList -> FilteredList("mylist")
+    HomeFilter.Library -> FilteredList("library")
     is HomeFilter.Genre -> FilteredList("genre", id, name)
 }
 
@@ -83,5 +84,6 @@ internal fun FilteredList.toFilter(): HomeFilter = when (kind) {
     "movies" -> HomeFilter.Movies
     "new" -> HomeFilter.New
     "mylist" -> HomeFilter.MyList
+    "library" -> HomeFilter.Library
     else -> HomeFilter.Genre(id.orEmpty(), name.orEmpty())
 }

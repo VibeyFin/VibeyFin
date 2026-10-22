@@ -32,6 +32,8 @@ final class FilteredListObservable: ObservableObject {
 
     func chip(_ kind: ListChipKind) { model.onChip(kind: kind) }
 
+    func sheetQuery(_ text: String) { model.onSheetQuery(text: text) }
+
     func pick(_ id: String) { model.onPick(id: id) }
 
     func dismissSheet() { model.onDismissSheet() }

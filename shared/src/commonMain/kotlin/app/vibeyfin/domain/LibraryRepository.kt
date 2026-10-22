@@ -12,6 +12,7 @@ import app.vibeyfin.data.api.userViews
 import app.vibeyfin.data.api.genres
 import app.vibeyfin.data.api.collectionsOf
 import app.vibeyfin.data.api.itemsOfPerson
+import app.vibeyfin.data.api.persons
 import app.vibeyfin.data.api.specialFeatures
 import app.vibeyfin.domain.model.Person
 import app.vibeyfin.domain.model.SearchKind
@@ -94,6 +95,12 @@ class LibraryRepository(private val connection: ConnectionManager) {
                 )
             }
         }
+    }
+
+    /** People whose name matches [term], for the Library page's People filter; nothing for a blank term. */
+    suspend fun searchPeople(term: String): ApiResult<List<FilterOption>> = call { api, userId ->
+        if (term.isBlank()) return@call ApiResult.Success(emptyList())
+        api.persons(userId, term.trim(), PEOPLE_LIMIT).map { result -> result.items.map { FilterOption(it.id, it.name.orEmpty()) } }
     }
 
     /** [id]'s own page: a cast member's biography and picture. A person the server doesn't know is [ApiError.NotFound]. */
@@ -181,10 +188,15 @@ class LibraryRepository(private val connection: ConnectionManager) {
         type: TypeFilter? = null,
         /** Extra fields the server leaves out of a list unless asked, comma-separated (`Genres`). */
         fields: String? = null,
+        /** Only titles from this decade (the Library page). */
+        decade: Decade? = null,
+        /** Only titles this person appears in (the Library page). */
+        personId: String? = null,
     ): ApiResult<ItemPage> = call { api, userId ->
         val types = when {
             filter == HomeFilter.Shows || type == TypeFilter.Shows -> listOf("Series")
             filter == HomeFilter.Movies || type == TypeFilter.Movies -> listOf("Movie")
+            type == TypeFilter.Collections -> listOf("BoxSet")
             else -> listOf("Movie", "Series")
         }
         val (sortBy, sortOrder) = when (sort) {
@@ -196,6 +208,7 @@ class LibraryRepository(private val connection: ConnectionManager) {
             userId, types, (filter as? HomeFilter.Genre)?.id ?: genreId,
             sortBy = sortBy, sortOrder = sortOrder, startIndex = startIndex, limit = limit,
             favoritesOnly = filter == HomeFilter.MyList, fields = fields,
+            years = decade?.years?.toList(), personId = personId,
         ).map { result ->
             ItemPage(result.items.map { it.toMediaItem(api.baseUrl) }, result.totalRecordCount, result.startIndex)
         }
@@ -212,6 +225,9 @@ class LibraryRepository(private val connection: ConnectionManager) {
 
         /** A search asks for this many matches in all, across every kind. */
         const val SEARCH_LIMIT = 40
+
+        /** The People filter lists at most this many matches. */
+        const val PEOPLE_LIMIT = 30
 
         /** The most favourites read to count My List's genres. */
         const val MY_LIST_GENRE_SCAN = 500

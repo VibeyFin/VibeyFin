@@ -184,7 +184,7 @@ private fun ChoiceRow(title: String, help: String, value: Int, choices: List<Int
                 )
                 VibeyFinMenu(expanded = open, onDismiss = { open = false }) {
                     choices.forEach { choice ->
-                        VibeyFinMenuItem(label(choice), if (choice == value) Icons.Filled.Check else null) {
+                        VibeyFinMenuItem(label(choice), icon = null, selected = choice == value) {
                             open = false
                             onChange(choice)
                         }

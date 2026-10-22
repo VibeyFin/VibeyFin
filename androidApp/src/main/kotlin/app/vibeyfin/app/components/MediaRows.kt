@@ -53,7 +53,7 @@ fun Modifier.bleed(by: Dp) = layout { measurable, constraints ->
 enum class RowPhase { Loading, Failed, Ready }
 
 /** The fade from a row's grey posters to its content. */
-const val ROW_FADE_MS = 250
+const val ROW_FADE_MS = 140
 
 
 /** A row of posters under a header with "See all": loading is grey posters, a failure says why with Try again. */

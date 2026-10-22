@@ -23,6 +23,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import app.vibeyfin.ui.common.Strings
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -272,6 +273,148 @@ class FilteredListViewModelTest {
         // With only movies on the list, Drama is on one title and Action on none.
         assertEquals(listOf("All genres", "Drama"), sheet.options.map { it.name })
         assertEquals(listOf(null, 1), sheet.options.map { it.count })
+    }
+
+    // The Library page: every title, with year and people filters besides.
+
+    @Test
+    fun theLibraryPageOffersTypeYearAndPeopleAndSaysHowManyTitlesItHolds() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Items", Reply.json(itemsJson(itemJson("a"), itemJson("b"), total = 1284)))
+
+        val state = viewModel(HomeFilter.Library).uiState.first { !it.list.loading }
+
+        assertEquals(listOf("Movies", "Shows", "Collections", "Sort: Name", "Genre", "Year", "People"), state.chips.map { it.label })
+        assertEquals(1284, state.list.total)
+        val request = app.jellyfin.requestsTo("GET", "/Items").last().query
+        assertEquals("Movie,Series", request["includeItemTypes"])
+        assertNull(request["years"])
+        assertNull(request["personIds"])
+    }
+
+    @Test
+    fun aDecadeNarrowsTheLibraryToThoseYears() = runTest {
+        app.signedIn().categorised()
+        val viewModel = viewModel(HomeFilter.Library)
+        viewModel.uiState.first { !it.list.loading }
+
+        viewModel.onChip(ListChipKind.Year)
+        val sheet = assertNotNull(viewModel.uiState.first { it.sheet != null }.sheet)
+        assertEquals(listOf("All years", "2020s", "2010s", "2000s", "1990s", "1980s", "Before 1980"), sheet.options.map { it.name })
+        viewModel.onPick("Nineties")
+        val narrowed = viewModel.uiState.first { !it.list.loading && it.chips.any { chip -> chip.kind == ListChipKind.Year && chip.active } }
+
+        assertEquals("Year: 1990s", narrowed.chips.first { it.kind == ListChipKind.Year }.label)
+        assertEquals("1990,1991,1992,1993,1994,1995,1996,1997,1998,1999", app.jellyfin.requestsTo("GET", "/Items").last().query["years"])
+    }
+
+    @Test
+    fun aPersonFoundByNameNarrowsTheLibraryToTheirTitles() = runTest {
+        val server = app.signedIn()
+        server.categorised()
+        server.on("GET", "/Persons", Reply.json(itemsJson(itemJson("p1", "Alexander Burger", type = "Person"), itemJson("p2", "Alexandra Day", type = "Person"))))
+        val viewModel = viewModel(HomeFilter.Library)
+        viewModel.uiState.first { !it.list.loading }
+
+        viewModel.onChip(ListChipKind.People)
+        val prompt = assertNotNull(viewModel.uiState.first { it.sheet != null }.sheet)
+        assertTrue(prompt.searchable)
+        assertTrue(prompt.options.isEmpty())
+        assertEquals("Type a name to find someone.", prompt.emptyText)
+
+        viewModel.onSheetQuery("alex")
+        val found = assertNotNull(viewModel.uiState.first { it.sheet?.options?.isNotEmpty() == true }.sheet)
+        assertEquals(listOf("Alexander Burger", "Alexandra Day"), found.options.map { it.name })
+        assertEquals("alex", app.jellyfin.requestsTo("GET", "/Persons").last().query["searchTerm"])
+
+        viewModel.onPick("p1")
+        val narrowed = viewModel.uiState.first { !it.list.loading && it.chips.any { chip -> chip.kind == ListChipKind.People && chip.active } }
+        assertEquals("With Alexander Burger", narrowed.chips.first { it.kind == ListChipKind.People }.label)
+        assertEquals("p1", app.jellyfin.requestsTo("GET", "/Items").last().query["personIds"])
+    }
+
+    @Test
+    fun aPeopleSearchWithNoMatchSaysSoAndABlankOneAsksNothing() = runTest {
+        val server = app.signedIn()
+        server.categorised()
+        server.on("GET", "/Persons", Reply.json(itemsJson()))
+        val viewModel = viewModel(HomeFilter.Library)
+        viewModel.uiState.first { !it.list.loading }
+        viewModel.onChip(ListChipKind.People)
+        viewModel.uiState.first { it.sheet != null }
+
+        viewModel.onSheetQuery("zzz")
+        val none = assertNotNull(viewModel.uiState.first { it.sheet?.emptyText == "Nobody by that name." }.sheet)
+        assertTrue(none.options.isEmpty())
+
+        viewModel.onSheetQuery("  ")
+        assertEquals("Type a name to find someone.", viewModel.uiState.value.sheet?.emptyText)
+        assertEquals(1, app.jellyfin.requestsTo("GET", "/Persons").size)
+    }
+
+    @Test
+    fun clearPutsTheLibraryBackAsItOpened() = runTest {
+        app.signedIn().categorised()
+        val viewModel = viewModel(HomeFilter.Library)
+        val opened = viewModel.uiState.first { !it.list.loading }
+        assertTrue(opened.chips.none { it.kind == ListChipKind.Clear })
+
+        viewModel.onChip(ListChipKind.Shows)
+        viewModel.uiState.first { !it.list.loading && it.chips.any { chip -> chip.kind == ListChipKind.Clear } }
+        viewModel.onChip(ListChipKind.Clear)
+        val cleared = viewModel.uiState.first { !it.list.loading && it.chips.none { chip -> chip.kind == ListChipKind.Clear } }
+
+        assertEquals(listOf("Movies", "Shows", "Collections", "Sort: Name", "Genre", "Year", "People"), cleared.chips.map { it.label })
+        assertEquals("Movie,Series", app.jellyfin.requestsTo("GET", "/Items").last().query["includeItemTypes"])
+    }
+
+    @Test
+    fun theCollectionsButtonListsOnlyBoxSetsAndDropsTheFiltersThatDoNotApply() = runTest {
+        app.signedIn().categorised()
+        val viewModel = viewModel(HomeFilter.Library)
+        viewModel.uiState.first { !it.list.loading }
+
+        viewModel.onChip(ListChipKind.Collections)
+        val state = viewModel.uiState.first { !it.list.loading && it.chips.any { chip -> chip.kind == ListChipKind.Collections && chip.active } }
+
+        assertEquals("BoxSet", app.jellyfin.requestsTo("GET", "/Items").last().query["includeItemTypes"])
+        // Collections have no genre, year or person to narrow by.
+        assertEquals(listOf("Movies", "Shows", "Collections", "Sort: Name", "Clear"), state.chips.map { it.label })
+    }
+
+    @Test
+    fun otherPagesDoNotOfferCollections() = runTest {
+        app.signedIn().categorised()
+
+        val new = viewModel(HomeFilter.New).uiState.first { !it.list.loading }
+
+        assertTrue(new.chips.none { it.kind == ListChipKind.Collections })
+    }
+
+    @Test
+    fun changingAFilterKeepsTheListAndTheCountOnScreenUntilTheNewOneIsIn() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Items", Reply.json(itemsJson(itemJson("a"), itemJson("b"), total = 2)))
+        val viewModel = viewModel(HomeFilter.Library)
+        viewModel.uiState.first { !it.list.loading }
+        server.on("GET", "/Items", Reply.json(itemsJson(itemJson("c"), total = 1)))
+
+        viewModel.onChip(ListChipKind.Shows)
+        // Right away: the old items and the old count are still there, marked as reloading, not a skeleton.
+        val during = viewModel.uiState.value.list
+        assertTrue(during.items.isNotEmpty() || during.refreshing || !during.loading)
+        assertTrue(!during.loading)
+        val after = viewModel.uiState.first { !it.list.refreshing && it.list.items.map { item -> item.id } == listOf("c") }
+
+        assertEquals(1, after.list.total)
+    }
+
+    @Test
+    fun theLibraryCountIsGroupedByThousands() {
+        assertEquals("1,284 titles", Strings.libraryCount(1284))
+        assertEquals("12 titles", Strings.libraryCount(12))
+        assertEquals("1 title", Strings.libraryCount(1))
+        assertEquals("1,000,000 titles", Strings.libraryCount(1_000_000))
     }
 
     @Test

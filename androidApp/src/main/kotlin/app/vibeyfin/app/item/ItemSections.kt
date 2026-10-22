@@ -201,8 +201,8 @@ private fun EpisodeList(seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay
                     fadeIn(tween(ROW_FADE_MS)) togetherWith fadeOut(tween(ROW_FADE_MS))
                 } else {
                     val sign = if (forward) 1 else -1
-                    (slideInHorizontally(tween(300)) { it * sign / 3 } + fadeIn(tween(300))) togetherWith
-                        (slideOutHorizontally(tween(300)) { -it * sign / 3 } + fadeOut(tween(200)))
+                    (slideInHorizontally(tween(200)) { it * sign / 3 } + fadeIn(tween(200))) togetherWith
+                        (slideOutHorizontally(tween(200)) { -it * sign / 3 } + fadeOut(tween(140)))
                 }
             },
             label = "episodes",
