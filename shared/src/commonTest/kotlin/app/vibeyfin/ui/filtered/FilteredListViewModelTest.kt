@@ -143,8 +143,9 @@ class FilteredListViewModelTest {
         assertEquals(listOf(false, false), shows.chips.map { it.active })
 
         val new = viewModel(HomeFilter.New).uiState.first { !it.list.loading }
-        assertEquals("Sort: Recently added", new.chips.first().label)
-        assertFalse(new.chips.first().active)
+        val sort = new.chips.first { it.kind == ListChipKind.Sort }
+        assertEquals("Sort: Recently added", sort.label)
+        assertFalse(sort.active)
     }
 
     @Test
@@ -208,6 +209,69 @@ class FilteredListViewModelTest {
         assertEquals(listOf(null, 2, 2), sheet.options.map { it.count })
         val scan = app.jellyfin.requestsTo("GET", "/Items").last { it.query["fields"] == "Genres" }.query
         assertEquals("IsFavorite", scan["filters"])
+    }
+
+    @Test
+    fun newAndMyListOfferMoviesAndShowsButtonsAndTheOtherPagesDoNot() = runTest {
+        app.signedIn().categorised()
+
+        val new = viewModel(HomeFilter.New).uiState.first { !it.list.loading }
+        val myList = viewModel(HomeFilter.MyList).uiState.first { !it.list.loading }
+        val shows = viewModel(HomeFilter.Shows).uiState.first { !it.list.loading }
+
+        assertEquals(listOf("Movies", "Shows", "Sort: Recently added", "Genre"), new.chips.map { it.label })
+        assertEquals(listOf("Movies", "Shows", "Sort: Recently added", "Genre"), myList.chips.map { it.label })
+        assertEquals(listOf("Sort: Name", "Genre"), shows.chips.map { it.label })
+        // Sort and Genre open a list; Movies and Shows switch on and off.
+        assertEquals(listOf(false, false, true, true), new.chips.map { it.opensList })
+    }
+
+    @Test
+    fun theShowsButtonNarrowsThePageAndTheGenreCountsToShowsAndTappingItAgainClears() = runTest {
+        app.signedIn().categorised()
+        val viewModel = viewModel(HomeFilter.New)
+        viewModel.uiState.first { !it.list.loading }
+
+        viewModel.onChip(ListChipKind.Shows)
+        val narrowed = viewModel.uiState.first { !it.list.loading && it.chips[1].active }
+        assertEquals("Series", app.jellyfin.requestsTo("GET", "/Items").last().query["includeItemTypes"])
+        assertEquals(listOf(true, false), listOf(narrowed.chips[1].active, narrowed.chips[0].active))
+
+        viewModel.onChip(ListChipKind.Genre)
+        val sheet = assertNotNull(viewModel.uiState.first { it.sheet?.loading == false }.sheet)
+        // Shows only: Action has 2 shows, Drama 1; the movies are not counted.
+        assertEquals(listOf(null, 2, 1), sheet.options.map { it.count })
+        assertEquals("Series", app.jellyfin.requestsTo("GET", "/Genres").last().query["includeItemTypes"])
+
+        viewModel.onDismissSheet()
+        viewModel.onChip(ListChipKind.Shows)
+        val cleared = viewModel.uiState.first { !it.list.loading && !it.chips[1].active }
+        assertEquals("Movie,Series", app.jellyfin.requestsTo("GET", "/Items").last().query["includeItemTypes"])
+        assertFalse(cleared.chips[1].active)
+    }
+
+    @Test
+    fun myListsGenreCountsFollowTheMoviesButton() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Genres", Reply.json(itemsJson(itemJson("g1", "Action", type = "Genre", movieCount = 6, seriesCount = 2), itemJson("g2", "Drama", type = "Genre", movieCount = 8, seriesCount = 1))))
+        server.on("GET", "/Items") { request ->
+            if (request.query["includeItemTypes"] == "Movie") {
+                Reply.json(itemsJson(itemJson("a", genres = listOf("Drama"))))
+            } else {
+                Reply.json(itemsJson(itemJson("a", genres = listOf("Drama")), itemJson("c", type = "Series", genres = listOf("Action", "Drama"))))
+            }
+        }
+        val viewModel = viewModel(HomeFilter.MyList)
+        viewModel.uiState.first { !it.list.loading }
+
+        viewModel.onChip(ListChipKind.Movies)
+        viewModel.uiState.first { !it.list.loading && it.chips[0].active }
+        viewModel.onChip(ListChipKind.Genre)
+        val sheet = assertNotNull(viewModel.uiState.first { it.sheet?.loading == false }.sheet)
+
+        // With only movies on the list, Drama is on one title and Action on none.
+        assertEquals(listOf("All genres", "Drama"), sheet.options.map { it.name })
+        assertEquals(listOf(null, 1), sheet.options.map { it.count })
     }
 
     @Test

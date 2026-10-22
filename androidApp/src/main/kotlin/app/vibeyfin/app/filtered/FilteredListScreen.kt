@@ -75,7 +75,12 @@ private fun ListChips(chips: List<ListChip>, onTap: (ListChip) -> Unit) {
             AssistChip(
                 onClick = { onTap(chip) },
                 label = { Text(chip.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize)) },
+                // Sort and Genre open a list and have an arrow; Movies and Shows switch on and off.
+                trailingIcon = if (chip.opensList) {
+                    { Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize)) }
+                } else {
+                    null
+                },
                 colors = if (chip.active) {
                     AssistChipDefaults.assistChipColors(
                         containerColor = VibeyFinTokens.Colors.accentSoft,

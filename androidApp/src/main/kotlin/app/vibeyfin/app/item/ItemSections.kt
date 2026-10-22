@@ -11,9 +11,12 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -34,6 +37,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -95,6 +99,7 @@ fun SeasonsSection(
     onSelect: (String) -> Unit,
     onPlayEpisode: (String) -> Unit,
     onToggleEpisodePlayed: (String) -> Unit,
+    onViewEpisode: (MediaItem) -> Unit,
     onRetrySeasons: () -> Unit,
     onRetryEpisodes: () -> Unit,
 ) {
@@ -112,7 +117,7 @@ fun SeasonsSection(
             }
         }
         if (seasons.seasons.isNotEmpty() && !seasons.loading && seasons.message == null) {
-            EpisodeList(seasons, wide, margin, onPlayEpisode, onToggleEpisodePlayed, onRetryEpisodes)
+            EpisodeList(seasons, wide, margin, onPlayEpisode, onToggleEpisodePlayed, onViewEpisode, onRetryEpisodes)
         }
     }
 }
@@ -172,7 +177,7 @@ private class EpisodePhase(val seasonId: String?, val index: Int, val snapshot: 
 
 /** The selected season's episodes; choosing another season fades to its loading cards, then to its episodes. */
 @Composable
-private fun EpisodeList(seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay: (String) -> Unit, onToggleWatched: (String) -> Unit, onRetry: () -> Unit) {
+private fun EpisodeList(seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay: (String) -> Unit, onToggleWatched: (String) -> Unit, onViewEpisode: (MediaItem) -> Unit, onRetry: () -> Unit) {
     val episodes = seasons.episodes
     val cardWidth = if (wide) EPISODE_CARD_WIDE else EPISODE_CARD
     val currentPhase = EpisodePhase(seasons.selectedId, seasons.seasons.indexOfFirst { it.id == seasons.selectedId }, episodes)
@@ -226,7 +231,7 @@ private fun EpisodeList(seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay
                         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
                     ) {
                         items(list.items.distinctBy { it.id }, key = { it.id }) { episode ->
-                            EpisodeCard(episode, cardWidth, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) })
+                            EpisodeCard(episode, cardWidth, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) }, onView = { onViewEpisode(episode) })
                         }
                     }
                 }
@@ -235,89 +240,132 @@ private fun EpisodeList(seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay
     }
 }
 
-/** An episode card is this wide on a phone, and wider on a tablet; its picture is 16:9. */
-private val EPISODE_CARD = 260.dp
-private val EPISODE_CARD_WIDE = 320.dp
+/** An episode card is this wide on a phone, and wider on a tablet. */
+private val EPISODE_CARD = 300.dp
+private val EPISODE_CARD_WIDE = 380.dp
+
+/** An episode card is this much wider than tall. */
+private const val EPISODE_ASPECT = 1.6f
 
 @Composable
 private fun EpisodeCardSkeleton(width: Dp) {
-    Column(Modifier.width(width), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-        SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(16f / 9f))
-        SkeletonLine(width * 0.7f, MaterialTheme.typography.titleMedium)
-        SkeletonLine(96.dp, MaterialTheme.typography.bodyMedium)
-        SkeletonLine(width * 0.85f, MaterialTheme.typography.bodyMedium)
-    }
+    SkeletonBlock(Modifier.width(width).aspectRatio(EPISODE_ASPECT))
 }
 
 /**
- * An episode on a tablet: a large card in a row that scrolls sideways. The still on top (with a progress bar when it is part
- * watched), then "4. Title" with a check once watched, how long it is or how much is left, and three lines of synopsis. The
- * one Play starts is the current one. Tapping plays it; a long press offers the watched mark.
+ * An episode: a card in a row that scrolls sideways, all of it on the still. At the bottom, over a scrim: the "S1 E4" tag, the
+ * title, two lines of synopsis, and a line with how long it is (or how much is left), its rating and the day it aired. A check
+ * sits at the top once watched, a progress bar runs along the bottom edge when it is part watched, and the one Play starts has a
+ * brighter outline. Tapping plays it; a long press opens a menu: View episode, and the watched mark.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun EpisodeCard(episode: MediaItem, width: Dp, current: Boolean, onPlay: () -> Unit, onToggleWatched: () -> Unit) {
+private fun EpisodeCard(episode: MediaItem, width: Dp, current: Boolean, onPlay: () -> Unit, onToggleWatched: () -> Unit, onView: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(VibeyFinTokens.Radius.artwork)
     Box {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
-            modifier = Modifier
+        Box(
+            Modifier
                 .width(width)
-                .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
-                .background(if (current) VibeyFinTokens.Colors.surface2 else androidx.compose.ui.graphics.Color.Transparent)
-                .combinedClickable(role = Role.Button, onClick = onPlay, onLongClick = { menu = true })
-                .padding(VibeyFinTokens.Space.s2),
+                .aspectRatio(EPISODE_ASPECT)
+                .clip(shape)
+                .border(1.dp, if (current) VibeyFinTokens.Colors.lineStrong else VibeyFinTokens.Colors.surface3, shape)
+                .combinedClickable(role = Role.Button, onClick = onPlay, onLongClick = { menu = true }),
         ) {
-            Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
-                Artwork(
-                    url = episode.landscapeUrl ?: episode.posterUrl,
-                    title = episode.title,
-                    aspectRatio = 16f / 9f,
-                    blurHash = episode.landscapeBlurHash,
-                    modifier = Modifier.fillMaxWidth(),
+            Artwork(
+                url = episode.landscapeUrl ?: episode.posterUrl,
+                title = episode.title,
+                aspectRatio = EPISODE_ASPECT,
+                blurHash = episode.landscapeBlurHash,
+                modifier = Modifier.fillMaxSize(),
+            )
+            // The scrim the text sits on: clear at the top, nearly the page's colour where the synopsis is.
+            Box(
+                Modifier.matchParentSize().background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        0f to androidx.compose.ui.graphics.Color.Transparent,
+                        0.3f to VibeyFinTokens.Colors.scrim,
+                        0.7f to VibeyFinTokens.Colors.scrimStrong,
+                        1f to VibeyFinTokens.Colors.scrimStrong,
+                    ),
+                ),
+            )
+            if (episode.played) {
+                Icon(
+                    Icons.Filled.CheckCircle,
+                    contentDescription = Strings.watched,
+                    tint = VibeyFinTokens.Colors.ink,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(VibeyFinTokens.Space.s3).size(22.dp),
                 )
-                episode.progress?.let { progress ->
-                    Box(Modifier.align(Alignment.BottomStart).fillMaxWidth()) {
-                        Box(Modifier.fillMaxWidth().size(width = 0.dp, height = 4.dp).background(VibeyFinTokens.Colors.progressTrack))
-                        Box(Modifier.fillMaxWidth(progress).size(width = 0.dp, height = 4.dp).background(VibeyFinTokens.Colors.accent))
+            }
+            Column(
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(horizontal = VibeyFinTokens.Space.s3)
+                    .padding(bottom = VibeyFinTokens.Space.s3 + if (episode.progress != null) 4.dp else 0.dp),
+                verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
+            ) {
+                Strings.episodeTag(episode.seasonNumber, episode.episodeNumber)?.let { EpisodeTag(it) }
+                Text(
+                    text = episode.title,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
+                    color = VibeyFinTokens.Colors.ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                // Two lines, always, so every card in the row is the same.
+                Text(
+                    text = episode.overview.orEmpty(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = VibeyFinTokens.Colors.ink,
+                    minLines = 2,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val time = when {
+                    episode.progress != null && episode.runtimeMs != null -> Strings.timeLeftShort(episode.runtimeMs!! - episode.resumePositionMs)
+                    else -> episode.runtimeMinutes?.let(Strings::minutesShort)
+                }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
+                    time?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = VibeyFinTokens.Colors.ink) }
+                    episode.rating?.takeIf { it > 0 }?.let { Text(Strings.ratingTag(it), style = MaterialTheme.typography.labelLarge, color = VibeyFinTokens.Colors.ink) }
+                    Spacer(Modifier.weight(1f))
+                    Strings.releaseDate(episode.premiereDate)?.let {
+                        Text(it, style = MaterialTheme.typography.labelMedium, color = VibeyFinTokens.Colors.inkMuted, maxLines = 1)
                     }
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-                Text(
-                    text = Strings.episodeTitle(episode.episodeNumber, episode.title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                if (episode.played) {
-                    Icon(Icons.Filled.CheckCircle, contentDescription = Strings.watched, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+            episode.progress?.let { progress ->
+                Box(Modifier.align(Alignment.BottomStart).fillMaxWidth()) {
+                    Box(Modifier.fillMaxWidth().size(width = 0.dp, height = 4.dp).background(VibeyFinTokens.Colors.progressTrack))
+                    Box(Modifier.fillMaxWidth(progress).size(width = 0.dp, height = 4.dp).background(VibeyFinTokens.Colors.accent))
                 }
             }
-            val meta = when {
-                episode.progress != null && episode.runtimeMs != null -> Strings.timeLeftShort(episode.runtimeMs!! - episode.resumePositionMs)
-                else -> episode.runtimeMinutes?.let(Strings::minutesShort)
-            }
-            meta?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            // Always three lines, so every card in the row is the same height.
-            Text(
-                text = episode.overview.orEmpty(),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                minLines = 3,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-            )
         }
         VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
+            VibeyFinMenuItem(Strings.viewEpisode, Icons.Default.Info) { menu = false; onView() }
             VibeyFinMenuItem(
                 if (episode.played) Strings.markUnwatched else Strings.markWatched,
                 if (episode.played) Icons.Default.Clear else Icons.Default.Check,
             ) { menu = false; onToggleWatched() }
         }
     }
+}
+
+/** A small tag over a picture: how long, how well rated, which age. */
+@Composable
+private fun EpisodeTag(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = VibeyFinTokens.Colors.ink,
+        maxLines = 1,
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(VibeyFinTokens.Colors.scrim)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    )
 }
 
 /** A row of the actors: a round picture, the name and the part they play; one opens their page. A person with no picture is a grey disc with initials. */

@@ -16,6 +16,14 @@ class SearchModel {
 
     fun onFilter(filter: SearchFilter) = host.viewModel.onFilter(filter)
 
+    fun onResultOpened() = host.viewModel.onResultOpened()
+
+    fun onSubmit() = host.viewModel.onSubmit()
+
+    fun onHistoryRemoved(term: String) = host.viewModel.onHistoryRemoved(term)
+
+    fun onHistoryCleared() = host.viewModel.onHistoryCleared()
+
     fun onClear() = host.viewModel.onClear()
 
     fun onRetry() = host.viewModel.onRetry()

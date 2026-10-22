@@ -8,6 +8,8 @@ import app.vibeyfin.domain.FilterOption
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.PageSort
+import app.vibeyfin.domain.TypeFilter
+import app.vibeyfin.domain.offersTypeFilter
 import app.vibeyfin.domain.defaultSort
 import app.vibeyfin.ui.children.ChildrenUiState
 import app.vibeyfin.ui.common.LoadMessages
@@ -24,10 +26,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** The buttons under a category page's title. */
-enum class ListChipKind { Sort, Genre }
+enum class ListChipKind { Movies, Shows, Sort, Genre }
 
 /** One of them: [label] already says what is chosen ("Sort: Rating"), and [active] is true when it narrows or reorders the page. */
-data class ListChip(val kind: ListChipKind, val label: String, val active: Boolean)
+data class ListChip(val kind: ListChipKind, val label: String, val active: Boolean) {
+    /** Sort and Genre open a list (and show an arrow); Movies and Shows switch on and off. */
+    val opensList: Boolean get() = kind == ListChipKind.Sort || kind == ListChipKind.Genre
+}
 
 /** The picker a chip opens: loading, its rows, or why they didn't load. [selectedId] is the row in use; an empty id is "All". */
 data class ListSheet(
@@ -50,6 +55,7 @@ data class FilteredListUiState(
 private data class Selection(
     val sort: PageSort,
     val genre: FilterOption? = null,
+    val type: TypeFilter? = null,
 )
 
 /**
@@ -113,6 +119,15 @@ class FilteredListViewModel(
     fun onChip(kind: ListChipKind) {
         val current = selection.value
         when (kind) {
+            // Movies and Shows switch on and off, and the genres they count are those of the kind chosen.
+            ListChipKind.Movies, ListChipKind.Shows -> {
+                val tapped = if (kind == ListChipKind.Movies) TypeFilter.Movies else TypeFilter.Shows
+                selection.value = current.copy(type = if (current.type == tapped) null else tapped, genre = current.genre)
+                genres = null
+                sheet.value = null
+                sheetJob?.cancel()
+                loadFirstPage()
+            }
             ListChipKind.Sort -> sheet.value = ListSheet(
                 kind = kind,
                 title = Strings.sortTitle,
@@ -132,6 +147,8 @@ class FilteredListViewModel(
         val next = when (open.kind) {
             ListChipKind.Sort -> current.copy(sort = PageSort.entries.firstOrNull { it.name == id } ?: return)
             ListChipKind.Genre -> current.copy(genre = genres?.firstOrNull { it.id == id })
+            // Only Sort and Genre open a picker.
+            ListChipKind.Movies, ListChipKind.Shows -> return
         }
         if (next == current) return
         selection.value = next
@@ -160,7 +177,7 @@ class FilteredListViewModel(
         }
         sheet.value = ListSheet(ListChipKind.Genre, Strings.genreTitle, loading = true, selectedId = selectedId)
         sheetJob = viewModelScope.launch {
-            val result = library.genres(filter)
+            val result = library.genres(filter, selection.value.type)
             if (result is ApiResult.Success) genres = result.value
             sheet.update { open ->
                 open?.takeIf { it.kind == ListChipKind.Genre }?.let {
@@ -174,6 +191,10 @@ class FilteredListViewModel(
     }
 
     private fun chipsFor(selection: Selection): List<ListChip> = buildList {
+        if (filter.offersTypeFilter) {
+            add(ListChip(ListChipKind.Movies, Strings.filterMovies, active = selection.type == TypeFilter.Movies))
+            add(ListChip(ListChipKind.Shows, Strings.filterShows, active = selection.type == TypeFilter.Shows))
+        }
         add(ListChip(ListChipKind.Sort, Strings.sortChip(sortLabel(selection.sort)), active = selection.sort != filter.defaultSort))
         // A genre's own page is already one genre.
         if (filter !is HomeFilter.Genre) {
@@ -188,7 +209,7 @@ class FilteredListViewModel(
     }
 
     private suspend fun page(asked: Selection, startIndex: Int) =
-        library.filteredPage(filter, asked.sort, asked.genre?.id, startIndex = startIndex)
+        library.filteredPage(filter, asked.sort, asked.genre?.id, startIndex = startIndex, type = asked.type)
 
     private fun loadFirstPage() {
         content.value = ChildrenUiState(loading = true)

@@ -16,6 +16,12 @@ sealed interface HomeFilter {
     data class Genre(val id: String, val name: String) : HomeFilter
 }
 
+/** Narrows a page that lists movies and shows together (My List, New) to one of them. */
+enum class TypeFilter { Movies, Shows }
+
+/** The pages that list movies and shows together, and so offer the Movies and Shows buttons. */
+val HomeFilter.offersTypeFilter: Boolean get() = this == HomeFilter.MyList || this == HomeFilter.New
+
 /** How a category page is ordered. Every page starts at [defaultSort]; the page's Sort button changes it. */
 enum class PageSort {
     /** A to Z. */

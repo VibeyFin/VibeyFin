@@ -193,7 +193,7 @@ private fun ItemPage(
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s5),
         ) {
             if (item.kind == ItemKind.Series) {
-                SeasonsSection(state.seasons, margin, wide, onSelectSeason, onPlayEpisode, onToggleEpisodePlayed, onRetrySeasons, onRetryEpisodes)
+                SeasonsSection(state.seasons, margin, wide, onSelectSeason, onPlayEpisode, onToggleEpisodePlayed, onOpen, onRetrySeasons, onRetryEpisodes)
             }
             if (item.cast.isNotEmpty()) CastSection(item.cast, margin, tile = if (wide) CAST_TILE_WIDE else CAST_TILE_NARROW, onOpenPerson = onOpenPerson)
             // The collections it is part of: a poster each, and one opens the collection's members.

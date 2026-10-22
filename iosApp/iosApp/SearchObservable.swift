@@ -22,6 +22,14 @@ final class SearchObservable: ObservableObject {
 
     func setFilter(_ filter: SearchFilter) { model.onFilter(filter: filter) }
 
+    func resultOpened() { model.onResultOpened() }
+
+    func submit() { model.onSubmit() }
+
+    func removeFromHistory(_ term: String) { model.onHistoryRemoved(term: term) }
+
+    func clearHistory() { model.onHistoryCleared() }
+
     func retry() { model.onRetry() }
 
     deinit {

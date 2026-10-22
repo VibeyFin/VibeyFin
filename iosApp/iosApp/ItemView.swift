@@ -89,6 +89,7 @@ struct ItemView: View {
                     onSelect: { model.selectSeason($0) },
                     onPlay: { playing = PlayRequest(id: $0, startOver: false) },
                     onToggleWatched: { model.toggleEpisodePlayed($0) },
+                    onViewEpisode: onOpen,
                     onRetrySeasons: { model.retrySeasons() },
                     onRetryEpisodes: { model.retryEpisodes() }
                 )

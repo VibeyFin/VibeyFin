@@ -113,7 +113,17 @@ class FakeJellyfin(retries: RetryPolicy = RetryPolicy(attempts = 3, backoff = Du
     fun api(address: String, token: String? = null): JellyfinApi = apiFactory.create(address, token)
 
     /** The recorded requests for `method path`, in order. */
-    fun requestsTo(method: String, path: String) = requests.filter { it.method == method && it.path == path }
+    fun requestsTo(method: String, path: String): List<RecordedRequest> {
+        // The engine records on its own thread while a test reads: read again if a request was added in the middle of it.
+        repeat(20) {
+            try {
+                return requests.filter { it.method == method && it.path == path }
+            } catch (_: ConcurrentModificationException) {
+                // Try again.
+            }
+        }
+        return requests.toList().filter { it.method == method && it.path == path }
+    }
 
     /**
      * Waits, in real time, until at least [count] requests have come in for `method path`, and

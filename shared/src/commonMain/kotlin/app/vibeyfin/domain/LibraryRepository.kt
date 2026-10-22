@@ -143,10 +143,10 @@ class LibraryRepository(private val connection: ConnectionManager) {
      * The genres to pick from, by name, with how many titles each holds. On the Movies page only movies are counted, on
      * Shows only shows, and everywhere else (Home's Categories, New) both; a genre with none of the page's kind is left out.
      */
-    suspend fun genres(filter: HomeFilter? = null): ApiResult<List<FilterOption>> = call { api, userId ->
-        val kind = when (filter) {
-            HomeFilter.Movies -> GenreKind.Movies
-            HomeFilter.Shows -> GenreKind.Shows
+    suspend fun genres(filter: HomeFilter? = null, type: TypeFilter? = null): ApiResult<List<FilterOption>> = call { api, userId ->
+        val kind = when {
+            filter == HomeFilter.Movies || type == TypeFilter.Movies -> GenreKind.Movies
+            filter == HomeFilter.Shows || type == TypeFilter.Shows -> GenreKind.Shows
             else -> GenreKind.Both
         }
         val all = api.genres(userId, kind.types).map { result -> result.items.toOptions(kind) }
@@ -154,7 +154,7 @@ class LibraryRepository(private val connection: ConnectionManager) {
         // On My List the numbers are the titles on the list, not the whole library's: the server cannot count a genre among
         // favourites, so they are counted from the list itself.
         val favourites = api.filteredItems(
-            userId, listOf("Movie", "Series"), genreId = null, sortBy = "SortName", sortOrder = "Ascending",
+            userId, kind.types, genreId = null, sortBy = "SortName", sortOrder = "Ascending",
             startIndex = 0, limit = MY_LIST_GENRE_SCAN, favoritesOnly = true, fields = "Genres",
         )
         when (favourites) {
@@ -177,10 +177,12 @@ class LibraryRepository(private val connection: ConnectionManager) {
         genreId: String? = null,
         startIndex: Int = 0,
         limit: Int = PAGE_SIZE,
+        /** On a page that lists both (My List, New): only movies or only shows. */
+        type: TypeFilter? = null,
     ): ApiResult<ItemPage> = call { api, userId ->
-        val types = when (filter) {
-            HomeFilter.Shows -> listOf("Series")
-            HomeFilter.Movies -> listOf("Movie")
+        val types = when {
+            filter == HomeFilter.Shows || type == TypeFilter.Shows -> listOf("Series")
+            filter == HomeFilter.Movies || type == TypeFilter.Movies -> listOf("Movie")
             else -> listOf("Movie", "Series")
         }
         val (sortBy, sortOrder) = when (sort) {
@@ -273,6 +275,7 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
         overview = overview?.takeIf { it.isNotBlank() },
         rating = communityRating,
         ageRating = officialRating?.takeIf { it.isNotBlank() },
+        premiereDate = premiereDate?.take(10)?.takeIf { it.length == 10 },
         seriesName = seriesName,
         seasonNumber = parentIndexNumber,
         episodeNumber = indexNumber,

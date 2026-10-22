@@ -35,6 +35,8 @@ data class MediaItem(
     val rating: Double?,
     /** An age rating such as PG-13. */
     val ageRating: String?,
+    /** When it was released or first aired, as `2015-09-22`; null when the server has no date. */
+    val premiereDate: String? = null,
     /** For an episode: the show's name. */
     val seriesName: String?,
     val seasonNumber: Int?,

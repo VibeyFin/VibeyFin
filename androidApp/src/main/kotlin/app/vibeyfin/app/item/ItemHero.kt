@@ -292,7 +292,7 @@ private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorit
             )
         }
         // Offline is a later phase: the button is here, and does nothing yet.
-        ActionButton(label = Strings.download, description = Strings.download, icon = painterResource(R.drawable.ic_download), centered = centered) {}
+        ActionButton(label = Strings.download, description = Strings.download, icon = painterResource(R.drawable.ic_download_outline), centered = centered) {}
     }
 }
 
@@ -310,16 +310,18 @@ private fun RowScope.ActionButton(label: String, description: String, icon: andr
     }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
+        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1, Alignment.CenterVertically),
         modifier = Modifier
-            .defaultMinSize(minWidth = 56.dp)
+            // A generous target: at least 64 wide and 72 tall, well over the 48 dp minimum.
+            .defaultMinSize(minWidth = 64.dp, minHeight = 72.dp)
             .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description }
             .padding(vertical = VibeyFinTokens.Space.s2),
     ) {
         Icon(painter = icon, contentDescription = null, tint = VibeyFinTokens.Colors.ink, modifier = Modifier.size(30.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value })
-        Text(label, style = MaterialTheme.typography.labelLarge, color = VibeyFinTokens.Colors.inkMuted, maxLines = 1)
+        // Medium weight in the full ink: the labels read against the picture.
+        Text(label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Medium), color = VibeyFinTokens.Colors.ink, maxLines = 1)
     }
 }
 

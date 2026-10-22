@@ -11,6 +11,7 @@ struct SeasonsSectionView: View {
     let onSelect: (String) -> Void
     let onPlay: (String) -> Void
     let onToggleWatched: (String) -> Void
+    let onViewEpisode: (MediaItem) -> Void
     let onRetrySeasons: () -> Void
     let onRetryEpisodes: () -> Void
 
@@ -68,8 +69,8 @@ struct SeasonsSectionView: View {
         }
     }
 
-    /// Episode cards: 260 wide on a phone, 320 on a regular width.
-    private var cardWidth: CGFloat { wide ? 320 : 260 }
+    /// Episode cards: 300 wide on a phone, 380 on a regular width.
+    private var cardWidth: CGFloat { wide ? 380 : 300 }
 
     private func scrollToCurrent(_ proxy: ScrollViewProxy, _ list: EpisodeList) {
         let target = list.items.first(where: { $0.id == seasons.startEpisode?.id }) ?? list.items.first
@@ -85,12 +86,7 @@ struct SeasonsSectionView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Space.s4) {
                     ForEach(0..<3, id: \.self) { _ in
-                        VStack(alignment: .leading, spacing: Space.s2) {
-                            SkeletonBlock().frame(width: cardWidth).aspectRatio(16.0 / 9.0, contentMode: .fit)
-                            SkeletonLine(font: .headline, width: cardWidth * 0.7)
-                            SkeletonLine(font: .subheadline, width: 96)
-                            SkeletonLine(font: .subheadline, width: cardWidth * 0.85)
-                        }
+                        SkeletonBlock().frame(width: cardWidth).aspectRatio(1.6, contentMode: .fit)
                     }
                 }
             }
@@ -109,7 +105,8 @@ struct SeasonsSectionView: View {
                                 width: cardWidth,
                                 current: episode.id == seasons.startEpisode?.id,
                                 onPlay: { onPlay(episode.id) },
-                                onToggleWatched: { onToggleWatched(episode.id) }
+                                onToggleWatched: { onToggleWatched(episode.id) },
+                                onView: { onViewEpisode(episode) }
                             )
                             .id(episode.id)
                         }
@@ -124,65 +121,63 @@ struct SeasonsSectionView: View {
     }
 }
 
-/// An episode: a card in a row that scrolls sideways. The still on top (with a progress bar when it is part
-/// watched), then "4. Title" with a check once watched, how long it is or how much is left, and three lines of synopsis. The one Play
-/// starts is the current one. Tapping plays it; a long press offers the watched mark.
+/// An episode: a card in a row that scrolls sideways, all of it on the still. At the bottom, over a scrim: the "S1 E4" tag, the
+/// title, two lines of synopsis, and a line with how long it is (or how much is left), its rating and the day it aired. A check
+/// sits at the top once watched, a progress bar runs along the bottom edge when it is part watched, and the one Play starts has a
+/// brighter outline. Tapping plays it; a long press opens a menu: View episode, and the watched mark.
 struct EpisodeCardView: View {
     let episode: MediaItem
     let width: CGFloat
     let current: Bool
     let onPlay: () -> Void
     let onToggleWatched: () -> Void
+    let onView: () -> Void
+
+    private let aspect: CGFloat = 1.6
 
     var body: some View {
         Button(action: onPlay) {
-            VStack(alignment: .leading, spacing: Space.s2) {
-                Artwork(url: episode.landscapeUrl ?? episode.posterUrl, title: episode.title, aspectRatio: 16.0 / 9.0, blurHash: episode.landscapeBlurHash)
-                    .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
-                    .overlay(alignment: .bottom) {
-                        // Aqua is playback progress: how far into the episode the user got.
-                        if let progress = episode.progress {
-                            GeometryReader { proxy in
-                                ZStack(alignment: .leading) {
-                                    Rectangle().fill(Brand.progressTrack)
-                                    Rectangle().fill(Brand.accent).frame(width: proxy.size.width * CGFloat(progress.floatValue))
-                                }
-                            }
-                            .frame(height: 4)
-                        }
-                    }
-                HStack(spacing: Space.s2) {
-                    Text(Strings.shared.episodeTitle(number: episode.episodeNumber, title: episode.title))
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
+            Artwork(url: episode.landscapeUrl ?? episode.posterUrl, title: episode.title, aspectRatio: aspect, blurHash: episode.landscapeBlurHash)
+                .overlay {
+                    LinearGradient(
+                        stops: [.init(color: .clear, location: 0), .init(color: Brand.scrim, location: 0.3), .init(color: Brand.scrimStrong, location: 0.7), .init(color: Brand.scrimStrong, location: 1)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .allowsHitTesting(false)
+                }
+                .overlay(alignment: .topTrailing) {
                     if episode.played {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .font(.title3)
+                            .foregroundStyle(.white)
+                            .padding(Space.s3)
                             .accessibilityLabel(Strings.shared.watched)
                     }
                 }
-                if let meta = meta {
-                    Text(meta).font(.subheadline).foregroundStyle(.secondary)
+                .overlay(alignment: .bottomLeading) { caption }
+                .overlay(alignment: .bottom) {
+                    // Aqua is playback progress: how far into the episode the user got.
+                    if let progress = episode.progress {
+                        GeometryReader { proxy in
+                            ZStack(alignment: .leading) {
+                                Rectangle().fill(Brand.progressTrack)
+                                Rectangle().fill(Brand.accent).frame(width: proxy.size.width * CGFloat(progress.floatValue))
+                            }
+                        }
+                        .frame(height: 4)
+                    }
                 }
-                // Always three lines, so every card in the row is the same height.
-                Text(episode.overview ?? "")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3, reservesSpace: true)
-                    .multilineTextAlignment(.leading)
-            }
-            .frame(width: width, alignment: .leading)
-            .padding(Space.s2)
-            .background(
-                RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous)
-                    .fill(current ? Color(.tertiarySystemBackground) : Color.clear)
-            )
-            .contentShape(Rectangle())
+                .frame(width: width)
+                .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous).stroke(current ? Color.secondary : Color(.tertiarySystemBackground), lineWidth: 1))
+                .contentShape(Rectangle())
         }
         .buttonStyle(PressableButtonStyle())
         .contextMenu {
+            Button(action: onView) {
+                Label(Strings.shared.viewEpisode.titleCased(), systemImage: "info.circle")
+            }
             Button(action: onToggleWatched) {
                 Label(
                     (episode.played ? Strings.shared.markUnwatched : Strings.shared.markWatched).titleCased(),
@@ -192,7 +187,44 @@ struct EpisodeCardView: View {
         }
     }
 
-    private var meta: String? {
+    private var caption: some View {
+        VStack(alignment: .leading, spacing: Space.s1) {
+            if let tag = Strings.shared.episodeTag(season: episode.seasonNumber, episode: episode.episodeNumber) {
+                Text(tag)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Brand.scrim))
+            }
+            Text(episode.title)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+            // Two lines, always, so every card in the row is the same.
+            Text(episode.overview ?? "")
+                .font(.subheadline)
+                .foregroundStyle(.white)
+                .lineLimit(2, reservesSpace: true)
+                .multilineTextAlignment(.leading)
+            HStack(spacing: Space.s3) {
+                if let time = time { Text(time) }
+                if let rating = episode.rating?.doubleValue, rating > 0 { Text(Strings.shared.ratingTag(rating: rating)) }
+                Spacer(minLength: 0)
+                if let date = Strings.shared.releaseDate(iso: episode.premiereDate) {
+                    Text(date).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                }
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.white)
+        }
+        .padding(Space.s3)
+        .padding(.bottom, episode.progress != nil ? 4 : 0)
+        .frame(width: width, alignment: .leading)
+    }
+
+    /// How long it is, or how much is left of it.
+    private var time: String? {
         if episode.progress != nil, let runtime = episode.runtimeMs {
             return Strings.shared.timeLeftShort(remainingMs: runtime.int64Value - episode.resumePositionMs)
         }

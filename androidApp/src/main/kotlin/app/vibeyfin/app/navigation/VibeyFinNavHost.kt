@@ -9,10 +9,12 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -105,8 +107,12 @@ fun VibeyFinNavHost() {
     // Back from the root of Library or Downloads goes to Home, as on any app with a bar, not out of the app.
     val atOtherRoot = currentTab != null && currentTab != Tab.Home && backStackEntry?.destination?.hasRoute(currentTab.root::class) == true
     BackHandler(enabled = atOtherRoot) { select(Tab.Home) }
+    // The player is the whole screen: no inset of its own for the camera cut-out, so no bar of the page's colour beside the picture
+    // (a foldable's cover screen, a phone turned sideways), and a black window behind it.
+    val onPlayer = backStackEntry?.opensPlayer() == true
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = if (onPlayer) androidx.compose.ui.graphics.Color.Black else MaterialTheme.colorScheme.background,
+        contentWindowInsets = if (onPlayer) WindowInsets(0, 0, 0, 0) else ScaffoldDefaults.contentWindowInsets,
         bottomBar = {
             if (currentTab != null) MainNavigationBar(currentTab, select)
         },

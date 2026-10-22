@@ -53,7 +53,10 @@ struct ListChipRow: View {
                     Button { onTap(chip) } label: {
                         HStack(spacing: Space.s1) {
                             Text(chip.label)
-                            Image(systemName: "chevron.down").font(.caption.weight(.semibold))
+                            // Sort and Genre open a list and have a chevron; Movies and Shows switch on and off.
+                            if chip.opensList {
+                                Image(systemName: "chevron.down").font(.caption.weight(.semibold))
+                            }
                         }
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(chip.active ? Color(.systemBackground) : Color.primary)

@@ -278,10 +278,11 @@ struct HeroDetailsView: View {
                     .id(systemImage)
                     .transition(.scale.combined(with: .opacity))
                     .animation(.spring(response: 0.3, dampingFraction: 0.45), value: pop)
-                Text(label.titleCased()).font(.caption)
+                // Medium weight in the full ink: the labels read against the picture.
+                Text(label.titleCased()).font(.caption.weight(.medium))
             }
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, minHeight: 56)
+            .foregroundStyle(.primary)
+            .frame(maxWidth: .infinity, minHeight: 72)
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableButtonStyle())

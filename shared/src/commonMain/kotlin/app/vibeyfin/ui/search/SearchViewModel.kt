@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.LibraryRepository
+import app.vibeyfin.domain.SearchHistory
 import app.vibeyfin.domain.model.SearchKind
 import app.vibeyfin.domain.model.SearchResult
 import app.vibeyfin.ui.common.LoadMessages
@@ -43,6 +44,8 @@ data class SearchUiState(
     val searched: String = "",
     /** Which kind is listed; [SearchFilter.All] lists every group. */
     val filter: SearchFilter = SearchFilter.All,
+    /** What was searched for before, newest first; shown while the field is empty. */
+    val history: List<String> = emptyList(),
     /** Set when the session ended and the screen must be left. */
     val exit: HomeExit? = null,
 ) {
@@ -71,13 +74,14 @@ data class SearchUiState(
 /** Searches the library as the user types, a moment after the last key, and groups what matches. */
 class SearchViewModel(
     private val library: LibraryRepository,
+    private val history: SearchHistory,
     connection: ConnectionManager,
 ) : ViewModel() {
     private val content = MutableStateFlow(SearchUiState())
     private var job: Job? = null
 
-    val uiState: StateFlow<SearchUiState> = combine(content, connection.sessionEnded()) { content, exit ->
-        content.copy(exit = exit)
+    val uiState: StateFlow<SearchUiState> = combine(content, history.entries, connection.sessionEnded()) { content, history, exit ->
+        content.copy(history = history, exit = exit)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())
 
     /** The field changed: searches [text] once the user pauses, and drops any older search still out. */
@@ -99,6 +103,30 @@ class SearchViewModel(
     /** A filter button was tapped: the same answer, narrowed to one kind or widened to all. */
     fun onFilter(filter: SearchFilter) {
         content.update { it.copy(filter = filter) }
+    }
+
+    /** A match was opened: what was typed is worth finding again. */
+    fun onResultOpened() {
+        val term = content.value.query
+        viewModelScope.launch { history.record(term) }
+    }
+
+    /** The keyboard's search key. */
+    fun onSubmit() = onResultOpened()
+
+    /** A past search was tapped: it runs again, and moves to the front. */
+    fun onHistoryPicked(term: String) {
+        onQueryChange(term)
+    }
+
+    /** The × on one past search. */
+    fun onHistoryRemoved(term: String) {
+        viewModelScope.launch { history.remove(term) }
+    }
+
+    /** "Clear all" on the past searches. */
+    fun onHistoryCleared() {
+        viewModelScope.launch { history.clear() }
     }
 
     /** "Clear": empties the field. */

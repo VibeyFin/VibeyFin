@@ -15,6 +15,7 @@ import app.vibeyfin.domain.PlaybackRecovery
 import app.vibeyfin.domain.PlaybackReporter
 import app.vibeyfin.domain.PlaybackRepository
 import app.vibeyfin.domain.ProfileSettings
+import app.vibeyfin.domain.SearchHistory
 import app.vibeyfin.domain.ServerConnector
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.StartupRouter
@@ -47,6 +48,7 @@ class TestApp {
     val auth = AuthRepository(connector, accounts, connection)
     val router = StartupRouter(servers, accounts, preferences, connection)
     val library = LibraryRepository(connection)
+    val searchHistory = SearchHistory(InMemoryPreferencesDataStore(), connection)
     val watchChanges = WatchChanges()
     val watch = WatchRepository(connection, watchChanges)
     val capabilities = FakePlaybackCapabilities()

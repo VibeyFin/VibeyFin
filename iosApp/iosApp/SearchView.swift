@@ -17,6 +17,7 @@ struct SearchView: View {
         .onAppear { model.start() }
         .searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: Strings.shared.searchHint)
         .onChange(of: text) { model.setQuery($0) }
+        .onSubmit(of: .search) { model.submit() }
         .navigationTitle(Strings.shared.tabSearch.titleCased())
         .onChange(of: model.state?.exit != nil) { hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
@@ -47,7 +48,9 @@ struct SearchView: View {
     @ViewBuilder
     private var content: some View {
         if let state = model.state {
-            if state.showsPrompt {
+            if state.showsPrompt && !state.history.isEmpty {
+                history(state)
+            } else if state.showsPrompt {
                 prompt(Strings.shared.searchPrompt, Strings.shared.searchPromptHelp)
             } else if state.message == nil && state.noResults == false && state.groups.isEmpty {
                 VStack(spacing: Space.s3) { chips(state); skeleton }
@@ -65,6 +68,41 @@ struct SearchView: View {
         }
     }
 
+    /// What was searched for before, newest first: a tap runs it again, the cross takes it off, "Clear all" empties the list.
+    private func history(_ state: SearchUiState) -> some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Text(Strings.shared.recentSearches.titleCased()).sectionTitle().accessibilityAddTraits(.isHeader)
+                    Spacer()
+                    Button(Strings.shared.clearHistory.titleCased()) { model.clearHistory() }
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(state.history, id: \.self) { term in
+                    HStack(spacing: Space.s3) {
+                        Button { text = term } label: {
+                            HStack(spacing: Space.s3) {
+                                Image(systemName: "clock.arrow.circlepath").foregroundStyle(.secondary)
+                                Text(term).font(.body).foregroundStyle(.primary).lineLimit(1)
+                                Spacer(minLength: 0)
+                            }
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(PressableButtonStyle())
+                        Button { model.removeFromHistory(term) } label: {
+                            Image(systemName: "xmark").foregroundStyle(.secondary).frame(width: 44, height: 44)
+                        }
+                        .accessibilityLabel(Strings.shared.removeFromHistory(term: term))
+                    }
+                }
+            }
+            .screenMargin()
+            .padding(.vertical, Space.s2)
+        }
+    }
+
     private func prompt(_ title: String, _ help: String) -> some View {
         VStack(spacing: Space.s2) {
             Image(systemName: "magnifyingglass").font(.largeTitle).foregroundStyle(.secondary)
@@ -72,7 +110,9 @@ struct SearchView: View {
             Text(help).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
         }
         .screenMargin()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Near the top, under the field: centred it would ride up with the keyboard.
+        .padding(.top, 72)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private func results(_ state: SearchUiState) -> some View {
@@ -86,7 +126,7 @@ struct SearchView: View {
                         .padding(.top, Space.s3)
                         .accessibilityAddTraits(.isHeader)
                     ForEach(group.results, id: \.id) { result in
-                        Button { onOpenResult(result) } label: { row(result) }
+                        Button { model.resultOpened(); onOpenResult(result) } label: { row(result) }
                             .buttonStyle(PressableButtonStyle())
                             .accessibilityLabel(Strings.shared.searchResultDescription(title: result.title, subtitle: result.subtitle))
                     }

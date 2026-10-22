@@ -136,6 +136,28 @@ object Strings {
     val continueWatching = "Continue watching"
     /** The label of the Watched button under Play; its state is the tick. */
     val watchedAction = "Watched"
+    val viewEpisode = "View episode"
+
+    /** "S1 E4" on an episode's card; "E4" when the season is not known. */
+    fun episodeTag(season: Int?, episode: Int?): String? = when {
+        season != null && episode != null -> "S$season E$episode"
+        episode != null -> "E$episode"
+        else -> null
+    }
+
+    /** "22 September 2015" from `2015-09-22`; null when it is not a date. */
+    fun releaseDate(iso: String?): String? {
+        val parts = iso?.split("-") ?: return null
+        val year = parts.getOrNull(0)?.toIntOrNull() ?: return null
+        val month = parts.getOrNull(1)?.toIntOrNull()?.takeIf { it in 1..12 } ?: return null
+        val day = parts.getOrNull(2)?.take(2)?.toIntOrNull() ?: return null
+        return "$day ${MONTHS[month - 1]} $year"
+    }
+
+    private val MONTHS = listOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
+
+    /** A rating tag on a picture: "\u2605 8.1". */
+    fun ratingTag(rating: Double): String = "\u2605 ${kotlin.math.round(rating * 10) / 10.0}"
     val markSeriesWatched = "Mark series as watched"
     val markSeriesUnwatched = "Mark series as unwatched"
     val markWatched = "Mark as watched"
@@ -351,6 +373,9 @@ object Strings {
     val searchPrompt = "Find something to watch"
     val searchPromptHelp = "Type a title, a show or a name."
     val clearSearch = "Clear"
+    val recentSearches = "Recent searches"
+    val clearHistory = "Clear all"
+    fun removeFromHistory(term: String) = "Remove $term from recent searches"
     fun noSearchResults(query: String) = "Nothing found for \u201C$query\u201D"
     val noSearchResultsHelp = "Check the spelling, or try fewer words."
     val searchAll = "All"

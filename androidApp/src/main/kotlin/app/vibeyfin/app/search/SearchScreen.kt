@@ -85,7 +85,19 @@ fun SearchRoute(
     LaunchedEffect(state.exit) {
         state.exit?.let(onExit)
     }
-    SearchScreen(state, viewModel::onQueryChange, viewModel::onClear, viewModel::onRetry, viewModel::onFilter, onOpenResult)
+    SearchScreen(
+        state = state,
+        onQueryChange = viewModel::onQueryChange,
+        onClear = viewModel::onClear,
+        onRetry = viewModel::onRetry,
+        onFilter = viewModel::onFilter,
+        onSubmit = viewModel::onSubmit,
+        onHistoryPicked = viewModel::onHistoryPicked,
+        onHistoryRemoved = viewModel::onHistoryRemoved,
+        onHistoryCleared = viewModel::onHistoryCleared,
+        // A match that is opened keeps what was typed in the history.
+        onOpenResult = { result -> viewModel.onResultOpened(); onOpenResult(result) },
+    )
 }
 
 /** The Search tab: a field at the top, and under it what matches, grouped into movies, shows, episodes, people and collections. */
@@ -96,6 +108,10 @@ fun SearchScreen(
     onClear: () -> Unit,
     onRetry: () -> Unit,
     onFilter: (SearchFilter) -> Unit,
+    onSubmit: () -> Unit,
+    onHistoryPicked: (String) -> Unit,
+    onHistoryRemoved: (String) -> Unit,
+    onHistoryCleared: () -> Unit,
     onOpenResult: (SearchResult) -> Unit,
 ) {
     val margin = screenMargin()
@@ -117,7 +133,7 @@ fun SearchScreen(
                     }
                 },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, keyboardType = KeyboardType.Text),
-                keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
+                keyboardActions = KeyboardActions(onSearch = { onSubmit(); keyboard?.hide() }),
                 shape = RoundedCornerShape(50),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = VibeyFinTokens.Colors.surface2,
@@ -151,6 +167,7 @@ fun SearchScreen(
                 }
             }
             when {
+                state.showsPrompt && state.history.isNotEmpty() -> History(state.history, margin, onHistoryPicked, onHistoryRemoved, onHistoryCleared)
                 state.showsPrompt -> Prompt(Strings.searchPrompt, Strings.searchPromptHelp, margin)
                 state.message != null -> LoadError(state.message!!, onRetry, modifier = Modifier.padding(horizontal = margin))
                 state.noResults -> Prompt(Strings.noSearchResults(state.searched), Strings.noSearchResultsHelp, margin)
@@ -163,16 +180,47 @@ fun SearchScreen(
 
 @Composable
 private fun Prompt(title: String, help: String, margin: androidx.compose.ui.unit.Dp) {
+    // Near the top, under the field: centred it would ride up with the keyboard.
     Column(
-        Modifier.fillMaxSize().padding(horizontal = margin).padding(bottom = 96.dp),
+        Modifier.fillMaxSize().padding(horizontal = margin).padding(top = 72.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.Top,
     ) {
         Icon(Icons.Filled.Search, contentDescription = null, tint = VibeyFinTokens.Colors.inkMuted, modifier = Modifier.size(40.dp))
         Spacer(Modifier.height(VibeyFinTokens.Space.s3))
         Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground, textAlign = TextAlign.Center)
         Spacer(Modifier.height(VibeyFinTokens.Space.s1))
         Text(help, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+    }
+}
+
+/** What was searched for before, newest first: a tap runs it again, the cross takes it off, "Clear all" empties the list. */
+@Composable
+private fun History(history: List<String>, margin: androidx.compose.ui.unit.Dp, onPick: (String) -> Unit, onRemove: (String) -> Unit, onClearAll: () -> Unit) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = margin, vertical = VibeyFinTokens.Space.s2),
+    ) {
+        item(key = "header") {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                SectionTitle(Strings.recentSearches, modifier = Modifier.weight(1f).semantics { heading() })
+                androidx.compose.material3.TextButton(onClick = onClearAll) {
+                    Text(Strings.clearHistory, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        items(history, key = { it }) { term ->
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).clickable { onPick(term) }.padding(start = VibeyFinTokens.Space.s1),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.Search, contentDescription = null, tint = VibeyFinTokens.Colors.inkMuted, modifier = Modifier.size(20.dp))
+                Text(term, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(horizontal = VibeyFinTokens.Space.s3, vertical = VibeyFinTokens.Space.s3))
+                IconButton(onClick = { onRemove(term) }) {
+                    Icon(Icons.Filled.Clear, contentDescription = Strings.removeFromHistory(term), tint = VibeyFinTokens.Colors.inkMuted)
+                }
+            }
+        }
     }
 }
 

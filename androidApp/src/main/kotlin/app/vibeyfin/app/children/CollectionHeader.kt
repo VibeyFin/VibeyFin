@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -82,8 +83,11 @@ fun CollectionHeader(title: String, collection: MediaItem?, facts: List<String>,
                 ),
             ),
         )
+        // The title, facts and overview come in together once the collection is read, so the title never jumps as the rest arrives.
+        val textAlpha by androidx.compose.animation.core.animateFloatAsState(if (collection != null) 1f else 0f, androidx.compose.animation.core.tween(250), label = "header text")
         Column(
             modifier = Modifier
+                .graphicsLayer { alpha = textAlpha }
                 .align(if (wide) Alignment.BottomStart else Alignment.BottomCenter)
                 .then(if (wide) Modifier.widthIn(max = 520.dp) else Modifier.fillMaxWidth())
                 .padding(horizontal = margin)

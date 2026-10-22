@@ -40,7 +40,7 @@ class SearchViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(SearchViewModel(app.library, app.connection))
+    private fun viewModel() = viewModels.track(SearchViewModel(app.library, app.searchHistory, app.connection))
 
     private fun hints(vararg items: String) = """{"SearchHints":[${items.joinToString(",")}],"TotalRecordCount":${items.size}}"""
 
@@ -198,5 +198,60 @@ class SearchViewModelTest {
         viewModel.onClear()
 
         assertEquals(SearchFilter.Movies, viewModel.uiState.value.filter)
+    }
+
+    // Past searches, kept on the device for the profile.
+
+    @Test
+    fun aMatchOpenedRemembersWhatWasTypedNewestFirstWithoutRepeats() = runTest {
+        server(hints(hint("m1", "Neon Night", "Movie")))
+        val viewModel = viewModel()
+
+        for (term in listOf("neon", "heat", "NEON")) {
+            viewModel.onQueryChange(term)
+            viewModel.uiState.first { it.searched == term.trim() && !it.loading }
+            viewModel.onResultOpened()
+        }
+        val state = viewModel.uiState.first { it.history.size == 2 && it.history.first() == "NEON" }
+
+        assertEquals(listOf("NEON", "heat"), state.history)
+    }
+
+    @Test
+    fun aBlankFieldRemembersNothingAndTheListHoldsTenAtMost() = runTest {
+        server()
+        val viewModel = viewModel()
+        viewModel.onResultOpened()
+        for (n in 1..12) {
+            viewModel.onQueryChange("term $n")
+            viewModel.onSubmit()
+        }
+
+        val state = viewModel.uiState.first { it.history.size == 10 && it.history.first() == "term 12" }
+
+        assertEquals("term 3", state.history.last())
+    }
+
+    @Test
+    fun aPastSearchCanBePickedRemovedOrAllClearedAndTheListIsOnlyShownForAnEmptyField() = runTest {
+        server(hints(hint("m1", "Neon Night", "Movie")))
+        val viewModel = viewModel()
+        for (term in listOf("neon", "heat")) {
+            viewModel.onQueryChange(term)
+            viewModel.onSubmit()
+        }
+        viewModel.uiState.first { it.history == listOf("heat", "neon") }
+
+        viewModel.onHistoryPicked("neon")
+        val picked = viewModel.uiState.first { it.searched == "neon" && !it.loading }
+        assertEquals("neon", picked.query)
+
+        viewModel.onClear()
+        viewModel.onHistoryRemoved("heat")
+        assertEquals(listOf("neon"), viewModel.uiState.first { it.history.size == 1 }.history)
+        assertTrue(viewModel.uiState.value.showsPrompt)
+
+        viewModel.onHistoryCleared()
+        assertTrue(viewModel.uiState.first { it.history.isEmpty() }.history.isEmpty())
     }
 }
