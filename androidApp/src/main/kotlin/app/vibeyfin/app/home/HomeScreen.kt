@@ -41,6 +41,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -72,6 +73,7 @@ import app.vibeyfin.app.components.ArtworkTile
 import app.vibeyfin.app.components.ContinueCard
 import app.vibeyfin.app.components.ContinueSkeletonCards
 import app.vibeyfin.app.components.LoadError
+import app.vibeyfin.app.components.PosterSkeletonRow
 import app.vibeyfin.app.components.skeletonTiles
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
@@ -80,6 +82,8 @@ import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.ui.home.CategoryButton
+import app.vibeyfin.ui.home.MediaRow
+import app.vibeyfin.ui.home.SeeAll
 import app.vibeyfin.ui.home.CategoryKind
 import app.vibeyfin.ui.home.ContinueCard as ContinueCardState
 import app.vibeyfin.ui.home.ContinueRow
@@ -90,6 +94,9 @@ import org.koin.androidx.compose.koinViewModel
 
 /** The app logo at the top of Home. */
 private val LOGO_SIZE = 32.dp
+
+/** A library's 16:9 tile in My media. */
+private val LIBRARY_TILE_WIDTH = 200.dp
 
 @Composable
 fun HomeRoute(
@@ -125,6 +132,13 @@ fun HomeRoute(
         onRefresh = viewModel::onRefresh,
         onRetryContinue = viewModel::onRetryContinue,
         onRetryLibraries = viewModel::onRetryLibraries,
+        onRetryRow = viewModel::onRetryRow,
+        onSeeAll = { target ->
+            when (target) {
+                is SeeAll.Library -> onOpen(target.library)
+                is SeeAll.Genre -> onOpenList(target.filter)
+            }
+        },
         onCategory = viewModel::onCategory,
         onPickOption = viewModel::onPickOption,
         onDismissSheet = viewModel::onDismissSheet,
@@ -149,6 +163,8 @@ fun HomeScreen(
     onRefresh: () -> Unit,
     onRetryContinue: () -> Unit,
     onRetryLibraries: () -> Unit,
+    onRetryRow: (String) -> Unit,
+    onSeeAll: (SeeAll) -> Unit,
     onCategory: (CategoryKind) -> Unit,
     onPickOption: (String) -> Unit,
     onDismissSheet: () -> Unit,
@@ -193,7 +209,7 @@ fun HomeScreen(
             }
             if (state.serverId != null) {
                 Content(
-                    state, margin, onOpen, onPlay, { menuCard = it }, onRefresh, onRetryContinue, onRetryLibraries,
+                    state, margin, onOpen, onPlay, { menuCard = it }, onRefresh, onRetryContinue, onRetryLibraries, onRetryRow, onSeeAll,
                     onTap = { onCategory(it.kind) },
                 )
             }
@@ -246,6 +262,8 @@ private fun Content(
     onRefresh: () -> Unit,
     onRetryContinue: () -> Unit,
     onRetryLibraries: () -> Unit,
+    onRetryRow: (String) -> Unit,
+    onSeeAll: (SeeAll) -> Unit,
     onTap: (CategoryButton) -> Unit,
 ) {
     val refreshState = rememberPullToRefreshState()
@@ -282,10 +300,13 @@ private fun Content(
                     modifier = Modifier.bleed(margin),
                 )
             }
-            // Always laid out, empty or not, so the libraries never move when a card turns up.
             fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onLongPress, onRetryContinue) }
-            fullWidth(key = "libraries-title") { SectionTitle(Strings.libraries) }
-            libraries(state, onOpen, onRetryLibraries)
+            // Recently added in each library, then a few genres: each loads and fails on its own, and an empty one is not here.
+            state.rows.forEach { row ->
+                fullWidth(key = row.id) { MediaRowSection(row, margin, onOpen, onSeeAll, onRetry = { onRetryRow(row.id) }) }
+            }
+            // The libraries close Home, as 16:9 tiles in one row.
+            fullWidth(key = "my-media") { MyMedia(state, margin, onOpen, onRetryLibraries) }
         }
     }
 }
@@ -302,11 +323,11 @@ private fun SectionTitle(text: String) {
 /** The row of what the user is in the middle of. Its cards run past the grid's margins to the screen edge. */
 @Composable
 private fun ContinueWatching(row: ContinueRow, margin: Dp, onPlay: (String) -> Unit, onLongPress: (ContinueCardState) -> Unit, onRetry: () -> Unit) {
+    // Nothing to show (it came back empty): no title and no gap, like any other row.
+    if (!row.isVisible) return
     Column(Modifier.padding(bottom = VibeyFinTokens.Space.s2), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-        Box(Modifier.alpha(if (row.isVisible) 1f else 0f)) { SectionTitle(Strings.continueWatching) }
+        SectionTitle(Strings.continueWatching)
         when {
-            // Nothing to show: the same space, unseen, so the libraries stay where they are.
-            !row.isVisible -> ContinueSkeletonCards(Modifier.bleed(margin).padding(horizontal = margin).alpha(0f).semantics { invisibleToUser() })
             row.loading -> ContinueSkeletonCards(Modifier.bleed(margin).padding(horizontal = margin))
             row.message != null -> LoadError(row.message!!, onRetry)
             else -> {
@@ -335,19 +356,57 @@ private fun Modifier.bleed(by: Dp) = layout { measurable, constraints ->
     layout(constraints.maxWidth, placeable.height) { placeable.place(-extra / 2, 0) }
 }
 
-private fun LazyGridScope.libraries(state: HomeUiState, onOpen: (MediaItem) -> Unit, onRetry: () -> Unit) {
-    when {
-        state.loadingLibraries -> skeletonTiles(count = 4, aspectRatio = 16f / 9f)
-        state.librariesMessage != null -> fullWidth(key = "libraries-state") { LoadError(state.librariesMessage!!, onRetry) }
-        state.libraries.isEmpty() -> fullWidth(key = "libraries-state") {
-            Text(
+/** A row of posters under a header with "See all": loading is grey posters, a failure says why with Try again. */
+@Composable
+private fun MediaRowSection(row: MediaRow, margin: Dp, onOpen: (MediaItem) -> Unit, onSeeAll: (SeeAll) -> Unit, onRetry: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Box(Modifier.weight(1f)) { SectionTitle(row.title) }
+            val target = row.seeAll
+            if (target != null && row.items.isNotEmpty()) {
+                TextButton(onClick = { onSeeAll(target) }, modifier = Modifier.semantics { contentDescription = Strings.seeAllIn(row.title) }) {
+                    Text(Strings.seeAll, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        when {
+            row.loading -> PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin))
+            row.message != null -> LoadError(row.message!!, onRetry)
+            else -> LazyRow(
+                modifier = Modifier.bleed(margin),
+                contentPadding = PaddingValues(horizontal = margin),
+                horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+            ) {
+                items(row.items, key = { it.id }) { item ->
+                    ArtworkTile(item, onClick = { onOpen(item) }, modifier = Modifier.width(VibeyFinTokens.Size.posterWidth))
+                }
+            }
+        }
+    }
+}
+
+/** The user's libraries as 16:9 tiles in one row; a tile opens that library. */
+@Composable
+private fun MyMedia(state: HomeUiState, margin: Dp, onOpen: (MediaItem) -> Unit, onRetry: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
+        SectionTitle(Strings.libraries)
+        when {
+            state.loadingLibraries -> PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin), count = 3, tileWidth = LIBRARY_TILE_WIDTH, aspectRatio = 16f / 9f)
+            state.librariesMessage != null -> LoadError(state.librariesMessage!!, onRetry)
+            state.libraries.isEmpty() -> Text(
                 text = Strings.noLibraries,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-        else -> items(state.libraries, key = { it.id }) { library ->
-            ArtworkTile(library, onClick = { onOpen(library) })
+            else -> LazyRow(
+                modifier = Modifier.bleed(margin),
+                contentPadding = PaddingValues(horizontal = margin),
+                horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+            ) {
+                items(state.libraries, key = { it.id }) { library ->
+                    ArtworkTile(library, onClick = { onOpen(library) }, modifier = Modifier.width(LIBRARY_TILE_WIDTH))
+                }
+            }
         }
     }
 }
