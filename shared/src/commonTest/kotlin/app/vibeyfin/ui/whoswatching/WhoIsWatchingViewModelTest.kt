@@ -140,7 +140,7 @@ class WhoIsWatchingViewModelTest {
 
         viewModel.onProfileTapped(viewModel.loaded().profiles.first { it.name == "Sam" })
 
-        val sheet = assertIs<SignInSheet.Password>(viewModel.uiState.value.sheet)
+        val sheet = assertIs<SignInSheet.Password>(viewModel.uiState.first { it.sheet != null }.sheet)
         assertEquals("Sam", sheet.profile.name)
         assertEquals(0, app.jellyfin.requestsTo("POST", "/Users/AuthenticateByName").size)
     }
@@ -180,7 +180,7 @@ class WhoIsWatchingViewModelTest {
         viewModel.loaded()
 
         viewModel.onOtherUserTapped()
-        assertIs<SignInSheet.OtherUser>(viewModel.uiState.value.sheet)
+        assertIs<SignInSheet.OtherUser>(viewModel.uiState.first { it.sheet != null }.sheet)
         viewModel.onSubmitOtherUser("  alex ", "right")
 
         assertTrue(viewModel.uiState.first { it.signedIn }.signedIn)

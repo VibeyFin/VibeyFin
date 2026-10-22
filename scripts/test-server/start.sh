@@ -25,7 +25,7 @@ echo
 curl -sf "${JF_URL}/System/Info/Public" >/dev/null || { echo "Jellyfin did not come up"; exit 1; }
 
 json() { curl -sf -H "$AUTH_HDR" -H 'Content-Type: application/json' "$@"; }
-for _ in $(seq 1 30); do json "${JF_URL}/Startup/Configuration" >/dev/null 2>&1 && break; sleep 2; done || true
+for _ in $(seq 1 30); do json "${JF_URL}/Startup/Configuration" >/dev/null 2>&1 && break; sleep 2; done
 
 # First-run wizard, via the Startup API. Skipped once it is complete.
 if [ "$(curl -s "${JF_URL}/System/Info/Public" | grep -o '"StartupWizardCompleted":[a-z]*')" != '"StartupWizardCompleted":true' ]; then
@@ -38,7 +38,7 @@ fi
 
 TOKEN="$(json -X POST "${JF_URL}/Users/AuthenticateByName" -d "{\"Username\":\"${JF_USER}\",\"Pw\":\"${JF_PASS}\"}" \
   | sed -E 's/.*"AccessToken":"([^"]+)".*/\1/')"
-AUTHED=(-H "Authorization: MediaBrowser Client=\"VibeyFin Test\", Device=\"script\", DeviceId=\"vibeyfin-test-script\", Version=\"1.0\", Token=\"${TOKEN}\"")
+AUTHED=(-H "${AUTH_HDR}, Token=\"${TOKEN}\"")
 
 # Chapter Segments Provider plugin: turns chapters named Intro/Credits/... into media segments.
 # 12.2.0 ships no segment provider of its own. A plugin install needs a server restart.
@@ -52,23 +52,27 @@ if ! curl -sf "${AUTHED[@]}" "${JF_URL}/Plugins" | grep -q '"Name":"Chapter Segm
   echo
 fi
 
-# Libraries, with trickplay generation on. Chapter image extraction on too.
-OPTS='{"LibraryOptions":{"EnableTrickplayImageExtraction":true,"ExtractTrickplayImagesDuringLibraryScan":true,"SaveTrickplayWithMedia":false,"EnableChapterImageExtraction":false,"EnableRealtimeMonitor":false}}'
+# Libraries, with trickplay generation on (off for Failures, so those items have none).
+library_options() { # $1 = trickplay true|false
+  echo "{\"LibraryOptions\":{\"EnableTrickplayImageExtraction\":$1,\"ExtractTrickplayImagesDuringLibraryScan\":$1,\"SaveTrickplayWithMedia\":false,\"EnableChapterImageExtraction\":false,\"EnableRealtimeMonitor\":false}}"
+}
 EXISTING="$(curl -sf "${AUTHED[@]}" "${JF_URL}/Library/VirtualFolders")"
-add_lib() { # name, type, path
+add_lib() { # name, type, path, options
   echo "$EXISTING" | grep -q "\"Name\":\"$1\"" && return 0
   curl -sf "${AUTHED[@]}" -H 'Content-Type: application/json' -X POST \
-    "${JF_URL}/Library/VirtualFolders?name=$1&collectionType=$2&paths=$3&refreshLibrary=false" -d "$OPTS" >/dev/null
+    "${JF_URL}/Library/VirtualFolders?name=$1&collectionType=$2&paths=$3&refreshLibrary=false" -d "$4" >/dev/null
 }
-add_lib Shows tvshows /media/shows
-add_lib Movies movies /media/movies
+add_lib Shows tvshows /media/shows "$(library_options true)"
+add_lib Movies movies /media/movies "$(library_options true)"
+add_lib Failures movies /media/failures "$(library_options false)"
 curl -sf "${AUTHED[@]}" -X POST "${JF_URL}/Library/Refresh" >/dev/null || true
 
-# Wait for the scan to find the three items, then run the trickplay and segment tasks now
+# Wait for the scan to find every media file we generated (bounded), then run the trickplay and segment tasks now
 # instead of waiting for their schedules.
+EXPECTED_ITEMS="$(find "${DATA}/media" -type f \( -name '*.mkv' -o -name '*.mp4' \) | wc -l)"
 for _ in $(seq 1 60); do
   N="$(curl -sf "${AUTHED[@]}" "${JF_URL}/Items?Recursive=true&IncludeItemTypes=Episode,Movie" | grep -o '"TotalRecordCount":[0-9]*' | grep -o '[0-9]*' || echo 0)"
-  [ "${N:-0}" -ge 3 ] && break
+  [ "${N:-0}" -ge "$EXPECTED_ITEMS" ] && break
   sleep 2
 done
 for task in "Generate Trickplay Images" "Media Segment Scan"; do
