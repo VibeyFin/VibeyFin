@@ -3,8 +3,9 @@ import Shared
 
 /// A 16:9 card in the Continue watching row: the picture with a play disc in the middle and the aqua
 /// progress bar along its bottom edge if something is in progress, then the title with what is left (or
-/// the episode) under it, close together, and a "…" menu for the card's actions. Tapping the picture or
-/// the words plays; there is no detail page in between. A long press opens the same actions.
+/// the episode) under it, close together, and a "…" menu for the card's actions. Tapping the picture
+/// plays, with no detail page in between; tapping the words opens the detail page. A long press opens
+/// the same actions as the "…".
 struct ContinueCardTile: View {
     let card: ContinueCard
     let onPlay: () -> Void
@@ -27,7 +28,7 @@ struct ContinueCardTile: View {
             // One element for VoiceOver: the title, the episode and how far in.
             .accessibilityLabel(card.accessibilityLabel)
             HStack(alignment: .top, spacing: Space.s2) {
-                Button(action: onPlay) {
+                Button(action: onDetails) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(card.title)
                             .font(.subheadline.weight(.semibold))

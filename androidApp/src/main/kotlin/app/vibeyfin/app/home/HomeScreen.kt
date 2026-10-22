@@ -347,7 +347,7 @@ private fun Content(
                     }
                 }
             }
-            fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onLongPress, onRetryContinue) }
+            fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onDetails, onLongPress, onRetryContinue) }
             // Until the libraries are known two grey rows hold the place, so the rows that replace them don't push
             // My media down from under the user's eyes.
             if (state.loadingLibraries && state.rows.isEmpty()) {
@@ -373,7 +373,14 @@ private fun LazyGridScope.fullWidth(key: String, animate: Boolean = true, conten
 
 /** The row of what the user is in the middle of. Its cards run past the grid's margins to the screen edge. */
 @Composable
-private fun ContinueWatching(row: ContinueRow, margin: Dp, onPlay: (String) -> Unit, onLongPress: (ContinueCardState) -> Unit, onRetry: () -> Unit) {
+private fun ContinueWatching(
+    row: ContinueRow,
+    margin: Dp,
+    onPlay: (String) -> Unit,
+    onDetails: (String) -> Unit,
+    onLongPress: (ContinueCardState) -> Unit,
+    onRetry: () -> Unit,
+) {
     // Nothing to show (it came back empty): no title and no gap, like any other row.
     if (!row.isVisible) return
     Column(Modifier.padding(bottom = VibeyFinTokens.Space.s2), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
@@ -394,7 +401,7 @@ private fun ContinueWatching(row: ContinueRow, margin: Dp, onPlay: (String) -> U
                         contentPadding = PaddingValues(horizontal = margin),
                         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
                     ) {
-                        items(row.cards.distinctBy { it.id }, key = { it.id }) { card -> ContinueCard(card, onClick = { onPlay(card.id) }, onLongClick = { onLongPress(card) }) }
+                        items(row.cards.distinctBy { it.id }, key = { it.id }) { card -> ContinueCard(card, onPlay = { onPlay(card.id) }, onDetails = { onDetails(card.id) }, onLongClick = { onLongPress(card) }) }
                     }
                 }
             }
