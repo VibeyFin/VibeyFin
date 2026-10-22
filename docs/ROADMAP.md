@@ -189,7 +189,7 @@ _Starts after the state audit (see Cross-cutting)._
 - [ ] Ambient background: a static wash from the item's BlurHash behind the hero and the player, under
   the `scrim` (allowed by `brand.md`; the accent is never derived from artwork, and no colour-extraction
   library is added)
-- [ ] Home hero (shared logic built and tested; the screens are next), late in this phase (after the detail pages, so Play and the item's page already exist): one
+- [x] Home hero (Android built and run; iOS written and only parsed): one featured item per session (random among recently added and My List that have a Backdrop and a Logo), a 4:5 crop with the Logo, facts and Play (a movie plays, a show opens its page), tapping the picture opens its page. Late in this phase (after the detail pages, so Play and the item's page already exist): one
   item per app session, picked from recently added items and favorites that have both a `Backdrop` and a `Logo`
   image (the `brand-display` title is the Logo's fallback only for the detail page, not here). Never an
   auto-rotating carousel. It sits under the category buttons and above Continue watching, which stays above the fold
@@ -201,7 +201,7 @@ _Starts after the state audit (see Cross-cutting)._
 Also built in this phase, not on the original list: Home shows a row for every genre with a per-profile setting to limit them
 (`docs/plans/10-home-rows.md`), collections open on their own page with a tablet view, the player uses the whole screen
 including the camera cut-out, and a `perf` build type (`./gradlew :androidApp:installPerf`) for judging smoothness, as the
-debug build is slow. Not started: library browse filters, shared-element transitions, the ambient background, tile trailers.
+debug build is slow. Not started: library browse filters, shared-element transitions, the ambient background, tile trailers and thumbs.
 
 _Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a genre page from Home,
 and see the mini player on iOS 26._

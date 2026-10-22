@@ -37,6 +37,14 @@ struct HomeView: View {
                             // The category buttons scroll with the content and run to the screen edge. Home itself is
                             // never filtered: a button opens a page of its own.
                             CategoryButtonRow(buttons: state.buttons) { model.category($0.kind) }
+                            // The featured item, when there is one: full width, under the buttons and above what is being watched.
+                            if let hero = state.hero {
+                                HomeHeroView(
+                                    item: hero,
+                                    onPlay: { playing = PlayRequest(id: $0) },
+                                    onOpen: onDetails
+                                )
+                            }
                             ContinueRowView(
                                 row: state.continueRow,
                                 onPlay: { playing = PlayRequest(id: $0) },

@@ -225,7 +225,7 @@ fun HomeScreen(
             }
             if (state.serverId != null) {
                 Content(
-                    state, margin, onOpen, onPlay, { menuCard = it }, onRefresh, onRetryContinue, onRetryLibraries, onRetryRow, onSeeAll,
+                    state, margin, onOpen, onPlay, onDetails, { menuCard = it }, onRefresh, onRetryContinue, onRetryLibraries, onRetryRow, onSeeAll,
                     onTap = { onCategory(it.kind) },
                 )
             }
@@ -274,6 +274,7 @@ private fun Content(
     margin: Dp,
     onOpen: (MediaItem) -> Unit,
     onPlay: (String) -> Unit,
+    onDetails: (String) -> Unit,
     onLongPress: (ContinueCardState) -> Unit,
     onRefresh: () -> Unit,
     onRetryContinue: () -> Unit,
@@ -315,6 +316,10 @@ private fun Content(
                     onTap = onTap,
                     modifier = Modifier.bleed(margin),
                 )
+            }
+            // The featured item, when there is one: full width, under the buttons and above what is being watched.
+            state.hero?.let { hero ->
+                fullWidth(key = "hero") { Box(Modifier.bleed(margin)) { HomeHeroSection(hero, margin, onPlay, onDetails) } }
             }
             fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onLongPress, onRetryContinue) }
             // Until the libraries are known two grey rows hold the place, so the rows that replace them don't push

@@ -373,6 +373,7 @@ object Strings {
     val searchPrompt = "Find something to watch"
     val searchPromptHelp = "Type a title, a show or a name."
     val clearSearch = "Clear"
+    fun featured(title: String) = "Featured: $title, opens its page"
     val recentSearches = "Recent searches"
     val clearHistory = "Clear all"
     fun removeFromHistory(term: String) = "Remove $term from recent searches"
