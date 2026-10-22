@@ -42,6 +42,10 @@ google-services.json
 # JVM crash reports
 hs_err_pid*.log
 
+# Release signing
+*.jks
+*.keystore
+
 # Local test server state and generated media
 scripts/test-server/data/
 
