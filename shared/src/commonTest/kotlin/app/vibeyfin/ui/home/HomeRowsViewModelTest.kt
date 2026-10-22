@@ -86,14 +86,14 @@ class HomeRowsViewModelTest {
         uiState.first { it.rows.size == count && it.rows.none { row -> row.loading } }.rows
 
     @Test
-    fun rowsAreRecentlyAddedPerVideoLibraryThenTheThreeBiggestGenres() = runTest {
+    fun rowsAreRecentlyAddedPerVideoLibraryThenEveryGenreBiggestFirst() = runTest {
         server()
 
-        val rows = viewModel().rowsLoaded(5)
+        val rows = viewModel().rowsLoaded(7)
 
-        // Music holds no video, so it has no row; Drama (9), Thriller (7) and Action (6) are the biggest genres.
+        // Music holds no video, so it has no row; every genre has one, Drama (9) first, then by how many titles each holds.
         assertEquals(
-            listOf("Recently added in Movies", "Recently added in Shows", "Drama", "Thriller", "Action"),
+            listOf("Recently added in Movies", "Recently added in Shows", "Drama", "Thriller", "Action", "Comedy", "Science Fiction"),
             rows.map { it.title },
         )
         assertEquals(listOf("New in lib-m"), rows[0].items.map { it.title })
@@ -104,7 +104,7 @@ class HomeRowsViewModelTest {
     fun myListIsTheFirstRowWhenSomethingIsOnIt() = runTest {
         server(myList = Reply.json(itemsJson(itemJson("fav-1", "Heat"), itemJson("fav-2", "Ronin"))))
 
-        val rows = viewModel().rowsLoaded(6)
+        val rows = viewModel().rowsLoaded(8)
 
         assertEquals("My List", rows.first().title)
         assertEquals(listOf("fav-1", "fav-2"), rows.first().items.map { it.id })
@@ -119,7 +119,7 @@ class HomeRowsViewModelTest {
     fun myListIsLeftOutWhileItIsEmpty() = runTest {
         server()
 
-        val rows = viewModel().rowsLoaded(5)
+        val rows = viewModel().rowsLoaded(7)
 
         assertTrue(rows.none { it.id == "my-list" })
     }
@@ -128,7 +128,7 @@ class HomeRowsViewModelTest {
     fun aFavouriteChangedElsewhereUpdatesTheRow() = runTest {
         val server = server()
         val viewModel = viewModel()
-        viewModel.rowsLoaded(5)
+        viewModel.rowsLoaded(7)
 
         server.on("GET", "/Items") { request ->
             if (request.query["filters"] == "IsFavorite") Reply.json(itemsJson(itemJson("fav-1", "Heat"))) else Reply.json(itemsJson(itemJson("x", "X")))
@@ -143,7 +143,7 @@ class HomeRowsViewModelTest {
     fun aRowsSeeAllOpensItsLibraryOrItsGenre() = runTest {
         server()
 
-        val rows = viewModel().rowsLoaded(5)
+        val rows = viewModel().rowsLoaded(7)
 
         val library = assertIs<SeeAll.Library>(rows[0].seeAll)
         assertEquals("lib-m", library.library.id)
@@ -155,7 +155,7 @@ class HomeRowsViewModelTest {
     fun latestAsksForTwentyOfTheLibraryAndAGenreRowForTwentyByRating() = runTest {
         val server = server()
 
-        viewModel().rowsLoaded(5)
+        viewModel().rowsLoaded(7)
 
         val latest = app.jellyfin.requestsTo("GET", "/Items/Latest").map { it.query }
         // The libraries are asked at the same time, so in no fixed order.
@@ -171,16 +171,16 @@ class HomeRowsViewModelTest {
     fun aRowThatComesBackEmptyIsNotShown() = runTest {
         server(latest = { library -> if (library == "lib-s") Reply.json("[]") else Reply.json("[${itemJson("n", "New")}]") })
 
-        val rows = viewModel().rowsLoaded(4)
+        val rows = viewModel().rowsLoaded(6)
 
-        assertEquals(listOf("Recently added in Movies", "Drama", "Thriller", "Action"), rows.map { it.title })
+        assertEquals(listOf("Recently added in Movies", "Drama", "Thriller", "Action", "Comedy", "Science Fiction"), rows.map { it.title })
     }
 
     @Test
     fun aRowThatFailsShowsWhyWhileTheOthersLoad() = runTest {
         server(latest = { library -> if (library == "lib-m") Reply.status(HttpStatusCode.ServiceUnavailable) else Reply.json("[${itemJson("n", "New")}]") })
 
-        val rows = viewModel().rowsLoaded(5)
+        val rows = viewModel().rowsLoaded(7)
 
         val failed = rows.first { it.title == "Recently added in Movies" }
         assertNotNull(failed.message)
@@ -192,7 +192,7 @@ class HomeRowsViewModelTest {
     fun tryAgainReloadsOnlyThatRow() = runTest {
         val server = server(latest = { library -> if (library == "lib-m") Reply.status(HttpStatusCode.ServiceUnavailable) else Reply.json("[${itemJson("n", "New")}]") })
         val viewModel = viewModel()
-        viewModel.rowsLoaded(5)
+        viewModel.rowsLoaded(7)
         val latestBefore = app.jellyfin.requestsTo("GET", "/Items/Latest").size
 
         server.on("GET", "/Items/Latest", Reply.json("[${itemJson("fixed", "Fixed")}]"))
@@ -226,22 +226,21 @@ class HomeRowsViewModelTest {
     }
 
     @Test
-    fun eightVideoLibrariesGetSixRowsAndNoMoreThanTenRowsInAll() = runTest {
+    fun eightVideoLibrariesGetSixRowsAndEveryGenreStillHasOneWithNoCap() = runTest {
         val many = (1..8).map { itemJson("lib-$it", "Library $it", type = "CollectionFolder", isFolder = true, collectionType = "movies") }
         server(libs = many)
 
-        val rows = viewModel().rowsLoaded(9)
+        val rows = viewModel().rowsLoaded(11)
 
         assertEquals(6, rows.count { it.id.startsWith("latest:") })
-        assertEquals(3, rows.count { it.id.startsWith("genre:") })
-        assertTrue(rows.size <= 10)
+        assertEquals(5, rows.count { it.id.startsWith("genre:") })
     }
 
     @Test
     fun aMixedLibraryWithNoTypeGetsARowToo() = runTest {
         server(libs = listOf(itemJson("lib-mix", "Everything", type = "CollectionFolder", isFolder = true)))
 
-        val rows = viewModel().rowsLoaded(4)
+        val rows = viewModel().rowsLoaded(6)
 
         assertEquals("Recently added in Everything", rows.first().title)
     }
@@ -260,7 +259,7 @@ class HomeRowsViewModelTest {
     fun aRefreshKeepsTheRowsOnScreenAndAFailingRefreshKeepsTheirItems() = runTest {
         val server = server()
         val viewModel = viewModel()
-        viewModel.rowsLoaded(5)
+        viewModel.rowsLoaded(7)
 
         server.on("GET", "/Items/Latest", Reply.status(HttpStatusCode.ServiceUnavailable))
         viewModel.onRefresh()
@@ -323,7 +322,7 @@ class HomeRowsViewModelTest {
         server()
         val viewModel = viewModel()
 
-        val done = viewModel.uiState.first { it.rows.size == 5 && it.rows.none { row -> row.loading } && !it.loadingMyMedia }
+        val done = viewModel.uiState.first { it.rows.size == 7 && it.rows.none { row -> row.loading } && !it.loadingMyMedia }
 
         assertFalse(done.loadingMyMedia)
         assertEquals(3, done.libraries.size)

@@ -9,7 +9,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 - **Must** show Continue watching above the fold on a 6.1" phone, even with the hero present.
 - **Must** hide empty rows. Never show a row that says "No items" on Home.
 - Each row holds at most 20 items, then a "See all" action in its header.
-- At most 12 rows on Home. More belongs in Library.
+- Home has no cap on rows: every genre the server lists gets one (biggest first), so a long Home is by design. Rows load a few at a time and show from top to bottom.
 - Hero: one item per app session (recently added or a favorite) that has both a Backdrop and a Logo image. **Never** an auto-rotating carousel.
 - Pull to refresh reloads Continue watching first.
 

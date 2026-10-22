@@ -149,8 +149,8 @@ _Starts after the state audit (see Cross-cutting)._
   Downloads open an empty page that says "Not available yet" (text in `Strings`) until their features land.
   The Search tab joins with unified search below. Nothing else is built in this item
 - [x] Home rows: Latest, genres, My Media, plus Continue Watching (which holds Next Up). Recently added in each video
-  library (`GET /Items/Latest`, 20 posters), the three biggest genres, then My media as 16:9 tiles; each row loads and
-  fails on its own, an empty row is not shown, a header has "See all", at most 12 rows. Android run on the emulator, iOS
+  library (`GET /Items/Latest`, 20 posters), every genre (biggest first), then My media as 16:9 tiles; each row loads and
+  fails on its own, an empty row is not shown, a header has "See all", and there is no cap on rows. Android run on the emulator, iOS
   only parsed. Plan 10
 - [ ] Home category buttons under the header, Netflix-style, as one horizontally scrolling row in this
   fixed order (configurable in Phase 7): **Shows**, **Movies**, **New**, **Categories**. Home itself is never

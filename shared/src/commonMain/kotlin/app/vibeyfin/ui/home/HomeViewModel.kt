@@ -28,6 +28,8 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -65,7 +67,7 @@ data class HomeUiState(
     val openList: HomeFilter? = null,
     /**
      * The rows between Continue watching and My media, in order: Recently added in each video library, then a few
-     * genres. Only rows worth showing (loading, failed or with items) are here, and at most [MAX_ROWS] in all.
+     * genres, every one the server lists. Only rows worth showing (loading, failed or with items) are here.
      */
     val rows: List<MediaRow> = emptyList(),
     /** My media waits for everything above it, so it comes in last: its grey tiles show until then. */
@@ -78,12 +80,11 @@ private data class CategoryUi(
     val openList: HomeFilter? = null,
 )
 
-/** Home holds at most 12 rows (`guardrails.md`); Continue watching and My media are two of them. */
-private const val MAX_ROWS = 10
-
-/** How many libraries get a "Recently added" row, and how many genres a row, before [MAX_ROWS] cuts. */
+/** How many libraries get a "Recently added" row. Every genre gets a row: there is no cap on Home. */
 private const val MAX_LATEST_ROWS = 6
-private const val MAX_GENRE_ROWS = 3
+
+/** How many genre rows load from the server at the same time; the rest wait their turn, top to bottom. */
+private const val GENRE_ROWS_AT_ONCE = 4
 
 /** The id of the My List row, the first of Home's rows. */
 private const val MY_LIST_ID = "my-list"
@@ -125,7 +126,7 @@ class HomeViewModel(
     private val continueAnswered = MutableStateFlow(false)
     private val rows = combine(myListRow, latestRows, genreRows, continueAnswered) { myList, latest, genres, answered ->
         // Shown from top to bottom: each waits for the rows above it, Continue watching first.
-        revealInOrder(listOfNotNull(myList) + latest + genres, aboveLoading = !answered).filter { it.isVisible }.take(MAX_ROWS)
+        revealInOrder(listOfNotNull(myList) + latest + genres, aboveLoading = !answered).filter { it.isVisible }
     }
 
     private val categoryUi = MutableStateFlow(CategoryUi())
@@ -368,13 +369,12 @@ class HomeViewModel(
         }
     }
 
-    /** The genres with the most titles, a row each; they are optional, so a failure to list them shows nothing. */
+    /** Every genre, biggest first, a row each; they are optional, so a failure to list them shows nothing. */
     private suspend fun loadGenreRows(quiet: Boolean) {
         val listed = library.genres()
         if (listed is ApiResult.Success) genreOptions = listed.value
         val top = (listed as? ApiResult.Success)?.value.orEmpty()
             .sortedWith(compareByDescending<FilterOption> { it.count ?: 0 }.thenBy { it.name.lowercase() })
-            .take(MAX_GENRE_ROWS)
         if (listed is ApiResult.Failure && quiet) return
         val filters = top.map { HomeFilter.Genre(it.id, it.name) }
         genreRows.update { old ->
@@ -383,7 +383,9 @@ class HomeViewModel(
                     ?: MediaRow(genreId(filter), filter.name, seeAll = SeeAll.Genre(filter))
             }
         }
-        coroutineScope { filters.forEach { filter -> launch { loadGenreRow(filter, quiet) } } }
+        // Every genre has a row, so only a few ask the server at a time, in the order they are shown.
+        val turns = Semaphore(GENRE_ROWS_AT_ONCE)
+        coroutineScope { filters.forEach { filter -> launch { turns.withPermit { loadGenreRow(filter, quiet) } } } }
     }
 
     private suspend fun loadGenreRow(filter: HomeFilter.Genre, quiet: Boolean) {

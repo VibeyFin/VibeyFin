@@ -28,14 +28,14 @@ rows", `screens.md` "Home".
    server's `groupItems`). One row per library that holds videos: collection type movies, tvshows, homevideos,
    musicvideos, boxsets, or none (mixed). Music, books, photos, playlists and live TV are left out. Titled "Recently
    added in {library}".
-3. **Genre rows** *(my call)*: the three genres with the most titles (movies and shows together, from
+3. **Genre rows** *(changed after review: every genre, see 6)*: the three genres with the most titles (movies and shows together, from
    `GET /Genres` counts, the list the Categories sheet already loads), each `GET /Items?genreIds=` by community rating,
    best first, 20 items. Until Phase 7 lets the user choose rows this is the default.
 4. **My media** is the libraries as 16:9 tiles in one row at the end, titled "My media" (was "Libraries" in a grid).
    Every library, not only video ones.
 5. **"See all"** in a header: Recently added opens that library's list (the folder list that already exists); a genre
    row opens that genre's category page. Continue watching and My media have none.
-6. **Cap:** at most 12 rows on Home (`guardrails.md`), counting Continue watching and My media; genre rows give way first,
+6. **Cap** *(removed at the owner's request: every genre gets a row, four load from the server at a time)*: at most 12 rows on Home (`guardrails.md`), counting Continue watching and My media; genre rows give way first,
    then the oldest libraries' Recently added.
 7. **States:** a row loads on its own; a skeleton of posters while loading, its own message with Try again when it
    fails (the other rows are untouched), and nothing at all when it came back empty. A library or genre that is empty
