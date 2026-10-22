@@ -142,17 +142,17 @@ _Exit: skip-intro and scrub previews working end to end._
 ### Phase 4 — Browse & discovery
 _Starts after the state audit (see Cross-cutting)._
 
-- [ ] Main navigation bar, the bar only: Home, Library and Downloads, as drawn in the design's detail screens
+- [x] Main navigation bar (Android built and run; iOS written and only parsed; plan 09). Home, Search, Library and Downloads, as drawn in the design's detail screens
   and `BottomNav` (iOS `TabView`, the floating Liquid Glass bar on iOS 26+; Android M3 `NavigationBar`; at
   tablet widths the same destinations sit at the top, `docs/design/screens.md` "Chrome"). Each tab keeps its
   own back stack and Settings stays under the profile avatar. Home is the Home that exists today. Library and
   Downloads open an empty page that says "Not available yet" (text in `Strings`) until their features land.
-  The Search tab joins with unified search below. Nothing else is built in this item
+  The Search tab is second, with unified search below. The iOS mini player is still not mounted
 - [x] Home rows: Latest, genres, My Media, plus Continue Watching (which holds Next Up). Recently added in each video
   library (`GET /Items/Latest`, 20 posters), every genre (biggest first), then My media as 16:9 tiles; each row loads and
   fails on its own, an empty row is not shown, a header has "See all", and there is no cap on rows. Android run on the emulator, iOS
   only parsed. Plan 10
-- [ ] Home category buttons under the header, Netflix-style, as one horizontally scrolling row in this
+- [x] Home category buttons (Android built and run; iOS parsed; plans 09 and 13) under the header, Netflix-style, as one horizontally scrolling row in this
   fixed order (configurable in Phase 7): **Shows**, **Movies**, **New**, **Categories**. Home itself is never
   filtered; every button opens a page of its own, titled with its name:
   - **Shows**, **Movies** and **New** open that page at once. New is what was added to the server most recently,
@@ -162,24 +162,25 @@ _Starts after the state audit (see Cross-cutting)._
   - a page is a grid of posters like a folder's list, paged, with the five states; Home's Continue watching and
     libraries are untouched. A page has Sort (name, recently added, rating) and Genre buttons that open the
     player's picker sheet, and keeps its place when you come back from an item. The Categories sheet shows how many
-    titles each genre holds
-- [x] Detail page (Android built, iOS next): metadata, cast, `/Items/{id}/Similar`; plan 11. On tablets and unfolded foldables a 16:9 backdrop with the details in a left column. The page opens on a full-width cinematic
+    titles each genre holds. *Built since:* the buttons are filled, with no outline; New and My List pages also have Movies and
+    Shows buttons that narrow the list and the genre counts; My List counts its genres from the list, not the library
+- [x] Detail page (Android built and run; iOS written and only parsed): metadata, cast, `/Items/{id}/Similar`, collections, extras; plan 11. Under Play four equal actions: My List (heart), Trailer, Watched (tick) and Download (does nothing yet). The phone's picture is pinned and darkens as the page scrolls over it. On tablets and unfolded foldables a 16:9 backdrop with the details in a left column. The page opens on a full-width cinematic
   backdrop hero (`Backdrop` image) with a dark gradient overlay (the `scrim` token), and the movie
   details and action buttons are layered over the image: the `Logo` image as the title (the
   `brand-display` title when there is none), the facts line (year, rating, runtime, genres), the
   overview, then the actions, with Play / Resume as the one aqua primary button. Cast and similar
   items scroll below the hero. The bar over the hero is transparent (Android) or an inline title
   over the backdrop (iOS); text over the image always sits on the scrim
-- [x] Series detail page (Android built, iOS next): the same hero, then a row of season buttons (about four visible at a time,
+- [x] Series detail page (Android built and run; iOS parsed): the same hero, then episode cards with all their text on the still (tag, title, synopsis, length, rating, air date; long press: View episode, watched mark), mark the whole series watched, Play holds its place while loading, a season slides in from the side it is on, and the row opens at the current episode. Before: a row of season buttons (about four visible at a time,
   scrolling sideways when there are more), similar to the Nuvio player. The selected season is
   marked and its episodes list below (`GET /Shows/{id}/Seasons`, `GET /Shows/{id}/Episodes?seasonId=`);
   picking another button swaps the list in place. The row opens on the season of the episode Play /
   Resume will start, and Play / Resume on the hero starts that episode
-- [x] Unified search (Android built, iOS parsed; plan 13): `/Search/Hints` on one screen, with results grouped into Movies, Shows, Episodes,
-  People and Collections; a person opens their page. Seerr adds a "not in your library" section in Phase 8
+- [x] Unified search (Android built and run, iOS parsed; plan 13): `/Search/Hints` on one screen, with filter buttons (All, Movies, Shows, Episodes, People, Collections), results grouped into Movies, Shows, Episodes,
+  People and Collections, and a per-profile history kept on the device; a person opens their page. Seerr adds a "not in your library" section in Phase 8
 - [x] Person page (Android built, iOS parsed; plan 12): the biography (`Overview`, when the server's metadata providers supply one) and what
   they appear in within the library (`GET /Items?PersonIds=`); cast on the detail page opens it
-- [x] Special features (behind the scenes, extras; plan 12) on the detail page (`GET /Items/{id}/SpecialFeatures`)
+- [x] Special features (behind the scenes, extras; plan 12; Android built, iOS parsed) on the detail page (`GET /Items/{id}/SpecialFeatures`)
 - [ ] Library browse filters: genre, year and actor (`GET /Items` with `Genres`, `Years`, `PersonIds`) and
   a sort order
 - [ ] Shared-element transition from a poster to the detail hero, using each platform's own mechanism:
@@ -188,14 +189,19 @@ _Starts after the state audit (see Cross-cutting)._
 - [ ] Ambient background: a static wash from the item's BlurHash behind the hero and the player, under
   the `scrim` (allowed by `brand.md`; the accent is never derived from artwork, and no colour-extraction
   library is added)
-- [ ] Home hero, late in this phase (after the detail pages, so Play and the item's page already exist): one
+- [ ] Home hero (shared logic built and tested; the screens are next), late in this phase (after the detail pages, so Play and the item's page already exist): one
   item per app session, picked from recently added items and favorites that have both a `Backdrop` and a `Logo`
   image (the `brand-display` title is the Logo's fallback only for the detail page, not here). Never an
   auto-rotating carousel. It sits under the category buttons and above Continue watching, which stays above the fold
   on a 6.1" phone; the image is a 4:5 crop on phones (`brand.md`). Play is the one aqua button; tapping the image
   opens the item's page. Optional by design, so Home looks right without it (no item qualifies, or a failure)
-- [x] My List (Favorites; Home row + "See all" page, the detail page's heart, Android built and iOS parsed), thumbs (`UserData.likes`) still open
+- [x] My List (Favorites): Home row, "See all" page, the detail page's heart, Android built and iOS parsed. Thumbs (`UserData.likes`) are still open
 - [ ] Tile trailers (`LocalTrailers` / `RemoteTrailers`, content-dependent)
+
+Also built in this phase, not on the original list: Home shows a row for every genre with a per-profile setting to limit them
+(`docs/plans/10-home-rows.md`), collections open on their own page with a tablet view, the player uses the whole screen
+including the camera cut-out, and a `perf` build type (`./gradlew :androidApp:installPerf`) for judging smoothness, as the
+debug build is slow. Not started: library browse filters, shared-element transitions, the ambient background, tile trailers.
 
 _Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a genre page from Home,
 and see the mini player on iOS 26._

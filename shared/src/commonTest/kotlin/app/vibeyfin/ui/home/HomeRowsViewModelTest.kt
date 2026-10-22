@@ -174,6 +174,30 @@ class HomeRowsViewModelTest {
     }
 
     @Test
+    fun homeFeaturesOneRecentlyAddedItemThatHasABackdropAndALogo() = runTest {
+        server(
+            genreItems = { genre ->
+                // The "New" request has no genre; the genre rows carry plain items.
+                if (genre == null) Reply.json(itemsJson(itemJson("plain", "Plain"), itemJson("star", "Star", backdropTag = "b", logoTag = "l"))) else Reply.json(itemsJson(itemJson("top-$genre", "Top $genre")))
+            },
+        )
+
+        val hero = viewModel().uiState.first { it.hero != null }.hero
+
+        assertEquals("star", hero?.id)
+    }
+
+    @Test
+    fun withNothingToFeatureHomeHasNoHero() = runTest {
+        server()
+        val viewModel = viewModel()
+
+        viewModel.rowsLoaded(7)
+
+        assertNull(viewModel.uiState.value.hero)
+    }
+
+    @Test
     fun aRowsSeeAllOpensItsLibraryOrItsGenre() = runTest {
         server()
 

@@ -28,6 +28,8 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlin.random.Random
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.drop
 import app.vibeyfin.domain.ProfileSettings
@@ -75,6 +77,8 @@ data class HomeUiState(
     val rows: List<MediaRow> = emptyList(),
     /** My media waits for everything above it, so it comes in last: its grey tiles show until then. */
     val loadingMyMedia: Boolean = false,
+    /** The featured item above Continue watching; null until it is picked, and when nothing qualifies. */
+    val hero: MediaItem? = null,
 )
 
 /** The sheet and the page to open, which change together. */
@@ -85,6 +89,9 @@ private data class CategoryUi(
 
 /** How many libraries get a "Recently added" row. Every genre gets a row: there is no cap on Home. */
 private const val MAX_LATEST_ROWS = 6
+
+/** How many recently added titles, and how many favourites, the hero is picked from. */
+private const val HERO_CANDIDATES = 40
 
 /** How many genre rows load from the server at the same time; the rest wait their turn, top to bottom. */
 private const val GENRE_ROWS_AT_ONCE = 4
@@ -125,6 +132,8 @@ class HomeViewModel(
     private val genreRows = MutableStateFlow<List<MediaRow>>(emptyList())
     // The first row under Continue watching; hidden while the user has nothing on My List.
     private val myListRow = MutableStateFlow<MediaRow?>(null)
+    // Picked once per session (a new profile or address picks again).
+    private val hero = MutableStateFlow<MediaItem?>(null)
     // False from a new session until Continue watching has answered once; the rows below wait for it (a later retry of it
     // does not hide them again).
     private val continueAnswered = MutableStateFlow(false)
@@ -160,8 +169,9 @@ class HomeViewModel(
         }
     }
 
-    val uiState: StateFlow<HomeUiState> = combine(screen, actionMessage, categoryUi, rows) { screen, message, categories, rows ->
+    val uiState: StateFlow<HomeUiState> = combine(screen, actionMessage, categoryUi, rows, hero) { screen, message, categories, rows, hero ->
         screen.copy(
+            hero = hero,
             actionMessage = message,
             sheet = categories.sheet,
             openList = categories.openList,
@@ -185,6 +195,7 @@ class HomeViewModel(
                     latestRows.value = emptyList()
                     genreRows.value = emptyList()
                     myListRow.value = MediaRow(MY_LIST_ID, Strings.myList, seeAll = SeeAll.MyList)
+                    hero.value = null
                     continueAnswered.value = false
                     coroutineScope {
                         launch {
@@ -194,6 +205,7 @@ class HomeViewModel(
                         launch { loadContinue(first = true) }
                         launch { loadGenreRows(quiet = false) }
                         launch { loadMyList(quiet = false) }
+                        launch { loadHero() }
                     }
                 }
         }
@@ -415,6 +427,17 @@ class HomeViewModel(
                 is ApiResult.Failure -> failed(row, result.error, quiet)
             }
         }
+    }
+
+    /** Picks the featured item from what was added lately and from My List. A failure shows no hero: it is optional. */
+    private suspend fun loadHero() {
+        val (added, favourites) = coroutineScope {
+            val added = async { library.filteredPage(HomeFilter.New, PageSort.Added, limit = HERO_CANDIDATES) }
+            val favourites = async { library.filteredPage(HomeFilter.MyList, PageSort.Added, limit = HERO_CANDIDATES) }
+            added.await() to favourites.await()
+        }
+        val candidates = listOf(added, favourites).flatMap { (it as? ApiResult.Success)?.value?.items.orEmpty() }
+        hero.value = pickHero(candidates, Random.Default)
     }
 
     /** What is on My List, newest additions first; the row is hidden while it is empty. */
