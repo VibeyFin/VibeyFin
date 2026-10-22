@@ -185,7 +185,8 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
         seriesName = seriesName,
         seasonNumber = parentIndexNumber,
         episodeNumber = indexNumber,
-        posterAspectRatio = primaryImageAspectRatio?.toFloat()?.takeIf { it > 0f }
+        // A collection is always a tall poster, whatever shape its picture is (it is cropped to fit).
+        posterAspectRatio = if (type == "BoxSet") TALL else primaryImageAspectRatio?.toFloat()?.takeIf { it > 0f }
             ?: if (kind == ItemKind.Movie || kind == ItemKind.Series || kind == ItemKind.Season) TALL else WIDE,
         posterUrl = posterTag?.let { itemImageUrl(baseUrl, id, "Primary", it, POSTER_WIDTH) },
         backdropUrl = backdropTag?.let { itemImageUrl(baseUrl, id, "Backdrop", it, BACKDROP_WIDTH) },

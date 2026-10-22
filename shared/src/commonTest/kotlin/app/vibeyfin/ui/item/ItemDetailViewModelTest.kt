@@ -297,6 +297,15 @@ class ItemDetailViewModelTest {
         return server
     }
 
+    /** The request leaves on the engine's own thread, so give it a moment to arrive. */
+    private suspend fun awaitRequests(method: String, path: String) {
+        kotlinx.coroutines.withContext(Dispatchers.Default) {
+            kotlinx.coroutines.withTimeout(5_000) {
+                while (app.jellyfin.requestsTo(method, path).isEmpty()) kotlinx.coroutines.delay(10)
+            }
+        }
+    }
+
     @Test
     fun myListIsShownAtOnceAndKeptWhenTheServerSavesIt() = runTest {
         val server = movieServer(itemJson("m1", "Heat", favorite = false))
@@ -307,6 +316,7 @@ class ItemDetailViewModelTest {
         viewModel.onToggleFavorite()
 
         assertTrue(viewModel.uiState.value.isFavorite)
+        awaitRequests("POST", "/UserFavoriteItems/m1")
         assertEquals("u1", app.jellyfin.requestsTo("POST", "/UserFavoriteItems/m1").single().query["userId"])
     }
 
@@ -320,6 +330,7 @@ class ItemDetailViewModelTest {
         viewModel.onToggleFavorite()
 
         assertFalse(viewModel.uiState.value.isFavorite)
+        awaitRequests("DELETE", "/UserFavoriteItems/m1")
         assertEquals(1, app.jellyfin.requestsTo("DELETE", "/UserFavoriteItems/m1").size)
     }
 
