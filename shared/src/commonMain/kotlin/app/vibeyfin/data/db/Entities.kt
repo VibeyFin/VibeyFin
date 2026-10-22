@@ -87,6 +87,9 @@ class AccountSettingsEntity(
     /** How many genre rows Home shows: 0 is every genre, -1 none, otherwise the biggest this many. */
     @ColumnInfo(defaultValue = "0")
     val homeGenreRows: Int = 0,
+    /** Whether Home features one item above Continue watching. */
+    @ColumnInfo(defaultValue = "1")
+    val showHomeHero: Boolean = true,
 )
 
 /** [PendingReportEntity.kind] of a play session whose `Stopped` the server may not have heard yet. */

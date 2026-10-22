@@ -26,6 +26,15 @@ class ProfileSettings(
     /** How many genre rows Home shows: [HOME_GENRES_ALL], [HOME_GENRES_NONE], or the biggest this many. Null when nobody is signed in. */
     val homeGenreRows: Flow<Int?> = forAccount { dao, a -> dao.observeHomeGenreRows(a.serverId, a.userId).map { it ?: HOME_GENRES_ALL } }
 
+    /** Whether Home features one item above Continue watching. On by default. Null when nobody is signed in. */
+    val showHomeHero: Flow<Boolean?> = forAccount { dao, a -> dao.observeShowHomeHero(a.serverId, a.userId).map { it ?: true } }
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setShowHomeHero(value: Boolean) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setShowHomeHero(account.serverId, account.userId, value)
+    }
+
     /** Does nothing when nobody is signed in. */
     suspend fun setShowPlaybackStats(value: Boolean) {
         val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return

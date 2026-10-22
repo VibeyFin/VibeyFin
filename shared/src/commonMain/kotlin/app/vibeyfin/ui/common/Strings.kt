@@ -453,6 +453,8 @@ object Strings {
     val playbackStatsTitle = "Show playback stats"
     val playbackStatsHelp =
         "Show codec, bitrate and how the server is delivering the video in the player. Applies to this profile."
+    val homeHeroTitle = "Featured title on Home"
+    val homeHeroHelp = "Show one title from your library big at the top of Home. Applies to this profile."
     val homeGenreRowsTitle = "Genre rows on Home"
     val homeGenreRowsHelp = "How many genres get a row on Home, the biggest first."
     val homeGenreRowsAll = "All genres"

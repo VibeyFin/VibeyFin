@@ -27,6 +27,10 @@ final class SettingsObservable: ObservableObject {
     }
 
     /// 0 is off, otherwise 2 to 5 episodes in a row.
+    func setShowHomeHero(_ value: Bool) {
+        model.onShowHomeHeroChanged(value: value)
+    }
+
     func setHomeGenreRows(_ value: Int32) {
         model.onHomeGenreRowsChanged(value: value)
     }

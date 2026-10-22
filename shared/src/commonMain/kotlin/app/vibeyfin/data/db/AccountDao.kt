@@ -43,6 +43,12 @@ abstract class AccountDao {
     @Query("UPDATE account_settings SET homeGenreRows = :value WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun setHomeGenreRows(serverId: String, userId: String, value: Int)
 
+    @Query("SELECT showHomeHero FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeShowHomeHero(serverId: String, userId: String): Flow<Boolean?>
+
+    @Query("UPDATE account_settings SET showHomeHero = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setShowHomeHero(serverId: String, userId: String, value: Boolean)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract suspend fun insertAccount(account: AccountEntity): Long
 

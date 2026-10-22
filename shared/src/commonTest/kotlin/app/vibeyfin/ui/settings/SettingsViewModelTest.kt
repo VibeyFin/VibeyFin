@@ -142,6 +142,18 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `the home hero is on until the profile turns it off`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        assertTrue(viewModel.uiState.first { it.hasProfile }.showHomeHero)
+
+        viewModel.onShowHomeHeroChanged(false)
+        assertFalse(viewModel.uiState.first { !it.showHomeHero }.showHomeHero)
+        viewModel.onShowHomeHeroChanged(true)
+        assertTrue(viewModel.uiState.first { it.showHomeHero }.showHomeHero)
+    }
+
+    @Test
     fun theStatsToggleIsSavedForTheProfile() = runTest {
         app.signedIn()
         val viewModel = viewModel()

@@ -205,7 +205,7 @@ class HomeViewModel(
                         launch { loadContinue(first = true) }
                         launch { loadGenreRows(quiet = false) }
                         launch { loadMyList(quiet = false) }
-                        launch { loadHero() }
+                        launch { if (profileSettings.showHomeHero.first() != false) loadHero() }
                     }
                 }
         }
@@ -213,6 +213,12 @@ class HomeViewModel(
         viewModelScope.launch {
             profileSettings.homeGenreRows.filterNotNull().distinctUntilChanged().drop(1).collect {
                 if (connection.state.value is ConnectionState.Connected) loadGenreRows(quiet = true)
+            }
+        }
+        // The hero was switched on or off in Settings: it appears (picked then) or goes.
+        viewModelScope.launch {
+            profileSettings.showHomeHero.filterNotNull().distinctUntilChanged().drop(1).collect { on ->
+                if (!on) hero.value = null else if (connection.state.value is ConnectionState.Connected) loadHero()
             }
         }
         // What was watched changed (a play session ended, something was marked): bring the row up to date.

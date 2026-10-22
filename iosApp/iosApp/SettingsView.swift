@@ -35,6 +35,17 @@ struct SettingsView: View {
                     }
                     .tint(Color(.label))
                     bingeThresholdRow
+                    Toggle(isOn: showHomeHero) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(Strings.shared.homeHeroTitle)
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                            Text(Strings.shared.homeHeroHelp)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .tint(Color(.label))
                     homeGenreRowsRow
                 }
                 Spacer()
@@ -100,6 +111,13 @@ struct SettingsView: View {
         case -1: return Strings.shared.homeGenreRowsNone
         default: return Strings.shared.homeGenreRowsTop(n: value)
         }
+    }
+
+    private var showHomeHero: Binding<Bool> {
+        Binding(
+            get: { model.state?.showHomeHero ?? true },
+            set: { model.setShowHomeHero($0) }
+        )
     }
 
     private var homeGenreRows: Binding<Int32> {

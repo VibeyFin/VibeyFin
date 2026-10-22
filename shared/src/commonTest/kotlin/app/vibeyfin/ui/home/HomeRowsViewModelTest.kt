@@ -187,6 +187,38 @@ class HomeRowsViewModelTest {
         assertEquals("star", hero?.id)
     }
 
+    private suspend fun heroServer() = server(
+        genreItems = { genre ->
+            if (genre == null) Reply.json(itemsJson(itemJson("star", "Star", backdropTag = "b", logoTag = "l"))) else Reply.json(itemsJson(itemJson("top-$genre", "Top $genre")))
+        },
+    )
+
+    @Test
+    fun aProfileWithTheHeroTurnedOffGetsNoneAndAsksForNoCandidates() = runTest {
+        heroServer()
+        app.profileSettings.setShowHomeHero(false)
+        val viewModel = viewModel()
+
+        viewModel.rowsLoaded(7)
+
+        assertNull(viewModel.uiState.value.hero)
+        // Only the genre rows and My List asked for /Items: nobody asked for the hero's recently added candidates.
+        assertTrue(app.jellyfin.requestsTo("GET", "/Items").none { it.query["sortBy"] == "DateCreated" && it.query["filters"] == null })
+    }
+
+    @Test
+    fun turningTheHeroOnOrOffWhileHomeIsOpenShowsOrRemovesIt() = runTest {
+        heroServer()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hero != null }
+
+        app.profileSettings.setShowHomeHero(false)
+        assertNull(viewModel.uiState.first { it.hero == null }.hero)
+
+        app.profileSettings.setShowHomeHero(true)
+        assertEquals("star", viewModel.uiState.first { it.hero != null }.hero?.id)
+    }
+
     @Test
     fun withNothingToFeatureHomeHasNoHero() = runTest {
         server()

@@ -47,7 +47,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SettingsRoute(onBack: () -> Unit, viewModel: SettingsViewModel = koinViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    SettingsScreen(state, onBack, viewModel::onAlwaysAskChanged, viewModel::onShowPlaybackStatsChanged, viewModel::onBingeThresholdChanged, viewModel::onHomeGenreRowsChanged)
+    SettingsScreen(state, onBack, viewModel::onAlwaysAskChanged, viewModel::onShowPlaybackStatsChanged, viewModel::onBingeThresholdChanged, viewModel::onHomeGenreRowsChanged, viewModel::onShowHomeHeroChanged)
 }
 
 @Composable
@@ -58,6 +58,7 @@ fun SettingsScreen(
     onShowPlaybackStatsChanged: (Boolean) -> Unit,
     onBingeThresholdChanged: (Int) -> Unit = {},
     onHomeGenreRowsChanged: (Int) -> Unit = {},
+    onShowHomeHeroChanged: (Boolean) -> Unit = {},
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
@@ -97,6 +98,13 @@ fun SettingsScreen(
                         choices = THRESHOLD_CHOICES,
                         label = ::thresholdLabel,
                         onChange = onBingeThresholdChanged,
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    SwitchRow(
+                        title = Strings.homeHeroTitle,
+                        help = Strings.homeHeroHelp,
+                        checked = state.showHomeHero,
+                        onCheckedChange = onShowHomeHeroChanged,
                     )
                     Spacer(Modifier.height(24.dp))
                     ChoiceRow(
