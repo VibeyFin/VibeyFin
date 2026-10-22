@@ -12,7 +12,9 @@ import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.PageSort
 import app.vibeyfin.domain.WatchChanges
 import app.vibeyfin.domain.WatchRepository
+import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
+import app.vibeyfin.ui.item.seasonIndex
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.Job
@@ -79,13 +81,23 @@ data class HomeUiState(
     val loadingMyMedia: Boolean = false,
     /** The featured item above Continue watching; null until it is picked, and when nothing qualifies. */
     val hero: MediaItem? = null,
+    /** Set when the hero's Play was tapped and the target is known; the screen opens it and calls `onHeroNavHandled`. */
+    val heroNav: HeroNav? = null,
 )
 
 /** The sheet and the page to open, which change together. */
 private data class CategoryUi(
     val sheet: FilterSheet? = null,
     val openList: HomeFilter? = null,
+    val heroNav: HeroNav? = null,
 )
+
+/** Where the hero's Play goes: the player on an item, or (when no episode could be found) the item's page. */
+sealed interface HeroNav {
+    data class Play(val itemId: String) : HeroNav
+
+    data class Details(val itemId: String) : HeroNav
+}
 
 /** How many libraries get a "Recently added" row. Every genre gets a row: there is no cap on Home. */
 private const val MAX_LATEST_ROWS = 6
@@ -175,6 +187,7 @@ class HomeViewModel(
             actionMessage = message,
             sheet = categories.sheet,
             openList = categories.openList,
+            heroNav = categories.heroNav,
             rows = rows,
             loadingMyMedia = screen.loadingLibraries || screen.continueRow.loading && screen.continueRow.cards.isEmpty() || rows.any { it.loading },
         )
@@ -434,6 +447,32 @@ class HomeViewModel(
             }
         }
     }
+
+    /**
+     * Play on the hero. A movie plays at once. A show plays the episode it is up to (the next up, a half-watched one included), or
+     * its first episode when it was never started or is finished; if that cannot be found the show's page opens instead.
+     */
+    fun onHeroPlay() {
+        val item = hero.value ?: return
+        if (item.kind != ItemKind.Series) {
+            categoryUi.update { it.copy(heroNav = HeroNav.Play(item.id)) }
+            return
+        }
+        viewModelScope.launch {
+            val episode = (watch.nextUpOf(item.id) as? ApiResult.Success)?.value?.id ?: firstEpisodeOf(item.id)
+            categoryUi.update { it.copy(heroNav = if (episode != null) HeroNav.Play(episode) else HeroNav.Details(item.id)) }
+        }
+    }
+
+    /** The first episode of the first real season (not Specials), or of the first season there is. */
+    private suspend fun firstEpisodeOf(seriesId: String): String? {
+        val seasons = (library.seasons(seriesId) as? ApiResult.Success)?.value.orEmpty()
+        val season = seasons.firstOrNull { (it.seasonIndex ?: 0) > 0 } ?: seasons.firstOrNull() ?: return null
+        return (library.episodes(seriesId, season.id) as? ApiResult.Success)?.value?.firstOrNull()?.id
+    }
+
+    /** The screen has opened what the hero's Play asked for. */
+    fun onHeroNavHandled() = categoryUi.update { it.copy(heroNav = null) }
 
     private var heroWriting = false
 

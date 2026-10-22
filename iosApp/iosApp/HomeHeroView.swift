@@ -3,10 +3,10 @@ import Shared
 
 /// The one featured item, above Continue watching, as a rounded card inside the page's margins: its backdrop under a scrim, the Logo
 /// as the title, a line saying what it is and its genres, then Play (the one aqua button) beside My List. Tapping the picture opens the
-/// item's page. A movie plays at once; a show opens its page, where Play knows which episode is next.
+/// item's page. Play plays: a movie, or the episode a show is up to.
 struct HomeHeroView: View {
     let item: MediaItem
-    let onPlay: (String) -> Void
+    let onPlay: () -> Void
     let onOpen: (String) -> Void
     let onMyList: () -> Void
 
@@ -52,7 +52,7 @@ struct HomeHeroView: View {
                     .lineLimit(1)
             }
             HStack(spacing: Space.s2) {
-                PrimaryButton(action: { item.kind == ItemKind.movie ? onPlay(item.id) : onOpen(item.id) }) {
+                PrimaryButton(action: onPlay) {
                     Label(Strings.shared.play.titleCased(), systemImage: "play.fill")
                 }
                 // Not aqua: aqua is the one primary action. A soft, see-through button over the picture.

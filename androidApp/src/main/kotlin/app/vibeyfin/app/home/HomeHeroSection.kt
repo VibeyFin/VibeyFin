@@ -39,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import app.vibeyfin.R
 import app.vibeyfin.app.components.Artwork
 import app.vibeyfin.app.theme.VibeyFinTokens
-import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.heroFacts
@@ -57,13 +56,13 @@ private val HERO_BUTTON_HEIGHT = 44.dp
 /**
  * The one featured item, above Continue watching, as a rounded card inside the page's margins: its backdrop under a scrim, the Logo
  * as the title, a line saying what it is and its genres, then Play (the one aqua button) beside My List. Tapping the picture opens the
- * item's page. A movie plays at once; a show opens its page, where Play knows which episode is next.
+ * item's page. Play plays: a movie, or the episode a show is up to.
  */
 @Composable
 fun HomeHeroSection(
     item: MediaItem,
     wide: Boolean,
-    onPlay: (String) -> Unit,
+    onPlay: () -> Unit,
     onOpen: (String) -> Unit,
     onMyList: () -> Unit,
 ) {
@@ -115,7 +114,7 @@ fun HomeHeroSection(
             }
             Row(Modifier.then(if (wide) Modifier.width(360.dp) else Modifier.fillMaxWidth()), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
                 Button(
-                    onClick = { if (item.kind == ItemKind.Movie) onPlay(item.id) else onOpen(item.id) },
+                    onClick = onPlay,
                     shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md),
                     modifier = Modifier.weight(1f).height(HERO_BUTTON_HEIGHT),
                 ) {

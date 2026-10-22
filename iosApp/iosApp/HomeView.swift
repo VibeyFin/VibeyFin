@@ -41,7 +41,7 @@ struct HomeView: View {
                             if let hero = state.hero {
                                 HomeHeroView(
                                     item: hero,
-                                    onPlay: { playing = PlayRequest(id: $0) },
+                                    onPlay: { model.heroPlay() },
                                     onOpen: onDetails,
                                     onMyList: { model.heroMyList() }
                                 )
@@ -108,6 +108,13 @@ struct HomeView: View {
         }
         .onChange(of: model.state?.exit != nil) { hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
+        }
+        // The hero's Play found what to play (an episode for a show): the player opens on it, or the page when none was found.
+        .onChange(of: model.state?.heroNav != nil) { has in
+            guard has, let nav = model.state?.heroNav else { return }
+            if let play = nav as? HeroNavPlay { playing = PlayRequest(id: play.itemId) }
+            else if let details = nav as? HeroNavDetails { onDetails(details.itemId) }
+            model.heroNavHandled()
         }
         .onChange(of: model.state?.openList != nil) { opened in
             if opened, let filter = model.state?.openList {

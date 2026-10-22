@@ -218,6 +218,68 @@ class HomeRowsViewModelTest {
         assertEquals(LoadMessages.ADD_TO_MY_LIST_FAILED, failed.actionMessage)
     }
 
+    private suspend fun showHeroServer(): app.vibeyfin.testing.FakeServer = server(
+        genreItems = { genre ->
+            if (genre == null) {
+                Reply.json(itemsJson(itemJson("show", "Show", type = "Series", isFolder = true, backdropTag = "b", logoTag = "l")))
+            } else {
+                Reply.json(itemsJson(itemJson("top-$genre", "Top $genre")))
+            }
+        },
+    )
+
+    @Test
+    fun playOnAMovieHeroPlaysIt() = runTest {
+        heroServer()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hero != null }
+
+        viewModel.onHeroPlay()
+
+        assertEquals(HeroNav.Play("star"), viewModel.uiState.first { it.heroNav != null }.heroNav)
+        viewModel.onHeroNavHandled()
+        assertNull(viewModel.uiState.value.heroNav)
+    }
+
+    @Test
+    fun playOnAShowHeroPlaysTheEpisodeItIsUpTo() = runTest {
+        val server = showHeroServer()
+        server.on("GET", "/Shows/NextUp", Reply.json(itemsJson(itemJson("e7", "Seven", type = "Episode", seasonNumber = 2, episodeNumber = 3))))
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hero != null }
+
+        viewModel.onHeroPlay()
+
+        assertEquals(HeroNav.Play("e7"), viewModel.uiState.first { it.heroNav != null }.heroNav)
+    }
+
+    @Test
+    fun playOnAShowNeverStartedPlaysItsFirstEpisodeNotSpecials() = runTest {
+        val server = showHeroServer()
+        server.on("GET", "/Shows/show/Seasons", Reply.json(itemsJson(itemJson("s0", "Specials", type = "Season", isFolder = true, episodeNumber = 0), itemJson("s1", "Season 1", type = "Season", isFolder = true, episodeNumber = 1))))
+        server.on("GET", "/Shows/show/Episodes") { request ->
+            if (request.query["seasonId"] == "s1") Reply.json(itemsJson(itemJson("e11", "One", type = "Episode"), itemJson("e12", "Two", type = "Episode"))) else Reply.json(itemsJson(itemJson("sp", "Special", type = "Episode")))
+        }
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hero != null }
+
+        viewModel.onHeroPlay()
+
+        assertEquals(HeroNav.Play("e11"), viewModel.uiState.first { it.heroNav != null }.heroNav)
+    }
+
+    @Test
+    fun playOnAShowWithNoEpisodeFoundOpensItsPage() = runTest {
+        val server = showHeroServer()
+        server.on("GET", "/Shows/show/Seasons", Reply.json(itemsJson()))
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hero != null }
+
+        viewModel.onHeroPlay()
+
+        assertEquals(HeroNav.Details("show"), viewModel.uiState.first { it.heroNav != null }.heroNav)
+    }
+
     @Test
     fun aProfileWithTheHeroTurnedOffGetsNoneAndAsksForNoCandidates() = runTest {
         heroServer()

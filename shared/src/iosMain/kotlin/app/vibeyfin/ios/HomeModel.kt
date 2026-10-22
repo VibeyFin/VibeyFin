@@ -18,6 +18,10 @@ class HomeModel {
 
     fun onRetryLibraries() = host.viewModel.onRetryLibraries()
 
+    fun onHeroPlay() = host.viewModel.onHeroPlay()
+
+    fun onHeroNavHandled() = host.viewModel.onHeroNavHandled()
+
     fun onHeroMyList() = host.viewModel.onHeroMyList()
 
     fun onRetryContinue() = host.viewModel.onRetryContinue()

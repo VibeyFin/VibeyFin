@@ -99,6 +99,7 @@ import app.vibeyfin.ui.home.SeeAll
 import app.vibeyfin.ui.home.CategoryKind
 import app.vibeyfin.ui.home.ContinueCard as ContinueCardState
 import app.vibeyfin.ui.home.ContinueRow
+import app.vibeyfin.ui.home.HeroNav
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.home.HomeUiState
 import app.vibeyfin.ui.home.HomeViewModel
@@ -136,12 +137,22 @@ fun HomeRoute(
             viewModel.onListOpened()
         }
     }
+    // The hero's Play found what to play (an episode for a show): the player opens on it, or the page when none was found.
+    LaunchedEffect(state.heroNav) {
+        when (val nav = state.heroNav) {
+            is HeroNav.Play -> onPlay(nav.itemId)
+            is HeroNav.Details -> onDetails(nav.itemId)
+            null -> return@LaunchedEffect
+        }
+        viewModel.onHeroNavHandled()
+    }
     HomeScreen(
         state = state,
         onOpen = onOpen,
         onPlay = onPlay,
         onDetails = onDetails,
         onHeroMyList = viewModel::onHeroMyList,
+        onHeroPlay = viewModel::onHeroPlay,
         onMarkWatched = viewModel::onMarkWatched,
         onRetryAction = viewModel::onRetryAction,
         onDismissMessage = viewModel::onDismissMessage,
@@ -175,6 +186,7 @@ fun HomeScreen(
     onPlay: (String) -> Unit,
     onDetails: (String) -> Unit,
     onHeroMyList: () -> Unit,
+    onHeroPlay: () -> Unit,
     onMarkWatched: (String) -> Unit,
     onRetryAction: () -> Unit,
     onDismissMessage: () -> Unit,
@@ -228,7 +240,7 @@ fun HomeScreen(
             }
             if (state.serverId != null) {
                 Content(
-                    state, margin, onOpen, onPlay, onDetails, onHeroMyList, { menuCard = it }, onRefresh, onRetryContinue, onRetryLibraries, onRetryRow, onSeeAll,
+                    state, margin, onOpen, onPlay, onDetails, onHeroMyList, onHeroPlay, { menuCard = it }, onRefresh, onRetryContinue, onRetryLibraries, onRetryRow, onSeeAll,
                     onTap = { onCategory(it.kind) },
                 )
             }
@@ -279,6 +291,7 @@ private fun Content(
     onPlay: (String) -> Unit,
     onDetails: (String) -> Unit,
     onHeroMyList: () -> Unit,
+    onHeroPlay: () -> Unit,
     onLongPress: (ContinueCardState) -> Unit,
     onRefresh: () -> Unit,
     onRetryContinue: () -> Unit,
@@ -323,7 +336,7 @@ private fun Content(
             }
             // The featured item, when there is one: full width, under the buttons and above what is being watched.
             state.hero?.let { hero ->
-                fullWidth(key = "hero") { HomeHeroSection(hero, LocalConfiguration.current.screenWidthDp >= 600, onPlay, onDetails, onHeroMyList) }
+                fullWidth(key = "hero") { HomeHeroSection(hero, LocalConfiguration.current.screenWidthDp >= 600, onHeroPlay, onDetails, onHeroMyList) }
             }
             fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onLongPress, onRetryContinue) }
             // Until the libraries are known two grey rows hold the place, so the rows that replace them don't push
