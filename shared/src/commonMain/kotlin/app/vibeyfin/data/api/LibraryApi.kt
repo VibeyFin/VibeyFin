@@ -52,14 +52,17 @@ suspend fun JellyfinApi.genres(userId: String): ApiResult<ItemsResultDto> = get(
 )
 
 /**
- * `GET /Items`, newest added first, across every library: the "Recently added" row under a filter.
+ * `GET /Items` across every library, for one category page: a type, a genre or a studio, a page at a time.
  * [genreId] and [studioId] are the server's own filters; `DateCreated` is asked for so "New" can cut the list.
  */
-suspend fun JellyfinApi.recentItems(
+suspend fun JellyfinApi.filteredItems(
     userId: String,
     types: List<String>,
     genreId: String?,
     studioId: String?,
+    sortBy: String,
+    sortOrder: String,
+    startIndex: Int,
     limit: Int,
 ): ApiResult<ItemsResultDto> = get(
     "/Items",
@@ -67,25 +70,11 @@ suspend fun JellyfinApi.recentItems(
         put("userId", userId)
         put("recursive", "true")
         put("includeItemTypes", types.joinToString(","))
-        put("sortBy", "DateCreated")
-        put("sortOrder", "Descending")
+        put("sortBy", sortBy)
+        put("sortOrder", sortOrder)
         put("fields", "DateCreated")
+        put("startIndex", startIndex.toString())
         put("limit", limit.toString())
-        genreId?.let { put("genreIds", it) }
-        studioId?.let { put("studioIds", it) }
-    },
-    retry = true,
-)
-
-/**
- * `GET /Items?ids=` narrowed by [genreId] or [studioId]: which of [ids] the server says match. Resume and Next Up
- * have no such filters, so Continue watching asks this about its own items.
- */
-suspend fun JellyfinApi.itemsMatching(userId: String, ids: List<String>, genreId: String?, studioId: String?): ApiResult<ItemsResultDto> = get(
-    "/Items",
-    buildMap {
-        put("userId", userId)
-        put("ids", ids.joinToString(","))
         genreId?.let { put("genreIds", it) }
         studioId?.let { put("studioIds", it) }
     },

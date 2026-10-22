@@ -10,7 +10,7 @@ import io.ktor.http.HttpMethod
  */
 suspend fun JellyfinApi.resumeItems(userId: String, limit: Int): ApiResult<ItemsResultDto> = get(
     "/UserItems/Resume",
-    mapOf("userId" to userId, "mediaTypes" to "Video", "limit" to limit.toString(), "fields" to "DateCreated"),
+    mapOf("userId" to userId, "mediaTypes" to "Video", "limit" to limit.toString()),
     retry = true,
 )
 
@@ -24,7 +24,6 @@ suspend fun JellyfinApi.nextUp(userId: String, limit: Int): ApiResult<ItemsResul
     mapOf(
         "userId" to userId,
         "limit" to limit.toString(),
-        "fields" to "DateCreated",
         "enableResumable" to "false",
         "enableRewatching" to "false",
     ),

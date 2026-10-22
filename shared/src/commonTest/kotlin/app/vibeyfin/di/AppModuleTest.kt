@@ -25,7 +25,9 @@ import app.vibeyfin.testing.FakePlaybackCapabilities
 import app.vibeyfin.testing.FakeTokenVault
 import app.vibeyfin.testing.InMemoryPreferencesDataStore
 import app.vibeyfin.ui.addserver.AddServerViewModel
+import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.ui.children.ChildrenViewModel
+import app.vibeyfin.ui.filtered.FilteredListViewModel
 import app.vibeyfin.ui.home.HomeViewModel
 import app.vibeyfin.ui.item.ItemViewModel
 import app.vibeyfin.ui.playback.PlaybackViewModel
@@ -84,6 +86,7 @@ class AppModuleTest {
             koin.get<WhoIsWatchingViewModel> { parametersOf("srv-1") },
             koin.get<HomeViewModel>(),
             koin.get<ChildrenViewModel> { parametersOf("folder-1") },
+            koin.get<FilteredListViewModel> { parametersOf(HomeFilter.Movies) },
             koin.get<ItemViewModel> { parametersOf("item-1") },
             koin.get<PlaybackViewModel> { parametersOf("item-1") },
             koin.get<StartupViewModel>(),

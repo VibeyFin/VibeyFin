@@ -12,27 +12,18 @@ Which server data drives which piece of UI. All of this lives in the shared Kotl
 | My media | `GET /UserViews` | The user's libraries as 16:9 tiles; tap opens that library. |
 | My List | Items with `UserData.IsFavorite = true` | Jellyfin has no watchlist; VibeyFin uses Favorites for "My List". |
 
-### Home category buttons
+### Home category buttons and their pages
 
 | Button | Source | Notes |
 | --- | --- | --- |
-| Shows | `includeItemTypes=Series` on `GET /Items`; Continue watching keeps the episodes | Limits Home to shows. |
-| Movies | `includeItemTypes=Movie` on `GET /Items`; Continue watching keeps the movies | Limits Home to movies. |
-| New | `GET /Items` sorted by `DateCreated` descending (`fields=DateCreated`), cut to the last 30 days on the client | Checked against the 12.2 OpenAPI spec: `GET /Items` has `minDateLastSaved` (when metadata was last saved), not a creation date, so a page of 60 is fetched and cut here. |
-| Studios | `GET /Studios` for the sheet; `studioIds` on `GET /Items` for the rows | The button shows the picked studio's name. |
-| Categories | `GET /Genres` for the sheet; `genreIds` on `GET /Items` for the rows | The button shows the picked genre's name. |
+| Shows | `GET /Items?recursive=true&includeItemTypes=Series&sortBy=SortName` | Opens a page titled "Shows". |
+| Movies | `GET /Items?recursive=true&includeItemTypes=Movie&sortBy=SortName` | Opens a page titled "Movies". |
+| New | `GET /Items` sorted by `DateCreated` descending (`fields=DateCreated`), cut to the last 30 days on the client | Checked against the 12.2 OpenAPI spec: `GET /Items` has `minDateLastSaved` (when metadata was last saved), not a creation date. Newest first, so the list ends at the first item older than 30 days. |
+| Studios | `GET /Studios` for the dropdown; `studioIds` on `GET /Items` for the page | The dropdown sorts by name on the client (the endpoint has no sort). The page is titled with the studio. |
+| Categories | `GET /Genres` for the dropdown; `genreIds` on `GET /Items` for the page | The page is titled with the genre ("Action"). |
 
-`GET /Items/Latest` has no genre or studio filter, so a filtered "Recently added" row uses `GET /Items`
-sorted by `DateCreated`, newest first. Continue watching: checked against the 12.2 OpenAPI spec, `/UserItems/Resume`
-takes only `includeItemTypes` and `/Shows/NextUp` takes no type, genre or studio filter, so both are filtered on the
-client. Type and date are read from the items (`fields=DateCreated`). Genre and studio are asked of the server about
-the items' own ids (the show's id for an episode) with `GET /Items?ids=…&genreIds=` or `&studioIds=`, and kept when the
-id comes back.
-
-Under a filter Home shows Continue watching and one "Recently added" row of movies and shows; the libraries row is
-hidden because libraries have no type, genre or studio.
-
-An active filter swaps the row sources above for the filtered ones. Nothing is stored: Home opens unfiltered.
+Every page is `GET /Items` across every library (movies and shows for a studio or a genre), a page of 60 at a
+time. Home's own rows (Continue watching, libraries) are not filtered, so none of the endpoints behind them change.
 
 ## Detail
 

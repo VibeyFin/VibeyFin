@@ -72,16 +72,15 @@ import app.vibeyfin.app.components.ArtworkTile
 import app.vibeyfin.app.components.ContinueCard
 import app.vibeyfin.app.components.ContinueSkeletonCards
 import app.vibeyfin.app.components.LoadError
-import app.vibeyfin.app.components.PosterSkeletonRow
 import app.vibeyfin.app.components.skeletonTiles
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
+import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.ui.home.CategoryButton
 import app.vibeyfin.ui.home.CategoryKind
-import app.vibeyfin.ui.home.RecentRow
 import app.vibeyfin.ui.home.ContinueCard as ContinueCardState
 import app.vibeyfin.ui.home.ContinueRow
 import app.vibeyfin.ui.home.HomeExit
@@ -99,6 +98,7 @@ fun HomeRoute(
     onPlay: (String) -> Unit,
     onDetails: (String) -> Unit,
     onSettings: () -> Unit,
+    onOpenList: (HomeFilter) -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -107,6 +107,13 @@ fun HomeRoute(
     }
     // Back from another screen, or from the background: something may have been watched elsewhere.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onForeground() }
+    // A category button or a dropdown entry was chosen: its page opens over Home.
+    LaunchedEffect(state.openList) {
+        state.openList?.let {
+            onOpenList(it)
+            viewModel.onListOpened()
+        }
+    }
     HomeScreen(
         state = state,
         onOpen = onOpen,
@@ -119,11 +126,9 @@ fun HomeRoute(
         onRetryContinue = viewModel::onRetryContinue,
         onRetryLibraries = viewModel::onRetryLibraries,
         onCategory = viewModel::onCategory,
-        onClearFilter = viewModel::onClearFilter,
         onPickOption = viewModel::onPickOption,
-        onDismissSheet = viewModel::onDismissSheet,
-        onRetrySheet = viewModel::onRetrySheet,
-        onRetryRecent = viewModel::onRetryRecent,
+        onDismissDropdown = viewModel::onDismissDropdown,
+        onRetryDropdown = viewModel::onRetryDropdown,
         onSwitchProfile = viewModel::onSwitchProfile,
         onSwitchServer = viewModel::onSwitchServer,
         onSettings = onSettings,
@@ -145,11 +150,9 @@ fun HomeScreen(
     onRetryContinue: () -> Unit,
     onRetryLibraries: () -> Unit,
     onCategory: (CategoryKind) -> Unit,
-    onClearFilter: () -> Unit,
     onPickOption: (String) -> Unit,
-    onDismissSheet: () -> Unit,
-    onRetrySheet: () -> Unit,
-    onRetryRecent: () -> Unit,
+    onDismissDropdown: () -> Unit,
+    onRetryDropdown: () -> Unit,
     onSwitchProfile: () -> Unit,
     onSwitchServer: () -> Unit,
     onSettings: () -> Unit,
@@ -191,7 +194,7 @@ fun HomeScreen(
             if (state.serverId != null) {
                 Content(
                     state, margin, onOpen, onPlay, { menuCard = it }, onRefresh, onRetryContinue, onRetryLibraries,
-                    onTap = { onCategory(it.kind) }, onClearFilter, onRetryRecent,
+                    onTap = { onCategory(it.kind) }, onPickOption, onDismissDropdown, onRetryDropdown,
                 )
             }
         }
@@ -199,7 +202,6 @@ fun HomeScreen(
             ActionSnackbar(state.actionMessage, onRetry = onRetryAction, onDismiss = onDismissMessage)
         }
     }
-    state.sheet?.let { sheet -> FilterSheetView(sheet, onPickOption, onRetrySheet, onDismissSheet) }
     menuCard?.let { card ->
         ModalBottomSheet(onDismissRequest = { menuCard = null }) {
             Column(Modifier.padding(bottom = VibeyFinTokens.Space.s5)) {
@@ -244,8 +246,9 @@ private fun Content(
     onRetryContinue: () -> Unit,
     onRetryLibraries: () -> Unit,
     onTap: (CategoryButton) -> Unit,
-    onClearFilter: () -> Unit,
-    onRetryRecent: () -> Unit,
+    onPickOption: (String) -> Unit,
+    onDismissDropdown: () -> Unit,
+    onRetryDropdown: () -> Unit,
 ) {
     val refreshState = rememberPullToRefreshState()
     PullToRefreshBox(
@@ -271,33 +274,24 @@ private fun Content(
             horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
             modifier = Modifier.fillMaxSize(),
         ) {
-            // The category buttons scroll with the content and run to the screen edge.
+            // The category buttons scroll with the content and run to the screen edge. Home itself is never
+            // filtered: a button opens a page of its own.
             fullWidth(key = "categories") {
-                CategoryButtonRow(state.buttons, PaddingValues(horizontal = margin), onTap, onClearFilter, Modifier.bleed(margin))
+                CategoryButtonRow(
+                    buttons = state.buttons,
+                    dropdown = state.dropdown,
+                    contentPadding = PaddingValues(horizontal = margin),
+                    onTap = onTap,
+                    onPick = onPickOption,
+                    onDismiss = onDismissDropdown,
+                    onRetry = onRetryDropdown,
+                    modifier = Modifier.bleed(margin),
+                )
             }
-            // Always laid out, empty or not, so what is below never moves when a card turns up.
-            // Under a filter an empty row is left out altogether; unfiltered, its space is kept so nothing jumps.
-            fullWidth(key = "continue") {
-                if (state.filter == null || state.continueRow.isVisible) {
-                    ContinueWatching(state.continueRow, margin, onPlay, onLongPress, onRetryContinue)
-                }
-            }
-            if (state.filter == null) {
-                fullWidth(key = "libraries-title") { SectionTitle(Strings.libraries) }
-                libraries(state, onOpen, onRetryLibraries)
-            } else {
-                // The libraries have no type, genre or studio, so a filter swaps them for what was added most recently.
-                state.recentRow?.let { row -> recentlyAdded(row, margin, onOpen, onRetryRecent) }
-                if (state.nothingMatchesFilter) {
-                    fullWidth(key = "nothing-matches") {
-                        Text(
-                            text = Strings.nothingMatchesFilter,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
+            // Always laid out, empty or not, so the libraries never move when a card turns up.
+            fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onLongPress, onRetryContinue) }
+            fullWidth(key = "libraries-title") { SectionTitle(Strings.libraries) }
+            libraries(state, onOpen, onRetryLibraries)
         }
     }
 }
@@ -345,29 +339,6 @@ private fun Modifier.bleed(by: Dp) = layout { measurable, constraints ->
     val width = constraints.maxWidth + extra
     val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
     layout(constraints.maxWidth, placeable.height) { placeable.place(-extra / 2, 0) }
-}
-
-/** Movies and shows added most recently under the active filter; a row with nothing in it is left out. */
-private fun LazyGridScope.recentlyAdded(row: RecentRow, margin: Dp, onOpen: (MediaItem) -> Unit, onRetry: () -> Unit) {
-    if (!row.loading && row.message == null && row.items.isEmpty()) return
-    fullWidth(key = "recent") {
-        Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-            SectionTitle(row.title)
-            when {
-                row.loading -> PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin))
-                row.message != null -> LoadError(row.message!!, onRetry)
-                else -> LazyRow(
-                    modifier = Modifier.bleed(margin),
-                    contentPadding = PaddingValues(horizontal = margin),
-                    horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-                ) {
-                    items(row.items, key = { it.id }) { item ->
-                        ArtworkTile(item, onClick = { onOpen(item) }, modifier = Modifier.width(VibeyFinTokens.Size.posterWidth))
-                    }
-                }
-            }
-        }
-    }
 }
 
 private fun LazyGridScope.libraries(state: HomeUiState, onOpen: (MediaItem) -> Unit, onRetry: () -> Unit) {

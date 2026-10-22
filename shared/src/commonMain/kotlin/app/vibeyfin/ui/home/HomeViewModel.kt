@@ -56,27 +56,18 @@ data class HomeUiState(
     val actionMessage: String? = null,
     /** Set when the screen should be left: the user chose to, or the session ended. */
     val exit: HomeExit? = null,
-    /** What Home is limited to; null when it shows everything, as it does on every launch. */
-    val filter: HomeFilter? = null,
-    /** The category buttons under the header, with the active one marked. */
-    val buttons: List<CategoryButton> = categoryButtons(null),
-    /** The Studios or Categories sheet while it is open. */
-    val sheet: FilterSheet? = null,
-    /** "Recently added" under a filter; null with no filter, when the libraries are shown instead. */
-    val recentRow: RecentRow? = null,
-) {
-    /** A filter is on and both Continue watching and Recently added came back empty. */
-    val nothingMatchesFilter: Boolean
-        get() = filter != null && recentRow != null &&
-            !continueRow.loading && continueRow.message == null && continueRow.cards.isEmpty() &&
-            !recentRow.loading && recentRow.message == null && recentRow.items.isEmpty()
-}
+    /** The category buttons under the header, in order. */
+    val buttons: List<CategoryButton> = categoryButtons(),
+    /** The Studios or Categories dropdown while it is open. */
+    val dropdown: FilterDropdown? = null,
+    /** Set when a category page should open (a button or a dropdown entry was chosen); the screen calls `onListOpened`. */
+    val openList: HomeFilter? = null,
+)
 
-/** The filter, the sheet and the row under it, which change together. */
-private data class FilterUi(
-    val filter: HomeFilter? = null,
-    val sheet: FilterSheet? = null,
-    val recent: RecentRow? = null,
+/** The dropdown and the page to open, which change together. */
+private data class CategoryUi(
+    val dropdown: FilterDropdown? = null,
+    val openList: HomeFilter? = null,
 )
 
 private data class Libraries(
@@ -107,10 +98,9 @@ class HomeViewModel(
 
     private val actionMessage = MutableStateFlow<String?>(null)
 
-    private val filterUi = MutableStateFlow(FilterUi())
-    private var filterJob: Job? = null
-    private var sheetJob: Job? = null
-    // The sheets' lists, fetched once per session when first opened.
+    private val categoryUi = MutableStateFlow(CategoryUi())
+    private var dropdownJob: Job? = null
+    // The dropdowns' lists, fetched once per session when first opened.
     private var studioOptions: List<FilterOption>? = null
     private var genreOptions: List<FilterOption>? = null
 
@@ -136,14 +126,8 @@ class HomeViewModel(
         }
     }
 
-    val uiState: StateFlow<HomeUiState> = combine(screen, actionMessage, filterUi) { screen, message, filters ->
-        screen.copy(
-            actionMessage = message,
-            filter = filters.filter,
-            buttons = categoryButtons(filters.filter),
-            sheet = filters.sheet,
-            recentRow = filters.recent,
-        )
+    val uiState: StateFlow<HomeUiState> = combine(screen, actionMessage, categoryUi) { screen, message, categories ->
+        screen.copy(actionMessage = message, dropdown = categories.dropdown, openList = categories.openList)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     init {
@@ -154,10 +138,9 @@ class HomeViewModel(
                 .filterNotNull()
                 .distinctUntilChanged()
                 .collectLatest {
-                    // Another profile or address starts unfiltered, with its own studios and genres.
-                    filterJob?.cancel()
-                    sheetJob?.cancel()
-                    filterUi.value = FilterUi()
+                    // Another profile or address has its own studios and genres.
+                    dropdownJob?.cancel()
+                    categoryUi.value = CategoryUi()
                     studioOptions = null
                     genreOptions = null
                     coroutineScope {
@@ -260,122 +243,13 @@ class HomeViewModel(
      * [first] puts the skeleton up (a new session, or "Try again"); otherwise the cards on screen stay
      * until the answer replaces them, and a failure leaves them as they were.
      */
-    private suspend fun loadContinue(first: Boolean, filterChanged: Boolean = false) {
+    private suspend fun loadContinue(first: Boolean) {
         if (first) continueRow.value = ContinueRow(loading = true)
-        val asked = filterUi.value.filter
-        val result = watch.continueWatching(asked, clock.now())
-        // Another filter was picked while this was out: its own load answers, and this one must not replace it.
-        if (filterUi.value.filter != asked) return
+        val result = watch.continueWatching()
         continueLoadedAt = clock.now()
         when (result) {
             is ApiResult.Success -> continueRow.value = ContinueRow(cards = result.value.map { it.toContinueCard() })
-            // Cards left from another filter would be wrong under this one, so a changed filter shows the failure.
-            is ApiResult.Failure -> if (first || filterChanged) continueRow.value = ContinueRow(message = LoadMessages.forError(result.error))
-        }
-    }
-
-    /** The row under a filter. The old items stay up while a changed filter loads; only the first load is a skeleton. */
-    private suspend fun loadRecent(asked: HomeFilter) {
-        if (filterUi.value.recent?.items.isNullOrEmpty()) filterUi.update { it.copy(recent = RecentRow(loading = true)) }
-        val result = library.recentlyAdded(asked, clock.now())
-        if (filterUi.value.filter != asked) return
-        val row = when (result) {
-            is ApiResult.Success -> RecentRow(items = result.value, loading = false)
-            is ApiResult.Failure -> RecentRow(loading = false, message = LoadMessages.forError(result.error))
-        }
-        filterUi.update { it.copy(recent = row) }
-    }
-
-    /**
-     * A tap on a category button. Shows, Movies and New filter at once, and a second tap clears them. Studios and
-     * Categories open their sheet, whether or not they are already the active filter.
-     */
-    fun onCategory(kind: CategoryKind) {
-        when (kind) {
-            CategoryKind.Shows -> toggle(HomeFilter.Shows)
-            CategoryKind.Movies -> toggle(HomeFilter.Movies)
-            CategoryKind.New -> toggle(HomeFilter.New)
-            CategoryKind.Studios, CategoryKind.Categories -> openSheet(kind)
-        }
-    }
-
-    /** The × on the active button. */
-    fun onClearFilter() = setFilter(null)
-
-    /** A row in the open sheet was picked: it becomes the filter and the sheet closes. */
-    fun onPickOption(id: String) {
-        val sheet = filterUi.value.sheet ?: return
-        val option = sheet.options.firstOrNull { it.id == id } ?: return
-        setFilter(if (sheet.kind == CategoryKind.Studios) HomeFilter.Studio(option.id, option.name) else HomeFilter.Genre(option.id, option.name))
-    }
-
-    fun onDismissSheet() {
-        sheetJob?.cancel()
-        filterUi.update { it.copy(sheet = null) }
-    }
-
-    /** "Try again" in the sheet. */
-    fun onRetrySheet() {
-        val sheet = filterUi.value.sheet ?: return
-        filterUi.update { it.copy(sheet = sheet.copy(loading = true, message = null)) }
-        loadSheet(sheet.kind)
-    }
-
-    /** "Try again" on the Recently added row. */
-    fun onRetryRecent() {
-        val asked = filterUi.value.filter ?: return
-        filterJob?.cancel()
-        filterJob = viewModelScope.launch { loadRecent(asked) }
-    }
-
-    private fun toggle(filter: HomeFilter) = setFilter(if (filterUi.value.filter == filter) null else filter)
-
-    /** The last tap wins: loads for a filter that is no longer the active one are dropped when they answer. */
-    private fun setFilter(filter: HomeFilter?) {
-        if (connection.state.value !is ConnectionState.Connected) return
-        sheetJob?.cancel()
-        filterUi.update { it.copy(filter = filter, sheet = null, recent = if (filter == null) null else it.recent) }
-        filterJob?.cancel()
-        continueReload?.cancel()
-        filterJob = viewModelScope.launch {
-            coroutineScope {
-                launch { loadContinue(first = false, filterChanged = true) }
-                if (filter != null) launch { loadRecent(filter) }
-            }
-        }
-    }
-
-    private fun openSheet(kind: CategoryKind) {
-        val filter = filterUi.value.filter
-        val cached = if (kind == CategoryKind.Studios) studioOptions else genreOptions
-        val sheet = FilterSheet(
-            kind = kind,
-            title = if (kind == CategoryKind.Studios) Strings.filterStudios else Strings.filterCategories,
-            options = cached.orEmpty(),
-            loading = cached == null,
-            pickedId = (filter as? HomeFilter.Studio)?.id.takeIf { kind == CategoryKind.Studios }
-                ?: (filter as? HomeFilter.Genre)?.id.takeIf { kind == CategoryKind.Categories },
-        )
-        filterUi.update { it.copy(sheet = sheet) }
-        if (cached == null) loadSheet(kind)
-    }
-
-    private fun loadSheet(kind: CategoryKind) {
-        sheetJob?.cancel()
-        sheetJob = viewModelScope.launch {
-            val result = if (kind == CategoryKind.Studios) library.studios() else library.genres()
-            if (result is ApiResult.Success) {
-                if (kind == CategoryKind.Studios) studioOptions = result.value else genreOptions = result.value
-            }
-            filterUi.update { ui ->
-                val sheet = ui.sheet?.takeIf { it.kind == kind } ?: return@update ui
-                ui.copy(
-                    sheet = when (result) {
-                        is ApiResult.Success -> sheet.copy(options = result.value, loading = false, message = null)
-                        is ApiResult.Failure -> sheet.copy(loading = false, message = LoadMessages.forError(result.error))
-                    },
-                )
-            }
+            is ApiResult.Failure -> if (first) continueRow.value = ContinueRow(message = LoadMessages.forError(result.error))
         }
     }
 
@@ -385,6 +259,77 @@ class HomeViewModel(
         libraries.value = when (val result = library.libraries()) {
             is ApiResult.Success -> Libraries(items = result.value)
             is ApiResult.Failure -> if (quiet && before.items.isNotEmpty()) before else Libraries(message = LoadMessages.forError(result.error))
+        }
+    }
+
+    /**
+     * A tap on a category button. Shows, Movies and New open their page at once; Studios and Categories open a
+     * dropdown to pick from, and the pick opens the page.
+     */
+    fun onCategory(kind: CategoryKind) {
+        when (kind) {
+            CategoryKind.Shows -> categoryUi.update { it.copy(openList = HomeFilter.Shows) }
+            CategoryKind.Movies -> categoryUi.update { it.copy(openList = HomeFilter.Movies) }
+            CategoryKind.New -> categoryUi.update { it.copy(openList = HomeFilter.New) }
+            CategoryKind.Studios, CategoryKind.Categories -> openDropdown(kind)
+        }
+    }
+
+    /** An entry of the open dropdown was chosen: its page opens and the dropdown closes. */
+    fun onPickOption(id: String) {
+        val dropdown = categoryUi.value.dropdown ?: return
+        val option = dropdown.options.firstOrNull { it.id == id } ?: return
+        val filter = if (dropdown.kind == CategoryKind.Studios) HomeFilter.Studio(option.id, option.name) else HomeFilter.Genre(option.id, option.name)
+        dropdownJob?.cancel()
+        categoryUi.value = CategoryUi(openList = filter)
+    }
+
+    /** The screen has opened the page asked for. */
+    fun onListOpened() = categoryUi.update { it.copy(openList = null) }
+
+    fun onDismissDropdown() {
+        dropdownJob?.cancel()
+        categoryUi.update { it.copy(dropdown = null) }
+    }
+
+    /** "Try again" in the dropdown. */
+    fun onRetryDropdown() {
+        val dropdown = categoryUi.value.dropdown ?: return
+        categoryUi.update { it.copy(dropdown = dropdown.copy(loading = true, message = null)) }
+        loadDropdown(dropdown.kind)
+    }
+
+    private fun openDropdown(kind: CategoryKind) {
+        val cached = if (kind == CategoryKind.Studios) studioOptions else genreOptions
+        categoryUi.update {
+            it.copy(
+                dropdown = FilterDropdown(
+                    kind = kind,
+                    title = if (kind == CategoryKind.Studios) Strings.filterStudios else Strings.filterCategories,
+                    options = cached.orEmpty(),
+                    loading = cached == null,
+                ),
+            )
+        }
+        if (cached == null) loadDropdown(kind)
+    }
+
+    private fun loadDropdown(kind: CategoryKind) {
+        dropdownJob?.cancel()
+        dropdownJob = viewModelScope.launch {
+            val result = if (kind == CategoryKind.Studios) library.studios() else library.genres()
+            if (result is ApiResult.Success) {
+                if (kind == CategoryKind.Studios) studioOptions = result.value else genreOptions = result.value
+            }
+            categoryUi.update { ui ->
+                val dropdown = ui.dropdown?.takeIf { it.kind == kind } ?: return@update ui
+                ui.copy(
+                    dropdown = when (result) {
+                        is ApiResult.Success -> dropdown.copy(options = result.value, loading = false, message = null)
+                        is ApiResult.Failure -> dropdown.copy(loading = false, message = LoadMessages.forError(result.error))
+                    },
+                )
+            }
         }
     }
 

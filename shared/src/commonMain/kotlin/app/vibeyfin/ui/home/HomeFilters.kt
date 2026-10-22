@@ -2,7 +2,6 @@ package app.vibeyfin.ui.home
 
 import app.vibeyfin.domain.FilterOption
 import app.vibeyfin.domain.HomeFilter
-import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
 
 /** The five buttons under Home's header, in the order they are shown. */
@@ -11,31 +10,27 @@ enum class CategoryKind {
     Movies,
     New,
 
-    /** Opens a sheet of studios. */
+    /** Opens a dropdown of studios; the pick opens that studio's page. */
     Studios,
 
-    /** Opens a sheet of genres. */
+    /** Opens a dropdown of genres; the pick opens that genre's page. */
     Categories,
 }
 
-/** One category button, ready to draw. [label] already holds the picked name ("Studios: A24"). */
+/** One category button, ready to draw. A button that [opensDropdown] looks different from the others: it has a chevron. */
 data class CategoryButton(
     val kind: CategoryKind,
     val label: String,
-    val selected: Boolean,
-    /** Tapping it opens a sheet instead of filtering at once. */
-    val opensSheet: Boolean,
+    val opensDropdown: Boolean,
 )
 
-/** The Studios or Categories sheet: loading, its entries, or why they didn't load. */
-data class FilterSheet(
+/** The Studios or Categories dropdown: loading, its entries, or why they didn't load. The screen filters [options] by what is typed. */
+data class FilterDropdown(
     val kind: CategoryKind,
     val title: String,
     val options: List<FilterOption> = emptyList(),
     val loading: Boolean = true,
     val message: String? = null,
-    /** The id already picked, marked in the list. */
-    val pickedId: String? = null,
 ) {
     /** The server answered and has nothing to pick from. */
     val isEmpty: Boolean get() = !loading && message == null && options.isEmpty()
@@ -43,29 +38,20 @@ data class FilterSheet(
     val emptyText: String get() = if (kind == CategoryKind.Studios) Strings.noStudios else Strings.noCategories
 }
 
-/** The "Recently added" row under a filter. */
-data class RecentRow(
-    val items: List<MediaItem> = emptyList(),
-    val loading: Boolean = true,
-    val message: String? = null,
-) {
-    val title: String get() = Strings.recentlyAdded
-}
-
-internal fun categoryButtons(filter: HomeFilter?): List<CategoryButton> = listOf(
-    CategoryButton(CategoryKind.Shows, Strings.filterShows, filter == HomeFilter.Shows, opensSheet = false),
-    CategoryButton(CategoryKind.Movies, Strings.filterMovies, filter == HomeFilter.Movies, opensSheet = false),
-    CategoryButton(CategoryKind.New, Strings.filterNew, filter == HomeFilter.New, opensSheet = false),
-    CategoryButton(
-        CategoryKind.Studios,
-        (filter as? HomeFilter.Studio)?.let { Strings.filterPicked(Strings.filterStudios, it.name) } ?: Strings.filterStudios,
-        filter is HomeFilter.Studio,
-        opensSheet = true,
-    ),
-    CategoryButton(
-        CategoryKind.Categories,
-        (filter as? HomeFilter.Genre)?.let { Strings.filterPicked(Strings.filterCategories, it.name) } ?: Strings.filterCategories,
-        filter is HomeFilter.Genre,
-        opensSheet = true,
-    ),
+internal fun categoryButtons(): List<CategoryButton> = listOf(
+    CategoryButton(CategoryKind.Shows, Strings.filterShows, opensDropdown = false),
+    CategoryButton(CategoryKind.Movies, Strings.filterMovies, opensDropdown = false),
+    CategoryButton(CategoryKind.New, Strings.filterNew, opensDropdown = false),
+    CategoryButton(CategoryKind.Studios, Strings.filterStudios, opensDropdown = true),
+    CategoryButton(CategoryKind.Categories, Strings.filterCategories, opensDropdown = true),
 )
+
+/** The name at the top of a category page: the button's own, or the studio's or genre's name. */
+val HomeFilter.title: String
+    get() = when (this) {
+        HomeFilter.Shows -> Strings.filterShows
+        HomeFilter.Movies -> Strings.filterMovies
+        HomeFilter.New -> Strings.filterNew
+        is HomeFilter.Studio -> name
+        is HomeFilter.Genre -> name
+    }

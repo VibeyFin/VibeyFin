@@ -93,23 +93,19 @@ object Strings {
     val filterStudios = "Studios"
     val filterCategories = "Categories"
 
-    /** The button once a studio or genre is picked: "Studios: A24". */
-    fun filterPicked(button: String, name: String) = "$button: $name"
-
-    /** What a screen reader says for the group of category buttons, and for the × that clears the active one. */
+    /** What a screen reader says for the group of category buttons. */
     val filterHome = "Filter Home"
-    fun clearFilter(label: String) = "Clear filter: $label"
 
-    /** The placeholder of the search field in a long Studios or Categories list. */
+    /** What a screen reader says for a button that opens a dropdown of studios or genres. */
+    fun opensList(label: String) = "$label, opens a list"
+
+    /** The placeholder of the search field in the Studios and Categories dropdowns. */
     val filterSearch = "Search"
 
-    /** The row of what was added most recently, under a filter. */
-    val recentlyAdded = "Recently added"
+    /** In the Studios and Categories dropdowns when what was typed matches nothing. */
+    val nothingFound = "Nothing matches that."
 
-    /** Under a filter that leaves Continue watching and Recently added both empty. */
-    val nothingMatchesFilter = "Nothing here matches that filter. Pick another or clear it."
-
-    /** In the Studios and Categories sheets when the server has none. */
+    /** In the Studios and Categories dropdowns when the server has none. */
     val noStudios = "This server has no studios."
     val noCategories = "This server has no categories."
 

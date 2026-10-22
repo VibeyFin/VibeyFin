@@ -1,5 +1,6 @@
 package app.vibeyfin.app.navigation
 
+import app.vibeyfin.domain.HomeFilter
 import kotlinx.serialization.Serializable
 
 /** Type-safe navigation destinations. One `@Serializable` object or class per screen. */
@@ -50,3 +51,26 @@ data class Item(val itemId: String)
 /** Plays one movie or episode, full screen. It resumes where the server says the user stopped, unless [startOver]. */
 @Serializable
 data class Player(val itemId: String, val startOver: Boolean = false)
+
+/**
+ * The page a category button or a dropdown entry opens: [kind] is `shows`, `movies`, `new`, `studio` or `genre`;
+ * [id] and [name] are the studio's or genre's own.
+ */
+@Serializable
+data class FilteredList(val kind: String, val id: String? = null, val name: String? = null)
+
+internal fun HomeFilter.toRoute(): FilteredList = when (this) {
+    HomeFilter.Shows -> FilteredList("shows")
+    HomeFilter.Movies -> FilteredList("movies")
+    HomeFilter.New -> FilteredList("new")
+    is HomeFilter.Studio -> FilteredList("studio", id, name)
+    is HomeFilter.Genre -> FilteredList("genre", id, name)
+}
+
+internal fun FilteredList.toFilter(): HomeFilter = when (kind) {
+    "shows" -> HomeFilter.Shows
+    "movies" -> HomeFilter.Movies
+    "new" -> HomeFilter.New
+    "studio" -> HomeFilter.Studio(id.orEmpty(), name.orEmpty())
+    else -> HomeFilter.Genre(id.orEmpty(), name.orEmpty())
+}

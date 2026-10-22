@@ -32,15 +32,13 @@ class HomeModel {
 
     fun onCategory(kind: CategoryKind) = host.viewModel.onCategory(kind)
 
-    fun onClearFilter() = host.viewModel.onClearFilter()
-
     fun onPickOption(id: String) = host.viewModel.onPickOption(id)
 
-    fun onDismissSheet() = host.viewModel.onDismissSheet()
+    fun onListOpened() = host.viewModel.onListOpened()
 
-    fun onRetrySheet() = host.viewModel.onRetrySheet()
+    fun onDismissDropdown() = host.viewModel.onDismissDropdown()
 
-    fun onRetryRecent() = host.viewModel.onRetryRecent()
+    fun onRetryDropdown() = host.viewModel.onRetryDropdown()
 
     fun close() = host.close()
 }

@@ -2,65 +2,55 @@
 
 Layouts for Home and the detail screens, the same on both platforms apart from the native chrome. These
 are reference screens, not components: build each from the parts named here (hero, `action` buttons,
-rows, `PosterCard`s, category buttons). Colours, type and controls come from `brand.md`, `ios.md` and
+rows, `PosterCard`s, category buttons, category pages). Colours, type and controls come from `brand.md`, `ios.md` and
 `android.md`; the rules from `guardrails.md`; the data from `jellyfin-mapping.md`.
 
 ## Home
 
 The Home tab: the same content, rows and rules on both platforms, with native chrome on each.
 
-- iOS: large title "Home" with the profile avatar and the category buttons under it; the backdrop and rows
+- iOS: the app logo with the large title "Home" next to it and the profile avatar at the right, the category buttons under them; the backdrop and rows
   scroll under the floating tab bar (the safe area provides the bottom inset).
-- Android: top app bar with the app name and avatar, the category buttons under it, rows scrolling above the
+- Android: top app bar with the app logo and "Home" next to it and the avatar at the right, the category buttons under it, rows scrolling above the
   `NavigationBar` (`Scaffold`'s inner padding).
-- Same on both: category buttons → hero (optional) → Continue watching → Recently added. Aqua only on Play and
+- Same on both: the logo and the page name ("Home") at the left, the profile at the right; category buttons → hero (optional) → Continue watching → Recently added. Aqua only on Play and
   progress (plus native tinting on iOS). The button row scrolls with the content.
 
 ### Category buttons
 
-The row at the top of Home, Netflix-style: **Shows**, **Movies**, **New**, **Studios**, **Categories**, in
-that fixed order (configurable in Phase 7).
+The row at the top of Home, Netflix-style: **Shows**, **Movies**, **New**, **Studios**, **Categories**, in that
+fixed order (configurable in Phase 7). Home itself is never filtered: every button opens something of its own.
 
-**Provide:** the buttons (`id`, `label`), the active filter (none = no filter) with the picked name for
-Studios and Categories, and handlers for a tap, for picking from a sheet and for clearing.
+**Provide:** the buttons (`id`, `label`, whether it opens a dropdown), the open dropdown with its entries, and
+handlers for a tap and for picking an entry.
 
-- One horizontally scrolling row; the next button always peeks. The active button scrolls into view.
-- **Shows** and **Movies** limit Home to that type. **New** limits Home to titles added in the last 30
-  days, newest first. **Studios** and **Categories** open a sheet; picking an entry limits Home to that
-  studio or genre. Labels exactly as Jellyfin returns them ("Science Fiction", "A24").
-- One filter at a time, none on launch; Home opens unfiltered on every launch. Picking another button
-  replaces the active filter.
-- The active button is shown selected with a clear (×). Studios and Categories show the picked name in
-  the button ("Studios: A24"). Tapping the button's × clears the filter; tapping a selected Shows,
-  Movies or New button clears it too.
-- A filter limits the hero and every row; rows left empty are hidden.
-- iOS: a horizontal `ScrollView` of capsule buttons, 36pt tall with a 44pt hit area. Unselected on
-  `surface-2` (`tertiarySystemBackground`) with `ink`; selected filled `ink` with `bg` text and a trailing
-  `xmark`, the same selected look as the season buttons. A capsule on the system background, never glass.
-  Studios and Categories open a `.sheet` with a list (medium and large detents, grabber).
-- Android: a `LazyRow` of M3 `FilterChip`s, 32dp tall inside the 48dp touch target. Unselected outlined in
-  `line-strong` with `ink-muted`; selected `accent-soft` with `on-accent-soft` and a trailing close icon.
-  Studios and Categories open a `ModalBottomSheet` with a list.
-- Sheets: a plain list of names, the picked one marked with a check, a search field when the list is long.
-  Loading shows a spinner, an empty list says so in plain words, and a failure offers Retry.
-- Both: aqua is not used in this row or the sheets. Accessibility: the row is a group named "Filter
-  Home"; each button is a toggle button and says whether it is selected; Studios and Categories say they
-  open a list.
+- One horizontally scrolling row; the next button always peeks. Nothing stays selected, and there is no clear (×).
+- **Shows**, **Movies** and **New** open a category page at once, titled with their name.
+- **Studios** and **Categories** are different, and look it: they carry a chevron and open a dropdown under the
+  button, with a search field on top. Picking an entry (a studio, a genre such as "Action") opens a category page
+  titled with its name.
+- iOS: a horizontal `ScrollView` of capsule buttons, 36pt tall with a 44pt hit area, `surface-2`
+  (`tertiarySystemBackground`) with `ink`; Studios and Categories add a trailing `chevron.down`. A capsule on the
+  system background, never glass. The dropdown is a popover under the button (a sheet on compact widths) with a
+  search field and a list of names.
+- Android: a `LazyRow` of M3 `AssistChip`s, outlined in `line-strong` with `ink-muted`; Studios and Categories add a
+  trailing dropdown arrow and open a `DropdownMenu` with a search field above a scrolling list.
+- The dropdown: loading shows grey lines, an empty list says so, what was typed matching nothing says so, a failure
+  offers Try again. Each list is fetched once per session.
+- Both: aqua is not used in this row or the dropdowns. Accessibility: the row is a group named "Filter Home"; a
+  button that opens a dropdown says "Studios, opens a list".
 
-### Home with a filter
+### Category page
 
-Home with one filter active, for a type (Shows), New, a studio (A24) and a genre (Drama).
+The page a button or a dropdown entry opens.
 
-- The header, button row, hero and rows keep their places and order. The active button is the only change
-  in the chrome, scrolled into view.
-- The hero and every row hold only items matching the filter. A row with nothing left is hidden, never
-  shown empty. The hero is picked again from the filtered items (still one per session, still a Backdrop
-  and a Logo image).
-- Shows: Continue watching holds episodes and Next up; Movies holds movies only. A genre matches an item's
-  own genres, or its series' genres for an episode. New is ordered by `DateCreated`, newest first.
-- Clearing the filter restores the full Home, scrolled to the top.
-- Switching filters keeps the old content on screen until the new content has loaded (skeleton rows only
-  on the first load); nothing navigates and the tab bar stays as is.
+- A new screen over Home with the bar kept (the tabs' own back stack): a back button, the **name as the title**
+  ("Shows", "Movies", "New", "A24", "Action"), then a grid of posters, the same grid as a folder's list.
+- **Shows** are series by name; **Movies** are movies by name; **New** is movies and shows added in the last 30
+  days, newest first; a studio or a genre is its movies and shows by name.
+- Posters open the item's page or a folder's list, like anywhere else. More load as the end comes into view.
+- Loading is grey posters, an empty page says so, a failure offers Try again, a rejected session leaves to "Who's
+  watching?".
 
 ## Detail
 

@@ -150,18 +150,15 @@ _Starts after the state audit (see Cross-cutting)._
   The Search tab joins with unified search below. Nothing else is built in this item
 - [ ] Home rows: Latest, genres, My Media, plus Continue Watching (which holds Next Up)
 - [ ] Home category buttons under the header, Netflix-style, as one horizontally scrolling row in this
-  fixed order (configurable in Phase 7): **Shows**, **Movies**, **New**, **Studios**, **Categories**.
-  Every button filters Home in place:
-  - **Shows** and **Movies** limit Home to that type
-  - **New** limits Home to titles added recently (last 30 days, newest first, by `DateCreated`). **Check the
-    OpenAPI spec** for a creation-date filter on `GET /Items`; otherwise filter on the client
-  - **Studios** opens a sheet of studios (`GET /Studios`); picking one limits Home to it
-    (`GET /Items?StudioIds=`)
-  - **Categories** opens a sheet of the library's genres (`GET /Genres`); picking one limits Home to it
-  One filter at a time, none on launch; the active one shows as a selected button with a clear (×), and
-  Studios and Categories show the picked name in the button ("Studios: A24"). A filter limits the hero and
-  every row; rows left empty hide. **Check the OpenAPI spec** whether `/UserItems/Resume` and
-  `/Shows/NextUp` take type, genre and studio filters, or filter Continue Watching on the client
+  fixed order (configurable in Phase 7): **Shows**, **Movies**, **New**, **Studios**, **Categories**. Home itself
+  is never filtered; every button opens a page of its own, titled with its name:
+  - **Shows**, **Movies** and **New** open that page at once. New is titles added in the last 30 days, newest
+    first, by `DateCreated` (the OpenAPI spec has no creation-date filter on `GET /Items`, so it is cut on the client)
+  - **Studios** and **Categories** carry a chevron and open a dropdown with search (`GET /Studios`,
+    `GET /Genres`); the entry picked, a studio or a genre such as "Action", opens a page with that name and its
+    media (`GET /Items?StudioIds=` / `GenreIds=`)
+  - a page is a grid of posters like a folder's list, paged, with the five states; Home's Continue watching and
+    libraries are untouched
 - [ ] Detail page: metadata, cast, `/Items/{id}/Similar`. The page opens on a full-width cinematic
   backdrop hero (`Backdrop` image) with a dark gradient overlay (the `scrim` token), and the movie
   details and action buttons are layered over the image: the `Logo` image as the title (the
@@ -190,8 +187,8 @@ _Starts after the state audit (see Cross-cutting)._
 - [ ] My List (Favorites), thumbs (`UserData.likes`)
 - [ ] Tile trailers (`LocalTrailers` / `RemoteTrailers`, content-dependent)
 
-_Exit: switch tabs with their own back stacks, filter Home by Shows, Movies, New, a studio and a genre, and
-see the mini player on iOS 26._
+_Exit: switch tabs with their own back stacks, open the Shows, Movies, New, a studio and a genre pages from Home,
+and see the mini player on iOS 26._
 
 ### Phase 6 — Accounts & polish
 - [ ] Profile picker: quick-switch between users, optional PIN (Jellyfin has no sub-profiles)

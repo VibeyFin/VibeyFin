@@ -11,7 +11,7 @@ import app.vibeyfin.data.api.map
 import app.vibeyfin.data.api.userViews
 import app.vibeyfin.data.api.studios
 import app.vibeyfin.data.api.genres
-import app.vibeyfin.data.api.recentItems
+import app.vibeyfin.data.api.filteredItems
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.ItemPage
 import app.vibeyfin.domain.model.MediaItem
@@ -56,22 +56,37 @@ class LibraryRepository(private val connection: ConnectionManager) {
     }
 
     /**
-     * The "Recently added" row under [filter]: movies and shows, newest added first, at most [limit].
-     * [HomeFilter.New] keeps only what was added in the last [NEW_WINDOW] before [now].
+     * One page of the category page for [filter], across every library: Shows (series), Movies, New, or a
+     * studio's or genre's movies and shows. New is newest added first and ends at [NEW_WINDOW] before [now];
+     * the server can't cut by creation date, so the page is cut here and the list ends at the first older item.
+     * The rest are by name.
      */
-    suspend fun recentlyAdded(filter: HomeFilter, now: Instant, limit: Int = ROW_LIMIT): ApiResult<List<MediaItem>> = call { api, userId ->
-        val types = when (filter) {
-            HomeFilter.Shows -> listOf("Series")
-            HomeFilter.Movies -> listOf("Movie")
-            else -> listOf("Movie", "Series")
+    suspend fun filteredPage(filter: HomeFilter, now: Instant, startIndex: Int = 0, limit: Int = PAGE_SIZE): ApiResult<ItemPage> =
+        call { api, userId ->
+            val types = when (filter) {
+                HomeFilter.Shows -> listOf("Series")
+                HomeFilter.Movies -> listOf("Movie")
+                else -> listOf("Movie", "Series")
+            }
+            val newest = filter == HomeFilter.New
+            api.filteredItems(
+                userId, types, (filter as? HomeFilter.Genre)?.id, (filter as? HomeFilter.Studio)?.id,
+                sortBy = if (newest) "DateCreated" else "SortName",
+                sortOrder = if (newest) "Descending" else "Ascending",
+                startIndex = startIndex,
+                limit = limit,
+            ).map { result ->
+                val items = result.items.map { it.toMediaItem(api.baseUrl) }
+                if (!newest) {
+                    ItemPage(items, result.totalRecordCount, result.startIndex)
+                } else {
+                    val recent = items.takeWhile { it.isNew(now) }
+                    // Newest first: the first older item ends the list, so it is as long as what is kept so far.
+                    val total = if (recent.size < items.size) startIndex + recent.size else result.totalRecordCount
+                    ItemPage(recent, total, result.startIndex)
+                }
+            }
         }
-        // New can't be asked of the server, so a full page is fetched and cut here.
-        val ask = if (filter == HomeFilter.New) PAGE_SIZE else limit
-        api.recentItems(userId, types, (filter as? HomeFilter.Genre)?.id, (filter as? HomeFilter.Studio)?.id, ask).map { result ->
-            val items = result.items.map { it.toMediaItem(api.baseUrl) }
-            if (filter == HomeFilter.New) items.filter { it.isNew(now) }.take(limit) else items
-        }
-    }
 
     private suspend fun <T> call(block: suspend (JellyfinApi, String) -> ApiResult<T>): ApiResult<T> {
         val connected = connection.state.value as? ConnectionState.Connected
@@ -81,9 +96,6 @@ class LibraryRepository(private val connection: ConnectionManager) {
 
     companion object {
         const val PAGE_SIZE = 60
-
-        /** A Home row holds at most this many items (`guardrails.md`). */
-        const val ROW_LIMIT = 20
     }
 }
 

@@ -5,7 +5,6 @@ import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.data.api.ItemsResultDto
 import app.vibeyfin.data.api.JellyfinApi
 import app.vibeyfin.data.api.episodesFrom
-import app.vibeyfin.data.api.itemsMatching
 import app.vibeyfin.data.api.nextUp
 import app.vibeyfin.data.api.resumeItems
 import app.vibeyfin.data.api.setPlayed
@@ -14,7 +13,6 @@ import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlin.time.Instant
 
 /**
  * What the signed-in profile is in the middle of watching, and what to watch next. Reads the current
@@ -27,7 +25,7 @@ class WatchRepository(private val connection: ConnectionManager, private val cha
      * each show they follow ([mergeContinueWatching]). The two lists are asked for together. If one
      * can't be had the row has the other, and only when both fail does the row fail.
      */
-    suspend fun continueWatching(filter: HomeFilter? = null, now: Instant? = null): ApiResult<List<MediaItem>> = call { api, userId ->
+    suspend fun continueWatching(): ApiResult<List<MediaItem>> = call { api, userId ->
         coroutineScope {
             val resume = async { api.resumeItems(userId, ROW_LIMIT) }
             val next = async { api.nextUp(userId, ROW_LIMIT) }
@@ -35,52 +33,13 @@ class WatchRepository(private val connection: ConnectionManager, private val cha
             val nextItems = next.await().toItems(api)
             when {
                 resumeItems is ApiResult.Success && nextItems is ApiResult.Success ->
-                    narrow(api, userId, resumeItems.value, nextItems.value, filter, now)
-                resumeItems is ApiResult.Success -> narrow(api, userId, resumeItems.value, emptyList(), filter, now)
-                nextItems is ApiResult.Success -> narrow(api, userId, emptyList(), nextItems.value, filter, now)
+                    ApiResult.Success(mergeContinueWatching(resumeItems.value, nextItems.value))
+                resumeItems is ApiResult.Success -> ApiResult.Success(mergeContinueWatching(resumeItems.value, emptyList()))
+                nextItems is ApiResult.Success -> ApiResult.Success(mergeContinueWatching(emptyList(), nextItems.value))
                 else -> ApiResult.Failure(worseOf((resumeItems as ApiResult.Failure).error, (nextItems as ApiResult.Failure).error))
             }
         }
     }
-
-    /**
-     * Limits the two lists to [filter] before they are merged, so the row is still full when enough match. Type and
-     * date are read from the items; a genre or a studio is asked of the server about the items' own ids (a show's,
-     * for an episode), because Resume and Next Up cannot be filtered by them.
-     */
-    private suspend fun narrow(
-        api: JellyfinApi,
-        userId: String,
-        inProgress: List<MediaItem>,
-        nextUp: List<MediaItem>,
-        filter: HomeFilter?,
-        now: Instant?,
-    ): ApiResult<List<MediaItem>> {
-        if (filter == null) return ApiResult.Success(mergeContinueWatching(inProgress, nextUp))
-        // Genre and studio are the server's call, about each item's subject; the rest is read from the items.
-        val matching: Set<String>? = if (filter is HomeFilter.Genre || filter is HomeFilter.Studio) {
-            val subjects = (inProgress + nextUp).map { it.subjectId() }.distinct()
-            if (subjects.isEmpty()) return ApiResult.Success(emptyList())
-            when (val result = api.itemsMatching(userId, subjects, (filter as? HomeFilter.Genre)?.id, (filter as? HomeFilter.Studio)?.id)) {
-                is ApiResult.Failure -> return result
-                is ApiResult.Success -> result.value.items.mapTo(mutableSetOf()) { it.id }
-            }
-        } else {
-            null
-        }
-        val keep: (MediaItem) -> Boolean = { item ->
-            when (filter) {
-                HomeFilter.Shows -> item.kind == ItemKind.Episode || item.kind == ItemKind.Series
-                HomeFilter.Movies -> item.kind == ItemKind.Movie
-                HomeFilter.New -> now != null && item.isNew(now)
-                is HomeFilter.Genre, is HomeFilter.Studio -> item.subjectId() in matching.orEmpty()
-            }
-        }
-        return ApiResult.Success(mergeContinueWatching(inProgress.filter(keep), nextUp.filter(keep)))
-    }
-
-    /** What an item's genres and studios belong to: the show for an episode, the item itself otherwise. */
-    private fun MediaItem.subjectId(): String = if (kind == ItemKind.Episode) seriesId ?: id else id
 
     /**
      * The episode after [current], in the show's own order and across seasons, or null when [current] is
