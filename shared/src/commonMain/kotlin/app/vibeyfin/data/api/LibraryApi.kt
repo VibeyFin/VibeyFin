@@ -79,3 +79,13 @@ suspend fun JellyfinApi.filteredItems(
     },
     retry = true,
 )
+
+/**
+ * `GET /Items/Latest?parentId=`: what was added to the library most recently, newest first, as a plain list. Episodes
+ * are grouped under their show and season by the server (`groupItems`), so a new season is one poster.
+ */
+suspend fun JellyfinApi.latestItems(userId: String, parentId: String, limit: Int): ApiResult<List<BaseItemDto>> = get(
+    "/Items/Latest",
+    mapOf("userId" to userId, "parentId" to parentId, "limit" to limit.toString(), "groupItems" to "true"),
+    retry = true,
+)

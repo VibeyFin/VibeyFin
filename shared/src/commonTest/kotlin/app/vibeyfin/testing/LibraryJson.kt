@@ -6,6 +6,8 @@ fun itemJson(
     name: String? = id,
     type: String = "Movie",
     isFolder: Boolean = false,
+    /** On a library: `movies`, `tvshows`, `music`, ... */
+    collectionType: String? = null,
     year: Int? = null,
     runtimeTicks: Long? = null,
     overview: String? = null,
@@ -35,6 +37,7 @@ fun itemJson(
         """"Name":${string(name)}""",
         """"Type":"$type"""",
         """"IsFolder":$isFolder""",
+        """"CollectionType":${string(collectionType)}""",
         """"ProductionYear":${year ?: "null"}""",
         """"RunTimeTicks":${runtimeTicks ?: "null"}""",
         """"Overview":${string(overview)}""",

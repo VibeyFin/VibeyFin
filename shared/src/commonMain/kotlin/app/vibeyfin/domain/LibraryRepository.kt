@@ -10,6 +10,7 @@ import app.vibeyfin.data.api.itemsById
 import app.vibeyfin.data.api.map
 import app.vibeyfin.data.api.userViews
 import app.vibeyfin.data.api.genres
+import app.vibeyfin.data.api.latestItems
 import app.vibeyfin.data.api.filteredItems
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.ItemPage
@@ -41,6 +42,11 @@ class LibraryRepository(private val connection: ConnectionManager) {
                 ?.let { ApiResult.Success(it.toMediaItem(api.baseUrl)) }
                 ?: ApiResult.Failure(ApiError.NotFound)
         }
+    }
+
+    /** What was added to [libraryId] most recently, at most [limit], episodes grouped under their show. */
+    suspend fun latest(libraryId: String, limit: Int = ROW_LIMIT): ApiResult<List<MediaItem>> = call { api, userId ->
+        api.latestItems(userId, libraryId, limit).map { items -> items.map { it.toMediaItem(api.baseUrl) } }
     }
 
     /**
@@ -94,6 +100,9 @@ class LibraryRepository(private val connection: ConnectionManager) {
 
     companion object {
         const val PAGE_SIZE = 60
+
+        /** A Home row holds at most this many items (`guardrails.md`). */
+        const val ROW_LIMIT = 20
     }
 }
 
@@ -151,6 +160,7 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
         backdropBlurHash = backdropTag?.let { blurHash("Backdrop", it) },
         landscapeBlurHash = landscape?.let { (type, tag) -> blurHash(type, tag) },
         videoFormat = mediaStreams.firstOrNull { it.type == "Video" }?.toVideoFormat(),
+        collectionType = collectionType?.takeIf { it.isNotBlank() },
     )
 }
 

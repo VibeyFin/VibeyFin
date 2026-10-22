@@ -20,6 +20,8 @@ class HomeModel {
 
     fun onRetryContinue() = host.viewModel.onRetryContinue()
 
+    fun onRetryRow(id: String) = host.viewModel.onRetryRow(id)
+
     fun onMarkWatched(cardId: String) = host.viewModel.onMarkWatched(cardId)
 
     fun onRetryAction() = host.viewModel.onRetryAction()

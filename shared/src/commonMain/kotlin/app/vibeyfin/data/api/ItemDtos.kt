@@ -11,6 +11,8 @@ data class BaseItemDto(
     /** `Movie`, `Series`, `Season`, `Episode`, `Folder`, `CollectionFolder`, `BoxSet`, ... */
     @SerialName("Type") val type: String? = null,
     @SerialName("IsFolder") val isFolder: Boolean = false,
+    /** On a library: `movies`, `tvshows`, `music`, `boxsets`, ...; absent for a library of mixed content. */
+    @SerialName("CollectionType") val collectionType: String? = null,
     @SerialName("ProductionYear") val productionYear: Int? = null,
     @SerialName("RunTimeTicks") val runTimeTicks: Long? = null,
     @SerialName("Overview") val overview: String? = null,

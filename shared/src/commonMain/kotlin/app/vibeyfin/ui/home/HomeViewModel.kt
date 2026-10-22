@@ -9,6 +9,7 @@ import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.FilterOption
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.LibraryRepository
+import app.vibeyfin.domain.PageSort
 import app.vibeyfin.domain.WatchChanges
 import app.vibeyfin.domain.WatchRepository
 import app.vibeyfin.domain.model.MediaItem
@@ -62,6 +63,11 @@ data class HomeUiState(
     val sheet: FilterSheet? = null,
     /** Set when a category page should open (a button or a sheet entry was chosen); the screen calls `onListOpened`. */
     val openList: HomeFilter? = null,
+    /**
+     * The rows between Continue watching and My media, in order: Recently added in each video library, then a few
+     * genres. Only rows worth showing (loading, failed or with items) are here, and at most [MAX_ROWS] in all.
+     */
+    val rows: List<MediaRow> = emptyList(),
 )
 
 /** The sheet and the page to open, which change together. */
@@ -69,6 +75,13 @@ private data class CategoryUi(
     val sheet: FilterSheet? = null,
     val openList: HomeFilter? = null,
 )
+
+/** Home holds at most 12 rows (`guardrails.md`); Continue watching and My media are two of them. */
+private const val MAX_ROWS = 10
+
+/** How many libraries get a "Recently added" row, and how many genres a row, before [MAX_ROWS] cuts. */
+private const val MAX_LATEST_ROWS = 6
+private const val MAX_GENRE_ROWS = 3
 
 private data class Libraries(
     val items: List<MediaItem> = emptyList(),
@@ -98,6 +111,10 @@ class HomeViewModel(
 
     private val actionMessage = MutableStateFlow<String?>(null)
 
+    private val latestRows = MutableStateFlow<List<MediaRow>>(emptyList())
+    private val genreRows = MutableStateFlow<List<MediaRow>>(emptyList())
+    private val rows = combine(latestRows, genreRows) { latest, genres -> (latest + genres).filter { it.isVisible }.take(MAX_ROWS) }
+
     private val categoryUi = MutableStateFlow(CategoryUi())
     private var sheetJob: Job? = null
     // The sheets' lists, fetched once per session when first opened.
@@ -125,8 +142,8 @@ class HomeViewModel(
         }
     }
 
-    val uiState: StateFlow<HomeUiState> = combine(screen, actionMessage, categoryUi) { screen, message, categories ->
-        screen.copy(actionMessage = message, sheet = categories.sheet, openList = categories.openList)
+    val uiState: StateFlow<HomeUiState> = combine(screen, actionMessage, categoryUi, rows) { screen, message, categories, rows ->
+        screen.copy(actionMessage = message, sheet = categories.sheet, openList = categories.openList, rows = rows)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     init {
@@ -141,9 +158,15 @@ class HomeViewModel(
                     sheetJob?.cancel()
                     categoryUi.value = CategoryUi()
                     genreOptions = null
+                    latestRows.value = emptyList()
+                    genreRows.value = emptyList()
                     coroutineScope {
-                        launch { loadLibraries() }
+                        launch {
+                            loadLibraries()
+                            loadLatestRows(quiet = false)
+                        }
                         launch { loadContinue(first = true) }
+                        launch { loadGenreRows(quiet = false) }
                     }
                 }
         }
@@ -152,7 +175,29 @@ class HomeViewModel(
     }
 
     fun onRetryLibraries() {
-        viewModelScope.launch { loadLibraries() }
+        viewModelScope.launch {
+            loadLibraries()
+            loadLatestRows(quiet = false)
+        }
+    }
+
+    /** "Try again" on one row: only it reloads. */
+    fun onRetryRow(id: String) {
+        val row = (latestRows.value + genreRows.value).firstOrNull { it.id == id } ?: return
+        val to = row.seeAll
+        viewModelScope.launch {
+            when (to) {
+                is SeeAll.Library -> {
+                    latestRows.updateRow(id) { it.copy(loading = true, message = null) }
+                    loadLatest(to.library, quiet = false)
+                }
+                is SeeAll.Genre -> {
+                    genreRows.updateRow(id) { it.copy(loading = true, message = null) }
+                    loadGenreRow(to.filter, quiet = false)
+                }
+                null -> Unit
+            }
+        }
     }
 
     private val marking = mutableSetOf<String>()
@@ -212,9 +257,14 @@ class HomeViewModel(
         refresh = viewModelScope.launch {
             refreshing.value = true
             try {
+                // Continue watching is asked first; the rest follow at once.
                 coroutineScope {
                     launch { loadContinue(first = false) }
-                    launch { loadLibraries(quiet = true) }
+                    launch {
+                        loadLibraries(quiet = true)
+                        loadLatestRows(quiet = true)
+                    }
+                    launch { loadGenreRows(quiet = true) }
                 }
             } finally {
                 refreshing.value = false
@@ -259,6 +309,68 @@ class HomeViewModel(
             is ApiResult.Failure -> if (quiet && before.items.isNotEmpty()) before else Libraries(message = LoadMessages.forError(result.error))
         }
     }
+
+    /** One "Recently added" row per library that holds video; the rows keep their order while each loads on its own. */
+    private suspend fun loadLatestRows(quiet: Boolean) {
+        val videoLibraries = libraries.value.items.filter { it.holdsVideo }.take(MAX_LATEST_ROWS)
+        latestRows.update { old ->
+            videoLibraries.map { lib ->
+                // A refresh keeps what is on screen until the answer comes.
+                old.firstOrNull { it.id == latestId(lib) }?.takeIf { quiet }
+                    ?: MediaRow(latestId(lib), Strings.recentlyAddedIn(lib.title), seeAll = SeeAll.Library(lib))
+            }
+        }
+        coroutineScope { videoLibraries.forEach { lib -> launch { loadLatest(lib, quiet) } } }
+    }
+
+    private suspend fun loadLatest(lib: MediaItem, quiet: Boolean) {
+        val result = library.latest(lib.id)
+        latestRows.updateRow(latestId(lib)) { row ->
+            when (result) {
+                is ApiResult.Success -> row.copy(items = result.value, loading = false, message = null)
+                is ApiResult.Failure -> failed(row, result.error, quiet)
+            }
+        }
+    }
+
+    /** The genres with the most titles, a row each; they are optional, so a failure to list them shows nothing. */
+    private suspend fun loadGenreRows(quiet: Boolean) {
+        val listed = library.genres()
+        if (listed is ApiResult.Success) genreOptions = listed.value
+        val top = (listed as? ApiResult.Success)?.value.orEmpty()
+            .sortedWith(compareByDescending<FilterOption> { it.count ?: 0 }.thenBy { it.name.lowercase() })
+            .take(MAX_GENRE_ROWS)
+        if (listed is ApiResult.Failure && quiet) return
+        val filters = top.map { HomeFilter.Genre(it.id, it.name) }
+        genreRows.update { old ->
+            filters.map { filter ->
+                old.firstOrNull { it.id == genreId(filter) }?.takeIf { quiet }
+                    ?: MediaRow(genreId(filter), filter.name, seeAll = SeeAll.Genre(filter))
+            }
+        }
+        coroutineScope { filters.forEach { filter -> launch { loadGenreRow(filter, quiet) } } }
+    }
+
+    private suspend fun loadGenreRow(filter: HomeFilter.Genre, quiet: Boolean) {
+        val result = library.filteredPage(filter, PageSort.Rating, limit = LibraryRepository.ROW_LIMIT)
+        genreRows.updateRow(genreId(filter)) { row ->
+            when (result) {
+                is ApiResult.Success -> row.copy(items = result.value.items, loading = false, message = null)
+                is ApiResult.Failure -> failed(row, result.error, quiet)
+            }
+        }
+    }
+
+    /** A refresh that fails leaves the row as it was; a first load or a retry shows why. */
+    private fun failed(row: MediaRow, error: ApiError, quiet: Boolean) =
+        if (quiet && row.items.isNotEmpty()) row.copy(loading = false) else row.copy(items = emptyList(), loading = false, message = LoadMessages.forError(error))
+
+    private fun latestId(lib: MediaItem) = "latest:${lib.id}"
+
+    private fun genreId(filter: HomeFilter.Genre) = "genre:${filter.id}"
+
+    private fun MutableStateFlow<List<MediaRow>>.updateRow(id: String, transform: (MediaRow) -> MediaRow) =
+        update { rows -> rows.map { if (it.id == id) transform(it) else it } }
 
     /**
      * A tap on a category button. Shows, Movies and New open their page at once; Studios and Categories open a

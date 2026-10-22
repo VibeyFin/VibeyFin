@@ -57,6 +57,8 @@ data class MediaItem(
     val landscapeBlurHash: String? = null,
     /** The file's video picture; null when the server wasn't asked for streams or the item has no video. */
     val videoFormat: VideoFormat? = null,
+    /** On a library: what it holds (`movies`, `tvshows`, `music`, ...); null for mixed content or anything that is not a library. */
+    val collectionType: String? = null,
 ) {
     /** How far in the user is, from 0 to 1; null when they haven't started or the length isn't known. */
     val progress: Float?
@@ -68,6 +70,10 @@ data class MediaItem(
      * say the name twice. Screens leave the caption off and describe the picture with the title.
      */
     val nameIsOnPoster: Boolean get() = kind == ItemKind.Library && posterUrl != null
+
+    /** A library of films or shows (or a mix), which Home gives a "Recently added" row; music, books, photos and live TV do not. */
+    val holdsVideo: Boolean
+        get() = kind == ItemKind.Library && (collectionType == null || collectionType in VIDEO_COLLECTIONS)
 
     /** Movies and episodes play. Other kinds, such as music or extras, are not offered yet. */
     val canPlay: Boolean get() = kind == ItemKind.Movie || kind == ItemKind.Episode
@@ -82,3 +88,5 @@ data class ItemPage(
 ) {
     val hasMore: Boolean get() = items.isNotEmpty() && startIndex + items.size < total
 }
+
+private val VIDEO_COLLECTIONS = setOf("movies", "tvshows", "homevideos", "musicvideos", "boxsets")

@@ -78,7 +78,15 @@ object Strings {
 
     // Home and browsing
     val home = "Home"
-    val libraries = "Libraries"
+    /** The row of the user's libraries at the end of Home. */
+    val libraries = "My media"
+
+    /** The header of a library's row of what was added most recently. */
+    fun recentlyAddedIn(library: String) = "Recently added in $library"
+
+    /** The action in a row's header that opens the whole list, and what a screen reader says for it. */
+    val seeAll = "See all"
+    fun seeAllIn(row: String) = "See all, $row"
 
     /** The main navigation bar: its labels, and the name a screen reader gives the bar. */
     val tabHome = "Home"
