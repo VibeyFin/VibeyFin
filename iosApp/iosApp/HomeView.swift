@@ -42,8 +42,10 @@ struct HomeView: View {
                                 HomeHeroView(
                                     item: hero,
                                     onPlay: { playing = PlayRequest(id: $0) },
-                                    onOpen: onDetails
+                                    onOpen: onDetails,
+                                    onMyList: { model.heroMyList() }
                                 )
+                                .screenMargin()
                             }
                             ContinueRowView(
                                 row: state.continueRow,

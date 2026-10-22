@@ -1,6 +1,8 @@
 package app.vibeyfin.ui.home
 
+import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
+import app.vibeyfin.ui.common.Strings
 import kotlin.random.Random
 
 /**
@@ -14,6 +16,6 @@ internal fun pickHero(candidates: List<MediaItem>, random: Random): MediaItem? =
         .filter { it.backdropUrl != null && it.logoUrl != null }
         .let { qualified -> if (qualified.isEmpty()) null else qualified[random.nextInt(qualified.size)] }
 
-/** The facts under the hero's logo: the year and up to two genres. */
+/** The line under the hero's logo, as on Netflix: what it is ("Movie", "Show"), then up to four of its genres. */
 val MediaItem.heroFacts: List<String>
-    get() = listOfNotNull(year?.toString()) + genres.take(2)
+    get() = listOfNotNull(if (kind == ItemKind.Series) Strings.heroShow else if (kind == ItemKind.Movie) Strings.heroMovie else null) + genres.take(4)

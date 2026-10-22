@@ -18,6 +18,8 @@ class HomeModel {
 
     fun onRetryLibraries() = host.viewModel.onRetryLibraries()
 
+    fun onHeroMyList() = host.viewModel.onHeroMyList()
+
     fun onRetryContinue() = host.viewModel.onRetryContinue()
 
     fun onRetryRow(id: String) = host.viewModel.onRetryRow(id)

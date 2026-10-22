@@ -46,6 +46,8 @@ final class HomeObservable: ObservableObject {
         model.onDismissMessage()
     }
 
+    func heroMyList() { model.onHeroMyList() }
+
     func retryContinue() {
         model.onRetryContinue()
     }

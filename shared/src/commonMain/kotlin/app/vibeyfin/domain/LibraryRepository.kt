@@ -179,6 +179,8 @@ class LibraryRepository(private val connection: ConnectionManager) {
         limit: Int = PAGE_SIZE,
         /** On a page that lists both (My List, New): only movies or only shows. */
         type: TypeFilter? = null,
+        /** Extra fields the server leaves out of a list unless asked, comma-separated (`Genres`). */
+        fields: String? = null,
     ): ApiResult<ItemPage> = call { api, userId ->
         val types = when {
             filter == HomeFilter.Shows || type == TypeFilter.Shows -> listOf("Series")
@@ -193,7 +195,7 @@ class LibraryRepository(private val connection: ConnectionManager) {
         api.filteredItems(
             userId, types, (filter as? HomeFilter.Genre)?.id ?: genreId,
             sortBy = sortBy, sortOrder = sortOrder, startIndex = startIndex, limit = limit,
-            favoritesOnly = filter == HomeFilter.MyList,
+            favoritesOnly = filter == HomeFilter.MyList, fields = fields,
         ).map { result ->
             ItemPage(result.items.map { it.toMediaItem(api.baseUrl) }, result.totalRecordCount, result.startIndex)
         }

@@ -9,6 +9,7 @@ import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.ViewModelTracker
 import app.vibeyfin.testing.itemJson
 import app.vibeyfin.testing.itemsJson
+import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
@@ -192,6 +193,30 @@ class HomeRowsViewModelTest {
             if (genre == null) Reply.json(itemsJson(itemJson("star", "Star", backdropTag = "b", logoTag = "l"))) else Reply.json(itemsJson(itemJson("top-$genre", "Top $genre")))
         },
     )
+
+    @Test
+    fun theHeroCandidatesAreAskedForWithTheirGenres() = runTest {
+        heroServer()
+
+        viewModel().uiState.first { it.hero != null }
+
+        assertTrue(app.jellyfin.requestsTo("GET", "/Items").any { it.query["fields"] == "Genres" })
+    }
+
+    @Test
+    fun myListOnTheHeroIsShownAtOnceAndTakenBackWithAMessageWhenItCantBeSaved() = runTest {
+        val server = heroServer()
+        server.on("POST", "/UserFavoriteItems/star", Reply.status(HttpStatusCode.ServiceUnavailable))
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hero != null }
+
+        viewModel.onHeroMyList()
+        assertTrue(viewModel.uiState.value.hero?.isFavorite == true)
+        val failed = viewModel.uiState.first { it.actionMessage != null }
+
+        assertEquals(false, failed.hero?.isFavorite)
+        assertEquals(LoadMessages.ADD_TO_MY_LIST_FAILED, failed.actionMessage)
+    }
 
     @Test
     fun aProfileWithTheHeroTurnedOffGetsNoneAndAsksForNoCandidates() = runTest {

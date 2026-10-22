@@ -189,7 +189,7 @@ _Starts after the state audit (see Cross-cutting)._
 - [ ] Ambient background: a static wash from the item's BlurHash behind the hero and the player, under
   the `scrim` (allowed by `brand.md`; the accent is never derived from artwork, and no colour-extraction
   library is added)
-- [x] Home hero (Android built and run; iOS written and only parsed): one featured item per session (random among recently added and My List that have a Backdrop and a Logo), a 3:2 banner crop with the Logo, facts and Play (a movie plays, a show opens its page), tapping the picture opens its page; a per-profile setting ("Featured title on Home") turns it off. Late in this phase (after the detail pages, so Play and the item's page already exist): one
+- [x] Home hero (Android built and run; iOS written and only parsed): one featured item per session (random among recently added and My List that have a Backdrop and a Logo), a rounded banner card (4:3 on a phone, wider on a tablet) with the Logo, a line of what it is and its genres, and Play beside My List (a movie plays, a show opens its page), tapping the picture opens its page; a per-profile setting ("Featured title on Home") turns it off. Late in this phase (after the detail pages, so Play and the item's page already exist): one
   item per app session, picked from recently added items and favorites that have both a `Backdrop` and a `Logo`
   image (the `brand-display` title is the Logo's fallback only for the detail page, not here). Never an
   auto-rotating carousel. It sits under the category buttons and above Continue watching, which stays above the fold

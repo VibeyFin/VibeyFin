@@ -38,8 +38,9 @@ class HomeHeroTest {
     }
 
     @Test
-    fun theFactsAreTheYearAndAtMostTwoGenres() {
-        assertEquals(listOf("2024", "Drama", "Thriller"), item("x", genres = listOf("Drama", "Thriller", "Action")).heroFacts)
-        assertTrue(item("y", year = null).heroFacts.isEmpty())
+    fun theFactsAreWhatItIsAndAtMostFourGenres() {
+        assertEquals(listOf("Movie", "Drama", "Thriller", "Action", "Comedy"), item("x", genres = listOf("Drama", "Thriller", "Action", "Comedy", "Horror")).heroFacts)
+        assertEquals(listOf("Movie"), item("y", year = null).heroFacts)
+        assertTrue(item("z").copy(kind = ItemKind.Series).heroFacts.first() == "Show")
     }
 }

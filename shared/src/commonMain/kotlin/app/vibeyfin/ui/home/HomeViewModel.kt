@@ -435,11 +435,33 @@ class HomeViewModel(
         }
     }
 
+    private var heroWriting = false
+
+    /** "My List" on the hero: shown at once, taken back with a message if the server can't save it. */
+    fun onHeroMyList() {
+        val before = hero.value ?: return
+        if (heroWriting) return
+        heroWriting = true
+        val target = !before.isFavorite
+        actionMessage.value = null
+        hero.value = before.copy(isFavorite = target)
+        viewModelScope.launch {
+            val result = watch.setFavorite(before.id, target)
+            heroWriting = false
+            if (result is ApiResult.Failure) {
+                hero.update { current -> current?.takeIf { it.id == before.id }?.copy(isFavorite = before.isFavorite) ?: current }
+                if (result.error != ApiError.Unauthorized) {
+                    actionMessage.value = if (target) LoadMessages.ADD_TO_MY_LIST_FAILED else LoadMessages.REMOVE_FROM_MY_LIST_FAILED
+                }
+            }
+        }
+    }
+
     /** Picks the featured item from what was added lately and from My List. A failure shows no hero: it is optional. */
     private suspend fun loadHero() {
         val (added, favourites) = coroutineScope {
-            val added = async { library.filteredPage(HomeFilter.New, PageSort.Added, limit = HERO_CANDIDATES) }
-            val favourites = async { library.filteredPage(HomeFilter.MyList, PageSort.Added, limit = HERO_CANDIDATES) }
+            val added = async { library.filteredPage(HomeFilter.New, PageSort.Added, limit = HERO_CANDIDATES, fields = "Genres") }
+            val favourites = async { library.filteredPage(HomeFilter.MyList, PageSort.Added, limit = HERO_CANDIDATES, fields = "Genres") }
             added.await() to favourites.await()
         }
         val candidates = listOf(added, favourites).flatMap { (it as? ApiResult.Success)?.value?.items.orEmpty() }

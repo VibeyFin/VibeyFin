@@ -65,6 +65,7 @@ import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -140,6 +141,7 @@ fun HomeRoute(
         onOpen = onOpen,
         onPlay = onPlay,
         onDetails = onDetails,
+        onHeroMyList = viewModel::onHeroMyList,
         onMarkWatched = viewModel::onMarkWatched,
         onRetryAction = viewModel::onRetryAction,
         onDismissMessage = viewModel::onDismissMessage,
@@ -172,6 +174,7 @@ fun HomeScreen(
     onOpen: (MediaItem) -> Unit,
     onPlay: (String) -> Unit,
     onDetails: (String) -> Unit,
+    onHeroMyList: () -> Unit,
     onMarkWatched: (String) -> Unit,
     onRetryAction: () -> Unit,
     onDismissMessage: () -> Unit,
@@ -225,7 +228,7 @@ fun HomeScreen(
             }
             if (state.serverId != null) {
                 Content(
-                    state, margin, onOpen, onPlay, onDetails, { menuCard = it }, onRefresh, onRetryContinue, onRetryLibraries, onRetryRow, onSeeAll,
+                    state, margin, onOpen, onPlay, onDetails, onHeroMyList, { menuCard = it }, onRefresh, onRetryContinue, onRetryLibraries, onRetryRow, onSeeAll,
                     onTap = { onCategory(it.kind) },
                 )
             }
@@ -275,6 +278,7 @@ private fun Content(
     onOpen: (MediaItem) -> Unit,
     onPlay: (String) -> Unit,
     onDetails: (String) -> Unit,
+    onHeroMyList: () -> Unit,
     onLongPress: (ContinueCardState) -> Unit,
     onRefresh: () -> Unit,
     onRetryContinue: () -> Unit,
@@ -319,7 +323,7 @@ private fun Content(
             }
             // The featured item, when there is one: full width, under the buttons and above what is being watched.
             state.hero?.let { hero ->
-                fullWidth(key = "hero") { Box(Modifier.bleed(margin)) { HomeHeroSection(hero, margin, onPlay, onDetails) } }
+                fullWidth(key = "hero") { HomeHeroSection(hero, LocalConfiguration.current.screenWidthDp >= 600, onPlay, onDetails, onHeroMyList) }
             }
             fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onLongPress, onRetryContinue) }
             // Until the libraries are known two grey rows hold the place, so the rows that replace them don't push
