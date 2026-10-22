@@ -351,9 +351,11 @@ class ItemViewModel(
         val opening = list.firstOrNull { nextEpisode != null && it.seasonIndex == nextEpisode.seasonNumber }
             ?: list.firstOrNull { (it.seasonIndex ?: 0) > 0 }
             ?: list.firstOrNull()
-        content.update { it.copy(seasons = SeasonsState(seasons = list, selectedId = opening?.id, startEpisode = nextEpisode)) }
+        // The episodes are already marked as loading, so the page never shows "no episodes" in between.
+        content.update {
+            it.copy(seasons = SeasonsState(seasons = list, selectedId = opening?.id, startEpisode = nextEpisode, episodes = EpisodeList(loading = opening != null)))
+        }
         if (opening != null) {
-            content.update { it.copy(seasons = it.seasons.copy(episodes = EpisodeList(loading = true))) }
             loadEpisodes(opening.id, setStart = nextEpisode == null)
         }
     }

@@ -3,6 +3,7 @@ package app.vibeyfin.app.item
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.spring
@@ -215,8 +216,8 @@ fun HeroDetails(
 private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorite: () -> Unit, onPlayTrailer: (String) -> Unit, onTogglePlayed: () -> Unit) {
     val uriHandler = LocalUriHandler.current
     // Four equal columns, as on other streaming apps: My List, Trailer, Watched, Download. A missing trailer leaves its column empty.
-    // Only the actions that exist are drawn, so three share the width as evenly as four. They fill the width of the column, the same as the text and Play above them, on a phone and on a tablet.
-    Row(modifier = Modifier.fillMaxWidth()) {
+    // Only the actions that exist are drawn, so three share the width as evenly as four. The first starts at the left edge of Play and the last ends at its right edge, with the rest spread evenly between.
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         ActionButton(
             centered = centered,
             label = Strings.myList,
@@ -265,7 +266,7 @@ private fun RowScope.ActionButton(label: String, description: String, icon: andr
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
         modifier = Modifier
-            .weight(1f)
+            .defaultMinSize(minWidth = 56.dp)
             .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description }

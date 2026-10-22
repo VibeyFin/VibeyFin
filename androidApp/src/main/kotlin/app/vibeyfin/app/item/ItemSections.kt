@@ -1,6 +1,12 @@
 package app.vibeyfin.app.item
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -133,24 +139,21 @@ private fun SeasonButtons(seasons: SeasonsState, margin: Dp, onSelect: (String) 
                 selected = selected,
                 onClick = { onSelect(season.id) },
                 label = { Text(season.seasonLabel, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                // No outline: a filled button, softly lit when selected.
                 colors = FilterChipDefaults.filterChipColors(
+                    containerColor = VibeyFinTokens.Colors.surface2,
                     labelColor = VibeyFinTokens.Colors.inkMuted,
                     selectedContainerColor = VibeyFinTokens.Colors.accentSoft,
                     selectedLabelColor = VibeyFinTokens.Colors.onAccentSoft,
                 ),
-                border = FilterChipDefaults.filterChipBorder(
-                    enabled = true,
-                    selected = selected,
-                    borderColor = VibeyFinTokens.Colors.lineStrong,
-                    selectedBorderColor = VibeyFinTokens.Colors.accentSoft,
-                ),
+                border = null,
                 modifier = Modifier.semantics { contentDescription = Strings.seasonDescription(season.seasonLabel, selected) },
             )
         }
     }
 }
 
-private data class EpisodePhase(val seasonId: String?, val loading: Boolean, val failed: Boolean)
+private data class EpisodePhase(val seasonId: String?, val index: Int, val loading: Boolean, val failed: Boolean)
 
 /** The selected season's episodes; choosing another season fades to its loading cards, then to its episodes. */
 @Composable
@@ -162,7 +165,21 @@ private fun EpisodeList(seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay
         modifier = Modifier.animateContentSize(tween(ROW_FADE_MS)),
     ) {
         // The list crossfades between a season loading and a season shown, so a tap never snaps.
-        Crossfade(targetState = EpisodePhase(seasons.selectedId, episodes.loading && episodes.items.isEmpty(), episodes.message != null), animationSpec = tween(ROW_FADE_MS), label = "episodes") { phase ->
+        AnimatedContent(
+            targetState = EpisodePhase(seasons.selectedId, seasons.seasons.indexOfFirst { it.id == seasons.selectedId }, episodes.loading && episodes.items.isEmpty(), episodes.message != null),
+            transitionSpec = {
+                // A later season slides in from the right, an earlier one from the left; the same season only fades.
+                val forward = targetState.index > initialState.index
+                if (targetState.index == initialState.index) {
+                    fadeIn(tween(ROW_FADE_MS)) togetherWith fadeOut(tween(ROW_FADE_MS))
+                } else {
+                    val sign = if (forward) 1 else -1
+                    (slideInHorizontally(tween(300)) { it * sign / 3 } + fadeIn(tween(300))) togetherWith
+                        (slideOutHorizontally(tween(300)) { -it * sign / 3 } + fadeOut(tween(200)))
+                }
+            },
+            label = "episodes",
+        ) { phase ->
             when {
                 phase.failed -> LoadError(episodes.message ?: "", onRetry)
                 phase.loading ->
