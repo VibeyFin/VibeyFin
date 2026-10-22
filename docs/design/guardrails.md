@@ -5,7 +5,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 ## Home
 
 - **Must** order rows: hero (optional, max one) → Continue watching (Next up is part of it, not a row of its own) → Recently added (one row per library) → collections / genres.
-- **Must** show the category buttons under the header, above the hero, as one scrolling row in this order: Shows, Movies, New, Categories. Home is never filtered. Shows, Movies and New open a category page titled with their name; Categories carries a chevron and opens a dropdown with search, and the genre picked opens a page titled with its name. Aqua is never used on the buttons.
+- **Must** show the category buttons under the header, above the hero, as one scrolling row in this order: Shows, Movies, New, Categories. Home is never filtered. Shows, Movies and New open a category page titled with their name; Categories carries a chevron and opens a sheet of genres (the player's picker component, no search), and the genre picked opens a page titled with its name. Aqua is never used on the buttons.
 - **Must** show Continue watching above the fold on a 6.1" phone, even with the hero present.
 - **Must** hide empty rows. Never show a row that says "No items" on Home.
 - Each row holds at most 20 items, then a "See all" action in its header.

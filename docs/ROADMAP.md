@@ -155,7 +155,7 @@ _Starts after the state audit (see Cross-cutting)._
   - **Shows**, **Movies** and **New** open that page at once. New is movies and shows by release year, newest
     first, with the year as a subtitle above its titles (`GET /Items` sorted by `ProductionYear,PremiereDate`,
     descending)
-  - **Categories** carries a chevron and opens a dropdown with search (`GET /Genres`); the genre picked, such as
+  - **Categories** carries a chevron and opens a sheet of genres, the player's picker component (`GET /Genres`); the genre picked, such as
     "Action", opens a page with that name and its media (`GET /Items?GenreIds=`)
   - a page is a grid of posters like a folder's list, paged, with the five states; Home's Continue watching and
     libraries are untouched
