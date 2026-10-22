@@ -184,6 +184,12 @@ _Starts after the state audit (see Cross-cutting)._
 - [ ] Ambient background: a static wash from the item's BlurHash behind the hero and the player, under
   the `scrim` (allowed by `brand.md`; the accent is never derived from artwork, and no colour-extraction
   library is added)
+- [ ] Home hero, late in this phase (after the detail pages, so Play and the item's page already exist): one
+  item per app session, picked from recently added items and favorites that have both a `Backdrop` and a `Logo`
+  image (the `brand-display` title is the Logo's fallback only for the detail page, not here). Never an
+  auto-rotating carousel. It sits under the category buttons and above Continue watching, which stays above the fold
+  on a 6.1" phone; the image is a 4:5 crop on phones (`brand.md`). Play is the one aqua button; tapping the image
+  opens the item's page. Optional by design, so Home looks right without it (no item qualifies, or a failure)
 - [ ] My List (Favorites), thumbs (`UserData.likes`)
 - [ ] Tile trailers (`LocalTrailers` / `RemoteTrailers`, content-dependent)
 
