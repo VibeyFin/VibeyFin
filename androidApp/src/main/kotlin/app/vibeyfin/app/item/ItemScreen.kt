@@ -2,6 +2,7 @@ package app.vibeyfin.app.item
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxScope
@@ -212,13 +213,13 @@ private fun ItemPage(
     }
     val scroll = rememberScrollState()
     if (!wide) {
-        // The picture is pinned behind the page and shrinks faster than the text scrolls, so the page's own content is reached
-        // without scrolling past the whole picture; what scrolls up covers it.
-        val heroHeight = minOf(screenWidth * PHONE_HERO_BY_WIDTH, screenHeight * PHONE_HERO_BY_HEIGHT)
+        // The picture stays put behind the page and darkens; the text goes up over it, and the rest of the page covers it.
+        val heroHeight = screenWidth * PHONE_HERO_BY_WIDTH
         Box(Modifier.fillMaxSize()) {
-            CollapsingBackdrop(item, heroHeight, scroll)
+            PinnedBackdrop(item, heroHeight, scroll)
             Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
-                Box(Modifier.fillMaxWidth().height(heroHeight)) {
+                // At least the picture's height; taller when the text needs more room, so nothing is cut off.
+                Box(Modifier.fillMaxWidth().heightIn(min = heroHeight)) {
                     Column(Modifier.align(Alignment.BottomCenter).padding(horizontal = margin).padding(bottom = VibeyFinTokens.Space.s4)) {
                         HeroDetails(item, state, centered = true, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer = onPlayEpisode, onTogglePlayed = onTogglePlayed)
                     }
@@ -244,9 +245,8 @@ private fun ItemPage(
     }
 }
 
-/** A phone's picture is this tall relative to the width, and at most this share of the screen. */
-private const val PHONE_HERO_BY_WIDTH = 1.4f
-private const val PHONE_HERO_BY_HEIGHT = 0.62f
+/** A phone's picture is 2:3: this tall relative to the width. */
+private const val PHONE_HERO_BY_WIDTH = 1.5f
 
 /** How far the page has to scroll for the backdrop to be fully darkened: the first screen. */
 private const val FIRST_SCREEN = 0.7f

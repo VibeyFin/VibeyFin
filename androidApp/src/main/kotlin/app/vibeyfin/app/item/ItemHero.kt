@@ -156,23 +156,13 @@ fun ItemBackdrop(item: MediaItem, screenWidth: Dp, screenHeight: Dp, progress: F
 }
 
 /**
- * A phone's picture: pinned at the top, [height] tall, and shrinking from the bottom as the page scrolls, faster than the text
- * moves, so the page's content comes up without scrolling past all of it. A scrim under the text fades it into the page.
+ * A phone's picture: pinned at the top, [height] tall, and staying put while the page scrolls: the text goes up over it, and it
+ * darkens ([scroll] against [height]) so what scrolls over it reads. A scrim under the text fades it into the page.
  */
 @Composable
-fun CollapsingBackdrop(item: MediaItem, height: Dp, scroll: androidx.compose.foundation.ScrollState) {
-    val fullPx = with(androidx.compose.ui.platform.LocalDensity.current) { height.roundToPx() }
-    Box(
-        Modifier
-            .fillMaxWidth()
-            // Read in the layout step, so scrolling re-measures this box and nothing else.
-            .layout { measurable, constraints ->
-                val shown = (fullPx - (scroll.value * COLLAPSE_RATE).toInt()).coerceIn(0, fullPx)
-                val placeable = measurable.measure(constraints.copy(minHeight = shown, maxHeight = shown))
-                layout(placeable.width, placeable.height) { placeable.place(0, 0) }
-            }
-            .clipToBounds(),
-    ) {
+fun PinnedBackdrop(item: MediaItem, height: Dp, scroll: androidx.compose.foundation.ScrollState) {
+    val fullPx = with(androidx.compose.ui.platform.LocalDensity.current) { height.toPx() }
+    Box(Modifier.fillMaxWidth().height(height)) {
         val picture = item.backdropUrl ?: item.posterUrl
         if (picture != null) {
             Artwork(
@@ -192,11 +182,12 @@ fun CollapsingBackdrop(item: MediaItem, height: Dp, scroll: androidx.compose.fou
                 Brush.verticalGradient(0f to scrim, 0.18f to Color.Transparent, 0.40f to Color.Transparent, 0.60f to scrim, 0.82f to scrimStrong, 1f to VibeyFinTokens.Colors.bg),
             ),
         )
+        // The darkening as the page scrolls; read in the draw step, so scrolling redraws this layer and nothing else.
+        Box(
+            Modifier.matchParentSize().graphicsLayer { alpha = (scroll.value / fullPx).coerceIn(0f, 1f) * MAX_DARKEN }.background(VibeyFinTokens.Colors.bg),
+        )
     }
 }
-
-/** The picture shrinks this many times faster than the page scrolls. */
-private const val COLLAPSE_RATE = 1.7f
 
 /** How dark the backdrop gets once the page has scrolled a screen: nearly the page's own colour, with a hint of the picture left. */
 private const val MAX_DARKEN = 0.94f
