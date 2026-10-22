@@ -1,5 +1,6 @@
 package app.vibeyfin.ios
 
+import app.vibeyfin.ui.home.CategoryKind
 import app.vibeyfin.ui.home.HomeUiState
 import app.vibeyfin.ui.home.HomeViewModel
 
@@ -28,6 +29,18 @@ class HomeModel {
     fun onRefresh() = host.viewModel.onRefresh()
 
     fun onForeground() = host.viewModel.onForeground()
+
+    fun onCategory(kind: CategoryKind) = host.viewModel.onCategory(kind)
+
+    fun onClearFilter() = host.viewModel.onClearFilter()
+
+    fun onPickOption(id: String) = host.viewModel.onPickOption(id)
+
+    fun onDismissSheet() = host.viewModel.onDismissSheet()
+
+    fun onRetrySheet() = host.viewModel.onRetrySheet()
+
+    fun onRetryRecent() = host.viewModel.onRetryRecent()
 
     fun close() = host.close()
 }

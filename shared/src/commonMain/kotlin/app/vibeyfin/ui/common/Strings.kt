@@ -86,6 +86,30 @@ object Strings {
     val tabDownloads = "Downloads"
     val mainNavigation = "Main navigation"
 
+    /** The category buttons under Home's header, in the order they are shown. */
+    val filterShows = "Shows"
+    val filterMovies = "Movies"
+    val filterNew = "New"
+    val filterStudios = "Studios"
+    val filterCategories = "Categories"
+
+    /** The button once a studio or genre is picked: "Studios: A24". */
+    fun filterPicked(button: String, name: String) = "$button: $name"
+
+    /** What a screen reader says for the group of category buttons, and for the × that clears the active one. */
+    val filterHome = "Filter Home"
+    fun clearFilter(label: String) = "Clear filter: $label"
+
+    /** The row of what was added most recently, under a filter. */
+    val recentlyAdded = "Recently added"
+
+    /** Under a filter that leaves Continue watching and Recently added both empty. */
+    val nothingMatchesFilter = "Nothing here matches that filter. Pick another or clear it."
+
+    /** In the Studios and Categories sheets when the server has none. */
+    val noStudios = "This server has no studios."
+    val noCategories = "This server has no categories."
+
     /** On the Library and Downloads tabs until their features land. */
     val notAvailableYet = "Not available yet"
     val switchProfile = "Switch profile"

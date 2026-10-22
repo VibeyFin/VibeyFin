@@ -28,6 +28,8 @@ data class BaseItemDto(
     /** For an episode or a season: the show it belongs to. */
     @SerialName("SeriesId") val seriesId: String? = null,
     @SerialName("UserData") val userData: UserItemDataDto? = null,
+    /** When the item was added to the server, as an ISO-8601 string; only sent when asked for (`fields=DateCreated`). */
+    @SerialName("DateCreated") val dateCreated: String? = null,
     /** The tracks of the item's file; only sent when asked for (see `DETAIL_FIELDS`). */
     @SerialName("MediaStreams") val mediaStreams: List<MediaStreamDto> = emptyList(),
     /** Trickplay thumbnails by media source id, then by width in pixels; only sent when asked for. */

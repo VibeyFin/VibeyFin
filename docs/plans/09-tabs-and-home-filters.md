@@ -3,7 +3,7 @@
 Goal: Home, Library and Downloads as three tabs with their own back stacks, and the Home category
 buttons (Shows, Movies, New, Studios, Categories) that filter Home in place, on Android and iOS.
 
-**Status (2026-10-22):** Phase A built on `feature/tabs-and-home-filters` (Android run on the emulator, iOS only parsed); B to D not started. The state audit (skeletons) is done on
+**Status (2026-10-22):** Phases A and B built on `feature/tabs-and-home-filters` (A run on the Android emulator, iOS only parsed; B is `shared/` with tests); C and D not started. The state audit (skeletons) is done on
 `feature/state-audit`; this plan builds on it. Calls marked *(my call)* are guesses for the owner to confirm.
 
 **Scope.** Only the first two Phase 4 items that were reworked: the tab bar and the category buttons. Home

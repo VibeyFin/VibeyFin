@@ -18,14 +18,19 @@ Which server data drives which piece of UI. All of this lives in the shared Kotl
 | --- | --- | --- |
 | Shows | `includeItemTypes=Series` on `GET /Items`; Continue watching keeps the episodes | Limits Home to shows. |
 | Movies | `includeItemTypes=Movie` on `GET /Items`; Continue watching keeps the movies | Limits Home to movies. |
-| New | `GET /Items` sorted by `DateCreated` descending, limited to the last 30 days | Check the OpenAPI spec for a creation-date filter on `GET /Items`; otherwise filter on the client. |
+| New | `GET /Items` sorted by `DateCreated` descending (`fields=DateCreated`), cut to the last 30 days on the client | Checked against the 12.2 OpenAPI spec: `GET /Items` has `minDateLastSaved` (when metadata was last saved), not a creation date, so a page of 60 is fetched and cut here. |
 | Studios | `GET /Studios` for the sheet; `studioIds` on `GET /Items` for the rows | The button shows the picked studio's name. |
 | Categories | `GET /Genres` for the sheet; `genreIds` on `GET /Items` for the rows | The button shows the picked genre's name. |
 
 `GET /Items/Latest` has no genre or studio filter, so a filtered "Recently added" row uses `GET /Items`
-sorted by `DateCreated`, newest first. Continue watching: check the OpenAPI spec whether
-`/UserItems/Resume` and `/Shows/NextUp` take type, genre and studio filters; otherwise filter on the
-client, keeping items whose own genres or studios, or their series', match.
+sorted by `DateCreated`, newest first. Continue watching: checked against the 12.2 OpenAPI spec, `/UserItems/Resume`
+takes only `includeItemTypes` and `/Shows/NextUp` takes no type, genre or studio filter, so both are filtered on the
+client. Type and date are read from the items (`fields=DateCreated`). Genre and studio are asked of the server about
+the items' own ids (the show's id for an episode) with `GET /Items?ids=…&genreIds=` or `&studioIds=`, and kept when the
+id comes back.
+
+Under a filter Home shows Continue watching and one "Recently added" row of movies and shows; the libraries row is
+hidden because libraries have no type, genre or studio.
 
 An active filter swaps the row sources above for the filtered ones. Nothing is stored: Home opens unfiltered.
 

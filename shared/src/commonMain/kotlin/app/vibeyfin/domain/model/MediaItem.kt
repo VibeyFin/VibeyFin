@@ -1,6 +1,7 @@
 package app.vibeyfin.domain.model
 
 import app.vibeyfin.domain.VideoFormat
+import kotlin.time.Instant
 
 enum class ItemKind {
     /** A library: Movies, Shows, Music. */
@@ -57,6 +58,8 @@ data class MediaItem(
     val landscapeBlurHash: String? = null,
     /** The file's video picture; null when the server wasn't asked for streams or the item has no video. */
     val videoFormat: VideoFormat? = null,
+    /** When the item was added to the server; null when the server wasn't asked for it. */
+    val dateCreated: Instant? = null,
 ) {
     /** How far in the user is, from 0 to 1; null when they haven't started or the length isn't known. */
     val progress: Float?

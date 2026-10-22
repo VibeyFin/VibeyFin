@@ -9,9 +9,13 @@ import app.vibeyfin.data.api.itemImageUrl
 import app.vibeyfin.data.api.itemsById
 import app.vibeyfin.data.api.map
 import app.vibeyfin.data.api.userViews
+import app.vibeyfin.data.api.studios
+import app.vibeyfin.data.api.genres
+import app.vibeyfin.data.api.recentItems
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.ItemPage
 import app.vibeyfin.domain.model.MediaItem
+import kotlin.time.Instant
 
 /**
  * What is on the server for the signed-in profile: its libraries, what is inside them, and one
@@ -41,6 +45,34 @@ class LibraryRepository(private val connection: ConnectionManager) {
         }
     }
 
+    /** The studios to pick from, by name. */
+    suspend fun studios(): ApiResult<List<FilterOption>> = call { api, userId ->
+        api.studios(userId).map { result -> result.items.toOptions() }
+    }
+
+    /** The genres to pick from, by name. */
+    suspend fun genres(): ApiResult<List<FilterOption>> = call { api, userId ->
+        api.genres(userId).map { result -> result.items.toOptions() }
+    }
+
+    /**
+     * The "Recently added" row under [filter]: movies and shows, newest added first, at most [limit].
+     * [HomeFilter.New] keeps only what was added in the last [NEW_WINDOW] before [now].
+     */
+    suspend fun recentlyAdded(filter: HomeFilter, now: Instant, limit: Int = ROW_LIMIT): ApiResult<List<MediaItem>> = call { api, userId ->
+        val types = when (filter) {
+            HomeFilter.Shows -> listOf("Series")
+            HomeFilter.Movies -> listOf("Movie")
+            else -> listOf("Movie", "Series")
+        }
+        // New can't be asked of the server, so a full page is fetched and cut here.
+        val ask = if (filter == HomeFilter.New) PAGE_SIZE else limit
+        api.recentItems(userId, types, (filter as? HomeFilter.Genre)?.id, (filter as? HomeFilter.Studio)?.id, ask).map { result ->
+            val items = result.items.map { it.toMediaItem(api.baseUrl) }
+            if (filter == HomeFilter.New) items.filter { it.isNew(now) }.take(limit) else items
+        }
+    }
+
     private suspend fun <T> call(block: suspend (JellyfinApi, String) -> ApiResult<T>): ApiResult<T> {
         val connected = connection.state.value as? ConnectionState.Connected
             ?: return ApiResult.Failure(ApiError.Unauthorized)
@@ -49,6 +81,9 @@ class LibraryRepository(private val connection: ConnectionManager) {
 
     companion object {
         const val PAGE_SIZE = 60
+
+        /** A Home row holds at most this many items (`guardrails.md`). */
+        const val ROW_LIMIT = 20
     }
 }
 
@@ -106,9 +141,17 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
         backdropBlurHash = backdropTag?.let { blurHash("Backdrop", it) },
         landscapeBlurHash = landscape?.let { (type, tag) -> blurHash(type, tag) },
         videoFormat = mediaStreams.firstOrNull { it.type == "Video" }?.toVideoFormat(),
+        dateCreated = dateCreated?.let { runCatching { Instant.parse(it) }.getOrNull() },
     )
 }
 
 /** The BlurHash the server sent for the image of [type] with [tag]; the tag keeps it from belonging to an older picture. */
 private fun BaseItemDto.blurHash(type: String, tag: String): String? =
     imageBlurHashes[type]?.get(tag)?.takeIf { it.isNotBlank() }
+
+/** Added within [NEW_WINDOW] before [now]. An item the server gave no date for is not new. */
+internal fun MediaItem.isNew(now: Instant): Boolean = dateCreated?.let { it >= now - NEW_WINDOW } == true
+
+private fun List<BaseItemDto>.toOptions(): List<FilterOption> =
+    mapNotNull { dto -> dto.name?.takeIf { it.isNotBlank() }?.let { FilterOption(dto.id, it) } }
+        .sortedBy { it.name.lowercase() }

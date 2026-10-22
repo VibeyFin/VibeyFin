@@ -39,3 +39,55 @@ suspend fun JellyfinApi.itemsById(id: String, userId: String): ApiResult<ItemsRe
 /** The URL of an item's artwork on the server at [baseUrl]; [type] is `Primary` or `Backdrop`. */
 fun itemImageUrl(baseUrl: String, itemId: String, type: String, tag: String, maxWidth: Int): String =
     "$baseUrl/Items/$itemId/Images/$type?tag=$tag&maxWidth=$maxWidth"
+
+/** `GET /Studios`: the studios behind the movies and shows [userId] can see. The server has no sort option here. */
+suspend fun JellyfinApi.studios(userId: String): ApiResult<ItemsResultDto> =
+    get("/Studios", mapOf("userId" to userId, "includeItemTypes" to "Movie,Series"), retry = true)
+
+/** `GET /Genres`: the genres of the movies and shows [userId] can see, by name. */
+suspend fun JellyfinApi.genres(userId: String): ApiResult<ItemsResultDto> = get(
+    "/Genres",
+    mapOf("userId" to userId, "includeItemTypes" to "Movie,Series", "sortBy" to "SortName", "sortOrder" to "Ascending"),
+    retry = true,
+)
+
+/**
+ * `GET /Items`, newest added first, across every library: the "Recently added" row under a filter.
+ * [genreId] and [studioId] are the server's own filters; `DateCreated` is asked for so "New" can cut the list.
+ */
+suspend fun JellyfinApi.recentItems(
+    userId: String,
+    types: List<String>,
+    genreId: String?,
+    studioId: String?,
+    limit: Int,
+): ApiResult<ItemsResultDto> = get(
+    "/Items",
+    buildMap {
+        put("userId", userId)
+        put("recursive", "true")
+        put("includeItemTypes", types.joinToString(","))
+        put("sortBy", "DateCreated")
+        put("sortOrder", "Descending")
+        put("fields", "DateCreated")
+        put("limit", limit.toString())
+        genreId?.let { put("genreIds", it) }
+        studioId?.let { put("studioIds", it) }
+    },
+    retry = true,
+)
+
+/**
+ * `GET /Items?ids=` narrowed by [genreId] or [studioId]: which of [ids] the server says match. Resume and Next Up
+ * have no such filters, so Continue watching asks this about its own items.
+ */
+suspend fun JellyfinApi.itemsMatching(userId: String, ids: List<String>, genreId: String?, studioId: String?): ApiResult<ItemsResultDto> = get(
+    "/Items",
+    buildMap {
+        put("userId", userId)
+        put("ids", ids.joinToString(","))
+        genreId?.let { put("genreIds", it) }
+        studioId?.let { put("studioIds", it) }
+    },
+    retry = true,
+)
