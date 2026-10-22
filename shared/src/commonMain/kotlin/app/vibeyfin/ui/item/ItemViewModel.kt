@@ -70,6 +70,9 @@ data class ItemUiState(
     /** The menu entry that flips the watched mark, worded for what it will do. */
     val markLabel: String get() = if (item?.played == true) Strings.markUnwatched else Strings.markWatched
 
+    /** The file's details, collapsed at the bottom of the page; empty when the server sent none. */
+    val technical: List<TechnicalLine> get() = item?.technicalLines().orEmpty()
+
     private val isSeries: Boolean get() = item?.kind == ItemKind.Series
 
     /** What Play opens the player on: the item itself, or for a show the episode to watch next. */

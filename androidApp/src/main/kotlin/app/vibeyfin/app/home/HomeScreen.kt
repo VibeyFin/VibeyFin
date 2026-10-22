@@ -77,6 +77,12 @@ import app.vibeyfin.app.components.ArtworkTile
 import app.vibeyfin.app.components.ContinueCard
 import app.vibeyfin.app.components.ContinueSkeletonCards
 import app.vibeyfin.app.components.LoadError
+import app.vibeyfin.app.components.bleed
+import app.vibeyfin.app.components.POSTER_CAPTION_LINES
+import app.vibeyfin.app.components.SectionTitle
+import app.vibeyfin.app.components.ROW_FADE_MS
+import app.vibeyfin.app.components.RowPhase
+import app.vibeyfin.app.components.MediaRowSection
 import app.vibeyfin.app.components.PosterSkeletonRow
 import app.vibeyfin.app.components.SkeletonLine
 import app.vibeyfin.app.components.skeletonTiles
@@ -99,9 +105,6 @@ import org.koin.androidx.compose.koinViewModel
 
 /** The app logo at the top of Home. */
 private val LOGO_SIZE = 32.dp
-
-/** A poster's title always takes this many lines in a row, so the row keeps one height as it scrolls. */
-private const val POSTER_CAPTION_LINES = 2
 
 /** How many grey rows stand in for the rows that are still being worked out. */
 private const val PLACEHOLDER_ROWS = 2
@@ -193,9 +196,10 @@ fun HomeScreen(
         // header and the grid each apply the margin themselves.
         Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(start = margin, top = margin, end = margin),
+                // The logo, the page name and the profile are centred in the header, with the same space above and below.
+                modifier = Modifier.fillMaxWidth().padding(horizontal = margin, vertical = VibeyFinTokens.Space.s3),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 // The app's logo with the name of the page next to it, as in Netflix; the profile is at the right.
                 Row(
@@ -296,7 +300,7 @@ private fun Content(
     ) {
         LazyVerticalGrid(
             columns = GridCells.Adaptive(150.dp),
-            contentPadding = PaddingValues(start = margin, top = VibeyFinTokens.Space.s5, end = margin, bottom = margin),
+            contentPadding = PaddingValues(start = margin, top = 0.dp, end = margin, bottom = margin),
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
             horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
             modifier = Modifier.fillMaxSize(),
@@ -334,11 +338,6 @@ private fun LazyGridScope.fullWidth(key: String, content: @Composable () -> Unit
     item(key = key, span = { GridItemSpan(maxLineSpan) }) { Box(Modifier.animateItem()) { content() } }
 }
 
-@Composable
-private fun SectionTitle(text: String, maxLines: Int = Int.MAX_VALUE) {
-    Text(text = text, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
-}
-
 /** The row of what the user is in the middle of. Its cards run past the grid's margins to the screen edge. */
 @Composable
 private fun ContinueWatching(row: ContinueRow, margin: Dp, onPlay: (String) -> Unit, onLongPress: (ContinueCardState) -> Unit, onRetry: () -> Unit) {
@@ -369,54 +368,6 @@ private fun ContinueWatching(row: ContinueRow, margin: Dp, onPlay: (String) -> U
         }
     }
 }
-
-/** Lets a child use [by] more width on each side than its parent gives it, to run under the parent's padding. */
-private fun Modifier.bleed(by: Dp) = layout { measurable, constraints ->
-    val extra = by.roundToPx() * 2
-    val width = constraints.maxWidth + extra
-    val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
-    layout(constraints.maxWidth, placeable.height) { placeable.place(-extra / 2, 0) }
-}
-
-/** A row of posters under a header with "See all": loading is grey posters, a failure says why with Try again. */
-@Composable
-private fun MediaRowSection(row: MediaRow, margin: Dp, onOpen: (MediaItem) -> Unit, onSeeAll: (SeeAll) -> Unit, onRetry: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            // One line, so a long library name never makes the header taller.
-            Box(Modifier.weight(1f)) { SectionTitle(row.title, maxLines = 1) }
-            val target = row.seeAll
-            if (target != null && row.items.isNotEmpty()) {
-                TextButton(onClick = { onSeeAll(target) }, modifier = Modifier.semantics { contentDescription = Strings.seeAllIn(row.title) }) {
-                    Text(Strings.seeAll, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
-        // The grey posters give way to the real ones with a short fade, and the row grows or shrinks smoothly if its
-        // height differs.
-        val phase = if (row.loading) RowPhase.Loading else if (row.message != null) RowPhase.Failed else RowPhase.Ready
-        Crossfade(targetState = phase, animationSpec = tween(ROW_FADE_MS), modifier = Modifier.animateContentSize(tween(ROW_FADE_MS))) { shown ->
-            when (shown) {
-                RowPhase.Loading -> PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin))
-                RowPhase.Failed -> LoadError(row.message ?: "", onRetry)
-                RowPhase.Ready -> LazyRow(
-                    modifier = Modifier.bleed(margin),
-                    contentPadding = PaddingValues(horizontal = margin),
-                    horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-                ) {
-                    items(row.items, key = { it.id }) { item ->
-                        ArtworkTile(item, onClick = { onOpen(item) }, modifier = Modifier.width(VibeyFinTokens.Size.posterWidth), captionLines = POSTER_CAPTION_LINES)
-                    }
-                }
-            }
-        }
-    }
-}
-
-private enum class RowPhase { Loading, Failed, Ready }
-
-/** The fade from a row's grey posters to its content. */
-private const val ROW_FADE_MS = 250
 
 /** A row's header and posters in grey, for the moment before the rows are known. */
 @Composable

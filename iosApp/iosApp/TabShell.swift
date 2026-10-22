@@ -93,7 +93,7 @@ struct TabShell: View {
 
     /// A folder opens its list; anything else opens its page.
     private func open(_ item: MediaItem, in path: Binding<[TabRoute]>) {
-        path.wrappedValue.append(item.isFolder ? .children(parentId: item.id, title: item.title) : .item(itemId: item.id))
+        path.wrappedValue.append(item.opensList ? .children(parentId: item.id, title: item.title) : .item(itemId: item.id))
     }
 
     private func stack<Root: View>(_ path: Binding<[TabRoute]>, @ViewBuilder root: () -> Root) -> some View {

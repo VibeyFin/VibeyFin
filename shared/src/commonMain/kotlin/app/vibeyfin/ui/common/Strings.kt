@@ -334,6 +334,12 @@ object Strings {
     fun playEpisode(episode: String) = "Play $episode"
     fun resumeEpisodeFrom(episode: String, positionMs: Long) = "Resume $episode from ${clock(positionMs)}"
 
+    /** An episode's length in its row. */
+    fun minutesShort(minutes: Int) = "$minutes min"
+
+    /** The label of the video line in the collapsed technical info, and the long-press entry on an episode. */
+    val technicalVideo = "Video"
+
     /** An episode in a season's list: "4. Title". */
     fun episodeTitle(number: Int?, title: String) = if (number == null) title else "$number. $title"
 

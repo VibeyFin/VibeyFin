@@ -71,7 +71,7 @@ fun VibeyFinNavHost() {
     val navController = rememberNavController()
     // A folder opens its list; anything else opens its page. Both open inside the tab the user is on.
     val open: (MediaItem) -> Unit = { item ->
-        navController.navigate(if (item.isFolder) Children(item.id, item.title) else Item(item.id))
+        navController.navigate(if (item.opensList) Children(item.id, item.title) else Item(item.id))
     }
     // Leaves the tabs and everything opened from them. Servers goes underneath "Who's watching?" so
     // back from it has somewhere to go. The tabs' saved back stacks belong to this profile: dropped.
@@ -202,7 +202,7 @@ fun VibeyFinNavHost() {
 /** What opens from a tab: a folder's list and an item's page, over the tab's own root. */
 private fun NavGraphBuilder.details(navController: NavHostController, leave: (HomeExit) -> Unit) {
     val open: (MediaItem) -> Unit = { item ->
-        navController.navigate(if (item.isFolder) Children(item.id, item.title) else Item(item.id))
+        navController.navigate(if (item.opensList) Children(item.id, item.title) else Item(item.id))
     }
     composable<Children> { entry ->
         val route = entry.toRoute<Children>()
@@ -227,7 +227,9 @@ private fun NavGraphBuilder.details(navController: NavHostController, leave: (Ho
         ItemRoute(
             itemId = itemId,
             onBack = { navController.popBackStack() },
-            onPlay = { startOver -> navController.navigate(Player(itemId, startOver)) },
+            // The item itself, or for a show its next episode, or an episode tapped in a season's list.
+            onPlay = { playId, startOver -> navController.navigate(Player(playId, startOver)) },
+            onOpen = open,
             onExit = leave,
         )
     }

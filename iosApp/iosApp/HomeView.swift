@@ -25,9 +25,10 @@ struct HomeView: View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
             VStack(alignment: .leading, spacing: 0) {
+                // The logo, the page name and the profile are centred in the header, with the same space above and below.
                 header
                     .screenMargin()
-                    .padding(.top, Space.s5)
+                    .padding(.vertical, Space.s3)
                 // No side margin on the scroll content: the Continue watching row runs to the screen
                 // edge, so it and the libraries apply the margin themselves.
                 if let state = model.state, state.serverId != nil {
@@ -70,7 +71,7 @@ struct HomeView: View {
                             MyMediaView(state: state, onOpen: onOpen, onRetry: { model.retryLibraries() })
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, Space.s5)
+                        .padding(.bottom, Space.s5)
                         // Rows that arrive, leave or change height slide and fade into place instead of snapping.
                         .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: state.rows.map { $0.id })
                         .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: state.continueRow.isVisible)

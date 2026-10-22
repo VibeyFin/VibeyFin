@@ -16,6 +16,27 @@ internal fun MediaItem.facts(): List<String> = listOfNotNull(
     rating?.let { "★ ${oneDecimal(it)}" },
 )
 
+/** One line of the technical info: what it is, and what the file says. */
+data class TechnicalLine(val label: String, val value: String)
+
+/** The file's video as one line: "3840×2160 · HEVC · HDR10 · 24 fps · 8.2 Mbps"; null when the server sent no video stream. */
+internal fun MediaItem.technicalLines(): List<TechnicalLine> {
+    val format = videoFormat ?: return emptyList()
+    val parts = listOfNotNull(
+        if (format.width != null && format.height != null) "${format.width}×${format.height}" else null,
+        format.codec?.uppercase(),
+        when (format.dynamicRange) {
+            DynamicRange.DolbyVision -> Strings.badgeDolbyVision
+            DynamicRange.Hdr10 -> Strings.badgeHdr10
+            DynamicRange.Hlg -> Strings.badgeHlg
+            DynamicRange.Sdr -> null
+        },
+        format.frameRate?.let { "${oneDecimal(it.toDouble()).removeSuffix(".0")} fps" },
+        format.bitrateKbps?.let { "${oneDecimal(it / 1000.0)} Mbps" },
+    )
+    return if (parts.isEmpty()) emptyList() else listOf(TechnicalLine(Strings.technicalVideo, parts.joinToString(" · ")))
+}
+
 /** On a season: its number, as the server calls it (0 is Specials). The server sends it in the field an episode uses for its own number. */
 internal val MediaItem.seasonIndex: Int? get() = if (kind == ItemKind.Season) episodeNumber else null
 

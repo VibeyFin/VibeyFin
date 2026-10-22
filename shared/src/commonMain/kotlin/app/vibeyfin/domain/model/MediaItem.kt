@@ -77,6 +77,12 @@ data class MediaItem(
      */
     val nameIsOnPoster: Boolean get() = kind == ItemKind.Library && posterUrl != null
 
+    /**
+     * Opens a list of what is inside it (a library, a folder, a season) instead of a page of its own. A show is a folder
+     * for the server, but it has its page: the hero, its seasons and episodes.
+     */
+    val opensList: Boolean get() = isFolder && kind != ItemKind.Series
+
     /** A library of films or shows (or a mix), which Home gives a "Recently added" row; music, books, photos and live TV do not. */
     val holdsVideo: Boolean
         get() = kind == ItemKind.Library && (collectionType == null || collectionType in VIDEO_COLLECTIONS)
