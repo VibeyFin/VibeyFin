@@ -14,6 +14,9 @@ import app.vibeyfin.data.api.collectionsOf
 import app.vibeyfin.data.api.itemsOfPerson
 import app.vibeyfin.data.api.specialFeatures
 import app.vibeyfin.domain.model.Person
+import app.vibeyfin.domain.model.SearchKind
+import app.vibeyfin.domain.model.SearchResult
+import app.vibeyfin.data.api.searchHints
 import app.vibeyfin.data.api.localTrailers
 import app.vibeyfin.data.api.latestItems
 import app.vibeyfin.data.api.seasonsOf
@@ -61,6 +64,35 @@ class LibraryRepository(private val connection: ConnectionManager) {
     /** The trailer the server itself holds for [id], or null when it has none. */
     suspend fun localTrailer(id: String): ApiResult<MediaItem?> = call { api, userId ->
         api.localTrailers(userId, id).map { items -> items.firstOrNull()?.toMediaItem(api.baseUrl) }
+    }
+
+    /** Movies, shows, episodes, people and collections whose name matches [term], best match first. */
+    suspend fun search(term: String): ApiResult<List<SearchResult>> = call { api, userId ->
+        api.searchHints(userId, term, SEARCH_LIMIT).map { result ->
+            result.hints.mapNotNull { hint ->
+                val kind = when (hint.type) {
+                    "Movie" -> SearchKind.Movie
+                    "Series" -> SearchKind.Show
+                    "Episode" -> SearchKind.Episode
+                    "Person" -> SearchKind.Person
+                    "BoxSet" -> SearchKind.Collection
+                    else -> return@mapNotNull null
+                }
+                SearchResult(
+                    id = hint.id,
+                    title = hint.name.orEmpty(),
+                    kind = kind,
+                    subtitle = when (kind) {
+                        SearchKind.Episode -> listOfNotNull(hint.seriesName, episodeCode(hint.seasonNumber, hint.episodeNumber)).joinToString(" \u00B7 ").ifBlank { null }
+                        SearchKind.Person -> null
+                        else -> hint.productionYear?.toString()
+                    },
+                    imageUrl = hint.primaryImageTag?.let { itemImageUrl(api.baseUrl, hint.id, "Primary", it, POSTER_WIDTH) },
+                    aspectRatio = hint.primaryImageAspectRatio?.toFloat()?.takeIf { it > 0f }
+                        ?: if (kind == SearchKind.Episode) WIDE else TALL,
+                )
+            }
+        }
     }
 
     /** [id]'s own page: a cast member's biography and picture. A person the server doesn't know is [ApiError.NotFound]. */
@@ -116,7 +148,21 @@ class LibraryRepository(private val connection: ConnectionManager) {
             HomeFilter.Shows -> GenreKind.Shows
             else -> GenreKind.Both
         }
-        api.genres(userId, kind.types).map { result -> result.items.toOptions(kind) }
+        val all = api.genres(userId, kind.types).map { result -> result.items.toOptions(kind) }
+        if (filter != HomeFilter.MyList || all !is ApiResult.Success) return@call all
+        // On My List the numbers are the titles on the list, not the whole library's: the server cannot count a genre among
+        // favourites, so they are counted from the list itself.
+        val favourites = api.filteredItems(
+            userId, listOf("Movie", "Series"), genreId = null, sortBy = "SortName", sortOrder = "Ascending",
+            startIndex = 0, limit = MY_LIST_GENRE_SCAN, favoritesOnly = true, fields = "Genres",
+        )
+        when (favourites) {
+            is ApiResult.Failure -> favourites
+            is ApiResult.Success -> {
+                val counts = favourites.value.items.flatMap { it.genres.distinct() }.groupingBy { it }.eachCount()
+                ApiResult.Success(all.value.mapNotNull { option -> counts[option.name]?.let { option.copy(count = it) } })
+            }
+        }
     }
 
     /**
@@ -158,6 +204,12 @@ class LibraryRepository(private val connection: ConnectionManager) {
 
     companion object {
         const val PAGE_SIZE = 60
+
+        /** A search asks for this many matches in all, across every kind. */
+        const val SEARCH_LIMIT = 40
+
+        /** The most favourites read to count My List's genres. */
+        const val MY_LIST_GENRE_SCAN = 500
 
         /** A Home row holds at most this many items (`guardrails.md`). */
         const val ROW_LIMIT = 20
@@ -305,3 +357,10 @@ private fun List<BaseItemDto>.toOptions(kind: GenreKind): List<FilterOption> =
         }
         if (known && count == 0) null else FilterOption(dto.id, name, count.takeIf { known })
     }.sortedBy { it.name.lowercase() }
+
+/** "S1 E4"; null when the server sent neither number. */
+private fun episodeCode(season: Int?, episode: Int?): String? = when {
+    season != null && episode != null -> "S$season E$episode"
+    episode != null -> "E$episode"
+    else -> null
+}

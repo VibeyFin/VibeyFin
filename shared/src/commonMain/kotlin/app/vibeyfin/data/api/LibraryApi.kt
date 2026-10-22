@@ -67,11 +67,14 @@ suspend fun JellyfinApi.filteredItems(
     limit: Int,
     /** Only what the user has put on My List. */
     favoritesOnly: Boolean = false,
+    /** Extra fields the server leaves out of a list unless asked, comma-separated (`Genres`). */
+    fields: String? = null,
 ): ApiResult<ItemsResultDto> = get(
     "/Items",
     buildMap {
         put("userId", userId)
         if (favoritesOnly) put("filters", "IsFavorite")
+        fields?.let { put("fields", it) }
         put("recursive", "true")
         put("includeItemTypes", types.joinToString(","))
         put("sortBy", sortBy)

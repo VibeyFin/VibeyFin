@@ -189,6 +189,28 @@ class FilteredListViewModelTest {
     }
 
     @Test
+    fun myListsGenrePickerCountsTheTitlesOnTheListNotTheLibrary() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Genres", Reply.json(itemsJson(itemJson("g1", "Action", type = "Genre", movieCount = 6, seriesCount = 2), itemJson("g2", "Drama", type = "Genre", movieCount = 8, seriesCount = 1), itemJson("g3", "Comedy", type = "Genre", movieCount = 5))))
+        // Three titles on the list: two drama (one of them also action), nothing comic.
+        server.on(
+            "GET", "/Items",
+            Reply.json(itemsJson(itemJson("a", genres = listOf("Drama", "Action")), itemJson("b", genres = listOf("Drama")), itemJson("c", type = "Series", genres = listOf("Action")))),
+        )
+        val viewModel = viewModel(HomeFilter.MyList)
+        viewModel.uiState.first { !it.list.loading }
+
+        viewModel.onChip(ListChipKind.Genre)
+        val sheet = assertNotNull(viewModel.uiState.first { it.sheet?.loading == false }.sheet)
+
+        // Comedy is on no favourite, so it is not offered; the others are counted from the list.
+        assertEquals(listOf("All genres", "Action", "Drama"), sheet.options.map { it.name })
+        assertEquals(listOf(null, 2, 2), sheet.options.map { it.count })
+        val scan = app.jellyfin.requestsTo("GET", "/Items").last { it.query["fields"] == "Genres" }.query
+        assertEquals("IsFavorite", scan["filters"])
+    }
+
+    @Test
     fun theGenrePickerNarrowsAShowsPageAndAllGenresClearsIt() = runTest {
         app.signedIn().categorised()
         val viewModel = viewModel(HomeFilter.Shows)

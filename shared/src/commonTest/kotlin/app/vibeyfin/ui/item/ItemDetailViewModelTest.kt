@@ -328,7 +328,7 @@ class ItemDetailViewModelTest {
 
         viewModel.onToggleFavorite()
 
-        assertTrue(viewModel.uiState.value.isFavorite)
+        assertTrue(viewModel.uiState.first { it.isFavorite }.isFavorite)
         awaitRequests("POST", "/UserFavoriteItems/m1")
         assertEquals("u1", app.jellyfin.requestsTo("POST", "/UserFavoriteItems/m1").single().query["userId"])
     }
@@ -345,7 +345,7 @@ class ItemDetailViewModelTest {
 
         viewModel.onToggleFavorite()
 
-        assertFalse(viewModel.uiState.value.isFavorite)
+        assertFalse(viewModel.uiState.first { !it.isFavorite }.isFavorite)
         awaitRequests("DELETE", "/UserFavoriteItems/m1")
         assertEquals(1, app.jellyfin.requestsTo("DELETE", "/UserFavoriteItems/m1").size)
     }

@@ -345,6 +345,21 @@ object Strings {
     val technicalInfo = "Technical info"
     val more = "More"
     val less = "Less"
+    /** Search. */
+    val tabSearch = "Search"
+    val searchHint = "Search movies, shows and people"
+    val searchPrompt = "Find something to watch"
+    val searchPromptHelp = "Type a title, a show or a name."
+    val clearSearch = "Clear"
+    fun noSearchResults(query: String) = "Nothing found for \u201C$query\u201D"
+    val noSearchResultsHelp = "Check the spelling, or try fewer words."
+    val searchMovies = "Movies"
+    val searchShows = "Shows"
+    val searchEpisodes = "Episodes"
+    val searchPeople = "People"
+    val searchCollections = "Collections"
+    fun searchResultDescription(title: String, subtitle: String?) = if (subtitle.isNullOrBlank()) title else "$title, $subtitle"
+
     /** A cast member's page. */
     fun born(year: Int) = "Born $year"
     val appearsIn = "Appears in"
