@@ -29,8 +29,15 @@ struct SkeletonLine: View {
     }
 }
 
+/// How many placeholders a row or grid draws: [phone] on a compact width, twice as many on a regular one (iPad, a big iPhone
+/// in landscape), where the same count would leave the row looking nearly empty. A row that scrolls never shows the extras.
+func skeletonCount(_ phone: Int, regularWidth: Bool) -> Int {
+    regularWidth ? phone * 2 : phone
+}
+
 /// Poster tiles while a grid loads: [count] grey posters with a title line under each.
 struct PosterSkeletonGrid: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
     var count: Int = 6
     let minimumWidth: CGFloat
     var aspectRatio: CGFloat = 2.0 / 3.0
@@ -41,7 +48,7 @@ struct PosterSkeletonGrid: View {
             alignment: .leading,
             spacing: Space.s4
         ) {
-            ForEach(0..<count, id: \.self) { _ in
+            ForEach(0..<skeletonCount(count, regularWidth: sizeClass == .regular), id: \.self) { _ in
                 VStack(alignment: .leading, spacing: Space.s2) {
                     SkeletonBlock().aspectRatio(aspectRatio, contentMode: .fit)
                     SkeletonLine()
@@ -110,6 +117,7 @@ struct ProfileSkeletonGrid: View {
 
 /// A row of grey tiles at [tileWidth], for a row of posters or library tiles while it loads.
 struct PosterSkeletonRow: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
     var count: Int = 4
     var tileWidth: CGFloat = 112
     var aspectRatio: CGFloat = 2.0 / 3.0
@@ -121,7 +129,7 @@ struct PosterSkeletonRow: View {
         // own they would stretch everything above them past the screen's edge.
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(alignment: .top, spacing: Space.s3) {
-                ForEach(0..<count, id: \.self) { _ in
+                ForEach(0..<skeletonCount(count, regularWidth: sizeClass == .regular), id: \.self) { _ in
                     VStack(alignment: .leading, spacing: Space.s2) {
                         SkeletonBlock().aspectRatio(aspectRatio, contentMode: .fit)
                         ForEach(0..<captionLines, id: \.self) { line in

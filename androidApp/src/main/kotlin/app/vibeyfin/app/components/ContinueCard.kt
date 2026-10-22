@@ -153,7 +153,7 @@ fun ContinueSkeletonCards(modifier: Modifier = Modifier) {
         modifier = modifier.clearAndSetSemantics { contentDescription = Strings.loadingContinueWatching },
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
     ) {
-        repeat(3) {
+        repeat(skeletonCount(3)) {
             Column(Modifier.width(VibeyFinTokens.Size.thumbWidth)) {
                 Box(
                     Modifier

@@ -150,12 +150,14 @@ struct ContinueRowView: View {
 /// animated; looping motion is an opt-in setting (`brand.md`). The words under the pictures are never
 /// seen, only drawn as grey bars, so they borrow strings that already exist.
 struct ContinueSkeletonRow: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
     var body: some View {
         // In a scroll view that never scrolls: the three fixed-width cards are wider than a phone, and
         // laid out on their own they would stretch everything above them past the screen's edge.
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(alignment: .top, spacing: Space.s3) {
-                ForEach(0..<3, id: \.self) { _ in
+                ForEach(0..<skeletonCount(3, regularWidth: sizeClass == .regular), id: \.self) { _ in
                     VStack(alignment: .leading, spacing: Space.s2) {
                         Color(.tertiarySystemBackground)
                             .aspectRatio(16.0 / 9.0, contentMode: .fit)

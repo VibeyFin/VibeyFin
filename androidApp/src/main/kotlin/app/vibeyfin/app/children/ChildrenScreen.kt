@@ -52,6 +52,7 @@ import app.vibeyfin.app.components.ArtworkTile
 import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.LoadError
+import app.vibeyfin.app.components.skeletonCount
 import app.vibeyfin.app.components.skeletonTiles
 import app.vibeyfin.app.components.SkeletonLine
 import app.vibeyfin.app.components.PosterSkeletonRow
@@ -121,6 +122,7 @@ fun ChildrenScreen(
     // With controls the title is pinned above them; without, it is the first row of the list and scrolls away.
     val pinned = controls != null
     val collectionPage = state.collection != null || collectionHint
+    val tiles = skeletonCount(6)
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
             // A collection's header runs under the status bar, so it takes only the sides and the bottom.
@@ -155,11 +157,11 @@ fun ChildrenScreen(
                             item(span = { GridItemSpan(maxLineSpan) }, key = "members-skeleton") {
                                 Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
                                     SkeletonLine(96.dp, MaterialTheme.typography.titleMedium)
-                                    PosterSkeletonRow(Modifier.bleed(screenMargin()), count = 3, tileWidth = if (LocalConfiguration.current.screenWidthDp >= 600) 168.dp else 132.dp)
+                                    PosterSkeletonRow(Modifier.bleed(screenMargin()), count = skeletonCount(3), tileWidth = if (LocalConfiguration.current.screenWidthDp >= 600) 168.dp else 132.dp)
                                 }
                             }
                         } else {
-                            skeletonTiles()
+                            skeletonTiles(tiles)
                         }
                     }
                     state.message != null -> {

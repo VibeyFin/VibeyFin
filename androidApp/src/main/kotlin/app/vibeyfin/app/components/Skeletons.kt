@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
@@ -44,6 +45,15 @@ fun SkeletonBlock(
 ) {
     Box(modifier.clip(shape).background(color))
 }
+
+/**
+ * How many placeholders a row or grid draws: [phone] on a compact width, twice as many from 600 dp (a tablet, an unfolded
+ * foldable), where the same count would leave the row looking nearly empty. A row that scrolls never shows the extras.
+ */
+@Composable
+fun skeletonCount(phone: Int): Int = if (LocalConfiguration.current.screenWidthDp >= WIDE_FROM_DP) phone * 2 else phone
+
+private const val WIDE_FROM_DP = 600
 
 /** A grey bar as tall as one line of [style], so the skeleton is exactly as tall as the real text. */
 @Composable
@@ -138,7 +148,7 @@ fun PosterSkeletonRow(
         modifier = modifier.clearAndSetSemantics { contentDescription = Strings.loadingPage },
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
     ) {
-        repeat(count) {
+        repeat(skeletonCount(count)) {
             Column(Modifier.width(tileWidth), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
                 SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(aspectRatio))
                 repeat(captionLines) { line ->
