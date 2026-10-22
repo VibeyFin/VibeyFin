@@ -36,8 +36,8 @@ import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.heroFacts
 import coil3.compose.AsyncImage
 
-/** The hero is a 4:5 crop of the backdrop on a phone (`brand.md`). */
-private const val HERO_ASPECT = 4f / 5f
+/** The hero is a 3:2 crop of the backdrop on a phone: a banner, so Continue watching stays close to the top. */
+private const val HERO_ASPECT = 3f / 2f
 
 /**
  * The one featured item, above Continue watching: its backdrop full width under a scrim, the Logo as the title, a line of facts
@@ -67,13 +67,13 @@ fun HomeHeroSection(item: MediaItem, margin: Dp, onPlay: (String) -> Unit, onOpe
         Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = margin).padding(bottom = VibeyFinTokens.Space.s4),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
         ) {
             AsyncImage(
                 model = item.logoUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxWidth(0.6f).heightIn(max = 88.dp),
+                modifier = Modifier.fillMaxWidth(0.6f).heightIn(max = 56.dp),
             )
             val facts = item.heroFacts
             if (facts.isNotEmpty()) {
@@ -81,7 +81,7 @@ fun HomeHeroSection(item: MediaItem, margin: Dp, onPlay: (String) -> Unit, onOpe
             }
             Button(
                 onClick = { if (item.kind == ItemKind.Movie) onPlay(item.id) else onOpen(item.id) },
-                modifier = Modifier.heightIn(min = VibeyFinTokens.Size.buttonLarge).width(200.dp),
+                modifier = Modifier.heightIn(min = VibeyFinTokens.Size.buttonLarge).width(180.dp),
             ) {
                 Icon(painter = painterResource(R.drawable.ic_play), contentDescription = null)
                 Spacer(Modifier.width(VibeyFinTokens.Space.s2))

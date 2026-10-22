@@ -1,7 +1,7 @@
 import SwiftUI
 import Shared
 
-/// The one featured item, above Continue watching: its backdrop full width as a 4:5 crop under a scrim, the Logo as the title, a
+/// The one featured item, above Continue watching: its backdrop full width as a 3:2 crop under a scrim, the Logo as the title, a
 /// line of facts and Play, the one aqua button. Tapping the picture opens the item's page. A movie plays at once; a show opens its
 /// page, where Play knows which episode is next.
 struct HomeHeroView: View {
@@ -11,7 +11,7 @@ struct HomeHeroView: View {
 
     var body: some View {
         Button { onOpen(item.id) } label: {
-            Artwork(url: item.backdropUrl, title: item.title, aspectRatio: 4.0 / 5.0, blurHash: item.backdropBlurHash)
+            Artwork(url: item.backdropUrl, title: item.title, aspectRatio: 3.0 / 2.0, blurHash: item.backdropBlurHash)
                 .overlay {
                     LinearGradient(
                         stops: [.init(color: .clear, location: 0), .init(color: .clear, location: 0.45), .init(color: Brand.scrim, location: 0.8), .init(color: Brand.scrimStrong, location: 1)],
@@ -27,14 +27,14 @@ struct HomeHeroView: View {
     }
 
     private var details: some View {
-        VStack(spacing: Space.s3) {
+        VStack(spacing: Space.s2) {
             if let logo = item.logoUrl, let url = URL(string: logo) {
                 AsyncImage(url: url) { image in
                     image.resizable().scaledToFit()
                 } placeholder: {
                     Color.clear
                 }
-                .frame(maxWidth: 240, maxHeight: 88)
+                .frame(maxWidth: 200, maxHeight: 56)
             }
             let facts = HomeHeroKt.getHeroFacts(item)
             if !facts.isEmpty {
@@ -45,7 +45,7 @@ struct HomeHeroView: View {
             PrimaryButton(action: { item.kind == ItemKind.movie ? onPlay(item.id) : onOpen(item.id) }) {
                 Label(Strings.shared.play.titleCased(), systemImage: "play.fill")
             }
-            .frame(width: 200)
+            .frame(width: 180)
         }
         .padding(.horizontal, Space.s4)
         .padding(.bottom, Space.s4)
