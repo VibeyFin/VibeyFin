@@ -14,6 +14,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -173,9 +176,15 @@ private fun EpisodeList(seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay
     val episodes = seasons.episodes
     val cardWidth = if (wide) EPISODE_CARD_WIDE else EPISODE_CARD
     val currentPhase = EpisodePhase(seasons.selectedId, seasons.seasons.indexOfFirst { it.id == seasons.selectedId }, episodes)
+    // The episode area keeps the height of the tallest list it has shown, so choosing a season swaps its content in place and
+    // nothing below it moves.
+    val density = LocalDensity.current
+    var tallest by remember { mutableStateOf(0.dp) }
     Column(
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-        modifier = Modifier.animateContentSize(tween(ROW_FADE_MS)),
+        modifier = Modifier
+            .heightIn(min = tallest)
+            .onSizeChanged { size -> with(density) { if (!currentPhase.loading && size.height.toDp() > tallest) tallest = size.height.toDp() } },
     ) {
         // The list crossfades between a season loading and a season shown, so a tap never snaps.
         AnimatedContent(
