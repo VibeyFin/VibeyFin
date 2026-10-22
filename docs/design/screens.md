@@ -46,18 +46,15 @@ The page a button or the sheet opens.
 
 - A new screen over Home with the bar kept (the tabs' own back stack): a back button, the **name as the title**
   ("Shows", "Movies", "New", "Action"), then a grid of posters, the same grid as a folder's list.
-- **Shows** are series by name; **Movies** are movies by name; **New** is movies and shows by release year,
-  newest first, with the year as a subtitle above its titles ("2026", "2025", then "Unknown year" for titles with
-  none); a genre is its movies and shows by name.
+- **Shows** are series by name; **Movies** are movies by name; **New** is movies and shows by when they were
+  added to the server, newest first; a genre is its movies and shows by name.
 - **Sort and Genre** sit under the title as two buttons (a genre's own page has no Genre button). Each opens
-  the player's picker sheet (a title, one row per choice, a check on the one in use). Sort: Name (A to Z), Release
-  year (newest first) and Rating (best first); Genre: All genres and each genre with how many titles it holds on this page: movies only on Movies, shows only on Shows,
-  both on New; a genre with none of the page's kind is left out. There
-  is no Year button: sorting by release year, with the year strip below, already covers it. A button that changes the page shows filled (`accent-soft`), so it is clear
-  what is applied. Choosing reloads the list from the top. The buttons stay put while the list scrolls.
-- A page ordered by release year (New by default, or any page sorted by Release year) names each year above its
-  titles and has a strip under the buttons with every release year the page has (the years of its genre, when one is chosen), not only the loaded ones;
-  tapping a year scrolls to it, loading more of the list first when it is not there yet.
+  the player's picker sheet (a title, one row per choice, a check on the one in use). Sort: Name (A to Z), Recently
+  added (newest first; New starts here) and Rating (best first); Genre: All genres and each genre with how many titles
+  it holds on this page: movies only on Movies, shows only on Shows, both on New; a genre with none of the page's kind
+  is left out. A button that changes the page shows filled (`accent-soft`), so it is clear what is applied. Choosing
+  reloads the list from the top. The buttons stay put while the list scrolls. There is no Year button, no year
+  subtitles and no year strip.
 - Back from an item's page returns to the same place in the list.
 - Posters open the item's page or a folder's list, like anywhere else. More load as the end comes into view.
 - Loading is grey posters, an empty page says so, a failure offers Try again, a rejected session leaves to "Who's

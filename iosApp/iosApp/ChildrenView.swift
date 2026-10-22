@@ -64,8 +64,7 @@ struct ChildrenView: View {
                 items: state.items,
                 minimumWidth: 130,
                 onOpen: onOpen,
-                onNearEnd: { if state.hasMore { model.loadMore() } },
-                headings: state.headings
+                onNearEnd: { if state.hasMore { model.loadMore() } }
             )
             if state.loadingMore {
                 LoadingIndicator()

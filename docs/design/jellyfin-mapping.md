@@ -18,20 +18,13 @@ Which server data drives which piece of UI. All of this lives in the shared Kotl
 | --- | --- | --- |
 | Shows | `GET /Items?recursive=true&includeItemTypes=Series&sortBy=SortName` | Opens a page titled "Shows". |
 | Movies | `GET /Items?recursive=true&includeItemTypes=Movie&sortBy=SortName` | Opens a page titled "Movies". |
-| New | `GET /Items` sorted by `ProductionYear,PremiereDate` descending | By release year, newest first, not by when it was added to the server. Items with no year come last. The page shows each `ProductionYear` as a subtitle above its titles, "Unknown year" for those with none. |
+| New | `GET /Items` sorted by `DateCreated` descending | What was added to the server most recently, newest first, across movies and shows. |
 | Categories | `GET /Genres?fields=ItemCounts` for the sheet; `genreIds` on `GET /Items` for the page | The page is titled with the genre ("Action"). Each row shows `MovieCount` + `SeriesCount`; a genre with none is left out. |
 
-A page's Sort and Genre buttons change the same call: Name is `sortBy=SortName` ascending, Release year is
-`ProductionYear,PremiereDate` descending, Rating is `CommunityRating,SortName` descending; Genre adds `genreIds=` (a
-genre's own page keeps its genre). The Genre picker is `GET /Genres?fields=ItemCounts` with `includeItemTypes` set to
-the page's kind (Movie, Series, or both) and counts `MovieCount`, `SeriesCount` or their sum to match; a genre with
-none is left out.
-
-The strip of years above a list ordered by year is read from the page's own items: `GET /Items` with the page's type
-and genre, newest first, `enableImages=false&enableUserData=false`, 300 at a time (at most 30 requests), collecting
-each `ProductionYear`. `GET /Years` is not used: it ignores both the type and the genre, so it can't give the years of
-Shows or of one genre. Tapping a year not yet loaded pages the list down to it. (`GET /Items/Filters` returned nothing
-on the 12.2 test server, so it is not used either.)
+A page's Sort and Genre buttons change the same call: Name is `sortBy=SortName` ascending, Recently added is
+`DateCreated` descending, Rating is `CommunityRating,SortName` descending; Genre adds `genreIds=` (a genre's own page
+keeps its genre). The Genre picker is `GET /Genres?fields=ItemCounts` with `includeItemTypes` set to the page's kind
+(Movie, Series, or both) and counts `MovieCount`, `SeriesCount` or their sum to match; a genre with none is left out.
 
 Every page is `GET /Items` across every library (movies and shows for a genre), a page of 60 at a
 time. Home's own rows (Continue watching, libraries) are not filtered, so none of the endpoints behind them change.

@@ -20,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.children.ChildrenScreen
-import app.vibeyfin.app.children.YearStripState
 import app.vibeyfin.app.components.OptionRow
 import app.vibeyfin.app.components.PickerSheet
 import app.vibeyfin.app.theme.VibeyFinTokens
@@ -59,7 +58,6 @@ fun FilteredListRoute(
         controls = {
             ListChips(state.chips) { viewModel.onChip(it.kind) }
         },
-        yearStrip = YearStripState(state.years, state.jumpTo, viewModel::onYear, viewModel::onJumped),
     )
     state.sheet?.let { sheet ->
         ListPicker(sheet, onPick = viewModel::onPick, onDismiss = viewModel::onDismissSheet, onRetry = viewModel::onRetrySheet)

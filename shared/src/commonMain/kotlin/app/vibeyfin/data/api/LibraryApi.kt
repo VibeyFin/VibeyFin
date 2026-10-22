@@ -65,8 +65,6 @@ suspend fun JellyfinApi.filteredItems(
     sortOrder: String,
     startIndex: Int,
     limit: Int,
-    // Only the year of each item is wanted (the strip of years): no pictures or watch state.
-    slim: Boolean = false,
 ): ApiResult<ItemsResultDto> = get(
     "/Items",
     buildMap {
@@ -78,10 +76,6 @@ suspend fun JellyfinApi.filteredItems(
         put("startIndex", startIndex.toString())
         put("limit", limit.toString())
         genreId?.let { put("genreIds", it) }
-        if (slim) {
-            put("enableImages", "false")
-            put("enableUserData", "false")
-        }
     },
     retry = true,
 )

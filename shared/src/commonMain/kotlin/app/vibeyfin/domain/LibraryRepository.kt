@@ -57,44 +57,9 @@ class LibraryRepository(private val connection: ConnectionManager) {
     }
 
     /**
-     * Every release year on the category page for [filter] (narrowed to [genreId] when given), newest first: the strip
-     * above a list ordered by year. The server has no list of years for a type and a genre together (`GET /Years` ignores
-     * both), so this reads the page's own items, newest first and without pictures, a few hundred at a time. A very large
-     * library stops after [YEAR_SCAN_PAGES] pages and the strip then lists the years found.
-     */
-    suspend fun yearsOf(filter: HomeFilter, genreId: String? = null): ApiResult<List<Int>> = call { api, userId ->
-        val types = when (filter) {
-            HomeFilter.Shows -> listOf("Series")
-            HomeFilter.Movies -> listOf("Movie")
-            else -> listOf("Movie", "Series")
-        }
-        val years = linkedSetOf<Int>()
-        var start = 0
-        var pages = 0
-        var failure: ApiResult.Failure? = null
-        while (pages < YEAR_SCAN_PAGES) {
-            val result = api.filteredItems(
-                userId, types, (filter as? HomeFilter.Genre)?.id ?: genreId,
-                sortBy = "ProductionYear,PremiereDate", sortOrder = "Descending", startIndex = start, limit = YEAR_SCAN_PAGE, slim = true,
-            )
-            if (result is ApiResult.Failure) {
-                failure = result
-                break
-            }
-            val page = (result as ApiResult.Success).value
-            page.items.forEach { item -> item.productionYear?.let { years.add(it) } }
-            start += page.items.size
-            pages++
-            if (page.items.isEmpty() || start >= page.totalRecordCount) break
-        }
-        // A failure with nothing found is a failure; with some years found they are still worth showing.
-        if (failure != null && years.isEmpty()) failure else ApiResult.Success(years.sortedDescending())
-    }
-
-    /**
      * One page of the category page for [filter], across every library: Shows (series), Movies, New, or a genre's
      * movies and shows, in [sort] order, optionally narrowed to a [genreId] (on a page that is not itself a genre).
-     * Name is A to Z, Year is newest first then by premiere date, Rating is best first.
+     * Name is A to Z, Added is what reached the server most recently, Rating is best first.
      */
     suspend fun filteredPage(
         filter: HomeFilter,
@@ -110,7 +75,7 @@ class LibraryRepository(private val connection: ConnectionManager) {
         }
         val (sortBy, sortOrder) = when (sort) {
             PageSort.Name -> "SortName" to "Ascending"
-            PageSort.Year -> "ProductionYear,PremiereDate" to "Descending"
+            PageSort.Added -> "DateCreated" to "Descending"
             PageSort.Rating -> "CommunityRating,SortName" to "Descending"
         }
         api.filteredItems(
@@ -129,10 +94,6 @@ class LibraryRepository(private val connection: ConnectionManager) {
 
     companion object {
         const val PAGE_SIZE = 60
-
-        /** How many items one request of the year scan asks for, and how many requests it makes at most. */
-        const val YEAR_SCAN_PAGE = 300
-        const val YEAR_SCAN_PAGES = 30
     }
 }
 

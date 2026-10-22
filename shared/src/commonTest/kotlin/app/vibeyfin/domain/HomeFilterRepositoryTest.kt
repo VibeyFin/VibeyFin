@@ -83,21 +83,21 @@ class HomeFilterRepositoryTest {
     }
 
     @Test
-    fun newIsByReleaseYearNewestFirst() = runTest {
-        app.signedIn().on("GET", "/Items", Reply.json(itemsJson(itemJson("a", year = 2026), itemJson("b", year = 1999), total = 2)))
+    fun newIsWhatWasAddedToTheServerMostRecentlyFirst() = runTest {
+        app.signedIn().on("GET", "/Items", Reply.json(itemsJson(itemJson("a"), itemJson("b"), total = 2)))
 
         val page = app.library.filteredPage(HomeFilter.New).success()
 
         assertEquals(listOf("a", "b"), page.items.map { it.id })
         val query = query("/Items")
-        assertEquals("ProductionYear,PremiereDate", query["sortBy"])
+        assertEquals("DateCreated", query["sortBy"])
         assertEquals("Descending", query["sortOrder"])
         assertEquals("Movie,Series", query["includeItemTypes"])
     }
 
     @Test
-    fun newIsNotCutByDateSoItPagesThroughTheWholeLibrary() = runTest {
-        app.signedIn().on("GET", "/Items", Reply.json(itemsJson(itemJson("a", year = 1980), itemJson("b", year = 1979), total = 9)))
+    fun newPagesThroughTheWholeLibrary() = runTest {
+        app.signedIn().on("GET", "/Items", Reply.json(itemsJson(itemJson("a"), itemJson("b"), total = 9)))
 
         val page = app.library.filteredPage(HomeFilter.New, limit = 2).success()
 
@@ -130,12 +130,12 @@ class HomeFilterRepositoryTest {
         app.signedIn().on("GET", "/Items", Reply.json(itemsJson(itemJson("a"))))
 
         app.library.filteredPage(HomeFilter.Movies, sort = PageSort.Name).success()
-        app.library.filteredPage(HomeFilter.Movies, sort = PageSort.Year).success()
+        app.library.filteredPage(HomeFilter.Movies, sort = PageSort.Added).success()
         app.library.filteredPage(HomeFilter.Movies, sort = PageSort.Rating).success()
 
-        val (name, year, rating) = app.jellyfin.requestsTo("GET", "/Items").map { it.query }
+        val (name, added, rating) = app.jellyfin.requestsTo("GET", "/Items").map { it.query }
         assertEquals("SortName" to "Ascending", name["sortBy"] to name["sortOrder"])
-        assertEquals("ProductionYear,PremiereDate" to "Descending", year["sortBy"] to year["sortOrder"])
+        assertEquals("DateCreated" to "Descending", added["sortBy"] to added["sortOrder"])
         assertEquals("CommunityRating,SortName" to "Descending", rating["sortBy"] to rating["sortOrder"])
     }
 
@@ -195,58 +195,5 @@ class HomeFilterRepositoryTest {
         assertEquals(listOf("Action" to 6, "Drama" to 9, "Sitcom" to 3), onNew.map { it.name to it.count })
         assertEquals(onNew, onHome)
         assertEquals(listOf("Movie,Series", "Movie,Series"), app.jellyfin.requestsTo("GET", "/Genres").map { it.query["includeItemTypes"] })
-    }
-
-    // The years of a page, read from its own items.
-
-    @Test
-    fun theYearsOfAPageAreThoseOfItsItemsDistinctNewestFirst() = runTest {
-        val server = app.signedIn()
-        val all = listOf(2026, 2026, 2025, null, 2025, 1999)
-        server.on("GET", "/Items") { request ->
-            val start = request.query["startIndex"]!!.toInt()
-            val page = all.drop(start).take(2)
-            Reply.json(itemsJson(*page.mapIndexed { i, year -> itemJson("t${start + i}", year = year) }.toTypedArray(), total = all.size, startIndex = start))
-        }
-
-        val years = app.library.yearsOf(HomeFilter.Movies, genreId = "g-action").success()
-
-        assertEquals(listOf(2026, 2025, 1999), years)
-        val requests = app.jellyfin.requestsTo("GET", "/Items").map { it.query }
-        assertEquals(3, requests.size)
-        assertEquals(listOf("0", "2", "4"), requests.map { it["startIndex"] })
-        assertEquals("Movie", requests.first()["includeItemTypes"])
-        assertEquals("g-action", requests.first()["genreIds"])
-        assertEquals("false", requests.first()["enableImages"])
-        assertEquals("ProductionYear,PremiereDate", requests.first()["sortBy"])
-    }
-
-    @Test
-    fun aGenresOwnPageScansThatGenre() = runTest {
-        app.signedIn().on("GET", "/Items", Reply.json(itemsJson(itemJson("a", year = 2001))))
-
-        assertEquals(listOf(2001), app.library.yearsOf(HomeFilter.Genre("g1", "Drama")).success())
-        assertEquals("g1", query("/Items")["genreIds"])
-    }
-
-    @Test
-    fun aScanThatFailsHalfwayKeepsTheYearsItFound() = runTest {
-        val server = app.signedIn()
-        server.on("GET", "/Items") { request ->
-            if (request.query["startIndex"] == "0") {
-                Reply.json(itemsJson(itemJson("a", year = 2020), itemJson("b", year = 2019), total = 9))
-            } else {
-                Reply.status(HttpStatusCode.ServiceUnavailable)
-            }
-        }
-
-        assertEquals(listOf(2020, 2019), app.library.yearsOf(HomeFilter.New).success())
-    }
-
-    @Test
-    fun aScanThatFindsNothingBeforeFailingIsAFailure() = runTest {
-        app.signedIn().on("GET", "/Items", Reply.status(HttpStatusCode.ServiceUnavailable))
-
-        assertIs<ApiResult.Failure>(app.library.yearsOf(HomeFilter.New))
     }
 }

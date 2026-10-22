@@ -152,15 +152,14 @@ _Starts after the state audit (see Cross-cutting)._
 - [ ] Home category buttons under the header, Netflix-style, as one horizontally scrolling row in this
   fixed order (configurable in Phase 7): **Shows**, **Movies**, **New**, **Categories**. Home itself is never
   filtered; every button opens a page of its own, titled with its name:
-  - **Shows**, **Movies** and **New** open that page at once. New is movies and shows by release year, newest
-    first, with the year as a subtitle above its titles (`GET /Items` sorted by `ProductionYear,PremiereDate`,
-    descending)
+  - **Shows**, **Movies** and **New** open that page at once. New is what was added to the server most recently,
+    newest first, movies and shows together (`GET /Items` sorted by `DateCreated`, descending)
   - **Categories** carries a chevron and opens a sheet of genres, the player's picker component (`GET /Genres`); the genre picked, such as
     "Action", opens a page with that name and its media (`GET /Items?GenreIds=`)
   - a page is a grid of posters like a folder's list, paged, with the five states; Home's Continue watching and
-    libraries are untouched. A page has Sort (name, release year, rating) and Genre buttons that open the
-    player's picker sheet, names each year above its titles when sorted by year with a strip of every year to jump to one, and
-    keeps its place when you come back from an item. The Categories sheet shows how many titles each genre holds
+    libraries are untouched. A page has Sort (name, recently added, rating) and Genre buttons that open the
+    player's picker sheet, and keeps its place when you come back from an item. The Categories sheet shows how many
+    titles each genre holds
 - [ ] Detail page: metadata, cast, `/Items/{id}/Similar`. The page opens on a full-width cinematic
   backdrop hero (`Backdrop` image) with a dark gradient overlay (the `scrim` token), and the movie
   details and action buttons are layered over the image: the `Logo` image as the title (the

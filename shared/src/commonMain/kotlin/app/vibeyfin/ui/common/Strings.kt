@@ -100,7 +100,7 @@ object Strings {
 
     /** The Sort and Genre buttons on a category page, and the rows of their sheets. */
     val sortName = "Name"
-    val sortYear = "Release year"
+    val sortAdded = "Recently added"
     val sortRating = "Rating"
     val sortTitle = "Sort by"
     val genreTitle = "Genre"
@@ -111,9 +111,6 @@ object Strings {
 
     /** What a screen reader says for a sheet row that holds [count] titles. */
     fun titleCount(name: String, count: Int) = if (count == 1) "$name, 1 title" else "$name, $count titles"
-
-    /** The subtitle above the titles of the "New" page that have no release year. */
-    val unknownYear = "Unknown year"
 
     /** In the Categories sheet when the server has none. */
     val noCategories = "This server has no categories."
