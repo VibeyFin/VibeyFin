@@ -97,3 +97,19 @@ fun LazyGridScope.skeletonProfiles(count: Int, avatarSize: Dp) {
         }
     }
 }
+
+/** A row of grey posters at the poster width, for a row of posters while it loads. */
+@Composable
+fun PosterSkeletonRow(modifier: Modifier = Modifier, count: Int = 4) {
+    androidx.compose.foundation.layout.Row(
+        modifier = modifier.clearAndSetSemantics { contentDescription = Strings.loadingPage },
+        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+    ) {
+        repeat(count) {
+            Column(Modifier.width(VibeyFinTokens.Size.posterWidth), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
+                SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(2f / 3f))
+                SkeletonLine(72.dp, MaterialTheme.typography.titleSmall)
+            }
+        }
+    }
+}

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -53,6 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.layout.layout
@@ -67,12 +69,17 @@ import app.vibeyfin.app.components.ArtworkTile
 import app.vibeyfin.app.components.ContinueCard
 import app.vibeyfin.app.components.ContinueSkeletonCards
 import app.vibeyfin.app.components.LoadError
+import app.vibeyfin.app.components.PosterSkeletonRow
 import app.vibeyfin.app.components.skeletonTiles
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
+import app.vibeyfin.app.theme.BrandWordmark
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
+import app.vibeyfin.ui.home.CategoryButton
+import app.vibeyfin.ui.home.CategoryKind
+import app.vibeyfin.ui.home.RecentRow
 import app.vibeyfin.ui.home.ContinueCard as ContinueCardState
 import app.vibeyfin.ui.home.ContinueRow
 import app.vibeyfin.ui.home.HomeExit
@@ -106,6 +113,12 @@ fun HomeRoute(
         onRefresh = viewModel::onRefresh,
         onRetryContinue = viewModel::onRetryContinue,
         onRetryLibraries = viewModel::onRetryLibraries,
+        onCategory = viewModel::onCategory,
+        onClearFilter = viewModel::onClearFilter,
+        onPickOption = viewModel::onPickOption,
+        onDismissSheet = viewModel::onDismissSheet,
+        onRetrySheet = viewModel::onRetrySheet,
+        onRetryRecent = viewModel::onRetryRecent,
         onSwitchProfile = viewModel::onSwitchProfile,
         onSwitchServer = viewModel::onSwitchServer,
         onSettings = onSettings,
@@ -126,6 +139,12 @@ fun HomeScreen(
     onRefresh: () -> Unit,
     onRetryContinue: () -> Unit,
     onRetryLibraries: () -> Unit,
+    onCategory: (CategoryKind) -> Unit,
+    onClearFilter: () -> Unit,
+    onPickOption: (String) -> Unit,
+    onDismissSheet: () -> Unit,
+    onRetrySheet: () -> Unit,
+    onRetryRecent: () -> Unit,
     onSwitchProfile: () -> Unit,
     onSwitchServer: () -> Unit,
     onSettings: () -> Unit,
@@ -143,26 +162,35 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top,
             ) {
+                // The app's wordmark at the left, the profile at the right, as in Netflix; the page's name is under them.
                 Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1), modifier = Modifier.weight(1f)) {
                     Text(
-                        text = state.userName?.let { Strings.greeting(it) } ?: Strings.home,
+                        text = Strings.appName,
+                        style = BrandWordmark,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        // A heading, not a button: it names the app and does nothing.
+                        modifier = Modifier.padding(top = VibeyFinTokens.Space.s2).semantics { heading() },
+                    )
+                    Text(
+                        text = Strings.home,
                         style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
-                    state.serverName?.let {
-                        Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
                 }
                 ProfileMenu(state.userName, onSwitchProfile, onSwitchServer, onSettings, onSignOut)
             }
             if (state.serverId != null) {
-                Content(state, margin, onOpen, onPlay, { menuCard = it }, onRefresh, onRetryContinue, onRetryLibraries)
+                Content(
+                    state, margin, onOpen, onPlay, { menuCard = it }, onRefresh, onRetryContinue, onRetryLibraries,
+                    onTap = { onCategory(it.kind) }, onClearFilter, onRetryRecent,
+                )
             }
         }
         Box(Modifier.fillMaxSize()) {
             ActionSnackbar(state.actionMessage, onRetry = onRetryAction, onDismiss = onDismissMessage)
         }
     }
+    state.sheet?.let { sheet -> FilterSheetView(sheet, onPickOption, onRetrySheet, onDismissSheet) }
     menuCard?.let { card ->
         ModalBottomSheet(onDismissRequest = { menuCard = null }) {
             Column(Modifier.padding(bottom = VibeyFinTokens.Space.s5)) {
@@ -206,6 +234,9 @@ private fun Content(
     onRefresh: () -> Unit,
     onRetryContinue: () -> Unit,
     onRetryLibraries: () -> Unit,
+    onTap: (CategoryButton) -> Unit,
+    onClearFilter: () -> Unit,
+    onRetryRecent: () -> Unit,
 ) {
     val refreshState = rememberPullToRefreshState()
     PullToRefreshBox(
@@ -231,10 +262,33 @@ private fun Content(
             horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
             modifier = Modifier.fillMaxSize(),
         ) {
-            // Always laid out, empty or not, so the libraries never move when a card turns up.
-            fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onLongPress, onRetryContinue) }
-            fullWidth(key = "libraries-title") { SectionTitle(Strings.libraries) }
-            libraries(state, onOpen, onRetryLibraries)
+            // The category buttons scroll with the content and run to the screen edge.
+            fullWidth(key = "categories") {
+                CategoryButtonRow(state.buttons, PaddingValues(horizontal = margin), onTap, onClearFilter, Modifier.bleed(margin))
+            }
+            // Always laid out, empty or not, so what is below never moves when a card turns up.
+            // Under a filter an empty row is left out altogether; unfiltered, its space is kept so nothing jumps.
+            fullWidth(key = "continue") {
+                if (state.filter == null || state.continueRow.isVisible) {
+                    ContinueWatching(state.continueRow, margin, onPlay, onLongPress, onRetryContinue)
+                }
+            }
+            if (state.filter == null) {
+                fullWidth(key = "libraries-title") { SectionTitle(Strings.libraries) }
+                libraries(state, onOpen, onRetryLibraries)
+            } else {
+                // The libraries have no type, genre or studio, so a filter swaps them for what was added most recently.
+                state.recentRow?.let { row -> recentlyAdded(row, margin, onOpen, onRetryRecent) }
+                if (state.nothingMatchesFilter) {
+                    fullWidth(key = "nothing-matches") {
+                        Text(
+                            text = Strings.nothingMatchesFilter,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -282,6 +336,29 @@ private fun Modifier.bleed(by: Dp) = layout { measurable, constraints ->
     val width = constraints.maxWidth + extra
     val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
     layout(constraints.maxWidth, placeable.height) { placeable.place(-extra / 2, 0) }
+}
+
+/** Movies and shows added most recently under the active filter; a row with nothing in it is left out. */
+private fun LazyGridScope.recentlyAdded(row: RecentRow, margin: Dp, onOpen: (MediaItem) -> Unit, onRetry: () -> Unit) {
+    if (!row.loading && row.message == null && row.items.isEmpty()) return
+    fullWidth(key = "recent") {
+        Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
+            SectionTitle(row.title)
+            when {
+                row.loading -> PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin))
+                row.message != null -> LoadError(row.message!!, onRetry)
+                else -> LazyRow(
+                    modifier = Modifier.bleed(margin),
+                    contentPadding = PaddingValues(horizontal = margin),
+                    horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+                ) {
+                    items(row.items, key = { it.id }) { item ->
+                        ArtworkTile(item, onClick = { onOpen(item) }, modifier = Modifier.width(VibeyFinTokens.Size.posterWidth))
+                    }
+                }
+            }
+        }
+    }
 }
 
 private fun LazyGridScope.libraries(state: HomeUiState, onOpen: (MediaItem) -> Unit, onRetry: () -> Unit) {

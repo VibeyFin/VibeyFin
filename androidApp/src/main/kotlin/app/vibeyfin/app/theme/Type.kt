@@ -34,3 +34,12 @@ val BrandDisplay = TextStyle(
     lineHeight = 44.sp,
     letterSpacing = (-0.8).sp,
 )
+
+/** The wordmark at the top of Home, smaller than the onboarding one. */
+val BrandWordmark = TextStyle(
+    fontFamily = BrandFamily,
+    fontWeight = FontWeight.ExtraBold,
+    fontSize = 28.sp,
+    lineHeight = 32.sp,
+    letterSpacing = (-0.56).sp,
+)

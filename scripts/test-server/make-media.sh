@@ -5,6 +5,9 @@
 #   shows/Test Show/Season 01/Test Show S01E03.mkv   third and fourth: with "After 2 episodes" the still-watching
 #   shows/Test Show/Season 01/Test Show S01E04.mkv   prompt appears in the third, because a fourth follows it
 #   movies/HDR Sample (2026)/HDR Sample (2026).mkv   20 s HEVC HDR10 (10-bit, bt2020 / smpte2084)
+#   movies/Neon Night (2026), Quiet Harbor (2025), Old Classic (1999)   5 s clips with a movie.nfo each, for the Home
+#     category buttons: studios A24 and Neon, genres Drama, Thriller and Science Fiction. Old Classic's file is set
+#     60 days old so "New" leaves it out. Jellyfin reads the .nfo as local metadata (no online lookup).
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
@@ -63,4 +66,26 @@ if [ ! -f "${HDR_DIR}/HDR Sample (2026).mkv" ]; then
      -tag:v hvc1 -c:a aac -b:a 64k -shortest \
      "/data/media/movies/HDR Sample (2026)/HDR Sample (2026).mkv"
 fi
+# Home category buttons (docs/test-server.md "Fixtures"): small clips with studio and genre set through an .nfo.
+nfo_movie() { # $1 = folder name, $2 = title, $3 = year, $4 = studio, $5.. = genres
+  local name="$1" title="$2" year="$3" studio="$4"; shift 4
+  local dir="${MEDIA}/movies/${name}"
+  mkdir -p "$dir"
+  if [ ! -f "${dir}/${name}.mkv" ]; then
+    ff -f lavfi -i "testsrc2=size=640x360:rate=24:duration=5" -f lavfi -i "sine=frequency=520:duration=5" \
+       -c:v libx264 -preset veryfast -pix_fmt yuv420p -c:a aac -b:a 64k -shortest "/data/media/movies/${name}/${name}.mkv"
+  fi
+  {
+    echo "<movie><title>${title}</title><year>${year}</year><studio>${studio}</studio>"
+    for genre in "$@"; do echo "<genre>${genre}</genre>"; done
+    echo "</movie>"
+  } > "${dir}/movie.nfo"
+}
+nfo_movie "Neon Night (2026)" "Neon Night" 2026 "A24" "Drama" "Thriller"
+nfo_movie "Quiet Harbor (2025)" "Quiet Harbor" 2025 "Neon" "Drama"
+nfo_movie "Old Classic (1999)" "Old Classic" 1999 "Neon" "Science Fiction"
+touch -t "$(date -v-60d +%Y%m%d%H%M 2>/dev/null || date -d '60 days ago' +%Y%m%d%H%M)" "${MEDIA}/movies/Old Classic (1999)/Old Classic (1999).mkv"
+cat > "${MEDIA}/shows/Test Show/tvshow.nfo" <<'NFO'
+<tvshow><title>Test Show</title><studio>A24</studio><genre>Drama</genre></tvshow>
+NFO
 echo "Media ready under ${MEDIA}"

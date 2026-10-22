@@ -100,6 +100,9 @@ object Strings {
     val filterHome = "Filter Home"
     fun clearFilter(label: String) = "Clear filter: $label"
 
+    /** The placeholder of the search field in a long Studios or Categories list. */
+    val filterSearch = "Search"
+
     /** The row of what was added most recently, under a filter. */
     val recentlyAdded = "Recently added"
 
