@@ -22,10 +22,17 @@ data object Home
 data object HomeTab
 
 @Serializable
+data object SearchTab
+
+@Serializable
 data object LibraryTab
 
 @Serializable
 data object DownloadsTab
+
+/** The Search tab's root. */
+@Serializable
+data object Search
 
 /** The Library tab's root. A placeholder until the library browser lands. */
 @Serializable

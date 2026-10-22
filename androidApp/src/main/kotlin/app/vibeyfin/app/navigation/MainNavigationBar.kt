@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -25,9 +26,10 @@ import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.ui.common.Strings
 
-/** The three destinations of the main navigation bar. Each keeps its own back stack. */
+/** The destinations of the main navigation bar. Each keeps its own back stack. */
 enum class Tab(val graph: Any, val root: Any, val label: String) {
     Home(HomeTab, app.vibeyfin.app.navigation.Home, Strings.tabHome),
+    Search(SearchTab, app.vibeyfin.app.navigation.Search, Strings.tabSearch),
     Library(LibraryTab, app.vibeyfin.app.navigation.Library, Strings.tabLibrary),
     Downloads(DownloadsTab, app.vibeyfin.app.navigation.Downloads, Strings.tabDownloads),
 }
@@ -51,6 +53,7 @@ fun MainNavigationBar(selected: Tab, onSelect: (Tab) -> Unit) {
 @Composable
 private fun Tab.icon(): ImageVector = when (this) {
     Tab.Home -> Icons.Filled.Home
+    Tab.Search -> Icons.Filled.Search
     Tab.Library -> ImageVector.vectorResource(R.drawable.ic_library)
     Tab.Downloads -> ImageVector.vectorResource(R.drawable.ic_download)
 }

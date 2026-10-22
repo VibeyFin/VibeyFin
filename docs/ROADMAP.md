@@ -175,7 +175,7 @@ _Starts after the state audit (see Cross-cutting)._
   marked and its episodes list below (`GET /Shows/{id}/Seasons`, `GET /Shows/{id}/Episodes?seasonId=`);
   picking another button swaps the list in place. The row opens on the season of the episode Play /
   Resume will start, and Play / Resume on the hero starts that episode
-- [ ] Unified search: `/Search/Hints` on one screen, with results grouped into Movies, Shows, Episodes,
+- [x] Unified search (Android built, iOS parsed; plan 13): `/Search/Hints` on one screen, with results grouped into Movies, Shows, Episodes,
   People and Collections; a person opens their page. Seerr adds a "not in your library" section in Phase 8
 - [x] Person page (Android built, iOS parsed; plan 12): the biography (`Overview`, when the server's metadata providers supply one) and what
   they appear in within the library (`GET /Items?PersonIds=`); cast on the detail page opens it

@@ -28,6 +28,8 @@ import androidx.navigation.toRoute
 import app.vibeyfin.app.addserver.AddServerRoute
 import app.vibeyfin.app.children.ChildrenRoute
 import app.vibeyfin.app.person.PersonRoute
+import app.vibeyfin.app.search.SearchRoute
+import app.vibeyfin.domain.model.SearchKind
 import app.vibeyfin.app.filtered.FilteredListRoute
 import app.vibeyfin.app.home.HomeRoute
 import app.vibeyfin.app.item.ItemRoute
@@ -165,6 +167,23 @@ fun VibeyFinNavHost() {
                         onDetails = { itemId -> navController.navigate(Item(itemId)) },
                         onSettings = { navController.navigate(Settings) },
                         onOpenList = { navController.navigate(it.toRoute()) },
+                    )
+                }
+                details(navController, leave)
+            }
+            navigation<SearchTab>(startDestination = Search) {
+                composable<Search> {
+                    SearchRoute(
+                        onOpenResult = { result ->
+                            navController.navigate(
+                                when (result.kind) {
+                                    SearchKind.Person -> Person(result.id)
+                                    SearchKind.Collection -> Children(result.id, result.title)
+                                    else -> Item(result.id)
+                                },
+                            )
+                        },
+                        onExit = leave,
                     )
                 }
                 details(navController, leave)

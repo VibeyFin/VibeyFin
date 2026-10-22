@@ -39,7 +39,7 @@ private extension TabRoute {
 }
 
 private enum MainTab: Hashable {
-    case home, library, downloads
+    case home, search, library, downloads
 }
 
 /// Home, Library and Downloads, each with its own navigation stack, so a tab keeps its place while
@@ -50,6 +50,7 @@ struct TabShell: View {
 
     @State private var selection: MainTab = .home
     @State private var homePath: [TabRoute] = []
+    @State private var searchPath: [TabRoute] = []
     @State private var libraryPath: [TabRoute] = []
     @State private var downloadsPath: [TabRoute] = []
 
@@ -67,6 +68,21 @@ struct TabShell: View {
             }
             .tabItem { Label(Strings.shared.tabHome.titleCased(), systemImage: "house") }
             .tag(MainTab.home)
+
+            stack($searchPath) {
+                SearchView(
+                    onOpenResult: { result in
+                        switch result.kind {
+                        case .person: searchPath.append(.person(personId: result.id))
+                        case .collection: searchPath.append(.children(parentId: result.id, title: result.title))
+                        default: searchPath.append(.item(itemId: result.id))
+                        }
+                    },
+                    onExit: onExit
+                )
+            }
+            .tabItem { Label(Strings.shared.tabSearch.titleCased(), systemImage: "magnifyingglass") }
+            .tag(MainTab.search)
 
             stack($libraryPath) { NotAvailableYetView() }
                 .tabItem { Label(Strings.shared.tabLibrary.titleCased(), systemImage: "play.rectangle.on.rectangle") }
@@ -86,6 +102,7 @@ struct TabShell: View {
                 if tab == selection {
                     switch tab {
                     case .home: homePath = []
+                    case .search: searchPath = []
                     case .library: libraryPath = []
                     case .downloads: downloadsPath = []
                     }
