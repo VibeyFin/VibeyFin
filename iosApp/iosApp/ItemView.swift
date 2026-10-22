@@ -142,11 +142,8 @@ struct ItemView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         // Reports how far the page has scrolled.
-                        Color.clear
+                        ScrollOffsetReader { scrollOffset = max($0, 0) }
                             .frame(height: 0)
-                            .background(GeometryReader { inner in
-                                Color.clear.preference(key: ScrollOffsetKey.self, value: -inner.frame(in: .named("itemScroll")).minY)
-                            })
                         ItemHeroView(
                             item: item,
                             state: state,
@@ -162,8 +159,6 @@ struct ItemView: View {
                             .background(Color(.systemBackground))
                     }
                 }
-                .coordinateSpace(name: "itemScroll")
-                .onPreferenceChange(ScrollOffsetKey.self) { scrollOffset = max($0, 0) }
             }
         }
         .ignoresSafeArea(edges: .top)
@@ -189,11 +184,8 @@ struct ItemView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         // Reports how far the page has scrolled.
-                        Color.clear
+                        ScrollOffsetReader { scrollOffset = max($0, 0) }
                             .frame(height: 0)
-                            .background(GeometryReader { inner in
-                                Color.clear.preference(key: ScrollOffsetKey.self, value: -inner.frame(in: .named("itemScroll")).minY)
-                            })
                         // The top of the first screen is the picture, clear; the details sit at the bottom of it.
                         Color.clear.frame(height: proxy.size.height * 0.3)
                         HeroDetailsView(
@@ -211,14 +203,33 @@ struct ItemView: View {
                         sections
                     }
                 }
-                .coordinateSpace(name: "itemScroll")
-                .onPreferenceChange(ScrollOffsetKey.self) { scrollOffset = max($0, 0) }
             }
         }
     }
 }
 
-private struct ScrollOffsetKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+/// How far the scroll view around it has scrolled, read from the `UIScrollView` itself: SwiftUI's own geometry preferences don't
+/// report a scroll that is under way. Put inside a `ScrollView`'s content; 0 at the top, growing as the page scrolls up.
+private struct ScrollOffsetReader: UIViewRepresentable {
+    let onChange: (CGFloat) -> Void
+
+    func makeUIView(context: Context) -> ReaderView { ReaderView() }
+
+    func updateUIView(_ view: ReaderView, context: Context) { view.onChange = onChange }
+
+    final class ReaderView: UIView {
+        var onChange: ((CGFloat) -> Void)?
+        private var observation: NSKeyValueObservation?
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            observation = nil
+            var ancestor = superview
+            while let view = ancestor, !(view is UIScrollView) { ancestor = view.superview }
+            guard let scrollView = ancestor as? UIScrollView else { return }
+            observation = scrollView.observe(\.contentOffset, options: [.initial, .new]) { [weak self] scrollView, _ in
+                self?.onChange?(scrollView.contentOffset.y + scrollView.adjustedContentInset.top)
+            }
+        }
+    }
 }

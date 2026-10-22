@@ -267,7 +267,7 @@ struct HeroDetailsView: View {
                     }
                 }
             } else {
-                Color.clear.frame(maxWidth: .infinity, minHeight: 1)
+                Color.clear.frame(height: 1).frame(maxWidth: .infinity)
             }
             if state.canMark {
                 actionButton(
@@ -278,7 +278,7 @@ struct HeroDetailsView: View {
                     action: onTogglePlayed
                 )
             } else {
-                Color.clear.frame(maxWidth: .infinity, minHeight: 1)
+                Color.clear.frame(height: 1).frame(maxWidth: .infinity)
             }
             // Download returns with offline playback (Phase 10): a button that does nothing is worse than none.
         }
