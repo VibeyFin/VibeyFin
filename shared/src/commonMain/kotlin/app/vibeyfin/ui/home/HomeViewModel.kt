@@ -28,6 +28,9 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.drop
+import app.vibeyfin.domain.ProfileSettings
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlin.time.Clock
@@ -104,6 +107,7 @@ class HomeViewModel(
     private val watch: WatchRepository,
     private val changes: WatchChanges,
     private val clock: Clock,
+    private val profileSettings: ProfileSettings,
 ) : ViewModel() {
     private val exit = MutableStateFlow<HomeExit?>(null)
     // Signed in, the libraries are always on their way, so the first thing to show is loading, not empty.
@@ -192,6 +196,12 @@ class HomeViewModel(
                         launch { loadMyList(quiet = false) }
                     }
                 }
+        }
+        // The setting changed (from Settings, while Home waits underneath): the genre rows are listed again, keeping the ones still shown.
+        viewModelScope.launch {
+            profileSettings.homeGenreRows.filterNotNull().distinctUntilChanged().drop(1).collect {
+                if (connection.state.value is ConnectionState.Connected) loadGenreRows(quiet = true)
+            }
         }
         // What was watched changed (a play session ended, something was marked): bring the row up to date.
         viewModelScope.launch {
@@ -373,8 +383,17 @@ class HomeViewModel(
     private suspend fun loadGenreRows(quiet: Boolean) {
         val listed = library.genres()
         if (listed is ApiResult.Success) genreOptions = listed.value
+        // The profile's setting: every genre, none, or the biggest few.
+        val limit = profileSettings.homeGenreRows.first() ?: ProfileSettings.HOME_GENRES_ALL
         val top = (listed as? ApiResult.Success)?.value.orEmpty()
             .sortedWith(compareByDescending<FilterOption> { it.count ?: 0 }.thenBy { it.name.lowercase() })
+            .let { sorted ->
+                when {
+                    limit == ProfileSettings.HOME_GENRES_NONE -> emptyList()
+                    limit > 0 -> sorted.take(limit)
+                    else -> sorted
+                }
+            }
         if (listed is ApiResult.Failure && quiet) return
         val filters = top.map { HomeFilter.Genre(it.id, it.name) }
         genreRows.update { old ->

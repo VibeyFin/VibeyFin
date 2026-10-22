@@ -35,6 +35,7 @@ struct SettingsView: View {
                     }
                     .tint(Color(.label))
                     bingeThresholdRow
+                    homeGenreRowsRow
                 }
                 Spacer()
             }
@@ -69,6 +70,43 @@ struct SettingsView: View {
             .pickerStyle(.menu)
             .tint(Color(.secondaryLabel))
         }
+    }
+
+    /// How many genres get a row on Home: all, the biggest few, or none.
+    private var homeGenreRowsRow: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Strings.shared.homeGenreRowsTitle)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text(Strings.shared.homeGenreRowsHelp)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: Space.s3)
+            Picker(Strings.shared.homeGenreRowsTitle, selection: homeGenreRows) {
+                ForEach([0, 20, 10, 5, 3, -1] as [Int32], id: \.self) { choice in
+                    Text(genreRowsLabel(choice)).tag(choice)
+                }
+            }
+            .pickerStyle(.menu)
+            .tint(Color(.secondaryLabel))
+        }
+    }
+
+    private func genreRowsLabel(_ value: Int32) -> String {
+        switch value {
+        case 0: return Strings.shared.homeGenreRowsAll
+        case -1: return Strings.shared.homeGenreRowsNone
+        default: return Strings.shared.homeGenreRowsTop(n: value)
+        }
+    }
+
+    private var homeGenreRows: Binding<Int32> {
+        Binding(
+            get: { model.state?.homeGenreRows ?? 0 },
+            set: { model.setHomeGenreRows($0) }
+        )
     }
 
     private var bingeThreshold: Binding<Int32> {

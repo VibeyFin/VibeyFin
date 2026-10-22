@@ -52,7 +52,7 @@ class HomeViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(HomeViewModel(app.connection, app.library, app.watch, app.watchChanges, app.clock))
+    private fun viewModel() = viewModels.track(HomeViewModel(app.connection, app.library, app.watch, app.watchChanges, app.clock, app.profileSettings))
 
     private suspend fun signedIn(): FakeServer {
         val server = app.serverAt("http://nas:8096")

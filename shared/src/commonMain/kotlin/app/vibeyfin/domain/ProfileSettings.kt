@@ -23,6 +23,9 @@ class ProfileSettings(
     /** Episodes in a row before "Still watching?" appears; 0 is off. Null when nobody is signed in. Three by default. */
     val bingeThreshold: Flow<Int?> = forAccount { dao, a -> dao.observeBingeThreshold(a.serverId, a.userId).map { it ?: DEFAULT_BINGE_THRESHOLD } }
 
+    /** How many genre rows Home shows: [HOME_GENRES_ALL], [HOME_GENRES_NONE], or the biggest this many. Null when nobody is signed in. */
+    val homeGenreRows: Flow<Int?> = forAccount { dao, a -> dao.observeHomeGenreRows(a.serverId, a.userId).map { it ?: HOME_GENRES_ALL } }
+
     /** Does nothing when nobody is signed in. */
     suspend fun setShowPlaybackStats(value: Boolean) {
         val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
@@ -36,6 +39,13 @@ class ProfileSettings(
         dao.setBingeThreshold(account.serverId, account.userId, value)
     }
 
+    /** Accepts one of [HOME_GENRE_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setHomeGenreRows(value: Int) {
+        if (value !in HOME_GENRE_CHOICES) return
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setHomeGenreRows(account.serverId, account.userId, value)
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun <T> forAccount(observe: (AccountDao, Account) -> Flow<T?>): Flow<T?> = connection.state
         .map { (it as? ConnectionState.Connected)?.account }
@@ -45,5 +55,14 @@ class ProfileSettings(
     companion object {
         /** Episodes in a row before the player asks "Are you still watching?". */
         const val DEFAULT_BINGE_THRESHOLD = 3
+
+        /** Every genre gets a row on Home (the default). */
+        const val HOME_GENRES_ALL = 0
+
+        /** Home shows no genre rows. */
+        const val HOME_GENRES_NONE = -1
+
+        /** The choices, in the order the setting lists them. */
+        val HOME_GENRE_CHOICES = listOf(HOME_GENRES_ALL, 20, 10, 5, 3, HOME_GENRES_NONE)
     }
 }

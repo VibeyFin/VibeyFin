@@ -84,6 +84,9 @@ class AccountSettingsEntity(
     /** Episodes in a row before the player asks "Still watching?". 0 is off. */
     @ColumnInfo(defaultValue = "3")
     val bingeThreshold: Int = 3,
+    /** How many genre rows Home shows: 0 is every genre, -1 none, otherwise the biggest this many. */
+    @ColumnInfo(defaultValue = "0")
+    val homeGenreRows: Int = 0,
 )
 
 /** [PendingReportEntity.kind] of a play session whose `Stopped` the server may not have heard yet. */

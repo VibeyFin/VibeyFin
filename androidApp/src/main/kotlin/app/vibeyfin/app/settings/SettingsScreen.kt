@@ -38,6 +38,7 @@ import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.settings.SettingsUiState
 import app.vibeyfin.ui.settings.SettingsViewModel
@@ -46,7 +47,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SettingsRoute(onBack: () -> Unit, viewModel: SettingsViewModel = koinViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    SettingsScreen(state, onBack, viewModel::onAlwaysAskChanged, viewModel::onShowPlaybackStatsChanged, viewModel::onBingeThresholdChanged)
+    SettingsScreen(state, onBack, viewModel::onAlwaysAskChanged, viewModel::onShowPlaybackStatsChanged, viewModel::onBingeThresholdChanged, viewModel::onHomeGenreRowsChanged)
 }
 
 @Composable
@@ -56,6 +57,7 @@ fun SettingsScreen(
     onAlwaysAskChanged: (Boolean) -> Unit,
     onShowPlaybackStatsChanged: (Boolean) -> Unit,
     onBingeThresholdChanged: (Int) -> Unit = {},
+    onHomeGenreRowsChanged: (Int) -> Unit = {},
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
@@ -88,11 +90,22 @@ fun SettingsScreen(
                         onCheckedChange = onShowPlaybackStatsChanged,
                     )
                     Spacer(Modifier.height(24.dp))
-                    ThresholdRow(
+                    ChoiceRow(
                         title = Strings.stillWatchingTitle,
                         help = Strings.stillWatchingHelp,
                         value = state.bingeThreshold,
+                        choices = THRESHOLD_CHOICES,
+                        label = ::thresholdLabel,
                         onChange = onBingeThresholdChanged,
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    ChoiceRow(
+                        title = Strings.homeGenreRowsTitle,
+                        help = Strings.homeGenreRowsHelp,
+                        value = state.homeGenreRows,
+                        choices = ProfileSettings.HOME_GENRE_CHOICES,
+                        label = ::genreRowsLabel,
+                        onChange = onHomeGenreRowsChanged,
                     )
                 }
             }
@@ -140,9 +153,9 @@ private fun SwitchRow(title: String, help: String, checked: Boolean, onCheckedCh
     }
 }
 
-/** Off, or after 2 to 5 episodes in a row: a row that opens a menu with those choices. */
+/** A row that opens a menu of [choices], the one in use checked and named at the right. */
 @Composable
-private fun ThresholdRow(title: String, help: String, value: Int, onChange: (Int) -> Unit) {
+private fun ChoiceRow(title: String, help: String, value: Int, choices: List<Int>, label: (Int) -> String, onChange: (Int) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
         Row(
@@ -157,13 +170,13 @@ private fun ThresholdRow(title: String, help: String, value: Int, onChange: (Int
             // The menu hangs from the value on the right, where the eye is, not from the row's left edge.
             Box {
                 Text(
-                    text = thresholdLabel(value),
+                    text = label(value),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 VibeyFinMenu(expanded = open, onDismiss = { open = false }) {
-                    THRESHOLD_CHOICES.forEach { choice ->
-                        VibeyFinMenuItem(thresholdLabel(choice), if (choice == value) Icons.Filled.Check else null) {
+                    choices.forEach { choice ->
+                        VibeyFinMenuItem(label(choice), if (choice == value) Icons.Filled.Check else null) {
                             open = false
                             onChange(choice)
                         }
@@ -177,3 +190,9 @@ private fun ThresholdRow(title: String, help: String, value: Int, onChange: (Int
 private val THRESHOLD_CHOICES = listOf(0, 2, 3, 4, 5)
 
 private fun thresholdLabel(value: Int) = if (value == 0) Strings.stillWatchingOff else Strings.stillWatchingAfter(value)
+
+private fun genreRowsLabel(value: Int) = when (value) {
+    ProfileSettings.HOME_GENRES_ALL -> Strings.homeGenreRowsAll
+    ProfileSettings.HOME_GENRES_NONE -> Strings.homeGenreRowsNone
+    else -> Strings.homeGenreRowsTop(value)
+}

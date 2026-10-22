@@ -19,6 +19,8 @@ data class SettingsUiState(
     val showPlaybackStats: Boolean = false,
     /** Episodes in a row before "Still watching?"; 0 is off. */
     val bingeThreshold: Int = ProfileSettings.DEFAULT_BINGE_THRESHOLD,
+    /** How many genre rows Home shows: 0 is every genre, -1 none. */
+    val homeGenreRows: Int = ProfileSettings.HOME_GENRES_ALL,
 )
 
 /** Device-wide settings from [DevicePreferences] and the signed-in profile's from the database, one column per option. */
@@ -30,12 +32,14 @@ class SettingsViewModel(
         preferences.alwaysAskWhoIsWatching,
         profileSettings.showPlaybackStats,
         profileSettings.bingeThreshold,
-    ) { alwaysAsk, showStats, threshold ->
+        profileSettings.homeGenreRows,
+    ) { alwaysAsk, showStats, threshold, genreRows ->
         SettingsUiState(
             alwaysAskWhoIsWatching = alwaysAsk,
             hasProfile = showStats != null || threshold != null,
             showPlaybackStats = showStats ?: false,
             bingeThreshold = threshold ?: ProfileSettings.DEFAULT_BINGE_THRESHOLD,
+            homeGenreRows = genreRows ?: ProfileSettings.HOME_GENRES_ALL,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -49,5 +53,9 @@ class SettingsViewModel(
 
     fun onBingeThresholdChanged(value: Int) {
         viewModelScope.launch { profileSettings.setBingeThreshold(value) }
+    }
+
+    fun onHomeGenreRowsChanged(value: Int) {
+        viewModelScope.launch { profileSettings.setHomeGenreRows(value) }
     }
 }

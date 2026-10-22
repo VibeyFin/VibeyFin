@@ -118,6 +118,30 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `home shows every genre until the profile limits them`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        assertEquals(0, viewModel.uiState.first { it.hasProfile }.homeGenreRows)
+
+        viewModel.onHomeGenreRowsChanged(5)
+        assertEquals(5, viewModel.uiState.first { it.homeGenreRows == 5 }.homeGenreRows)
+        viewModel.onHomeGenreRowsChanged(-1)
+        assertEquals(-1, viewModel.uiState.first { it.homeGenreRows == -1 }.homeGenreRows)
+    }
+
+    @Test
+    fun `a genre row count that is not one of the choices is ignored`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hasProfile }
+
+        for (invalid in listOf(1, 4, 7, 21, -2)) {
+            viewModel.onHomeGenreRowsChanged(invalid)
+            assertEquals(0, app.profileSettings.homeGenreRows.first())
+        }
+    }
+
+    @Test
     fun theStatsToggleIsSavedForTheProfile() = runTest {
         app.signedIn()
         val viewModel = viewModel()

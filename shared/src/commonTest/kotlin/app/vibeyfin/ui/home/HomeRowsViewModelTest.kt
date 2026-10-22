@@ -46,7 +46,7 @@ class HomeRowsViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(HomeViewModel(app.connection, app.library, app.watch, app.watchChanges, app.clock))
+    private fun viewModel() = viewModels.track(HomeViewModel(app.connection, app.library, app.watch, app.watchChanges, app.clock, app.profileSettings))
 
     private val libraries = listOf(
         itemJson("lib-m", "Movies", type = "CollectionFolder", isFolder = true, collectionType = "movies"),
@@ -137,6 +137,40 @@ class HomeRowsViewModelTest {
 
         val rows = viewModel.uiState.first { state -> state.rows.any { it.id == "my-list" && it.items.isNotEmpty() } }.rows
         assertEquals("My List", rows.first().title)
+    }
+
+    @Test
+    fun theProfileCanLimitTheGenreRowsToTheBiggestFew() = runTest {
+        server()
+        app.profileSettings.setHomeGenreRows(3)
+
+        val rows = viewModel().rowsLoaded(5)
+
+        assertEquals(listOf("Drama", "Thriller", "Action"), rows.filter { it.id.startsWith("genre:") }.map { it.title })
+    }
+
+    @Test
+    fun theProfileCanTurnTheGenreRowsOff() = runTest {
+        server()
+        app.profileSettings.setHomeGenreRows(-1)
+
+        val rows = viewModel().rowsLoaded(2)
+
+        assertEquals(listOf("Recently added in Movies", "Recently added in Shows"), rows.map { it.title })
+    }
+
+    @Test
+    fun changingTheSettingWhileHomeIsOpenAddsOrDropsTheGenreRows() = runTest {
+        server()
+        val viewModel = viewModel()
+        viewModel.rowsLoaded(7)
+
+        app.profileSettings.setHomeGenreRows(3)
+        val fewer = viewModel.uiState.first { state -> state.rows.count { it.id.startsWith("genre:") } == 3 && state.rows.none { it.loading } }
+        assertEquals(listOf("Drama", "Thriller", "Action"), fewer.rows.filter { it.id.startsWith("genre:") }.map { it.title })
+
+        app.profileSettings.setHomeGenreRows(0)
+        viewModel.uiState.first { state -> state.rows.count { it.id.startsWith("genre:") } == 5 && state.rows.none { it.loading } }
     }
 
     @Test

@@ -15,5 +15,7 @@ class SettingsModel {
 
     fun onBingeThresholdChanged(value: Int) = host.viewModel.onBingeThresholdChanged(value)
 
+    fun onHomeGenreRowsChanged(value: Int) = host.viewModel.onHomeGenreRowsChanged(value)
+
     fun close() = host.close()
 }
