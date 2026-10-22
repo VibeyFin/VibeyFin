@@ -140,7 +140,8 @@ struct EpisodeCardView: View {
             Artwork(url: episode.landscapeUrl ?? episode.posterUrl, title: episode.title, aspectRatio: aspect, blurHash: episode.landscapeBlurHash)
                 .overlay {
                     LinearGradient(
-                        stops: [.init(color: .clear, location: 0), .init(color: Brand.scrim, location: 0.3), .init(color: Brand.scrimStrong, location: 0.7), .init(color: Brand.scrimStrong, location: 1)],
+                        // The picture stays clear well down the card; only the lower part darkens, just enough for the white text to read.
+                        stops: [.init(color: .clear, location: 0), .init(color: .clear, location: 0.4), .init(color: .black.opacity(0.55), location: 0.75), .init(color: .black.opacity(0.78), location: 1)],
                         startPoint: .top,
                         endPoint: .bottom
                     )

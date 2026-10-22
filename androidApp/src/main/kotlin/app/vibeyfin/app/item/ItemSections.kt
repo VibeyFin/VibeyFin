@@ -279,14 +279,15 @@ private fun EpisodeCard(episode: MediaItem, width: Dp, current: Boolean, onPlay:
                 blurHash = episode.landscapeBlurHash,
                 modifier = Modifier.fillMaxSize(),
             )
-            // The scrim the text sits on: clear at the top, nearly the page's colour where the synopsis is.
+            // The scrim the text sits on: the picture stays clear well down the card, and only the lower part darkens (to about
+            // three quarters), just enough for the white text to read.
             Box(
                 Modifier.matchParentSize().background(
                     androidx.compose.ui.graphics.Brush.verticalGradient(
                         0f to androidx.compose.ui.graphics.Color.Transparent,
-                        0.3f to VibeyFinTokens.Colors.scrim,
-                        0.7f to VibeyFinTokens.Colors.scrimStrong,
-                        1f to VibeyFinTokens.Colors.scrimStrong,
+                        0.4f to androidx.compose.ui.graphics.Color.Transparent,
+                        0.75f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.55f),
+                        1f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.78f),
                     ),
                 ),
             )
