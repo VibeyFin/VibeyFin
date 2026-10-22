@@ -167,13 +167,23 @@ private fun EpisodeList(seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay
                 }
             episodes.items.isEmpty() -> Text(Strings.noEpisodes, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             // The episodes scroll sideways as cards, bigger on a tablet.
-            else -> LazyRow(
+            else -> {
+                val listState = rememberLazyListState()
+                // A season opens at the episode Play will start, so the one being watched is in view; another season opens at its first.
+                val firstId = episodes.items.first().id
+                LaunchedEffect(firstId) {
+                    val at = episodes.items.indexOfFirst { it.id == seasons.startEpisode?.id }
+                    listState.scrollToItem(if (at > 0) at else 0)
+                }
+                LazyRow(
+                state = listState,
                 modifier = Modifier.bleed(margin).alpha(if (episodes.loading) 0.5f else 1f),
                 contentPadding = PaddingValues(horizontal = margin),
                 horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
             ) {
                 items(episodes.items, key = { it.id }) { episode ->
                     EpisodeCard(episode, cardWidth, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) })
+                }
                 }
             }
         }

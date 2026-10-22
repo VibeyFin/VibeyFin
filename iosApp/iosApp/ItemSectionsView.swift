@@ -71,6 +71,11 @@ struct SeasonsSectionView: View {
     /// Episode cards: 260 wide on a phone, 320 on a regular width.
     private var cardWidth: CGFloat { wide ? 320 : 260 }
 
+    private func scrollToCurrent(_ proxy: ScrollViewProxy, _ list: EpisodeList) {
+        let target = list.items.first(where: { $0.id == seasons.startEpisode?.id }) ?? list.items.first
+        if let id = target?.id { proxy.scrollTo(id, anchor: .leading) }
+    }
+
     @ViewBuilder
     private var episodes: some View {
         let list = seasons.episodes
@@ -95,18 +100,24 @@ struct SeasonsSectionView: View {
                 .font(.body)
                 .foregroundStyle(.secondary)
         } else {
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: Space.s4) {
-                    ForEach(list.items, id: \.id) { episode in
-                        EpisodeCardView(
-                            episode: episode,
-                            width: cardWidth,
-                            current: episode.id == seasons.startEpisode?.id,
-                            onPlay: { onPlay(episode.id) },
-                            onToggleWatched: { onToggleWatched(episode.id) }
-                        )
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: Space.s4) {
+                        ForEach(list.items, id: \.id) { episode in
+                            EpisodeCardView(
+                                episode: episode,
+                                width: cardWidth,
+                                current: episode.id == seasons.startEpisode?.id,
+                                onPlay: { onPlay(episode.id) },
+                                onToggleWatched: { onToggleWatched(episode.id) }
+                            )
+                            .id(episode.id)
+                        }
                     }
                 }
+                // A season opens at the episode Play will start, so the one being watched is in view; another season at its first.
+                .onAppear { scrollToCurrent(proxy, list) }
+                .onChange(of: list.items.first?.id) { _ in scrollToCurrent(proxy, list) }
             }
             .opacity(list.loading ? 0.5 : 1)
         }
