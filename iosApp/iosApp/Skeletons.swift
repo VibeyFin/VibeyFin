@@ -15,17 +15,26 @@ struct SkeletonBlock: View {
     }
 }
 
-/// A grey bar as tall as one line of text in [font]: a redacted word, so it is exactly as tall as the real thing.
+/// A grey bar as tall as one line of text in [font]: a redacted word, so it is exactly as tall as the real thing. With no
+/// [width] it runs the full width of its row, like a line of a paragraph.
 struct SkeletonLine: View {
     var font: Font = .subheadline
-    var width: CGFloat = 96
+    var width: CGFloat? = 96
 
     var body: some View {
-        Text(Strings.shared.loadingPage)
-            .font(font)
-            .redacted(reason: .placeholder)
-            .frame(width: width, alignment: .leading)
-            .clipped()
+        if let width {
+            Text(Strings.shared.loadingPage)
+                .font(font)
+                .redacted(reason: .placeholder)
+                .frame(width: width, alignment: .leading)
+                .clipped()
+        } else {
+            Text(Strings.shared.loadingPage)
+                .font(font)
+                .hidden()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(SkeletonBlock(cornerRadius: Radius.artwork))
+        }
     }
 }
 
@@ -60,39 +69,96 @@ struct PosterSkeletonGrid: View {
     }
 }
 
-/// The item page while it loads: the picture, the title, the facts line, the action and the overview.
+/// The item page while it loads, laid out like `ItemView`: on a phone the picture pinned at the top (2:3) with the title, facts,
+/// genres, overview, Play and the four actions centred at the bottom of it, then a row of posters under it; on a regular width the
+/// backdrop fills the screen with the same details in a column on the left, and the row under the first screen.
 struct ItemSkeleton: View {
-    @Environment(\.horizontalSizeClass) private var sizeClass
-    private var wide: Bool { sizeClass == .regular }
+    let wide: Bool
+    /// The page's side margin, as `ItemView` sets it.
+    let margin: CGFloat
 
     var body: some View {
-        // The shapes of the page: the tall picture with the logo, the facts, Play and the four actions at its foot.
         GeometryReader { proxy in
-            ZStack(alignment: .bottom) {
-                Rectangle().fill(Color(.tertiarySystemBackground))
-                VStack(alignment: wide ? .leading : .center, spacing: Space.s3) {
-                    RoundedRectangle(cornerRadius: 6).fill(Color(.quaternarySystemFill)).frame(width: proxy.size.width * 0.6, height: 56)
-                    RoundedRectangle(cornerRadius: 6).fill(Color(.quaternarySystemFill)).frame(width: 150, height: 16)
-                    RoundedRectangle(cornerRadius: 6).fill(Color(.quaternarySystemFill)).frame(height: 40)
-                    Capsule().fill(Color(.quaternarySystemFill)).frame(height: 50)
-                    HStack {
-                        ForEach(0..<4, id: \.self) { _ in
-                            VStack(spacing: Space.s1) {
-                                Circle().fill(Color(.quaternarySystemFill)).frame(width: 30, height: 30)
-                                RoundedRectangle(cornerRadius: 6).fill(Color(.quaternarySystemFill)).frame(width: 56, height: 14)
-                            }
-                            .frame(maxWidth: .infinity)
+            ZStack(alignment: .top) {
+                picture(width: proxy.size.width, height: proxy.size.height)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if wide {
+                            Color.clear.frame(height: proxy.size.height * 0.3)
+                            HeroDetailsSkeleton(centered: false)
+                                .frame(maxWidth: min(proxy.size.width * 0.46, 520), alignment: .leading)
+                                .padding(.horizontal, margin)
+                        } else {
+                            HeroDetailsSkeleton(centered: true)
+                                .padding(.horizontal, Space.s4)
+                                .padding(.bottom, Space.s4)
+                                .frame(maxWidth: .infinity, minHeight: proxy.size.width * 1.5, alignment: .bottom)
                         }
+                        VStack(alignment: .leading, spacing: Space.s3) {
+                            SkeletonLine(font: .title3.bold(), width: 160)
+                                .padding(.horizontal, margin)
+                            PosterSkeletonRow(tileWidth: wide ? 168 : 112)
+                        }
+                        .padding(.vertical, Space.s5)
                     }
                 }
-                .padding(.horizontal, Space.s4)
-                .padding(.bottom, Space.s5)
+                .scrollDisabled(true)
             }
             .frame(height: min(proxy.size.width * 1.5, proxy.size.height))
         }
-        .ignoresSafeArea(edges: .top)
+        .environment(\.screenMarginOverride, wide ? Space.s6 : nil)
+        .ignoresSafeArea(edges: wide ? .all : .top)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Strings.shared.loadingPage)
+    }
+
+    /// The backdrop's stand-in: 2:3 at the top of a phone, the whole screen on a regular width, fading into the page's colour
+    /// where the text starts.
+    private func picture(width: CGFloat, height: CGFloat) -> some View {
+        ZStack {
+            Color(.tertiarySystemBackground)
+            LinearGradient(
+                stops: wide
+                    ? [.init(color: .clear, location: 0.6), .init(color: Color(.systemBackground), location: 1)]
+                    : [.init(color: .clear, location: 0.4), .init(color: Color(.systemBackground), location: 1)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+        .frame(width: width, height: wide ? height : width * 1.5)
+    }
+}
+
+/// `HeroDetailsView`'s content in grey: the title, the facts, the genres, three lines of the overview, the Play capsule and the
+/// four actions (an icon over a label). Centred on a phone, at the start on a regular width.
+private struct HeroDetailsSkeleton: View {
+    let centered: Bool
+
+    var body: some View {
+        VStack(alignment: centered ? .center : .leading, spacing: Space.s3) {
+            SkeletonLine(font: .brandDisplay, width: centered ? 240 : 320)
+            SkeletonLine(font: .subheadline, width: 180)
+            SkeletonLine(font: .subheadline, width: 140)
+            VStack(spacing: 0) {
+                SkeletonLine(font: .subheadline, width: nil)
+                SkeletonLine(font: .subheadline, width: nil)
+                SkeletonLine(font: .subheadline, width: 200)
+            }
+            Capsule()
+                .fill(Color(.tertiarySystemBackground))
+                .frame(height: 50)
+                .frame(maxWidth: centered ? .infinity : 260)
+            HStack(spacing: 0) {
+                ForEach(0..<4, id: \.self) { _ in
+                    VStack(spacing: Space.s1) {
+                        SkeletonBlock(cornerRadius: Radius.artwork).frame(width: 26, height: 26)
+                        SkeletonLine(font: .caption, width: 40)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 56)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
     }
 }
 
