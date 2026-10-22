@@ -98,6 +98,24 @@ object Strings {
     /** What a screen reader says for a button that opens a list of genres. */
     fun opensList(label: String) = "$label, opens a list"
 
+    /** The Sort, Year and Genre buttons on a category page, and the rows of their sheets. */
+    val sortName = "Name"
+    val sortYear = "Release year"
+    val sortRating = "Rating"
+    val sortTitle = "Sort by"
+    val yearTitle = "Release year"
+    val genreTitle = "Genre"
+    val yearButton = "Year"
+    val genreButton = "Genre"
+    val allYears = "All years"
+    val allGenres = "All genres"
+    fun sortChip(label: String) = "Sort: $label"
+    fun yearChip(year: String) = "Year: $year"
+    fun genreChip(name: String) = "Genre: $name"
+
+    /** What a screen reader says for a sheet row that holds [count] titles. */
+    fun titleCount(name: String, count: Int) = if (count == 1) "$name, 1 title" else "$name, $count titles"
+
     /** The subtitle above the titles of the "New" page that have no release year. */
     val unknownYear = "Unknown year"
 

@@ -26,7 +26,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.vibeyfin.app.components.LoadError
-import app.vibeyfin.app.components.OptionList
+import app.vibeyfin.app.components.PickerSheet
 import app.vibeyfin.app.components.OptionRow
 import app.vibeyfin.app.components.SkeletonLine
 import app.vibeyfin.app.theme.VibeyFinTokens
@@ -77,36 +77,29 @@ fun CategoryButtonRow(
 }
 
 /**
- * The genres in a bottom sheet, the same list as the player's audio and subtitle pickers: a title and one row per
- * genre. Nothing is checked, because picking a genre opens its page. Loading is grey lines, an empty list says so,
- * a failure offers Try again.
+ * The genres in a bottom sheet, the same list as the player's audio and subtitle pickers, each with how many titles it
+ * holds. Nothing is checked, because picking a genre opens its page.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategorySheet(sheet: FilterSheet, onPick: (String) -> Unit, onDismiss: () -> Unit, onRetry: () -> Unit) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-    ) {
-        val modifier = Modifier.navigationBarsPadding().padding(horizontal = VibeyFinTokens.Space.s2, vertical = VibeyFinTokens.Space.s2)
-        when {
-            sheet.loading -> Column(modifier.padding(horizontal = VibeyFinTokens.Space.s2), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-                Text(sheet.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                repeat(5) { SkeletonLine(width = 160.dp, style = MaterialTheme.typography.bodyLarge) }
-            }
-            sheet.message != null -> Column(modifier.padding(horizontal = VibeyFinTokens.Space.s2), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-                Text(sheet.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                LoadError(sheet.message!!, onRetry)
-            }
-            sheet.isEmpty -> Column(modifier.padding(horizontal = VibeyFinTokens.Space.s2), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-                Text(sheet.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                Text(sheet.emptyText, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            else -> {
-                val rows = remember(sheet.options) { sheet.options.map { OptionRow(it.id, it.name) } }
-                OptionList(sheet.title, rows, onSelect = onPick, modifier = modifier)
-            }
+    val rows = remember(sheet.options) {
+        sheet.options.map { option ->
+            OptionRow(
+                key = option.id,
+                label = option.name,
+                detail = option.count?.toString(),
+                description = option.count?.let { Strings.titleCount(option.name, it) },
+            )
         }
     }
+    PickerSheet(
+        title = sheet.title,
+        rows = rows,
+        loading = sheet.loading,
+        message = sheet.message,
+        emptyText = if (sheet.isEmpty) sheet.emptyText else null,
+        onPick = onPick,
+        onDismiss = onDismiss,
+        onRetry = onRetry,
+    )
 }

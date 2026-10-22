@@ -1,6 +1,8 @@
 package app.vibeyfin.app.children
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -19,6 +21,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -78,10 +83,18 @@ fun ChildrenScreen(
     onOpen: (MediaItem) -> Unit,
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
+    // Buttons under the title that stay put while the list scrolls, such as a category page's Sort and Year.
+    controls: (@Composable () -> Unit)? = null,
 ) {
+    // With controls the title is pinned above them; without, it is the first row of the list and scrolls away.
+    val pinned = controls != null
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = screenMargin())) {
+                if (controls != null) {
+                    Title(title)
+                    controls()
+                }
                 when {
                     state.loading -> LazyVerticalGrid(
                         columns = GridCells.Adaptive(130.dp),
@@ -90,22 +103,22 @@ fun ChildrenScreen(
                         userScrollEnabled = false,
                         modifier = Modifier.fillMaxSize(),
                     ) {
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title) }
+                        if (!pinned) item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title) }
                         skeletonTiles()
                     }
                     state.message != null -> {
-                        Title(title)
+                        if (!pinned) Title(title)
                         LoadError(state.message!!, onRetry)
                     }
                     state.isEmpty -> {
-                        Title(title)
+                        if (!pinned) Title(title)
                         Text(
                             text = Strings.emptyFolder,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    else -> ItemGrid(title, state, onOpen, onLoadMore, onRetry)
+                    else -> ItemGrid(title, state, onOpen, onLoadMore, onRetry, showTitle = !pinned)
                 }
             }
             FloatingBackButton(onBack)
@@ -127,6 +140,35 @@ private fun Title(title: String) {
     }
 }
 
+/** Where the subtitle [label] sits among the grid's items: the title (when it is in the list), then every item and subtitle before it. */
+private fun headingIndex(state: ChildrenUiState, label: String, showTitle: Boolean): Int {
+    var index = if (showTitle) 1 else 0
+    for (item in state.items) {
+        val heading = state.headings[item.id]
+        if (heading != null) {
+            if (heading == label) return index
+            index++
+        }
+        index++
+    }
+    return 0
+}
+
+/** The years on the page, each a button that jumps to it. */
+@Composable
+private fun YearStrip(years: List<String>, onJump: (String) -> Unit) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
+        modifier = Modifier.padding(bottom = VibeyFinTokens.Space.s3),
+    ) {
+        items(years, key = { it }) { year ->
+            TextButton(onClick = { onJump(year) }) {
+                Text(year, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
 /** A subtitle that splits the list, such as a release year. */
 @Composable
 private fun YearHeading(text: String) {
@@ -145,8 +187,11 @@ private fun ItemGrid(
     onOpen: (MediaItem) -> Unit,
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
+    showTitle: Boolean,
 ) {
+    // Saved with the screen, so coming back from an item's page finds the list where it was left.
     val gridState = rememberLazyGridState()
+    val scope = rememberCoroutineScope()
     val nearEnd by remember {
         derivedStateOf {
             val info = gridState.layoutInfo
@@ -157,34 +202,42 @@ private fun ItemGrid(
     LaunchedEffect(nearEnd, state.items.size, state.hasMore) {
         if (nearEnd && state.hasMore) onLoadMore()
     }
-    LazyVerticalGrid(
-        state = gridState,
-        columns = GridCells.Adaptive(130.dp),
-        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
-        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        // The title is part of the list, beneath the button, and scrolls up under it.
-        item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title) }
-        state.items.forEach { item ->
-            // The "New" page names each release year above its titles.
-            state.headings[item.id]?.let { heading ->
-                item(span = { GridItemSpan(maxLineSpan) }, key = "heading-${item.id}") { YearHeading(heading) }
+    Column(Modifier.fillMaxSize()) {
+        // Pages ordered by year can jump to a year, from the years loaded so far.
+        if (state.headings.isNotEmpty()) {
+            YearStrip(state.headings.values.toList()) { year ->
+                scope.launch { gridState.animateScrollToItem(headingIndex(state, year, showTitle)) }
             }
-            item(key = item.id) { ArtworkTile(item, onClick = { onOpen(item) }) }
         }
-        if (state.loadingMore) {
-            item(span = { GridItemSpan(maxLineSpan) }, key = "loading-more") {
-                Box(Modifier.fillMaxWidth().padding(VibeyFinTokens.Space.s4), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurfaceVariant)
+        LazyVerticalGrid(
+            state = gridState,
+            columns = GridCells.Adaptive(130.dp),
+            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
+            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            // The title is part of the list, beneath the button, and scrolls up under it.
+            if (showTitle) item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title) }
+            state.items.forEach { item ->
+                // The "New" page names each release year above its titles.
+                state.headings[item.id]?.let { heading ->
+                    item(span = { GridItemSpan(maxLineSpan) }, key = "heading-${item.id}") { YearHeading(heading) }
+                }
+                item(key = item.id) { ArtworkTile(item, onClick = { onOpen(item) }) }
+            }
+            if (state.loadingMore) {
+                item(span = { GridItemSpan(maxLineSpan) }, key = "loading-more") {
+                    Box(Modifier.fillMaxWidth().padding(VibeyFinTokens.Space.s4), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
-        }
-        if (state.loadMoreFailed) {
-            item(span = { GridItemSpan(maxLineSpan) }, key = "load-more-failed") {
-                LoadError(Strings.loadMoreFailed, onRetry)
+            if (state.loadMoreFailed) {
+                item(span = { GridItemSpan(maxLineSpan) }, key = "load-more-failed") {
+                    LoadError(Strings.loadMoreFailed, onRetry)
+                }
             }
+            item(span = { GridItemSpan(maxLineSpan) }, key = "bottom-space") { Spacer(Modifier.height(VibeyFinTokens.Space.s5)) }
         }
-        item(span = { GridItemSpan(maxLineSpan) }, key = "bottom-space") { Spacer(Modifier.height(VibeyFinTokens.Space.s5)) }
     }
 }

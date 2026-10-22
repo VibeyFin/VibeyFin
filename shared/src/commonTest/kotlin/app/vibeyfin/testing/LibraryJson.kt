@@ -23,6 +23,9 @@ fun itemJson(
     /** Where the user stopped; with [played] this becomes the item's `UserData`. */
     positionTicks: Long? = null,
     played: Boolean? = null,
+    /** On a genre: how many movies and shows carry it (`fields=ItemCounts`). */
+    movieCount: Int? = null,
+    seriesCount: Int? = null,
     /** `ImageBlurHashes` as the server sends it: image type, then image tag, then the hash. */
     blurHashes: Map<String, Map<String, String>> = emptyMap(),
 ): String {
@@ -57,6 +60,8 @@ fun itemJson(
                 """{"PlaybackPositionTicks":${positionTicks ?: 0},"Played":${played ?: false}}"""
             }
         }""",
+        """"MovieCount":${movieCount ?: "null"}""",
+        """"SeriesCount":${seriesCount ?: "null"}""",
         """"SomethingWeDontRead":true""",
     )
     return fields.joinToString(prefix = "{", postfix = "}")

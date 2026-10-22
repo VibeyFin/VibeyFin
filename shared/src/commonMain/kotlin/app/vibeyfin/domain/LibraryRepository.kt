@@ -10,6 +10,7 @@ import app.vibeyfin.data.api.itemsById
 import app.vibeyfin.data.api.map
 import app.vibeyfin.data.api.userViews
 import app.vibeyfin.data.api.genres
+import app.vibeyfin.data.api.years
 import app.vibeyfin.data.api.filteredItems
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.ItemPage
@@ -43,34 +44,46 @@ class LibraryRepository(private val connection: ConnectionManager) {
         }
     }
 
-    /** The genres to pick from, by name. */
+    /** The genres to pick from, by name, with how many titles each holds; a genre with none is left out. */
     suspend fun genres(): ApiResult<List<FilterOption>> = call { api, userId ->
         api.genres(userId).map { result -> result.items.toOptions() }
     }
 
+    /** The release years of the library, newest first. */
+    suspend fun years(): ApiResult<List<Int>> = call { api, userId ->
+        api.years(userId).map { result -> result.items.mapNotNull { it.name?.trim()?.toIntOrNull() }.distinct().sortedDescending() }
+    }
+
     /**
-     * One page of the category page for [filter], across every library: Shows (series), Movies, New, or a
-     * genre's movies and shows. New is by release year, newest first, then by premiere date within a
-     * year; the rest are by name.
+     * One page of the category page for [filter], across every library: Shows (series), Movies, New, or a genre's
+     * movies and shows, in [sort] order, optionally narrowed to a [genreId] (on a page that is not itself a genre)
+     * and a release [year]. Name is A to Z, Year is newest first then by premiere date, Rating is best first.
      */
-    suspend fun filteredPage(filter: HomeFilter, startIndex: Int = 0, limit: Int = PAGE_SIZE): ApiResult<ItemPage> =
-        call { api, userId ->
-            val types = when (filter) {
-                HomeFilter.Shows -> listOf("Series")
-                HomeFilter.Movies -> listOf("Movie")
-                else -> listOf("Movie", "Series")
-            }
-            val newest = filter == HomeFilter.New
-            api.filteredItems(
-                userId, types, (filter as? HomeFilter.Genre)?.id,
-                sortBy = if (newest) "ProductionYear,PremiereDate" else "SortName",
-                sortOrder = if (newest) "Descending" else "Ascending",
-                startIndex = startIndex,
-                limit = limit,
-            ).map { result ->
-                ItemPage(result.items.map { it.toMediaItem(api.baseUrl) }, result.totalRecordCount, result.startIndex)
-            }
+    suspend fun filteredPage(
+        filter: HomeFilter,
+        sort: PageSort = filter.defaultSort,
+        genreId: String? = null,
+        year: Int? = null,
+        startIndex: Int = 0,
+        limit: Int = PAGE_SIZE,
+    ): ApiResult<ItemPage> = call { api, userId ->
+        val types = when (filter) {
+            HomeFilter.Shows -> listOf("Series")
+            HomeFilter.Movies -> listOf("Movie")
+            else -> listOf("Movie", "Series")
         }
+        val (sortBy, sortOrder) = when (sort) {
+            PageSort.Name -> "SortName" to "Ascending"
+            PageSort.Year -> "ProductionYear,PremiereDate" to "Descending"
+            PageSort.Rating -> "CommunityRating,SortName" to "Descending"
+        }
+        api.filteredItems(
+            userId, types, (filter as? HomeFilter.Genre)?.id ?: genreId, year,
+            sortBy = sortBy, sortOrder = sortOrder, startIndex = startIndex, limit = limit,
+        ).map { result ->
+            ItemPage(result.items.map { it.toMediaItem(api.baseUrl) }, result.totalRecordCount, result.startIndex)
+        }
+    }
 
     private suspend fun <T> call(block: suspend (JellyfinApi, String) -> ApiResult<T>): ApiResult<T> {
         val connected = connection.state.value as? ConnectionState.Connected
@@ -145,5 +158,9 @@ private fun BaseItemDto.blurHash(type: String, tag: String): String? =
     imageBlurHashes[type]?.get(tag)?.takeIf { it.isNotBlank() }
 
 private fun List<BaseItemDto>.toOptions(): List<FilterOption> =
-    mapNotNull { dto -> dto.name?.takeIf { it.isNotBlank() }?.let { FilterOption(dto.id, it) } }
-        .sortedBy { it.name.lowercase() }
+    mapNotNull { dto ->
+        val name = dto.name?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+        // Counts are movies plus shows; when the server sent none, the genre is listed without a number.
+        val count = if (dto.movieCount != null || dto.seriesCount != null) (dto.movieCount ?: 0) + (dto.seriesCount ?: 0) else null
+        if (count == 0) null else FilterOption(dto.id, name, count)
+    }.sortedBy { it.name.lowercase() }

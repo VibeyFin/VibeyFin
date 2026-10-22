@@ -8,6 +8,7 @@
 #   movies/Neon Night (2026), Quiet Harbor (2025), Old Classic (1999)   5 s clips with a movie.nfo each, for the Home
 #     category buttons: genres Drama, Thriller and Science Fiction, and release years 2026 to 1999 for "New".
 #     Jellyfin reads the .nfo as local metadata (no online lookup).
+#   movies/Filler 01 (2003) ... Filler 24 (2026)   copies of one clip, genres in turn, to fill a category page
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
@@ -88,4 +89,14 @@ touch -t "$(date -v-60d +%Y%m%d%H%M 2>/dev/null || date -d '60 days ago' +%Y%m%d
 cat > "${MEDIA}/shows/Test Show/tvshow.nfo" <<'NFO'
 <tvshow><title>Test Show</title><studio>A24</studio><genre>Drama</genre></tvshow>
 NFO
+# Filler: 24 more movies (one clip copied, so cheap), 2003 to 2026, genres Drama, Thriller, Action and Comedy in turn.
+# Enough for a category page to scroll, to jump between years, and for the genre sheet's counts to differ.
+genres=(Drama Thriller Action Comedy)
+for n in $(seq 1 24); do
+  year=$((2002 + n)); genre="${genres[$(((n - 1) % 4))]}"; name="Filler $(printf '%02d' "$n") ($year)"
+  dir="${MEDIA}/movies/${name}"
+  mkdir -p "$dir"
+  [ -f "${dir}/${name}.mkv" ] || cp "${MEDIA}/movies/Quiet Harbor (2025)/Quiet Harbor (2025).mkv" "${dir}/${name}.mkv"
+  echo "<movie><title>Filler $(printf '%02d' "$n")</title><year>${year}</year><genre>${genre}</genre></movie>" > "${dir}/movie.nfo"
+done
 echo "Media ready under ${MEDIA}"

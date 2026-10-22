@@ -40,21 +40,41 @@ suspend fun JellyfinApi.itemsById(id: String, userId: String): ApiResult<ItemsRe
 fun itemImageUrl(baseUrl: String, itemId: String, type: String, tag: String, maxWidth: Int): String =
     "$baseUrl/Items/$itemId/Images/$type?tag=$tag&maxWidth=$maxWidth"
 
-/** `GET /Genres`: the genres of the movies and shows [userId] can see, by name. */
+/** `GET /Genres`: the genres of the movies and shows [userId] can see, by name, with how many titles each holds. */
 suspend fun JellyfinApi.genres(userId: String): ApiResult<ItemsResultDto> = get(
     "/Genres",
-    mapOf("userId" to userId, "includeItemTypes" to "Movie,Series", "sortBy" to "SortName", "sortOrder" to "Ascending"),
+    mapOf(
+        "userId" to userId,
+        "includeItemTypes" to "Movie,Series",
+        "sortBy" to "SortName",
+        "sortOrder" to "Ascending",
+        "fields" to "ItemCounts",
+    ),
+    retry = true,
+)
+
+/** `GET /Years`: the release years of the movies and shows [userId] can see, newest first, as items named by year. */
+suspend fun JellyfinApi.years(userId: String): ApiResult<ItemsResultDto> = get(
+    "/Years",
+    mapOf(
+        "userId" to userId,
+        "recursive" to "true",
+        "includeItemTypes" to "Movie,Series",
+        "sortBy" to "SortName",
+        "sortOrder" to "Descending",
+    ),
     retry = true,
 )
 
 /**
- * `GET /Items` across every library, for one category page: a type or a genre, a page at a time.
- * [genreId] is the server's own filter; [sortBy] is a comma-separated list of the server's sort keys.
+ * `GET /Items` across every library, for one category page: a type, and optionally a genre and a release year, a page
+ * at a time. [genreId] and [year] are the server's own filters; [sortBy] is a comma-separated list of its sort keys.
  */
 suspend fun JellyfinApi.filteredItems(
     userId: String,
     types: List<String>,
     genreId: String?,
+    year: Int?,
     sortBy: String,
     sortOrder: String,
     startIndex: Int,
@@ -70,6 +90,7 @@ suspend fun JellyfinApi.filteredItems(
         put("startIndex", startIndex.toString())
         put("limit", limit.toString())
         genreId?.let { put("genreIds", it) }
+        year?.let { put("years", it.toString()) }
     },
     retry = true,
 )

@@ -1,6 +1,8 @@
 package app.vibeyfin.app.components
 
 import androidx.compose.foundation.LocalOverscrollFactory
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -22,12 +25,22 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import app.vibeyfin.app.theme.VibeyFinTokens
 
 /** One row of an [OptionList]: [key] is handed back when it is chosen. */
-data class OptionRow(val key: String, val label: String, val selected: Boolean = false)
+data class OptionRow(
+    val key: String,
+    val label: String,
+    val selected: Boolean = false,
+    /** Small text at the end of the row, such as how many titles it holds. */
+    val detail: String? = null,
+    /** What a screen reader says for the row, when the label alone is not enough. */
+    val description: String? = null,
+)
 
 /**
  * A titled list of options for a bottom sheet, with a check on the chosen row (the player's audio, subtitle and
@@ -50,11 +63,22 @@ fun OptionList(title: String, options: List<OptionRow>, onSelect: (String) -> Un
             items(options, key = { it.key }) { option ->
                 ListItem(
                     headlineContent = { Text(option.label, maxLines = 3, overflow = TextOverflow.Ellipsis) },
-                    trailingContent = {
-                        if (option.selected) Icon(Icons.Filled.Check, contentDescription = null, tint = VibeyFinTokens.Colors.ink)
+                    trailingContent = if (option.selected || option.detail != null) {
+                        {
+                            Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3), verticalAlignment = Alignment.CenterVertically) {
+                                option.detail?.let {
+                                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                if (option.selected) Icon(Icons.Filled.Check, contentDescription = null, tint = VibeyFinTokens.Colors.ink)
+                            }
+                        }
+                    } else {
+                        null
                     },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    modifier = Modifier.selectable(selected = option.selected, role = Role.RadioButton, onClick = { onSelect(option.key) }),
+                    modifier = Modifier
+                        .selectable(selected = option.selected, role = Role.RadioButton, onClick = { onSelect(option.key) })
+                        .semantics { option.description?.let { contentDescription = it } },
                 )
             }
         }

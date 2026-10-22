@@ -19,7 +19,12 @@ Which server data drives which piece of UI. All of this lives in the shared Kotl
 | Shows | `GET /Items?recursive=true&includeItemTypes=Series&sortBy=SortName` | Opens a page titled "Shows". |
 | Movies | `GET /Items?recursive=true&includeItemTypes=Movie&sortBy=SortName` | Opens a page titled "Movies". |
 | New | `GET /Items` sorted by `ProductionYear,PremiereDate` descending | By release year, newest first, not by when it was added to the server. Items with no year come last. The page shows each `ProductionYear` as a subtitle above its titles, "Unknown year" for those with none. |
-| Categories | `GET /Genres` for the sheet; `genreIds` on `GET /Items` for the page | The page is titled with the genre ("Action"). |
+| Categories | `GET /Genres?fields=ItemCounts` for the sheet; `genreIds` on `GET /Items` for the page | The page is titled with the genre ("Action"). Each row shows `MovieCount` + `SeriesCount`; a genre with none is left out. |
+
+A page's Sort, Year and Genre buttons change the same call: Name is `sortBy=SortName` ascending, Release year is
+`ProductionYear,PremiereDate` descending, Rating is `CommunityRating,SortName` descending; Year adds `years=` and
+Genre adds `genreIds=` (a genre's own page keeps its genre). The year list is `GET /Years` (items named by year,
+newest first); `GET /Items/Filters` returned nothing on the 12.2 test server, so it is not used.
 
 Every page is `GET /Items` across every library (movies and shows for a genre), a page of 60 at a
 time. Home's own rows (Continue watching, libraries) are not filtered, so none of the endpoints behind them change.

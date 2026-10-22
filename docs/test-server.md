@@ -61,7 +61,11 @@ lookup) and a `tvshow.nfo` for Test Show. After adding them to an existing serve
 | Test Show | 2024 | Drama |
 | Old Classic (1999) | 1999 | Science Fiction |
 
-So Categories lists Drama, Science Fiction and Thriller, and "New" lists them 2026, 2026, 2025, 2024, 1999. (The
+Filler 01 to 24 (one clip copied, years 2003 to 2026, genres Drama, Thriller, Action and Comedy in turn) fill a page
+so it scrolls, has many years to jump between, and the genre counts differ.
+
+So Categories lists Action (6), Comedy (6), Drama (9), Science Fiction (1) and Thriller (7), and "New" lists them
+by year from 2026 down to 1999. (The
 `.nfo` files also set studios A24 and Neon; the app has no studio filter now.)
 
 ## Checking it

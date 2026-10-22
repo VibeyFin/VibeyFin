@@ -28,6 +28,9 @@ data class BaseItemDto(
     /** For an episode or a season: the show it belongs to. */
     @SerialName("SeriesId") val seriesId: String? = null,
     @SerialName("UserData") val userData: UserItemDataDto? = null,
+    /** On a genre: how many movies and shows carry it; only sent when asked for (`fields=ItemCounts`). */
+    @SerialName("MovieCount") val movieCount: Int? = null,
+    @SerialName("SeriesCount") val seriesCount: Int? = null,
     /** The tracks of the item's file; only sent when asked for (see `DETAIL_FIELDS`). */
     @SerialName("MediaStreams") val mediaStreams: List<MediaStreamDto> = emptyList(),
     /** Trickplay thumbnails by media source id, then by width in pixels; only sent when asked for. */

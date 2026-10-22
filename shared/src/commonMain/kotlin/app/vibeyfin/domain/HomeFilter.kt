@@ -1,8 +1,8 @@
 package app.vibeyfin.domain
 
-/** What Home is limited to; at most one at a time, and none when Home opens. */
+/** What a category page lists: a type, or one genre's movies and shows. */
 sealed interface HomeFilter {
-    /** Shows: series, and episodes in Continue watching. */
+    /** Shows: series. */
     data object Shows : HomeFilter
 
     data object Movies : HomeFilter
@@ -13,5 +13,20 @@ sealed interface HomeFilter {
     data class Genre(val id: String, val name: String) : HomeFilter
 }
 
-/** One entry of the Categories dropdown. */
-data class FilterOption(val id: String, val name: String)
+/** How a category page is ordered. Every page starts at [defaultSort]; the page's Sort button changes it. */
+enum class PageSort {
+    /** A to Z. */
+    Name,
+
+    /** Release year, newest first; the page names each year. */
+    Year,
+
+    /** Community rating, best first. */
+    Rating,
+}
+
+/** New is by release year; the other pages are by name. */
+val HomeFilter.defaultSort: PageSort get() = if (this == HomeFilter.New) PageSort.Year else PageSort.Name
+
+/** One entry of a picker sheet: the Categories sheet, and the genre and year pickers on a category page. [count] is how many titles it holds, when known. */
+data class FilterOption(val id: String, val name: String, val count: Int? = null)

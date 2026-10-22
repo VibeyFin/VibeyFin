@@ -104,4 +104,67 @@ class HomeFilterRepositoryTest {
         assertEquals(9, page.total)
         assertTrue(page.hasMore)
     }
+
+    @Test
+    fun genresCarryHowManyMoviesAndShowsTheyHoldAndAnEmptyOneIsLeftOut() = runTest {
+        app.signedIn().on(
+            "GET", "/Genres",
+            Reply.json(
+                itemsJson(
+                    itemJson("g1", "Drama", type = "Genre", movieCount = 8, seriesCount = 1),
+                    itemJson("g2", "Western", type = "Genre", movieCount = 0, seriesCount = 0),
+                    itemJson("g3", "Action", type = "Genre", movieCount = 6),
+                    itemJson("g4", "Unknown count", type = "Genre"),
+                ),
+            ),
+        )
+
+        val genres = app.library.genres().success()
+
+        assertEquals(listOf("Action" to 6, "Drama" to 9, "Unknown count" to null), genres.map { it.name to it.count })
+        assertEquals("ItemCounts", query("/Genres")["fields"])
+    }
+
+    @Test
+    fun yearsAreTheNumericOnesNewestFirst() = runTest {
+        app.signedIn().on("GET", "/Years", Reply.json(itemsJson(itemJson("y1", "1999", type = "Year"), itemJson("y2", "2026", type = "Year"), itemJson("y3", "Unknown", type = "Year"))))
+
+        assertEquals(listOf(2026, 1999), app.library.years().success())
+        assertEquals("Movie,Series", query("/Years")["includeItemTypes"])
+    }
+
+    @Test
+    fun eachSortOrdersByTheServersKeys() = runTest {
+        app.signedIn().on("GET", "/Items", Reply.json(itemsJson(itemJson("a"))))
+
+        app.library.filteredPage(HomeFilter.Movies, sort = PageSort.Name).success()
+        app.library.filteredPage(HomeFilter.Movies, sort = PageSort.Year).success()
+        app.library.filteredPage(HomeFilter.Movies, sort = PageSort.Rating).success()
+
+        val (name, year, rating) = app.jellyfin.requestsTo("GET", "/Items").map { it.query }
+        assertEquals("SortName" to "Ascending", name["sortBy"] to name["sortOrder"])
+        assertEquals("ProductionYear,PremiereDate" to "Descending", year["sortBy"] to year["sortOrder"])
+        assertEquals("CommunityRating,SortName" to "Descending", rating["sortBy"] to rating["sortOrder"])
+    }
+
+    @Test
+    fun aPageCanBeNarrowedToAYearAndAGenre() = runTest {
+        app.signedIn().on("GET", "/Items", Reply.json(itemsJson(itemJson("a"))))
+
+        app.library.filteredPage(HomeFilter.Shows, genreId = "g-drama", year = 2020).success()
+
+        val query = query("/Items")
+        assertEquals("2020", query["years"])
+        assertEquals("g-drama", query["genreIds"])
+        assertEquals("Series", query["includeItemTypes"])
+    }
+
+    @Test
+    fun aGenresOwnPageKeepsItsGenreWhateverElseIsAsked() = runTest {
+        app.signedIn().on("GET", "/Items", Reply.json(itemsJson(itemJson("a"))))
+
+        app.library.filteredPage(HomeFilter.Genre("g1", "Drama"), genreId = "other").success()
+
+        assertEquals("g1", query("/Items")["genreIds"])
+    }
 }

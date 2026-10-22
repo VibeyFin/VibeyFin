@@ -28,7 +28,8 @@ a tap and for picking an entry.
 - **Shows**, **Movies** and **New** open a category page at once, titled with their name.
 - **Categories** is different, and looks it: it carries a chevron and opens a bottom sheet of genres, the same list
   component as the player's audio and subtitle pickers (a title and one row per genre; nothing is checked, because
-  picking a genre such as "Action" opens a category page titled with its name). No search.
+  picking a genre such as "Action" opens a category page titled with its name). Each row ends with how many titles
+  it holds, and a genre with none is left out. No search.
 - iOS: a horizontal `ScrollView` of capsule buttons, 36pt tall with a 44pt hit area, `surface-2`
   (`tertiarySystemBackground`) with `ink`; Categories adds a trailing `chevron.down`. A capsule on the
   system background, never glass. The list is a `.sheet` like the player's audio and subtitle pickers.
@@ -48,6 +49,14 @@ The page a button or the sheet opens.
 - **Shows** are series by name; **Movies** are movies by name; **New** is movies and shows by release year,
   newest first, with the year as a subtitle above its titles ("2026", "2025", then "Unknown year" for titles with
   none); a genre is its movies and shows by name.
+- **Sort, Year and Genre** sit under the title as three buttons (a genre's own page has no Genre button). Each opens
+  the player's picker sheet (a title, one row per choice, a check on the one in use). Sort: Name (A to Z), Release
+  year (newest first) and Rating (best first); Year: All years and each release year; Genre: All genres and each
+  genre with how many titles it holds. A button that changes the page shows filled (`accent-soft`), so it is clear
+  what is applied. Choosing reloads the list from the top. The buttons stay put while the list scrolls.
+- A page ordered by release year (New by default, or any page sorted by Release year) names each year above its
+  titles and has a strip of the years loaded so far under the buttons; tapping a year scrolls to it.
+- Back from an item's page returns to the same place in the list.
 - Posters open the item's page or a folder's list, like anywhere else. More load as the end comes into view.
 - Loading is grey posters, an empty page says so, a failure offers Try again, a rejected session leaves to "Who's
   watching?".
