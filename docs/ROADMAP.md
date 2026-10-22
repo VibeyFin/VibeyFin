@@ -158,8 +158,8 @@ _Starts after the state audit (see Cross-cutting)._
   - **Categories** carries a chevron and opens a sheet of genres, the player's picker component (`GET /Genres`); the genre picked, such as
     "Action", opens a page with that name and its media (`GET /Items?GenreIds=`)
   - a page is a grid of posters like a folder's list, paged, with the five states; Home's Continue watching and
-    libraries are untouched. A page has Sort (name, release year, rating), Year and Genre buttons that open the
-    player's picker sheet, names each year above its titles when sorted by year with a strip to jump to one, and
+    libraries are untouched. A page has Sort (name, release year, rating) and Genre buttons that open the
+    player's picker sheet, names each year above its titles when sorted by year with a strip of every year to jump to one, and
     keeps its place when you come back from an item. The Categories sheet shows how many titles each genre holds
 - [ ] Detail page: metadata, cast, `/Items/{id}/Similar`. The page opens on a full-width cinematic
   backdrop hero (`Backdrop` image) with a dark gradient overlay (the `scrim` token), and the movie

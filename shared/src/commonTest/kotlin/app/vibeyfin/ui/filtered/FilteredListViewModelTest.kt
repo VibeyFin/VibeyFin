@@ -186,7 +186,7 @@ class FilteredListViewModelTest {
     // The buttons above the list and the picker they open.
 
     private fun FakeServer.categorised() {
-        on("GET", "/Years", Reply.json(itemsJson(itemJson("y1", "2026", type = "Year"), itemJson("y2", "2025", type = "Year"))))
+        on("GET", "/Years", Reply.json(itemsJson(itemJson("y1", "2026", type = "Year"), itemJson("y2", "2025", type = "Year"), itemJson("y3", "1999", type = "Year"))))
         on("GET", "/Genres", Reply.json(itemsJson(itemJson("g1", "Action", type = "Genre", movieCount = 6), itemJson("g2", "Drama", type = "Genre", movieCount = 8))))
         on("GET", "/Items", Reply.json(itemsJson(itemJson("a", year = 2026))))
     }
@@ -196,8 +196,8 @@ class FilteredListViewModelTest {
         app.signedIn().categorised()
 
         val shows = viewModel(HomeFilter.Shows).uiState.first { !it.list.loading }
-        assertEquals(listOf("Sort: Name", "Year", "Genre"), shows.chips.map { it.label })
-        assertEquals(listOf(false, false, false), shows.chips.map { it.active })
+        assertEquals(listOf("Sort: Name", "Genre"), shows.chips.map { it.label })
+        assertEquals(listOf(false, false), shows.chips.map { it.active })
 
         val new = viewModel(HomeFilter.New).uiState.first { !it.list.loading }
         assertEquals("Sort: Release year", new.chips.first().label)
@@ -210,7 +210,7 @@ class FilteredListViewModelTest {
 
         val state = viewModel(HomeFilter.Genre("g1", "Action")).uiState.first { !it.list.loading }
 
-        assertEquals(listOf("Sort: Name", "Year"), state.chips.map { it.label })
+        assertEquals(listOf("Sort: Name"), state.chips.map { it.label })
     }
 
     @Test
@@ -246,23 +246,6 @@ class FilteredListViewModelTest {
     }
 
     @Test
-    fun theYearPickerListsAllYearsThenEachYearAndNarrowsThePage() = runTest {
-        app.signedIn().categorised()
-        val viewModel = viewModel(HomeFilter.Movies)
-        viewModel.uiState.first { !it.list.loading }
-
-        viewModel.onChip(ListChipKind.Year)
-        val sheet = assertNotNull(viewModel.uiState.first { it.sheet?.loading == false }.sheet)
-        assertEquals(listOf("All years", "2026", "2025"), sheet.options.map { it.name })
-
-        viewModel.onPick("2025")
-        val state = viewModel.uiState.first { !it.list.loading && it.chips[1].active }
-
-        assertEquals("Year: 2025", state.chips[1].label)
-        assertEquals("2025", app.jellyfin.requestsTo("GET", "/Items").last().query["years"])
-    }
-
-    @Test
     fun theGenrePickerNarrowsAShowsPageAndAllGenresClearsIt() = runTest {
         app.signedIn().categorised()
         val viewModel = viewModel(HomeFilter.Shows)
@@ -274,15 +257,15 @@ class FilteredListViewModelTest {
         assertEquals(listOf(null, 6, 8), sheet.options.map { it.count })
 
         viewModel.onPick("g1")
-        val narrowed = viewModel.uiState.first { !it.list.loading && it.chips[2].active }
-        assertEquals("Genre: Action", narrowed.chips[2].label)
+        val narrowed = viewModel.uiState.first { !it.list.loading && it.chips[1].active }
+        assertEquals("Genre: Action", narrowed.chips[1].label)
         assertEquals("g1", app.jellyfin.requestsTo("GET", "/Items").last().query["genreIds"])
 
         viewModel.onChip(ListChipKind.Genre)
         assertEquals("g1", viewModel.uiState.value.sheet?.selectedId)
         viewModel.onPick("")
-        val cleared = viewModel.uiState.first { !it.list.loading && !it.chips[2].active }
-        assertEquals("Genre", cleared.chips[2].label)
+        val cleared = viewModel.uiState.first { !it.list.loading && !it.chips[1].active }
+        assertEquals("Genre", cleared.chips[1].label)
     }
 
     @Test
@@ -317,16 +300,16 @@ class FilteredListViewModelTest {
     fun aPickerThatFailsToLoadSaysSoRetriesAndKeepsThePage() = runTest {
         val server = app.signedIn()
         server.categorised()
-        server.on("GET", "/Years", Reply.status(HttpStatusCode.ServiceUnavailable))
+        server.on("GET", "/Genres", Reply.status(HttpStatusCode.ServiceUnavailable))
         val viewModel = viewModel(HomeFilter.Movies)
         viewModel.uiState.first { !it.list.loading }
 
-        viewModel.onChip(ListChipKind.Year)
+        viewModel.onChip(ListChipKind.Genre)
         val failed = assertNotNull(viewModel.uiState.first { it.sheet?.loading == false }.sheet)
         assertNotNull(failed.message)
         assertEquals(1, viewModel.uiState.value.list.items.size)
 
-        server.on("GET", "/Years", Reply.json(itemsJson(itemJson("y1", "2026", type = "Year"))))
+        server.on("GET", "/Genres", Reply.json(itemsJson(itemJson("g1", "Action", type = "Genre", movieCount = 6))))
         viewModel.onRetrySheet()
         val retried = assertNotNull(viewModel.uiState.first { it.sheet?.options?.isNotEmpty() == true }.sheet)
         assertNull(retried.message)
@@ -346,5 +329,93 @@ class FilteredListViewModelTest {
 
         assertNull(viewModel.uiState.value.sheet)
         assertEquals(requests, app.jellyfin.requestsTo("GET", "/Items").size)
+    }
+
+    // The strip of every year, and jumping to one.
+
+    @Test
+    fun theNewPageListsEveryYearThereIsNotOnlyTheOnesLoaded() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Years", Reply.json(itemsJson(itemJson("y1", "2026", type = "Year"), itemJson("y2", "2025", type = "Year"), itemJson("y3", "1999", type = "Year"), itemJson("y4", "Unknown", type = "Year"))))
+        server.years(2026, 2026, 2026, 2025, 1999)
+
+        val state = viewModel(HomeFilter.New).uiState.first { !it.list.loading && it.years.isNotEmpty() }
+
+        assertEquals(listOf("2026", "2025", "1999"), state.years)
+        // Only the first page is loaded, so only 2026 has a subtitle yet.
+        assertEquals(mapOf("t0" to "2026"), state.list.headings)
+    }
+
+    @Test
+    fun aPageNotOrderedByYearHasNoYearStripUntilItIsSortedByYear() = runTest {
+        app.signedIn().categorised()
+        val viewModel = viewModel(HomeFilter.Movies)
+        assertTrue(viewModel.uiState.first { !it.list.loading }.years.isEmpty())
+
+        viewModel.onChip(ListChipKind.Sort)
+        viewModel.onPick("Year")
+        val byYear = viewModel.uiState.first { !it.list.loading && it.years.isNotEmpty() }
+
+        assertEquals(listOf("2026", "2025", "1999"), byYear.years)
+    }
+
+    @Test
+    fun aLoadedYearIsJumpedToAtOnce() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Years", Reply.json(itemsJson(itemJson("y1", "2026", type = "Year"), itemJson("y2", "2025", type = "Year"))))
+        server.years(2026, 2026, 2025, 2025)
+        val viewModel = viewModel(HomeFilter.New)
+        viewModel.uiState.first { !it.list.loading && it.years.isNotEmpty() }
+
+        viewModel.onYear("2026")
+        assertEquals("2026", viewModel.uiState.first { it.jumpTo != null }.jumpTo)
+
+        viewModel.onJumped()
+        assertNull(viewModel.uiState.value.jumpTo)
+        assertEquals(1, app.jellyfin.requestsTo("GET", "/Items").size)
+    }
+
+    @Test
+    fun aYearNotLoadedYetLoadsPagesDownToItAndThenIsJumpedTo() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Years", Reply.json(itemsJson(itemJson("y1", "2026", type = "Year"), itemJson("y2", "2010", type = "Year"))))
+        // Three per page: 2026 x3, 2025 x3, 2010 x1.
+        server.years(2026, 2026, 2026, 2025, 2025, 2025, 2010)
+        val viewModel = viewModel(HomeFilter.New)
+        viewModel.uiState.first { !it.list.loading && it.years.isNotEmpty() }
+        assertEquals(mapOf("t0" to "2026"), viewModel.uiState.value.list.headings)
+
+        viewModel.onYear("2010")
+        val arrived = viewModel.uiState.first { it.list.headings.containsValue("2010") }
+
+        assertEquals("2010", arrived.jumpTo)
+        assertEquals(7, arrived.list.items.size)
+        assertFalse(arrived.list.hasMore)
+    }
+
+    @Test
+    fun aYearThatCannotBeReachedGivesUpWithoutJumping() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Years", Reply.json(itemsJson(itemJson("y1", "2026", type = "Year"), itemJson("y2", "1980", type = "Year"))))
+        server.years(2026, 2026)
+        val viewModel = viewModel(HomeFilter.New)
+        viewModel.uiState.first { !it.list.loading && it.years.isNotEmpty() }
+
+        viewModel.onYear("1980")
+
+        assertNull(viewModel.uiState.value.jumpTo)
+    }
+
+    @Test
+    fun theStripFallsBackToNothingExtraWhenTheYearsCannotBeLoaded() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Years", Reply.status(HttpStatusCode.ServiceUnavailable))
+        server.years(2026, 2025)
+
+        val state = viewModel(HomeFilter.New).uiState.first { !it.list.loading }
+
+        assertTrue(state.years.isEmpty())
+        // The page and its subtitles still work; the screen lists the years that are loaded.
+        assertEquals(mapOf("t0" to "2026", "t1" to "2025"), state.list.headings)
     }
 }

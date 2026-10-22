@@ -17,7 +17,7 @@ import app.vibeyfin.app.theme.VibeyFinTokens
 /**
  * A list to pick from in a bottom sheet, drawn like the player's audio and subtitle pickers ([OptionList]): a title
  * and one row each. Loading is grey lines, an empty list says so, a failure offers Try again. Used by Home's Categories
- * and by a category page's Sort, Year and Genre.
+ * and by a category page's Sort and Genre.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

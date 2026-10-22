@@ -25,7 +25,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** The buttons under a category page's title. */
-enum class ListChipKind { Sort, Year, Genre }
+enum class ListChipKind { Sort, Genre }
 
 /** One of them: [label] already says what is chosen ("Sort: Rating"), and [active] is true when it narrows or reorders the page. */
 data class ListChip(val kind: ListChipKind, val label: String, val active: Boolean)
@@ -45,18 +45,21 @@ data class FilteredListUiState(
     val list: ChildrenUiState = ChildrenUiState(),
     val chips: List<ListChip> = emptyList(),
     val sheet: ListSheet? = null,
+    /** Every release year in the library, newest first, for the strip above a list ordered by year; empty for other orders. */
+    val years: List<String> = emptyList(),
+    /** The year the user tapped in the strip, until the list has scrolled to it; the screen then calls [FilteredListViewModel.onJumped]. */
+    val jumpTo: String? = null,
 )
 
 /** What the page is ordered and narrowed by; the page starts at the defaults. */
 private data class Selection(
     val sort: PageSort,
     val genre: FilterOption? = null,
-    val year: Int? = null,
 )
 
 /**
  * The page a category button or the Categories sheet opens: the movies and shows of one type or genre, a page at a
- * time. Sort, release year and (except on a genre's own page) genre can be changed from the buttons above the list;
+ * time. Sort and (except on a genre's own page) genre can be changed from the buttons above the list;
  * a page ordered by year names each year above its titles.
  */
 class FilteredListViewModel(
@@ -70,31 +73,50 @@ class FilteredListViewModel(
     private val content = MutableStateFlow(ChildrenUiState())
     private val selection = MutableStateFlow(Selection(sort = filter.defaultSort))
     private val sheet = MutableStateFlow<ListSheet?>(null)
-    private var years: List<Int>? = null
+    private val allYears = MutableStateFlow<List<String>>(emptyList())
+    private val jumpTo = MutableStateFlow<String?>(null)
+    private var yearsLoaded = false
+    private var jumpJob: Job? = null
     private var genres: List<FilterOption>? = null
     private var sheetJob: Job? = null
     private var pageJob: Job? = null
 
-    val uiState: StateFlow<FilteredListUiState> = combine(content, selection, sheet, connection.sessionEnded()) { content, selection, sheet, exit ->
-        FilteredListUiState(content.copy(exit = exit), chipsFor(selection), sheet)
+    private val screen = combine(content, selection, sheet, connection.sessionEnded()) { content, selection, sheet, exit ->
+        FilteredListUiState(list = content.copy(exit = exit), chips = chipsFor(selection), sheet = sheet)
+    }
+
+    val uiState: StateFlow<FilteredListUiState> = combine(screen, selection, allYears, jumpTo) { screen, selection, years, jump ->
+        // The strip of every year belongs to a list ordered by year.
+        screen.copy(years = if (selection.sort == PageSort.Year) years else emptyList(), jumpTo = jump)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FilteredListUiState())
 
     init {
         loadFirstPage()
+        if (selection.value.sort == PageSort.Year) loadYears()
     }
 
     /** Called as the end of the loaded items comes into view. */
     fun onLoadMore() {
+        if (!canLoadMore()) return
+        viewModelScope.launch { loadNextPage() }
+    }
+
+    private fun canLoadMore(): Boolean {
         val current = content.value
-        if (!current.hasMore || current.loading || current.loadingMore) return
+        return current.hasMore && !current.loading && !current.loadingMore
+    }
+
+    /** Asks for the page after the loaded ones. True when it arrived, false when it failed or the page was changed meanwhile. */
+    private suspend fun loadNextPage(): Boolean {
+        val current = content.value
         content.value = current.copy(loadingMore = true, loadMoreFailed = false)
         val asked = selection.value
-        viewModelScope.launch {
-            val result = page(asked, startIndex = current.items.size)
-            // The page was reordered or narrowed while this was out: the new first page answers instead.
-            if (selection.value != asked) return@launch
-            when (result) {
-                is ApiResult.Success -> content.update {
+        val result = page(asked, startIndex = current.items.size)
+        // The page was reordered or narrowed while this was out: the new first page answers instead.
+        if (selection.value != asked) return false
+        return when (result) {
+            is ApiResult.Success -> {
+                content.update {
                     val items = it.items + result.value.items
                     it.copy(
                         items = items,
@@ -103,9 +125,34 @@ class FilteredListViewModel(
                         loadingMore = false,
                     )
                 }
-                is ApiResult.Failure -> content.update { it.copy(loadingMore = false, loadMoreFailed = true) }
+                true
+            }
+            is ApiResult.Failure -> {
+                content.update { it.copy(loadingMore = false, loadMoreFailed = true) }
+                false
             }
         }
+    }
+
+    /**
+     * A year in the strip was tapped. If it is loaded the screen scrolls to it; if not, pages are loaded one after
+     * another until it arrives (or the list ends or a page fails), and then the screen scrolls.
+     */
+    fun onYear(year: String) {
+        jumpJob?.cancel()
+        jumpTo.value = year
+        jumpJob = viewModelScope.launch {
+            while (year !in content.value.headings.values && canLoadMore()) {
+                if (!loadNextPage()) break
+            }
+            // Nowhere to go: the year isn't on the list (a failure shows its own retry).
+            if (year !in content.value.headings.values) jumpTo.value = null
+        }
+    }
+
+    /** The screen has scrolled to the year asked for. */
+    fun onJumped() {
+        jumpTo.value = null
     }
 
     /** Tries again whatever failed: the first page, or the next one. */
@@ -123,15 +170,6 @@ class FilteredListViewModel(
                 options = PageSort.entries.map { FilterOption(it.name, sortLabel(it)) },
                 selectedId = current.sort.name,
             )
-            ListChipKind.Year -> openLoaded(kind, Strings.yearTitle, years != null, current.year?.toString().orEmpty(), Strings.allYears) {
-                when (val result = library.years()) {
-                    is ApiResult.Success -> {
-                        years = result.value
-                        ApiResult.Success(result.value.map { FilterOption(it.toString(), it.toString()) })
-                    }
-                    is ApiResult.Failure -> result
-                }
-            }
             ListChipKind.Genre -> openLoaded(kind, Strings.genreTitle, genres != null, current.genre?.id.orEmpty(), Strings.allGenres) {
                 library.genres().also { if (it is ApiResult.Success) genres = it.value }
             }
@@ -146,11 +184,13 @@ class FilteredListViewModel(
         val current = selection.value
         val next = when (open.kind) {
             ListChipKind.Sort -> current.copy(sort = PageSort.entries.firstOrNull { it.name == id } ?: return)
-            ListChipKind.Year -> current.copy(year = id.toIntOrNull())
             ListChipKind.Genre -> current.copy(genre = genres?.firstOrNull { it.id == id })
         }
         if (next == current) return
         selection.value = next
+        jumpJob?.cancel()
+        jumpTo.value = null
+        if (next.sort == PageSort.Year) loadYears()
         loadFirstPage()
     }
 
@@ -194,15 +234,27 @@ class FilteredListViewModel(
         }
     }
 
+    private fun loadYears() {
+        if (yearsLoaded) return
+        viewModelScope.launch {
+            when (val result = library.years()) {
+                is ApiResult.Success -> {
+                    yearsLoaded = true
+                    allYears.value = result.value.map { it.toString() }
+                }
+                // The strip falls back to the years on the loaded pages.
+                is ApiResult.Failure -> Unit
+            }
+        }
+    }
+
     private fun optionsFor(kind: ListChipKind): List<FilterOption> = when (kind) {
-        ListChipKind.Year -> years.orEmpty().map { FilterOption(it.toString(), it.toString()) }
         ListChipKind.Genre -> genres.orEmpty()
         ListChipKind.Sort -> emptyList()
     }
 
     private fun chipsFor(selection: Selection): List<ListChip> = buildList {
         add(ListChip(ListChipKind.Sort, Strings.sortChip(sortLabel(selection.sort)), active = selection.sort != filter.defaultSort))
-        add(ListChip(ListChipKind.Year, selection.year?.let { Strings.yearChip(it.toString()) } ?: Strings.yearButton, active = selection.year != null))
         // A genre's own page is already one genre.
         if (filter !is HomeFilter.Genre) {
             add(ListChip(ListChipKind.Genre, selection.genre?.let { Strings.genreChip(it.name) } ?: Strings.genreButton, active = selection.genre != null))
@@ -216,7 +268,7 @@ class FilteredListViewModel(
     }
 
     private suspend fun page(asked: Selection, startIndex: Int) =
-        library.filteredPage(filter, asked.sort, asked.genre?.id, asked.year, startIndex = startIndex)
+        library.filteredPage(filter, asked.sort, asked.genre?.id, startIndex = startIndex)
 
     private fun loadFirstPage() {
         content.value = ChildrenUiState(loading = true)

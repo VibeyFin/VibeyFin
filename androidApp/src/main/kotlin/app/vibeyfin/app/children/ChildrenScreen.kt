@@ -75,6 +75,17 @@ fun ChildrenRoute(
     )
 }
 
+/**
+ * The strip of years above a list ordered by year: every year there is ([years]), the one just tapped until the list has
+ * scrolled to it ([jumpTo]), and what to call when one is tapped and when the scroll is done.
+ */
+class YearStripState(
+    val years: List<String>,
+    val jumpTo: String?,
+    val onJump: (String) -> Unit,
+    val onJumped: () -> Unit,
+)
+
 @Composable
 fun ChildrenScreen(
     title: String,
@@ -83,8 +94,10 @@ fun ChildrenScreen(
     onOpen: (MediaItem) -> Unit,
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
-    // Buttons under the title that stay put while the list scrolls, such as a category page's Sort and Year.
+    // Buttons under the title that stay put while the list scrolls, such as a category page's Sort and Genre.
     controls: (@Composable () -> Unit)? = null,
+    // Every year for the strip, when the list is ordered by year; without it the strip lists the years loaded so far.
+    yearStrip: YearStripState? = null,
 ) {
     // With controls the title is pinned above them; without, it is the first row of the list and scrolls away.
     val pinned = controls != null
@@ -118,7 +131,7 @@ fun ChildrenScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    else -> ItemGrid(title, state, onOpen, onLoadMore, onRetry, showTitle = !pinned)
+                    else -> ItemGrid(title, state, onOpen, onLoadMore, onRetry, showTitle = !pinned, yearStrip = yearStrip)
                 }
             }
             FloatingBackButton(onBack)
@@ -188,6 +201,7 @@ private fun ItemGrid(
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
     showTitle: Boolean,
+    yearStrip: YearStripState?,
 ) {
     // Saved with the screen, so coming back from an item's page finds the list where it was left.
     val gridState = rememberLazyGridState()
@@ -202,11 +216,23 @@ private fun ItemGrid(
     LaunchedEffect(nearEnd, state.items.size, state.hasMore) {
         if (nearEnd && state.hasMore) onLoadMore()
     }
+    LaunchedEffect(yearStrip?.jumpTo, state.headings) {
+        val target = yearStrip?.jumpTo ?: return@LaunchedEffect
+        if (target in state.headings.values) {
+            gridState.animateScrollToItem(headingIndex(state, target, showTitle))
+            yearStrip.onJumped()
+        }
+    }
     Column(Modifier.fillMaxSize()) {
         // Pages ordered by year can jump to a year, from the years loaded so far.
         if (state.headings.isNotEmpty()) {
-            YearStrip(state.headings.values.toList()) { year ->
-                scope.launch { gridState.animateScrollToItem(headingIndex(state, year, showTitle)) }
+            YearStrip(yearStrip?.years?.takeIf { it.isNotEmpty() } ?: state.headings.values.toList()) { year ->
+                if (yearStrip != null) {
+                    // The list loads down to the year if it has to, and the effect below scrolls once it is there.
+                    yearStrip.onJump(year)
+                } else {
+                    scope.launch { gridState.animateScrollToItem(headingIndex(state, year, showTitle)) }
+                }
             }
         }
         LazyVerticalGrid(

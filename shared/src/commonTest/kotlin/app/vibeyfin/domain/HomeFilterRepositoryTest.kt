@@ -126,14 +126,6 @@ class HomeFilterRepositoryTest {
     }
 
     @Test
-    fun yearsAreTheNumericOnesNewestFirst() = runTest {
-        app.signedIn().on("GET", "/Years", Reply.json(itemsJson(itemJson("y1", "1999", type = "Year"), itemJson("y2", "2026", type = "Year"), itemJson("y3", "Unknown", type = "Year"))))
-
-        assertEquals(listOf(2026, 1999), app.library.years().success())
-        assertEquals("Movie,Series", query("/Years")["includeItemTypes"])
-    }
-
-    @Test
     fun eachSortOrdersByTheServersKeys() = runTest {
         app.signedIn().on("GET", "/Items", Reply.json(itemsJson(itemJson("a"))))
 
@@ -148,13 +140,12 @@ class HomeFilterRepositoryTest {
     }
 
     @Test
-    fun aPageCanBeNarrowedToAYearAndAGenre() = runTest {
+    fun aShowsPageCanBeNarrowedToAGenre() = runTest {
         app.signedIn().on("GET", "/Items", Reply.json(itemsJson(itemJson("a"))))
 
-        app.library.filteredPage(HomeFilter.Shows, genreId = "g-drama", year = 2020).success()
+        app.library.filteredPage(HomeFilter.Shows, genreId = "g-drama").success()
 
         val query = query("/Items")
-        assertEquals("2020", query["years"])
         assertEquals("g-drama", query["genreIds"])
         assertEquals("Series", query["includeItemTypes"])
     }
@@ -166,5 +157,13 @@ class HomeFilterRepositoryTest {
         app.library.filteredPage(HomeFilter.Genre("g1", "Drama"), genreId = "other").success()
 
         assertEquals("g1", query("/Items")["genreIds"])
+    }
+
+    @Test
+    fun yearsAreTheNumericOnesNewestFirst() = runTest {
+        app.signedIn().on("GET", "/Years", Reply.json(itemsJson(itemJson("y1", "1999", type = "Year"), itemJson("y2", "2026", type = "Year"), itemJson("y3", "Unknown", type = "Year"))))
+
+        assertEquals(listOf(2026, 1999), app.library.years().success())
+        assertEquals("Movie,Series", query("/Years")["includeItemTypes"])
     }
 }

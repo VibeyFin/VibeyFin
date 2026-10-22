@@ -67,14 +67,13 @@ suspend fun JellyfinApi.years(userId: String): ApiResult<ItemsResultDto> = get(
 )
 
 /**
- * `GET /Items` across every library, for one category page: a type, and optionally a genre and a release year, a page
- * at a time. [genreId] and [year] are the server's own filters; [sortBy] is a comma-separated list of its sort keys.
+ * `GET /Items` across every library, for one category page: a type, and optionally a genre, a page at a time.
+ * [genreId] is the server's own filter; [sortBy] is a comma-separated list of its sort keys.
  */
 suspend fun JellyfinApi.filteredItems(
     userId: String,
     types: List<String>,
     genreId: String?,
-    year: Int?,
     sortBy: String,
     sortOrder: String,
     startIndex: Int,
@@ -90,7 +89,6 @@ suspend fun JellyfinApi.filteredItems(
         put("startIndex", startIndex.toString())
         put("limit", limit.toString())
         genreId?.let { put("genreIds", it) }
-        year?.let { put("years", it.toString()) }
     },
     retry = true,
 )

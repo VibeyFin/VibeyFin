@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.children.ChildrenScreen
+import app.vibeyfin.app.children.YearStripState
 import app.vibeyfin.app.components.OptionRow
 import app.vibeyfin.app.components.PickerSheet
 import app.vibeyfin.app.theme.VibeyFinTokens
@@ -34,7 +35,7 @@ import org.koin.core.parameter.parametersOf
 
 /**
  * The page a category button or the Categories sheet opens, titled with its name ("Shows", "New", "Action"). It is
- * drawn like a folder's list, with Sort, Year and Genre buttons under the title that open the player's picker sheet.
+ * drawn like a folder's list, with Sort and Genre buttons under the title that open the player's picker sheet.
  */
 @Composable
 fun FilteredListRoute(
@@ -58,13 +59,14 @@ fun FilteredListRoute(
         controls = {
             ListChips(state.chips) { viewModel.onChip(it.kind) }
         },
+        yearStrip = YearStripState(state.years, state.jumpTo, viewModel::onYear, viewModel::onJumped),
     )
     state.sheet?.let { sheet ->
         ListPicker(sheet, onPick = viewModel::onPick, onDismiss = viewModel::onDismissSheet, onRetry = viewModel::onRetrySheet)
     }
 }
 
-/** Sort, Year and Genre. One that changes the page shows filled; each has an arrow, as it opens a list. */
+/** Sort and Genre. One that changes the page shows filled; each has an arrow, as it opens a list. */
 @Composable
 private fun ListChips(chips: List<ListChip>, onTap: (ListChip) -> Unit) {
     LazyRow(

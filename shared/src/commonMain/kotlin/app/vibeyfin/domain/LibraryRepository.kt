@@ -49,21 +49,20 @@ class LibraryRepository(private val connection: ConnectionManager) {
         api.genres(userId).map { result -> result.items.toOptions() }
     }
 
-    /** The release years of the library, newest first. */
+    /** The release years of the library, newest first: the strip above a page ordered by year lists them all. */
     suspend fun years(): ApiResult<List<Int>> = call { api, userId ->
         api.years(userId).map { result -> result.items.mapNotNull { it.name?.trim()?.toIntOrNull() }.distinct().sortedDescending() }
     }
 
     /**
      * One page of the category page for [filter], across every library: Shows (series), Movies, New, or a genre's
-     * movies and shows, in [sort] order, optionally narrowed to a [genreId] (on a page that is not itself a genre)
-     * and a release [year]. Name is A to Z, Year is newest first then by premiere date, Rating is best first.
+     * movies and shows, in [sort] order, optionally narrowed to a [genreId] (on a page that is not itself a genre).
+     * Name is A to Z, Year is newest first then by premiere date, Rating is best first.
      */
     suspend fun filteredPage(
         filter: HomeFilter,
         sort: PageSort = filter.defaultSort,
         genreId: String? = null,
-        year: Int? = null,
         startIndex: Int = 0,
         limit: Int = PAGE_SIZE,
     ): ApiResult<ItemPage> = call { api, userId ->
@@ -78,7 +77,7 @@ class LibraryRepository(private val connection: ConnectionManager) {
             PageSort.Rating -> "CommunityRating,SortName" to "Descending"
         }
         api.filteredItems(
-            userId, types, (filter as? HomeFilter.Genre)?.id ?: genreId, year,
+            userId, types, (filter as? HomeFilter.Genre)?.id ?: genreId,
             sortBy = sortBy, sortOrder = sortOrder, startIndex = startIndex, limit = limit,
         ).map { result ->
             ItemPage(result.items.map { it.toMediaItem(api.baseUrl) }, result.totalRecordCount, result.startIndex)
