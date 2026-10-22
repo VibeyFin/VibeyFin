@@ -1,0 +1,90 @@
+import SwiftUI
+import Shared
+
+/// A row of posters under a header with "See all": loading is grey posters, a failure says why with Try again. The row
+/// runs to the screen edge; its first tile sits at the margin and the next always peeks.
+struct MediaRowView: View {
+    let row: MediaRow
+    let onOpen: (MediaItem) -> Void
+    let onSeeAll: (SeeAll) -> Void
+    let onRetry: () -> Void
+
+    private let tileWidth: CGFloat = 112
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.s3) {
+            HStack {
+                Text(row.title)
+                    .sectionTitle()
+                    .accessibilityAddTraits(.isHeader)
+                Spacer()
+                if let seeAll = row.seeAll, !row.items.isEmpty {
+                    Button(Strings.shared.seeAll.titleCased()) { onSeeAll(seeAll) }
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel(Strings.shared.seeAllIn(row: row.title))
+                }
+            }
+            .screenMargin()
+            if row.loading {
+                PosterSkeletonRow(tileWidth: tileWidth)
+            } else if let message = row.message {
+                LoadErrorView(message: message, onRetry: onRetry)
+                    .screenMargin()
+            } else {
+                tiles(row.items, width: tileWidth)
+            }
+        }
+    }
+
+    private func tiles(_ items: [MediaItem], width: CGFloat) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(alignment: .top, spacing: Space.s3) {
+                ForEach(items, id: \.id) { item in
+                    Button { onOpen(item) } label: { ArtworkTile(item: item).frame(width: width) }
+                        .buttonStyle(PressableButtonStyle())
+                }
+            }
+            .screenMargin()
+        }
+    }
+}
+
+/// The user's libraries as 16:9 tiles in one row at the end of Home; a tile opens that library.
+struct MyMediaView: View {
+    let state: HomeUiState
+    let onOpen: (MediaItem) -> Void
+    let onRetry: () -> Void
+
+    private let tileWidth: CGFloat = 200
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.s3) {
+            Text(Strings.shared.libraries.titleCased())
+                .sectionTitle()
+                .accessibilityAddTraits(.isHeader)
+                .screenMargin()
+            if state.loadingLibraries {
+                PosterSkeletonRow(count: 3, tileWidth: tileWidth, aspectRatio: 16.0 / 9.0)
+            } else if let message = state.librariesMessage {
+                LoadErrorView(message: message, onRetry: onRetry)
+                    .screenMargin()
+            } else if state.libraries.isEmpty {
+                Text(Strings.shared.noLibraries)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .screenMargin()
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: Space.s3) {
+                        ForEach(state.libraries, id: \.id) { library in
+                            Button { onOpen(library) } label: { ArtworkTile(item: library).frame(width: tileWidth) }
+                                .buttonStyle(PressableButtonStyle())
+                        }
+                    }
+                    .screenMargin()
+                }
+            }
+        }
+    }
+}

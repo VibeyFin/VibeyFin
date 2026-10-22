@@ -50,6 +50,11 @@ final class HomeObservable: ObservableObject {
         model.onRetryContinue()
     }
 
+    /// "Try again" on one row: only it reloads.
+    func retryRow(_ id: String) {
+        model.onRetryRow(id: id)
+    }
+
     /// A category button was tapped: Shows, Movies and New open their page, Categories opens its list.
     func category(_ kind: CategoryKind) {
         model.onCategory(kind: kind)

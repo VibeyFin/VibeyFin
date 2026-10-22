@@ -13,7 +13,7 @@ The Home tab: the same content, rows and rules on both platforms, with native ch
   scroll under the floating tab bar (the safe area provides the bottom inset).
 - Android: top app bar with the app logo and "Home" next to it and the avatar at the right, the category buttons under it, rows scrolling above the
   `NavigationBar` (`Scaffold`'s inner padding).
-- Same on both: the logo and the page name ("Home") at the left, the profile at the right; category buttons → hero (optional) → Continue watching → Recently added. Aqua only on Play and
+- Same on both: the logo and the page name ("Home") at the left, the profile at the right; category buttons → hero (optional) → Continue watching → Recently added in each video library → a few genre rows → My media (the libraries as 16:9 tiles). A row with nothing in it is not shown, with no gap; each row loads and fails on its own; a header says "See all" and opens the library or the genre. Aqua only on Play and
   progress (plus native tinting on iOS). The button row scrolls with the content.
 
 ### Category buttons

@@ -148,7 +148,10 @@ _Starts after the state audit (see Cross-cutting)._
   own back stack and Settings stays under the profile avatar. Home is the Home that exists today. Library and
   Downloads open an empty page that says "Not available yet" (text in `Strings`) until their features land.
   The Search tab joins with unified search below. Nothing else is built in this item
-- [ ] Home rows: Latest, genres, My Media, plus Continue Watching (which holds Next Up)
+- [x] Home rows: Latest, genres, My Media, plus Continue Watching (which holds Next Up). Recently added in each video
+  library (`GET /Items/Latest`, 20 posters), the three biggest genres, then My media as 16:9 tiles; each row loads and
+  fails on its own, an empty row is not shown, a header has "See all", at most 12 rows. Android run on the emulator, iOS
+  only parsed. Plan 10
 - [ ] Home category buttons under the header, Netflix-style, as one horizontally scrolling row in this
   fixed order (configurable in Phase 7): **Shows**, **Movies**, **New**, **Categories**. Home itself is never
   filtered; every button opens a page of its own, titled with its name:

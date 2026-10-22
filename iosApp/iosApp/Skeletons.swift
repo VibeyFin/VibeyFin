@@ -87,3 +87,30 @@ struct ProfileSkeletonGrid: View {
         .accessibilityLabel(Strings.shared.loadingPage)
     }
 }
+
+/// A row of grey tiles at [tileWidth], for a row of posters or library tiles while it loads.
+struct PosterSkeletonRow: View {
+    var count: Int = 4
+    var tileWidth: CGFloat = 112
+    var aspectRatio: CGFloat = 2.0 / 3.0
+
+    var body: some View {
+        // In a scroll view that never scrolls: fixed-width tiles can be wider than a phone, and laid out on their
+        // own they would stretch everything above them past the screen's edge.
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: Space.s3) {
+                ForEach(0..<count, id: \.self) { _ in
+                    VStack(alignment: .leading, spacing: Space.s2) {
+                        SkeletonBlock().aspectRatio(aspectRatio, contentMode: .fit)
+                        SkeletonLine()
+                    }
+                    .frame(width: tileWidth, alignment: .leading)
+                }
+            }
+            .screenMargin()
+        }
+        .scrollDisabled(true)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Strings.shared.loadingPage)
+    }
+}

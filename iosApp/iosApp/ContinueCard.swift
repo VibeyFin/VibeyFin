@@ -110,15 +110,18 @@ struct ContinueRowView: View {
     let onRetry: () -> Void
 
     var body: some View {
+        // Nothing to show (it came back empty): no title and no gap, like any other row.
+        if row.isVisible {
+            content
+        }
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: Space.s3) {
             Text(Strings.shared.continueWatching.titleCased())
                 .sectionTitle()
                 .screenMargin()
-                .opacity(row.isVisible ? 1 : 0)
-            if !row.isVisible {
-                // Nothing to show: the same space, unseen, so the libraries stay where they are.
-                ContinueSkeletonRow().hidden()
-            } else if row.loading {
+            if row.loading {
                 ContinueSkeletonRow()
             } else if let message = row.message {
                 LoadErrorView(message: message, onRetry: onRetry)

@@ -4,7 +4,7 @@ Goal: Home shows the rows the design asks for, on Android and iOS: Continue watc
 library, a few genre rows, and My media, each with its own loading, error and hidden-when-empty states and a "See
 all" action in its header.
 
-**Status (2026-10-22):** written, nothing built. Calls marked *(my call)* are guesses for the owner to confirm.
+**Status (2026-10-22):** Phases A and B built (A with tests; B run on the Android emulator against the test server); C (iOS) is written and was only parsed (no Xcode). Calls marked *(my call)* are guesses for the owner to confirm.
 
 **Specs:** `docs/ROADMAP.md` Phase 4 "Home rows", `docs/design/guardrails.md` "Home", `jellyfin-mapping.md` "Home
 rows", `screens.md` "Home".

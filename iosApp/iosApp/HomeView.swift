@@ -35,7 +35,6 @@ struct HomeView: View {
                             // The category buttons scroll with the content and run to the screen edge. Home itself is
                             // never filtered: a button opens a page of its own.
                             CategoryButtonRow(buttons: state.buttons) { model.category($0.kind) }
-                            // Always laid out, empty or not, so the libraries never move when a card turns up.
                             ContinueRowView(
                                 row: state.continueRow,
                                 onPlay: { playing = PlayRequest(id: $0) },
@@ -43,8 +42,24 @@ struct HomeView: View {
                                 onMarkWatched: { model.markWatched($0) },
                                 onRetry: { model.retryContinue() }
                             )
-                            libraries(state)
-                                .screenMargin()
+                            // Recently added in each library, then a few genres: each loads and fails on its own, and an
+                            // empty one is not here.
+                            ForEach(state.rows, id: \.id) { row in
+                                MediaRowView(
+                                    row: row,
+                                    onOpen: onOpen,
+                                    onSeeAll: { seeAll in
+                                        if let library = seeAll as? SeeAllLibrary {
+                                            onOpen(library.library)
+                                        } else if let genre = seeAll as? SeeAllGenre {
+                                            onOpenList(genre.filter)
+                                        }
+                                    },
+                                    onRetry: { model.retryRow(row.id) }
+                                )
+                            }
+                            // The libraries close Home, as 16:9 tiles in one row.
+                            MyMediaView(state: state, onOpen: onOpen, onRetry: { model.retryLibraries() })
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, Space.s5)
@@ -110,26 +125,6 @@ struct HomeView: View {
                 .accessibilityAddTraits(.isHeader)
             Spacer()
             profileMenu
-        }
-    }
-
-    @ViewBuilder
-    private func libraries(_ state: HomeUiState) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(Strings.shared.libraries.titleCased())
-                .sectionTitle()
-                .padding(.bottom, Space.s3)
-            if state.loadingLibraries {
-                PosterSkeletonGrid(count: 4, minimumWidth: 150, aspectRatio: 16.0 / 9.0)
-            } else if let message = state.librariesMessage {
-                LoadErrorView(message: message, onRetry: { model.retryLibraries() })
-            } else if state.libraries.isEmpty {
-                Text(Strings.shared.noLibraries)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-            } else {
-                ArtworkGrid(items: state.libraries, minimumWidth: 150, onOpen: onOpen)
-            }
         }
     }
 
