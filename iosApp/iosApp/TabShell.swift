@@ -7,6 +7,31 @@ enum TabRoute: Hashable {
     /// What is inside a library, folder, series or season; `title` shows while it loads.
     case children(parentId: String, title: String)
     case item(itemId: String)
+    /// A category page: `kind` is `shows`, `movies`, `new` or `genre`; `id` and `name` are the genre's own.
+    case filtered(kind: String, id: String?, name: String?)
+}
+
+private extension TabRoute {
+    /// The route for a category button or a genre, from what the shared Home state asked to open.
+    static func opening(_ filter: HomeFilter) -> TabRoute {
+        if let genre = filter as? HomeFilterGenre {
+            return .filtered(kind: "genre", id: genre.id, name: genre.name)
+        }
+        if filter is HomeFilterMovies { return .filtered(kind: "movies", id: nil, name: nil) }
+        if filter is HomeFilterNew { return .filtered(kind: "new", id: nil, name: nil) }
+        return .filtered(kind: "shows", id: nil, name: nil)
+    }
+
+    /// The shared filter a category page is built from.
+    func filter() -> HomeFilter? {
+        guard case .filtered(let kind, let id, let name) = self else { return nil }
+        switch kind {
+        case "movies": return HomeFilterMovies.shared
+        case "new": return HomeFilterNew.shared
+        case "genre": return HomeFilterGenre(id: id ?? "", name: name ?? "")
+        default: return HomeFilterShows.shared
+        }
+    }
 }
 
 private enum MainTab: Hashable {
@@ -31,7 +56,8 @@ struct TabShell: View {
                     onExit: onExit,
                     onOpen: { open($0, in: $homePath) },
                     onDetails: { homePath.append(.item(itemId: $0)) },
-                    onSettings: { homePath.append(.settings) }
+                    onSettings: { homePath.append(.settings) },
+                    onOpenList: { homePath.append(TabRoute.opening($0)) }
                 )
                 .navigationBarBackButtonHidden(true)
             }
@@ -81,6 +107,10 @@ struct TabShell: View {
                         ChildrenView(parentId: parentId, title: title, onOpen: { open($0, in: path) }, onExit: onExit)
                     case .item(let itemId):
                         ItemView(itemId: itemId, onExit: onExit)
+                    case .filtered:
+                        if let filter = route.filter() {
+                            FilteredListView(filter: filter, onOpen: { open($0, in: path) }, onExit: onExit)
+                        }
                     }
                 }
         }

@@ -17,6 +17,8 @@ struct HomeView: View {
     /// Opens an item's page, from a Continue watching card's menu.
     let onDetails: (String) -> Void
     let onSettings: () -> Void
+    /// A category button or a genre in the Categories list was chosen: its page opens over Home.
+    let onOpenList: (HomeFilter) -> Void
 
     var body: some View {
         ZStack {
@@ -30,6 +32,9 @@ struct HomeView: View {
                 if let state = model.state, state.serverId != nil {
                     ScrollView {
                         VStack(alignment: .leading, spacing: Space.s5) {
+                            // The category buttons scroll with the content and run to the screen edge. Home itself is
+                            // never filtered: a button opens a page of its own.
+                            CategoryButtonRow(buttons: state.buttons) { model.category($0.kind) }
                             // Always laid out, empty or not, so the libraries never move when a card turns up.
                             ContinueRowView(
                                 row: state.continueRow,
@@ -64,6 +69,35 @@ struct HomeView: View {
         }
         .onChange(of: model.state?.exit != nil) { hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
+        }
+        .onChange(of: model.state?.openList != nil) { opened in
+            if opened, let filter = model.state?.openList {
+                onOpenList(filter)
+                model.listOpened()
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { model.state?.sheet != nil },
+            set: { if !$0 { model.dismissSheet() } }
+        )) {
+            if let sheet = model.state?.sheet {
+                PickerSheetView(
+                    title: sheet.title,
+                    rows: sheet.options.map { option in
+                        PickerRow(
+                            id: option.id,
+                            label: option.name,
+                            detail: option.count.map { String(truncating: $0) },
+                            description: option.count.map { Strings.shared.titleCount(name: option.name, count: $0.int32Value) }
+                        )
+                    },
+                    loading: sheet.loading,
+                    message: sheet.message,
+                    emptyText: sheet.isEmpty ? sheet.emptyText : nil,
+                    onPick: { model.pickOption($0) },
+                    onRetry: { model.retrySheet() }
+                )
+            }
         }
     }
 

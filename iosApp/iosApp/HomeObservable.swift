@@ -50,6 +50,29 @@ final class HomeObservable: ObservableObject {
         model.onRetryContinue()
     }
 
+    /// A category button was tapped: Shows, Movies and New open their page, Categories opens its list.
+    func category(_ kind: CategoryKind) {
+        model.onCategory(kind: kind)
+    }
+
+    /// A genre in the Categories list was chosen: its page opens and the list closes.
+    func pickOption(_ id: String) {
+        model.onPickOption(id: id)
+    }
+
+    /// The screen has opened the page asked for.
+    func listOpened() {
+        model.onListOpened()
+    }
+
+    func dismissSheet() {
+        model.onDismissSheet()
+    }
+
+    func retrySheet() {
+        model.onRetrySheet()
+    }
+
     /// Pull to refresh. The shared view model reloads both lists and reports `refreshing`; this returns
     /// when it has finished, which is what keeps the pull indicator up.
     @MainActor

@@ -32,7 +32,7 @@ a tap and for picking an entry.
   it holds, and a genre with none is left out. No search.
 - iOS: a horizontal `ScrollView` of capsule buttons, 36pt tall with a 44pt hit area, `surface-2`
   (`tertiarySystemBackground`) with `ink`; Categories adds a trailing `chevron.down`. A capsule on the
-  system background, never glass. The list is a `.sheet` like the player's audio and subtitle pickers.
+  system background, never glass. The list is a `.sheet` with a plain list (the player's tracks use a `Menu`, but this list loads on demand and needs loading, empty and error states).
 - Android: a `LazyRow` of M3 `AssistChip`s, outlined in `line-strong` with `ink-muted`; Categories adds a
   trailing dropdown arrow and opens a `ModalBottomSheet` with the player's `OptionList`.
 - The sheet: loading shows grey lines, an empty list says so, a failure offers Try again. The list is fetched once

@@ -9,7 +9,7 @@
 Goal: Home, Library and Downloads as three tabs with their own back stacks, and the Home category
 buttons (Shows, Movies, New, Categories) that filter Home in place, on Android and iOS.
 
-**Status (2026-10-22):** Phases A, B and C built on `feature/tabs-and-home-filters` (A run on the Android emulator, iOS only parsed; B is `shared/` with tests; C run on the emulator against the test server); D not started. The state audit (skeletons) is done on
+**Status (2026-10-22):** Phases A, B, C and D built on `feature/tabs-and-home-filters` (A run on the Android emulator, iOS only parsed; B is `shared/` with tests; C run on the emulator against the test server); D (iOS: category buttons, the Categories sheet, the category page with Sort and Genre) is written and was only parsed with `swiftc -parse`: there is no Xcode here, so it was not built, type-checked against the Kotlin framework or run. The mini player on iOS 26 is still not mounted (see the note at the end of Phase A). The state audit (skeletons) is done on
 `feature/state-audit`; this plan builds on it. Calls marked *(my call)* are guesses for the owner to confirm.
 
 **Scope.** Only the first two Phase 4 items that were reworked: the tab bar and the category buttons. Home
