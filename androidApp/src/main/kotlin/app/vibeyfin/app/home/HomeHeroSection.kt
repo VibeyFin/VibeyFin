@@ -51,8 +51,6 @@ private const val HERO_ASPECT_WIDE = 2.6f
 /** From this screen width the hero is the tablet's: wider, with its text at the start. */
 private const val HERO_WIDE_FROM_DP = 600
 
-private val HERO_BUTTON_HEIGHT = 44.dp
-
 /**
  * The one featured item, above Continue watching, as a rounded card inside the page's margins: its backdrop under a scrim, the Logo
  * as the title, a line saying what it is and its genres, then Play (the one aqua button) beside My List. Tapping the picture opens the
@@ -115,8 +113,7 @@ fun HomeHeroSection(
             Row(Modifier.then(if (wide) Modifier.width(360.dp) else Modifier.fillMaxWidth()), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
                 Button(
                     onClick = onPlay,
-                    shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md),
-                    modifier = Modifier.weight(1f).height(HERO_BUTTON_HEIGHT),
+                    modifier = Modifier.weight(1f).height(VibeyFinTokens.Size.buttonLarge),
                 ) {
                     Icon(painter = painterResource(R.drawable.ic_play), contentDescription = null)
                     Spacer(Modifier.width(VibeyFinTokens.Space.s2))
@@ -125,9 +122,8 @@ fun HomeHeroSection(
                 // Not aqua: aqua is the one primary action. A soft, see-through button over the picture.
                 Button(
                     onClick = onMyList,
-                    shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.2f), contentColor = VibeyFinTokens.Colors.ink),
-                    modifier = Modifier.weight(1f).height(HERO_BUTTON_HEIGHT).semantics { contentDescription = Strings.myListAction(item.isFavorite) },
+                    modifier = Modifier.weight(1f).height(VibeyFinTokens.Size.buttonLarge).semantics { contentDescription = Strings.myListAction(item.isFavorite) },
                 ) {
                     Icon(if (item.isFavorite) Icons.Filled.Check else Icons.Filled.Add, contentDescription = null)
                     Spacer(Modifier.width(VibeyFinTokens.Space.s2))

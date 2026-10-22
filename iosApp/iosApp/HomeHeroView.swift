@@ -60,8 +60,8 @@ struct HomeHeroView: View {
                     Label(Strings.shared.myList.titleCased(), systemImage: item.isFavorite ? "checkmark" : "plus")
                         .font(.body.weight(.medium))
                         .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous).fill(Color.white.opacity(0.2)))
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .background(Capsule().fill(Color.white.opacity(0.2)))
                 }
                 .buttonStyle(PressableButtonStyle())
                 .accessibilityLabel(Strings.shared.myListAction(onList: item.isFavorite))
