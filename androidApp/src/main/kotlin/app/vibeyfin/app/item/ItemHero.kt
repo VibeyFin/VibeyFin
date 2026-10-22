@@ -161,7 +161,8 @@ fun ItemBackdrop(item: MediaItem, screenWidth: Dp, screenHeight: Dp, progress: F
  */
 @Composable
 fun PinnedBackdrop(item: MediaItem, height: Dp, scroll: androidx.compose.foundation.ScrollState) {
-    val fullPx = with(androidx.compose.ui.platform.LocalDensity.current) { height.toPx() }
+    // Fully dark after about half the picture has scrolled by, so the page reads well before the picture is gone.
+    val darkenOverPx = with(androidx.compose.ui.platform.LocalDensity.current) { height.toPx() } * DARKEN_OVER
     Box(Modifier.fillMaxWidth().height(height)) {
         val picture = item.backdropUrl ?: item.posterUrl
         if (picture != null) {
@@ -184,10 +185,13 @@ fun PinnedBackdrop(item: MediaItem, height: Dp, scroll: androidx.compose.foundat
         )
         // The darkening as the page scrolls; read in the draw step, so scrolling redraws this layer and nothing else.
         Box(
-            Modifier.matchParentSize().graphicsLayer { alpha = (scroll.value / fullPx).coerceIn(0f, 1f) * MAX_DARKEN }.background(VibeyFinTokens.Colors.bg),
+            Modifier.matchParentSize().graphicsLayer { alpha = (scroll.value / darkenOverPx).coerceIn(0f, 1f) * MAX_DARKEN }.background(VibeyFinTokens.Colors.bg),
         )
     }
 }
+
+/** The share of the picture that has to scroll by for a phone's backdrop to be fully dark. */
+private const val DARKEN_OVER = 0.55f
 
 /** How dark the backdrop gets once the page has scrolled a screen: nearly the page's own colour, with a hint of the picture left. */
 private const val MAX_DARKEN = 0.94f
