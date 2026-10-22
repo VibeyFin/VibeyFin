@@ -66,6 +66,10 @@ private const val LOAD_AHEAD = 6
 fun ChildrenRoute(
     parentId: String,
     title: String,
+    /** The page is known to be a collection's (from the tile or search result opened): its header is up at once. */
+    collectionHint: Boolean = false,
+    /** The picture of the tile or result opened, so the header's picture starts loading before the collection itself is read. */
+    imageHint: String? = null,
     onBack: () -> Unit,
     onOpen: (MediaItem) -> Unit,
     /** A season's list leads back to its show. */
@@ -79,6 +83,8 @@ fun ChildrenRoute(
     }
     ChildrenScreen(
         title = title,
+        collectionHint = collectionHint,
+        imageHint = imageHint,
         state = state,
         onBack = onBack,
         onOpen = onOpen,
@@ -92,6 +98,8 @@ fun ChildrenRoute(
 fun ChildrenScreen(
     title: String,
     state: ChildrenUiState,
+    collectionHint: Boolean = false,
+    imageHint: String? = null,
     onBack: () -> Unit,
     onOpen: (MediaItem) -> Unit,
     onLoadMore: () -> Unit,
@@ -103,10 +111,11 @@ fun ChildrenScreen(
 ) {
     // With controls the title is pinned above them; without, it is the first row of the list and scrolls away.
     val pinned = controls != null
+    val collectionPage = state.collection != null || collectionHint
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
             // A collection's header runs under the status bar, so it takes only the sides and the bottom.
-            val insets = if (state.collection != null) {
+            val insets = if (collectionPage) {
                 Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
             } else {
                 Modifier.safeDrawingPadding()
@@ -124,7 +133,14 @@ fun ChildrenScreen(
                         userScrollEnabled = false,
                         modifier = Modifier.fillMaxSize(),
                     ) {
-                        if (!pinned) item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title) }
+                        if (collectionPage) {
+                            // The collection's header is already here, with its name; the members are grey until they come.
+                            item(span = { GridItemSpan(maxLineSpan) }, key = "collection") {
+                                Box(Modifier.bleed(screenMargin())) { CollectionHeader(title, state.collection, emptyList(), screenMargin(), imageHint) }
+                            }
+                        } else if (!pinned) {
+                            item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title) }
+                        }
                         skeletonTiles()
                     }
                     state.message != null -> {
@@ -139,7 +155,7 @@ fun ChildrenScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    else -> ItemGrid(title, state, onOpen, onLoadMore, onRetry, showTitle = !pinned, onOpenSeries = onOpenSeries)
+                    else -> ItemGrid(title, state, collectionPage, imageHint, onOpen, onLoadMore, onRetry, showTitle = !pinned, onOpenSeries = onOpenSeries)
                 }
             }
             FloatingBackButton(onBack)
@@ -165,6 +181,8 @@ private fun Title(title: String) {
 private fun ItemGrid(
     title: String,
     state: ChildrenUiState,
+    collectionPage: Boolean,
+    imageHint: String?,
     onOpen: (MediaItem) -> Unit,
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
@@ -193,15 +211,15 @@ private fun ItemGrid(
         modifier = Modifier.fillMaxSize(),
     ) {
         // A collection opens on its own header, under the status bar, in place of the plain title.
-        state.collection?.let { collection ->
+        if (collectionPage) {
             item(span = { GridItemSpan(maxLineSpan) }, key = "collection") {
                 Box(Modifier.bleed(margin)) {
-                    CollectionHeader(collection, facts = state.collectionFacts, margin = margin)
+                    CollectionHeader(title, state.collection, facts = state.collectionFacts, margin = margin, imageHint = imageHint)
                 }
             }
         }
         // The title is part of the list, beneath the button, and scrolls up under it.
-        if (showTitle && state.collection == null) item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title) }
+        if (showTitle && !collectionPage) item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title) }
         // A season's list leads back to its show.
         state.series?.let { series ->
             if (onOpenSeries != null) {
@@ -213,7 +231,7 @@ private fun ItemGrid(
                 }
             }
         }
-        if (state.collection != null) {
+        if (collectionPage) {
             // A collection's members under sub-headings: its movies, then its shows, then whatever else it holds.
             val groups = listOf(
                 Strings.collectionMovies to state.items.filter { it.kind == ItemKind.Movie },

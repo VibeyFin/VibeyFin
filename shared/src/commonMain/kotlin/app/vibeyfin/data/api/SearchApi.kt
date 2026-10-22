@@ -17,6 +17,8 @@ data class SearchHintDto(
     @SerialName("Type") val type: String? = null,
     @SerialName("ProductionYear") val productionYear: Int? = null,
     @SerialName("PrimaryImageTag") val primaryImageTag: String? = null,
+    @SerialName("BackdropImageTag") val backdropImageTag: String? = null,
+    @SerialName("BackdropImageItemId") val backdropImageItemId: String? = null,
     @SerialName("PrimaryImageAspectRatio") val primaryImageAspectRatio: Double? = null,
     /** For an episode: the name of its show. */
     @SerialName("Series") val seriesName: String? = null,

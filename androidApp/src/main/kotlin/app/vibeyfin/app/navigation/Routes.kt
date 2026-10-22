@@ -54,7 +54,7 @@ data class Person(val personId: String)
 
 /** What is inside a library, folder, series or season. [title] is shown at the top while it loads. */
 @Serializable
-data class Children(val parentId: String, val title: String)
+data class Children(val parentId: String, val title: String, val collection: Boolean = false, val imageUrl: String? = null)
 
 @Serializable
 data class Item(val itemId: String)

@@ -29,6 +29,7 @@ import app.vibeyfin.app.addserver.AddServerRoute
 import app.vibeyfin.app.children.ChildrenRoute
 import app.vibeyfin.app.person.PersonRoute
 import app.vibeyfin.app.search.SearchRoute
+import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.SearchKind
 import app.vibeyfin.app.filtered.FilteredListRoute
 import app.vibeyfin.app.home.HomeRoute
@@ -74,7 +75,7 @@ fun VibeyFinNavHost() {
     val navController = rememberNavController()
     // A folder opens its list; anything else opens its page. Both open inside the tab the user is on.
     val open: (MediaItem) -> Unit = { item ->
-        navController.navigate(if (item.opensList) Children(item.id, item.title) else Item(item.id))
+        navController.navigate(if (item.opensList) Children(item.id, item.title, item.kind == ItemKind.Collection, item.backdropUrl ?: item.posterUrl) else Item(item.id))
     }
     // Leaves the tabs and everything opened from them. Servers goes underneath "Who's watching?" so
     // back from it has somewhere to go. The tabs' saved back stacks belong to this profile: dropped.
@@ -178,7 +179,7 @@ fun VibeyFinNavHost() {
                             navController.navigate(
                                 when (result.kind) {
                                     SearchKind.Person -> Person(result.id)
-                                    SearchKind.Collection -> Children(result.id, result.title)
+                                    SearchKind.Collection -> Children(result.id, result.title, collection = true, imageUrl = result.backdropUrl ?: result.imageUrl)
                                     else -> Item(result.id)
                                 },
                             )
@@ -222,13 +223,15 @@ fun VibeyFinNavHost() {
 /** What opens from a tab: a folder's list and an item's page, over the tab's own root. */
 private fun NavGraphBuilder.details(navController: NavHostController, leave: (HomeExit) -> Unit) {
     val open: (MediaItem) -> Unit = { item ->
-        navController.navigate(if (item.opensList) Children(item.id, item.title) else Item(item.id))
+        navController.navigate(if (item.opensList) Children(item.id, item.title, item.kind == ItemKind.Collection, item.backdropUrl ?: item.posterUrl) else Item(item.id))
     }
     composable<Children> { entry ->
         val route = entry.toRoute<Children>()
         ChildrenRoute(
             parentId = route.parentId,
             title = route.title,
+            collectionHint = route.collection,
+            imageHint = route.imageUrl,
             onBack = { navController.popBackStack() },
             onOpen = open,
             onOpenSeries = { seriesId -> navController.navigate(Item(seriesId)) },

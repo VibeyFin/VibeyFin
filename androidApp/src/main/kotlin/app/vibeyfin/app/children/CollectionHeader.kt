@@ -44,18 +44,19 @@ private const val WIDE_FROM_DP = 600
  * holds and the overview centred over the lower half. The members follow below as a poster grid.
  */
 @Composable
-fun CollectionHeader(collection: MediaItem, facts: List<String>, margin: Dp) {
+fun CollectionHeader(title: String, collection: MediaItem?, facts: List<String>, margin: Dp, imageHint: String? = null) {
     var expanded by remember { mutableStateOf(false) }
     val wide = LocalConfiguration.current.screenWidthDp >= WIDE_FROM_DP
     val aspect = if (wide) COLLECTION_HERO_ASPECT_WIDE else COLLECTION_HERO_ASPECT
     Box(Modifier.fillMaxWidth()) {
-        val picture = collection.backdropUrl ?: collection.posterUrl
+        // The collection's own picture once it is read; until then the one from the tile or result that was opened.
+        val picture = collection?.let { it.backdropUrl ?: it.posterUrl } ?: imageHint
         if (picture != null) {
             Artwork(
                 url = picture,
-                title = collection.title,
+                title = title,
                 aspectRatio = aspect,
-                blurHash = if (collection.backdropUrl != null) collection.backdropBlurHash else collection.posterBlurHash,
+                blurHash = collection?.let { if (it.backdropUrl != null) it.backdropBlurHash else it.posterBlurHash },
                 modifier = Modifier.fillMaxWidth(),
             )
         } else {
@@ -91,7 +92,7 @@ fun CollectionHeader(collection: MediaItem, facts: List<String>, margin: Dp) {
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
         ) {
             Text(
-                text = collection.title,
+                text = title,
                 style = BrandDisplay.copy(fontSize = 34.sp, lineHeight = 38.sp),
                 color = VibeyFinTokens.Colors.ink,
                 textAlign = if (wide) TextAlign.Start else TextAlign.Center,
@@ -106,7 +107,7 @@ fun CollectionHeader(collection: MediaItem, facts: List<String>, margin: Dp) {
                     textAlign = if (wide) TextAlign.Start else TextAlign.Center,
                 )
             }
-            collection.overview?.let {
+            collection?.overview?.let {
                 Text(
                     text = it,
                     style = MaterialTheme.typography.bodyMedium,

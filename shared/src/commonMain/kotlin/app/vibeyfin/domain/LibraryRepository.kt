@@ -88,6 +88,7 @@ class LibraryRepository(private val connection: ConnectionManager) {
                         else -> hint.productionYear?.toString()
                     },
                     imageUrl = hint.primaryImageTag?.let { itemImageUrl(api.baseUrl, hint.id, "Primary", it, POSTER_WIDTH) },
+                    backdropUrl = hint.backdropImageTag?.let { itemImageUrl(api.baseUrl, hint.backdropImageItemId ?: hint.id, "Backdrop", it, BACKDROP_WIDTH) },
                     aspectRatio = hint.primaryImageAspectRatio?.toFloat()?.takeIf { it > 0f }
                         ?: if (kind == SearchKind.Episode) WIDE else TALL,
                 )

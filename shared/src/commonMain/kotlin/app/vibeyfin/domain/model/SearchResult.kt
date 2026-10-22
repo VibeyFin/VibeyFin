@@ -11,6 +11,8 @@ data class SearchResult(
     /** The year, or for an episode its show and number ("Severance · S1 E4"); null when there is nothing to add. */
     val subtitle: String?,
     val imageUrl: String?,
+    /** The wide picture, when the match has one: a collection's page opens with it already loading. */
+    val backdropUrl: String? = null,
     /** Width over height of [imageUrl]'s picture: tall for a poster or a portrait, wide for an episode's still. */
     val aspectRatio: Float,
 )
