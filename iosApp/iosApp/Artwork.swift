@@ -82,6 +82,8 @@ struct ArtworkTile: View {
                     if item.played { WatchedBadge().padding(Space.s2) }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
+                // On iOS 18 the page zooms out of this poster, and back into it.
+                .zoomSource(item.id)
             if !item.nameIsOnPoster || captionLines > 0 {
                 // A tile whose picture already says its name keeps the same empty space, so the row stays one height.
                 Text(item.nameIsOnPoster ? "" : item.title)

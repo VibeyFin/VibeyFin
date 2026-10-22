@@ -182,7 +182,7 @@ _Starts after the state audit (see Cross-cutting)._
   they appear in within the library (`GET /Items?PersonIds=`); cast on the detail page opens it
 - [x] Special features (behind the scenes, extras; plan 12; Android built, iOS parsed) on the detail page (`GET /Items/{id}/SpecialFeatures`)
 - [x] Library browse (Android built and run; iOS written and only parsed): the Library tab is every movie and show as a poster grid (three across on a phone) with the title count under its name, and buttons for Movies, Shows, Collections, Sort, Genre, Year (by decade), People (searched by name) and Clear. Changing a filter keeps the old list dimmed and the count in place until the new list is in, so nothing jumps. Sheets show the chosen row as a soft pill, not a tick
-- [ ] Shared-element transition from a poster to the detail hero, using each platform's own mechanism:
+- [x] Shared-element transition (Android built and seen on the emulator with animations slowed; iOS written and only parsed) from a poster to the detail hero, using each platform's own mechanism:
   Compose's shared transition on Android (no new dependency), iOS 18's zoom navigation transition behind
   `#available`, and the standard push on iOS 16–17, with no custom fallback
 - [ ] Ambient background: a static wash from the item's BlurHash behind the hero and the player, under
@@ -200,7 +200,7 @@ _Starts after the state audit (see Cross-cutting)._
 Also built in this phase, not on the original list: Home shows a row for every genre with a per-profile setting to limit them
 (`docs/plans/10-home-rows.md`), collections open on their own page with a tablet view, the player uses the whole screen
 including the camera cut-out, and a `perf` build type (`./gradlew :androidApp:installPerf`) for judging smoothness, as the
-debug build is slow. Not started: shared-element transitions, the ambient background, tile trailers and thumbs.
+debug build is slow. Not started: the ambient background, tile trailers and thumbs.
 
 _Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a genre page from Home,
 and see the mini player on iOS 26._

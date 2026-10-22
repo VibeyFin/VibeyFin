@@ -51,6 +51,7 @@ struct TabShell: View {
     let onExit: (HomeExit) -> Void
 
     @State private var selection: MainTab = .home
+    @Namespace private var zoomNamespace
     @State private var homePath: [TabRoute] = []
     @State private var searchPath: [TabRoute] = []
     @State private var libraryPath: [TabRoute] = []
@@ -94,6 +95,7 @@ struct TabShell: View {
                 .tabItem { Label(Strings.shared.tabDownloads.titleCased(), systemImage: "arrow.down.circle") }
                 .tag(MainTab.downloads)
         }
+        .environment(\.zoomNamespace, zoomNamespace)
     }
 
     /// Choosing the tab you are already on goes back to its root.
@@ -129,7 +131,9 @@ struct TabShell: View {
                     case .children(let parentId, let title):
                         ChildrenView(parentId: parentId, title: title, onOpen: { open($0, in: path) }, onOpenSeries: { path.wrappedValue.append(.item(itemId: $0)) }, onExit: onExit)
                     case .item(let itemId):
+                        // On iOS 18 the page zooms out of the poster that was tapped.
                         ItemView(itemId: itemId, onOpen: { open($0, in: path) }, onOpenSeries: { path.wrappedValue.append(.item(itemId: $0)) }, onOpenPerson: { path.wrappedValue.append(.person(personId: $0)) }, onExit: onExit)
+                            .zoomDestination(itemId)
                     case .person(let personId):
                         PersonView(personId: personId, onOpen: { open($0, in: path) }, onExit: onExit)
                     case .filtered:
