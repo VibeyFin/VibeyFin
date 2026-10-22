@@ -74,6 +74,7 @@ import app.vibeyfin.domain.model.CastMember
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.item.SeasonsState
+import app.vibeyfin.ui.item.EpisodeList as EpisodeData
 import app.vibeyfin.ui.item.seasonLabel
 import app.vibeyfin.ui.item.TechnicalLine
 import coil3.compose.AsyncImage
@@ -153,20 +154,32 @@ private fun SeasonButtons(seasons: SeasonsState, margin: Dp, onSelect: (String) 
     }
 }
 
-private data class EpisodePhase(val seasonId: String?, val index: Int, val loading: Boolean, val failed: Boolean)
+/**
+ * What the episode area shows: loading cards, a failure, or the list. Two phases are equal when they show the same kind of
+ * thing for the same season, so the area only animates on a real change; [snapshot] is what the phase showed when it was made,
+ * kept so that a phase fading out keeps drawing its own content, not the next one's.
+ */
+private class EpisodePhase(val seasonId: String?, val index: Int, val snapshot: EpisodeData) {
+    val failed: Boolean get() = snapshot.message != null
+    val loading: Boolean get() = snapshot.loading && snapshot.items.isEmpty()
+    private val empty: Boolean get() = snapshot.items.isEmpty()
+    override fun equals(other: Any?) = other is EpisodePhase && seasonId == other.seasonId && failed == other.failed && loading == other.loading && empty == other.empty
+    override fun hashCode() = listOf(seasonId, failed, loading, empty).hashCode()
+}
 
 /** The selected season's episodes; choosing another season fades to its loading cards, then to its episodes. */
 @Composable
 private fun EpisodeList(seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay: (String) -> Unit, onToggleWatched: (String) -> Unit, onRetry: () -> Unit) {
     val episodes = seasons.episodes
     val cardWidth = if (wide) EPISODE_CARD_WIDE else EPISODE_CARD
+    val currentPhase = EpisodePhase(seasons.selectedId, seasons.seasons.indexOfFirst { it.id == seasons.selectedId }, episodes)
     Column(
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         modifier = Modifier.animateContentSize(tween(ROW_FADE_MS)),
     ) {
         // The list crossfades between a season loading and a season shown, so a tap never snaps.
         AnimatedContent(
-            targetState = EpisodePhase(seasons.selectedId, seasons.seasons.indexOfFirst { it.id == seasons.selectedId }, episodes.loading && episodes.items.isEmpty(), episodes.message != null),
+            targetState = currentPhase,
             transitionSpec = {
                 // A later season slides in from the right, an earlier one from the left; the same season only fades.
                 val forward = targetState.index > initialState.index
@@ -180,19 +193,21 @@ private fun EpisodeList(seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay
             },
             label = "episodes",
         ) { phase ->
+            // The phase on screen follows the live list (a watched mark changes a card, not the phase); one fading out keeps its own.
+            val list = if (phase == currentPhase) episodes else phase.snapshot
             when {
-                phase.failed -> LoadError(episodes.message ?: "", onRetry)
+                phase.failed -> LoadError(list.message ?: "", onRetry)
                 phase.loading ->
                     Row(Modifier.bleed(margin).padding(horizontal = margin), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
                         repeat(3) { EpisodeCardSkeleton(cardWidth) }
                     }
-                episodes.items.isEmpty() -> Text(Strings.noEpisodes, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                list.items.isEmpty() -> Text(Strings.noEpisodes, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 else -> {
                     val listState = rememberLazyListState()
                     // A season opens at the episode Play will start, so the one being watched is in view; another season opens at its first.
-                    val firstId = episodes.items.first().id
+                    val firstId = list.items.first().id
                     LaunchedEffect(firstId) {
-                        val at = episodes.items.indexOfFirst { it.id == seasons.startEpisode?.id }
+                        val at = list.items.indexOfFirst { it.id == seasons.startEpisode?.id }
                         listState.scrollToItem(if (at > 0) at else 0)
                     }
                     LazyRow(
@@ -201,7 +216,7 @@ private fun EpisodeList(seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay
                         contentPadding = PaddingValues(horizontal = margin),
                         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
                     ) {
-                        items(episodes.items.distinctBy { it.id }, key = { it.id }) { episode ->
+                        items(list.items.distinctBy { it.id }, key = { it.id }) { episode ->
                             EpisodeCard(episode, cardWidth, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) })
                         }
                     }
