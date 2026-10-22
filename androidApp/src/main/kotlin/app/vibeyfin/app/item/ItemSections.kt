@@ -154,63 +154,43 @@ private fun SeasonButtons(seasons: SeasonsState, margin: Dp, onSelect: (String) 
 @Composable
 private fun EpisodeList(seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay: (String) -> Unit, onToggleWatched: (String) -> Unit, onRetry: () -> Unit) {
     val episodes = seasons.episodes
+    val cardWidth = if (wide) EPISODE_CARD_WIDE else EPISODE_CARD
     Column(
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         modifier = Modifier.animateContentSize(tween(ROW_FADE_MS)),
     ) {
         when {
             episodes.message != null -> LoadError(episodes.message!!, onRetry)
-            episodes.items.isEmpty() && episodes.loading -> if (wide) {
+            episodes.items.isEmpty() && episodes.loading ->
                 Row(Modifier.bleed(margin).padding(horizontal = margin), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
-                    repeat(3) { EpisodeCardSkeleton() }
+                    repeat(3) { EpisodeCardSkeleton(cardWidth) }
                 }
-            } else {
-                repeat(3) { EpisodeSkeleton() }
-            }
             episodes.items.isEmpty() -> Text(Strings.noEpisodes, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            // A tablet scrolls the episodes sideways, as bigger cards.
-            wide -> LazyRow(
+            // The episodes scroll sideways as cards, bigger on a tablet.
+            else -> LazyRow(
                 modifier = Modifier.bleed(margin).alpha(if (episodes.loading) 0.5f else 1f),
                 contentPadding = PaddingValues(horizontal = margin),
                 horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
             ) {
                 items(episodes.items, key = { it.id }) { episode ->
-                    EpisodeCard(episode, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) })
-                }
-            }
-            else -> Column(Modifier.alpha(if (episodes.loading) 0.5f else 1f), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-                episodes.items.forEach { episode ->
-                    EpisodeRow(episode, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) })
+                    EpisodeCard(episode, cardWidth, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) })
                 }
             }
         }
     }
 }
 
-@Composable
-private fun EpisodeSkeleton() {
-    Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-        SkeletonBlock(Modifier.width(EPISODE_THUMB).aspectRatio(16f / 9f))
-        Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
-            SkeletonLine(160.dp, MaterialTheme.typography.titleSmall)
-            SkeletonLine(96.dp, MaterialTheme.typography.bodySmall)
-            SkeletonLine(200.dp, MaterialTheme.typography.bodySmall)
-        }
-    }
-}
-
-private val EPISODE_THUMB = 132.dp
-
-/** A tablet's episode card is this wide; its picture is 16:9. */
-private val EPISODE_CARD = 320.dp
+/** An episode card is this wide on a phone, and wider on a tablet; its picture is 16:9. */
+private val EPISODE_CARD = 260.dp
+private val EPISODE_CARD_WIDE = 320.dp
 
 @Composable
-private fun EpisodeCardSkeleton() {
-    Column(Modifier.width(EPISODE_CARD), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
+private fun EpisodeCardSkeleton(width: Dp) {
+    Column(Modifier.width(width), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
         SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(16f / 9f))
-        SkeletonLine(220.dp, MaterialTheme.typography.titleMedium)
+        SkeletonLine(width * 0.7f, MaterialTheme.typography.titleMedium)
         SkeletonLine(96.dp, MaterialTheme.typography.bodyMedium)
-        SkeletonLine(280.dp, MaterialTheme.typography.bodyMedium)
+        SkeletonLine(width * 0.85f, MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -221,13 +201,13 @@ private fun EpisodeCardSkeleton() {
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun EpisodeCard(episode: MediaItem, current: Boolean, onPlay: () -> Unit, onToggleWatched: () -> Unit) {
+private fun EpisodeCard(episode: MediaItem, width: Dp, current: Boolean, onPlay: () -> Unit, onToggleWatched: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     Box {
         Column(
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
             modifier = Modifier
-                .width(EPISODE_CARD)
+                .width(width)
                 .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
                 .background(if (current) VibeyFinTokens.Colors.surface2 else androidx.compose.ui.graphics.Color.Transparent)
                 .combinedClickable(role = Role.Button, onClick = onPlay, onLongClick = { menu = true })
@@ -275,75 +255,6 @@ private fun EpisodeCard(episode: MediaItem, current: Boolean, onPlay: () -> Unit
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
-        }
-        VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
-            VibeyFinMenuItem(
-                if (episode.played) Strings.markUnwatched else Strings.markWatched,
-                if (episode.played) Icons.Default.Clear else Icons.Default.Check,
-            ) { menu = false; onToggleWatched() }
-        }
-    }
-}
-
-/**
- * One episode: its still (with a progress bar when it is part watched), "4. Title", how long it is or how much is left, a check
- * once watched, and two lines of synopsis. The one Play starts is the current one. Tapping plays it; a long press offers the
- * watched mark.
- */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun EpisodeRow(episode: MediaItem, current: Boolean, onPlay: () -> Unit, onToggleWatched: () -> Unit) {
-    var menu by remember { mutableStateOf(false) }
-    Box {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
-                .background(if (current) VibeyFinTokens.Colors.surface2 else androidx.compose.ui.graphics.Color.Transparent)
-                .combinedClickable(role = Role.Button, onClick = onPlay, onLongClick = { menu = true })
-                .padding(VibeyFinTokens.Space.s2)
-                .semantics(mergeDescendants = true) {},
-        ) {
-            Box(Modifier.width(EPISODE_THUMB).clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
-                Artwork(
-                    url = episode.landscapeUrl ?: episode.posterUrl,
-                    title = episode.title,
-                    aspectRatio = 16f / 9f,
-                    blurHash = episode.landscapeBlurHash,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                // Aqua is playback progress: how far into the episode the user got.
-                episode.progress?.let { progress ->
-                    Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(0.dp)) {
-                        Box(Modifier.fillMaxWidth().size(width = 0.dp, height = 3.dp).background(VibeyFinTokens.Colors.progressTrack))
-                        Box(Modifier.fillMaxWidth(progress).size(width = 0.dp, height = 3.dp).background(VibeyFinTokens.Colors.accent))
-                    }
-                }
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-                    Text(
-                        text = Strings.episodeTitle(episode.episodeNumber, episode.title),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    if (episode.played) {
-                        Icon(Icons.Filled.CheckCircle, contentDescription = Strings.watched, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
-                    }
-                }
-                val meta = when {
-                    episode.progress != null && episode.runtimeMs != null -> Strings.timeLeftShort(episode.runtimeMs!! - episode.resumePositionMs)
-                    else -> episode.runtimeMinutes?.let(Strings::minutesShort)
-                }
-                meta?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                episode.overview?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                }
-            }
         }
         VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
             VibeyFinMenuItem(

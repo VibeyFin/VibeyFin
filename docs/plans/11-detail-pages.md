@@ -52,7 +52,7 @@ adds a row of season buttons and the selected season's episodes. Android and iOS
     series by its name; a movie or series shows the collections it is in (`GET /Items/{id}/Collections`) as a poster row.
 13. **Season buttons** always read "Season N" ("Specials" for 0). The overflow and long-press menus use the app's rounded menu.
 14. **Tablet backdrop and episodes** *(added after review)*: the backdrop fills the screen and stays put while the page scrolls over
-    it, darkening to nearly the page colour by 70% of a screen; a season's episodes are a horizontal row of large cards (320dp).
+    it, darkening to nearly the page colour by 70% of a screen; a season's episodes are a horizontal row of cards on every screen (260dp on a phone, 320dp on a tablet).
 11. **Facts line** adds the number of seasons for a series ("3 seasons") instead of a runtime.
 
 ## Phase A: Shared

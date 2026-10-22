@@ -68,46 +68,39 @@ struct SeasonsSectionView: View {
         }
     }
 
+    /// Episode cards: 260 wide on a phone, 320 on a regular width.
+    private var cardWidth: CGFloat { wide ? 320 : 260 }
+
     @ViewBuilder
     private var episodes: some View {
         let list = seasons.episodes
         if let message = list.message {
             LoadErrorView(message: message, onRetry: onRetryEpisodes)
-        } else if list.items.isEmpty && list.loading && wide {
+        } else if list.items.isEmpty && list.loading {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Space.s4) {
                     ForEach(0..<3, id: \.self) { _ in
                         VStack(alignment: .leading, spacing: Space.s2) {
-                            SkeletonBlock().frame(width: 320).aspectRatio(16.0 / 9.0, contentMode: .fit)
-                            SkeletonLine(font: .headline, width: 220)
+                            SkeletonBlock().frame(width: cardWidth).aspectRatio(16.0 / 9.0, contentMode: .fit)
+                            SkeletonLine(font: .headline, width: cardWidth * 0.7)
                             SkeletonLine(font: .subheadline, width: 96)
-                            SkeletonLine(font: .subheadline, width: 280)
+                            SkeletonLine(font: .subheadline, width: cardWidth * 0.85)
                         }
                     }
                 }
             }
             .scrollDisabled(true)
-        } else if list.items.isEmpty && list.loading {
-            ForEach(0..<3, id: \.self) { _ in
-                HStack(spacing: Space.s3) {
-                    SkeletonBlock().frame(width: 132).aspectRatio(16.0 / 9.0, contentMode: .fit)
-                    VStack(alignment: .leading, spacing: Space.s1) {
-                        SkeletonLine(font: .subheadline, width: 160)
-                        SkeletonLine(font: .caption, width: 96)
-                        SkeletonLine(font: .caption, width: 200)
-                    }
-                }
-            }
         } else if list.items.isEmpty {
             Text(Strings.shared.noEpisodes)
                 .font(.body)
                 .foregroundStyle(.secondary)
-        } else if wide {
+        } else {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: Space.s4) {
                     ForEach(list.items, id: \.id) { episode in
                         EpisodeCardView(
                             episode: episode,
+                            width: cardWidth,
                             current: episode.id == seasons.startEpisode?.id,
                             onPlay: { onPlay(episode.id) },
                             onToggleWatched: { onToggleWatched(episode.id) }
@@ -116,111 +109,16 @@ struct SeasonsSectionView: View {
                 }
             }
             .opacity(list.loading ? 0.5 : 1)
-        } else {
-            LazyVStack(alignment: .leading, spacing: Space.s3) {
-                ForEach(list.items, id: \.id) { episode in
-                    EpisodeRowView(
-                        episode: episode,
-                        current: episode.id == seasons.startEpisode?.id,
-                        onPlay: { onPlay(episode.id) },
-                        onToggleWatched: { onToggleWatched(episode.id) }
-                    )
-                }
-            }
-            .opacity(list.loading ? 0.5 : 1)
         }
     }
 }
 
-/// One episode: its still (with a progress bar when it is part watched), "4. Title", how long it is or how much is left, a check
-/// once watched, and two lines of synopsis. The one Play starts is the current one. Tapping plays it; a long press offers the
-/// watched mark.
-struct EpisodeRowView: View {
-    let episode: MediaItem
-    let current: Bool
-    let onPlay: () -> Void
-    let onToggleWatched: () -> Void
-
-    var body: some View {
-        Button(action: onPlay) {
-            HStack(alignment: .top, spacing: Space.s3) {
-                thumbnail
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: Space.s2) {
-                        Text(Strings.shared.episodeTitle(number: episode.episodeNumber, title: episode.title))
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
-                        if episode.played {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .accessibilityLabel(Strings.shared.watched)
-                        }
-                    }
-                    if let meta = meta {
-                        Text(meta)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    if let overview = episode.overview {
-                        Text(overview)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(Space.s2)
-            .background(
-                RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous)
-                    .fill(current ? Color(.tertiarySystemBackground) : Color.clear)
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableButtonStyle())
-        .contextMenu {
-            Button(action: onToggleWatched) {
-                Label(
-                    (episode.played ? Strings.shared.markUnwatched : Strings.shared.markWatched).titleCased(),
-                    systemImage: episode.played ? "xmark.circle" : "checkmark.circle"
-                )
-            }
-        }
-    }
-
-    private var thumbnail: some View {
-        Artwork(url: episode.landscapeUrl ?? episode.posterUrl, title: episode.title, aspectRatio: 16.0 / 9.0, blurHash: episode.landscapeBlurHash)
-            .frame(width: 132)
-            .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
-            .overlay(alignment: .bottom) {
-                // Aqua is playback progress: how far into the episode the user got.
-                if let progress = episode.progress {
-                    GeometryReader { proxy in
-                        ZStack(alignment: .leading) {
-                            Rectangle().fill(Brand.progressTrack)
-                            Rectangle().fill(Brand.accent).frame(width: proxy.size.width * CGFloat(progress.floatValue))
-                        }
-                    }
-                    .frame(height: 3)
-                }
-            }
-    }
-
-    private var meta: String? {
-        if episode.progress != nil, let runtime = episode.runtimeMs {
-            return Strings.shared.timeLeftShort(remainingMs: runtime.int64Value - episode.resumePositionMs)
-        }
-        return episode.runtimeMinutes.map { Strings.shared.minutesShort(minutes: $0.int32Value) }
-    }
-}
-
-/// An episode on a regular width: a large card in a row that scrolls sideways. The still on top (with a progress bar when it is part
+/// An episode: a card in a row that scrolls sideways. The still on top (with a progress bar when it is part
 /// watched), then "4. Title" with a check once watched, how long it is or how much is left, and three lines of synopsis. The one Play
 /// starts is the current one. Tapping plays it; a long press offers the watched mark.
 struct EpisodeCardView: View {
     let episode: MediaItem
+    let width: CGFloat
     let current: Bool
     let onPlay: () -> Void
     let onToggleWatched: () -> Void
@@ -264,7 +162,7 @@ struct EpisodeCardView: View {
                     .lineLimit(3, reservesSpace: true)
                     .multilineTextAlignment(.leading)
             }
-            .frame(width: 320, alignment: .leading)
+            .frame(width: width, alignment: .leading)
             .padding(Space.s2)
             .background(
                 RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous)
