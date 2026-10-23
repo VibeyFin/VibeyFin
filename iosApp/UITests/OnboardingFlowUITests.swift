@@ -105,6 +105,53 @@ final class OnboardingFlowUITests: XCTestCase {
         }
     }
 
+    /// A series lists its episodes down the page on a phone and sideways on a tablet, and tapping an episode's words opens its page.
+    /// Runs after the onboarding test (alphabetical order), which leaves a signed-in profile behind.
+    func testSeriesEpisodes() throws {
+        let match = NSPredicate(format: "label ==[c] %@", "Search")
+        let tab = app.tabBars.buttons.matching(match).firstMatch
+        let search = tab.waitForExistence(timeout: 20) ? tab : app.buttons.matching(match).firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 20), "Search tab is missing")
+
+        step("Search finds Saga Show") {
+            search.tap()
+            let field = app.searchFields.firstMatch
+            XCTAssertTrue(field.waitForExistence(timeout: 10), "Search field is missing")
+            field.tap()
+            field.typeText("Saga Show")
+            let result = button("Saga Show", contains: true)
+            XCTAssertTrue(result.waitForExistence(timeout: 20), "Saga Show is missing from the results")
+            result.tap()
+        }
+
+        step("Episodes are laid out for this width") {
+            let first = episode("S1 E1")
+            let second = episode("S1 E2")
+            XCTAssertTrue(first.waitForExistence(timeout: 30), "Episode 1 is missing")
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                // The rows stack, so the second sits below the first at the same left edge.
+                for _ in 0..<4 where !second.exists || !second.isHittable { app.swipeUp() }
+                XCTAssertTrue(second.waitForExistence(timeout: 10), "Episode 2 is missing")
+                let dump = app.buttons.allElementsBoundByIndex.map { "\($0.label.prefix(40)) @\($0.frame)" }.joined(separator: "\n")
+                XCTAssertEqual(first.frame.minX, second.frame.minX, accuracy: 1, "Phone episodes are not in one column:\n\(dump)")
+                XCTAssertGreaterThan(second.frame.minY, first.frame.minY, "Episode 2 is not below episode 1")
+            } else {
+                XCTAssertTrue(second.waitForExistence(timeout: 10), "Episode 2 is missing")
+                XCTAssertGreaterThan(second.frame.minX, first.frame.minX, "Tablet episodes are not side by side")
+            }
+        }
+
+        step("Tapping an episode's words opens its page") {
+            let first = episode("S1 E1")
+            XCTAssertTrue(first.exists)
+            sleep(1) // the page is still settling from the swipe
+            first.tap()
+            if !button("Play").waitForExistence(timeout: 5) { first.tap() }
+            // An episode's page says plain "Play"; the series page below it says "Resume S1 E2 from ...".
+            XCTAssertTrue(button("Play").waitForExistence(timeout: 20), "The episode page did not open")
+        }
+    }
+
     // MARK: - Helpers
 
     /// Runs `body` as a named step and attaches a screenshot at the end, so a report shows each screen.
@@ -121,6 +168,11 @@ final class OnboardingFlowUITests: XCTestCase {
     private func button(_ label: String, contains: Bool = false) -> XCUIElement {
         let format = contains ? "label CONTAINS[c] %@" : "label ==[c] %@"
         return app.buttons.matching(NSPredicate(format: format, label)).firstMatch
+    }
+
+    /// An episode's words (its tag first): not the hero's "Play S1 E1", which also contains the tag.
+    private func episode(_ tag: String) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH[c] %@", tag)).firstMatch
     }
 
     private func text(_ label: String) -> XCUIElement {
