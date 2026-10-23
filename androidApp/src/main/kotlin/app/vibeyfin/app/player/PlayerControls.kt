@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -65,6 +66,8 @@ fun PlayerControls(
     hasTrackChoices: Boolean,
     /** The picture's one badge ("4K", "HDR10"); null shows none. */
     badge: String?,
+    /** Whether the back, play and forward buttons show: only when there is a stream to control and nothing else is in the middle. */
+    showTransport: Boolean,
     /** The chosen playback speed as a label ("1.5x"), which is also the speed button. */
     speedLabel: String,
     onClose: () -> Unit,
@@ -73,6 +76,11 @@ fun PlayerControls(
     /** Turns the video into a picture-in-picture window; null when the device can't. */
     onPip: (() -> Unit)?,
     onTogglePlay: () -> Unit,
+    /** The profile's skip lengths, which pick the numbers on the two skip buttons. */
+    skipBackSeconds: Int,
+    skipForwardSeconds: Int,
+    onSkipBack: () -> Unit,
+    onSkipForward: () -> Unit,
     /** The user is dragging the scrubber, or has let go (false); the controls must not hide meanwhile. */
     onScrubbing: (Boolean) -> Unit,
     onSeek: (Long) -> Unit,
@@ -83,7 +91,13 @@ fun PlayerControls(
     Box(modifier.fillMaxSize()) {
         TopBar(title, subtitle, hasTrackChoices, badge, speedLabel, onClose, onTracks, onSpeed, onPip, Modifier.align(Alignment.TopStart)
         )
-        PlayPauseButton(playing, onTogglePlay, Modifier.align(Alignment.Center))
+        if (showTransport) {
+            Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s6)) {
+                TransportSkipButton(R.drawable.ic_replay, skipBackSeconds, Strings.skipBackLabel(skipBackSeconds), onSkipBack)
+                PlayPauseButton(playing, onTogglePlay)
+                TransportSkipButton(R.drawable.ic_forward, skipForwardSeconds, Strings.skipForwardLabel(skipForwardSeconds), onSkipForward)
+            }
+        }
         Scrubber(
             positionMs,
             durationMs,
@@ -143,7 +157,8 @@ private fun TopBar(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            subtitle?.let {
+            // One meta line: the subtitle, then the format badge as plain text.
+            Strings.metaLine(subtitle, badge)?.let {
                 Text(
                     text = it,
                     style = MaterialTheme.typography.bodySmall,
@@ -152,18 +167,6 @@ private fun TopBar(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-        }
-        if (badge != null) {
-            Spacer(Modifier.width(VibeyFinTokens.Space.s3))
-            Text(
-                text = badge,
-                style = MaterialTheme.typography.labelMedium,
-                color = VibeyFinTokens.Colors.ink,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(VibeyFinTokens.Colors.scrim)
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
-            )
         }
         Spacer(Modifier.width(VibeyFinTokens.Space.s3))
         TextChipButton(speedLabel, Strings.speed, onSpeed)
@@ -236,6 +239,34 @@ private fun ChipButton(icon: Int, description: String, onClick: () -> Unit) {
                 modifier = Modifier.size(20.dp),
             )
         }
+    }
+}
+
+/**
+ * A skip button: the arrow circle in `ink` on the scrim with the seconds over it, 48 dp to touch. The
+ * number is text rather than one drawable per value, so every setting (15, 45, 60 too) has a glyph.
+ */
+@Composable
+private fun TransportSkipButton(icon: Int, seconds: Int, description: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = description,
+            tint = VibeyFinTokens.Colors.ink,
+            modifier = Modifier.size(40.dp),
+        )
+        Text(
+            text = seconds.toString(),
+            style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"),
+            color = VibeyFinTokens.Colors.ink,
+            modifier = Modifier.padding(top = 3.dp).clearAndSetSemantics { },
+        )
     }
 }
 

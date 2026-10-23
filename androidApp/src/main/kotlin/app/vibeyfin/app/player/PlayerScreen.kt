@@ -28,6 +28,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import app.vibeyfin.app.theme.VibeyFinTokens
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -139,6 +143,9 @@ fun PlayerRoute(
     var buffering by remember { mutableStateOf(true) }
     var positionMs by remember { mutableLongStateOf(0L) }
     var durationMs by remember { mutableLongStateOf(0L) }
+    // Whether there is something to seek in: skip buttons and double-taps do nothing while loading, buffering or showing an error.
+    // Read by the gesture handler too, which is set up once, so it must see the current value.
+    val playable by rememberUpdatedState(state.stream != null && state.message == null && !state.loading && !buffering)
 
     val close = {
         if (!leaving) {
@@ -343,6 +350,15 @@ fun PlayerRoute(
     var controlsVisible by remember { mutableStateOf(true) }
     LaunchedEffect(pip.active) { if (pip.active) controlsVisible = false }
     var interactions by remember { mutableIntStateOf(0) }
+    // The "10s" shown after a double-tap; each tap restarts the timer, so stacked skips keep it up.
+    var flashSide by remember { mutableStateOf<SkipSide?>(null) }
+    var flashCount by remember { mutableIntStateOf(0) }
+    LaunchedEffect(flashCount) {
+        if (flashCount > 0) {
+            delay(SEEK_FLASH_MS)
+            flashSide = null
+        }
+    }
     var scrubbing by remember { mutableStateOf(false) }
     val screenReaderOn = remember(context) {
         context.getSystemService(AccessibilityManager::class.java)?.isTouchExplorationEnabled == true
@@ -382,13 +398,45 @@ fun PlayerRoute(
         // A tap anywhere on the video shows or hides the controls.
         Box(
             Modifier.fillMaxSize().pointerInput(Unit) {
-                detectTapGestures {
-                    viewModel.onUserInteraction()
-                    controlsVisible = !controlsVisible
-                    interactions++
-                }
+                detectTapGestures(
+                    onTap = {
+                        viewModel.onUserInteraction()
+                        controlsVisible = !controlsVisible
+                        interactions++
+                    },
+                    // The left third skips back, the right third forward, the middle does nothing.
+                    onDoubleTap = { at ->
+                        val side = when {
+                            at.x < size.width / 3f -> SkipSide.Back
+                            at.x > size.width * 2f / 3f -> SkipSide.Forward
+                            else -> null
+                        }
+                        if (side != null && playable) {
+                            viewModel.onUserInteraction()
+                            if (side == SkipSide.Back) viewModel.onSkipBack(positionMs) else viewModel.onSkipForward(positionMs, durationMs)
+                            flashCount++
+                            flashSide = side
+                            interactions++
+                        }
+                    },
+                )
             },
         )
+        flashSide?.let { side ->
+            val seconds = if (side == SkipSide.Back) state.skipBackSeconds else state.skipForwardSeconds
+            Text(
+                text = Strings.seekFlash(seconds),
+                style = MaterialTheme.typography.titleMedium,
+                color = VibeyFinTokens.Colors.ink,
+                modifier = Modifier
+                    .align(if (side == SkipSide.Back) Alignment.CenterStart else Alignment.CenterEnd)
+                    .safeDrawingPadding()
+                    .padding(horizontal = 48.dp)
+                    .clip(CircleShape)
+                    .background(VibeyFinTokens.Colors.scrim)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
         if (!leaving && !pip.active) {
             AnimatedVisibility(visible = controlsVisible || state.message != null, enter = fadeIn(), exit = fadeOut()) {
                 PlayerControls(
@@ -399,6 +447,7 @@ fun PlayerRoute(
                     playing = playing,
                     hasTrackChoices = state.hasTrackChoices && state.message == null,
                     badge = state.badge,
+                    showTransport = playable,
                     speedLabel = Strings.speedValue(state.speed),
                     trickplay = trickplay,
                     onClose = close,
@@ -426,6 +475,18 @@ fun PlayerRoute(
                     onScrubbing = {
                         viewModel.onUserInteraction()
                         scrubbing = it
+                        interactions++
+                    },
+                    skipBackSeconds = state.skipBackSeconds,
+                    skipForwardSeconds = state.skipForwardSeconds,
+                    onSkipBack = {
+                        viewModel.onUserInteraction()
+                        viewModel.onSkipBack(positionMs)
+                        interactions++
+                    },
+                    onSkipForward = {
+                        viewModel.onUserInteraction()
+                        viewModel.onSkipForward(positionMs, durationMs)
                         interactions++
                     },
                     onSeek = {
@@ -721,3 +782,8 @@ private fun displayHdrTypes(context: Context): String {
     }
     return "display HDR: ${names.ifEmpty { listOf("none") }.joinToString()}"
 }
+
+/** Which side of the picture a double-tap skips. */
+private enum class SkipSide { Back, Forward }
+
+private const val SEEK_FLASH_MS = 700L
