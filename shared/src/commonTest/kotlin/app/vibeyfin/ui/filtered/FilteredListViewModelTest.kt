@@ -139,11 +139,11 @@ class FilteredListViewModelTest {
     fun aPageStartsWithItsDefaultOrderAndNothingNarrowed() = runTest {
         app.signedIn().categorised()
 
-        val shows = viewModel(HomeFilter.Shows).uiState.first { !it.list.loading }
+        val shows = viewModel(HomeFilter.Shows).uiState.first { !it.list.loading && !it.list.refreshing }
         assertEquals(listOf("Sort: Name", "Genre"), shows.chips.map { it.label })
         assertEquals(listOf(false, false), shows.chips.map { it.active })
 
-        val new = viewModel(HomeFilter.New).uiState.first { !it.list.loading }
+        val new = viewModel(HomeFilter.New).uiState.first { !it.list.loading && !it.list.refreshing }
         val sort = new.chips.first { it.kind == ListChipKind.Sort }
         assertEquals("Sort: Recently added", sort.label)
         assertFalse(sort.active)
@@ -153,7 +153,7 @@ class FilteredListViewModelTest {
     fun aGenresOwnPageHasNoGenreButton() = runTest {
         app.signedIn().categorised()
 
-        val state = viewModel(HomeFilter.Genre("g1", "Action")).uiState.first { !it.list.loading }
+        val state = viewModel(HomeFilter.Genre("g1", "Action")).uiState.first { !it.list.loading && !it.list.refreshing }
 
         assertEquals(listOf("Sort: Name"), state.chips.map { it.label })
     }
@@ -162,7 +162,7 @@ class FilteredListViewModelTest {
     fun sortOpensItsThreeChoicesWithTheCurrentOneChecked() = runTest {
         app.signedIn().categorised()
         val viewModel = viewModel(HomeFilter.Movies)
-        viewModel.uiState.first { !it.list.loading }
+        viewModel.uiState.first { !it.list.loading && !it.list.refreshing }
 
         viewModel.onChip(ListChipKind.Sort)
         val sheet = assertNotNull(viewModel.uiState.value.sheet)
@@ -177,11 +177,11 @@ class FilteredListViewModelTest {
         val server = app.signedIn()
         server.categorised()
         val viewModel = viewModel(HomeFilter.Movies)
-        viewModel.uiState.first { !it.list.loading }
+        viewModel.uiState.first { !it.list.loading && !it.list.refreshing }
 
         viewModel.onChip(ListChipKind.Sort)
         viewModel.onPick("Rating")
-        val state = viewModel.uiState.first { !it.list.loading && it.chips.first().active }
+        val state = viewModel.uiState.first { !it.list.loading && !it.list.refreshing && it.chips.first().active }
 
         assertEquals("Sort: Rating", state.chips.first().label)
         assertNull(state.sheet)
@@ -200,7 +200,7 @@ class FilteredListViewModelTest {
             Reply.json(itemsJson(itemJson("a", genres = listOf("Drama", "Action")), itemJson("b", genres = listOf("Drama")), itemJson("c", type = "Series", genres = listOf("Action")))),
         )
         val viewModel = viewModel(HomeFilter.MyList)
-        viewModel.uiState.first { !it.list.loading }
+        viewModel.uiState.first { !it.list.loading && !it.list.refreshing }
 
         viewModel.onChip(ListChipKind.Genre)
         val sheet = assertNotNull(viewModel.uiState.first { it.sheet?.loading == false }.sheet)
@@ -216,9 +216,9 @@ class FilteredListViewModelTest {
     fun newAndMyListOfferMoviesAndShowsButtonsAndTheOtherPagesDoNot() = runTest {
         app.signedIn().categorised()
 
-        val new = viewModel(HomeFilter.New).uiState.first { !it.list.loading }
-        val myList = viewModel(HomeFilter.MyList).uiState.first { !it.list.loading }
-        val shows = viewModel(HomeFilter.Shows).uiState.first { !it.list.loading }
+        val new = viewModel(HomeFilter.New).uiState.first { !it.list.loading && !it.list.refreshing }
+        val myList = viewModel(HomeFilter.MyList).uiState.first { !it.list.loading && !it.list.refreshing }
+        val shows = viewModel(HomeFilter.Shows).uiState.first { !it.list.loading && !it.list.refreshing }
 
         assertEquals(listOf("Movies", "Shows", "Sort: Recently added", "Genre"), new.chips.map { it.label })
         assertEquals(listOf("Movies", "Shows", "Sort: Recently added", "Genre"), myList.chips.map { it.label })
@@ -231,10 +231,10 @@ class FilteredListViewModelTest {
     fun theShowsButtonNarrowsThePageAndTheGenreCountsToShowsAndTappingItAgainClears() = runTest {
         app.signedIn().categorised()
         val viewModel = viewModel(HomeFilter.New)
-        viewModel.uiState.first { !it.list.loading }
+        viewModel.uiState.first { !it.list.loading && !it.list.refreshing }
 
         viewModel.onChip(ListChipKind.Shows)
-        val narrowed = viewModel.uiState.first { !it.list.loading && it.chips[1].active }
+        val narrowed = viewModel.uiState.first { !it.list.loading && !it.list.refreshing && it.chips[1].active }
         assertEquals("Series", app.jellyfin.requestsTo("GET", "/Items").last().query["includeItemTypes"])
         assertEquals(listOf(true, false), listOf(narrowed.chips[1].active, narrowed.chips[0].active))
 
@@ -246,7 +246,7 @@ class FilteredListViewModelTest {
 
         viewModel.onDismissSheet()
         viewModel.onChip(ListChipKind.Shows)
-        val cleared = viewModel.uiState.first { !it.list.loading && !it.chips[1].active }
+        val cleared = viewModel.uiState.first { !it.list.loading && !it.list.refreshing && !it.chips[1].active }
         assertEquals("Movie,Series", app.jellyfin.requestsTo("GET", "/Items").last().query["includeItemTypes"])
         assertFalse(cleared.chips[1].active)
     }
@@ -263,10 +263,10 @@ class FilteredListViewModelTest {
             }
         }
         val viewModel = viewModel(HomeFilter.MyList)
-        viewModel.uiState.first { !it.list.loading }
+        viewModel.uiState.first { !it.list.loading && !it.list.refreshing }
 
         viewModel.onChip(ListChipKind.Movies)
-        viewModel.uiState.first { !it.list.loading && it.chips[0].active }
+        viewModel.uiState.first { !it.list.loading && !it.list.refreshing && it.chips[0].active }
         viewModel.onChip(ListChipKind.Genre)
         val sheet = assertNotNull(viewModel.uiState.first { it.sheet?.loading == false }.sheet)
 
@@ -282,7 +282,7 @@ class FilteredListViewModelTest {
         val server = app.signedIn()
         server.on("GET", "/Items", Reply.json(itemsJson(itemJson("a"), itemJson("b"), total = 1284)))
 
-        val state = viewModel(HomeFilter.Library).uiState.first { !it.list.loading }
+        val state = viewModel(HomeFilter.Library).uiState.first { !it.list.loading && !it.list.refreshing }
 
         assertEquals(listOf("Movies", "Shows", "Collections", "Sort: Name", "Genre", "Year", "People"), state.chips.map { it.label })
         assertEquals(1284, state.list.total)
@@ -296,13 +296,13 @@ class FilteredListViewModelTest {
     fun aDecadeNarrowsTheLibraryToThoseYears() = runTest {
         app.signedIn().categorised()
         val viewModel = viewModel(HomeFilter.Library)
-        viewModel.uiState.first { !it.list.loading }
+        viewModel.uiState.first { !it.list.loading && !it.list.refreshing }
 
         viewModel.onChip(ListChipKind.Year)
         val sheet = assertNotNull(viewModel.uiState.first { it.sheet != null }.sheet)
         assertEquals(listOf("All years", "2020s", "2010s", "2000s", "1990s", "1980s", "Before 1980"), sheet.options.map { it.name })
         viewModel.onPick("Nineties")
-        val narrowed = viewModel.uiState.first { !it.list.loading && it.chips.any { chip -> chip.kind == ListChipKind.Year && chip.active } }
+        val narrowed = viewModel.uiState.first { !it.list.loading && !it.list.refreshing && it.chips.any { chip -> chip.kind == ListChipKind.Year && chip.active } }
 
         assertEquals("Year: 1990s", narrowed.chips.first { it.kind == ListChipKind.Year }.label)
         assertEquals("1990,1991,1992,1993,1994,1995,1996,1997,1998,1999", app.jellyfin.requestsTo("GET", "/Items").last().query["years"])
@@ -314,7 +314,7 @@ class FilteredListViewModelTest {
         server.categorised()
         server.on("GET", "/Persons", Reply.json(itemsJson(itemJson("p1", "Alexander Burger", type = "Person"), itemJson("p2", "Alexandra Day", type = "Person"))))
         val viewModel = viewModel(HomeFilter.Library)
-        viewModel.uiState.first { !it.list.loading }
+        viewModel.uiState.first { !it.list.loading && !it.list.refreshing }
 
         viewModel.onChip(ListChipKind.People)
         val prompt = assertNotNull(viewModel.uiState.first { it.sheet != null }.sheet)
@@ -328,7 +328,7 @@ class FilteredListViewModelTest {
         assertEquals("alex", app.jellyfin.requestsTo("GET", "/Persons").last().query["searchTerm"])
 
         viewModel.onPick("p1")
-        val narrowed = viewModel.uiState.first { !it.list.loading && it.chips.any { chip -> chip.kind == ListChipKind.People && chip.active } }
+        val narrowed = viewModel.uiState.first { !it.list.loading && !it.list.refreshing && it.chips.any { chip -> chip.kind == ListChipKind.People && chip.active } }
         assertEquals("With Alexander Burger", narrowed.chips.first { it.kind == ListChipKind.People }.label)
         assertEquals("p1", app.jellyfin.requestsTo("GET", "/Items").last().query["personIds"])
     }
@@ -339,7 +339,7 @@ class FilteredListViewModelTest {
         server.categorised()
         server.on("GET", "/Persons", Reply.json(itemsJson()))
         val viewModel = viewModel(HomeFilter.Library)
-        viewModel.uiState.first { !it.list.loading }
+        viewModel.uiState.first { !it.list.loading && !it.list.refreshing }
         viewModel.onChip(ListChipKind.People)
         viewModel.uiState.first { it.sheet != null }
 
@@ -356,13 +356,13 @@ class FilteredListViewModelTest {
     fun clearPutsTheLibraryBackAsItOpened() = runTest {
         app.signedIn().categorised()
         val viewModel = viewModel(HomeFilter.Library)
-        val opened = viewModel.uiState.first { !it.list.loading }
+        val opened = viewModel.uiState.first { !it.list.loading && !it.list.refreshing }
         assertTrue(opened.chips.none { it.kind == ListChipKind.Clear })
 
         viewModel.onChip(ListChipKind.Shows)
-        viewModel.uiState.first { !it.list.loading && it.chips.any { chip -> chip.kind == ListChipKind.Clear } }
+        viewModel.uiState.first { !it.list.loading && !it.list.refreshing && it.chips.any { chip -> chip.kind == ListChipKind.Clear } }
         viewModel.onChip(ListChipKind.Clear)
-        val cleared = viewModel.uiState.first { !it.list.loading && it.chips.none { chip -> chip.kind == ListChipKind.Clear } }
+        val cleared = viewModel.uiState.first { !it.list.loading && !it.list.refreshing && it.chips.none { chip -> chip.kind == ListChipKind.Clear } }
 
         assertEquals(listOf("Movies", "Shows", "Collections", "Sort: Name", "Genre", "Year", "People"), cleared.chips.map { it.label })
         assertEquals("Movie,Series", app.jellyfin.requestsTo("GET", "/Items").last().query["includeItemTypes"])
@@ -372,10 +372,10 @@ class FilteredListViewModelTest {
     fun theCollectionsButtonListsOnlyBoxSetsAndDropsTheFiltersThatDoNotApply() = runTest {
         app.signedIn().categorised()
         val viewModel = viewModel(HomeFilter.Library)
-        viewModel.uiState.first { !it.list.loading }
+        viewModel.uiState.first { !it.list.loading && !it.list.refreshing }
 
         viewModel.onChip(ListChipKind.Collections)
-        val state = viewModel.uiState.first { !it.list.loading && it.chips.any { chip -> chip.kind == ListChipKind.Collections && chip.active } }
+        val state = viewModel.uiState.first { !it.list.loading && !it.list.refreshing && it.chips.any { chip -> chip.kind == ListChipKind.Collections && chip.active } }
 
         assertEquals("BoxSet", app.jellyfin.requestsTo("GET", "/Items").last().query["includeItemTypes"])
         // Collections have no genre, year or person to narrow by.
@@ -386,7 +386,7 @@ class FilteredListViewModelTest {
     fun otherPagesDoNotOfferCollections() = runTest {
         app.signedIn().categorised()
 
-        val new = viewModel(HomeFilter.New).uiState.first { !it.list.loading }
+        val new = viewModel(HomeFilter.New).uiState.first { !it.list.loading && !it.list.refreshing }
 
         assertTrue(new.chips.none { it.kind == ListChipKind.Collections })
     }
@@ -396,7 +396,7 @@ class FilteredListViewModelTest {
         val server = app.signedIn()
         server.on("GET", "/Items", Reply.json(itemsJson(itemJson("a"), itemJson("b"), total = 2)))
         val viewModel = viewModel(HomeFilter.Library)
-        viewModel.uiState.first { !it.list.loading }
+        viewModel.uiState.first { !it.list.loading && !it.list.refreshing }
         server.on("GET", "/Items", Reply.json(itemsJson(itemJson("c"), total = 1)))
 
         viewModel.onChip(ListChipKind.Shows)
@@ -421,7 +421,7 @@ class FilteredListViewModelTest {
     fun theGenrePickerNarrowsAShowsPageAndAllGenresClearsIt() = runTest {
         app.signedIn().categorised()
         val viewModel = viewModel(HomeFilter.Shows)
-        viewModel.uiState.first { !it.list.loading }
+        viewModel.uiState.first { !it.list.loading && !it.list.refreshing }
 
         viewModel.onChip(ListChipKind.Genre)
         val sheet = assertNotNull(viewModel.uiState.first { it.sheet?.loading == false }.sheet)
@@ -430,14 +430,14 @@ class FilteredListViewModelTest {
         assertEquals(listOf(null, 2, 1), sheet.options.map { it.count })
 
         viewModel.onPick("g1")
-        val narrowed = viewModel.uiState.first { !it.list.loading && it.chips[1].active }
+        val narrowed = viewModel.uiState.first { !it.list.loading && !it.list.refreshing && it.chips[1].active }
         assertEquals("Genre: Action", narrowed.chips[1].label)
         assertEquals("g1", app.jellyfin.requestsTo("GET", "/Items").last().query["genreIds"])
 
         viewModel.onChip(ListChipKind.Genre)
         assertEquals("g1", viewModel.uiState.value.sheet?.selectedId)
         viewModel.onPick("")
-        val cleared = viewModel.uiState.first { !it.list.loading && !it.chips[1].active }
+        val cleared = viewModel.uiState.first { !it.list.loading && !it.list.refreshing && !it.chips[1].active }
         assertEquals("Genre", cleared.chips[1].label)
     }
 
@@ -447,7 +447,7 @@ class FilteredListViewModelTest {
         server.categorised()
         server.on("GET", "/Genres", Reply.status(HttpStatusCode.ServiceUnavailable))
         val viewModel = viewModel(HomeFilter.Movies)
-        viewModel.uiState.first { !it.list.loading }
+        viewModel.uiState.first { !it.list.loading && !it.list.refreshing }
 
         viewModel.onChip(ListChipKind.Genre)
         val failed = assertNotNull(viewModel.uiState.first { it.sheet?.loading == false }.sheet)
@@ -464,7 +464,7 @@ class FilteredListViewModelTest {
     fun dismissingThePickerChangesNothing() = runTest {
         app.signedIn().categorised()
         val viewModel = viewModel(HomeFilter.Movies)
-        viewModel.uiState.first { !it.list.loading }
+        viewModel.uiState.first { !it.list.loading && !it.list.refreshing }
         val requests = app.jellyfin.requestsTo("GET", "/Items").size
 
         viewModel.onChip(ListChipKind.Sort)
@@ -492,7 +492,7 @@ class FilteredListViewModelTest {
             ),
         )
         val viewModel = viewModel(HomeFilter.Movies)
-        viewModel.uiState.first { !it.list.loading }
+        viewModel.uiState.first { !it.list.loading && !it.list.refreshing }
 
         viewModel.onChip(ListChipKind.Genre)
         val sheet = assertNotNull(viewModel.uiState.first { it.sheet?.loading == false }.sheet)
@@ -516,7 +516,7 @@ class FilteredListViewModelTest {
             ),
         )
         val viewModel = viewModel(HomeFilter.Shows)
-        viewModel.uiState.first { !it.list.loading }
+        viewModel.uiState.first { !it.list.loading && !it.list.refreshing }
 
         viewModel.onChip(ListChipKind.Genre)
         val sheet = assertNotNull(viewModel.uiState.first { it.sheet?.loading == false }.sheet)

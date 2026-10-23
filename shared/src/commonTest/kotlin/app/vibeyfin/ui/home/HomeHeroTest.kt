@@ -9,10 +9,10 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class HomeHeroTest {
-    private fun item(id: String, backdrop: Boolean = true, logo: Boolean = true, year: Int? = 2024, genres: List<String> = emptyList()) = MediaItem(
+    private fun item(id: String, backdrop: Boolean = true, logo: Boolean = true, year: Int? = 2024, genres: List<String> = emptyList(), played: Boolean = false) = MediaItem(
         id = id, title = id, kind = ItemKind.Movie, isFolder = false, year = year, runtimeMinutes = null, genres = genres, overview = null,
         rating = null, ageRating = null, seriesName = null, seasonNumber = null, episodeNumber = null, posterAspectRatio = 2f / 3f,
-        posterUrl = null, backdropUrl = if (backdrop) "b-$id" else null, logoUrl = if (logo) "l-$id" else null,
+        played = played, posterUrl = null, backdropUrl = if (backdrop) "b-$id" else null, logoUrl = if (logo) "l-$id" else null,
     )
 
     @Test
@@ -20,6 +20,14 @@ class HomeHeroTest {
         val picked = pickHero(listOf(item("no-logo", logo = false), item("no-backdrop", backdrop = false), item("ok")), Random(1))
 
         assertEquals("ok", picked?.id)
+    }
+
+    @Test
+    fun aWatchedItemIsNeverFeatured() {
+        val picked = pickHero(listOf(item("seen", played = true), item("fresh")), Random(1))
+
+        assertEquals("fresh", picked?.id)
+        assertNull(pickHero(listOf(item("seen", played = true)), Random(1)))
     }
 
     @Test
