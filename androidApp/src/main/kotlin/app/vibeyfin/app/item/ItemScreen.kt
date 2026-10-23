@@ -1,6 +1,7 @@
 package app.vibeyfin.app.item
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Box
@@ -134,22 +135,22 @@ fun ItemScreen(
                 item != null -> ItemPhase.Ready
                 else -> ItemPhase.Loading
             }
-            androidx.compose.animation.Crossfade(targetState = phase, animationSpec = androidx.compose.animation.core.tween(ITEM_FADE_MS), label = "item page") { shown ->
-                when (shown) {
-                    ItemPhase.Loading -> BoxWithConstraints(Modifier.fillMaxSize()) {
-                        ItemSkeleton(wide = maxWidth >= WIDE_FROM, screenWidth = maxWidth, screenHeight = maxHeight, margin = if (maxWidth >= WIDE_FROM) VibeyFinTokens.Space.s6 else screenMargin())
-                    }
-                    ItemPhase.Failed -> Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-                        Spacer(Modifier.height(BackButtonSpace))
-                        LoadError(message = state.message.orEmpty(), onRetry = onRetry, modifier = Modifier.padding(horizontal = screenMargin()))
-                    }
-                    // A tablet, or a foldable unfolded, gets the wide layout; a phone, and a foldable closed, the narrow one.
-                    ItemPhase.Ready -> if (item != null) BoxWithConstraints(Modifier.fillMaxSize()) {
-                        ItemPage(
-                            item, state, wide = maxWidth >= WIDE_FROM, screenWidth = maxWidth, screenHeight = maxHeight,
-                            onPlay, onPlayEpisode, onOpen, onOpenSeries, onToggleFavorite, onTogglePlayed, onToggleEpisodePlayed, onSelectSeason, onRetrySimilar, onRetryCollections, onRetrySeasons, onRetryEpisodes, onOpenPerson, onRetryExtras,
-                        )
-                    }
+            // The grey page gives way to the real one at once, with the picture already in place (the tapped poster grows into it);
+            // the title, facts, buttons and the rest then fade in together, as on a collection's page.
+            when (phase) {
+                ItemPhase.Loading -> BoxWithConstraints(Modifier.fillMaxSize()) {
+                    ItemSkeleton(wide = maxWidth >= WIDE_FROM, screenWidth = maxWidth, screenHeight = maxHeight, margin = if (maxWidth >= WIDE_FROM) VibeyFinTokens.Space.s6 else screenMargin())
+                }
+                ItemPhase.Failed -> Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+                    Spacer(Modifier.height(BackButtonSpace))
+                    LoadError(message = state.message.orEmpty(), onRetry = onRetry, modifier = Modifier.padding(horizontal = screenMargin()))
+                }
+                // A tablet, or a foldable unfolded, gets the wide layout; a phone, and a foldable closed, the narrow one.
+                ItemPhase.Ready -> if (item != null) BoxWithConstraints(Modifier.fillMaxSize()) {
+                    ItemPage(
+                        item, state, wide = maxWidth >= WIDE_FROM, screenWidth = maxWidth, screenHeight = maxHeight,
+                        onPlay, onPlayEpisode, onOpen, onOpenSeries, onToggleFavorite, onTogglePlayed, onToggleEpisodePlayed, onSelectSeason, onRetrySimilar, onRetryCollections, onRetrySeasons, onRetryEpisodes, onOpenPerson, onRetryExtras,
+                    )
                 }
             }
             FloatingBackButton(onBack)
@@ -160,8 +161,8 @@ fun ItemScreen(
 
 private enum class ItemPhase { Loading, Failed, Ready }
 
-/** How long the grey page takes to fade into the real one: quick, but not a cut. */
-private const val ITEM_FADE_MS = 160
+/** How long the page's text and buttons take to fade in: quick, but not a cut. */
+private const val ITEM_FADE_MS = 220
 
 /** From this width the page uses its tablet layout: the backdrop at 16:9 with the details in a column on the left. */
 private val WIDE_FROM = 600.dp
@@ -227,13 +228,17 @@ private fun ItemPage(
         }
     }
     val scroll = rememberScrollState()
+    // The words and buttons fade in together over the picture, which is there from the first frame.
+    var revealed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { revealed = true }
+    val reveal by androidx.compose.animation.core.animateFloatAsState(if (revealed) 1f else 0f, androidx.compose.animation.core.tween(ITEM_FADE_MS), label = "page reveal")
     if (!wide) {
         // The picture stays put behind the page and darkens; the text goes up over it, and the rest of the page covers it.
         val heroHeight = screenWidth * PHONE_HERO_BY_WIDTH
         Box(Modifier.fillMaxSize()) {
             // The picture is where the tapped poster lands (and where it leaves from on the way back).
             PinnedBackdrop(item, heroHeight, scroll, Modifier.sharedPoster(item.id, source = false))
-            Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
+            Column(Modifier.fillMaxSize().graphicsLayer { alpha = reveal }.verticalScroll(scroll)) {
                 // At least the picture's height; taller when the text needs more room, so nothing is cut off.
                 Box(Modifier.fillMaxWidth().heightIn(min = heroHeight)) {
                     Column(Modifier.align(Alignment.BottomCenter).padding(horizontal = margin).padding(bottom = VibeyFinTokens.Space.s4)) {
@@ -250,7 +255,7 @@ private fun ItemPage(
     val progress = if (firstScreenPx > 0f) scroll.value / firstScreenPx else 0f
     Box(Modifier.fillMaxSize()) {
         ItemBackdrop(item, screenWidth, screenHeight, progress, Modifier.fillMaxSize().sharedPoster(item.id, source = false))
-        Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
+        Column(Modifier.fillMaxSize().graphicsLayer { alpha = reveal }.verticalScroll(scroll)) {
             // The top of the first screen is the picture, clear; the details sit at the bottom of it.
             Spacer(Modifier.height(screenHeight * FIRST_SCREEN_CLEAR))
             Column(Modifier.fillMaxWidth(0.46f).widthIn(max = 520.dp).padding(horizontal = margin)) {

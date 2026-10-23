@@ -214,7 +214,8 @@ class HomeViewModel(
                     latestRows.value = emptyList()
                     genreRows.value = emptyList()
                     myListRow.value = MediaRow(MY_LIST_ID, Strings.myList, seeAll = SeeAll.MyList)
-                    hero.value = HeroState()
+                    // The grey card is up from the first state when the profile has the hero on, so it is there, not slid in later.
+                    hero.value = HeroState(loading = profileSettings.showHomeHero.first() != false)
                     continueAnswered.value = false
                     coroutineScope {
                         launch {

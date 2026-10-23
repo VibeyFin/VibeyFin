@@ -337,7 +337,7 @@ private fun Content(
             // The featured item, when there is one: full width, under the buttons and above what is being watched.
             // While it is being picked a grey card of the same size stands in and fades into the hero, so it does not just appear.
             if (state.hero != null || state.heroLoading) {
-                fullWidth(key = "hero") {
+                fullWidth(key = "hero", animate = false) {
                     val wideHero = LocalConfiguration.current.screenWidthDp >= 600
                     Crossfade(targetState = state.hero, animationSpec = tween(ROW_FADE_MS), label = "hero") { hero ->
                         if (hero == null) HomeHeroSkeleton(wideHero) else HomeHeroSection(hero, wideHero, onHeroPlay, onDetails, onHeroMyList)
@@ -362,9 +362,10 @@ private fun Content(
     }
 }
 
-private fun LazyGridScope.fullWidth(key: String, content: @Composable () -> Unit) {
-    // Rows that arrive, leave or change height slide and fade into place instead of snapping, so nothing jumps.
-    item(key = key, span = { GridItemSpan(maxLineSpan) }, contentType = "row") { Box(Modifier.animateItem()) { content() } }
+private fun LazyGridScope.fullWidth(key: String, animate: Boolean = true, content: @Composable () -> Unit) {
+    // Rows that arrive, leave or change height slide and fade into place instead of snapping, so nothing jumps. The hero does not:
+    // its grey card is simply there, and the hero fades into it in place.
+    item(key = key, span = { GridItemSpan(maxLineSpan) }, contentType = "row") { Box(if (animate) Modifier.animateItem() else Modifier) { content() } }
 }
 
 /** The row of what the user is in the middle of. Its cards run past the grid's margins to the screen edge. */
