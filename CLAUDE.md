@@ -15,6 +15,8 @@ The app should become very configurable over time, so settings live per profile 
   plugin and `com.android.application` in one module, which is why this is separate.
 - `iosApp/`: the native iOS app in SwiftUI (Xcode project with synchronized folders). It reads
   shared state through the facades in `shared/src/iosMain/.../ios`.
+  Swift files sit in feature folders under `iosApp/iosApp/` (`App`, `Home`, `Item`, `Library`, `Player`,
+  `Components` and so on), like the packages in `androidApp`. A new screen goes in its feature's folder.
 
 Targets: `androidTarget`, `iosArm64`, `iosSimulatorArm64`.
 

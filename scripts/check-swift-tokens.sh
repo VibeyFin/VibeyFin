@@ -1,5 +1,5 @@
 #!/bin/bash
-# Fails when the brand values in iosApp/iosApp/Theme.swift or the AccentColor asset drift from the
+# Fails when the brand values in iosApp/iosApp/App/Theme.swift or the AccentColor asset drift from the
 # `ios` column of design/tokens.json. System colours (bg, ink, ...) are Apple semantic colours and
 # have no hex in Swift, so only the brand, spacing and radius tokens are compared.
 set -e
@@ -8,7 +8,7 @@ python3 -I - <<'PY'
 import json, re, sys
 
 tokens = json.load(open('design/tokens.json'))
-swift = open('iosApp/iosApp/Theme.swift').read()
+swift = open('iosApp/iosApp/App/Theme.swift').read()
 errors = []
 
 def family(name):
