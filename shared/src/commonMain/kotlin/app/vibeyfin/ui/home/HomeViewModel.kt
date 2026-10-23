@@ -35,6 +35,7 @@ import kotlin.random.Random
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.drop
 import app.vibeyfin.domain.ProfileSettings
+import app.vibeyfin.domain.SearchHistory
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlin.time.Clock
@@ -133,6 +134,7 @@ class HomeViewModel(
     private val changes: WatchChanges,
     private val clock: Clock,
     private val profileSettings: ProfileSettings,
+    private val searchHistory: SearchHistory,
 ) : ViewModel() {
     private val exit = MutableStateFlow<HomeExit?>(null)
     // Signed in, the libraries are always on their way, so the first thing to show is loading, not empty.
@@ -631,10 +633,15 @@ class HomeViewModel(
         exit.value = HomeExit.Servers
     }
 
-    /** Revokes the token on the server, locks the profile here, and goes back to "Who's watching?". */
+    /**
+     * Revokes the token on the server, locks the profile here, forgets what it searched for, and goes back to "Who's watching?".
+     * (An expired session keeps the history: that profile is coming back.)
+     */
     fun onSignOut() {
         val serverId = currentServerId() ?: return
         viewModelScope.launch {
+            // While still signed in: the history is the signed-in profile's.
+            searchHistory.clear()
             connection.signOut()
             exit.value = HomeExit.WhoIsWatching(serverId)
         }

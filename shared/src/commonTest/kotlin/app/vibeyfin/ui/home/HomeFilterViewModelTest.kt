@@ -41,7 +41,7 @@ class HomeFilterViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(HomeViewModel(app.connection, app.library, app.watch, app.watchChanges, app.clock, app.profileSettings))
+    private fun viewModel() = viewModels.track(HomeViewModel(app.connection, app.library, app.watch, app.watchChanges, app.clock, app.profileSettings, app.searchHistory))
 
     private suspend fun server(
         genres: Reply = Reply.json(itemsJson(itemJson("g2", "Thriller", type = "Genre"), itemJson("g1", "Drama", type = "Genre"))),

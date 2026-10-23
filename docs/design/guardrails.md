@@ -9,7 +9,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 - **Must** show Continue watching above the fold on a 6.1" phone, even with the hero present.
 - **Must** hide empty rows. Never show a row that says "No items" on Home.
 - Each row holds at most 20 items, then a "See all" action in its header.
-- Home has no fixed cap on rows: every genre the server lists gets one (biggest first), unless the profile limits them in Settings ("Genre rows on Home": all, top 20, 10, 5 or 3, or none). Rows load a few at a time and show from top to bottom.
+- Home has no fixed cap on rows: every genre the server lists gets one (biggest first), unless the profile limits them in Settings ("Genre rows on Home": all, top 20, 10, 5 or 3, or none). A new profile starts at the top 5; a profile from before the setting existed keeps all. Rows load a few at a time and show from top to bottom.
 - Hero: one item per app session, picked at random from recently added and My List, that has both a Backdrop and a Logo image and has **not** been watched. A rounded card (4:3 on a phone, 2.6:1 from 600dp) with Play beside My List; a profile setting turns it off. **Never** an auto-rotating carousel. Its skeleton is in the first frame, and Home waits for the setting before drawing, so nothing slides in.
 - Pull to refresh reloads Continue watching first.
 
@@ -51,7 +51,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 
 - Results after a 300ms debounce, posters in a 3-column grid; recent searches when the field is empty.
 - Group by type (Movies, Shows, Episodes, People, Collections) once there are results in more than one; filter buttons (All, Movies, Shows, Episodes, People, Collections) narrow them. A person opens their own page, a collection its own page.
-- Recent searches are kept per profile on the device, at most ten.
+- Recent searches are kept per profile on the device, at most ten. Signing out clears that profile's list; an expired session keeps it, because the profile is coming back.
 
 ## Sign-in and profiles
 

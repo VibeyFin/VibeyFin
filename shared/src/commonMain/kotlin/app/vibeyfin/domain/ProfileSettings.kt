@@ -65,7 +65,7 @@ class ProfileSettings(
         /** Episodes in a row before the player asks "Are you still watching?". */
         const val DEFAULT_BINGE_THRESHOLD = 3
 
-        /** Every genre gets a row on Home (the default). */
+        /** Every genre gets a row on Home (what a profile that existed before the limit was added keeps). */
         const val HOME_GENRES_ALL = 0
 
         /** Home shows no genre rows. */

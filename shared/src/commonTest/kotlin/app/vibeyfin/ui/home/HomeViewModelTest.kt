@@ -51,7 +51,7 @@ class HomeViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(HomeViewModel(app.connection, app.library, app.watch, app.watchChanges, app.clock, app.profileSettings))
+    private fun viewModel() = viewModels.track(HomeViewModel(app.connection, app.library, app.watch, app.watchChanges, app.clock, app.profileSettings, app.searchHistory))
 
     private suspend fun signedIn(): FakeServer {
         val server = app.serverAt("http://nas:8096")
@@ -128,6 +128,28 @@ class HomeViewModelTest {
         assertEquals(1, app.jellyfin.requestsTo("POST", "/Sessions/Logout").size)
         assertNull(app.accounts.sessionToken("srv-1", "u1"))
         assertIs<ConnectionState.Disconnected>(app.connection.state.value)
+    }
+
+    @Test
+    fun signingOutForgetsWhatTheProfileSearchedForButSwitchingProfileKeepsIt() = runTest {
+        signedIn()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.userName != null }
+        app.searchHistory.record("heat")
+
+        viewModel.onSwitchProfile()
+        app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-1")
+        app.connection.activate("srv-1", "u1")
+        assertEquals(listOf("heat"), app.searchHistory.entries.first())
+
+        val again = viewModel()
+        again.uiState.first { it.userName != null }
+        again.onSignOut()
+        again.uiState.first { it.exit != null }
+        app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-2")
+        app.connection.activate("srv-1", "u1")
+
+        assertEquals(emptyList(), app.searchHistory.entries.first())
     }
 
     @Test

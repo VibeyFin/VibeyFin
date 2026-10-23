@@ -49,7 +49,7 @@ class HomeRowsViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(HomeViewModel(app.connection, app.library, app.watch, app.watchChanges, app.clock, app.profileSettings))
+    private fun viewModel() = viewModels.track(HomeViewModel(app.connection, app.library, app.watch, app.watchChanges, app.clock, app.profileSettings, app.searchHistory))
 
     private val libraries = listOf(
         itemJson("lib-m", "Movies", type = "CollectionFolder", isFolder = true, collectionType = "movies"),

@@ -118,13 +118,13 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `home shows every genre until the profile limits them`() = runTest {
+    fun `a new profile starts with the top five genre rows and can change it`() = runTest {
         app.signedIn()
         val viewModel = viewModel()
-        assertEquals(0, viewModel.uiState.first { it.hasProfile }.homeGenreRows)
+        assertEquals(5, viewModel.uiState.first { it.hasProfile }.homeGenreRows)
 
-        viewModel.onHomeGenreRowsChanged(5)
-        assertEquals(5, viewModel.uiState.first { it.homeGenreRows == 5 }.homeGenreRows)
+        viewModel.onHomeGenreRowsChanged(0)
+        assertEquals(0, viewModel.uiState.first { it.homeGenreRows == 0 }.homeGenreRows)
         viewModel.onHomeGenreRowsChanged(-1)
         assertEquals(-1, viewModel.uiState.first { it.homeGenreRows == -1 }.homeGenreRows)
     }
@@ -137,7 +137,7 @@ class SettingsViewModelTest {
 
         for (invalid in listOf(1, 4, 7, 21, -2)) {
             viewModel.onHomeGenreRowsChanged(invalid)
-            assertEquals(0, app.profileSettings.homeGenreRows.first())
+            assertEquals(5, app.profileSettings.homeGenreRows.first())
         }
     }
 
