@@ -59,7 +59,7 @@ struct HomeHeroView: View {
                 .controlSize(.regular)
                 // Not aqua: aqua is the one primary action. A soft, see-through button over the picture.
                 Button(action: onMyList) {
-                    Label(Strings.shared.myList.titleCased(), systemImage: item.isFavorite ? "checkmark" : "plus")
+                    Label(Strings.shared.myList.titleCased(), systemImage: item.isFavorite ? "heart.fill" : "heart")
                         .font(.body.weight(.medium))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 40)

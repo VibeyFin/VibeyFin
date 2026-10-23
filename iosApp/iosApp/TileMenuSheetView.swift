@@ -29,7 +29,7 @@ struct TileMenuSheetView: View {
                 if let message = state.actionMessage {
                     Text(message).font(.subheadline).foregroundStyle(.red).padding(.horizontal, Space.s4).padding(.vertical, Space.s2)
                 }
-                row(Strings.shared.myListAction(onList: item.isFavorite), item.isFavorite ? "checkmark" : "plus", onMyList)
+                row(Strings.shared.myListAction(onList: item.isFavorite), item.isFavorite ? "heart.fill" : "heart", onMyList)
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)

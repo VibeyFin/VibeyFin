@@ -114,7 +114,7 @@ Movies and Shows rows. On a tablet the header is wide (21:9) with the details in
 A long press on any poster, in a row, a grid or search results, opens a short bottom sheet on both platforms:
 
 - **Details** opens the title's page, **Trailer** (only a movie or a show can have one, and only when it does: the server's own plays in the app, one on the web opens in
-  YouTube) and **My List** (adds or removes, and says which).
+  YouTube) and **My List** (a heart, filled when it is on the list; adds or removes, and says which).
 - The rows are there when the sheet opens. Lists do not carry trailers, so the sheet looks the title up; a title with no trailer never
   shows a Trailer row that then goes away, and the lookup never undoes a My List change made in the meantime.
 
