@@ -16,7 +16,9 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 ## Cards
 
 - Poster tap → detail. Continue-watching tap → **resume playback directly**; its info button → detail.
-- Long-press on a poster → a bottom sheet (both platforms) with Details, Trailer (only when the title has one) and My List. The rows are there at once; a title with no trailer never shows a Trailer row that then disappears. It works the same in search results. Episode cards have their own long-press menu: View episode and the watched mark.
+- Long-press on a poster → a bottom sheet (both platforms) with Details, Trailer (only when the title has one) and My List. The rows are there at once; a title with no trailer never shows a Trailer row that then disappears. It works the same in search results. Only a movie or a show is ever looked up for a trailer: a collection, season or episode shows no Trailer row and no grey line, and nothing is asked of the server. Episode cards have their own long-press menu: View episode and the watched mark.
+- A row of a menu or sheet that is held (a subtitle picker, the poster menu, a dropdown) lights up in the accent colour; it does not shrink or move. Buttons and cards elsewhere still dip slightly when pressed.
+- Pressing Play opens the player with a short fade and a slight grow from the page behind it, never an instant cut.
 - Progress bar only while in progress (between the server's resume thresholds). Watched items get the check badge, no bar.
 - **Never** more than one badge per card. Priority: New episode > 4K / HDR > rating.
 

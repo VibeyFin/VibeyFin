@@ -339,8 +339,11 @@ private fun Content(
             if (state.hero != null || state.heroLoading) {
                 fullWidth(key = "hero", animate = false) {
                     val wideHero = LocalConfiguration.current.screenWidthDp >= 600
-                    Crossfade(targetState = state.hero, animationSpec = tween(ROW_FADE_MS), label = "hero") { hero ->
-                        if (hero == null) HomeHeroSkeleton(wideHero) else HomeHeroSection(hero, wideHero, onHeroPlay, onDetails, onHeroMyList)
+                    // Keyed on which title it is, not on the title's data: a tap on My List changes the data, and only the heart
+                    // should redraw, not the whole card fading into a copy of itself.
+                    Crossfade(targetState = state.hero?.id, animationSpec = tween(ROW_FADE_MS), label = "hero") { heroId ->
+                        val hero = state.hero
+                        if (heroId == null || hero == null) HomeHeroSkeleton(wideHero) else HomeHeroSection(hero, wideHero, onHeroPlay, onDetails, onHeroMyList)
                     }
                 }
             }

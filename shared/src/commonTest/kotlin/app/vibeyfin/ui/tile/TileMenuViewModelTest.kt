@@ -77,6 +77,21 @@ class TileMenuViewModelTest {
     }
 
     @Test
+    fun aCollectionIsNeverAskedForATrailer() = runTest {
+        val server = server(itemJson("c1", "Neon Collection", type = "BoxSet", isFolder = true, localTrailerCount = 1, remoteTrailers = listOf("https://www.youtube.com/watch?v=abc")))
+        val viewModel = viewModel()
+
+        viewModel.onOpen(tile().copy(id = "c1", title = "Neon Collection", kind = ItemKind.Collection, isFolder = true))
+
+        // No grey line waits for an answer that is not coming, and nothing about trailers goes to the server.
+        assertFalse(viewModel.uiState.value.checkingTrailer)
+        val state = viewModel.uiState.first { it.item != null }
+        assertNull(state.trailer)
+        assertEquals(0, app.jellyfin.requestsTo("GET", "/Items/c1/LocalTrailers").size)
+        assertTrue(server.address.isNotEmpty())
+    }
+
+    @Test
     fun aTitleWithNoTrailerOffersNone() = runTest {
         server(itemJson("m1", "Heat"))
         val viewModel = viewModel()

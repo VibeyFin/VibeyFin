@@ -298,12 +298,12 @@ class ItemViewModel(
             when (val result = library.item(itemId)) {
                 is ApiResult.Success -> {
                     val item = result.value
-                    content.value = ItemUiState(item = item, facts = item.facts(), loading = false, trailer = item.remoteTrailerUrl?.let { Trailer.Remote(it) })
+                    content.value = ItemUiState(item = item, facts = item.facts(), loading = false, trailer = item.remoteTrailerUrl?.takeIf { item.canHaveTrailer }?.let { Trailer.Remote(it) })
                     // The rest of the page loads on its own: each part fails and retries alone.
                     coroutineScope {
                         launch { loadSimilar() }
                         // A trailer the server holds plays in the app and wins over one on the web.
-                        if (item.localTrailerCount > 0) launch { loadLocalTrailer() }
+                        if (item.canHaveTrailer && item.localTrailerCount > 0) launch { loadLocalTrailer() }
                         // Movies and shows can be in collections; an episode or a season is not.
                         if (item.kind == ItemKind.Movie || item.kind == ItemKind.Series) launch { loadCollections() }
                         if (item.kind == ItemKind.Movie || item.kind == ItemKind.Series) launch { loadExtras() }

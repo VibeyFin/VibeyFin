@@ -59,10 +59,10 @@ class TileMenuViewModel(
     fun onOpen(item: MediaItem) {
         lookup?.cancel()
         toggled = false
-        content.value = TileMenuUiState(item = item, checkingTrailer = true)
+        content.value = TileMenuUiState(item = item, checkingTrailer = item.canHaveTrailer)
         lookup = viewModelScope.launch {
             val detail = (library.item(item.id) as? ApiResult.Success)?.value
-            val trailer = detail?.let { findTrailer(it) }
+            val trailer = detail?.takeIf { item.canHaveTrailer }?.let { findTrailer(it) }
             content.update { current ->
                 if (current.item?.id != item.id) {
                     current

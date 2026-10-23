@@ -11,7 +11,7 @@ Tick a box when it works. If something doesn't, see **What to send** at the end.
 - [ ] Opening the app shows the hero's grey card straight away, in the card's exact shape, and the rows below don't slide in underneath it.
 - [ ] The hero is a rounded card with the title's logo, a line of what it is and its genres, **Play** (aqua) beside **My List**. It never shows something you have already watched.
 - [ ] Tap the hero picture: the title's page opens. **Play** on a movie starts it; on a show it starts the next episode **(changes watch state)**.
-- [ ] My List on the hero fills the heart at once, and a second tap takes it off **(changes My List)**.
+- [ ] My List on the hero changes only its icon (+ to a tick): the picture, logo and Play button do not flicker or fade **(changes My List)**.
 - [ ] Settings → "Featured title on Home" off: the hero and its grey card are gone, with no gap. On again: it comes back.
 - [ ] Home with many genres: one row per genre, biggest first, rows appear a few at a time and nothing jumps. Settings → "Genre rows on Home" at Top 5 / 10 / 20 / All / None changes the rows to match.
 - [ ] Shows, Movies, New and Categories open their pages; Categories opens a sheet of genres with counts, and a pick opens that genre's page.
@@ -31,6 +31,7 @@ Tick a box when it works. If something doesn't, see **What to send** at the end.
 - [ ] On a title that has a trailer (the Trailer button shows): tap it. It opens **straight in YouTube** (or the system viewer), not in a pop-up inside the app.
 - [ ] Long-press a poster of a title **with** a trailer: the menu opens at once with Details, My List, and a Trailer row that appears without the other rows moving.
 - [ ] Long-press a poster of a title **without** a trailer: no Trailer row ever flashes up and disappears.
+- [ ] Long-press a **collection**: the menu has Details and My List only, with no Trailer row or grey line at any point.
 - [ ] Details opens the page; My List adds or removes and the row's text changes **(changes My List)**.
 
 ## 4. Library, Search and menus
@@ -38,6 +39,7 @@ Tick a box when it works. If something doesn't, see **What to send** at the end.
 - [ ] Library tab: posters three across, the title count under the name. Pick Movies / Shows / Collections / Sort / Genre: the old list dims and the count stays put until the new list is in, with no bounce.
 - [ ] Year offers decades (2020s … Before 1980). People opens a sheet with a search field; typing a name finds actors and directors, and picking one lists their titles.
 - [ ] A combination that matches nothing says "Nothing matches these filters…" and **Clear** puts everything back.
+- [ ] Hold your finger on a row in the subtitle picker, the poster menu and a dropdown: the row turns accent-coloured and does not shrink or move.
 - [ ] Picked rows in every sheet are a soft pill, not a tick. Chips are filled with no outline.
 - [ ] Search tab: the keyboard opens at once. Typing shows results grouped under Movies, Shows, Episodes, People and Collections; the filter buttons narrow them; a person opens their page; a collection opens its page.
 - [ ] Long-press a result in Search: the same menu as on a poster.
@@ -61,6 +63,7 @@ Tick a box when it works. If something doesn't, see **What to send** at the end.
 Do this on a title you don't mind changing, or on the local test server.
 
 - [ ] HEVC plays on the phone's hardware decoder.
+- [ ] Pressing Play: the player fades in with a slight grow, not an instant cut.
 - [ ] Starting a title: the player is full screen, landscape, including the camera cut-out area; leaving it brings the page back without a long wait in landscape.
 - [ ] Turn Wi-Fi off for about ten seconds mid-playback: it retries by itself, then offers "Try again" and does not switch to a transcode on its own.
 - [ ] Resume: leave halfway, come back: Resume says the time left, and "start over" is the small round arrow beside it.

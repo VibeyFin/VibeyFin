@@ -1,5 +1,6 @@
 package app.vibeyfin.app.components
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -30,6 +31,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
+import app.vibeyfin.app.theme.MenuPressIndication
 import app.vibeyfin.app.theme.VibeyFinTokens
 
 /** One row of an [OptionList]: [key] is handed back when it is chosen. */
@@ -51,7 +53,7 @@ data class OptionRow(
 fun OptionList(title: String, options: List<OptionRow>, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
     // Lazy, so a file with dozens of subtitle tracks only builds the rows on screen as the sheet slides up.
     // No stretch at the ends of the list.
-    CompositionLocalProvider(LocalOverscrollFactory provides null) {
+    CompositionLocalProvider(LocalOverscrollFactory provides null, LocalIndication provides MenuPressIndication) {
         LazyColumn(modifier.nestedScroll(remember { KeepAtListEnd })) {
             item {
                 Text(

@@ -94,6 +94,9 @@ data class MediaItem(
      */
     val opensList: Boolean get() = isFolder && kind != ItemKind.Series
 
+    /** Only a movie or a show has a trailer to look for: a collection, a season, an episode or a folder never does, so nothing asks. */
+    val canHaveTrailer: Boolean get() = kind == ItemKind.Movie || kind == ItemKind.Series
+
     /** A library of films or shows (or a mix), which Home gives a "Recently added" row; music, books, photos and live TV do not. */
     val holdsVideo: Boolean
         get() = kind == ItemKind.Library && (collectionType == null || collectionType in VIDEO_COLLECTIONS)

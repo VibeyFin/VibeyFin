@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.vibeyfin.R
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.WithMenuPress
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.item.Trailer
 import app.vibeyfin.ui.tile.TileMenuUiState
@@ -56,6 +57,8 @@ fun TileMenuSheet(
         sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
+        // Held, a row lights up in the accent colour instead of shrinking like a button.
+        WithMenuPress {
         Column(Modifier.navigationBarsPadding().padding(bottom = VibeyFinTokens.Space.s4)) {
             Text(
                 text = item.title,
@@ -87,6 +90,7 @@ fun TileMenuSheet(
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s2).semantics { liveRegion = LiveRegionMode.Polite })
             }
             MenuRow(Strings.myListAction(item.isFavorite), rememberIcon(if (item.isFavorite) Icons.Filled.Check else Icons.Filled.Add), onMyList)
+        }
         }
     }
 }

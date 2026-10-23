@@ -76,8 +76,10 @@ private const val SLIDE_FRACTION = 5
 /** Opening a screen grows it in from slightly smaller, as if opening the thing that was tapped. */
 private const val OPEN_START_SCALE = 0.92f
 
-/** The player is full-screen landscape video, so it only fades in: a scale would fight the rotation. */
-private const val PLAYER_FADE_MS = 160
+/** The player fades in and grows a little from the page behind it, so pressing Play is felt; kept gentle so it does not fight the rotation. */
+private const val PLAYER_FADE_MS = 320
+
+private const val PLAYER_START_SCALE = 0.94f
 
 private fun NavBackStackEntry.opensPlayer() = destination.hasRoute<Player>()
 
@@ -92,7 +94,7 @@ private fun enter(target: NavBackStackEntry) =
     } else if (target.isTabRoot()) {
         fadeIn(tween(TAB_FADE_MS))
     } else if (target.opensPlayer()) {
-        fadeIn(tween(PLAYER_FADE_MS))
+        fadeIn(tween(PLAYER_FADE_MS)) + scaleIn(tween(PLAYER_FADE_MS), initialScale = PLAYER_START_SCALE)
     } else {
         scaleIn(tween(SLIDE_MS), initialScale = OPEN_START_SCALE) + fadeIn(tween(SLIDE_MS))
     }

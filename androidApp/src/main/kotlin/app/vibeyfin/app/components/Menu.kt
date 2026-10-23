@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.WithMenuPress
 
 /**
  * The app's dropdown menu: opens just below the control that owns it, with rounded corners and a soft
@@ -44,6 +45,8 @@ fun VibeyFinMenu(expanded: Boolean, onDismiss: () -> Unit, content: @Composable 
  */
 @Composable
 fun VibeyFinMenuItem(label: String, icon: ImageVector?, selected: Boolean = false, onClick: () -> Unit) {
+    // Held, a row lights up in the accent colour instead of shrinking like a button.
+    WithMenuPress {
     DropdownMenuItem(
         // The chosen entry (a setting's value) is lit as a soft pill instead of carrying a tick.
         text = { Text(label, fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.SemiBold else null) },
@@ -61,4 +64,5 @@ fun VibeyFinMenuItem(label: String, icon: ImageVector?, selected: Boolean = fals
             .then(if (selected) Modifier.background(VibeyFinTokens.Colors.accentSoft) else Modifier)
             .heightIn(min = 52.dp),
     )
+    }
 }
