@@ -229,9 +229,9 @@ struct HeroDetailsView: View {
         }
     }
 
-    /// The actions under Play, four equal columns, each an icon over a label: My List (the server's favourites), Trailer (only when
-    /// there is one), Watched (a tick) and Download (it does nothing yet). A trailer the server holds plays in the app; one on the
-    /// web opens in the system's viewer.
+    /// The actions under Play, each an icon over a label: My List (the server's favourites), Trailer (only when there is one) and
+    /// Watched (a tick). Download joins them with offline playback. A trailer the server holds plays in the app; one on the web
+    /// opens in the system's viewer.
     private var actions: some View {
         HStack(spacing: 0) {
             actionButton(
@@ -263,8 +263,7 @@ struct HeroDetailsView: View {
             } else {
                 Color.clear.frame(maxWidth: .infinity, minHeight: 1)
             }
-            // Offline is a later phase: the button is here, and does nothing yet.
-            actionButton(label: Strings.shared.download, description: Strings.shared.download, systemImage: "arrow.down.to.line") {}
+            // Download returns with offline playback (Phase 10): a button that does nothing is worse than none.
         }
         .frame(maxWidth: .infinity)
     }

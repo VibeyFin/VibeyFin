@@ -58,7 +58,7 @@ private fun Tab.icon(): ImageVector = when (this) {
     Tab.Downloads -> ImageVector.vectorResource(R.drawable.ic_download)
 }
 
-/** What Library and Downloads show until their features land. */
+/** What Downloads shows until offline playback lands. */
 @Composable
 fun NotAvailableYet() {
     Box(Modifier.fillMaxSize().padding(horizontal = screenMargin()), contentAlignment = Alignment.Center) {

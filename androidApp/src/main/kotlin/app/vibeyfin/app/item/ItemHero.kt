@@ -75,59 +75,6 @@ import app.vibeyfin.ui.item.ItemUiState
 import app.vibeyfin.ui.item.Trailer
 import coil3.compose.AsyncImage
 
-/** Phones: the backdrop is cropped to 2:3, so the picture fills most of the first screen and runs under the status bar. */
-private const val HERO_ASPECT = 2f / 3f
-
-/** Without a picture the hero is this much shorter. */
-private const val HERO_ASPECT_NO_PICTURE = 1.1f
-
-/**
- * The phone's hero: the backdrop full-bleed with the title, the facts, the overview and Play laid over it, centred. The text sits
- * on the scrim: dark where the text is, clear where the picture should read, ending in the page's own colour. (A tablet lays
- * the page out differently: see [ItemBackdrop] and [HeroDetails].)
- */
-@Composable
-fun ItemHero(
-    item: MediaItem,
-    state: ItemUiState,
-    margin: Dp,
-    onPlay: (startOver: Boolean) -> Unit,
-    onOpenSeries: (String) -> Unit,
-    onToggleFavorite: () -> Unit,
-    onPlayTrailer: (String) -> Unit,
-    onTogglePlayed: () -> Unit,
-) {
-    Box(Modifier.fillMaxWidth()) {
-        val picture = item.backdropUrl ?: item.posterUrl
-        if (picture != null) {
-            Artwork(
-                url = picture,
-                title = item.title,
-                aspectRatio = HERO_ASPECT,
-                blurHash = if (item.backdropUrl != null) item.backdropBlurHash else item.posterBlurHash,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        } else {
-            // Nothing to show behind the title: a plain tile, shorter than a picture would be, without the title written twice.
-            Box(Modifier.fillMaxWidth().aspectRatio(HERO_ASPECT_NO_PICTURE).background(VibeyFinTokens.Colors.surface2))
-        }
-        val scrim = VibeyFinTokens.Colors.scrim
-        val scrimStrong = VibeyFinTokens.Colors.scrimStrong
-        Box(
-            Modifier.matchParentSize().background(
-                Brush.verticalGradient(0f to scrim, 0.18f to Color.Transparent, 0.40f to Color.Transparent, 0.60f to scrim, 0.82f to scrimStrong, 1f to VibeyFinTokens.Colors.bg),
-            ),
-        )
-        Column(
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = margin).padding(bottom = VibeyFinTokens.Space.s4),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-        ) {
-            HeroDetails(item, state, centered = true, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer, onTogglePlayed)
-        }
-    }
-}
-
 /**
  * A tablet's (or an unfolded foldable's) backdrop: the picture fills the whole screen and stays put while the page scrolls over it.
  * It darkens as the page scrolls ([progress] from 0 at the top to 1 once the first screen is gone), so what scrolls up reads on
@@ -256,12 +203,12 @@ fun HeroDetails(
 
 /**
  * The actions under Play, each an icon over a label: My List (the server's favourites), Trailer (only when there is one) and
- * Download (it does nothing yet). A trailer the server holds plays in the app; one on the web opens in the system's viewer.
+ * Watched. Download joins them with offline playback. A trailer the server holds plays in the app; one on the web opens in the system's viewer.
  */
 @Composable
 private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorite: () -> Unit, onPlayTrailer: (String) -> Unit, onTogglePlayed: () -> Unit) {
     val openTrailerUrl = app.vibeyfin.app.navigation.LocalOpenTrailerUrl.current
-    // Four equal columns, as on other streaming apps: My List, Trailer, Watched, Download. A missing trailer leaves its column empty.
+    // My List, Trailer, Watched; Download is added when offline lands.
     // Only the actions that exist are drawn, so three share the width as evenly as four. The first starts at the left edge of Play and the last ends at its right edge, with the rest spread evenly between.
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         ActionButton(
@@ -291,8 +238,7 @@ private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorit
                 onClick = onTogglePlayed,
             )
         }
-        // Offline is a later phase: the button is here, and does nothing yet.
-        ActionButton(label = Strings.download, description = Strings.download, icon = painterResource(R.drawable.ic_download_outline), centered = centered) {}
+        // Download returns with offline playback (Phase 10): a button that does nothing is worse than none.
     }
 }
 

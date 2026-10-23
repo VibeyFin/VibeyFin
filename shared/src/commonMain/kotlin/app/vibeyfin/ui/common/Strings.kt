@@ -131,7 +131,6 @@ object Strings {
     val peopleSearchHint = "Search for an actor or a director"
     val peoplePrompt = "Type a name to find someone."
     val noPeopleFound = "Nobody by that name."
-    val allPeople = "Anyone"
     val clearFilters = "Clear"
 
     /** "1,284 titles" under the Library's title. */
@@ -156,8 +155,6 @@ object Strings {
     val noLibraries = "This account has no libraries yet. Ask the server's admin to add one."
     val emptyFolder = "There's nothing in here yet."
     val loadMoreFailed = "Couldn't load the rest of this list. Check your connection and try again."
-
-    fun greeting(name: String) = "Hi, $name"
 
     val continueWatching = "Continue watching"
     /** The label of the Watched button under Play; its state is the tick. */
@@ -415,7 +412,6 @@ object Strings {
 
     /** A cast member's page. */
     fun born(year: Int) = "Born $year"
-    val appearsIn = "Appears in"
     val noAppearances = "Nothing in your library yet."
     val noBiography = "No biography on the server."
     fun personDescription(name: String, role: String?) = if (role.isNullOrBlank()) "$name, opens their page" else "$name as $role, opens their page"
@@ -440,9 +436,6 @@ object Strings {
 
     /** The label of the video line in the collapsed technical info, and the long-press entry on an episode. */
     val technicalVideo = "Video"
-
-    /** An episode in a season's list: "4. Title". */
-    fun episodeTitle(number: Int?, title: String) = if (number == null) title else "$number. $title"
 
     /** What a screen reader says for a season button, and for the row of them. */
     fun seasonDescription(name: String, selected: Boolean) = if (selected) "$name, selected" else name
