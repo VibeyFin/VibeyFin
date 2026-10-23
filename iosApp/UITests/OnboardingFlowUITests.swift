@@ -103,6 +103,30 @@ final class OnboardingFlowUITests: XCTestCase {
                 XCTAssertTrue(item.waitForExistence(timeout: 20), "\(tab) tab is missing after sign-in")
             }
         }
+
+        step("Settings shows the Playback skip rows and Skip Back takes 15") {
+            // Settings is in the profile menu on Home; its button is labelled with the user's name.
+            let profile = button(username)
+            XCTAssertTrue(profile.waitForExistence(timeout: 10), "Profile menu is missing")
+            profile.tap()
+            let settings = button("Settings")
+            XCTAssertTrue(settings.waitForExistence(timeout: 5), "Settings menu item is missing")
+            settings.tap()
+
+            // A menu picker's button is labelled with its title and the chosen value.
+            let skipBack = button("Skip Back", contains: true)
+            XCTAssertTrue(skipBack.waitForExistence(timeout: 10), "Skip Back row is missing")
+            XCTAssertTrue(button("Skip Forward", contains: true).exists, "Skip Forward row is missing")
+
+            skipBack.tap()
+            let fifteen = button("15 seconds")
+            XCTAssertTrue(fifteen.waitForExistence(timeout: 5), "15 seconds choice is missing")
+            fifteen.tap()
+            XCTAssertTrue(
+                button("Skip Back", contains: true).label.localizedCaseInsensitiveContains("15"),
+                "Skip Back doesn't show 15"
+            )
+        }
     }
 
     /// A series lists its episodes down the page on a phone and sideways on a tablet, and tapping an episode's words opens its page.

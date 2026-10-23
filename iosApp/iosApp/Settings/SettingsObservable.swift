@@ -39,6 +39,18 @@ final class SettingsObservable: ObservableObject {
         model.onBingeThresholdChanged(value: value)
     }
 
+    func setSkipBack(_ value: Int32) {
+        model.onSkipBackChanged(value: value)
+    }
+
+    func setSkipForward(_ value: Int32) {
+        model.onSkipForwardChanged(value: value)
+    }
+
+    func setAutoSkip(_ value: Bool) {
+        model.onAutoSkipChanged(value: value)
+    }
+
     deinit {
         model.close()
     }
