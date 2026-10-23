@@ -9,6 +9,7 @@ private struct PlayRequest: Identifiable {
 struct HomeView: View {
     @StateObject private var model = HomeObservable()
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var playing: PlayRequest?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -28,7 +29,9 @@ struct HomeView: View {
                 // The logo, the page name and the profile are centred in the header, with the same space above and below.
                 header
                     .screenMargin()
-                    .padding(.vertical, Space.s3)
+                    // On iPad the tab pill above already gives the space, so only the bottom gets padding.
+                    .padding(.top, sizeClass == .regular ? 0 : Space.s3)
+                    .padding(.bottom, Space.s3)
                 // No side margin on the scroll content: the Continue watching row runs to the screen
                 // edge, so it and the libraries apply the margin themselves.
                 if let state = model.state, state.serverId != nil {
@@ -39,7 +42,7 @@ struct HomeView: View {
                             CategoryButtonRow(buttons: state.buttons) { model.category($0.kind) }
                             // While it is being picked a grey card of the same size stands in, so the hero does not just appear.
                             if state.hero == nil && state.heroLoading {
-                                HomeHeroSkeleton().screenMargin()
+                                HomeHeroSkeleton().screenMargin().transition(.opacity)
                             }
                             // The featured item, when there is one: full width, under the buttons and above what is being watched.
                             if let hero = state.hero {
@@ -91,6 +94,12 @@ struct HomeView: View {
                         // Rows that arrive, leave or change height slide and fade into place instead of snapping.
                         .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: state.rows.map { $0.id })
                         .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: state.continueRow.isVisible)
+                        // The grey stand-ins for the hero and the rows leave the same way, so when nothing replaces one the
+                        // page closes up smoothly instead of jumping.
+                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: state.heroLoading)
+                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: state.hero?.id)
+                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: state.continueRow.loading)
+                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: state.loadingLibraries)
                     }
                     .refreshable { await model.refresh() }
                 }
