@@ -193,6 +193,8 @@ Also built in this phase, not on the original list: Home shows a row for every g
 including the camera cut-out, and a `perf` build type (`./gradlew :androidApp:installPerf`) for judging smoothness, as the
 debug build is slow. Cut: thumbs. A baseline profile for first-scroll speed moves to Phase 6 (it needs Macrobenchmark, which is not in the stack yet: ask first).
 
+Owed after Phase 4: the phone pass (`docs/checklists/phone-pass.md`) and an iOS Xcode pass, its own task: build `iosApp` in Xcode and fix what the compiler finds (every Swift file so far is only parsed, and the `Shared` framework names such as `HeroNavPlay`, `SeeAllMyList` and `ItemFactsKt.getSeasonLabel` are read from the Kotlin source, not from a built framework).
+
 _Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a genre page from Home,
 and see the mini player on iOS 26._
 
