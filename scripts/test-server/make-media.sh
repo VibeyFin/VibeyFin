@@ -12,6 +12,9 @@
 #   failures/<Name> (2026)/<Name> (2026).mkv         20 s clips with one thing a player may refuse: Plain Clip (the
 #                                                    baseline), DTS Audio, MKV VP9 Opus, Text Subtitles, Image Subtitles
 #   failures/Truncated (2026)/Truncated (2026).mp4   an MP4 cut in half: no moov atom, nothing can be read from it
+#   Page fixtures (3 s, 320x180 clips, small artwork, .nfo with lockdata): shows/Saga Show (Specials, Season 1 with
+#     8 episodes, Season 2; backdrop and logo), shows/Solo Season (one season, poster only), movies/Starlit Crown
+#     (2026) and II (2027) (artwork, cast, genres), movies/Bare Item (2026) (no artwork). User data: seed-userdata.sh
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
@@ -158,4 +161,103 @@ if [ ! -f "$TRUNCATED" ]; then
      "${H264[@]}" -c:a aac -b:a 64k -shortest /data/work/truncated.mp4
   head -c "$(( $(wc -c < "${DATA}/work/truncated.mp4") / 2 ))" "${DATA}/work/truncated.mp4" > "$TRUNCATED"
 fi
+
+# ---- Page fixtures (docs/test-server.md "Page fixtures"): series, artwork, people, collection ----
+# Tiny clips (3 s, 320x180, one clip copied many times), small artwork, metadata in .nfo files.
+MINI="${DATA}/work/mini.mkv"
+if [ ! -f "$MINI" ]; then
+  ff -f lavfi -i "testsrc2=size=320x180:rate=12:duration=3" -f lavfi -i "sine=frequency=600:duration=3" \
+     "${H264[@]}" -c:a aac -b:a 32k -shortest /data/work/mini.mkv
+fi
+clip() { mkdir -p "$(dirname "$1")"; [ -f "$1" ] || cp "$MINI" "$1"; }
+# image <out relative to media> <lavfi source>: one JPEG frame. Skipped when it exists.
+image() {
+  [ -f "${MEDIA}/$1" ] && return 0
+  mkdir -p "$(dirname "${MEDIA}/$1")"
+  ff -f lavfi -i "$2" -frames:v 1 -update 1 -q:v 6 "/data/media/$1"
+}
+# logo <out relative to media>: transparent PNG with white bars (a stand-in wordmark).
+logo() {
+  [ -f "${MEDIA}/$1" ] && return 0
+  mkdir -p "$(dirname "${MEDIA}/$1")"
+  ff -f lavfi -i "color=c=black@0.0:s=600x200,format=rgba,drawbox=x=20:y=40:w=560:h=40:color=white@1:t=fill,drawbox=x=120:y=110:w=360:h=40:color=white@1:t=fill" \
+     -frames:v 1 -update 1 "/data/media/$1"
+}
+artwork() { # $1 = folder relative to media, $2 = seed pattern (poster, backdrop, logo)
+  image "$1/poster.jpg" "${2}=size=400x600:rate=1"
+  image "$1/backdrop.jpg" "${2}=size=1280x720:rate=1"
+  logo "$1/logo.png"
+}
+
+# Saga Show: Specials (season 0, 2 episodes), Season 1 (8 episodes, so a phone list scrolls), Season 2 (3 episodes).
+# Poster, backdrop and logo (qualifies for the Home hero). Season 1 poster too. Episodes 1, 2, 5 of season 1 have a
+# still; 1, 2, 4 have a synopsis; the others have neither.
+SAGA="${MEDIA}/shows/Saga Show"
+mkdir -p "$SAGA"
+artwork "shows/Saga Show" testsrc2
+image "shows/Saga Show/season01-poster.jpg" "smptebars=size=400x600:rate=1"
+cat > "${SAGA}/tvshow.nfo" <<'NFO'
+<tvshow><title>Saga Show</title><lockdata>true</lockdata><year>2024</year><studio>Neon</studio><genre>Drama</genre><genre>Science Fiction</genre>
+<plot>A long-running saga with specials and two seasons, to exercise the series page, season picker and episode list.</plot>
+<actor><name>Ada Vance</name><role>Captain Mira</role><type>Actor</type></actor>
+<actor><name>Ben Okoro</name><role>Dr. Hale</role><type>Actor</type></actor></tvshow>
+NFO
+episode_nfo() { # $1 = file base (no extension), $2 = title, $3 = season, $4 = episode, $5 = plot (may be empty)
+  local plot=""
+  [ -n "$5" ] && plot="<plot>$5</plot>"
+  echo "<episodedetails><title>$2</title><lockdata>true</lockdata><season>$3</season><episode>$4</episode>${plot}</episodedetails>" > "${1}.nfo"
+}
+for n in 1 2; do
+  clip "${SAGA}/Season 00/Saga Show S00E0${n}.mkv"
+  episode_nfo "${SAGA}/Season 00/Saga Show S00E0${n}" "Special ${n}" 0 "$n" "Behind the scenes, part ${n}."
+done
+for n in 1 2 3 4 5 6 7 8; do
+  base="${SAGA}/Season 01/Saga Show S01E0${n}"
+  clip "${base}.mkv"
+  case "$n" in
+    1|2|4) episode_nfo "$base" "Chapter ${n}" 1 "$n" "Synopsis of chapter ${n}: the crew faces a new problem and a longer sentence follows so the text can wrap on a phone." ;;
+    *) episode_nfo "$base" "Chapter ${n}" 1 "$n" "" ;;
+  esac
+  case "$n" in 1|2|5) image "shows/Saga Show/Season 01/Saga Show S01E0${n}-thumb.jpg" "testsrc2=size=640x360:rate=1" ;; esac
+done
+for n in 1 2 3; do
+  base="${SAGA}/Season 02/Saga Show S02E0${n}"
+  clip "${base}.mkv"
+  episode_nfo "$base" "Return ${n}" 2 "$n" "Season two, episode ${n}."
+done
+
+# Solo Season: a series with a single season of two episodes, poster only (no backdrop, no logo).
+SOLO="${MEDIA}/shows/Solo Season"
+mkdir -p "$SOLO"
+echo "<tvshow><title>Solo Season</title><lockdata>true</lockdata><year>2025</year><genre>Comedy</genre><plot>One season only.</plot></tvshow>" > "${SOLO}/tvshow.nfo"
+image "shows/Solo Season/poster.jpg" "rgbtestsrc=size=400x600:rate=1"
+for n in 1 2; do
+  clip "${SOLO}/Season 01/Solo Season S01E0${n}.mkv"
+  episode_nfo "${SOLO}/Season 01/Solo Season S01E0${n}" "Only ${n}" 1 "$n" ""
+done
+
+# Starlit Crown (2026) and Starlit Crown II (2027): poster, backdrop, logo, cast, director, genres, plot.
+# Both go into the "Crown Collection" box set (made by seed-userdata.sh through the API).
+crown() { # $1 = folder name, $2 = title, $3 = year, $4 = pattern
+  local dir="${MEDIA}/movies/$1"
+  clip "${dir}/$1.mkv"
+  artwork "movies/$1" "$4"
+  cat > "${dir}/movie.nfo" <<NFO
+<movie><title>$2</title><lockdata>true</lockdata><year>$3</year><studio>A24</studio><genre>Drama</genre><genre>Science Fiction</genre><genre>Thriller</genre>
+<tagline>Every crown has a cost.</tagline><plot>A rich test movie with a plot, a tagline, a director and a cast, for the movie detail page.</plot>
+<mpaa>PG-13</mpaa><rating>7.8</rating><director>Cleo Marsh</director>
+<actor><name>Ada Vance</name><role>Queen Ilsa</role><type>Actor</type><order>0</order></actor>
+<actor><name>Ben Okoro</name><role>Marshal Teo</role><type>Actor</type><order>1</order></actor>
+<actor><name>Dara Quinn</name><role>The Envoy</role><type>Actor</type><order>2</order></actor>
+<actor><name>Eli Park</name><role>Page</role><type>Actor</type><order>3</order></actor></movie>
+NFO
+}
+crown "Starlit Crown (2026)" "Starlit Crown" 2026 smptehdbars
+crown "Starlit Crown II (2027)" "Starlit Crown II" 2027 rgbtestsrc
+
+# Bare Item: a movie with no artwork of any kind (no poster, backdrop or logo), no cast.
+BARE="${MEDIA}/movies/Bare Item (2026)"
+clip "${BARE}/Bare Item (2026).mkv"
+echo "<movie><title>Bare Item</title><lockdata>true</lockdata><year>2026</year></movie>" > "${BARE}/movie.nfo"
+
 echo "Media ready under ${MEDIA}"

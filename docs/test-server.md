@@ -114,6 +114,47 @@ So Categories lists Action (6), Comedy (6), Drama (9), Science Fiction (1) and T
 newest added first. (The
 `.nfo` files also set studios A24 and Neon; the app has no studio filter now.)
 
+## Page fixtures: series, artwork, people, collection, user data
+
+`make-media.sh` also generates data for the pages the app has (series, detail, Home hero, My List, Continue
+watching). Clips are 3 s, 320x180 (one clip copied, so cheap); artwork is one ffmpeg frame (poster 400x600,
+backdrop 1280x720, a transparent `logo.png` with two white bars); metadata comes from `.nfo` files with
+`<lockdata>true</lockdata>`, so Jellyfin does not look anything up online (without it a name such as "Neon Night"
+can match a real title and pull in its artwork). Existing fixtures are unchanged. After adding them to an existing
+server run a library refresh (`POST /Library/Refresh`), then the seed script below.
+
+| Fixture | Path under `media/` | What it is | Needed by |
+| --- | --- | --- | --- |
+| `saga-show` | `shows/Saga Show/` | Series with poster, backdrop, logo, `season01-poster.jpg`, genres Drama and Science Fiction, plot, two cast members. Seasons: Specials (S00E01, S00E02), Season 1 (E01 to E08), Season 2 (E01 to E03) | Series page, season picker, scrolling episode list on phones, Specials, Home hero (backdrop plus logo) |
+| `saga-s01` episodes | `Season 01/Saga Show S01E0n.mkv` | "Chapter n". Synopsis on 1, 2 and 4 only; a still (`-thumb.jpg`) on 1, 2 and 5 only; the rest have neither | Episode rows with and without synopsis or still |
+| `saga-s00`, `saga-s02` | `Season 00/`, `Season 02/` | "Special 1", "Special 2"; "Return 1" to "Return 3", all with a synopsis, no still | Specials season, a second season |
+| `solo-season` | `shows/Solo Season/` | Series with one season ("Only 1", "Only 2"), poster only, no backdrop, no logo | Single-season series (no season picker), Home hero must skip it |
+| `starlit-crown` | `movies/Starlit Crown (2026)/` | Poster, backdrop, logo, tagline, plot, PG-13, rating 7.8, genres Drama, Science Fiction and Thriller, director Cleo Marsh, cast Ada Vance, Ben Okoro, Dara Quinn, Eli Park | Movie page with people and genres, Home hero |
+| `starlit-crown-2` | `movies/Starlit Crown II (2027)/` | Same artwork and metadata pattern as `starlit-crown` | Second member of the collection |
+| `bare-item` | `movies/Bare Item (2026)/` | No poster, backdrop, logo, cast, plot or genres | The no-artwork placeholder. Jellyfin may still make a `Primary` image from a video frame; there is never a backdrop or logo |
+
+Home hero candidates (backdrop and logo): Saga Show, Starlit Crown, Starlit Crown II. Not Solo Season, not Bare Item.
+
+### User data and the collection: `seed-userdata.sh`
+
+Watched state, resume positions, favourites and the box set are stored per user by the server, not in the media
+folder, so `scripts/test-server/seed-userdata.sh` sets them through the API as `admin` (it waits, bounded, for the
+scan to find the fixtures). It is idempotent: each run sets the same state, nothing toggles, and it also clears the
+state on the page fixtures it does not list. It does not touch Test Show or other older fixtures.
+
+```sh
+scripts/test-server/start.sh          # generates media, starts, scans (first time)
+scripts/test-server/make-media.sh     # only the media; then POST /Library/Refresh on a running server
+scripts/test-server/seed-userdata.sh  # user data and the box set; run again any time to reset it
+```
+
+| Data | Items |
+| --- | --- |
+| Box set "Crown Collection" | Starlit Crown, Starlit Crown II |
+| Watched | Saga Show S01E01 |
+| Partly watched (Continue watching) | Saga Show S01E02 at 1.2 s of 3 s (40 %), Neon Night at 2 s of 5 s |
+| My List (favourites) | Saga Show, Neon Night, Starlit Crown, Solo Season |
+
 ## Checking it
 
 `scripts/test-server/list-fixtures.sh` compares every fixture in the catalogue with what the running
