@@ -164,6 +164,10 @@ data class PlaybackUiState(
     val skipOffer: SkipOffer? = null,
     /** Where the player should seek to now (set by `onSkip`); it clears this with `onSeekHandled`. */
     val pendingSeekMs: Long? = null,
+    /** How far the skip-back button jumps, from the profile. */
+    val skipBackSeconds: Int = ProfileSettings.DEFAULT_SKIP_BACK_SECONDS,
+    /** How far the skip-forward button jumps, from the profile. */
+    val skipForwardSeconds: Int = ProfileSettings.DEFAULT_SKIP_FORWARD_SECONDS,
     /** The scrub-preview thumbnails of the playing media source; null when the server made none or can't be asked. */
     val trickplay: TrickplayTrack? = null,
     /** The speed the user chose, one of [PLAYBACK_SPEEDS]; the player plays at it. */
@@ -273,6 +277,12 @@ class PlaybackViewModel(
     private var segments: List<MediaSegment> = emptyList()
     private var segmentsRequested = false
 
+    /** The profile jumps over intros and recaps by itself. */
+    private var autoSkip = false
+
+    /** Segments (start, end) already jumped over by auto-skip; each is skipped once, so going back stays possible. */
+    private val autoSkipped = mutableSetOf<Pair<Long, Long>>()
+
     /** The item and media source the trickplay was asked for, so a re-opened stream of the same one doesn't ask again. */
     private var trickplayFor: Pair<String, String>? = null
 
@@ -310,6 +320,19 @@ class PlaybackViewModel(
     init {
         viewModelScope.launch {
             profileSettings.bingeThreshold.collect { bingeThreshold = it ?: ProfileSettings.DEFAULT_BINGE_THRESHOLD }
+        }
+        viewModelScope.launch {
+            profileSettings.skipBackSeconds.collect { seconds ->
+                content.update { it.copy(skipBackSeconds = seconds ?: ProfileSettings.DEFAULT_SKIP_BACK_SECONDS) }
+            }
+        }
+        viewModelScope.launch {
+            profileSettings.skipForwardSeconds.collect { seconds ->
+                content.update { it.copy(skipForwardSeconds = seconds ?: ProfileSettings.DEFAULT_SKIP_FORWARD_SECONDS) }
+            }
+        }
+        viewModelScope.launch {
+            profileSettings.autoSkipSegments.collect { autoSkip = it ?: false }
         }
         start()
     }
@@ -381,6 +404,27 @@ class PlaybackViewModel(
         val offer = content.value.skipOffer ?: return
         binge.interacted()
         content.update { it.copy(pendingSeekMs = offer.toMs) }
+    }
+
+    /** Seeks back by the profile's skip length from [positionMs], not below the start. */
+    fun onSkipBack(positionMs: Long) {
+        seekTo((basePosition(positionMs) - content.value.skipBackSeconds * 1000L).coerceAtLeast(0L))
+    }
+
+    /** Seeks forward by the profile's skip length from [positionMs], not past [durationMs]; does nothing while the duration is unknown. */
+    fun onSkipForward(positionMs: Long, durationMs: Long) {
+        if (durationMs <= 0L) return
+        seekTo((basePosition(positionMs) + content.value.skipForwardSeconds * 1000L).coerceAtMost(durationMs))
+    }
+
+    /** A seek still waiting for the player is where the video is going, so a second tap builds on it. */
+    private fun basePosition(positionMs: Long) = content.value.pendingSeekMs ?: positionMs
+
+    /** Asks the player to seek; the position moves on now, so skips tapped before it reports stack. */
+    private fun seekTo(targetMs: Long) {
+        binge.interacted()
+        lastPositionMs = targetMs
+        content.update { it.copy(pendingSeekMs = targetMs) }
     }
 
     /** The player has done the seek it was asked for. */
@@ -684,6 +728,7 @@ class PlaybackViewModel(
         lostConnection = false
         // Segments and trickplay belong to the item, so the next episode asks for its own.
         segments = emptyList()
+        autoSkipped.clear()
         segmentsRequested = false
         trickplayFor = null
         content.update {
@@ -752,7 +797,8 @@ class PlaybackViewModel(
         segmentsRequested = true
         viewModelScope.launch {
             segments = playback.segments(itemId)
-            refreshSkipOffer()
+            // While the stream is still being set up, Ready does this once it has cleared the pending seek.
+            if (content.value.stream != null) refreshSkipOffer()
         }
     }
 
@@ -770,10 +816,24 @@ class PlaybackViewModel(
     }
 
     private fun refreshSkipOffer() {
+        // Decided outside the update, which may run twice: auto-skip marks the segment and moves the position.
+        val skip = if (autoSkip) autoSkipTarget() else null
+        if (skip != null) lastPositionMs = skip
         content.update {
             val offer = skipOfferNow(cardShowing = it.upNext != null)
-            if (it.skipOffer == offer) it else it.copy(skipOffer = offer)
+            val seek = skip ?: it.pendingSeekMs
+            if (it.skipOffer == offer && it.pendingSeekMs == seek) it else it.copy(skipOffer = offer, pendingSeekMs = seek)
         }
+    }
+
+    /** Where to jump now: the end of an intro or recap that is playing and not skipped before; never credits. Marks it skipped. */
+    private fun autoSkipTarget(): Long? {
+        val playing = segments.firstOrNull {
+            (it.type == SegmentType.Intro || it.type == SegmentType.Recap) &&
+                lastPositionMs >= it.startMs && lastPositionMs < it.endMs && (it.startMs to it.endMs) !in autoSkipped
+        } ?: return null
+        autoSkipped += playing.startMs to playing.endMs
+        return playing.endMs
     }
 
     /**
@@ -825,6 +885,8 @@ class PlaybackViewModel(
                             subtitleTracks = ready.subtitleTracks.toSubtitleOptions(),
                         )
                     }
+                    // Segments that came in before the stream was ready: resuming inside an intro auto-skips it now.
+                    refreshSkipOffer()
                 }
                 PlaybackNegotiation.NoCompatibleStream ->
                     content.update { it.copy(loading = false, message = LoadMessages.NO_COMPATIBLE_STREAM) }
