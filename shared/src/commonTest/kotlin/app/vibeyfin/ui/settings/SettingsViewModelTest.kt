@@ -163,4 +163,53 @@ class SettingsViewModelTest {
 
         assertTrue(viewModel.uiState.first { it.showPlaybackStats }.showPlaybackStats)
     }
+
+    @Test
+    fun `skip settings default to 10 and 10 and auto-skip off`() = runTest {
+        app.signedIn()
+        val state = viewModel().uiState.first { it.hasProfile }
+
+        assertEquals(10, state.skipBackSeconds)
+        assertEquals(10, state.skipForwardSeconds)
+        assertFalse(state.autoSkipSegments)
+    }
+
+    @Test
+    fun `each skip handler is reflected in the state`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hasProfile }
+
+        viewModel.onSkipBackChanged(30)
+        assertEquals(30, viewModel.uiState.first { it.skipBackSeconds == 30 }.skipBackSeconds)
+        viewModel.onSkipForwardChanged(45)
+        assertEquals(45, viewModel.uiState.first { it.skipForwardSeconds == 45 }.skipForwardSeconds)
+        viewModel.onAutoSkipChanged(true)
+        assertTrue(viewModel.uiState.first { it.autoSkipSegments }.autoSkipSegments)
+    }
+
+    @Test
+    fun `switching profile shows that profile's skip settings or the defaults`() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Users/Me", Reply.json("""{"Id":"u2","Name":"Sam"}"""))
+        app.accounts.saveSession("srv-1", "u2", "Sam", null, "token-2")
+        val viewModel = viewModel()
+
+        app.connection.activate("srv-1", "u1")
+        viewModel.uiState.first { it.hasProfile }
+        viewModel.onSkipBackChanged(30)
+        viewModel.onSkipForwardChanged(45)
+        viewModel.onAutoSkipChanged(true)
+        viewModel.uiState.first { it.skipBackSeconds == 30 && it.skipForwardSeconds == 45 && it.autoSkipSegments }
+
+        app.connection.activate("srv-1", "u2")
+        val other = viewModel.uiState.first { it.skipBackSeconds == 10 }
+        assertEquals(10, other.skipForwardSeconds)
+        assertFalse(other.autoSkipSegments)
+
+        app.connection.activate("srv-1", "u1")
+        val back = viewModel.uiState.first { it.skipBackSeconds == 30 }
+        assertEquals(45, back.skipForwardSeconds)
+        assertTrue(back.autoSkipSegments)
+    }
 }

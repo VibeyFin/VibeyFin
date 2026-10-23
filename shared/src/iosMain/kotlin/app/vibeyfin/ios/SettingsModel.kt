@@ -17,6 +17,12 @@ class SettingsModel {
 
     fun onShowHomeHeroChanged(value: Boolean) = host.viewModel.onShowHomeHeroChanged(value)
 
+    fun onSkipBackChanged(value: Int) = host.viewModel.onSkipBackChanged(value)
+
+    fun onSkipForwardChanged(value: Int) = host.viewModel.onSkipForwardChanged(value)
+
+    fun onAutoSkipChanged(value: Boolean) = host.viewModel.onAutoSkipChanged(value)
+
     fun onHomeGenreRowsChanged(value: Int) = host.viewModel.onHomeGenreRowsChanged(value)
 
     fun close() = host.close()

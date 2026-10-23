@@ -119,4 +119,14 @@ class StringsTest {
     fun aLabelAndItsValueAreOneSpokenPhrase() {
         assertEquals("Bitrate, 4.5 Mbps", Strings.labelled("Bitrate", "4.5 Mbps"))
     }
+
+    @Test
+    fun skipLabelsNameTheSeconds() {
+        assertEquals("10 seconds", Strings.skipSeconds(10))
+        assertEquals("Back 10 seconds", Strings.skipBackLabel(10))
+        assertEquals("Forward 30 seconds", Strings.skipForwardLabel(30))
+        assertEquals("30s", Strings.seekFlash(30))
+        assertEquals("Skip back", Strings.skipBack)
+        assertEquals("Skip forward", Strings.skipForward)
+    }
 }

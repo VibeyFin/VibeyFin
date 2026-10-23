@@ -49,6 +49,24 @@ abstract class AccountDao {
     @Query("UPDATE account_settings SET showHomeHero = :value WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun setShowHomeHero(serverId: String, userId: String, value: Boolean)
 
+    @Query("SELECT skipBackSeconds FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeSkipBackSeconds(serverId: String, userId: String): Flow<Int?>
+
+    @Query("UPDATE account_settings SET skipBackSeconds = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setSkipBackSeconds(serverId: String, userId: String, value: Int)
+
+    @Query("SELECT skipForwardSeconds FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeSkipForwardSeconds(serverId: String, userId: String): Flow<Int?>
+
+    @Query("UPDATE account_settings SET skipForwardSeconds = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setSkipForwardSeconds(serverId: String, userId: String, value: Int)
+
+    @Query("SELECT autoSkipSegments FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeAutoSkipSegments(serverId: String, userId: String): Flow<Boolean?>
+
+    @Query("UPDATE account_settings SET autoSkipSegments = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setAutoSkipSegments(serverId: String, userId: String, value: Boolean)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract suspend fun insertAccount(account: AccountEntity): Long
 
