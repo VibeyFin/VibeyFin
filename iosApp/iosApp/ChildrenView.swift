@@ -64,9 +64,13 @@ struct ChildrenView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .screenMargin()
                 .padding(.vertical, Space.s5)
+                // A collection's header and a season's link to its show arrive with the data: they ease in instead of snapping.
+                .animation(.easeOut(duration: 0.25), value: model.state?.collection != nil)
+                .animation(.easeOut(duration: 0.25), value: model.state?.series != nil)
             }
         }
         .onAppear { model.start() }
+        .backMenuTitle(title)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         // Only the chevron, no "Back" label. The swipe from the edge still goes back.

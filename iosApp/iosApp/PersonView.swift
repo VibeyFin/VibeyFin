@@ -32,6 +32,7 @@ struct PersonView: View {
             }
         }
         .onAppear { model.start() }
+        .backMenuTitle(model.state?.person?.name ?? "")
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbarRole(.editor)

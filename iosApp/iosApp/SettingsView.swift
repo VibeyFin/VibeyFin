@@ -55,6 +55,7 @@ struct SettingsView: View {
             .padding(.vertical, Space.s5)
         }
         .onAppear { model.start() }
+        .backMenuTitle(Strings.shared.settings.titleCased())
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         // Only the chevron, no "Back" label. The swipe from the edge still goes back.

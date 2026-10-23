@@ -68,6 +68,7 @@ struct ItemView: View {
             onRetry: { model.retryAction() },
             onDismiss: { model.dismissMessage() }
         )
+        .backMenuTitle(model.state?.item?.title ?? "")
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         // Only the chevron, no "Back" label. The swipe from the edge still goes back.

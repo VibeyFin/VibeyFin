@@ -103,6 +103,15 @@ extension View {
     func screenMargin() -> some View {
         modifier(ScreenMargin())
     }
+
+    /// The name this page has in the system back button's long-press menu, which lists the pages behind it. The bar itself stays
+    /// clear: the page draws its own title, so an empty principal item stands in for the one the system would show.
+    func backMenuTitle(_ title: String) -> some View {
+        self
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) } }
+    }
 }
 
 extension Text {

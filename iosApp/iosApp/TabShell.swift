@@ -76,6 +76,9 @@ struct TabShell: View {
                     onOpenList: { homePath.append(TabRoute.opening($0)) }
                 )
                 .navigationBarBackButtonHidden(true)
+                .backMenuTitle(Strings.shared.tabHome.titleCased())
+                // Home draws its own title, so the system bar above it would only be empty space.
+                .toolbar(.hidden, for: .navigationBar)
             }
             .tabItem { Label(Strings.shared.tabHome.titleCased(), systemImage: "house") }
             .tag(MainTab.home)

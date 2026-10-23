@@ -41,13 +41,16 @@ struct FilteredListView: View {
                 .padding(.top, Space.s5)
                 if let state = model.state {
                     ListChipRow(chips: state.chips) { model.chip($0.kind) }
+                } else {
+                    // The chips' height is held until they arrive, so the grid below doesn't drop when they do.
+                    Color.clear.frame(height: 44)
                 }
                 ScrollView {
                     VStack(alignment: .leading, spacing: Space.s4) {
                         if let state = model.state {
                             content(state.list)
                         } else {
-                            PosterSkeletonGrid(minimumWidth: 130)
+                            PosterSkeletonGrid(minimumWidth: isRoot ? 104 : 130)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -59,6 +62,9 @@ struct FilteredListView: View {
             }
         }
         .onAppear { model.start() }
+        .backMenuTitle(model.title)
+        // A tab root draws its own title; the system bar above it would only be empty space. A pushed page needs it for back.
+        .toolbar(isRoot ? .hidden : .automatic, for: .navigationBar)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         // Only the chevron, no "Back" label. The swipe from the edge still goes back.
@@ -97,7 +103,7 @@ struct FilteredListView: View {
     @ViewBuilder
     private func content(_ state: ChildrenUiState) -> some View {
         if state.loading {
-            PosterSkeletonGrid(minimumWidth: 130)
+            PosterSkeletonGrid(minimumWidth: isRoot ? 104 : 130)
         } else if let message = state.message {
             LoadErrorView(message: message, onRetry: { model.retry() })
         } else if state.isEmpty && !state.refreshing {
