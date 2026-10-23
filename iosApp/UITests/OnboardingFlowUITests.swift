@@ -95,7 +95,11 @@ final class OnboardingFlowUITests: XCTestCase {
 
         step("Signed in: Home, Library and Downloads tabs show") {
             for tab in ["Home", "Library", "Downloads"] {
-                let item = app.tabBars.buttons.matching(NSPredicate(format: "label ==[c] %@", tab)).firstMatch
+                // The bar is at the bottom on iPhone and at the top on iPad, where it may not be a `tabBar`.
+                let match = NSPredicate(format: "label ==[c] %@", tab)
+                let item = app.tabBars.buttons.matching(match).firstMatch.exists
+                    ? app.tabBars.buttons.matching(match).firstMatch
+                    : app.buttons.matching(match).firstMatch
                 XCTAssertTrue(item.waitForExistence(timeout: 20), "\(tab) tab is missing after sign-in")
             }
         }
