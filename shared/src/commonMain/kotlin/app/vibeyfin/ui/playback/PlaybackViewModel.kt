@@ -417,10 +417,14 @@ class PlaybackViewModel(
         seekTo((basePosition(positionMs) + content.value.skipForwardSeconds * 1000L).coerceAtMost(durationMs))
     }
 
-    /** A seek still waiting for the player is where the video is going, so a second tap builds on it. */
+    /**
+     * A seek still waiting for the player is where the video is going, so a second tap builds on it.
+     * Stacking works on [PlaybackUiState.pendingSeekMs] while it is not cleared. On a device the position
+     * passed in is already right after a seek, because both native players update their own position at once.
+     */
     private fun basePosition(positionMs: Long) = content.value.pendingSeekMs ?: positionMs
 
-    /** Asks the player to seek; the position moves on now, so skips tapped before it reports stack. */
+    /** Asks the player to seek. A second skip before the player has done it stacks through [basePosition]. */
     private fun seekTo(targetMs: Long) {
         binge.interacted()
         lastPositionMs = targetMs
@@ -625,7 +629,7 @@ class PlaybackViewModel(
         content.update {
             it.copy(
                 title = found.title,
-                subtitle = listOfNotNull(found.seriesName, found.episodeLabel()).joinToString("  ·  ").ifEmpty { null },
+                subtitle = Strings.metaLine(found.seriesName, found.episodeLabel()),
             )
         }
         open(startAtMs)

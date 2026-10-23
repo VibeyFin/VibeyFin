@@ -347,6 +347,13 @@ object Strings {
         return "${tenths / 10}.${tenths % 10} s"
     }
 
+    /** What sits between the parts of one meta line, such as the series name and the episode. */
+    const val META_SEPARATOR = "  ·  "
+
+    /** The player's one meta line: the [subtitle] then the picture [badge], what is there; null when neither is. */
+    fun metaLine(subtitle: String?, badge: String?): String? =
+        listOfNotNull(subtitle, badge).filter { it.isNotBlank() }.joinToString(META_SEPARATOR).ifEmpty { null }
+
     /** The button that jumps over a marked part of the video. */
     fun skip(type: SegmentType): String = when (type) {
         SegmentType.Intro -> "Skip intro"

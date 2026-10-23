@@ -1937,6 +1937,7 @@ class PlaybackViewModelTest {
         val vm = serverWithSegments()
         val duration = 600_000L
 
+        // Both calls pass the same position: the second builds on the uncleared pendingSeekMs, not on a position the model advanced.
         vm.onSkipForward(60_000, duration)
         vm.onSkipForward(60_000, duration)
 

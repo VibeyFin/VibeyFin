@@ -129,4 +129,14 @@ class StringsTest {
         assertEquals("Skip back", Strings.skipBack)
         assertEquals("Skip forward", Strings.skipForward)
     }
+
+    @Test
+    fun theMetaLineJoinsWhatIsThere() {
+        assertEquals("Series  ·  S1:E2  ·  4K", Strings.metaLine("Series  ·  S1:E2", "4K"))
+        assertEquals("Series  ·  S1:E2", Strings.metaLine("Series  ·  S1:E2", null))
+        assertEquals("Series  ·  S1:E2", Strings.metaLine("Series  ·  S1:E2", ""))
+        assertEquals("4K", Strings.metaLine(null, "4K"))
+        assertNull(Strings.metaLine(null, null))
+        assertNull(Strings.metaLine("", " "))
+    }
 }
