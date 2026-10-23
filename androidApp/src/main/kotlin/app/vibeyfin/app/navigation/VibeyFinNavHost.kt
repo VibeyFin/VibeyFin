@@ -54,7 +54,10 @@ import app.vibeyfin.ui.home.HomeExit
 private const val SLIDE_MS = 180
 
 /** The detail page fades in over the shared poster-to-picture transition. */
-private const val DETAIL_FADE_MS = 140
+private const val DETAIL_FADE_MS = 300
+
+/** The screen underneath fades out a little quicker than the page fades in, so it dims first and the page comes up out of the dark. */
+private const val DETAIL_UNDER_FADE_MS = 200
 
 /** Switching tabs is a quick cross-fade, with no scale: it is a switch, not opening something. */
 private const val TAB_FADE_MS = 110
@@ -87,7 +90,7 @@ private fun enter(target: NavBackStackEntry) =
     }
 
 /** The screen underneath stays put and fades out behind the one opening over it. */
-private fun exit(target: NavBackStackEntry) = fadeOut(tween(if (target.isDetail()) DETAIL_FADE_MS else if (target.isTabRoot()) TAB_FADE_MS else if (target.opensPlayer()) PLAYER_FADE_MS else SLIDE_MS))
+private fun exit(target: NavBackStackEntry) = fadeOut(tween(if (target.isDetail()) DETAIL_UNDER_FADE_MS else if (target.isTabRoot()) TAB_FADE_MS else if (target.opensPlayer()) PLAYER_FADE_MS else SLIDE_MS))
 
 private fun popEnter(leaving: NavBackStackEntry) =
     if (leaving.isDetail()) fadeIn(tween(DETAIL_FADE_MS)) else slideInHorizontally(tween(SLIDE_MS)) { -it / SLIDE_FRACTION } + fadeIn(tween(SLIDE_MS))

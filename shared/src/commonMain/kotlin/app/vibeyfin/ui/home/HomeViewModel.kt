@@ -88,7 +88,8 @@ data class HomeUiState(
 )
 
 /** The hero: the item once picked, or [loading] while it is being picked. */
-private data class HeroState(val item: MediaItem? = null, val loading: Boolean = false)
+/** [ready] is false until the profile's hero setting has been read: Home waits for it, so the grey card is in its very first frame, not slid in later. */
+private data class HeroState(val item: MediaItem? = null, val loading: Boolean = false, val ready: Boolean = false)
 
 /** The sheet and the page to open, which change together. */
 private data class CategoryUi(
@@ -187,6 +188,8 @@ class HomeViewModel(
     }
 
     val uiState: StateFlow<HomeUiState> = combine(screen, actionMessage, categoryUi, rows, hero) { screen, message, categories, rows, hero ->
+        // A signed-in Home waits for the hero setting to be read, so everything appears in the same first frame.
+        if (screen.userName != null && !hero.ready) return@combine HomeUiState()
         screen.copy(
             hero = hero.item,
             heroLoading = hero.loading,
@@ -215,7 +218,7 @@ class HomeViewModel(
                     genreRows.value = emptyList()
                     myListRow.value = MediaRow(MY_LIST_ID, Strings.myList, seeAll = SeeAll.MyList)
                     // The grey card is up from the first state when the profile has the hero on, so it is there, not slid in later.
-                    hero.value = HeroState(loading = profileSettings.showHomeHero.first() != false)
+                    hero.value = HeroState(loading = profileSettings.showHomeHero.first() != false, ready = true)
                     continueAnswered.value = false
                     coroutineScope {
                         launch {
@@ -238,7 +241,7 @@ class HomeViewModel(
         // The hero was switched on or off in Settings: it appears (picked then) or goes.
         viewModelScope.launch {
             profileSettings.showHomeHero.filterNotNull().distinctUntilChanged().drop(1).collect { on ->
-                if (!on) hero.value = HeroState() else if (connection.state.value is ConnectionState.Connected) loadHeroIfEnabled()
+                if (!on) hero.value = HeroState(ready = true) else if (connection.state.value is ConnectionState.Connected) loadHeroIfEnabled()
             }
         }
         // What was watched changed (a play session ended, something was marked): bring the row up to date.
@@ -506,7 +509,7 @@ class HomeViewModel(
     /** Picks the hero when the profile has it on; a grey card stands in until it is known, and goes if nothing qualifies. */
     private suspend fun loadHeroIfEnabled() {
         if (profileSettings.showHomeHero.first() == false) {
-            hero.value = HeroState()
+            hero.value = HeroState(ready = true)
             return
         }
         hero.update { it.copy(loading = it.item == null) }
@@ -521,7 +524,7 @@ class HomeViewModel(
             added.await() to favourites.await()
         }
         val candidates = listOf(added, favourites).flatMap { (it as? ApiResult.Success)?.value?.items.orEmpty() }
-        hero.value = HeroState(item = pickHero(candidates, Random.Default), loading = false)
+        hero.value = HeroState(item = pickHero(candidates, Random.Default), loading = false, ready = true)
     }
 
     /** What is on My List, newest additions first; the row is hidden while it is empty. */

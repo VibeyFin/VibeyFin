@@ -51,8 +51,15 @@ private const val SHARED_FADE_MS = 140
  * Marks this as one end of [itemId]'s poster-to-picture transition. [source] is the poster in a list: it takes part only when it is the
  * one last tapped. The detail page's picture passes `source = false` and always takes part. Outside a shared layout it does nothing.
  */
+/**
+ * Off: a detail page now opens the way the owner's reference video does, the screen fading to dark and the page fading in whole, with
+ * no poster flying across. The rest of the shared-transition machinery stays, ready to be switched back on.
+ */
+private const val SHARED_POSTER_ENABLED = false
+
 @Composable
 fun Modifier.sharedPoster(itemId: String, source: Boolean): Modifier {
+    if (!SHARED_POSTER_ENABLED) return this
     val transition = LocalSharedTransitionScope.current ?: return this
     val animated = LocalNavAnimatedScope.current ?: return this
     if (source && SharedPick.itemId != itemId) return this
