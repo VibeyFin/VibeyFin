@@ -44,9 +44,17 @@ class ItemDetailViewModelTest {
 
     private fun viewModel(id: String) = viewModels.track(ItemViewModel(id, app.library, app.connection, app.watch, app.watchChanges))
 
+    /** What the fake server has been told is watched: a write sticks, so the page read again afterwards shows it as a real server would. */
+    private val watchedOnServer = mutableSetOf<String>()
+
+    private fun markWatchedOnServer(id: String, reply: Reply) = { _: app.vibeyfin.testing.RecordedRequest ->
+        watchedOnServer += id
+        reply
+    }
+
     private fun episode(id: String, season: Int, number: Int, title: String = "Episode $number", positionMin: Int? = null, played: Boolean? = null) = itemJson(
         id, title, type = "Episode", seriesId = "show", seriesName = "Show", seasonNumber = season, episodeNumber = number,
-        runtimeTicks = 40 * TICKS_PER_MINUTE, positionTicks = positionMin?.let { it * TICKS_PER_MINUTE }, played = played,
+        runtimeTicks = 40 * TICKS_PER_MINUTE, positionTicks = positionMin?.let { it * TICKS_PER_MINUTE }, played = played ?: (id in watchedOnServer).takeIf { it },
     )
 
     private val seasons = itemsJson(
@@ -60,7 +68,7 @@ class ItemDetailViewModelTest {
         val server = app.signedIn()
         server.on("GET", "/Items") { request ->
             when (request.query["ids"]) {
-                "show" -> Reply.json(itemsJson(itemJson("show", "Show", type = "Series", isFolder = true, year = 2022, childCount = 2, communityRating = 8.0)))
+                "show" -> Reply.json(itemsJson(itemJson("show", "Show", type = "Series", isFolder = true, year = 2022, childCount = 2, communityRating = 8.0, played = ("show" in watchedOnServer).takeIf { it })))
                 else -> Reply.json(itemsJson(itemJson("m1", "Heat", year = 1995, runtimeTicks = 170 * TICKS_PER_MINUTE)))
             }
         }
@@ -169,7 +177,8 @@ class ItemDetailViewModelTest {
     @Test
     fun aShowCanBeMarkedWatchedAsAWhole() = runTest {
         val server = server()
-        server.on("POST", "/UserPlayedItems/show", Reply.json("""{"Played":true}"""))
+        server.on("POST", "/UserPlayedItems/show", markWatchedOnServer("show", Reply.json("""{"Played":true}""")))
+        val inFlight = server.hold("POST", "/UserPlayedItems/show")
         val viewModel = viewModel("show")
 
         val state = viewModel.shown()
@@ -177,8 +186,12 @@ class ItemDetailViewModelTest {
 
         assertTrue(state.canMark)
         assertEquals("Mark series as watched", state.markLabel)
+        // Shown at once, before the server has answered.
         assertTrue(viewModel.uiState.value.watched)
-        awaitRequests("POST", "/UserPlayedItems/show")
+        inFlight.open()
+        assertEquals(1, app.jellyfin.requestsTo("POST", "/UserPlayedItems/show").size)
+        // And it stays that way once the page is read again.
+        assertTrue(viewModel.uiState.value.watched)
     }
 
     @Test
@@ -270,11 +283,15 @@ class ItemDetailViewModelTest {
     @Test
     fun anEpisodeMarkedWatchedStaysMarked() = runTest {
         val server = server()
-        server.on("POST", "/UserPlayedItems/e11", Reply.noContent())
+        server.on("POST", "/UserPlayedItems/e11", markWatchedOnServer("e11", Reply.noContent()))
+        val inFlight = server.hold("POST", "/UserPlayedItems/e11")
         val viewModel = viewModel("show")
         viewModel.shown()
 
         viewModel.onToggleEpisodePlayed("e11")
+        // Shown at once, before the server has answered.
+        assertTrue(viewModel.uiState.value.seasons.episodes.items.first { it.id == "e11" }.played)
+        inFlight.open()
 
         assertTrue(viewModel.uiState.value.seasons.episodes.items.first { it.id == "e11" }.played)
         assertNull(viewModel.uiState.value.actionMessage)

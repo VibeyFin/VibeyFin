@@ -209,11 +209,14 @@ class HomeRowsViewModelTest {
     fun myListOnTheHeroIsShownAtOnceAndTakenBackWithAMessageWhenItCantBeSaved() = runTest {
         val server = heroServer()
         server.on("POST", "/UserFavoriteItems/star", Reply.status(HttpStatusCode.ServiceUnavailable))
+        val inFlight = server.hold("POST", "/UserFavoriteItems/star")
         val viewModel = viewModel()
         viewModel.uiState.first { it.hero != null }
 
         viewModel.onHeroMyList()
+        // The write has not been answered: the heart is already filled.
         assertTrue(viewModel.uiState.value.hero?.isFavorite == true)
+        inFlight.open()
         val failed = viewModel.uiState.first { it.actionMessage != null }
 
         assertEquals(false, failed.hero?.isFavorite)
