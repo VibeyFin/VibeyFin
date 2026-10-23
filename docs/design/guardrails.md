@@ -35,9 +35,10 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 ## Playback
 
 - Phones open the player full-screen landscape; rotation lock respected on exit. Tablets keep the current orientation.
-- Controls auto-hide after 3s without input; a tap toggles them. Double-tap the left / right third seeks ∓10s with a visible "10s" label.
+- Controls auto-hide after 3s without input; a tap toggles them. The transport has three buttons: skip back, play / pause, skip forward. Defaults are 10s back and 10s forward; both are set per profile in Settings → Playback (back 5, 10, 15, 30; forward 10, 15, 30, 45, 60). Double-tap the left / right third seeks the same amounts with a visible "10s" label.
+- The top bar holds only: close or back, the title with one meta line (episode, then the format badge as text), and the controls cluster (speed, audio and subtitles, picture in picture, AirPlay or Cast). Nothing else. Playback controls are never aqua: iOS is white on Liquid Glass, Android is `ink` on the scrim. Full spec in `player.md`.
 - Scrubbing shows the trickplay thumbnail above the thumb with the timestamp; no trickplay data → timestamp only.
-- Skip buttons ("Skip intro", "Skip recap") appear at segment start and stay for the whole segment, also when controls are hidden. **Never** auto-skip unless the user turned it on.
+- Skip buttons ("Skip intro", "Skip recap") appear at segment start and stay for the whole segment, also when controls are hidden. **Never** auto-skip unless the user turned it on (Settings → Playback → Skip intros and recaps, off by default). Skip Credits shows at the Outro segment and gives way to up next when there is a next episode.
 - Up next: at the Outro segment (or the last 30s without one) show the next-episode card with a 10s countdown, "Play now" and "Watch credits". At zero the next episode starts (about 20s early, the finished one counted as watched); "Watch credits" dismisses the card for that episode, which plays out and closes with no second countdown. A video under three minutes only counts down once it has ended. After 3 auto-played episodes without input, pause and ask "Still watching?".
 - Remember audio and subtitle language per series; fall back to the user's Jellyfin preferences.
 - **Must** report progress to the server on start, every 10s, on pause, seek and stop — and on app backgrounding.
