@@ -117,7 +117,8 @@ apps share are in `guardrails.md`; which Jellyfin field drives which UI is in `j
 - Work in the phases of the current plan in `docs/plans/`. Finish one phase, make sure it builds
   and its tests pass, summarise what changed, then stop for review before the next phase.
 - Run `./gradlew :shared:allTests` (or the equivalent) and `./gradlew :androidApp:assembleDebug`
-  before calling a phase done.
+  before calling a phase done. A feature that touches the Jellyfin API or the player is also
+  verified against the test server (below).
 - iOS can only be built with Xcode. Say plainly when iOS code was only compiled to klibs or
   parsed, not built or run.
 - **iOS smoke test is required when the tools are available** (macOS with Xcode, an iOS simulator and
@@ -136,6 +137,13 @@ apps share are in `guardrails.md`; which Jellyfin field drives which UI is in `j
   for new behaviour, `fix` for a bug fix, `chore` for upkeep (build, dependencies, config), `task`
   for everything else (refactors, docs).
 - Ask before adding a dependency that isn't in the stack above.
+
+## Test server
+
+- A feature that touches the Jellyfin API or the player is verified against the local test server
+  (`scripts/test-server/`, see `docs/test-server.md`) before the phase is called done.
+- A new feature adds the fixtures it needs to `make-media.sh` and to the catalogue in
+  `docs/test-server.md`; it doesn't improvise media by hand.
 
 ## Reference material
 
