@@ -207,11 +207,15 @@ One episode in a season list.
 **Provide:** the episode's `Primary` still (else the show's), `ParentIndexNumber` and `IndexNumber`, title, synopsis, runtime,
 rating, air date, and its `UserData` (played, resume position).
 
-- A card in a row that scrolls sideways, 300dp wide on a phone and 380 on a regular width, 1.6:1, **all of its text on the still**: at
+- **Phone (compact width):** a row in a list down the page. A 148dp 1.6:1 picture on the left plays it (a check at its top once
+  watched, an aqua progress bar along its bottom edge when part watched, a brighter outline on the episode Play starts). On the
+  right, the "S1 E4" tag, the title, a line with how long it is (or how much is left), its rating and air date, and two lines of
+  synopsis; those open the episode's page.
+- **Regular width:** a card in a row that scrolls sideways, 380dp wide, 1.6:1, **all of its text on the still**: at
   the bottom, over a scrim, the "S1 E4" tag, the title, two lines of synopsis, and a line with how long it is (or how much is
   left), its rating and the day it aired. A check sits at the top once watched, an aqua progress bar runs along the bottom edge
   when it is part watched, and the episode Play starts has a brighter outline.
-- A tap plays it. A long press opens a menu on both platforms: **View episode** (its own page) and the watched mark.
+- On a card, a tap on the picture plays it and a tap on the words opens its page. A long press opens a menu on both platforms: **View episode** (its own page) and the watched mark.
 - No download button until offline playback lands, and no swipe actions on either platform.
 - Downloaded (later) is a filled check-disc in `positive` (`ink`) on both.
 

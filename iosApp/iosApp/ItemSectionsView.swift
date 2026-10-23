@@ -6,7 +6,7 @@ import Shared
 /// up, a little dimmed, until the new one arrives.
 struct SeasonsSectionView: View {
     let seasons: SeasonsState
-    /// A regular width scrolls the episodes sideways, as bigger cards.
+    /// A regular width scrolls the episodes sideways, as bigger cards; a compact one lists them down the page.
     let wide: Bool
     /// The page's side margin: the rows run to the screen's edges and start in line with it.
     let margin: CGFloat
@@ -97,6 +97,10 @@ struct SeasonsSectionView: View {
         let list = seasons.episodes
         if let message = list.message {
             LoadErrorView(message: message, onRetry: onRetryEpisodes)
+        } else if list.items.isEmpty && list.loading && !wide {
+            VStack(spacing: Space.s4) {
+                ForEach(0..<3, id: \.self) { _ in EpisodeRowSkeleton() }
+            }
         } else if list.items.isEmpty && list.loading {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Space.s4) {
@@ -112,6 +116,20 @@ struct SeasonsSectionView: View {
             Text(Strings.shared.noEpisodes)
                 .font(.body)
                 .foregroundStyle(.secondary)
+        } else if !wide {
+            // A phone lists the episodes down the page; the one Play starts is marked.
+            VStack(spacing: Space.s4) {
+                ForEach(list.items, id: \.id) { episode in
+                    EpisodeRowView(
+                        episode: episode,
+                        current: episode.id == seasons.startEpisode?.id,
+                        onPlay: { onPlay(episode.id) },
+                        onToggleWatched: { onToggleWatched(episode.id) },
+                        onView: { onViewEpisode(episode) }
+                    )
+                }
+            }
+            .opacity(list.loading ? 0.5 : 1)
         } else {
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -145,10 +163,125 @@ private struct EpisodeHeightKey: PreferenceKey {
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
-/// An episode: a card in a row that scrolls sideways, all of it on the still. At the bottom, over a scrim: the "S1 E4" tag, the
+/// An episode on a phone: a row in the list down the page. The picture on the left plays it, with a check on it once watched, an
+/// aqua progress bar along its bottom edge when part watched, and a brighter outline on the one Play starts. On the right, the
+/// "S1 E4" tag, the title, how long it is (or how much is left), its rating and air date, and two lines of synopsis; those open
+/// its page. A long press on either opens the menu: View episode, and the watched mark.
+struct EpisodeRowView: View {
+    let episode: MediaItem
+    let current: Bool
+    let onPlay: () -> Void
+    let onToggleWatched: () -> Void
+    let onView: () -> Void
+
+    private let aspect: CGFloat = 1.6
+
+    var body: some View {
+        HStack(alignment: .top, spacing: Space.s3) {
+            Button(action: onPlay) {
+                Artwork(url: episode.landscapeUrl ?? episode.posterUrl, title: episode.title, aspectRatio: aspect, blurHash: episode.landscapeBlurHash)
+                    .overlay(alignment: .topTrailing) {
+                        if episode.played {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.headline)
+                                .foregroundStyle(.white)
+                                .shadow(radius: 2)
+                                .padding(Space.s2)
+                                .accessibilityLabel(Strings.shared.watched)
+                        }
+                    }
+                    .overlay(alignment: .bottom) {
+                        // Aqua is playback progress: how far into the episode the user got.
+                        if let progress = episode.progress {
+                            GeometryReader { proxy in
+                                ZStack(alignment: .leading) {
+                                    Rectangle().fill(Brand.progressTrack)
+                                    Rectangle().fill(Brand.accent).frame(width: proxy.size.width * CGFloat(progress.floatValue))
+                                }
+                            }
+                            .frame(height: 4)
+                        }
+                    }
+                    .frame(width: 148)
+                    .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous).stroke(current ? Color.secondary : Color(.tertiarySystemBackground), lineWidth: 1))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(PressableButtonStyle())
+
+            Button(action: onView) {
+                VStack(alignment: .leading, spacing: Space.s1) {
+                    if let tag = Strings.shared.episodeTag(season: episode.seasonNumber, episode: episode.episodeNumber) {
+                        Text(tag).font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                    }
+                    Text(episode.title)
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    if !facts.isEmpty {
+                        Text(facts.joined(separator: "  \u{00B7}  "))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    // Two lines, always, so every row is the same height.
+                    Text(episode.overview ?? "")
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                        .lineLimit(2, reservesSpace: true)
+                        .multilineTextAlignment(.leading)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint(Strings.shared.viewEpisode)
+        }
+        .contextMenu {
+            Button(action: onView) {
+                Label(Strings.shared.viewEpisode.titleCased(), systemImage: "info.circle")
+            }
+            Button(action: onToggleWatched) {
+                Label(
+                    (episode.played ? Strings.shared.markUnwatched : Strings.shared.markWatched).titleCased(),
+                    systemImage: episode.played ? "xmark.circle" : "checkmark.circle"
+                )
+            }
+        }
+    }
+
+    /// How long it is (or how much is left), its rating and the day it aired.
+    private var facts: [String] {
+        var parts: [String] = []
+        if episode.progress != nil, let runtime = episode.runtimeMs {
+            parts.append(Strings.shared.timeLeftShort(remainingMs: runtime.int64Value - episode.resumePositionMs))
+        } else if let minutes = episode.runtimeMinutes {
+            parts.append(Strings.shared.minutesShort(minutes: minutes.int32Value))
+        }
+        if let rating = episode.rating?.doubleValue, rating > 0 { parts.append(Strings.shared.ratingTag(rating: rating)) }
+        if let date = Strings.shared.releaseDate(iso: episode.premiereDate) { parts.append(date) }
+        return parts
+    }
+}
+
+private struct EpisodeRowSkeleton: View {
+    var body: some View {
+        HStack(alignment: .top, spacing: Space.s3) {
+            SkeletonBlock().frame(width: 148).aspectRatio(1.6, contentMode: .fit)
+            VStack(alignment: .leading, spacing: Space.s2) {
+                SkeletonLine(font: .headline, width: 140)
+                SkeletonLine(font: .caption, width: 90)
+                SkeletonLine(font: .subheadline, width: nil)
+                SkeletonLine(font: .subheadline, width: 120)
+            }
+        }
+    }
+}
+
+/// An episode on a tablet: a card in a row that scrolls sideways, all of it on the still. At the bottom, over a scrim: the "S1 E4" tag, the
 /// title, two lines of synopsis, and a line with how long it is (or how much is left), its rating and the day it aired. A check
 /// sits at the top once watched, a progress bar runs along the bottom edge when it is part watched, and the one Play starts has a
-/// brighter outline. Tapping plays it; a long press opens a menu: View episode, and the watched mark.
+/// brighter outline. Tapping the picture plays it, tapping the words opens its page; a long press opens a menu: View episode, and the watched mark.
 struct EpisodeCardView: View {
     let episode: MediaItem
     let width: CGFloat
@@ -180,7 +313,6 @@ struct EpisodeCardView: View {
                             .accessibilityLabel(Strings.shared.watched)
                     }
                 }
-                .overlay(alignment: .bottomLeading) { caption }
                 .overlay(alignment: .bottom) {
                     // Aqua is playback progress: how far into the episode the user got.
                     if let progress = episode.progress {
@@ -199,6 +331,12 @@ struct EpisodeCardView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressableButtonStyle())
+        // The words open the episode's page; the picture above them plays.
+        .overlay(alignment: .bottomLeading) {
+            Button(action: onView) { caption }
+                .buttonStyle(.plain)
+                .accessibilityHint(Strings.shared.viewEpisode)
+        }
         .contextMenu {
             Button(action: onView) {
                 Label(Strings.shared.viewEpisode.titleCased(), systemImage: "info.circle")
