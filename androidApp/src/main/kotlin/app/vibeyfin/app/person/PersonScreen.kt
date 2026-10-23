@@ -13,6 +13,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import app.vibeyfin.app.theme.ContentMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -77,26 +83,29 @@ fun PersonScreen(state: PersonUiState, onBack: () -> Unit, onOpen: (MediaItem) -
         Box(Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Spacer(Modifier.height(BackButtonSpace))
-                when {
-                    state.loading -> PersonSkeleton()
-                    state.message != null -> LoadError(state.message!!, onRetry, modifier = Modifier.padding(horizontal = margin))
-                    state.person != null -> {
-                        PersonHeader(state, margin)
-                        val tile = if (wide) 168.dp else VibeyFinTokens.Size.posterWidth
-                        Column(Modifier.padding(horizontal = margin), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s5)) {
-                            state.movies.takeIf { it.isVisible }?.let { MediaRowSection(it, margin, onOpen, onSeeAll = null, onRetry = onRetry, tileWidth = tile) }
-                            state.shows.takeIf { it.isVisible }?.let { MediaRowSection(it, margin, onOpen, onSeeAll = null, onRetry = onRetry, tileWidth = tile) }
-                            state.appearancesMessage?.let { LoadError(it, onRetry) }
-                            if (state.noAppearances) {
-                                Text(Strings.noAppearances, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // On a tablet the page stays a readable width, centred.
+                Column(Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
+                    when {
+                        state.loading -> PersonSkeleton()
+                        state.message != null -> LoadError(state.message!!, onRetry, modifier = Modifier.padding(horizontal = margin))
+                        state.person != null -> {
+                            PersonHeader(state, margin)
+                            val tile = if (wide) 168.dp else VibeyFinTokens.Size.posterWidth
+                            Column(Modifier.padding(horizontal = margin), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s5)) {
+                                state.movies.takeIf { it.isVisible }?.let { MediaRowSection(it, margin, onOpen, onSeeAll = null, onRetry = onRetry, tileWidth = tile) }
+                                state.shows.takeIf { it.isVisible }?.let { MediaRowSection(it, margin, onOpen, onSeeAll = null, onRetry = onRetry, tileWidth = tile) }
+                                state.appearancesMessage?.let { LoadError(it, onRetry) }
+                                if (state.noAppearances) {
+                                    Text(Strings.noAppearances, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
                             }
                         }
                     }
+                    Spacer(Modifier.height(VibeyFinTokens.Space.s5))
                 }
-                Spacer(Modifier.height(VibeyFinTokens.Space.s5))
             }
             FloatingBackButton(onBack)
         }
@@ -117,6 +126,8 @@ private fun PersonHeader(state: PersonUiState, margin: androidx.compose.ui.unit.
                 person.name.split(" ").filter { it.isNotBlank() }.take(2).joinToString("") { it.first().uppercase() },
                 style = BrandDisplay.copy(fontSize = 44.sp),
                 color = VibeyFinTokens.Colors.inkMuted,
+                // The portrait is named by the picture and the heading; the initials would be read as a stray word.
+                modifier = Modifier.clearAndSetSemantics { },
             )
             if (person.imageUrl != null) {
                 AsyncImage(model = person.imageUrl, contentDescription = person.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
@@ -130,6 +141,7 @@ private fun PersonHeader(state: PersonUiState, margin: androidx.compose.ui.unit.
             textAlign = TextAlign.Center,
             maxLines = 3,
             overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.semantics { heading() },
         )
         if (state.facts.isNotEmpty()) {
             Text(state.facts.joinToString("  ·  "), style = MaterialTheme.typography.titleSmall, color = VibeyFinTokens.Colors.inkMuted, textAlign = TextAlign.Center)
@@ -142,7 +154,7 @@ private fun PersonHeader(state: PersonUiState, margin: androidx.compose.ui.unit.
             textAlign = TextAlign.Center,
             maxLines = if (expanded) Int.MAX_VALUE else 4,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = VibeyFinTokens.Space.s2).clickable(enabled = bio != null) { expanded = !expanded }.animateContentSize(),
+            modifier = Modifier.padding(top = VibeyFinTokens.Space.s2).clickable(enabled = bio != null, role = Role.Button, onClickLabel = if (expanded) Strings.less else Strings.more) { expanded = !expanded }.animateContentSize(),
         )
         if (bio != null && bio.length > 180) {
             Text(

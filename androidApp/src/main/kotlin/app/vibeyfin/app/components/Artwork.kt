@@ -155,7 +155,12 @@ fun ArtworkTile(item: MediaItem, onClick: () -> Unit, modifier: Modifier = Modif
             .fillMaxWidth()
             .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
             // The poster grows into the detail page's picture; this tile is the one that does, from the moment it is tapped.
-            .combinedClickable(onLongClick = longPress?.let { press -> { press(item) } }, onClick = { SharedPick.itemId = item.id; onClick() })
+            .combinedClickable(
+                role = androidx.compose.ui.semantics.Role.Button,
+                onLongClickLabel = if (longPress != null) Strings.showOptions else null,
+                onLongClick = longPress?.let { press -> { press(item) } },
+                onClick = { SharedPick.itemId = item.id; onClick() },
+            )
             .semantics(mergeDescendants = true) { contentDescription = Strings.cardLabel(item.title, item.year) },
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
     ) {

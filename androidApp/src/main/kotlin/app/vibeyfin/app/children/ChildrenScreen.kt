@@ -169,7 +169,7 @@ fun ChildrenScreen(
                     state.isEmpty -> {
                         if (!pinned) Title(title, subtitle, isRoot)
                         Text(
-                            text = Strings.emptyFolder,
+                            text = state.emptyText,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

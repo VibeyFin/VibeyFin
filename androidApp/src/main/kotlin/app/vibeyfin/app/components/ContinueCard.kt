@@ -54,7 +54,7 @@ fun ContinueCard(card: ContinueCard, onClick: () -> Unit, onLongClick: () -> Uni
         Box(
             Modifier
                 .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
-                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                .combinedClickable(role = androidx.compose.ui.semantics.Role.Button, onLongClickLabel = Strings.showOptions, onClick = onClick, onLongClick = onLongClick)
                 .semantics(mergeDescendants = true) { contentDescription = card.accessibilityLabel },
         ) {
             // Rounded again inside the outer clip: a pressed card shrinks, and its corners shrink with it.

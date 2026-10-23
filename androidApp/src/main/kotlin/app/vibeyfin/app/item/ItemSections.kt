@@ -270,7 +270,7 @@ private fun EpisodeCard(episode: MediaItem, width: Dp, current: Boolean, onPlay:
                 .aspectRatio(EPISODE_ASPECT)
                 .clip(shape)
                 .border(1.dp, if (current) VibeyFinTokens.Colors.lineStrong else VibeyFinTokens.Colors.surface3, shape)
-                .combinedClickable(role = Role.Button, onClick = onPlay, onLongClick = { menu = true }),
+                .combinedClickable(role = Role.Button, onLongClickLabel = Strings.showOptions, onClick = onPlay, onLongClick = { menu = true }),
         ) {
             Artwork(
                 url = episode.landscapeUrl ?: episode.posterUrl,

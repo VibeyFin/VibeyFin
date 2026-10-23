@@ -309,6 +309,26 @@ class FilteredListViewModelTest {
     }
 
     @Test
+    fun aNarrowedLibraryThatMatchesNothingSaysSoAndAnEmptyOneDoesNot() = runTest {
+        val server = app.signedIn()
+        server.categorised()
+        server.on("GET", "/Items") { request ->
+            if (request.query["years"] != null) Reply.json(itemsJson(total = 0)) else Reply.json(itemsJson())
+        }
+        val viewModel = viewModel(HomeFilter.Library)
+        val open = viewModel.uiState.first { !it.list.loading && !it.list.refreshing }
+        assertEquals("There's nothing in here yet.", open.list.emptyText)
+
+        viewModel.onChip(ListChipKind.Year)
+        viewModel.uiState.first { it.sheet != null }
+        viewModel.onPick("Nineties")
+        val narrowed = viewModel.uiState.first { !it.list.loading && !it.list.refreshing && it.chips.any { chip -> chip.kind == ListChipKind.Year && chip.active } }
+
+        assertTrue(narrowed.list.isEmpty)
+        assertEquals("Nothing matches these filters. Try taking one off, or tap Clear.", narrowed.list.emptyText)
+    }
+
+    @Test
     fun aPersonFoundByNameNarrowsTheLibraryToTheirTitles() = runTest {
         val server = app.signedIn()
         server.categorised()

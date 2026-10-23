@@ -332,6 +332,8 @@ class FilteredListViewModel(
                     loading = false,
                     hasMore = result.value.hasMore,
                     total = result.value.total,
+                    // A page that was narrowed says the filters left nothing, not that the library is empty.
+                    emptyText = if (asked != Selection(sort = filter.defaultSort)) Strings.nothingMatchesFilters else Strings.emptyFolder,
                 )
                 is ApiResult.Failure -> ChildrenUiState(loading = false, message = LoadMessages.forError(result.error))
             }

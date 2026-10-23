@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.semantics.Role
+import app.vibeyfin.app.theme.ContentMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
@@ -123,59 +126,63 @@ fun SearchScreen(
     // The field takes the keyboard when the tab opens with nothing typed, so a search can start at once.
     LaunchedEffect(Unit) { if (state.query.isEmpty()) focus.requestFocus() }
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-            TextField(
-                value = state.query,
-                onValueChange = onQueryChange,
-                singleLine = true,
-                placeholder = { Text(Strings.searchHint) },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (state.query.isNotEmpty()) {
-                        IconButton(onClick = onClear) { Icon(Icons.Filled.Clear, contentDescription = Strings.clearSearch) }
-                    }
-                },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, keyboardType = KeyboardType.Text),
-                keyboardActions = KeyboardActions(onSearch = { onSubmit(); keyboard?.hide() }),
-                shape = RoundedCornerShape(50),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = VibeyFinTokens.Colors.surface2,
-                    unfocusedContainerColor = VibeyFinTokens.Colors.surface2,
-                    focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
-                    unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
-                ),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = margin, vertical = VibeyFinTokens.Space.s3).focusRequester(focus),
-            )
-            // One button per kind, once something is typed: All lists every group, the others only theirs.
-            if (!state.showsPrompt) {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = margin),
-                    horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
-                    modifier = Modifier.fillMaxWidth().padding(bottom = VibeyFinTokens.Space.s2),
-                ) {
-                    items(state.chips, key = { it.filter }) { chip ->
-                        FilterChip(
-                            selected = chip.selected,
-                            onClick = { onFilter(chip.filter) },
-                            label = { Text(chip.label, maxLines = 1) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = VibeyFinTokens.Colors.surface2,
-                                labelColor = VibeyFinTokens.Colors.inkMuted,
-                                selectedContainerColor = VibeyFinTokens.Colors.accentSoft,
-                                selectedLabelColor = VibeyFinTokens.Colors.onAccentSoft,
-                            ),
-                            border = null,
-                        )
+        // On a tablet the column stays a readable width, centred.
+        Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
+            Column(Modifier.widthIn(max = ContentMaxWidth).fillMaxSize()) {
+                TextField(
+                    value = state.query,
+                    onValueChange = onQueryChange,
+                    singleLine = true,
+                    placeholder = { Text(Strings.searchHint) },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (state.query.isNotEmpty()) {
+                            IconButton(onClick = onClear) { Icon(Icons.Filled.Clear, contentDescription = Strings.clearSearch) }
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, keyboardType = KeyboardType.Text),
+                    keyboardActions = KeyboardActions(onSearch = { onSubmit(); keyboard?.hide() }),
+                    shape = RoundedCornerShape(50),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = VibeyFinTokens.Colors.surface2,
+                        unfocusedContainerColor = VibeyFinTokens.Colors.surface2,
+                        focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                        unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                    ),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = margin, vertical = VibeyFinTokens.Space.s3).focusRequester(focus)
+                        .semantics { contentDescription = Strings.searchHint },
+                )
+                // One button per kind, once something is typed: All lists every group, the others only theirs.
+                if (!state.showsPrompt) {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = margin),
+                        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = VibeyFinTokens.Space.s2),
+                    ) {
+                        items(state.chips, key = { it.filter }) { chip ->
+                            FilterChip(
+                                selected = chip.selected,
+                                onClick = { onFilter(chip.filter) },
+                                label = { Text(chip.label, maxLines = 1) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = VibeyFinTokens.Colors.surface2,
+                                    labelColor = VibeyFinTokens.Colors.inkMuted,
+                                    selectedContainerColor = VibeyFinTokens.Colors.accentSoft,
+                                    selectedLabelColor = VibeyFinTokens.Colors.onAccentSoft,
+                                ),
+                                border = null,
+                            )
+                        }
                     }
                 }
-            }
-            when {
-                state.showsPrompt && state.history.isNotEmpty() -> History(state.history, margin, onHistoryPicked, onHistoryRemoved, onHistoryCleared)
-                state.showsPrompt -> Prompt(Strings.searchPrompt, Strings.searchPromptHelp, margin)
-                state.message != null -> LoadError(state.message!!, onRetry, modifier = Modifier.padding(horizontal = margin))
-                state.noResults -> Prompt(Strings.noSearchResults(state.searched), Strings.noSearchResultsHelp, margin)
-                state.groups.isEmpty() -> ResultSkeleton(margin)
-                else -> Results(state, margin, onOpenResult)
+                when {
+                    state.showsPrompt && state.history.isNotEmpty() -> History(state.history, margin, onHistoryPicked, onHistoryRemoved, onHistoryCleared)
+                    state.showsPrompt -> Prompt(Strings.searchPrompt, Strings.searchPromptHelp, margin)
+                    state.message != null -> LoadError(state.message!!, onRetry, modifier = Modifier.padding(horizontal = margin))
+                    state.noResults -> Prompt(Strings.noSearchResults(state.searched), Strings.noSearchResultsHelp, margin)
+                    state.groups.isEmpty() -> ResultSkeleton(margin)
+                    else -> Results(state, margin, onOpenResult)
+                }
             }
         }
     }
@@ -214,7 +221,7 @@ private fun History(history: List<String>, margin: androidx.compose.ui.unit.Dp, 
         }
         items(history, key = { it }) { term ->
             Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).clickable { onPick(term) }.padding(start = VibeyFinTokens.Space.s1),
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).clickable(role = Role.Button) { onPick(term) }.padding(start = VibeyFinTokens.Space.s1),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Filled.Search, contentDescription = null, tint = VibeyFinTokens.Colors.inkMuted, modifier = Modifier.size(20.dp))
@@ -256,7 +263,12 @@ private fun ResultRow(result: SearchResult, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
-            .combinedClickable(onLongClick = if (longPress != null && asItem != null) ({ longPress(asItem) }) else null, onClick = onClick)
+            .combinedClickable(
+                role = Role.Button,
+                onLongClickLabel = if (longPress != null && asItem != null) Strings.showOptions else null,
+                onLongClick = if (longPress != null && asItem != null) ({ longPress(asItem) }) else null,
+                onClick = onClick,
+            )
             .semantics(mergeDescendants = true) { contentDescription = Strings.searchResultDescription(result.title, result.subtitle) }
             .padding(vertical = VibeyFinTokens.Space.s1),
         verticalAlignment = Alignment.CenterVertically,

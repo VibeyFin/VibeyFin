@@ -23,6 +23,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.vibeyfin.R
@@ -58,7 +63,7 @@ fun TileMenuSheet(
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s2),
+                modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s2).semantics { heading() },
             )
             MenuRow(Strings.details, rememberIcon(Icons.Filled.Info), onDetails)
             // The trailer row has a slot of its own, the height of a row, kept while the server answers: a grey line fades into the row,
@@ -79,7 +84,7 @@ fun TileMenuSheet(
             }
             // A change that could not be saved was taken back; the sheet says so.
             state.actionMessage?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s2))
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s2).semantics { liveRegion = LiveRegionMode.Polite })
             }
             MenuRow(Strings.myListAction(item.isFavorite), rememberIcon(if (item.isFavorite) Icons.Filled.Check else Icons.Filled.Add), onMyList)
         }
@@ -97,7 +102,7 @@ private fun painterIcon(resource: Int) = MenuIcon(resource = resource)
 @Composable
 private fun MenuRow(label: String, icon: MenuIcon, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = ROW_HEIGHT).clickable(onClick = onClick).padding(horizontal = VibeyFinTokens.Space.s4),
+        Modifier.fillMaxWidth().heightIn(min = ROW_HEIGHT).clickable(role = Role.Button, onClick = onClick).padding(horizontal = VibeyFinTokens.Space.s4),
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
         verticalAlignment = Alignment.CenterVertically,
     ) {

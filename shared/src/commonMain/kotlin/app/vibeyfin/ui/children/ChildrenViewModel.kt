@@ -40,6 +40,8 @@ data class ChildrenUiState(
     val refreshing: Boolean = false,
     /** Set when the session ended and the screen must be left. */
     val exit: HomeExit? = null,
+    /** What an empty list says: that there is nothing, or that the filters left nothing. */
+    val emptyText: String = Strings.emptyFolder,
 ) {
     val isEmpty: Boolean get() = !loading && message == null && items.isEmpty()
 

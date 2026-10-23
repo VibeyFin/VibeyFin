@@ -154,6 +154,7 @@ object Strings {
     val switchServer = "Switch server"
     val noLibraries = "This account has no libraries yet. Ask the server's admin to add one."
     val emptyFolder = "There's nothing in here yet."
+    val nothingMatchesFilters = "Nothing matches these filters. Try taking one off, or tap Clear."
     val loadMoreFailed = "Couldn't load the rest of this list. Check your connection and try again."
 
     val continueWatching = "Continue watching"
@@ -189,6 +190,9 @@ object Strings {
 
     /** In an item's facts, once the server says the user has watched it. */
     val watched = "Watched"
+
+    /** What a screen reader offers for a long press on a poster, a card or a search result: it opens the poster menu. */
+    val showOptions = "Show options"
 
     /** What a screen reader says for the "…" menu on the item page. */
     val moreActions = "More actions"

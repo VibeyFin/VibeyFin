@@ -94,7 +94,7 @@ struct ChildrenView: View {
         } else if let message = state.message {
             LoadErrorView(message: message, onRetry: { model.retry() })
         } else if state.isEmpty {
-            Text(Strings.shared.emptyFolder)
+            Text(state.emptyText)
                 .font(.body)
                 .foregroundStyle(.secondary)
         } else {

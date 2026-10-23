@@ -101,7 +101,7 @@ struct FilteredListView: View {
         } else if let message = state.message {
             LoadErrorView(message: message, onRetry: { model.retry() })
         } else if state.isEmpty && !state.refreshing {
-            Text(Strings.shared.emptyFolder)
+            Text(state.emptyText)
                 .font(.body)
                 .foregroundStyle(.secondary)
         } else {
