@@ -76,16 +76,16 @@ class HomeFilterViewModelTest {
         viewModel.loaded()
 
         viewModel.onCategory(CategoryKind.Shows)
-        assertEquals(HomeFilter.Shows, viewModel.uiState.value.openList)
+        assertEquals(HomeFilter.Shows, viewModel.uiState.first { it.openList != null }.openList)
         viewModel.onListOpened()
-        assertNull(viewModel.uiState.value.openList)
+        assertNull(viewModel.uiState.first { it.openList == null }.openList)
 
         viewModel.onCategory(CategoryKind.Movies)
-        assertEquals(HomeFilter.Movies, viewModel.uiState.value.openList)
+        assertEquals(HomeFilter.Movies, viewModel.uiState.first { it.openList != null }.openList)
         viewModel.onListOpened()
 
         viewModel.onCategory(CategoryKind.New)
-        assertEquals(HomeFilter.New, viewModel.uiState.value.openList)
+        assertEquals(HomeFilter.New, viewModel.uiState.first { it.openList != null }.openList)
         assertNull(viewModel.uiState.value.sheet)
     }
 
@@ -103,7 +103,7 @@ class HomeFilterViewModelTest {
         assertEquals(listOf("Drama", "Thriller"), sheet.options.map { it.name })
 
         viewModel.onPickOption("g1")
-        val state = viewModel.uiState.value
+        val state = viewModel.uiState.first { it.openList != null && it.sheet == null }
 
         assertEquals(HomeFilter.Genre("g1", "Drama"), state.openList)
         assertNull(state.sheet)
@@ -118,7 +118,7 @@ class HomeFilterViewModelTest {
         viewModel.onCategory(CategoryKind.Categories)
         viewModel.uiState.first { it.sheet?.loading == false && it.sheet?.options?.isNotEmpty() == true }
         viewModel.onPickOption("g1")
-        assertEquals(HomeFilter.Genre("g1", "Drama"), viewModel.uiState.value.openList)
+        assertEquals(HomeFilter.Genre("g1", "Drama"), viewModel.uiState.first { it.openList != null }.openList)
         viewModel.onListOpened()
 
         viewModel.onCategory(CategoryKind.Categories)

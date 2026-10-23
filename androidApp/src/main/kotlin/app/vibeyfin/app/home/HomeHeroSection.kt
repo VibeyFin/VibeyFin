@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import app.vibeyfin.app.components.SkeletonBlock
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -132,6 +134,34 @@ fun HomeHeroSection(
                     Spacer(Modifier.width(VibeyFinTokens.Space.s2))
                     Text(Strings.myList, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium), maxLines = 1)
                 }
+            }
+        }
+    }
+}
+
+/** The hero's place while it is being picked: the same card, rounded and the same height, with grey stand-ins for the logo, the line and the two buttons. */
+@Composable
+fun HomeHeroSkeleton(wide: Boolean) {
+    val shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md)
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .border(1.dp, VibeyFinTokens.Colors.surface3, shape)
+            .background(VibeyFinTokens.Colors.surface2)
+            .semantics { contentDescription = Strings.loadingPage },
+    ) {
+        Box(Modifier.fillMaxWidth().aspectRatio(if (wide) HERO_ASPECT_WIDE else HERO_ASPECT))
+        Column(
+            Modifier.align(if (wide) Alignment.BottomStart else Alignment.BottomCenter).fillMaxWidth().padding(horizontal = VibeyFinTokens.Space.s3).padding(bottom = VibeyFinTokens.Space.s3),
+            horizontalAlignment = if (wide) Alignment.Start else Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
+        ) {
+            SkeletonBlock(Modifier.width(if (wide) 160.dp else 180.dp).height(40.dp), RoundedCornerShape(VibeyFinTokens.Radius.m3Xs), VibeyFinTokens.Colors.surface3)
+            SkeletonBlock(Modifier.width(150.dp).height(16.dp), RoundedCornerShape(VibeyFinTokens.Radius.m3Xs), VibeyFinTokens.Colors.surface3)
+            Row(Modifier.then(if (wide) Modifier.width(360.dp) else Modifier.fillMaxWidth()), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
+                SkeletonBlock(Modifier.weight(1f).height(HERO_BUTTON_HEIGHT), RoundedCornerShape(50), VibeyFinTokens.Colors.surface3)
+                SkeletonBlock(Modifier.weight(1f).height(HERO_BUTTON_HEIGHT), RoundedCornerShape(50), VibeyFinTokens.Colors.surface3)
             }
         }
     }

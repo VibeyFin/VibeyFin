@@ -37,8 +37,12 @@ import app.vibeyfin.ui.common.Strings
 
 /** A grey block with the artwork corner radius. */
 @Composable
-fun SkeletonBlock(modifier: Modifier = Modifier, shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(VibeyFinTokens.Radius.artwork)) {
-    Box(modifier.clip(shape).background(VibeyFinTokens.Colors.surface2))
+fun SkeletonBlock(
+    modifier: Modifier = Modifier,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(VibeyFinTokens.Radius.artwork),
+    color: androidx.compose.ui.graphics.Color = VibeyFinTokens.Colors.surface2,
+) {
+    Box(modifier.clip(shape).background(color))
 }
 
 /** A grey bar as tall as one line of [style], so the skeleton is exactly as tall as the real text. */
@@ -69,18 +73,40 @@ fun LazyGridScope.skeletonTiles(count: Int = 6, aspectRatio: Float = 2f / 3f) {
     }
 }
 
-/** The item page while it loads: the picture, the title, the facts line, the action and the overview. */
+/**
+ * The detail page while it loads, in the shapes the page has: on a phone the tall picture with the logo, the facts, Play and the four
+ * actions at its foot, then the cast; on a tablet the picture behind a column at the left. So nothing moves when the page arrives.
+ */
 @Composable
-fun ItemSkeleton(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.clearAndSetSemantics { contentDescription = Strings.loadingPage },
-        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-    ) {
-        SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(16f / 9f))
-        SkeletonLine(220.dp, MaterialTheme.typography.titleLarge)
-        SkeletonLine(160.dp, MaterialTheme.typography.bodyMedium)
-        SkeletonBlock(Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge), RoundedCornerShape(VibeyFinTokens.Radius.m3Xs))
-        repeat(3) { SkeletonLine(280.dp, MaterialTheme.typography.bodyLarge) }
+fun ItemSkeleton(wide: Boolean, screenWidth: Dp, screenHeight: Dp, margin: Dp, modifier: Modifier = Modifier) {
+    val pill = RoundedCornerShape(50)
+    val bar = RoundedCornerShape(VibeyFinTokens.Radius.m3Xs)
+    val line = VibeyFinTokens.Colors.surface3
+    Box(modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = Strings.loadingPage }) {
+        if (wide) {
+            SkeletonBlock(Modifier.fillMaxWidth().height(screenHeight * 0.7f), RoundedCornerShape(0.dp))
+        } else {
+            SkeletonBlock(Modifier.fillMaxWidth().height(screenWidth * 1.5f), RoundedCornerShape(0.dp))
+        }
+        Column(
+            Modifier.fillMaxWidth().then(if (wide) Modifier.fillMaxWidth(0.46f) else Modifier).padding(horizontal = margin)
+                .padding(top = if (wide) screenHeight * 0.3f else screenWidth * 1.5f - 360.dp),
+            horizontalAlignment = if (wide) Alignment.Start else Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+        ) {
+            SkeletonBlock(Modifier.fillMaxWidth(0.6f).height(56.dp), bar, line)
+            SkeletonBlock(Modifier.width(150.dp).height(16.dp), bar, line)
+            SkeletonBlock(Modifier.fillMaxWidth().height(40.dp), bar, line)
+            SkeletonBlock(Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge), pill, line)
+            androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                repeat(4) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
+                        SkeletonBlock(Modifier.size(30.dp), CircleShape, line)
+                        SkeletonBlock(Modifier.width(56.dp).height(14.dp), bar, line)
+                    }
+                }
+            }
+        }
     }
 }
 

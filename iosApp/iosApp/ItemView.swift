@@ -50,13 +50,12 @@ struct ItemView: View {
                     }
                 }
             } else {
-                ScrollView {
-                    ItemSkeleton()
-                        .screenMargin()
-                        .padding(.vertical, Space.s5)
-                }
+                // The grey page, in the shapes of the real one; it fades into it, so opening a title is not a sudden cut.
+                ItemSkeleton()
+                    .transition(.opacity)
             }
         }
+        .animation(.easeInOut(duration: 0.16), value: model.state?.item?.id)
         .onAppear { model.start() }
         .fullScreenCover(item: $playing) { request in
             PlayerView(itemId: request.id, startOver: request.startOver, onExit: onExit)

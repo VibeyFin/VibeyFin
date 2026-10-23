@@ -126,21 +126,30 @@ fun ItemScreen(
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
             val item = state.item
-            when {
-                state.loading -> Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-                    Spacer(Modifier.height(BackButtonSpace))
-                    ItemSkeleton(Modifier.padding(horizontal = screenMargin()))
-                }
-                state.message != null -> Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-                    Spacer(Modifier.height(BackButtonSpace))
-                    LoadError(message = state.message!!, onRetry = onRetry, modifier = Modifier.padding(horizontal = screenMargin()))
-                }
-                // A tablet, or a foldable unfolded, gets the wide layout; a phone, and a foldable closed, the narrow one.
-                item != null -> BoxWithConstraints(Modifier.fillMaxSize()) {
-                    ItemPage(
-                        item, state, wide = maxWidth >= WIDE_FROM, screenWidth = maxWidth, screenHeight = maxHeight,
-                        onPlay, onPlayEpisode, onOpen, onOpenSeries, onToggleFavorite, onTogglePlayed, onToggleEpisodePlayed, onSelectSeason, onRetrySimilar, onRetryCollections, onRetrySeasons, onRetryEpisodes, onOpenPerson, onRetryExtras,
-                    )
+            // Grey shapes of the page fade into it, so opening a movie or a show is not a sudden cut; the phase decides what each
+            // layer draws, so one fading out keeps its own picture.
+            val phase = when {
+                state.loading -> ItemPhase.Loading
+                state.message != null -> ItemPhase.Failed
+                item != null -> ItemPhase.Ready
+                else -> ItemPhase.Loading
+            }
+            androidx.compose.animation.Crossfade(targetState = phase, animationSpec = androidx.compose.animation.core.tween(ITEM_FADE_MS), label = "item page") { shown ->
+                when (shown) {
+                    ItemPhase.Loading -> BoxWithConstraints(Modifier.fillMaxSize()) {
+                        ItemSkeleton(wide = maxWidth >= WIDE_FROM, screenWidth = maxWidth, screenHeight = maxHeight, margin = if (maxWidth >= WIDE_FROM) VibeyFinTokens.Space.s6 else screenMargin())
+                    }
+                    ItemPhase.Failed -> Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+                        Spacer(Modifier.height(BackButtonSpace))
+                        LoadError(message = state.message.orEmpty(), onRetry = onRetry, modifier = Modifier.padding(horizontal = screenMargin()))
+                    }
+                    // A tablet, or a foldable unfolded, gets the wide layout; a phone, and a foldable closed, the narrow one.
+                    ItemPhase.Ready -> if (item != null) BoxWithConstraints(Modifier.fillMaxSize()) {
+                        ItemPage(
+                            item, state, wide = maxWidth >= WIDE_FROM, screenWidth = maxWidth, screenHeight = maxHeight,
+                            onPlay, onPlayEpisode, onOpen, onOpenSeries, onToggleFavorite, onTogglePlayed, onToggleEpisodePlayed, onSelectSeason, onRetrySimilar, onRetryCollections, onRetrySeasons, onRetryEpisodes, onOpenPerson, onRetryExtras,
+                        )
+                    }
                 }
             }
             FloatingBackButton(onBack)
@@ -148,6 +157,11 @@ fun ItemScreen(
         }
     }
 }
+
+private enum class ItemPhase { Loading, Failed, Ready }
+
+/** How long the grey page takes to fade into the real one: quick, but not a cut. */
+private const val ITEM_FADE_MS = 160
 
 /** From this width the page uses its tablet layout: the backdrop at 16:9 with the details in a column on the left. */
 private val WIDE_FROM = 600.dp
@@ -200,7 +214,7 @@ private fun ItemPage(
             // The collections it is part of: a poster each, and one opens the collection's members.
             // Behind the scenes and the like: wide tiles, as they are clips, not posters.
             state.extras?.takeIf { it.isVisible }?.let { row ->
-                MediaRowSection(row, margin, onOpen, onSeeAll = null, onRetry = onRetryExtras, tileWidth = if (wide) EXTRA_WIDE else EXTRA_NARROW)
+                MediaRowSection(row, margin, onOpen, onSeeAll = null, onRetry = onRetryExtras, tileWidth = if (wide) EXTRA_WIDE else EXTRA_NARROW, skeletonAspect = 16f / 9f)
             }
             state.collections?.takeIf { it.isVisible }?.let { row ->
                 MediaRowSection(row, margin, onOpen, onSeeAll = null, onRetry = onRetryCollections, tileWidth = if (wide) POSTER_WIDE else VibeyFinTokens.Size.posterWidth)

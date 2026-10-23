@@ -37,6 +37,10 @@ struct HomeView: View {
                             // The category buttons scroll with the content and run to the screen edge. Home itself is
                             // never filtered: a button opens a page of its own.
                             CategoryButtonRow(buttons: state.buttons) { model.category($0.kind) }
+                            // While it is being picked a grey card of the same size stands in, so the hero does not just appear.
+                            if state.hero == nil && state.heroLoading {
+                                HomeHeroSkeleton().screenMargin()
+                            }
                             // The featured item, when there is one: full width, under the buttons and above what is being watched.
                             if let hero = state.hero {
                                 HomeHeroView(

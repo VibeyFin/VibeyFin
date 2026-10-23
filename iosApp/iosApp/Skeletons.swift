@@ -54,16 +54,35 @@ struct PosterSkeletonGrid: View {
 
 /// The item page while it loads: the picture, the title, the facts line, the action and the overview.
 struct ItemSkeleton: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    private var wide: Bool { sizeClass == .regular }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.s3) {
-            SkeletonBlock().aspectRatio(16.0 / 9.0, contentMode: .fit)
-            SkeletonLine(font: .title2.weight(.bold), width: 220)
-            SkeletonLine(font: .subheadline, width: 160)
-            SkeletonBlock(cornerRadius: Radius.card).frame(height: 50)
-            ForEach(0..<3, id: \.self) { _ in
-                SkeletonLine(font: .body, width: 280)
+        // The shapes of the page: the tall picture with the logo, the facts, Play and the four actions at its foot.
+        GeometryReader { proxy in
+            ZStack(alignment: .bottom) {
+                Rectangle().fill(Color(.tertiarySystemBackground))
+                VStack(alignment: wide ? .leading : .center, spacing: Space.s3) {
+                    RoundedRectangle(cornerRadius: 6).fill(Color(.quaternarySystemFill)).frame(width: proxy.size.width * 0.6, height: 56)
+                    RoundedRectangle(cornerRadius: 6).fill(Color(.quaternarySystemFill)).frame(width: 150, height: 16)
+                    RoundedRectangle(cornerRadius: 6).fill(Color(.quaternarySystemFill)).frame(height: 40)
+                    Capsule().fill(Color(.quaternarySystemFill)).frame(height: 50)
+                    HStack {
+                        ForEach(0..<4, id: \.self) { _ in
+                            VStack(spacing: Space.s1) {
+                                Circle().fill(Color(.quaternarySystemFill)).frame(width: 30, height: 30)
+                                RoundedRectangle(cornerRadius: 6).fill(Color(.quaternarySystemFill)).frame(width: 56, height: 14)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                }
+                .padding(.horizontal, Space.s4)
+                .padding(.bottom, Space.s5)
             }
+            .frame(height: min(proxy.size.width * 1.5, proxy.size.height))
         }
+        .ignoresSafeArea(edges: .top)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Strings.shared.loadingPage)
     }

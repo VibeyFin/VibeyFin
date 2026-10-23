@@ -335,8 +335,14 @@ private fun Content(
                 )
             }
             // The featured item, when there is one: full width, under the buttons and above what is being watched.
-            state.hero?.let { hero ->
-                fullWidth(key = "hero") { HomeHeroSection(hero, LocalConfiguration.current.screenWidthDp >= 600, onHeroPlay, onDetails, onHeroMyList) }
+            // While it is being picked a grey card of the same size stands in and fades into the hero, so it does not just appear.
+            if (state.hero != null || state.heroLoading) {
+                fullWidth(key = "hero") {
+                    val wideHero = LocalConfiguration.current.screenWidthDp >= 600
+                    Crossfade(targetState = state.hero, animationSpec = tween(ROW_FADE_MS), label = "hero") { hero ->
+                        if (hero == null) HomeHeroSkeleton(wideHero) else HomeHeroSection(hero, wideHero, onHeroPlay, onDetails, onHeroMyList)
+                    }
+                }
             }
             fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onLongPress, onRetryContinue) }
             // Until the libraries are known two grey rows hold the place, so the rows that replace them don't push

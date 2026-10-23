@@ -66,6 +66,8 @@ fun MediaRowSection(
     onRetry: () -> Unit,
     // Posters are 112 on a phone and larger on a tablet (`screens.md`).
     tileWidth: Dp = VibeyFinTokens.Size.posterWidth,
+    // The grey tiles take the shape of the real ones: tall for posters, wide for clips such as extras.
+    skeletonAspect: Float = 2f / 3f,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -85,7 +87,7 @@ fun MediaRowSection(
         val phase = if (row.loading) RowPhase.Loading else if (row.message != null) RowPhase.Failed else RowPhase.Ready
         Crossfade(targetState = phase, animationSpec = tween(ROW_FADE_MS), modifier = Modifier.animateContentSize(tween(ROW_FADE_MS))) { shown ->
             when (shown) {
-                RowPhase.Loading -> PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin), tileWidth = tileWidth)
+                RowPhase.Loading -> PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin), tileWidth = tileWidth, aspectRatio = skeletonAspect)
                 RowPhase.Failed -> LoadError(row.message ?: "", onRetry)
                 RowPhase.Ready -> LazyRow(
                     modifier = Modifier.bleed(margin),

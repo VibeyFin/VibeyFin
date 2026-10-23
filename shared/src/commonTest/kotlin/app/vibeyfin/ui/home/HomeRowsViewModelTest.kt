@@ -21,6 +21,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
+import kotlinx.coroutines.launch
+import app.vibeyfin.ui.home.HomeUiState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -238,7 +240,7 @@ class HomeRowsViewModelTest {
 
         assertEquals(HeroNav.Play("star"), viewModel.uiState.first { it.heroNav != null }.heroNav)
         viewModel.onHeroNavHandled()
-        assertNull(viewModel.uiState.value.heroNav)
+        assertNull(viewModel.uiState.first { it.heroNav == null }.heroNav)
     }
 
     @Test
@@ -278,6 +280,41 @@ class HomeRowsViewModelTest {
         viewModel.onHeroPlay()
 
         assertEquals(HeroNav.Details("show"), viewModel.uiState.first { it.heroNav != null }.heroNav)
+    }
+
+    @Test
+    fun theHeroShowsAGreyCardWhileItIsPickedAndNotWhenItIsOffOrFound() = runTest {
+        heroServer()
+        val viewModel = viewModel()
+
+        // Once picked there is a hero and no grey card left (before that the grey card held its place).
+        val picked = viewModel.uiState.first { it.hero != null }
+
+        assertFalse(picked.heroLoading)
+    }
+
+    @Test
+    fun nothingToFeatureLeavesNoGreyCardBehind() = runTest {
+        server()
+        val viewModel = viewModel()
+
+        viewModel.rowsLoaded(7)
+        val decided = viewModel.uiState.first { !it.heroLoading }
+
+        assertNull(decided.hero)
+    }
+
+    @Test
+    fun aProfileWithTheHeroOffNeverShowsAGreyCard() = runTest {
+        heroServer()
+        app.profileSettings.setShowHomeHero(false)
+        val viewModel = viewModel()
+        val states = mutableListOf<HomeUiState>()
+        backgroundScope.launch { viewModel.uiState.collect { states += it } }
+
+        viewModel.rowsLoaded(7)
+
+        assertTrue(states.none { it.heroLoading })
     }
 
     @Test

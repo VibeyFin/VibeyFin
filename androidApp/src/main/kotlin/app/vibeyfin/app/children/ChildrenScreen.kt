@@ -53,6 +53,8 @@ import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.components.skeletonTiles
+import app.vibeyfin.app.components.SkeletonLine
+import app.vibeyfin.app.components.PosterSkeletonRow
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.children.ChildrenUiState
@@ -148,7 +150,17 @@ fun ChildrenScreen(
                         } else if (!pinned) {
                             item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title, subtitle, isRoot) }
                         }
-                        skeletonTiles()
+                        if (collectionPage) {
+                            // A collection's members are rows of posters, so grey rows stand in, not a grid.
+                            item(span = { GridItemSpan(maxLineSpan) }, key = "members-skeleton") {
+                                Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
+                                    SkeletonLine(96.dp, MaterialTheme.typography.titleMedium)
+                                    PosterSkeletonRow(Modifier.bleed(screenMargin()), count = 3, tileWidth = if (LocalConfiguration.current.screenWidthDp >= 600) 168.dp else 132.dp)
+                                }
+                            }
+                        } else {
+                            skeletonTiles()
+                        }
                     }
                     state.message != null -> {
                         if (!pinned) Title(title, subtitle, isRoot)

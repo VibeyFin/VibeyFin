@@ -73,3 +73,31 @@ struct HomeHeroView: View {
         .padding(Space.s3)
     }
 }
+
+/// The hero's place while it is being picked: the same rounded card at the same height, with grey stand-ins for the logo, the line
+/// and the two buttons, so the hero does not just appear.
+struct HomeHeroSkeleton: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    private var wide: Bool { sizeClass == .regular }
+
+    var body: some View {
+        Color(.tertiarySystemBackground)
+            .aspectRatio(wide ? 2.6 : 4.0 / 3.0, contentMode: .fit)
+            .overlay(alignment: wide ? .bottomLeading : .bottom) {
+                VStack(alignment: wide ? .leading : .center, spacing: Space.s2) {
+                    RoundedRectangle(cornerRadius: 6).fill(Color(.quaternarySystemFill)).frame(width: wide ? 160 : 180, height: 40)
+                    RoundedRectangle(cornerRadius: 6).fill(Color(.quaternarySystemFill)).frame(width: 150, height: 16)
+                    HStack(spacing: Space.s2) {
+                        Capsule().fill(Color(.quaternarySystemFill)).frame(height: 40)
+                        Capsule().fill(Color(.quaternarySystemFill)).frame(height: 40)
+                    }
+                    .frame(maxWidth: wide ? 360 : .infinity)
+                }
+                .padding(Space.s3)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous).stroke(Color(.tertiarySystemBackground), lineWidth: 1))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Strings.shared.loadingPage)
+    }
+}
