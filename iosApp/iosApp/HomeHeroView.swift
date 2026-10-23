@@ -43,7 +43,7 @@ struct HomeHeroView: View {
                 }
                 .frame(maxWidth: wide ? 240 : 200, maxHeight: wide ? 72 : 52, alignment: wide ? .leading : .center)
             }
-            let facts = HomeHeroKt.getHeroFacts(item)
+            let facts = item.heroFacts
             if !facts.isEmpty {
                 // "Show · Offbeat · Heartfelt · Comedy": what it is, then its genres.
                 Text(facts.joined(separator: "  \u{00B7}  "))
