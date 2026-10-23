@@ -122,10 +122,9 @@ final class OnboardingFlowUITests: XCTestCase {
             let fifteen = button("15 seconds")
             XCTAssertTrue(fifteen.waitForExistence(timeout: 5), "15 seconds choice is missing")
             fifteen.tap()
-            XCTAssertTrue(
-                button("Skip Back", contains: true).label.localizedCaseInsensitiveContains("15"),
-                "Skip Back doesn't show 15"
-            )
+            // The menu is still closing: wait for the row to show 15 rather than reading its label at once.
+            let shows15 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Skip Back", "15")).firstMatch
+            XCTAssertTrue(shows15.waitForExistence(timeout: 5), "Skip Back doesn't show 15")
         }
     }
 

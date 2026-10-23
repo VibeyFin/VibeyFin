@@ -2,8 +2,9 @@ import SwiftUI
 import Shared
 
 /// Offers the next episode in the last seconds of this one: its picture, "S1 E2 · title", how many
-/// seconds until it starts on its own, "Play now" (the one aqua action while it is up) and "Watch
-/// credits", which dismisses it. It sits on the scrim, over the video.
+/// seconds until it starts on its own, "Play now" (a white filled capsule; the player stays in Apple's
+/// scheme, never aqua) and "Watch credits", a glass capsule that dismisses it. The card is Liquid
+/// Glass on iOS 26 and the scrim before that, over the video.
 struct UpNextCard: View {
     let upNext: UpNext
     let onPlayNow: () -> Void
@@ -29,14 +30,38 @@ struct UpNextCard: View {
                 }
             }
             HStack(spacing: Space.s2) {
-                PrimaryButton(action: onPlayNow) {
+                Button(action: onPlayNow) {
                     Label(Strings.shared.playNow.titleCased(), systemImage: "play.fill")
+                        .font(.headline)
+                        .foregroundStyle(Color(.systemBackground))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(Capsule().fill(Color.primary))
+                        .contentShape(Capsule())
                 }
-                SecondaryButton(title: Strings.shared.watchCredits, action: onWatchCredits)
+                .buttonStyle(.plain)
+                Button(action: onWatchCredits) {
+                    Text(Strings.shared.watchCredits.titleCased())
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Capsule())
+                }
+                .modifier(SkipButtonStyle())
             }
         }
         .padding(Space.s3)
         .frame(width: 340)
-        .background(Brand.scrimStrong, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+        .modifier(UpNextBackground())
+    }
+}
+
+/// Real Liquid Glass on iOS 26, the strong scrim before that.
+private struct UpNextBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(in: .rect(cornerRadius: Radius.card))
+        } else {
+            content.background(Brand.scrimStrong, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+        }
     }
 }

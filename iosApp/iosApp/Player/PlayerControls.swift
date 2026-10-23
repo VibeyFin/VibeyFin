@@ -2,6 +2,18 @@ import Shared
 import SwiftUI
 import UIKit
 
+private struct PlayerInClusterKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// The control sits inside a `PlayerControlCluster`, which draws the one shared backdrop.
+    fileprivate var playerInCluster: Bool {
+        get { self[PlayerInClusterKey.self] }
+        set { self[PlayerInClusterKey.self] = newValue }
+    }
+}
+
 /// The symbol of a round player control, sized to touch and growing with Dynamic Type. Before iOS 26
 /// it sits on a scrim disc; on iOS 26 the glass button style draws the disc.
 private struct PlayerSymbol: View {
@@ -10,6 +22,7 @@ private struct PlayerSymbol: View {
 
     // 44 pt to touch at the default text size.
     @ScaledMetric(relativeTo: .title2) private var diameter: CGFloat = 44
+    @Environment(\.playerInCluster) private var inCluster
 
     var body: some View {
         let symbol = Image(systemName: systemName)
@@ -17,7 +30,9 @@ private struct PlayerSymbol: View {
             .foregroundStyle(.primary)
             .frame(width: diameter, height: diameter)
             .contentShape(Circle())
-        if #available(iOS 26.0, *) {
+        if inCluster {
+            symbol
+        } else if #available(iOS 26.0, *) {
             symbol
         } else {
             symbol.background(Circle().fill(Brand.scrim))
@@ -28,8 +43,12 @@ private struct PlayerSymbol: View {
 /// How a round control is drawn: real Liquid Glass on iOS 26 (`.glass`, never tinted), plain on the
 /// scrim before that. Glass floats over the video, which is what it is for: never over content.
 private struct PlayerControlStyle: ViewModifier {
+    @Environment(\.playerInCluster) private var inCluster
+
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
+        if inCluster {
+            content.buttonStyle(PressableButtonStyle())
+        } else if #available(iOS 26.0, *) {
             content
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)
@@ -142,8 +161,12 @@ struct PlayerSpeedMenu: View {
 
 /// The scrim behind a capsule control before iOS 26, where the glass style draws its own.
 private struct CapsuleBackdrop: ViewModifier {
+    @Environment(\.playerInCluster) private var inCluster
+
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
+        if inCluster {
+            content
+        } else if #available(iOS 26.0, *) {
             content
         } else {
             content.background(Capsule().fill(Brand.scrim))
@@ -152,8 +175,12 @@ private struct CapsuleBackdrop: ViewModifier {
 }
 
 private struct PlayerCapsuleStyle: ViewModifier {
+    @Environment(\.playerInCluster) private var inCluster
+
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
+        if inCluster {
+            content.buttonStyle(PressableButtonStyle())
+        } else if #available(iOS 26.0, *) {
             content
                 .buttonStyle(.glass)
                 .buttonBorderShape(.capsule)
@@ -178,16 +205,35 @@ struct FormatBadge: View {
     }
 }
 
+/// One capsule holding the player's trailing controls as 44 pt cells: Liquid Glass on iOS 26, a
+/// `Brand.scrim` capsule before that. The controls inside draw no backdrop of their own.
+struct PlayerControlCluster<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        let cells = HStack(spacing: 0) { content() }
+            .environment(\.playerInCluster, true)
+            .clipShape(Capsule())
+        if #available(iOS 26.0, *) {
+            cells.glassEffect(.regular, in: Capsule())
+        } else {
+            cells.background(Capsule().fill(Brand.scrim))
+        }
+    }
+}
+
 /// Groups the player's glass controls so they blend and share one render pass on iOS 26. Before
-/// that there is nothing to group.
+/// that there is nothing to group. The app's aqua accent reaches glass buttons and menu labels
+/// through the tint, so it is set to white here once: aqua stays on the scrubber's fill only.
 struct PlayerGlassGroup<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         if #available(iOS 26.0, *) {
             GlassEffectContainer { content() }
+                .tint(.white)
         } else {
-            content()
+            content().tint(.white)
         }
     }
 }
@@ -273,8 +319,13 @@ struct PlayerScrubber: View {
             GeometryReader { geometry in
                 let width = geometry.size.width
                 let fraction = min(max(position / duration, 0), 1)
-                let x = min(max(width * fraction - ScrubPreview.width / 2, 0), max(width - ScrubPreview.width, 0))
-                ScrubPreview(thumbnail: thumbnail, time: Strings.shared.clock(milliseconds: PlayerTime.milliseconds(position)))
+                let previewWidth = ScrubPreview.width(forBarWidth: width)
+                let x = min(max(width * fraction - previewWidth / 2, 0), max(width - previewWidth, 0))
+                ScrubPreview(
+                    thumbnail: thumbnail,
+                    time: Strings.shared.clock(milliseconds: PlayerTime.milliseconds(position)),
+                    pictureWidth: ScrubPreview.pictureWidth(forBarWidth: width)
+                )
                     .alignmentGuide(.top) { $0[.bottom] }
                     .offset(x: x)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

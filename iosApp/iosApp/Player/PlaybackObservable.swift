@@ -120,6 +120,15 @@ final class PlaybackObservable: ObservableObject {
         model.onSkip()
     }
 
+    /// A skip button or double-tap: the model answers with a seek by the chosen seconds.
+    func skipBack(_ positionMs: Int64) {
+        model.skipBack(positionMs: positionMs)
+    }
+
+    func skipForward(_ positionMs: Int64, durationMs: Int64) {
+        model.skipForward(positionMs: positionMs, durationMs: durationMs)
+    }
+
     /// The seek the model asked for has been handed to the player.
     func seekHandled() {
         model.onSeekHandled()

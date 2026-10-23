@@ -28,6 +28,9 @@ struct PlayerView: View {
     @State private var trickplayTiles: TrickplayTiles?
     /// Going to the background, held back while automatic picture-in-picture may still announce itself.
     @State private var pendingBackground: Task<Void, Never>?
+    /// The side of the last double-tap seek, while its "10s" shows.
+    @State private var seekFlash: SeekSide?
+    @State private var flashTask: Task<Void, Never>?
 
     /// How long the controls stay after the last touch while playing.
     private let hideDelay: UInt64 = 3_000_000_000
@@ -49,12 +52,22 @@ struct PlayerView: View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
             PlayerSurface(player: controller.player, onLayer: { pip.attach(to: $0) }).ignoresSafeArea()
-            // A touch anywhere on the video shows or hides the controls.
-            Color.clear
-                .contentShape(Rectangle())
-                .ignoresSafeArea()
-                .onTapGesture(perform: toggleControls)
-                .accessibilityHidden(true)
+            // A touch anywhere on the video shows or hides the controls; a double tap on the left or
+            // right third seeks. The double tap comes first so a single tap isn't taken for half of it.
+            GeometryReader { proxy in
+                Color.clear
+                    .contentShape(Rectangle())
+                    .gesture(
+                        SpatialTapGesture(count: 2)
+                            .onEnded { doubleTap(at: $0.location.x, width: proxy.size.width) }
+                            .exclusively(before: TapGesture().onEnded { toggleControls() })
+                    )
+            }
+            .ignoresSafeArea()
+            .accessibilityHidden(true)
+            if let side = seekFlash, let seconds = state.map({ side == .back ? $0.skipBackSeconds : $0.skipForwardSeconds }) {
+                seekFlashView(side: side, seconds: Int(seconds))
+            }
             if let message = state?.message {
                 errorPanel(message)
                 closeOverlay
@@ -108,6 +121,7 @@ struct PlayerView: View {
         }
         .onDisappear {
             hideTask?.cancel()
+            flashTask?.cancel()
             pendingBackground?.cancel()
             // The window plays on without this screen being visible; it is torn down when the window closes.
             if !pip.isActive { controller.tearDown() }
@@ -199,14 +213,16 @@ struct PlayerView: View {
                         bottomBar
                     }
                     if hasStream && !isWaiting {
-                        PlayerIconButton(
-                            systemName: controller.isPlaying ? "pause.fill" : "play.fill",
-                            label: controller.isPlaying ? Strings.shared.pause : Strings.shared.play,
-                            font: .largeTitle,
-                            action: {
+                        PlayerTransport(
+                            isPlaying: controller.isPlaying,
+                            skipBackSeconds: Int(state?.skipBackSeconds ?? ProfileSettings.Companion.shared.DEFAULT_SKIP_BACK_SECONDS),
+                            skipForwardSeconds: Int(state?.skipForwardSeconds ?? ProfileSettings.Companion.shared.DEFAULT_SKIP_FORWARD_SECONDS),
+                            onSkipBack: { skip(.back) },
+                            onTogglePlay: {
                                 model.userInteraction()
                                 controller.togglePlayPause()
-                            }
+                            },
+                            onSkipForward: { skip(.forward) }
                         )
                     }
                 }
@@ -239,8 +255,8 @@ struct PlayerView: View {
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                 }
-                if let subtitle = state?.subtitle {
-                    Text(subtitle)
+                if !metaLine.isEmpty {
+                    Text(metaLine)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -248,52 +264,57 @@ struct PlayerView: View {
             }
             .padding(.top, Space.s1)
             Spacer(minLength: 0)
-            if let badge = state?.badge {
-                FormatBadge(text: badge).padding(.top, Space.s1)
-            }
-            if let state {
-                PlayerSpeedMenu(
-                    speeds: state.speeds.map { $0.floatValue },
-                    selected: state.speed,
-                    onSelect: { speed in
-                        model.selectSpeed(speed)
-                        scheduleHide()
-                    },
-                    onTouch: {
-                        model.userInteraction()
-                        hideTask?.cancel()
-                    }
-                )
-            }
-            if pip.isSupported {
-                PlayerIconButton(
-                    systemName: "pip.enter",
-                    label: Strings.shared.pictureInPicture,
-                    action: {
-                        model.userInteraction()
-                        pip.start()
-                    }
-                )
-            }
-            if let state, state.hasTrackChoices {
-                PlayerTrackMenu(
-                    audio: state.audioTracks,
-                    subtitles: state.subtitleTracks,
-                    onSelectAudio: { index in
-                        model.selectAudio(index)
-                        scheduleHide()
-                    },
-                    onSelectSubtitle: { index in
-                        model.selectSubtitle(index)
-                        scheduleHide()
-                    },
-                    onTouch: {
-                        model.userInteraction()
-                        hideTask?.cancel()
-                    }
-                )
+            PlayerControlCluster {
+                if let state {
+                    PlayerSpeedMenu(
+                        speeds: state.speeds.map { $0.floatValue },
+                        selected: state.speed,
+                        onSelect: { speed in
+                            model.selectSpeed(speed)
+                            scheduleHide()
+                        },
+                        onTouch: {
+                            model.userInteraction()
+                            hideTask?.cancel()
+                        }
+                    )
+                }
+                if let state, state.hasTrackChoices {
+                    PlayerTrackMenu(
+                        audio: state.audioTracks,
+                        subtitles: state.subtitleTracks,
+                        onSelectAudio: { index in
+                            model.selectAudio(index)
+                            scheduleHide()
+                        },
+                        onSelectSubtitle: { index in
+                            model.selectSubtitle(index)
+                            scheduleHide()
+                        },
+                        onTouch: {
+                            model.userInteraction()
+                            hideTask?.cancel()
+                        }
+                    )
+                }
+                if pip.isSupported {
+                    PlayerIconButton(
+                        systemName: "pip.enter",
+                        label: Strings.shared.pictureInPicture,
+                        action: {
+                            model.userInteraction()
+                            pip.start()
+                        }
+                    )
+                }
+                AirPlayButton()
             }
         }
+    }
+
+    /// The subtitle then the picture badge, as plain text.
+    private var metaLine: String {
+        Strings.shared.metaLine(subtitle: state?.subtitle, badge: state?.badge) ?? ""
     }
 
     /// A new item's trickplay gets new tiles, so the previous episode's thumbnails never show; none clears them.
@@ -452,6 +473,52 @@ struct PlayerView: View {
         dismiss()
     }
 
+    /// Skips by the profile's seconds: the model answers with a seek that `onReceive` hands to the player.
+    private func skip(_ side: SeekSide) {
+        model.userInteraction()
+        let position = PlayerTime.milliseconds(controller.position)
+        switch side {
+        case .back:
+            model.skipBack(position)
+        case .forward:
+            model.skipForward(position, durationMs: PlayerTime.milliseconds(controller.duration))
+        }
+        scheduleHide()
+    }
+
+    /// The left third skips back, the right third forward, the middle does nothing.
+    private func doubleTap(at x: CGFloat, width: CGFloat) {
+        guard hasStream, !isWaiting, state?.message == nil, width > 0 else { return }
+        let side: SeekSide
+        if x < width / 3 {
+            side = .back
+        } else if x > width * 2 / 3 {
+            side = .forward
+        } else {
+            return
+        }
+        skip(side)
+        withAnimation(.easeOut(duration: 0.12)) { seekFlash = side }
+        flashTask?.cancel()
+        flashTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.2)) { seekFlash = nil }
+        }
+    }
+
+    /// Near the tapped side; fades in and out, and under Reduce Motion does nothing else.
+    private func seekFlashView(side: SeekSide, seconds: Int) -> some View {
+        HStack {
+            if side == .forward { Spacer(minLength: 0) }
+            SeekFlash(text: Strings.shared.seekFlash(seconds: Int32(seconds)))
+                .padding(.horizontal, Space.s7)
+            if side == .back { Spacer(minLength: 0) }
+        }
+        .allowsHitTesting(false)
+        .transition(.opacity)
+    }
+
     private func toggleControls() {
         model.userInteraction()
         if controlsVisible {
@@ -492,4 +559,9 @@ enum PlayerTime {
     static func milliseconds(_ seconds: TimeInterval) -> Int64 {
         Int64((seconds.isFinite ? max(0, seconds) : 0) * 1000)
     }
+}
+
+enum SeekSide {
+    case back
+    case forward
 }
