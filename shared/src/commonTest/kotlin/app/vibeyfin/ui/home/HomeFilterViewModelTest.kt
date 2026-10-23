@@ -169,8 +169,9 @@ class HomeFilterViewModelTest {
         viewModel.onCategory(CategoryKind.Categories)
         viewModel.onDismissSheet()
 
-        assertNull(viewModel.uiState.value.sheet)
-        assertNull(viewModel.uiState.value.openList)
+        val state = viewModel.uiState.first { it.sheet == null }
+        assertNull(state.sheet)
+        assertNull(state.openList)
     }
 
     @Test
