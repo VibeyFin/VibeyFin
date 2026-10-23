@@ -2,6 +2,9 @@ package app.vibeyfin.app.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import app.vibeyfin.domain.model.asMediaItem
+import app.vibeyfin.app.navigation.LocalTileLongPress
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -243,13 +246,17 @@ private fun Results(state: SearchUiState, margin: androidx.compose.ui.unit.Dp, o
 }
 
 /** One match: a picture (a poster, a still, or a round portrait), the title, and a line under it. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun ResultRow(result: SearchResult, onClick: () -> Unit) {
+    // A long press opens the same menu as on a poster (Details, Trailer, My List); a person has none.
+    val longPress = LocalTileLongPress.current
+    val asItem = remember(result) { result.asMediaItem() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
-            .clickable(onClick = onClick)
+            .combinedClickable(onLongClick = if (longPress != null && asItem != null) ({ longPress(asItem) }) else null, onClick = onClick)
             .semantics(mergeDescendants = true) { contentDescription = Strings.searchResultDescription(result.title, result.subtitle) }
             .padding(vertical = VibeyFinTokens.Space.s1),
         verticalAlignment = Alignment.CenterVertically,

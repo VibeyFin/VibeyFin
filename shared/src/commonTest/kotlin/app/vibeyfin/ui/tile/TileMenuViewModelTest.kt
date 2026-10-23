@@ -125,4 +125,16 @@ class TileMenuViewModelTest {
         assertEquals(false, failed.item?.isFavorite)
         assertEquals(LoadMessages.ADD_TO_MY_LIST_FAILED, failed.actionMessage)
     }
+
+    @Test
+    fun theServersWordOnMyListReplacesWhatAPosterWithoutItShows() = runTest {
+        server(itemJson("m1", "Heat", favorite = true))
+        val viewModel = viewModel()
+
+        // A search result carries no My List state: it shows as off until the server has answered.
+        viewModel.onOpen(tile(favorite = false))
+        val state = viewModel.uiState.first { !it.checkingTrailer && it.item != null }
+
+        assertEquals(true, state.item?.isFavorite)
+    }
 }

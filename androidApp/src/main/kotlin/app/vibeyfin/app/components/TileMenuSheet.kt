@@ -1,6 +1,8 @@
 package app.vibeyfin.app.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,7 +45,12 @@ fun TileMenuSheet(
     onDismiss: () -> Unit,
 ) {
     val item = state.item ?: return
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
+    // Opens straight to its full height, with its rows already in place, instead of rising in two stages.
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
         Column(Modifier.navigationBarsPadding().padding(bottom = VibeyFinTokens.Space.s4)) {
             Text(
                 text = item.title,
@@ -54,11 +61,20 @@ fun TileMenuSheet(
                 modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s2),
             )
             MenuRow(Strings.details, rememberIcon(Icons.Filled.Info), onDetails)
-            when {
-                state.trailer != null -> MenuRow(Strings.trailer, painterIcon(R.drawable.ic_trailer)) { onTrailer(state.trailer!!) }
-                // The row's place is kept while the server answers, so the menu does not jump when a trailer turns up.
-                state.checkingTrailer -> Row(Modifier.fillMaxWidth().padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s4)) {
-                    SkeletonLine(120.dp, MaterialTheme.typography.bodyLarge)
+            // The trailer row has a slot of its own, the height of a row, kept while the server answers: a grey line fades into the row,
+            // or the slot closes softly when there is none, so the buttons around it do not jump.
+            androidx.compose.animation.Crossfade(
+                targetState = if (state.trailer != null) 2 else if (state.checkingTrailer) 1 else 0,
+                animationSpec = androidx.compose.animation.core.tween(140),
+                modifier = Modifier.animateContentSize(androidx.compose.animation.core.tween(160)),
+                label = "trailer row",
+            ) { shown ->
+                when (shown) {
+                    2 -> state.trailer?.let { trailer -> MenuRow(Strings.trailer, painterIcon(R.drawable.ic_trailer)) { onTrailer(trailer) } }
+                    1 -> Row(Modifier.fillMaxWidth().heightIn(min = ROW_HEIGHT).padding(horizontal = VibeyFinTokens.Space.s4), verticalAlignment = Alignment.CenterVertically) {
+                        SkeletonLine(120.dp, MaterialTheme.typography.bodyLarge)
+                    }
+                    else -> Unit
                 }
             }
             // A change that could not be saved was taken back; the sheet says so.
@@ -70,6 +86,8 @@ fun TileMenuSheet(
     }
 }
 
+private val ROW_HEIGHT = 56.dp
+
 private class MenuIcon(val vector: ImageVector? = null, val resource: Int? = null)
 
 private fun rememberIcon(vector: ImageVector) = MenuIcon(vector = vector)
@@ -79,7 +97,7 @@ private fun painterIcon(resource: Int) = MenuIcon(resource = resource)
 @Composable
 private fun MenuRow(label: String, icon: MenuIcon, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s4),
+        Modifier.fillMaxWidth().heightIn(min = ROW_HEIGHT).clickable(onClick = onClick).padding(horizontal = VibeyFinTokens.Space.s4),
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -22,6 +22,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraphBuilder
@@ -41,6 +42,7 @@ import app.vibeyfin.ui.tile.TileMenuViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import app.vibeyfin.app.search.SearchRoute
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.SearchKind
@@ -153,6 +155,8 @@ fun VibeyFinNavHost() {
         val tileMenu: TileMenuViewModel = koinViewModel()
         val menu by tileMenu.uiState.collectAsStateWithLifecycle()
         val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+        // A trailer on the web opens straight in YouTube (its app when it is installed), not in a player of ours.
+        val openTrailerUrl: (String) -> Unit = { url -> uriHandler.openUri(url) }
         TileMenuSheet(
             state = menu,
             onDetails = { val item = menu.item; tileMenu.onClose(); if (item != null) open(item) },
@@ -160,7 +164,7 @@ fun VibeyFinNavHost() {
                 tileMenu.onClose()
                 when (trailer) {
                     is Trailer.Local -> navController.navigate(Player(trailer.itemId))
-                    is Trailer.Remote -> uriHandler.openUri(trailer.url)
+                    is Trailer.Remote -> openTrailerUrl(trailer.url)
                 }
             },
             onMyList = tileMenu::onToggleFavorite,
@@ -170,6 +174,7 @@ fun VibeyFinNavHost() {
         CompositionLocalProvider(
             LocalSharedTransitionScope provides this,
             LocalTileLongPress provides { item -> tileMenu.onOpen(item) },
+            LocalOpenTrailerUrl provides openTrailerUrl,
         ) {
         NavHost(
             navController = navController,

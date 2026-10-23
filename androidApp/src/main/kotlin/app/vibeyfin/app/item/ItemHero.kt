@@ -260,7 +260,7 @@ fun HeroDetails(
  */
 @Composable
 private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorite: () -> Unit, onPlayTrailer: (String) -> Unit, onTogglePlayed: () -> Unit) {
-    val uriHandler = LocalUriHandler.current
+    val openTrailerUrl = app.vibeyfin.app.navigation.LocalOpenTrailerUrl.current
     // Four equal columns, as on other streaming apps: My List, Trailer, Watched, Download. A missing trailer leaves its column empty.
     // Only the actions that exist are drawn, so three share the width as evenly as four. The first starts at the left edge of Play and the last ends at its right edge, with the rest spread evenly between.
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -277,7 +277,7 @@ private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorit
             ActionButton(label = Strings.trailer, description = Strings.trailer, icon = painterResource(R.drawable.ic_trailer), centered = centered) {
                 when (trailer) {
                     is Trailer.Local -> onPlayTrailer(trailer.itemId)
-                    is Trailer.Remote -> uriHandler.openUri(trailer.url)
+                    is Trailer.Remote -> openTrailerUrl(trailer.url)
                 }
             }
         }

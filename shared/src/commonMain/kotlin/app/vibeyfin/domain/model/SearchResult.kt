@@ -16,3 +16,35 @@ data class SearchResult(
     /** Width over height of [imageUrl]'s picture: tall for a poster or a portrait, wide for an episode's still. */
     val aspectRatio: Float,
 )
+
+/**
+ * The match as an item, enough for a poster's menu (its title and what it is, the rest is read when the menu needs it); null for a
+ * person, who has no trailer, no list and no page of titles to open from a menu.
+ */
+fun SearchResult.asMediaItem(): MediaItem? {
+    val kind = when (kind) {
+        SearchKind.Movie -> ItemKind.Movie
+        SearchKind.Show -> ItemKind.Series
+        SearchKind.Episode -> ItemKind.Episode
+        SearchKind.Collection -> ItemKind.Collection
+        SearchKind.Person -> return null
+    }
+    return MediaItem(
+        id = id,
+        title = title,
+        kind = kind,
+        isFolder = kind == ItemKind.Series || kind == ItemKind.Collection,
+        year = null,
+        runtimeMinutes = null,
+        genres = emptyList(),
+        overview = null,
+        rating = null,
+        ageRating = null,
+        seriesName = null,
+        seasonNumber = null,
+        episodeNumber = null,
+        posterAspectRatio = aspectRatio,
+        posterUrl = imageUrl,
+        backdropUrl = backdropUrl,
+    )
+}

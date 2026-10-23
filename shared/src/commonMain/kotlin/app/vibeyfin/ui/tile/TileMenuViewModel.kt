@@ -48,6 +48,9 @@ class TileMenuViewModel(
     private var lookup: Job? = null
     private var writing = false
 
+    // The user changed My List in this menu: the lookup's older answer must not undo it.
+    private var toggled = false
+
     val uiState: StateFlow<TileMenuUiState> = combine(content, connection.sessionEnded()) { content, exit ->
         content.copy(exit = exit)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TileMenuUiState())
@@ -55,10 +58,23 @@ class TileMenuViewModel(
     /** A poster was long-pressed: the menu opens at once, and the trailer row fills in when the server has answered. */
     fun onOpen(item: MediaItem) {
         lookup?.cancel()
+        toggled = false
         content.value = TileMenuUiState(item = item, checkingTrailer = true)
         lookup = viewModelScope.launch {
-            val trailer = findTrailer(item.id)
-            content.update { if (it.item?.id == item.id) it.copy(trailer = trailer, checkingTrailer = false) else it }
+            val detail = (library.item(item.id) as? ApiResult.Success)?.value
+            val trailer = detail?.let { findTrailer(it) }
+            content.update { current ->
+                if (current.item?.id != item.id) {
+                    current
+                } else {
+                    // The server's word on My List replaces the poster's own, which a search result does not carry.
+                    current.copy(
+                        item = if (detail != null && !toggled) current.item.copy(isFavorite = detail.isFavorite) else current.item,
+                        trailer = trailer,
+                        checkingTrailer = false,
+                    )
+                }
+            }
         }
     }
 
@@ -72,6 +88,7 @@ class TileMenuViewModel(
         val before = content.value.item ?: return
         if (writing) return
         writing = true
+        toggled = true
         val target = !before.isFavorite
         content.update { it.copy(item = before.copy(isFavorite = target), actionMessage = null) }
         viewModelScope.launch {
@@ -85,11 +102,10 @@ class TileMenuViewModel(
 
     fun onDismissMessage() = content.update { it.copy(actionMessage = null) }
 
-    /** A trailer the server holds first (it plays in the app), else one on the web; null when there is neither or the server can't say. */
-    private suspend fun findTrailer(id: String): Trailer? {
-        val detail = (library.item(id) as? ApiResult.Success)?.value ?: return null
+    /** A trailer the server holds first (it plays in the app), else one on the web; null when the title has neither. */
+    private suspend fun findTrailer(detail: MediaItem): Trailer? {
         if (detail.localTrailerCount > 0) {
-            (library.localTrailer(id) as? ApiResult.Success)?.value?.let { return Trailer.Local(it.id) }
+            (library.localTrailer(detail.id) as? ApiResult.Success)?.value?.let { return Trailer.Local(it.id) }
         }
         return detail.remoteTrailerUrl?.let { Trailer.Remote(it) }
     }
