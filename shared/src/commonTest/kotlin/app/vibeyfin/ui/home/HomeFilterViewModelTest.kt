@@ -116,7 +116,7 @@ class HomeFilterViewModelTest {
         viewModel.loaded()
 
         viewModel.onCategory(CategoryKind.Categories)
-        viewModel.uiState.first { it.sheet?.loading == false && it.sheet?.options?.isNotEmpty() == true }
+        viewModel.uiState.first { it.sheet?.loading == false && it.sheet.options.isNotEmpty() }
         viewModel.onPickOption("g1")
         assertEquals(HomeFilter.Genre("g1", "Drama"), viewModel.uiState.first { it.openList != null }.openList)
         viewModel.onListOpened()

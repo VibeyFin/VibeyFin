@@ -1815,7 +1815,7 @@ class PlaybackViewModelTest {
         val vm = serverWithSegments(segmentJson("Intro", 10_000, 90_000))
 
         vm.onFailed(PlaybackFailure.Unauthorized)
-        vm.uiState.first { it.stream != null && it.stream?.id == 2 }
+        vm.uiState.first { it.stream != null && it.stream.id == 2 }
 
         assertEquals(1, app.jellyfin.requestsTo("GET", "/MediaSegments/m1").size)
     }

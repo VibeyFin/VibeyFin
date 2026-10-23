@@ -14,7 +14,7 @@ struct Artwork: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// `dur-base` in `design/tokens.json`; no fade when the system asks for Reduce Motion.
-    private var fade: Animation? { reduceMotion ? nil : .easeIn(duration: 0.2) }
+    private var fade: Animation? { reduceMotion ? nil : .easeIn(duration: 0.14) }
 
     var body: some View {
         // The colour sets the size from the aspect ratio; the image fills it and is cropped to it.
