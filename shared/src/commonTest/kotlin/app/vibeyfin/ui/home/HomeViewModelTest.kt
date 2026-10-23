@@ -16,7 +16,6 @@ import app.vibeyfin.ui.whoswatching.SignInMessages
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.toList
@@ -24,7 +23,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -241,7 +240,8 @@ class HomeViewModelTest {
 
     private suspend fun HomeViewModel.loadedRow() = uiState.first { it.serverId != null && !it.continueRow.loading }.continueRow
 
-    private suspend fun pause() = withContext(Dispatchers.Default) { delay(150) }
+    /** Lets anything the ViewModel started run to its end. The fake server answers inline, so there is nothing to wait for in real time. */
+    private suspend fun settle() = repeat(5) { yield() }
 
     @Test
     fun continueWatchingListsWhatIsInProgressThenTheNextEpisodes() = runTest {
@@ -389,7 +389,7 @@ class HomeViewModelTest {
 
         server.refuseConnections()
         app.watchChanges.changed()
-        pause()
+        settle()
 
         val row = viewModel.uiState.value.continueRow
         assertEquals(listOf("e1"), row.cards.map { it.id })
@@ -405,7 +405,7 @@ class HomeViewModelTest {
         viewModel.loadedRow()
 
         viewModel.onForeground()
-        pause()
+        settle()
         assertEquals(1, app.jellyfin.requestsTo("GET", "/UserItems/Resume").size)
 
         app.clock.advance(61.seconds)
@@ -437,7 +437,7 @@ class HomeViewModelTest {
 
         viewModel.onRefresh()
         viewModel.onForeground()
-        pause()
+        settle()
 
         assertFalse(viewModel.uiState.value.refreshing)
         assertEquals(0, app.jellyfin.requests.size)
@@ -518,7 +518,7 @@ class HomeViewModelTest {
         viewModel.loadedRow()
 
         viewModel.onMarkWatched("nope")
-        pause()
+        settle()
 
         assertEquals(0, app.jellyfin.requestsTo("POST", "/UserPlayedItems/nope").size)
         assertEquals(listOf("e1"), viewModel.uiState.value.continueRow.cards.map { it.id })

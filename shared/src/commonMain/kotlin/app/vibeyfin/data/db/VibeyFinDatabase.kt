@@ -9,6 +9,7 @@ import androidx.room3.RoomDatabaseConstructor
 import androidx.room3.migration.AutoMigrationSpec
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.coroutines.Dispatchers
+import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.IO
 
 @Database(
@@ -48,8 +49,8 @@ expect object VibeyFinDatabaseConstructor : RoomDatabaseConstructor<VibeyFinData
     override fun initialize(): VibeyFinDatabase
 }
 
-/** Applies the settings every platform shares: the bundled SQLite driver and an IO context. */
-fun RoomDatabase.Builder<VibeyFinDatabase>.buildVibeyFinDatabase(): VibeyFinDatabase =
+/** Applies the settings every platform shares: the bundled SQLite driver and an IO context ([queryContext]: tests run queries inline). */
+fun RoomDatabase.Builder<VibeyFinDatabase>.buildVibeyFinDatabase(queryContext: CoroutineContext = Dispatchers.IO): VibeyFinDatabase =
     setDriver(BundledSQLiteDriver())
-        .setQueryCoroutineContext(Dispatchers.IO)
+        .setQueryCoroutineContext(queryContext)
         .build()

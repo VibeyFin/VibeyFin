@@ -15,6 +15,7 @@ import app.vibeyfin.domain.LanDiscovery
 import app.vibeyfin.domain.PlaybackCapabilities
 import app.vibeyfin.domain.PlaybackCapabilitiesSource
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
@@ -133,9 +134,12 @@ class InMemoryPreferencesDataStore : DataStore<Preferences> {
         lock.withLock { transform(state.value).also { state.value = it } }
 }
 
-/** A fresh database in memory, built the same way as the real one. */
+/**
+ * A fresh database in memory, built the same way as the real one except that its queries run on the caller's thread: like the fake
+ * server, it is done by the time the code that asked resumes, so a test never races a database thread.
+ */
 fun inMemoryDatabase(): VibeyFinDatabase =
-    Room.inMemoryDatabaseBuilder<VibeyFinDatabase>().buildVibeyFinDatabase()
+    Room.inMemoryDatabaseBuilder<VibeyFinDatabase>().buildVibeyFinDatabase(Dispatchers.Unconfined)
 
 /** Counts rows straight from SQLite, so cascades can be checked without a DAO for every table. */
 suspend fun VibeyFinDatabase.count(table: String, where: String = "1"): Int =

@@ -3,8 +3,6 @@ package app.vibeyfin.ui.playback
 import app.vibeyfin.testing.RecordedRequest
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineStart
 import androidx.lifecycle.ViewModel
 import app.vibeyfin.domain.DynamicRange
@@ -67,7 +65,6 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlin.time.TimeSource
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlaybackViewModelTest {
@@ -1080,7 +1077,7 @@ class PlaybackViewModelTest {
         viewModel.uiState.first { it.stream != null }
         viewModel.onPlaying(0)
         jellyfin.awaitRequests("GET", "/Shows/s1/Episodes")
-        withContext(Dispatchers.Default) { delay(150) }
+        repeat(5) { yield() }
         return seen
     }
 
@@ -1299,11 +1296,6 @@ class PlaybackViewModelTest {
             vm.uiState.first { it.stream != null }
             // The segments come in a separate call; wait until it has been made, so the first position isn't checked before it.
             while (app.jellyfin.requestsTo("GET", "/MediaSegments/m1").isEmpty()) yield()
-            // Stopgap: the request is recorded before its reply is read, and nothing observable says when the
-            // segments were applied (the offer depends on the position), so keep the scheduler turning for a
-            // moment of real time instead.
-            val until = TimeSource.Monotonic.markNow() + 200.milliseconds
-            while (until.hasNotPassedNow()) yield()
         }
     }
 
@@ -1864,7 +1856,7 @@ class PlaybackViewModelTest {
         val vm = viewModel()
 
         vm.uiState.first { it.stream != null }
-        withContext(Dispatchers.Default) { delay(100) }
+        repeat(5) { yield() }
 
         assertNull(vm.uiState.value.trickplay)
         assertNull(vm.uiState.value.message)
@@ -1876,7 +1868,7 @@ class PlaybackViewModelTest {
         val vm = viewModel()
 
         vm.uiState.first { it.stream != null }
-        withContext(Dispatchers.Default) { delay(100) }
+        repeat(5) { yield() }
 
         assertNull(vm.uiState.value.trickplay)
     }

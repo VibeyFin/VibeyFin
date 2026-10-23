@@ -123,7 +123,7 @@ class HomeFilterViewModelTest {
 
         viewModel.onCategory(CategoryKind.Categories)
         // Opened again, the list comes from memory: it is already there and the server was asked once.
-        assertEquals(listOf("Drama", "Thriller"), viewModel.uiState.value.sheet?.options?.map { it.name })
+        assertEquals(listOf("Drama", "Thriller"), viewModel.uiState.first { it.sheet != null }.sheet?.options?.map { it.name })
         assertEquals(1, app.jellyfin.requestsTo("GET", "/Genres").size)
         assertTrue(server.address.isNotEmpty())
     }
