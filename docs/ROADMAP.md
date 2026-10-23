@@ -192,12 +192,12 @@ _Starts after the state audit (see Cross-cutting)._
   on a 6.1" phone; the image is a 4:5 crop on phones (`brand.md`). Play is the one aqua button; tapping the image
   opens the item's page. Optional by design, so Home looks right without it (no item qualifies, or a failure)
 - [x] My List (Favorites): Home row, "See all" page, the detail page's heart, Android built and iOS parsed. Thumbs (`UserData.likes`) are still open
-- [ ] Tile trailers (`LocalTrailers` / `RemoteTrailers`, content-dependent)
+- [x] Tile trailers (Android built and run; iOS written and only parsed): a long press on any poster opens a menu with Details, Trailer (only when the title has one, found when the menu opens because lists do not carry trailers: one the server holds plays in the app, one on the web opens in the system's viewer) and My List. The detail page has the same Trailer button
 
 Also built in this phase, not on the original list: Home shows a row for every genre with a per-profile setting to limit them
 (`docs/plans/10-home-rows.md`), collections open on their own page with a tablet view, the player uses the whole screen
 including the camera cut-out, and a `perf` build type (`./gradlew :androidApp:installPerf`) for judging smoothness, as the
-debug build is slow. Not started: tile trailers and thumbs.
+debug build is slow. Not started: thumbs.
 
 _Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a genre page from Home,
 and see the mini player on iOS 26._

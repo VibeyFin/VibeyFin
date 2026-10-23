@@ -66,11 +66,18 @@ private enum BlurHashCache {
 /// A poster or a library tile with its title underneath, unless the picture already says it.
 struct ArtworkTile: View {
     let item: MediaItem
+    // A long press opens the poster's menu (Details, Trailer, My List) where the app has one.
+    @Environment(\.tileMenu) private var tileMenu
     /// In a row that scrolls sideways: the caption always takes this many lines, so a long title in one tile never makes
     /// the row taller (and pushes everything under it down) when it scrolls into view. 0 leaves it as it falls.
     var captionLines = 0
 
     var body: some View {
+        tile
+            .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in tileMenu?.open(item) })
+    }
+
+    private var tile: some View {
         VStack(alignment: .leading, spacing: Space.s2) {
             Artwork(
                 url: item.posterUrl,

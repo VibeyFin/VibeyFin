@@ -38,6 +38,9 @@ object SharedPick {
     var itemId: String? by mutableStateOf(null)
 }
 
+/** What a long press on a poster does: the nav host opens the poster's menu. Null outside it, where a long press does nothing. */
+val LocalTileLongPress = compositionLocalOf<((app.vibeyfin.domain.model.MediaItem) -> Unit)?> { null }
+
 /** A destination that hands its animation scope down, so posters and pictures in it can take part in the shared transition. */
 internal inline fun <reified T : Any> NavGraphBuilder.sharedComposable(
     crossinline content: @Composable AnimatedContentScope.(NavBackStackEntry) -> Unit,

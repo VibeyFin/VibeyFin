@@ -34,7 +34,13 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import app.vibeyfin.app.addserver.AddServerRoute
 import app.vibeyfin.app.children.ChildrenRoute
+import app.vibeyfin.app.components.TileMenuSheet
 import app.vibeyfin.app.person.PersonRoute
+import app.vibeyfin.ui.item.Trailer
+import app.vibeyfin.ui.tile.TileMenuViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.koin.androidx.compose.koinViewModel
+import androidx.compose.runtime.getValue
 import app.vibeyfin.app.search.SearchRoute
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.SearchKind
@@ -143,8 +149,28 @@ fun VibeyFinNavHost() {
             if (currentTab != null) MainNavigationBar(currentTab, select)
         },
     ) { padding ->
+        // The long-press menu of a poster, wherever the poster is: Details, Trailer (when the title has one) and My List.
+        val tileMenu: TileMenuViewModel = koinViewModel()
+        val menu by tileMenu.uiState.collectAsStateWithLifecycle()
+        val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+        TileMenuSheet(
+            state = menu,
+            onDetails = { val item = menu.item; tileMenu.onClose(); if (item != null) open(item) },
+            onTrailer = { trailer ->
+                tileMenu.onClose()
+                when (trailer) {
+                    is Trailer.Local -> navController.navigate(Player(trailer.itemId))
+                    is Trailer.Remote -> uriHandler.openUri(trailer.url)
+                }
+            },
+            onMyList = tileMenu::onToggleFavorite,
+            onDismiss = tileMenu::onClose,
+        )
         SharedTransitionLayout(Modifier.padding(padding).consumeWindowInsets(padding)) {
-        CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+        CompositionLocalProvider(
+            LocalSharedTransitionScope provides this,
+            LocalTileLongPress provides { item -> tileMenu.onOpen(item) },
+        ) {
         NavHost(
             navController = navController,
             modifier = Modifier,

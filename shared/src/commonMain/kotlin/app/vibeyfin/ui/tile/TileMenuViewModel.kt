@@ -1,0 +1,102 @@
+package app.vibeyfin.ui.tile
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import app.vibeyfin.data.api.ApiError
+import app.vibeyfin.data.api.ApiResult
+import app.vibeyfin.domain.ConnectionManager
+import app.vibeyfin.domain.LibraryRepository
+import app.vibeyfin.domain.WatchRepository
+import app.vibeyfin.domain.model.MediaItem
+import app.vibeyfin.ui.common.LoadMessages
+import app.vibeyfin.ui.common.sessionEnded
+import app.vibeyfin.ui.home.HomeExit
+import app.vibeyfin.ui.item.Trailer
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+/** What the menu of a poster offers: the poster's item, and whether it has a trailer (known a moment after the menu opens). */
+data class TileMenuUiState(
+    /** The poster whose menu is open; null when none is. */
+    val item: MediaItem? = null,
+    /** The trailer to offer: one the server holds (it plays in the app) or a page on the web; null when there is none (yet). */
+    val trailer: Trailer? = null,
+    /** The server is being asked whether the title has a trailer; a grey line holds the row's place until it answers. */
+    val checkingTrailer: Boolean = false,
+    /** A change that couldn't be saved and was taken back. */
+    val actionMessage: String? = null,
+    /** Set when the session ended and the menu must close. */
+    val exit: HomeExit? = null,
+)
+
+/**
+ * The long-press menu of a poster, anywhere in the app: Details, Trailer (only when the title has one) and My List. A poster in a list
+ * does not carry its trailers (the server leaves them out of lists), so they are looked up when the menu opens.
+ */
+class TileMenuViewModel(
+    private val library: LibraryRepository,
+    private val watch: WatchRepository,
+    connection: ConnectionManager,
+) : ViewModel() {
+    private val content = MutableStateFlow(TileMenuUiState())
+    private var lookup: Job? = null
+    private var writing = false
+
+    val uiState: StateFlow<TileMenuUiState> = combine(content, connection.sessionEnded()) { content, exit ->
+        content.copy(exit = exit)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TileMenuUiState())
+
+    /** A poster was long-pressed: the menu opens at once, and the trailer row fills in when the server has answered. */
+    fun onOpen(item: MediaItem) {
+        lookup?.cancel()
+        content.value = TileMenuUiState(item = item, checkingTrailer = true)
+        lookup = viewModelScope.launch {
+            val trailer = findTrailer(item.id)
+            content.update { if (it.item?.id == item.id) it.copy(trailer = trailer, checkingTrailer = false) else it }
+        }
+    }
+
+    fun onClose() {
+        lookup?.cancel()
+        content.value = TileMenuUiState()
+    }
+
+    /** "My List" in the menu: shown at once, taken back with a message if it can't be saved. */
+    fun onToggleFavorite() {
+        val before = content.value.item ?: return
+        if (writing) return
+        writing = true
+        val target = !before.isFavorite
+        content.update { it.copy(item = before.copy(isFavorite = target), actionMessage = null) }
+        viewModelScope.launch {
+            val result = watch.setFavorite(before.id, target)
+            writing = false
+            if (result is ApiResult.Failure) {
+                content.update { it.copy(item = it.item?.copy(isFavorite = before.isFavorite), actionMessage = failureMessage(result.error, target)) }
+            }
+        }
+    }
+
+    fun onDismissMessage() = content.update { it.copy(actionMessage = null) }
+
+    /** A trailer the server holds first (it plays in the app), else one on the web; null when there is neither or the server can't say. */
+    private suspend fun findTrailer(id: String): Trailer? {
+        val detail = (library.item(id) as? ApiResult.Success)?.value ?: return null
+        if (detail.localTrailerCount > 0) {
+            (library.localTrailer(id) as? ApiResult.Success)?.value?.let { return Trailer.Local(it.id) }
+        }
+        return detail.remoteTrailerUrl?.let { Trailer.Remote(it) }
+    }
+
+    private fun failureMessage(error: ApiError, added: Boolean) = when {
+        error == ApiError.Unauthorized -> null
+        added -> LoadMessages.ADD_TO_MY_LIST_FAILED
+        else -> LoadMessages.REMOVE_FROM_MY_LIST_FAILED
+    }
+}

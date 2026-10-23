@@ -40,6 +40,11 @@ private extension TabRoute {
     }
 }
 
+/// A trailer the server holds, to play from the poster's menu.
+private struct TrailerPlay: Identifiable {
+    let id: String
+}
+
 private enum MainTab: Hashable {
     case home, search, library, downloads
 }
@@ -52,6 +57,9 @@ struct TabShell: View {
 
     @State private var selection: MainTab = .home
     @Namespace private var zoomNamespace
+    @StateObject private var tileMenu = TileMenuObservable()
+    @State private var trailerPlaying: TrailerPlay?
+    @Environment(\.openURL) private var openURL
     @State private var homePath: [TabRoute] = []
     @State private var searchPath: [TabRoute] = []
     @State private var libraryPath: [TabRoute] = []
@@ -96,6 +104,34 @@ struct TabShell: View {
                 .tag(MainTab.downloads)
         }
         .environment(\.zoomNamespace, zoomNamespace)
+        .environment(\.tileMenu, tileMenu)
+        .onAppear { tileMenu.start() }
+        // The long-press menu of a poster, wherever the poster is.
+        .sheet(isPresented: Binding(get: { tileMenu.state?.item != nil }, set: { if !$0 { tileMenu.close() } })) {
+            if let state = tileMenu.state {
+                TileMenuSheetView(
+                    state: state,
+                    onDetails: {
+                        let item = state.item
+                        tileMenu.close()
+                        if let item { openFromMenu(item) }
+                    },
+                    onTrailer: { trailer in
+                        tileMenu.close()
+                        if let local = trailer as? TrailerLocal {
+                            trailerPlaying = TrailerPlay(id: local.itemId)
+                        } else if let remote = trailer as? TrailerRemote, let url = URL(string: remote.url) {
+                            openURL(url)
+                        }
+                    },
+                    onMyList: { tileMenu.toggleFavorite() }
+                )
+            }
+        }
+        // A trailer the server holds plays full screen, like any title.
+        .fullScreenCover(item: $trailerPlaying) { play in
+            PlayerView(itemId: play.id, onExit: onExit)
+        }
     }
 
     /// Choosing the tab you are already on goes back to its root.
@@ -114,6 +150,16 @@ struct TabShell: View {
                 selection = tab
             }
         )
+    }
+
+    /// Details from a poster's menu: opens in the tab on screen.
+    private func openFromMenu(_ item: MediaItem) {
+        switch selection {
+        case .home: open(item, in: $homePath)
+        case .search: open(item, in: $searchPath)
+        case .library: open(item, in: $libraryPath)
+        case .downloads: open(item, in: $downloadsPath)
+        }
     }
 
     /// A folder opens its list; anything else opens its page.

@@ -3,6 +3,7 @@ package app.vibeyfin.app.components
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +37,7 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import app.vibeyfin.app.navigation.LocalTileLongPress
 import app.vibeyfin.app.navigation.SharedPick
 import app.vibeyfin.app.navigation.sharedPoster
 import app.vibeyfin.app.theme.VibeyFinTokens
@@ -143,14 +145,17 @@ fun WatchedBadge(modifier: Modifier = Modifier) {
  * pass [captionLines]: the caption then always takes that many lines, so a long title in one tile never makes the row taller
  * (and pushes everything under it down) when it scrolls into view.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ArtworkTile(item: MediaItem, onClick: () -> Unit, modifier: Modifier = Modifier, captionLines: Int = 0) {
+    // A long press opens the poster's menu (Details, Trailer, My List) where the app has one.
+    val longPress = LocalTileLongPress.current
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
             // The poster grows into the detail page's picture; this tile is the one that does, from the moment it is tapped.
-            .clickable { SharedPick.itemId = item.id; onClick() }
+            .combinedClickable(onLongClick = longPress?.let { press -> { press(item) } }, onClick = { SharedPick.itemId = item.id; onClick() })
             .semantics(mergeDescendants = true) { contentDescription = Strings.cardLabel(item.title, item.year) },
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
     ) {
