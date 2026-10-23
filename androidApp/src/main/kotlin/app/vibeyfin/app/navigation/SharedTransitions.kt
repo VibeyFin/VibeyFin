@@ -38,12 +38,6 @@ object SharedPick {
     var itemId: String? by mutableStateOf(null)
 }
 
-/** What a long press on a poster does: the nav host opens the poster's menu. Null outside it, where a long press does nothing. */
-val LocalTileLongPress = compositionLocalOf<((app.vibeyfin.domain.model.MediaItem) -> Unit)?> { null }
-
-/** Opens a trailer on the web straight in YouTube (or the system's viewer for another site). Set by the nav host. */
-val LocalOpenTrailerUrl = compositionLocalOf<(String) -> Unit> { {} }
-
 /** A destination that hands its animation scope down, so posters and pictures in it can take part in the shared transition. */
 internal inline fun <reified T : Any> NavGraphBuilder.sharedComposable(
     crossinline content: @Composable AnimatedContentScope.(NavBackStackEntry) -> Unit,
@@ -54,15 +48,16 @@ internal inline fun <reified T : Any> NavGraphBuilder.sharedComposable(
 private const val SHARED_FADE_MS = 140
 
 /**
- * Marks this as one end of [itemId]'s poster-to-picture transition. [source] is the poster in a list: it takes part only when it is the
- * one last tapped. The detail page's picture passes `source = false` and always takes part. Outside a shared layout it does nothing.
- */
-/**
  * Off: a detail page now opens the way the owner's reference video does, the screen fading to dark and the page fading in whole, with
  * no poster flying across. The rest of the shared-transition machinery stays, ready to be switched back on.
  */
 private const val SHARED_POSTER_ENABLED = false
 
+/**
+ * Marks this as one end of [itemId]'s poster-to-picture transition. [source] is the poster in a list: it takes part only when it is the
+ * one last tapped. The detail page's picture passes `source = false` and always takes part. Outside a shared layout, or while
+ * [SHARED_POSTER_ENABLED] is off, it does nothing.
+ */
 @Composable
 fun Modifier.sharedPoster(itemId: String, source: Boolean): Modifier {
     if (!SHARED_POSTER_ENABLED) return this

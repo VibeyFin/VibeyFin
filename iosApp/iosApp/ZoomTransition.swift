@@ -1,5 +1,9 @@
 import SwiftUI
 
+/// Off, as on Android (`SHARED_POSTER_ENABLED`): a detail page opens with the screen dimming and the page fading in whole, with no
+/// poster flying across. The rest of the zoom machinery stays, ready to be switched back on.
+private let sharedPosterEnabled = false
+
 /// The shared-element transition from a poster to the detail page, with iOS 18's zoom navigation transition. Below iOS 18 these
 /// do nothing and the page opens with the standard push, with no custom fallback.
 private struct ZoomNamespaceKey: EnvironmentKey {
@@ -20,7 +24,7 @@ private struct ZoomSource: ViewModifier {
     @Environment(\.zoomNamespace) private var namespace
 
     func body(content: Content) -> some View {
-        if #available(iOS 18.0, *), let namespace {
+        if sharedPosterEnabled, #available(iOS 18.0, *), let namespace {
             content.matchedTransitionSource(id: id, in: namespace)
         } else {
             content
@@ -34,7 +38,7 @@ private struct ZoomDestination: ViewModifier {
     @Environment(\.zoomNamespace) private var namespace
 
     func body(content: Content) -> some View {
-        if #available(iOS 18.0, *), let namespace {
+        if sharedPosterEnabled, #available(iOS 18.0, *), let namespace {
             content.navigationTransition(.zoom(sourceID: id, in: namespace))
         } else {
             content
