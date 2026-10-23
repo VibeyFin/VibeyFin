@@ -118,6 +118,42 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `a new profile starts with the top five genre rows and can change it`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        assertEquals(5, viewModel.uiState.first { it.hasProfile }.homeGenreRows)
+
+        viewModel.onHomeGenreRowsChanged(0)
+        assertEquals(0, viewModel.uiState.first { it.homeGenreRows == 0 }.homeGenreRows)
+        viewModel.onHomeGenreRowsChanged(-1)
+        assertEquals(-1, viewModel.uiState.first { it.homeGenreRows == -1 }.homeGenreRows)
+    }
+
+    @Test
+    fun `a genre row count that is not one of the choices is ignored`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hasProfile }
+
+        for (invalid in listOf(1, 4, 7, 21, -2)) {
+            viewModel.onHomeGenreRowsChanged(invalid)
+            assertEquals(5, app.profileSettings.homeGenreRows.first())
+        }
+    }
+
+    @Test
+    fun `the home hero is on until the profile turns it off`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        assertTrue(viewModel.uiState.first { it.hasProfile }.showHomeHero)
+
+        viewModel.onShowHomeHeroChanged(false)
+        assertFalse(viewModel.uiState.first { !it.showHomeHero }.showHomeHero)
+        viewModel.onShowHomeHeroChanged(true)
+        assertTrue(viewModel.uiState.first { it.showHomeHero }.showHomeHero)
+    }
+
+    @Test
     fun theStatsToggleIsSavedForTheProfile() = runTest {
         app.signedIn()
         val viewModel = viewModel()

@@ -617,6 +617,7 @@ private class PlayerWindow(private val activity: Activity) {
     private var applied = false
 
     private val previousRotationAnimation = activity.window.attributes.rotationAnimation
+    private val previousCutoutMode = activity.window.attributes.layoutInDisplayCutoutMode
 
     fun apply() {
         if (applied) return
@@ -627,6 +628,15 @@ private class PlayerWindow(private val activity: Activity) {
         setRotationAnimation(WindowManager.LayoutParams.ROTATION_ANIMATION_CROSSFADE)
         if (activity.resources.configuration.smallestScreenWidthDp < TABLET_WIDTH_DP) {
             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        }
+        // The picture runs into the camera cut-out too (landscape on a phone, and on a foldable's cover screen): left alone the
+        // window keeps a bar of its own colour beside it.
+        activity.window.attributes = activity.window.attributes.apply {
+            layoutInDisplayCutoutMode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            } else {
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
         }
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         controller.hide(WindowInsetsCompat.Type.systemBars())
@@ -648,6 +658,7 @@ private class PlayerWindow(private val activity: Activity) {
     /** Back to the window's own rotation animation, once the screen has turned back. */
     fun release() {
         setRotationAnimation(previousRotationAnimation)
+        activity.window.attributes = activity.window.attributes.apply { layoutInDisplayCutoutMode = previousCutoutMode }
     }
 
     private fun setRotationAnimation(animation: Int) {

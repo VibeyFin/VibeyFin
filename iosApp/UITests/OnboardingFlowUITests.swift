@@ -1,0 +1,181 @@
+import XCTest
+
+/// Smoke test for the first-run flow: launch, add a server, pick "Other user", sign in, land on the tabs.
+///
+/// It expects a fresh install (no saved servers) and the local test server from `docs/test-server.md`.
+/// `scripts/ios-smoke.sh` takes care of both. Override the defaults with `TEST_RUNNER_`-prefixed
+/// variables, for example `TEST_RUNNER_VIBEYFIN_TEST_SERVER=192.168.1.20:8096`.
+///
+/// Labels are matched case-insensitively because iOS shows button and title text in title case.
+final class OnboardingFlowUITests: XCTestCase {
+    private var app: XCUIApplication!
+
+    private var server: String { Self.setting("VIBEYFIN_TEST_SERVER", default: "localhost:8196") }
+    private var username: String { Self.setting("VIBEYFIN_TEST_USER", default: "admin") }
+    // Throwaway password of the disposable local Jellyfin in docs/test-server.md.
+    private var password: String { Self.setting("VIBEYFIN_TEST_PASSWORD", default: "vibeyfin-test") }
+
+    private static func setting(_ key: String, default value: String) -> String {
+        ProcessInfo.processInfo.environment[key] ?? value
+    }
+
+    override func setUp() {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        // The first launch asks for local network access (server discovery). Allow it whenever it shows.
+        addUIInterruptionMonitor(withDescription: "Local network permission") { alert in
+            for label in ["Allow", "OK"] where alert.buttons[label].exists {
+                alert.buttons[label].tap()
+                return true
+            }
+            return false
+        }
+        app.launch()
+    }
+
+    func testOnboardingFlow() {
+        step("Servers screen shows the app name and the main action") {
+            XCTAssertTrue(text("VibeyFin").waitForExistence(timeout: 15), "App name is missing")
+            let addServer = button("Add server")
+            XCTAssertTrue(addServer.waitForExistence(timeout: 5), "Add server button is missing")
+            XCTAssertTrue(addServer.isHittable, "Add server button can't be tapped")
+        }
+
+        step("Add a server by address") {
+            button("Add server").tap()
+            XCTAssertTrue(text("Add a server").waitForExistence(timeout: 5), "Add a server title is missing")
+            XCTAssertTrue(button("Connect").exists, "Connect button is missing")
+
+            XCTAssertTrue(text("Server address").exists, "Server address label is missing")
+            // The field has no accessibility label of its own, and it is the only one on this screen.
+            let address = app.textFields.firstMatch
+            XCTAssertTrue(address.waitForExistence(timeout: 5), "Server address field is missing")
+            address.tap()
+            address.typeText(server)
+            button("Connect").tap()
+
+            XCTAssertTrue(text("Found").waitForExistence(timeout: 30), "Server wasn't found at \(server)")
+            // The same action is labelled "Add server" once the server answered.
+            let confirm = button("Add server")
+            XCTAssertTrue(confirm.waitForExistence(timeout: 5), "Add server confirm button is missing")
+            confirm.tap()
+        }
+
+        step("Saved server opens Who's watching") {
+            // The server card is the only button that shows the Jellyfin version.
+            let card = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "Jellyfin")).firstMatch
+            XCTAssertTrue(card.waitForExistence(timeout: 10), "Saved server isn't listed")
+            card.tap()
+            XCTAssertTrue(
+                app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "watching")).firstMatch
+                    .waitForExistence(timeout: 10),
+                "Who's watching isn't showing"
+            )
+            XCTAssertTrue(button("Quick Connect", contains: true).exists, "Quick Connect tile is missing")
+            XCTAssertTrue(button("Other user", contains: true).exists, "Other user tile is missing")
+        }
+
+        step("Sign in as another user") {
+            button("Other user", contains: true).tap()
+            XCTAssertTrue(text("Sign in as another user").waitForExistence(timeout: 5), "Sign in sheet is missing")
+
+            let user = app.textFields.firstMatch
+            XCTAssertTrue(text("Username").exists, "Username label is missing")
+            XCTAssertTrue(user.waitForExistence(timeout: 5), "Username field is missing")
+            user.tap()
+            user.typeText(username)
+
+            let secret = app.secureTextFields.firstMatch
+            XCTAssertTrue(secret.exists, "Password field is missing")
+            secret.tap()
+            secret.typeText(password)
+
+            button("Sign in").tap()
+        }
+
+        step("Signed in: Home, Library and Downloads tabs show") {
+            for tab in ["Home", "Library", "Downloads"] {
+                // The bar is at the bottom on iPhone and at the top on iPad, where it may not be a `tabBar`.
+                let match = NSPredicate(format: "label ==[c] %@", tab)
+                let item = app.tabBars.buttons.matching(match).firstMatch.exists
+                    ? app.tabBars.buttons.matching(match).firstMatch
+                    : app.buttons.matching(match).firstMatch
+                XCTAssertTrue(item.waitForExistence(timeout: 20), "\(tab) tab is missing after sign-in")
+            }
+        }
+    }
+
+    /// A series lists its episodes down the page on a phone and sideways on a tablet, and tapping an episode's words opens its page.
+    /// Runs after the onboarding test (alphabetical order), which leaves a signed-in profile behind.
+    func testSeriesEpisodes() throws {
+        let match = NSPredicate(format: "label ==[c] %@", "Search")
+        let tab = app.tabBars.buttons.matching(match).firstMatch
+        let search = tab.waitForExistence(timeout: 20) ? tab : app.buttons.matching(match).firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 20), "Search tab is missing")
+
+        step("Search finds Saga Show") {
+            search.tap()
+            let field = app.searchFields.firstMatch
+            XCTAssertTrue(field.waitForExistence(timeout: 10), "Search field is missing")
+            field.tap()
+            field.typeText("Saga Show")
+            let result = button("Saga Show", contains: true)
+            XCTAssertTrue(result.waitForExistence(timeout: 20), "Saga Show is missing from the results")
+            result.tap()
+        }
+
+        step("Episodes are laid out for this width") {
+            let first = episode("S1 E1")
+            let second = episode("S1 E2")
+            XCTAssertTrue(first.waitForExistence(timeout: 30), "Episode 1 is missing")
+            if UIDevice.current.userInterfaceIdiom == .phone {
+                // The rows stack, so the second sits below the first at the same left edge.
+                for _ in 0..<4 where !second.exists || !second.isHittable { app.swipeUp() }
+                XCTAssertTrue(second.waitForExistence(timeout: 10), "Episode 2 is missing")
+                let dump = app.buttons.allElementsBoundByIndex.map { "\($0.label.prefix(40)) @\($0.frame)" }.joined(separator: "\n")
+                XCTAssertEqual(first.frame.minX, second.frame.minX, accuracy: 1, "Phone episodes are not in one column:\n\(dump)")
+                XCTAssertGreaterThan(second.frame.minY, first.frame.minY, "Episode 2 is not below episode 1")
+            } else {
+                XCTAssertTrue(second.waitForExistence(timeout: 10), "Episode 2 is missing")
+                XCTAssertGreaterThan(second.frame.minX, first.frame.minX, "Tablet episodes are not side by side")
+            }
+        }
+
+        step("Tapping an episode's words opens its page") {
+            let first = episode("S1 E1")
+            XCTAssertTrue(first.exists)
+            sleep(1) // the page is still settling from the swipe
+            first.tap()
+            if !button("Play").waitForExistence(timeout: 5) { first.tap() }
+            // An episode's page says plain "Play"; the series page below it says "Resume S1 E2 from ...".
+            XCTAssertTrue(button("Play").waitForExistence(timeout: 20), "The episode page did not open")
+        }
+    }
+
+    // MARK: - Helpers
+
+    /// Runs `body` as a named step and attaches a screenshot at the end, so a report shows each screen.
+    private func step(_ name: String, _ body: () -> Void) {
+        XCTContext.runActivity(named: name) { activity in
+            body()
+            let shot = XCTAttachment(screenshot: app.screenshot())
+            shot.name = name
+            shot.lifetime = .keepAlways
+            activity.add(shot)
+        }
+    }
+
+    private func button(_ label: String, contains: Bool = false) -> XCUIElement {
+        let format = contains ? "label CONTAINS[c] %@" : "label ==[c] %@"
+        return app.buttons.matching(NSPredicate(format: format, label)).firstMatch
+    }
+
+    /// An episode's words (its tag first): not the hero's "Play S1 E1", which also contains the tag.
+    private func episode(_ tag: String) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH[c] %@", tag)).firstMatch
+    }
+
+    private func text(_ label: String) -> XCUIElement {
+        app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", label)).firstMatch
+    }
+}

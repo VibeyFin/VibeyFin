@@ -227,6 +227,9 @@ class ItemViewModelTest {
         assertFalse(failed.watched)
 
         server.on("POST", "/UserPlayedItems/m1", Reply.json("""{"Played":true}"""))
+        // A save that goes through reloads the page from the server, which now agrees; without this the reload would
+        // read the old mark back and race the assertion below.
+        server.on("GET", "/Items", Reply.json(itemsJson(played(played = true))))
         viewModel.onRetryAction()
         val saved = viewModel.uiState.first { it.item?.played == true }
 

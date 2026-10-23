@@ -15,6 +15,8 @@ The app should become very configurable over time, so settings live per profile 
   plugin and `com.android.application` in one module, which is why this is separate.
 - `iosApp/`: the native iOS app in SwiftUI (Xcode project with synchronized folders). It reads
   shared state through the facades in `shared/src/iosMain/.../ios`.
+  Swift files sit in feature folders under `iosApp/iosApp/` (`App`, `Home`, `Item`, `Library`, `Player`,
+  `Components` and so on), like the packages in `androidApp`. A new screen goes in its feature's folder.
 
 Targets: `androidTarget`, `iosArm64`, `iosSimulatorArm64`.
 
@@ -121,6 +123,17 @@ apps share are in `guardrails.md`; which Jellyfin field drives which UI is in `j
   verified against the test server (below).
 - iOS can only be built with Xcode. Say plainly when iOS code was only compiled to klibs or
   parsed, not built or run.
+- **iOS smoke test is required when the tools are available** (macOS with Xcode, an iOS simulator and
+  the local test server's podman). Every implementation that touches iOS code or shared code the iOS
+  app uses must then pass `scripts/ios-smoke.sh` before it is called done. When a tool is missing,
+  skip it and say which one; don't treat that as a failure. It builds the app, installs it fresh
+  on a simulator (`IOS_SIMULATOR="iPhone 18 Pro"` picks one) and runs the XCUITest onboarding flow
+  in `iosApp/UITests/` against the local test server (`docs/test-server.md`): launch, add server,
+  Who's watching, sign in, tabs. Report its result with the phase summary. If the change alters
+  onboarding or adds a main flow or screen, extend the UITest in the same change; label lookups there
+  are case-insensitive because iOS shows title case. Say plainly when the smoke test could not run.
+  Run it with the shared scheme `iosAppUITests` (a personal `iosApp` scheme in `xcuserdata` hides the
+  shared one of the same name).
 - Small commits. Don't commit secrets.
 - Commit message format, always: `task|fix|feat|chore: <short message>`. One line, no body. Use `feat`
   for new behaviour, `fix` for a bug fix, `chore` for upkeep (build, dependencies, config), `task`

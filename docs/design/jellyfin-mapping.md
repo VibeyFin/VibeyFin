@@ -8,20 +8,26 @@ Which server data drives which piece of UI. All of this lives in the shared Kotl
 | --- | --- | --- |
 | Continue watching (includes Next up) | `GET /UserItems/Resume`, then `GET /Shows/NextUp` | Movies and episodes; 16:9 `ContinueCard`. In-progress items first, newest first, then one Next up episode per series, hiding any series that already has an item in progress. Progress bar on in-progress cards only; Next up cards show "S2 E5". |
 | Recently added — {library} | `GET /Items/Latest?parentId={viewId}` | One row per library from `GET /UserViews`. Posters; episodes grouped by series. |
-| Collections / genres | `GET /Items` with `genreIds` or a `BoxSet` parent | Optional rows after the core four; genre list from `GET /Genres`. |
+| Collections / genres | `GET /Items?genreIds=` by community rating, 20 items | Every genre the server lists, the one with the most titles first (`GET /Genres` counts), titled with the genre; "See all" opens the genre's page. A `BoxSet` parent is not used yet. |
 | My media | `GET /UserViews` | The user's libraries as 16:9 tiles; tap opens that library. |
 | My List | Items with `UserData.IsFavorite = true` | Jellyfin has no watchlist; VibeyFin uses Favorites for "My List". |
 
-### Home filter chips
+### Home category buttons and their pages
 
-| Chip | Source | Notes |
+| Button | Source | Notes |
 | --- | --- | --- |
-| Shows | `includeItemTypes=Series` on `GET /Items`; Continue watching keeps the episodes | No chip when `GET /UserViews` has no `tvshows` library. |
-| Movies | `includeItemTypes=Movie` on `GET /Items`; Continue watching keeps the movies | No chip when there is no `movies` library. |
-| Collections | `GET /Items?includeItemTypes=BoxSet&recursive=true` | No chip when it returns nothing. Shown as a row of collection posters. |
-| Genre | `GET /Genres` for the chips (server order, at most 12); `genreIds` on `GET /Items` for the rows | `GET /Items/Latest` has no genre filter, so a filtered "Recently added" row uses `GET /Items` sorted by `DateCreated`, newest first. Continue watching keeps items whose own genres, or their series' genres, include the genre. |
+| Shows | `GET /Items?recursive=true&includeItemTypes=Series&sortBy=SortName` | Opens a page titled "Shows". |
+| Movies | `GET /Items?recursive=true&includeItemTypes=Movie&sortBy=SortName` | Opens a page titled "Movies". |
+| New | `GET /Items` sorted by `DateCreated` descending | What was added to the server most recently, newest first, across movies and shows. |
+| Categories | `GET /Genres?fields=ItemCounts` for the sheet; `genreIds` on `GET /Items` for the page | The page is titled with the genre ("Action"). Each row shows `MovieCount` + `SeriesCount`; a genre with none is left out. |
 
-A selected chip swaps the row sources above for the filtered ones. Nothing is stored: Home opens unfiltered.
+A page's Sort and Genre buttons change the same call: Name is `sortBy=SortName` ascending, Recently added is
+`DateCreated` descending, Rating is `CommunityRating,SortName` descending; Genre adds `genreIds=` (a genre's own page
+keeps its genre). The Genre picker is `GET /Genres?fields=ItemCounts` with `includeItemTypes` set to the page's kind
+(Movie, Series, or both) and counts `MovieCount`, `SeriesCount` or their sum to match; a genre with none is left out.
+
+Every page is `GET /Items` across every library (movies and shows for a genre), a page of 60 at a
+time. Home's own rows (Continue watching, libraries) are not filtered, so none of the endpoints behind them change.
 
 ## Detail
 
@@ -36,7 +42,7 @@ A selected chip swaps the row sources above for the filtered ones. Nothing is st
 | Episodes | `GET /Shows/{id}/Episodes?seasonId={seasonId}` | Fetch on season change; cache per season. |
 | Play / Resume target (series) | `GET /Shows/NextUp?seriesId={id}` | Its `ParentIndexNumber` picks the season the row opens on. |
 | Trailer action | `LocalTrailerCount` → `GET /Items/{id}/LocalTrailers`; else `RemoteTrailers[].Url` | Hide the action when both are empty. Tile trailers depend on the content having trailers. |
-| Like | `UserData.Likes` | `POST /UserItems/{id}/Rating?likes=true or false`, `DELETE` to clear — check against your server's OpenAPI. |
+| Like (cut: not built) | `UserData.Likes` | `POST /UserItems/{id}/Rating?likes=true or false`, `DELETE` to clear — check against your server's OpenAPI. |
 
 ## Search
 
@@ -66,5 +72,5 @@ A selected chip swaps the row sources above for the filtered ones. Nothing is st
 
 - Mark watched / unwatched: `POST` / `DELETE /UserPlayedItems/{id}`.
 - My List: `POST` / `DELETE /UserFavoriteItems/{id}`.
-- Like (thumbs): `POST` / `DELETE /UserItems/{id}/Rating`, read from `UserData.Likes`.
+- Like (thumbs, cut from the roadmap): `POST` / `DELETE /UserItems/{id}/Rating`, read from `UserData.Likes`.
 - Sign-in: `POST /Users/AuthenticateByName`, or Quick Connect (`/QuickConnect/Initiate` → poll → authenticate with the secret).

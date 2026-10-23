@@ -7,6 +7,8 @@ import app.vibeyfin.data.api.JellyfinHttpClient
 import app.vibeyfin.data.api.RetryPolicy
 import app.vibeyfin.data.api.UnauthorizedEvents
 import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.MockEngineConfig
+import io.ktor.client.engine.mock.MockRequestHandler
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.request.HttpRequestData
 import io.ktor.http.HttpHeaders
@@ -15,6 +17,7 @@ import io.ktor.http.Parameters
 import io.ktor.http.content.ByteArrayContent
 import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -41,6 +44,21 @@ class Reply(val status: HttpStatusCode, val body: String, val contentType: Strin
     }
 }
 
+/**
+ * Holds a call at the fake server until the test lets it through, so a test can look at what the app shows while a write is still
+ * in flight (an optimistic change) and then decide how it ends. Without one a call is answered as soon as it is made.
+ */
+class Gate {
+    private val opened = CompletableDeferred<Unit>()
+
+    /** Lets the held call (and any later one) through. The call finishes before this returns. */
+    fun open() {
+        opened.complete(Unit)
+    }
+
+    internal suspend fun await() = opened.await()
+}
+
 /** Thrown from a handler to look like a connection that never answers. */
 class ConnectionRefused : Exception("connection refused")
 
@@ -62,8 +80,15 @@ class FakeServer(val address: String) {
 
     internal var refusing = false
 
-    internal fun answer(request: RecordedRequest): Reply =
-        handlers["${request.method} ${request.path}"]?.invoke(request) ?: Reply.status(HttpStatusCode.NotFound)
+    private val gates = mutableMapOf<String, Gate>()
+
+    /** Holds every call to `method path` until the returned [Gate] is opened. Set it up before the call is made. */
+    fun hold(method: String, path: String): Gate = Gate().also { gates["$method $path"] = it }
+
+    internal suspend fun answer(request: RecordedRequest): Reply {
+        gates["${request.method} ${request.path}"]?.await()
+        return handlers["${request.method} ${request.path}"]?.invoke(request) ?: Reply.status(HttpStatusCode.NotFound)
+    }
 }
 
 /**
@@ -81,7 +106,7 @@ class FakeJellyfin(retries: RetryPolicy = RetryPolicy(attempts = 3, backoff = Du
 
     fun server(address: String): FakeServer = servers.getOrPut(address) { FakeServer(address) }
 
-    private val engine = MockEngine { data ->
+    private val handler: MockRequestHandler = { data ->
         val url = data.url.toString()
         val server = servers.values.firstOrNull { url == it.address || url.startsWith(it.address + "/") || url.startsWith(it.address + "?") }
             ?: throw ConnectionRefused()
@@ -103,6 +128,12 @@ class FakeJellyfin(retries: RetryPolicy = RetryPolicy(attempts = 3, backoff = Du
         )
     }
 
+    /**
+     * Answers on the caller's thread, not the engine's own pool: a call is done by the time the code that made it resumes, so a
+     * test that sends an event and then reads state is not racing a thread.
+     */
+    private val engine = MockEngine(MockEngineConfig().apply { dispatcher = Dispatchers.Unconfined; addHandler(handler) })
+
     private val http = JellyfinHttpClient.create(
         clientInfo = { ClientInfo(deviceName = "Test phone", deviceId = "device-1", appVersion = "1.0.0") },
         engine = engine,
@@ -113,7 +144,17 @@ class FakeJellyfin(retries: RetryPolicy = RetryPolicy(attempts = 3, backoff = Du
     fun api(address: String, token: String? = null): JellyfinApi = apiFactory.create(address, token)
 
     /** The recorded requests for `method path`, in order. */
-    fun requestsTo(method: String, path: String) = requests.filter { it.method == method && it.path == path }
+    fun requestsTo(method: String, path: String): List<RecordedRequest> {
+        // The engine records on its own thread while a test reads: read again if a request was added in the middle of it.
+        repeat(20) {
+            try {
+                return requests.filter { it.method == method && it.path == path }
+            } catch (_: ConcurrentModificationException) {
+                // Try again.
+            }
+        }
+        return requests.toList().filter { it.method == method && it.path == path }
+    }
 
     /**
      * Waits, in real time, until at least [count] requests have come in for `method path`, and

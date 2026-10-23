@@ -31,6 +31,23 @@ suspend fun JellyfinApi.nextUp(userId: String, limit: Int): ApiResult<ItemsResul
 )
 
 /**
+ * `GET /Shows/NextUp?seriesId=`: the episode of one show to watch next, a half-watched one included
+ * (`enableResumable=true`), or none when the show was never started or is finished.
+ */
+suspend fun JellyfinApi.nextUpOf(userId: String, seriesId: String): ApiResult<ItemsResultDto> = get(
+    "/Shows/NextUp",
+    mapOf(
+        "userId" to userId,
+        "seriesId" to seriesId,
+        "limit" to "1",
+        "fields" to "Overview",
+        "enableResumable" to "true",
+        "enableRewatching" to "false",
+    ),
+    retry = true,
+)
+
+/**
  * `POST /UserPlayedItems/{id}` marks [itemId] watched for [userId]; `DELETE` marks it unwatched (the
  * server also forgets where they stopped). Setting a state twice changes nothing, so, unlike other
  * writes, this one is retried like a read. The answer's body is not read.
@@ -53,3 +70,14 @@ suspend fun JellyfinApi.episodesFrom(seriesId: String, startItemId: String, user
     mapOf("userId" to userId, "startItemId" to startItemId, "limit" to limit.toString()),
     retry = true,
 )
+
+/**
+ * `POST /UserFavoriteItems/{id}` puts [itemId] on [userId]'s "My List" (the server's favourites); `DELETE` takes it off. Doing
+ * either twice changes nothing, so, like the watched mark, it is retried like a read.
+ */
+suspend fun JellyfinApi.setFavorite(itemId: String, userId: String, favorite: Boolean): ApiResult<Unit> =
+    execute({ }, retry = true) {
+        method = if (favorite) HttpMethod.Post else HttpMethod.Delete
+        url("$baseUrl/UserFavoriteItems/$itemId")
+        parameter("userId", userId)
+    }

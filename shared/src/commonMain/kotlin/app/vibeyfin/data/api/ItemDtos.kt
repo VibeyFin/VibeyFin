@@ -11,6 +11,8 @@ data class BaseItemDto(
     /** `Movie`, `Series`, `Season`, `Episode`, `Folder`, `CollectionFolder`, `BoxSet`, ... */
     @SerialName("Type") val type: String? = null,
     @SerialName("IsFolder") val isFolder: Boolean = false,
+    /** On a library: `movies`, `tvshows`, `music`, `boxsets`, ...; absent for a library of mixed content. */
+    @SerialName("CollectionType") val collectionType: String? = null,
     @SerialName("ProductionYear") val productionYear: Int? = null,
     @SerialName("RunTimeTicks") val runTimeTicks: Long? = null,
     @SerialName("Overview") val overview: String? = null,
@@ -27,11 +29,46 @@ data class BaseItemDto(
     @SerialName("IndexNumber") val indexNumber: Int? = null,
     /** For an episode or a season: the show it belongs to. */
     @SerialName("SeriesId") val seriesId: String? = null,
+    /** For an episode or a season: the tag of the show's own poster, which is the picture a row of shows wants. */
+    @SerialName("SeriesPrimaryImageTag") val seriesPrimaryImageTag: String? = null,
     @SerialName("UserData") val userData: UserItemDataDto? = null,
+    /** The cast and crew; only sent when asked for (`fields=People`, see `DETAIL_FIELDS`). */
+    @SerialName("People") val people: List<PersonDto> = emptyList(),
+    /** On a series: how many seasons it has; only sent when asked for (`fields=ChildCount`). */
+    @SerialName("ChildCount") val childCount: Int? = null,
+    /** How many trailers the server holds for the item itself (`GET /Items/{id}/LocalTrailers`). */
+    @SerialName("LocalTrailerCount") val localTrailerCount: Int? = null,
+    /** Trailers on the web, usually YouTube pages. */
+    @SerialName("RemoteTrailers") val remoteTrailers: List<TrailerDto> = emptyList(),
+    /** On a genre: how many movies and shows carry it; only sent when asked for (`fields=ItemCounts`). */
+    @SerialName("MovieCount") val movieCount: Int? = null,
+    @SerialName("SeriesCount") val seriesCount: Int? = null,
+    /** On a person: the birth date (`1999-10-17T00:00:00.0000000Z`); on a title, its release date. */
+    @SerialName("PremiereDate") val premiereDate: String? = null,
+    /** On a person: where they were born. */
+    @SerialName("ProductionLocations") val productionLocations: List<String> = emptyList(),
     /** The tracks of the item's file; only sent when asked for (see `DETAIL_FIELDS`). */
     @SerialName("MediaStreams") val mediaStreams: List<MediaStreamDto> = emptyList(),
     /** Trickplay thumbnails by media source id, then by width in pixels; only sent when asked for. */
     @SerialName("Trickplay") val trickplay: Map<String, Map<String, TrickplayInfoDto>> = emptyMap(),
+)
+
+/** A trailer on the web: [url] is a page to open. */
+@Serializable
+data class TrailerDto(
+    @SerialName("Url") val url: String? = null,
+    @SerialName("Name") val name: String? = null,
+)
+
+/** One person of an item's cast or crew: [type] is `Actor`, `GuestStar`, `Director`, `Writer`, ... */
+@Serializable
+data class PersonDto(
+    @SerialName("Id") val id: String,
+    @SerialName("Name") val name: String? = null,
+    /** The part they play, for an actor. */
+    @SerialName("Role") val role: String? = null,
+    @SerialName("Type") val type: String? = null,
+    @SerialName("PrimaryImageTag") val primaryImageTag: String? = null,
 )
 
 /** `UserItemDataDto`: what this user has done with an item. Only the fields we read. */
@@ -40,6 +77,8 @@ data class UserItemDataDto(
     /** Where the user stopped, in 100 ns ticks; 0 when they haven't started it or have finished it. */
     @SerialName("PlaybackPositionTicks") val playbackPositionTicks: Long = 0,
     @SerialName("Played") val played: Boolean = false,
+    /** The user's favourite: "My List". */
+    @SerialName("IsFavorite") val isFavorite: Boolean = false,
 )
 
 

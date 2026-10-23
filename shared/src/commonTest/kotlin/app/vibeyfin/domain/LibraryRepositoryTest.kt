@@ -130,7 +130,7 @@ class LibraryRepositoryTest {
 
         val kinds = app.library.children("p").success().items.map { it.kind }
 
-        assertEquals(listOf(ItemKind.Folder, ItemKind.Series, ItemKind.Season, ItemKind.Other, ItemKind.Other), kinds)
+        assertEquals(listOf(ItemKind.Folder, ItemKind.Series, ItemKind.Season, ItemKind.Collection, ItemKind.Other), kinds)
     }
 
     @Test

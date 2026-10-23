@@ -97,7 +97,7 @@ _Exit: play a movie and an episode, direct and transcoded, with position reporte
 - [x] Auto-advance with countdown into Next Up — _owned here: countdown, cancel, on by default. Phase 3
   keeps only "are you still watching?"; Phase 7 makes it a toggle_
 - [x] Mark played/unplayed: `POST` / `DELETE /UserPlayedItems/{id}`
-- [x] Optimistic user-data writes (played here; favourites and thumbs in Phase 4): the UI changes at once
+- [x] Optimistic user-data writes (played here; favourites in Phase 4; thumbs were cut): the UI changes at once
   and the call follows. If it fails the change reverts with a plain message, and a 401 still ends the
   session. Setting played or a favourite is the one write that is retried (the same retries as
   reads), because setting a state twice is harmless; every other write is still never repeated. Nothing
@@ -142,47 +142,61 @@ _Exit: skip-intro and scrub previews working end to end._
 ### Phase 4 — Browse & discovery
 _Starts after the state audit (see Cross-cutting)._
 
-- [ ] Main navigation bar, the bar only: Home, Library and Downloads, as drawn in the design's detail screens
+- [x] Main navigation bar (Android built and run; iOS written and only parsed; plan 09). Home, Search, Library and Downloads, as drawn in the design's detail screens
   and `BottomNav` (iOS `TabView`, the floating Liquid Glass bar on iOS 26+; Android M3 `NavigationBar`; at
   tablet widths the same destinations sit at the top, `docs/design/screens.md` "Chrome"). Each tab keeps its
-  own back stack and Settings stays under the profile avatar. Home is the Home that exists today. Library and
-  Downloads open an empty page that says "Not available yet" (text in `Strings`) until their features land.
-  The Search tab joins with unified search below. Nothing else is built in this item
-- [ ] Home rows: Latest, genres, My Media, plus Continue Watching (which holds Next Up)
-- [ ] Home filter chips under the header, above the hero (`docs/design/screens.md` "Home"): Shows, Movies,
-  Collections (when the server has any), then the library's genres from `GET /Genres`, at most 12. One at a
-  time, none selected on launch, tapping the selected chip clears it. A chip limits the hero, Continue
-  Watching and every row to that type or genre; rows left empty hide. Capsules on iOS, M3 `FilterChip`s on
-  Android
-- [ ] Detail page: metadata, cast, `/Items/{id}/Similar`. The page opens on a full-width cinematic
+  own back stack and Settings stays under the profile avatar. Home is the Home that exists today. Library is the real Library
+  browse (below); Downloads opens an empty page that says "Not available yet" (text in `Strings`) until offline lands (Phase 10).
+  The Search tab is second, with unified search below. The iOS mini player is still not mounted
+- [x] Home rows: Latest, genres, My Media, plus Continue Watching (which holds Next Up). Recently added in each video
+  library (`GET /Items/Latest`, 20 posters), every genre (biggest first), then My media as 16:9 tiles; each row loads and
+  fails on its own, an empty row is not shown, a header has "See all", and there is no cap on rows. Android run on the emulator, iOS
+  only parsed. Plan 10
+- [x] Home category buttons (Android built and run; iOS parsed; plans 09 and 13) under the header, Netflix-style, as one horizontally scrolling row in this
+  fixed order (configurable in Phase 7): **Shows**, **Movies**, **New**, **Categories**. Home itself is never
+  filtered; every button opens a page of its own, titled with its name:
+  - **Shows**, **Movies** and **New** open that page at once. New is what was added to the server most recently,
+    newest first, movies and shows together (`GET /Items` sorted by `DateCreated`, descending)
+  - **Categories** carries a chevron and opens a sheet of genres, the player's picker component (`GET /Genres`); the genre picked, such as
+    "Action", opens a page with that name and its media (`GET /Items?GenreIds=`)
+  - a page is a grid of posters like a folder's list, paged, with the five states; Home's Continue watching and
+    libraries are untouched. A page has Sort (name, recently added, rating) and Genre buttons that open the
+    player's picker sheet, and keeps its place when you come back from an item. The Categories sheet shows how many
+    titles each genre holds. *Built since:* the buttons are filled, with no outline; New and My List pages also have Movies and
+    Shows buttons that narrow the list and the genre counts; My List counts its genres from the list, not the library
+- [x] Detail page (Android built and run; iOS written and only parsed): metadata, cast, `/Items/{id}/Similar`, collections, extras; plan 11. Under Play four equal actions: My List (heart), Trailer and Watched (tick); Download is hidden until offline lands (Phase 10), the code is kept. The phone's picture is pinned and darkens as the page scrolls over it. On tablets and unfolded foldables a 16:9 backdrop with the details in a left column. The page opens on a full-width cinematic
   backdrop hero (`Backdrop` image) with a dark gradient overlay (the `scrim` token), and the movie
   details and action buttons are layered over the image: the `Logo` image as the title (the
   `brand-display` title when there is none), the facts line (year, rating, runtime, genres), the
   overview, then the actions, with Play / Resume as the one aqua primary button. Cast and similar
   items scroll below the hero. The bar over the hero is transparent (Android) or an inline title
   over the backdrop (iOS); text over the image always sits on the scrim
-- [ ] Series detail page: the same hero, then a row of season buttons (about four visible at a time,
+- [x] Series detail page (Android built and run; iOS parsed): the same hero, then episode cards with all their text on the still (tag, title, synopsis, length, rating, air date; long press: View episode, watched mark), mark the whole series watched, Play holds its place while loading, a season slides in from the side it is on, and the row opens at the current episode. Before: a row of season buttons (about four visible at a time,
   scrolling sideways when there are more), similar to the Nuvio player. The selected season is
   marked and its episodes list below (`GET /Shows/{id}/Seasons`, `GET /Shows/{id}/Episodes?seasonId=`);
   picking another button swaps the list in place. The row opens on the season of the episode Play /
   Resume will start, and Play / Resume on the hero starts that episode
-- [ ] Unified search: `/Search/Hints` on one screen, with results grouped into Movies, Shows, Episodes,
-  People and Collections; a person opens their page. Seerr adds a "not in your library" section in Phase 8
-- [ ] Person page: the biography (`Overview`, when the server's metadata providers supply one) and what
+- [x] Unified search (Android built and run, iOS parsed; plan 13): `/Search/Hints` on one screen, with filter buttons (All, Movies, Shows, Episodes, People, Collections), results grouped into Movies, Shows, Episodes,
+  People and Collections, and a per-profile history kept on the device; a person opens their page. Seerr adds a "not in your library" section in Phase 8
+- [x] Person page (Android built, iOS parsed; plan 12): the biography (`Overview`, when the server's metadata providers supply one) and what
   they appear in within the library (`GET /Items?PersonIds=`); cast on the detail page opens it
-- [ ] Special features (behind the scenes, extras) on the detail page (`GET /Items/{id}/SpecialFeatures`)
-- [ ] Library browse filters: genre, year and actor (`GET /Items` with `Genres`, `Years`, `PersonIds`) and
-  a sort order
-- [ ] Shared-element transition from a poster to the detail hero, using each platform's own mechanism:
-  Compose's shared transition on Android (no new dependency), iOS 18's zoom navigation transition behind
-  `#available`, and the standard push on iOS 16–17, with no custom fallback
-- [ ] Ambient background: a static wash from the item's BlurHash behind the hero and the player, under
-  the `scrim` (allowed by `brand.md`; the accent is never derived from artwork, and no colour-extraction
-  library is added)
-- [ ] My List (Favorites), thumbs (`UserData.likes`)
-- [ ] Tile trailers (`LocalTrailers` / `RemoteTrailers`, content-dependent)
+- [x] Special features (behind the scenes, extras; plan 12; Android built, iOS parsed) on the detail page (`GET /Items/{id}/SpecialFeatures`)
+- [x] Library browse (Android built and run; iOS written and only parsed): the Library tab is every movie and show as a poster grid (three across on a phone) with the title count under its name, and buttons for Movies, Shows, Collections, Sort, Genre, Year (by decade), People (searched by name) and Clear. Changing a filter keeps the old list dimmed and the count in place until the new list is in, so nothing jumps. Sheets show the chosen row as a soft pill, not a tick
+- [x] Shared-element transition: built, **off by default** on both platforms (`SHARED_POSTER_ENABLED` on Android, `sharedPosterEnabled` on iOS). Compose's shared transition on Android (no new dependency, seen on the emulator with animations slowed) and iOS 18's zoom navigation transition behind `#available` (written and only parsed). Detail pages open the way the reference video does instead: the screen dims, a skeleton shows, the page fades up whole
+- [x] Home hero (Android built and run; iOS written and only parsed): one featured item per session (random among recently added and My List that have a Backdrop and a Logo, never one already watched), a rounded banner card (4:3 on a phone, 2.6:1 from 600dp) with the Logo, a line of what it is and its genres, and Play beside My List (a heart, filled when on the list; a movie plays; a show plays its next episode, else the first episode that is not in Specials, else opens its page), tapping the picture opens its page; a per-profile setting ("Featured title on Home") turns it off. Never an auto-rotating carousel. It sits under the category buttons and above Continue watching. Play is the one aqua button. Optional by design, so Home looks right without it (no item qualifies, or a failure). Its skeleton is in the first frame: Home waits for the setting before drawing
+- [x] My List (Favorites): Home row, "See all" page, the detail page's heart, Android built and iOS parsed.
+- ~~Thumbs (`UserData.likes`)~~ — _cut:_ Jellyfin's like flag is barely used by its own clients and My List already covers "I want this". Revisit only if Phase 7's recommendations need a signal
+- [x] Tile trailers (Android built and run; iOS written and only parsed): a long press on any poster opens a menu with Details, Trailer (only when the title has one, found when the menu opens because lists do not carry trailers: one the server holds plays in the app, one on the web opens in the system's viewer) and My List. The detail page has the same Trailer button
 
-_Exit: browse, search, open a detail page, add to My List._
+Also built in this phase, not on the original list: Home shows a row for every genre with a per-profile setting to limit them
+(`docs/plans/10-home-rows.md`), collections open on their own page with a tablet view, the player uses the whole screen
+including the camera cut-out, and a `perf` build type (`./gradlew :androidApp:installPerf`) for judging smoothness, as the
+debug build is slow. Cut: thumbs. A baseline profile for first-scroll speed moves to Phase 6 (it needs Macrobenchmark, which is not in the stack yet: ask first).
+
+Owed after Phase 4: the phone pass (`docs/checklists/phone-pass.md`) and an iOS Xcode pass, its own task: build `iosApp` in Xcode and fix what the compiler finds (every Swift file so far is only parsed, and the `Shared` framework names such as `HeroNavPlay`, `SeeAllMyList` and `ItemFactsKt.getSeasonLabel` are read from the Kotlin source, not from a built framework).
+
+_Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a genre page from Home,
+and see the mini player on iOS 26._
 
 ### Phase 6 — Accounts & polish
 - [ ] Profile picker: quick-switch between users, optional PIN (Jellyfin has no sub-profiles)
@@ -214,13 +228,13 @@ _Depends on Phase 4 (Home rows) and Phase 6 (profiles and the first settings). S
   true-black (AMOLED) or lifted "cinematic dark" backgrounds, corner radius, density and text size.
   Each goes into `docs/design/` and `design/tokens.json` first, so the drift check covers every theme.
   Not offered: a light theme, Android dynamic colour, a free colour picker, custom fonts, and accents
-  derived from artwork (the BlurHash wash in Phase 4 is a background, not a theme)
+  derived from artwork (artwork stays artwork, never a theme)
 - [ ] Navigation: choose and order the tabs, set the start tab, hide libraries
 - [ ] Player preferences, extending Phase 6's quality and subtitle settings: seek step (default
   10s), gestures on or off, auto-skip intro and credits (off by default), auto-advance and "are you still
   watching?" on or off, default audio and subtitle language
-- [ ] Motion: looping motion (skeleton shimmer, ambient gradient drift) is off by default and an opt-in
-  "Ambient motion" setting, and is never on when the system asks for Reduce Motion. One-shot motion (the
+- [ ] Motion: looping motion (skeleton shimmer) is off by default and an opt-in
+  "Looping motion" setting, and is never on when the system asks for Reduce Motion. One-shot motion (the
   shared-element transition, crossfades) is on and follows the system setting
 - [ ] Settings that travel: copy settings from another profile, export and import as a file.
   **Open question:** also sync through Jellyfin's per-client `DisplayPreferences` (`CustomPrefs`)
@@ -323,10 +337,10 @@ requestable._
   `Strings` / `LoadMessages`; especially the player and the beacon. Loading is a skeleton, not a spinner
   (`CircularProgressIndicator` / `ProgressView` only in the player, as `android.md` and `ios.md` already
   say). Part of every phase's definition of done.
-- **State audit (before Phase 4)** — a one-time task over the screens built so far (Home, library lists,
-  item page, player, Who's watching, servers): replace their spinners with skeletons and give each its
-  five states. Home, Item, Who's watching and Add server on Android, and several iOS screens, still use
-  spinners.
+- **State audit (before Phase 4)** — done on `feature/state-audit`: Home libraries, Item, library lists and
+  Who's watching load as skeletons on both platforms (`Skeletons.kt`, `Skeletons.swift`). Spinners stay only
+  for an action in progress: buttons, device search, "loading more", the player. Servers and Add server show
+  their results as they arrive and have no page-load state. Not seen running on iOS.
 - **Optimistic writes** — see Phase 2: every user-data write updates the UI at once and reverts with a
   message if it fails.
 - **Seerr is optional** — no Seerr screen, row or setting appears until one is connected, and a Seerr failure only affects its own rows.

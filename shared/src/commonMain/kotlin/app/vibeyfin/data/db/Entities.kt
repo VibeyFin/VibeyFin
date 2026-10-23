@@ -84,7 +84,19 @@ class AccountSettingsEntity(
     /** Episodes in a row before the player asks "Still watching?". 0 is off. */
     @ColumnInfo(defaultValue = "3")
     val bingeThreshold: Int = 3,
+    /**
+     * How many genre rows Home shows: 0 is every genre, -1 none, otherwise the biggest this many. A new profile starts at
+     * [NEW_PROFILE_HOME_GENRE_ROWS]; the column's own default stays 0, so a profile that existed before keeps every genre.
+     */
+    @ColumnInfo(defaultValue = "0")
+    val homeGenreRows: Int = NEW_PROFILE_HOME_GENRE_ROWS,
+    /** Whether Home features one item above Continue watching. */
+    @ColumnInfo(defaultValue = "1")
+    val showHomeHero: Boolean = true,
 )
+
+/** Home's genre rows for a profile that has never chosen: the top five, so Home stays a sensible length on a big library. */
+const val NEW_PROFILE_HOME_GENRE_ROWS = 5
 
 /** [PendingReportEntity.kind] of a play session whose `Stopped` the server may not have heard yet. */
 const val PENDING_STOPPED = "stopped"

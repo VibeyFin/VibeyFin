@@ -2,55 +2,121 @@
 
 Layouts for Home and the detail screens, the same on both platforms apart from the native chrome. These
 are reference screens, not components: build each from the parts named here (hero, `action` buttons,
-rows, `PosterCard`s, filter chips). Colours, type and controls come from `brand.md`, `ios.md` and
+rows, `PosterCard`s, category buttons, category pages). Colours, type and controls come from `brand.md`, `ios.md` and
 `android.md`; the rules from `guardrails.md`; the data from `jellyfin-mapping.md`.
 
 ## Home
 
 The Home tab: the same content, rows and rules on both platforms, with native chrome on each.
 
-- iOS: large title "Home" with the profile avatar and the filter chips under it; the backdrop and rows
+- iOS: the app logo with the large title "Home" next to it and the profile avatar at the right, the category buttons under them; the backdrop and rows
   scroll under the floating tab bar (the safe area provides the bottom inset).
-- Android: top app bar with the app name and avatar, the filter chips under it, rows scrolling above the
+- Android: top app bar with the app logo and "Home" next to it and the avatar at the right, the category buttons under it, rows scrolling above the
   `NavigationBar` (`Scaffold`'s inner padding).
-- Same on both: filter chips → hero (optional) → Continue watching → Recently added. Aqua only on Play and
-  progress (plus native tinting on iOS). The chip row scrolls with the content.
+- Same on both: the logo and the page name ("Home") at the left, the profile at the right; category buttons → hero (optional, see **Home hero**) → Continue watching → Recently added in each video library → a row for every genre, biggest first (a profile can limit them or turn them off) → My media (the libraries as 16:9 tiles). A row with nothing in it is not shown, with no gap; each row loads and fails on its own; a header says "See all" and opens the library or the genre. Aqua only on Play and
+  progress (plus native tinting on iOS). The button row scrolls with the content.
 
-### Filter chips
+### Category buttons
 
-The filter row at the top of Home: Shows, Movies, Collections, then the library's genres.
+The row at the top of Home, Netflix-style: **Shows**, **Movies**, **New**, **Categories**, in that
+fixed order (configurable in Phase 7). Home itself is never filtered: every button opens something of its own.
 
-**Provide:** the chips (`id`, `label`), the selected id (none = no filter) and a handler for a tap.
+**Provide:** the buttons (`id`, `label`, whether it opens a sheet), the open sheet with its entries, and handlers for
+a tap and for picking an entry.
 
-- Order: Shows and Movies first (only the types the user's libraries hold), Collections when the server
-  has any, then genres from `GET /Genres` in the server's order, at most 12. Labels exactly as Jellyfin
-  returns them ("Science Fiction").
-- One chip at a time, nothing selected by default. Tapping the selected chip clears it. The selected chip
-  scrolls into view; the next chip always peeks.
-- A filter limits the hero, Continue watching and every row to that type or genre; rows left empty are
-  hidden. Home opens unfiltered on every launch.
-- iOS: a horizontal `ScrollView` of capsule buttons, 36pt tall with a 44pt hit area. Unselected on
-  `surface-2` (`tertiarySystemBackground`) with `ink`; selected filled `ink` with `bg` text and a trailing
-  `xmark`, the same selected look as the season buttons. A capsule on the system background, never glass.
-- Android: a `LazyRow` of M3 `FilterChip`s, 32dp tall inside the 48dp touch target. Unselected outlined in
-  `line-strong` with `ink-muted`; selected `accent-soft` with `on-accent-soft` and M3's leading check.
-- Both: aqua is not used in this row. Accessibility: the row is a group named "Filter Home"; each chip is
-  a toggle button and says whether it is selected.
+- One horizontally scrolling row; the next button always peeks. Nothing stays selected, and there is no clear (×).
+- **Shows**, **Movies** and **New** open a category page at once, titled with their name.
+- **Categories** is different, and looks it: it carries a chevron and opens a bottom sheet of genres, the same list
+  component as the player's audio and subtitle pickers (a title and one row per genre; nothing is checked, because
+  picking a genre such as "Action" opens a category page titled with its name). Each row ends with how many titles
+  it holds, and a genre with none is left out. No search.
+- iOS: a horizontal `ScrollView` of capsule buttons, 36pt tall with a 44pt hit area, `surface-2`
+  (`tertiarySystemBackground`) with `ink`; Categories adds a trailing `chevron.down`. A capsule on the
+  system background, never glass. The list is a `.sheet` with a plain list (the player's tracks use a `Menu`, but this list loads on demand and needs loading, empty and error states).
+- Android: a `LazyRow` of M3 `AssistChip`s, filled `surface-2` with `ink`, no outline; Categories adds a
+  trailing dropdown arrow and opens a `ModalBottomSheet` with the player's `OptionList`.
+- The sheet: loading shows grey lines, an empty list says so, a failure offers Try again. The list is fetched once
+  per session.
+- Both: aqua is not used in this row or the sheet. Accessibility: the row is a group named "Filter Home"; the
+  button that opens the sheet says "Categories, opens a list".
 
-### Home with a filter
+### Category page
 
-Home with one chip selected, for a type (Shows) and for a genre (Drama).
+The page a button or the sheet opens.
 
-- The header, chip row, hero, Continue watching and rows keep their places and order. The selected chip is
-  the only change in the chrome, scrolled into view.
-- The hero, Continue watching and every row hold only items of that type or genre. A row with nothing left
-  is hidden, never shown empty. The hero is picked again from the filtered items (still one per session,
-  still a Backdrop and a Logo image).
-- Shows: Continue watching holds episodes and Next up; Movies holds movies only. A genre matches an item's
-  own genres, or its series' genres for an episode.
-- Tapping the selected chip clears the filter and restores the full Home, scrolled to the top.
-- Switching chips keeps the old content on screen until the new content has loaded (skeleton rows only on
-  the first load); nothing navigates and the tab bar stays as is.
+- A new screen over Home with the bar kept (the tabs' own back stack): a back button, the **name as the title**
+  ("Shows", "Movies", "New", "Action"), then a grid of posters, the same grid as a folder's list.
+- **Shows** are series by name; **Movies** are movies by name; **New** is movies and shows by when they were
+  added to the server, newest first; a genre is its movies and shows by name.
+- **Sort and Genre** sit under the title as two buttons (a genre's own page has no Genre button). Each opens
+  the player's picker sheet (a title, one row per choice; the one in use is a soft `accent-soft` pill, not a tick). Sort: Name (A to Z), Recently
+  added (newest first; New starts here) and Rating (best first); Genre: All genres and each genre with how many titles
+  it holds on this page: movies only on Movies, shows only on Shows, both on New; a genre with none of the page's kind
+  is left out. A button that changes the page shows filled (`accent-soft`), so it is clear what is applied. Choosing
+  reloads the list from the top. The buttons stay put while the list scrolls. These pages have no Year button, no year
+  subtitles and no year strip (the Library tab does: see **Library**).
+- Back from an item's page returns to the same place in the list.
+- Posters open the item's page or a folder's list, like anywhere else. More load as the end comes into view.
+- Loading is grey posters, an empty page says so, a failure offers Try again, a rejected session leaves to "Who's
+  watching?".
+
+## Home hero
+
+An optional card between the category buttons and Continue watching. One title per app session, never a carousel.
+
+- **Which:** picked at random from recently added and My List, only titles with both a `Backdrop` and a `Logo` image, and never one the
+  user has watched. Nothing qualifies, or the profile turned it off ("Featured title on Home" in Settings): no hero, no gap.
+- **Card:** a rounded card (`radius-artwork`), 4:3 on a phone and 2.6:1 from 600dp. The `Backdrop` fills it under a `scrim` that rises
+  from the bottom; over it, centred: the `Logo`, a line of what it is (a movie or a show) and its genres.
+- **Buttons:** Play (the one aqua button) beside My List (a heart), 40dp tall. Play on a movie starts it; on a show it starts the next
+  episode, else the first episode of the first season that is not Specials, else opens the page. Tapping the picture opens the page.
+- **Loading:** Home waits until it has read the profile's hero setting, so the skeleton is in the first frame and never slides in; it
+  is the card's exact shape. The hero's own slot does not animate its placement when the rows below load.
+
+## Library
+
+The Library tab: every movie and show in the library as a poster grid (three across on a phone), under a title with the count of what
+is listed. The count stays in place while a change loads, so nothing jumps.
+
+- **Buttons** under the title, one scrolling row of filled capsules: Movies, Shows, Collections, Sort, Genre, Year, People and Clear
+  (Clear only when something is applied). Movies and Shows narrow the type; Collections lists the boxsets instead. A button that
+  changes the page shows filled `accent-soft`.
+- **Year** picks a decade (2020s, 2010s, 2000s, 1990s, 1980s, and Older). **People** opens a sheet with a search field: type a name, pick
+  an actor or director, and the grid lists their titles.
+- **Changing a filter** keeps the old list on screen, dimmed, until the new one arrives. Back from an item returns to the same place.
+- States as a category page: grey posters while loading, an empty page says so, a failure offers Try again.
+
+## Search
+
+The Search tab: a field at the top, then results from `/Search/Hints` after a 300 ms debounce.
+
+- **Empty field:** the profile's recent searches (ten at most, kept on this device), each tapping to search again, and a way to clear them.
+- **Filters:** a row of filled capsules under the field: All, Movies, Shows, Episodes, People, Collections. Results are grouped under
+  those headings when more than one kind has a match.
+- **Results:** a poster opens the title, an episode its episode page, a person their page, a collection its page. A long press on a
+  poster opens the poster menu (see **Poster menu**).
+- **States:** grey rows for the first search; a newer search dims the older answer; no match says so with a hint; a failure says why with
+  Try again.
+
+## Person page
+
+A cast member's page, opened from the cast row or a search result: a round portrait (their initials on a `surface-2` disc without one),
+the name in `brand-display`, "Born 1999 · Place", the biography (four lines with More / Less, or "No biography on the server."), then
+Movies and Shows in the library as poster rows, newest first. A person with nothing in the library says so.
+
+## Collection page
+
+A boxset opens its own page: a header with the collection's picture and name (the text fades in with the picture, with no jump), then
+Movies and Shows rows. On a tablet the header is wide (21:9) with the details in a left column.
+
+## Poster menu
+
+A long press on any poster, in a row, a grid or search results, opens a short bottom sheet on both platforms:
+
+- **Details** opens the title's page, **Trailer** (only a movie or a show can have one, and only when it does: the server's own plays in the app, one on the web opens in
+  YouTube) and **My List** (a heart, filled when it is on the list; adds or removes, and says which).
+- The rows are there when the sheet opens. Lists do not carry trailers, so the sheet looks the title up; a title with no trailer never
+  shows a Trailer row that then goes away, and the lookup never undoes a My List change made in the meantime.
 
 ## Detail
 
@@ -58,7 +124,7 @@ The movie detail screen: a full-width cinematic backdrop hero with the details a
 it, then cast, similar items and technical info.
 
 **Provide:** the item's `Backdrop` and `Logo` images (plus `ImageBlurHashes`), name, production year,
-official rating, runtime, genres, overview, `UserData` (playback position, `IsFavorite`, `Likes`,
+official rating, runtime, genres, overview, `UserData` (playback position, `IsFavorite`,
 `Played`), `People`, trailers (`LocalTrailerCount` / `RemoteTrailers`) and `GET /Items/{id}/Similar`.
 
 ### Hero
@@ -77,17 +143,23 @@ official rating, runtime, genres, overview, `UserData` (playback position, `IsFa
   `.borderedProminent` capsule `.controlSize(.large)`, Android filled 56dp). The label says what happens:
   "Play", "Resume · 38m left" (with the play icon). It is full width until there is something to resume;
   then a round icon-only "start over" button (a circular arrow, the grey secondary button) sits beside it.
-- Secondary actions as `action` buttons (icon over label), max four: My List (Favorites), Like (thumbs,
-  `UserData.Likes`), Trailer (only when the item has a local or remote trailer), Download. Mark as watched
-  moves to the overflow menu (`…` / `⋮`).
+- Secondary actions as `action` buttons (icon over label): My List (Favorites, a heart), Trailer (only when
+  the item has a local or remote trailer) and Watched (a tick). Download joins them when offline playback
+  lands. There is no Like and no overflow menu (Likes were cut from the roadmap: Jellyfin's like flag is
+  barely used, and My List covers it).
 - Tablets and landscape use **Detail on tablets** below.
 
 ### Bar
 
 - iOS: no opaque bar. Glass back button, an inline title over the backdrop, Share and `…` as glass
   buttons. The title sits on the top scrim band.
-- Android: transparent `TopAppBar` over the backdrop (back arrow, Cast, `⋮`) on the same scrim band; it
-  fills with the surface color once the hero scrolls away.
+- Android: a floating back button over the backdrop on the same scrim band; no app bar.
+
+### Opening
+
+The page does not build itself in front of the user. The screen dims at once, a skeleton with the page's exact layout shows (never a
+spinner), and when the data is in the finished page fades up whole. On a phone the picture is pinned and darkens as the page
+scrolls over it (fully dark after about half the picture has gone by).
 
 ### Below the hero
 
@@ -132,15 +204,20 @@ The hero, bar and secondary actions follow **Detail**.
 
 One episode in a season list.
 
-**Provide:** `index`, `title`, `runtime`, `synopsis`, `color`, optional `progress` + `remaining`,
-`watched`, `downloaded`, `current`. Thumbnail, number and title, runtime, watched / time left, download
-and a 2-line synopsis.
+**Provide:** the episode's `Primary` still (else the show's), `ParentIndexNumber` and `IndexNumber`, title, synopsis, runtime,
+rating, air date, and its `UserData` (played, resume position).
 
-- iOS: a `List` / `LazyVStack` row; download button tinted aqua; swipe actions (Mark as Watched,
-  Download) on the row.
-- Android: M3 `ListItem`-style row; download as `IconButton` (onSurfaceVariant); long-press for actions,
-  no swipe actions.
-- Downloaded is a filled check-disc in `positive` (`ink`) on both.
+- **Phone (compact width):** a row in a list down the page. A 148dp 1.6:1 picture on the left plays it (a check at its top once
+  watched, an aqua progress bar along its bottom edge when part watched, a brighter outline on the episode Play starts). On the
+  right, the "S1 E4" tag, the title, a line with how long it is (or how much is left), its rating and air date, and two lines of
+  synopsis; those open the episode's page.
+- **Regular width:** a card in a row that scrolls sideways, 380dp wide, 1.6:1, **all of its text on the still**: at
+  the bottom, over a scrim, the "S1 E4" tag, the title, two lines of synopsis, and a line with how long it is (or how much is
+  left), its rating and the day it aired. A check sits at the top once watched, an aqua progress bar runs along the bottom edge
+  when it is part watched, and the episode Play starts has a brighter outline.
+- On a card, a tap on the picture plays it and a tap on the words opens its page. A long press opens a menu on both platforms: **View episode** (its own page) and the watched mark.
+- No download button until offline playback lands, and no swipe actions on either platform.
+- Downloaded (later) is a filled check-disc in `positive` (`ink`) on both.
 
 ## Detail on tablets
 
@@ -168,7 +245,7 @@ backdrop with the details in a left column over it, then the same rows as on the
 - iPad: the floating glass tab bar stays at the top center (system-rendered with `.sidebarAdaptable`);
   glass back button left, Share and `…` right.
 - Android: the four destinations sit in the top app bar, centered (icon + label, the active one in an
-  `accent-soft` pill), over the backdrop with back on the left and Cast, `⋮` on the right. No navigation
+  `accent-soft` pill), over the backdrop with back on the left. No navigation
   rail and no bottom bar at these widths.
 
 ### Below the hero

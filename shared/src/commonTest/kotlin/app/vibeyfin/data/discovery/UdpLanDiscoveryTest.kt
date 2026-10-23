@@ -81,7 +81,8 @@ class UdpLanDiscoveryTest {
         }
     }
 
-    private fun discovery(server: FakeJellyfinUdp, window: Int = 600) = UdpLanDiscovery(
+    /** Real sockets cannot run on virtual time, so the window is generous: a busy machine can hold a reply up for a few hundred ms. */
+    private fun discovery(server: FakeJellyfinUdp, window: Int = 1_500) = UdpLanDiscovery(
         multicastLock = lock,
         target = server.address,
         window = window.milliseconds,

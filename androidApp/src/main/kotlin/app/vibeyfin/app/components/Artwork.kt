@@ -3,6 +3,7 @@ package app.vibeyfin.app.components
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,8 +37,15 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import app.vibeyfin.app.navigation.LocalTileLongPress
+import app.vibeyfin.app.navigation.SharedPick
+import app.vibeyfin.app.navigation.sharedPoster
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.animationsEnabled
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.BlurHash
 import app.vibeyfin.ui.common.Strings
@@ -91,15 +99,30 @@ fun Artwork(
     }
 }
 
-/** The blurred picture for [blurHash], decoded once per hash at the shape of the tile; null when there is none or it is unusable. */
+/** Decoded blurred pictures by hash and shape, so a tile that scrolls back into view finds its own at once. */
+private val blurHashCache = android.util.LruCache<String, BitmapPainter>(BLUR_HASH_CACHE_SIZE)
+private const val BLUR_HASH_CACHE_SIZE = 300
+
+/**
+ * The blurred picture for [blurHash], at the shape of the tile; null when there is none or it is unusable. It is decoded off the
+ * main thread (a screen of tiles decoded during a scroll costs frames) and kept in a cache, so only the first sight of a tile waits:
+ * for a frame or two its colour shows, then the blur.
+ */
 @Composable
-private fun rememberBlurHashPainter(blurHash: String?, aspectRatio: Float): Painter? =
-    remember(blurHash, aspectRatio) {
-        blurHash?.let { BlurHash.decode(it, aspectRatio) }?.let { image ->
-            val bitmap = Bitmap.createBitmap(image.pixels, image.width, image.height, Bitmap.Config.ARGB_8888)
-            BitmapPainter(bitmap.asImageBitmap())
+private fun rememberBlurHashPainter(blurHash: String?, aspectRatio: Float): Painter? {
+    if (blurHash == null) return null
+    val key = "$blurHash@$aspectRatio"
+    val painter by produceState<BitmapPainter?>(initialValue = blurHashCache.get(key), key) {
+        if (value != null) return@produceState
+        value = withContext(Dispatchers.Default) {
+            BlurHash.decode(blurHash, aspectRatio)?.let { image ->
+                val bitmap = Bitmap.createBitmap(image.pixels, image.width, image.height, Bitmap.Config.ARGB_8888)
+                BitmapPainter(bitmap.asImageBitmap()).also { blurHashCache.put(key, it) }
+            }
         }
     }
+    return painter
+}
 
 /** The check on a watched poster's top-right corner, on the scrim so it reads over any picture. */
 @Composable
@@ -117,18 +140,31 @@ fun WatchedBadge(modifier: Modifier = Modifier) {
     }
 }
 
-/** A poster or a library tile with its title underneath, unless the picture already says it. */
+/**
+ * A poster or a library tile with its title underneath, unless the picture already says it. In a row that scrolls sideways
+ * pass [captionLines]: the caption then always takes that many lines, so a long title in one tile never makes the row taller
+ * (and pushes everything under it down) when it scrolls into view.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun ArtworkTile(item: MediaItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun ArtworkTile(item: MediaItem, onClick: () -> Unit, modifier: Modifier = Modifier, captionLines: Int = 0) {
+    // A long press opens the poster's menu (Details, Trailer, My List) where the app has one.
+    val longPress = LocalTileLongPress.current
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
-            .clickable(onClick = onClick)
+            // The poster grows into the detail page's picture; this tile is the one that does, from the moment it is tapped.
+            .combinedClickable(
+                role = androidx.compose.ui.semantics.Role.Button,
+                onLongClickLabel = if (longPress != null) Strings.showOptions else null,
+                onLongClick = longPress?.let { press -> { press(item) } },
+                onClick = { SharedPick.itemId = item.id; onClick() },
+            )
             .semantics(mergeDescendants = true) { contentDescription = Strings.cardLabel(item.title, item.year) },
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
     ) {
-        Box(Modifier.clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
+        Box(Modifier.sharedPoster(item.id, source = true).clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
             Artwork(
                 url = item.posterUrl,
                 title = item.title,
@@ -138,12 +174,14 @@ fun ArtworkTile(item: MediaItem, onClick: () -> Unit, modifier: Modifier = Modif
             )
             if (item.played) WatchedBadge(Modifier.align(Alignment.TopEnd).padding(VibeyFinTokens.Space.s2))
         }
-        if (!item.nameIsOnPoster) {
+        if (!item.nameIsOnPoster || captionLines > 0) {
             Text(
-                text = item.title,
+                // A tile whose picture already says its name keeps the same empty space, so the row stays one height.
+                text = if (item.nameIsOnPoster) "" else item.title,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 2,
+                minLines = if (captionLines > 0) captionLines else 1,
+                maxLines = if (captionLines > 0) captionLines else 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }

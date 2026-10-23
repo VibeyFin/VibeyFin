@@ -6,7 +6,9 @@ import app.vibeyfin.data.api.ItemsResultDto
 import app.vibeyfin.data.api.JellyfinApi
 import app.vibeyfin.data.api.episodesFrom
 import app.vibeyfin.data.api.nextUp
+import app.vibeyfin.data.api.nextUpOf
 import app.vibeyfin.data.api.resumeItems
+import app.vibeyfin.data.api.setFavorite
 import app.vibeyfin.data.api.setPlayed
 import app.vibeyfin.data.api.map
 import app.vibeyfin.domain.model.ItemKind
@@ -55,6 +57,22 @@ class WatchRepository(private val connection: ConnectionManager, private val cha
                 if (at < 0) null else episodes.getOrNull(at + 1)
             }
         }
+    }
+
+    /** Puts [itemId] on "My List" or takes it off. The page has already shown the change; if this fails it takes it back. */
+    suspend fun setFavorite(itemId: String, favorite: Boolean): ApiResult<Unit> {
+        val result = call { api, userId -> api.setFavorite(itemId, userId, favorite) }
+        // Home's My List row reads the favourites again.
+        if (result is ApiResult.Success) changes.changed()
+        return result
+    }
+
+    /**
+     * The episode of [seriesId] to play next, a half-watched one included, or null when the show was never started or
+     * is finished (the page then offers its first episode).
+     */
+    suspend fun nextUpOf(seriesId: String): ApiResult<MediaItem?> = call { api, userId ->
+        api.nextUpOf(userId, seriesId).toItems(api).map { it.firstOrNull() }
     }
 
     /**

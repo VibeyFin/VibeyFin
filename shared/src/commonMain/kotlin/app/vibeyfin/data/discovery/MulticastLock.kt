@@ -9,7 +9,3 @@ interface MulticastLock {
     /** Holds the lock while [block] runs and releases it afterwards, however [block] ends. */
     suspend fun <T> withLock(block: suspend () -> T): T
 }
-
-object NoMulticastLock : MulticastLock {
-    override suspend fun <T> withLock(block: suspend () -> T): T = block()
-}

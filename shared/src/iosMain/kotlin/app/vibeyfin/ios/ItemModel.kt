@@ -16,6 +16,22 @@ class ItemModel(itemId: String) {
 
     fun onTogglePlayed() = host.viewModel.onTogglePlayed()
 
+    fun onToggleFavorite() = host.viewModel.onToggleFavorite()
+
+    fun onSelectSeason(seasonId: String) = host.viewModel.onSelectSeason(seasonId)
+
+    fun onToggleEpisodePlayed(episodeId: String) = host.viewModel.onToggleEpisodePlayed(episodeId)
+
+    fun onRetrySimilar() = host.viewModel.onRetrySimilar()
+
+    fun onRetryCollections() = host.viewModel.onRetryCollections()
+
+    fun onRetryExtras() = host.viewModel.onRetryExtras()
+
+    fun onRetrySeasons() = host.viewModel.onRetrySeasons()
+
+    fun onRetryEpisodes() = host.viewModel.onRetryEpisodes()
+
     fun onRetryAction() = host.viewModel.onRetryAction()
 
     fun onDismissMessage() = host.viewModel.onDismissMessage()

@@ -16,7 +16,6 @@ import app.vibeyfin.ui.whoswatching.SignInMessages
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.toList
@@ -24,7 +23,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -52,7 +51,7 @@ class HomeViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(HomeViewModel(app.connection, app.library, app.watch, app.watchChanges, app.clock))
+    private fun viewModel() = viewModels.track(HomeViewModel(app.connection, app.library, app.watch, app.watchChanges, app.clock, app.profileSettings, app.searchHistory))
 
     private suspend fun signedIn(): FakeServer {
         val server = app.serverAt("http://nas:8096")
@@ -129,6 +128,28 @@ class HomeViewModelTest {
         assertEquals(1, app.jellyfin.requestsTo("POST", "/Sessions/Logout").size)
         assertNull(app.accounts.sessionToken("srv-1", "u1"))
         assertIs<ConnectionState.Disconnected>(app.connection.state.value)
+    }
+
+    @Test
+    fun signingOutForgetsWhatTheProfileSearchedForButSwitchingProfileKeepsIt() = runTest {
+        signedIn()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.userName != null }
+        app.searchHistory.record("heat")
+
+        viewModel.onSwitchProfile()
+        app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-1")
+        app.connection.activate("srv-1", "u1")
+        assertEquals(listOf("heat"), app.searchHistory.entries.first())
+
+        val again = viewModel()
+        again.uiState.first { it.userName != null }
+        again.onSignOut()
+        again.uiState.first { it.exit != null }
+        app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-2")
+        app.connection.activate("srv-1", "u1")
+
+        assertEquals(emptyList(), app.searchHistory.entries.first())
     }
 
     @Test
@@ -241,7 +262,8 @@ class HomeViewModelTest {
 
     private suspend fun HomeViewModel.loadedRow() = uiState.first { it.serverId != null && !it.continueRow.loading }.continueRow
 
-    private suspend fun pause() = withContext(Dispatchers.Default) { delay(150) }
+    /** Lets anything the ViewModel started run to its end. The fake server answers inline, so there is nothing to wait for in real time. */
+    private suspend fun settle() = repeat(5) { yield() }
 
     @Test
     fun continueWatchingListsWhatIsInProgressThenTheNextEpisodes() = runTest {
@@ -389,7 +411,7 @@ class HomeViewModelTest {
 
         server.refuseConnections()
         app.watchChanges.changed()
-        pause()
+        settle()
 
         val row = viewModel.uiState.value.continueRow
         assertEquals(listOf("e1"), row.cards.map { it.id })
@@ -405,7 +427,7 @@ class HomeViewModelTest {
         viewModel.loadedRow()
 
         viewModel.onForeground()
-        pause()
+        settle()
         assertEquals(1, app.jellyfin.requestsTo("GET", "/UserItems/Resume").size)
 
         app.clock.advance(61.seconds)
@@ -437,7 +459,7 @@ class HomeViewModelTest {
 
         viewModel.onRefresh()
         viewModel.onForeground()
-        pause()
+        settle()
 
         assertFalse(viewModel.uiState.value.refreshing)
         assertEquals(0, app.jellyfin.requests.size)
@@ -518,7 +540,7 @@ class HomeViewModelTest {
         viewModel.loadedRow()
 
         viewModel.onMarkWatched("nope")
-        pause()
+        settle()
 
         assertEquals(0, app.jellyfin.requestsTo("POST", "/UserPlayedItems/nope").size)
         assertEquals(listOf("e1"), viewModel.uiState.value.continueRow.cards.map { it.id })

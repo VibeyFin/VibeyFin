@@ -78,16 +78,112 @@ object Strings {
 
     // Home and browsing
     val home = "Home"
-    val libraries = "Libraries"
+    /** The row of the user's libraries at the end of Home. */
+    val libraries = "My media"
+
+    /** The header of a library's row of what was added most recently. */
+    fun recentlyAddedIn(library: String) = "Recently added in $library"
+
+    /** The action in a row's header that opens the whole list, and what a screen reader says for it. */
+    val seeAll = "See all"
+    fun seeAllIn(row: String) = "See all, $row"
+
+    /** The main navigation bar: its labels, and the name a screen reader gives the bar. */
+    val tabHome = "Home"
+    val tabLibrary = "Library"
+    val tabDownloads = "Downloads"
+    val mainNavigation = "Main navigation"
+
+    /** The category buttons under Home's header, in the order they are shown. */
+    val filterShows = "Shows"
+    val filterMovies = "Movies"
+    val filterNew = "New"
+    val filterCategories = "Categories"
+
+    /** What a screen reader says for the group of category buttons. */
+    val filterHome = "Filter Home"
+
+    /** What a screen reader says for a button that opens a list of genres. */
+    fun opensList(label: String) = "$label, opens a list"
+
+    /** The Sort and Genre buttons on a category page, and the rows of their sheets. */
+    val sortName = "Name"
+    val sortAdded = "Recently added"
+    val sortRating = "Rating"
+    val sortTitle = "Sort by"
+    val genreTitle = "Genre"
+    val genreButton = "Genre"
+    val allGenres = "All genres"
+    /** The Library page's extra filters. */
+    val yearButton = "Year"
+    val yearTitle = "Release year"
+    fun yearChip(label: String) = "Year: $label"
+    val allYears = "All years"
+    val decade2020s = "2020s"
+    val decade2010s = "2010s"
+    val decade2000s = "2000s"
+    val decade1990s = "1990s"
+    val decade1980s = "1980s"
+    val decadeOlder = "Before 1980"
+    val peopleButton = "People"
+    val peopleTitle = "People"
+    fun peopleChip(name: String) = "With $name"
+    val peopleSearchHint = "Search for an actor or a director"
+    val peoplePrompt = "Type a name to find someone."
+    val noPeopleFound = "Nobody by that name."
+    val clearFilters = "Clear"
+
+    /** "1,284 titles" under the Library's title. */
+    fun libraryCount(count: Int): String {
+        val digits = count.toString()
+        val grouped = digits.reversed().chunked(3).joinToString(",").reversed()
+        return if (count == 1) "1 title" else "$grouped titles"
+    }
+    fun sortChip(label: String) = "Sort: $label"
+    fun genreChip(name: String) = "Genre: $name"
+
+    /** What a screen reader says for a sheet row that holds [count] titles. */
+    fun titleCount(name: String, count: Int) = if (count == 1) "$name, 1 title" else "$name, $count titles"
+
+    /** In the Categories sheet when the server has none. */
+    val noCategories = "This server has no categories."
+
+    /** On the Library and Downloads tabs until their features land. */
+    val notAvailableYet = "Not available yet"
     val switchProfile = "Switch profile"
     val switchServer = "Switch server"
     val noLibraries = "This account has no libraries yet. Ask the server's admin to add one."
     val emptyFolder = "There's nothing in here yet."
+    val nothingMatchesFilters = "Nothing matches these filters. Try taking one off, or tap Clear."
     val loadMoreFailed = "Couldn't load the rest of this list. Check your connection and try again."
 
-    fun greeting(name: String) = "Hi, $name"
-
     val continueWatching = "Continue watching"
+    /** The label of the Watched button under Play; its state is the tick. */
+    val watchedAction = "Watched"
+    val viewEpisode = "View episode"
+
+    /** "S1 E4" on an episode's card; "E4" when the season is not known. */
+    fun episodeTag(season: Int?, episode: Int?): String? = when {
+        season != null && episode != null -> "S$season E$episode"
+        episode != null -> "E$episode"
+        else -> null
+    }
+
+    /** "22 September 2015" from `2015-09-22`; null when it is not a date. */
+    fun releaseDate(iso: String?): String? {
+        val parts = iso?.split("-") ?: return null
+        val year = parts.getOrNull(0)?.toIntOrNull() ?: return null
+        val month = parts.getOrNull(1)?.toIntOrNull()?.takeIf { it in 1..12 } ?: return null
+        val day = parts.getOrNull(2)?.take(2)?.toIntOrNull() ?: return null
+        return "$day ${MONTHS[month - 1]} $year"
+    }
+
+    private val MONTHS = listOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
+
+    /** A rating tag on a picture: "\u2605 8.1". */
+    fun ratingTag(rating: Double): String = "\u2605 ${kotlin.math.round(rating * 10) / 10.0}"
+    val markSeriesWatched = "Mark series as watched"
+    val markSeriesUnwatched = "Mark series as unwatched"
     val markWatched = "Mark as watched"
     val markUnwatched = "Mark as unwatched"
     val details = "Details"
@@ -95,11 +191,17 @@ object Strings {
     /** In an item's facts, once the server says the user has watched it. */
     val watched = "Watched"
 
+    /** What a screen reader offers for a long press on a poster, a card or a search result: it opens the poster menu. */
+    val showOptions = "Show options"
+
     /** What a screen reader says for the "…" menu on the item page. */
     val moreActions = "More actions"
 
     /** What a screen reader says while the Continue watching row is still loading. */
     val loadingContinueWatching = "Loading Continue watching"
+
+    /** What a screen reader says while a screen shows grey placeholders instead of its content. */
+    val loadingPage = "Loading"
 
     /**
      * What a screen reader says for a Continue watching card: the title, what it is (the episode, or
@@ -275,6 +377,78 @@ object Strings {
         return "${text}x"
     }
 
+    /** The page of a movie, an episode or a show: its sections, and what the Play button says for a show. */
+    val cast = "Cast"
+    val inCollections = "Collections"
+
+    /** The actions under Play on an item's page. My List is the server's favourites. */
+    val myList = "My List"
+    fun myListAction(onList: Boolean) = if (onList) "Remove from My List" else "Add to My List"
+    val trailer = "Trailer"
+    val download = "Download"
+
+    /** What a season's button says: always "Season 3"; the server's own names ("Series 3", "Season 3") are not used. 0 is Specials. */
+    val specials = "Specials"
+    fun season(number: Int) = "Season $number"
+    val moreLikeThis = "More like this"
+    val technicalInfo = "Technical info"
+    val more = "More"
+    val less = "Less"
+    /** Search. */
+    val tabSearch = "Search"
+    val searchHint = "Search movies, shows and people"
+    val searchPrompt = "Find something to watch"
+    val searchPromptHelp = "Type a title, a show or a name."
+    val clearSearch = "Clear"
+    fun featured(title: String) = "Featured: $title, opens its page"
+    val recentSearches = "Recent searches"
+    val clearHistory = "Clear all"
+    fun removeFromHistory(term: String) = "Remove $term from recent searches"
+    fun noSearchResults(query: String) = "Nothing found for \u201C$query\u201D"
+    val noSearchResultsHelp = "Check the spelling, or try fewer words."
+    val searchAll = "All"
+    val searchMovies = "Movies"
+    val searchShows = "Shows"
+    val searchEpisodes = "Episodes"
+    val searchPeople = "People"
+    val searchCollections = "Collections"
+    fun searchResultDescription(title: String, subtitle: String?) = if (subtitle.isNullOrBlank()) title else "$title, $subtitle"
+
+    /** A cast member's page. */
+    fun born(year: Int) = "Born $year"
+    val noAppearances = "Nothing in your library yet."
+    val noBiography = "No biography on the server."
+    fun personDescription(name: String, role: String?) = if (role.isNullOrBlank()) "$name, opens their page" else "$name as $role, opens their page"
+    val extras = "Extras"
+
+    /** The sub-headings of a collection's members. */
+    val collectionMovies = "Movies"
+    val collectionShows = "Shows"
+    val collectionOther = "More"
+    fun collectionMovieCount(count: Int) = if (count == 1) "1 movie" else "$count movies"
+    fun collectionShowCount(count: Int) = if (count == 1) "1 show" else "$count shows"
+    fun collectionTitles(count: Int) = if (count == 1) "1 title" else "$count titles"
+    fun seasonCount(count: Int) = if (count == 1) "1 season" else "$count seasons"
+    fun playEpisode(episode: String) = "Play $episode"
+    fun resumeEpisodeFrom(episode: String, positionMs: Long) = "Resume $episode from ${clock(positionMs)}"
+
+    /** The link from an episode's or a season's page to its show: what a screen reader says for it. */
+    fun goToSeries(name: String) = "Go to $name"
+
+    /** An episode's length in its row. */
+    fun minutesShort(minutes: Int) = "$minutes min"
+
+    /** The label of the video line in the collapsed technical info, and the long-press entry on an episode. */
+    val technicalVideo = "Video"
+
+    /** What a screen reader says for a season button, and for the row of them. */
+    fun seasonDescription(name: String, selected: Boolean) = if (selected) "$name, selected" else name
+    fun seasonsDescription(count: Int) = "Seasons, $count"
+
+    /** In the season's list when it holds nothing, and when the show has no seasons. */
+    val noEpisodes = "There are no episodes in this season yet."
+    val noSeasons = "This show has no seasons yet."
+
     /** A track the file gives no name or language for. */
     fun track(index: Int) = "Track ${index + 1}"
 
@@ -302,6 +476,15 @@ object Strings {
     val playbackStatsTitle = "Show playback stats"
     val playbackStatsHelp =
         "Show codec, bitrate and how the server is delivering the video in the player. Applies to this profile."
+    val heroMovie = "Movie"
+    val heroShow = "Show"
+    val homeHeroTitle = "Featured title on Home"
+    val homeHeroHelp = "Show one title from your library big at the top of Home. Applies to this profile."
+    val homeGenreRowsTitle = "Genre rows on Home"
+    val homeGenreRowsHelp = "How many genres get a row on Home, the biggest first."
+    val homeGenreRowsAll = "All genres"
+    val homeGenreRowsNone = "None"
+    fun homeGenreRowsTop(n: Int) = "Top $n"
     val stillWatchingTitle = "Ask if you're still watching"
     val stillWatchingHelp =
         "Pause and ask after several episodes in a row so the next one doesn't play to an empty room. Applies to this profile."

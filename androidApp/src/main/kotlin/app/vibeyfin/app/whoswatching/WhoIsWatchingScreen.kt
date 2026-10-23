@@ -57,6 +57,7 @@ import coil3.compose.AsyncImage
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FloatingBackButton
+import app.vibeyfin.app.components.skeletonProfiles
 import app.vibeyfin.app.components.vibeyFinTextFieldColors
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.model.Profile
@@ -112,9 +113,13 @@ fun WhoIsWatchingScreen(
                 if (state.loading) {
                     Header(state, onRetry)
                     Spacer(Modifier.height(VibeyFinTokens.Space.s4))
-                    Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(AVATAR_SIZE + VibeyFinTokens.Space.s4),
+                        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s5),
+                        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
+                        userScrollEnabled = false,
+                        modifier = Modifier.fillMaxSize(),
+                    ) { skeletonProfiles(count = 4, avatarSize = AVATAR_SIZE) }
                 } else {
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(AVATAR_SIZE + VibeyFinTokens.Space.s4),

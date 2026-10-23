@@ -9,6 +9,7 @@ import androidx.room3.RoomDatabaseConstructor
 import androidx.room3.migration.AutoMigrationSpec
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.coroutines.Dispatchers
+import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.IO
 
 @Database(
@@ -19,11 +20,13 @@ import kotlinx.coroutines.IO
         AccountSettingsEntity::class,
         PendingReportEntity::class,
     ],
-    version = 4,
+    version = 6,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
         AutoMigration(from = 3, to = 4, spec = DropAllowTranscoding::class),
+        AutoMigration(from = 4, to = 5),
+        AutoMigration(from = 5, to = 6),
     ],
 )
 @ConstructedBy(VibeyFinDatabaseConstructor::class)
@@ -46,8 +49,8 @@ expect object VibeyFinDatabaseConstructor : RoomDatabaseConstructor<VibeyFinData
     override fun initialize(): VibeyFinDatabase
 }
 
-/** Applies the settings every platform shares: the bundled SQLite driver and an IO context. */
-fun RoomDatabase.Builder<VibeyFinDatabase>.buildVibeyFinDatabase(): VibeyFinDatabase =
+/** Applies the settings every platform shares: the bundled SQLite driver and an IO context ([queryContext]: tests run queries inline). */
+fun RoomDatabase.Builder<VibeyFinDatabase>.buildVibeyFinDatabase(queryContext: CoroutineContext = Dispatchers.IO): VibeyFinDatabase =
     setDriver(BundledSQLiteDriver())
-        .setQueryCoroutineContext(Dispatchers.IO)
+        .setQueryCoroutineContext(queryContext)
         .build()

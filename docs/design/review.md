@@ -1,5 +1,7 @@
 # Design review: living findings
 
+> **Historical snapshot, from before Phase 4.** The hero, tab bar, skeletons, tablet layouts, Search and Library have since been built, so findings below such as "no hero or tab bar" and "spinners everywhere" no longer hold. Read `screens.md` and `guardrails.md` for the current design; re-run the review after the next phase and replace this file then.
+
 A preview of UI/UX do's and don'ts, taken while the app is still being built. Source: a read of the
 code on `develop` (d276170) against `docs/design/`. Nothing here was built, run or seen on a device.
 Many items are **not built yet** rather than wrong; they are listed so they are not forgotten.
@@ -49,7 +51,7 @@ and most of #15. Android was run on the emulator after it; the SwiftUI side was 
 | 3 | Home | Continue watching is built. Still no hero or tab bar, and Home shows a greeting ("Hi, demo") where the spec says app name + avatar. | High | planned |
 | 4 | Tablets | No screen adapts. Only `screenMargin()` reads width (16 or 24dp). The Item backdrop stretches full width with unbounded text; no left-column hero. | High | open |
 | 5 | Grids | Minimums are ad hoc: 150 Home, 130 Children, 120 Who's watching. Spec posters: 112, 140, 168. Left for the width-class work (#4): a poster minimum without a width class gives 3 columns of tiny library tiles on Home. | Medium | open |
-| 6 | Loading | Spinners on Android (Home libraries, Item, Who's watching, Add server, Children) and iOS (`LoadingIndicator`, `SearchingLabel`, Who's watching). The Continue watching row already uses a skeleton. | Medium | planned (state audit, roadmap) |
+| 6 | Loading | Spinners on Android (Home libraries, Item, Who's watching, Add server, Children) and iOS (`LoadingIndicator`, `SearchingLabel`, Who's watching). The Continue watching row already uses a skeleton. | Medium | fixed (page loads are skeletons; spinners only for actions in progress) |
 | 7 | Tokens | Avatar tint hex outside `tokens.json`. | Medium | fixed |
 | 8 | A11y | Android profile button has no role or label. | Medium | fixed |
 | 9 | Android | "Libraries" (and "Continue watching") are `labelLarge` muted; spec says `titleLarge` for row headers. | Medium | fixed |

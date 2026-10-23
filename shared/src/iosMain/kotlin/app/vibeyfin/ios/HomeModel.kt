@@ -1,5 +1,6 @@
 package app.vibeyfin.ios
 
+import app.vibeyfin.ui.home.CategoryKind
 import app.vibeyfin.ui.home.HomeUiState
 import app.vibeyfin.ui.home.HomeViewModel
 
@@ -17,7 +18,15 @@ class HomeModel {
 
     fun onRetryLibraries() = host.viewModel.onRetryLibraries()
 
+    fun onHeroPlay() = host.viewModel.onHeroPlay()
+
+    fun onHeroNavHandled() = host.viewModel.onHeroNavHandled()
+
+    fun onHeroMyList() = host.viewModel.onHeroMyList()
+
     fun onRetryContinue() = host.viewModel.onRetryContinue()
+
+    fun onRetryRow(id: String) = host.viewModel.onRetryRow(id)
 
     fun onMarkWatched(cardId: String) = host.viewModel.onMarkWatched(cardId)
 
@@ -28,6 +37,16 @@ class HomeModel {
     fun onRefresh() = host.viewModel.onRefresh()
 
     fun onForeground() = host.viewModel.onForeground()
+
+    fun onCategory(kind: CategoryKind) = host.viewModel.onCategory(kind)
+
+    fun onPickOption(id: String) = host.viewModel.onPickOption(id)
+
+    fun onListOpened() = host.viewModel.onListOpened()
+
+    fun onDismissSheet() = host.viewModel.onDismissSheet()
+
+    fun onRetrySheet() = host.viewModel.onRetrySheet()
 
     fun close() = host.close()
 }

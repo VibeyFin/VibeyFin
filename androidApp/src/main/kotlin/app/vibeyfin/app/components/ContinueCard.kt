@@ -45,16 +45,23 @@ private val CARD_LINE_GAP = 2.dp
 /**
  * A 16:9 card in the Continue watching row: the picture with a play disc in the middle and the aqua
  * progress bar along its bottom edge if something is in progress, then the title with what is left (or
- * the episode) under it, close together, and a "…" button for the card's actions. Tapping the picture or
- * the words plays; there is no detail page in between. A long press opens the same actions.
+ * the episode) under it, close together, and a "…" button for the card's actions. Tapping the picture
+ * plays, with no detail page in between; tapping the words opens the detail page. A long press opens
+ * the same actions as the "…".
  */
 @Composable
-fun ContinueCard(card: ContinueCard, onClick: () -> Unit, onLongClick: () -> Unit, modifier: Modifier = Modifier) {
+fun ContinueCard(
+    card: ContinueCard,
+    onPlay: () -> Unit,
+    onDetails: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier = modifier.width(VibeyFinTokens.Size.thumbWidth)) {
         Box(
             Modifier
                 .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
-                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                .combinedClickable(role = androidx.compose.ui.semantics.Role.Button, onLongClickLabel = Strings.showOptions, onClick = onPlay, onLongClick = onLongClick)
                 .semantics(mergeDescendants = true) { contentDescription = card.accessibilityLabel },
         ) {
             // Rounded again inside the outer clip: a pressed card shrinks, and its corners shrink with it.
@@ -71,12 +78,12 @@ fun ContinueCard(card: ContinueCard, onClick: () -> Unit, onLongClick: () -> Uni
             }
         }
         Row(verticalAlignment = Alignment.Top) {
-            // The words play too; the picture already says so to a screen reader, so they stay out of its way.
+            // The words open the detail page. A screen reader reaches it through the "…" menu, so they stay out of its way.
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .padding(top = VibeyFinTokens.Space.s2)
-                    .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                    .combinedClickable(role = androidx.compose.ui.semantics.Role.Button, onLongClickLabel = Strings.showOptions, onClick = onDetails, onLongClick = onLongClick)
                     .clearAndSetSemantics { },
                 verticalArrangement = Arrangement.spacedBy(CARD_LINE_GAP),
             ) {
@@ -108,7 +115,7 @@ fun ContinueCard(card: ContinueCard, onClick: () -> Unit, onLongClick: () -> Uni
     }
 }
 
-/** A round outline with a play triangle, over the picture. It says "tap to play"; the whole card does the playing. */
+/** A round outline with a play triangle, over the picture. It says "tap to play"; the picture does the playing. */
 @Composable
 private fun PlayDisc(modifier: Modifier = Modifier) {
     Box(
@@ -146,7 +153,7 @@ fun ContinueSkeletonCards(modifier: Modifier = Modifier) {
         modifier = modifier.clearAndSetSemantics { contentDescription = Strings.loadingContinueWatching },
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
     ) {
-        repeat(3) {
+        repeat(skeletonCount(3)) {
             Column(Modifier.width(VibeyFinTokens.Size.thumbWidth)) {
                 Box(
                     Modifier
@@ -161,20 +168,5 @@ fun ContinueSkeletonCards(modifier: Modifier = Modifier) {
                 }
             }
         }
-    }
-}
-
-/** A grey bar as tall as one line of [style], so the skeleton is exactly as tall as the real card. */
-@Composable
-private fun SkeletonLine(width: androidx.compose.ui.unit.Dp, style: androidx.compose.ui.text.TextStyle) {
-    Box(Modifier.width(width)) {
-        Text(text = "", style = style, minLines = 1)
-        Box(
-            Modifier
-                .matchParentSize()
-                .padding(vertical = VibeyFinTokens.Space.s1)
-                .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Xs))
-                .background(VibeyFinTokens.Colors.surface2),
-        )
     }
 }

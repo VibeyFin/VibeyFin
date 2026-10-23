@@ -13,6 +13,9 @@ enum class ItemKind {
     Season,
     Episode,
 
+    /** A collection (box set): films or shows grouped by the server. */
+    Collection,
+
     /** Anything else; opens like a folder if the server says it holds items. */
     Other,
 }
@@ -32,6 +35,8 @@ data class MediaItem(
     val rating: Double?,
     /** An age rating such as PG-13. */
     val ageRating: String?,
+    /** When it was released or first aired, as `2015-09-22`; null when the server has no date. */
+    val premiereDate: String? = null,
     /** For an episode: the show's name. */
     val seriesName: String?,
     val seasonNumber: Int?,
@@ -57,6 +62,20 @@ data class MediaItem(
     val landscapeBlurHash: String? = null,
     /** The file's video picture; null when the server wasn't asked for streams or the item has no video. */
     val videoFormat: VideoFormat? = null,
+    /** On a library: what it holds (`movies`, `tvshows`, `music`, ...); null for mixed content or anything that is not a library. */
+    val collectionType: String? = null,
+    /** The item's `Logo` image (its title as artwork), when it has one. */
+    val logoUrl: String? = null,
+    /** The actors and guest stars, in the server's order; only on an item read for its page. */
+    val cast: List<CastMember> = emptyList(),
+    /** On a series: how many seasons it has. */
+    val seasonCount: Int? = null,
+    /** The user has put it on "My List" (the server's favourites). */
+    val isFavorite: Boolean = false,
+    /** How many trailers the server holds for it. */
+    val localTrailerCount: Int = 0,
+    /** The first trailer on the web, a page to open; null when the server knows none. */
+    val remoteTrailerUrl: String? = null,
 ) {
     /** How far in the user is, from 0 to 1; null when they haven't started or the length isn't known. */
     val progress: Float?
@@ -69,9 +88,30 @@ data class MediaItem(
      */
     val nameIsOnPoster: Boolean get() = kind == ItemKind.Library && posterUrl != null
 
+    /**
+     * Opens a list of what is inside it (a library, a folder, a season) instead of a page of its own. A show is a folder
+     * for the server, but it has its page: the hero, its seasons and episodes.
+     */
+    val opensList: Boolean get() = isFolder && kind != ItemKind.Series
+
+    /** Only a movie or a show has a trailer to look for: a collection, a season, an episode or a folder never does, so nothing asks. */
+    val canHaveTrailer: Boolean get() = kind == ItemKind.Movie || kind == ItemKind.Series
+
+    /** A library of films or shows (or a mix), which Home gives a "Recently added" row; music, books, photos and live TV do not. */
+    val holdsVideo: Boolean
+        get() = kind == ItemKind.Library && (collectionType == null || collectionType in VIDEO_COLLECTIONS)
+
     /** Movies and episodes play. Other kinds, such as music or extras, are not offered yet. */
     val canPlay: Boolean get() = kind == ItemKind.Movie || kind == ItemKind.Episode
 }
+
+/** One person in an item's cast: [role] is the part they play; [imageUrl] is null when the server has no picture of them. */
+data class CastMember(
+    val id: String,
+    val name: String,
+    val role: String?,
+    val imageUrl: String?,
+)
 
 /** One page of a list that can be longer than we ask for at once. */
 data class ItemPage(
@@ -82,3 +122,5 @@ data class ItemPage(
 ) {
     val hasMore: Boolean get() = items.isNotEmpty() && startIndex + items.size < total
 }
+
+private val VIDEO_COLLECTIONS = setOf("movies", "tvshows", "homevideos", "musicvideos", "boxsets")
