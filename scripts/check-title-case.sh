@@ -3,5 +3,5 @@
 set -e
 cd "$(dirname "$0")/.."
 OUT="${TMPDIR:-/tmp}/vibeyfin-title-case-checks"
-swiftc -o "$OUT" iosApp/iosApp/TitleCase.swift iosApp/Checks/main.swift
+swiftc -o "$OUT" iosApp/iosApp/App/TitleCase.swift iosApp/Checks/main.swift
 "$OUT"
