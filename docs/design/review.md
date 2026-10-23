@@ -1,5 +1,7 @@
 # Design review: living findings
 
+> **Historical snapshot, from before Phase 4.** The hero, tab bar, skeletons, tablet layouts, Search and Library have since been built, so findings below such as "no hero or tab bar" and "spinners everywhere" no longer hold. Read `screens.md` and `guardrails.md` for the current design; re-run the review after the next phase and replace this file then.
+
 A preview of UI/UX do's and don'ts, taken while the app is still being built. Source: a read of the
 code on `develop` (d276170) against `docs/design/`. Nothing here was built, run or seen on a device.
 Many items are **not built yet** rather than wrong; they are listed so they are not forgotten.

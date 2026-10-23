@@ -28,9 +28,9 @@ adds a row of season buttons and the selected season's episodes. Android and iOS
    gradient so text always sits on `scrim`; the `Logo` image as the title, else the `brand-display` title; the facts line
    centred under it; the overview, 3 lines with "More"; Play / Resume full width, with a round "start over" beside it
    once there is something to resume. Mark as watched stays in the overflow menu.
-3. **Actions under Play** *(added after review)*: My List (the server's favourite, optimistic, reverts with a message on failure),
+3. **Actions under Play** *(added after review)*: My List (the server's favourite, a heart, optimistic, reverts with a message on failure),
    Trailer (only when there is one: a trailer the server holds plays in the app, one on the web opens in the system viewer) and
-   Download (does nothing until offline lands). Like, Share and Cast stay out.
+   Watched (a tick). Download is hidden until offline lands. Like, Share and Cast stay out; Like was later cut from the roadmap.
 4. **Cast** is `People` of type Actor and Guest star, round `Primary` image, name, role; a missing image is a grey disc with
    initials. A cast member does nothing when tapped until the Person page item lands *(my call)*, and is drawn as plain
    content, not a button.
@@ -43,7 +43,7 @@ adds a row of season buttons and the selected season's episodes. Android and iOS
    visible and the next peeking; it opens on the season of the episode Play will start, scrolled to it. Tapping another
    swaps the list in place and keeps the old list on screen until the new one loads. A series with one season still shows
    the row *(my call: it is what Jellyfin's own client does)*.
-8. **Episodes** are `GET /Shows/{id}/Episodes?seasonId=`: a thumbnail, "1. Title", runtime, a watched check or the time
+8. **Episodes** are `GET /Shows/{id}/Episodes?seasonId=`: *(first design; the cards are now 300dp with all their text on the still, see `screens.md` "Episode row")* a thumbnail, "1. Title", runtime, a watched check or the time
    left, and two lines of synopsis; the next-up episode is marked current. Tapping one plays it. Long-press has the
    watched toggle *(my call)*. Download is not shown (offline is a later phase).
 9. **Technical info** (video, audio, subtitles, file) collapsed at the bottom *(my call: only when the item has streams)*.
@@ -89,4 +89,4 @@ adds a row of season buttons and the selected season's episodes. Android and iOS
 ## Out of scope
 
 Like, Share and Cast buttons; the Person page; special features; shared-element
-transitions and the ambient background (their own items).
+transitions (built later, off by default). The ambient background was tried and dropped.

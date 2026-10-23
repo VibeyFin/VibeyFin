@@ -97,7 +97,7 @@ _Exit: play a movie and an episode, direct and transcoded, with position reporte
 - [x] Auto-advance with countdown into Next Up — _owned here: countdown, cancel, on by default. Phase 3
   keeps only "are you still watching?"; Phase 7 makes it a toggle_
 - [x] Mark played/unplayed: `POST` / `DELETE /UserPlayedItems/{id}`
-- [x] Optimistic user-data writes (played here; favourites and thumbs in Phase 4): the UI changes at once
+- [x] Optimistic user-data writes (played here; favourites in Phase 4; thumbs were cut): the UI changes at once
   and the call follows. If it fails the change reverts with a plain message, and a 401 still ends the
   session. Setting played or a favourite is the one write that is retried (the same retries as
   reads), because setting a state twice is harmless; every other write is still never repeated. Nothing
@@ -145,8 +145,8 @@ _Starts after the state audit (see Cross-cutting)._
 - [x] Main navigation bar (Android built and run; iOS written and only parsed; plan 09). Home, Search, Library and Downloads, as drawn in the design's detail screens
   and `BottomNav` (iOS `TabView`, the floating Liquid Glass bar on iOS 26+; Android M3 `NavigationBar`; at
   tablet widths the same destinations sit at the top, `docs/design/screens.md` "Chrome"). Each tab keeps its
-  own back stack and Settings stays under the profile avatar. Home is the Home that exists today. Library and
-  Downloads open an empty page that says "Not available yet" (text in `Strings`) until their features land.
+  own back stack and Settings stays under the profile avatar. Home is the Home that exists today. Library is the real Library
+  browse (below); Downloads opens an empty page that says "Not available yet" (text in `Strings`) until offline lands (Phase 10).
   The Search tab is second, with unified search below. The iOS mini player is still not mounted
 - [x] Home rows: Latest, genres, My Media, plus Continue Watching (which holds Next Up). Recently added in each video
   library (`GET /Items/Latest`, 20 posters), every genre (biggest first), then My media as 16:9 tiles; each row loads and
@@ -164,7 +164,7 @@ _Starts after the state audit (see Cross-cutting)._
     player's picker sheet, and keeps its place when you come back from an item. The Categories sheet shows how many
     titles each genre holds. *Built since:* the buttons are filled, with no outline; New and My List pages also have Movies and
     Shows buttons that narrow the list and the genre counts; My List counts its genres from the list, not the library
-- [x] Detail page (Android built and run; iOS written and only parsed): metadata, cast, `/Items/{id}/Similar`, collections, extras; plan 11. Under Play four equal actions: My List (heart), Trailer, Watched (tick) and Download (does nothing yet). The phone's picture is pinned and darkens as the page scrolls over it. On tablets and unfolded foldables a 16:9 backdrop with the details in a left column. The page opens on a full-width cinematic
+- [x] Detail page (Android built and run; iOS written and only parsed): metadata, cast, `/Items/{id}/Similar`, collections, extras; plan 11. Under Play four equal actions: My List (heart), Trailer and Watched (tick); Download is hidden until offline lands (Phase 10), the code is kept. The phone's picture is pinned and darkens as the page scrolls over it. On tablets and unfolded foldables a 16:9 backdrop with the details in a left column. The page opens on a full-width cinematic
   backdrop hero (`Backdrop` image) with a dark gradient overlay (the `scrim` token), and the movie
   details and action buttons are layered over the image: the `Logo` image as the title (the
   `brand-display` title when there is none), the facts line (year, rating, runtime, genres), the
@@ -182,22 +182,16 @@ _Starts after the state audit (see Cross-cutting)._
   they appear in within the library (`GET /Items?PersonIds=`); cast on the detail page opens it
 - [x] Special features (behind the scenes, extras; plan 12; Android built, iOS parsed) on the detail page (`GET /Items/{id}/SpecialFeatures`)
 - [x] Library browse (Android built and run; iOS written and only parsed): the Library tab is every movie and show as a poster grid (three across on a phone) with the title count under its name, and buttons for Movies, Shows, Collections, Sort, Genre, Year (by decade), People (searched by name) and Clear. Changing a filter keeps the old list dimmed and the count in place until the new list is in, so nothing jumps. Sheets show the chosen row as a soft pill, not a tick
-- [x] Shared-element transition (Android built and seen on the emulator with animations slowed; iOS written and only parsed) from a poster to the detail hero, using each platform's own mechanism:
-  Compose's shared transition on Android (no new dependency), iOS 18's zoom navigation transition behind
-  `#available`, and the standard push on iOS 16–17, with no custom fallback
-- [x] Home hero (Android built and run; iOS written and only parsed): one featured item per session (random among recently added and My List that have a Backdrop and a Logo), a rounded banner card (4:3 on a phone, wider on a tablet) with the Logo, a line of what it is and its genres, and Play beside My List (a movie plays, a show opens its page), tapping the picture opens its page; a per-profile setting ("Featured title on Home") turns it off. Late in this phase (after the detail pages, so Play and the item's page already exist): one
-  item per app session, picked from recently added items and favorites that have both a `Backdrop` and a `Logo`
-  image (the `brand-display` title is the Logo's fallback only for the detail page, not here). Never an
-  auto-rotating carousel. It sits under the category buttons and above Continue watching, which stays above the fold
-  on a 6.1" phone; the image is a 4:5 crop on phones (`brand.md`). Play is the one aqua button; tapping the image
-  opens the item's page. Optional by design, so Home looks right without it (no item qualifies, or a failure)
-- [x] My List (Favorites): Home row, "See all" page, the detail page's heart, Android built and iOS parsed. Thumbs (`UserData.likes`) are still open
+- [x] Shared-element transition: built, **off by default** on both platforms (`SHARED_POSTER_ENABLED` on Android, `sharedPosterEnabled` on iOS). Compose's shared transition on Android (no new dependency, seen on the emulator with animations slowed) and iOS 18's zoom navigation transition behind `#available` (written and only parsed). Detail pages open the way the reference video does instead: the screen dims, a skeleton shows, the page fades up whole
+- [x] Home hero (Android built and run; iOS written and only parsed): one featured item per session (random among recently added and My List that have a Backdrop and a Logo, never one already watched), a rounded banner card (4:3 on a phone, 2.6:1 from 600dp) with the Logo, a line of what it is and its genres, and Play beside My List (a movie plays; a show plays its next episode, else the first episode that is not in Specials, else opens its page), tapping the picture opens its page; a per-profile setting ("Featured title on Home") turns it off. Never an auto-rotating carousel. It sits under the category buttons and above Continue watching. Play is the one aqua button. Optional by design, so Home looks right without it (no item qualifies, or a failure). Its skeleton is in the first frame: Home waits for the setting before drawing
+- [x] My List (Favorites): Home row, "See all" page, the detail page's heart, Android built and iOS parsed.
+- ~~Thumbs (`UserData.likes`)~~ — _cut:_ Jellyfin's like flag is barely used by its own clients and My List already covers "I want this". Revisit only if Phase 7's recommendations need a signal
 - [x] Tile trailers (Android built and run; iOS written and only parsed): a long press on any poster opens a menu with Details, Trailer (only when the title has one, found when the menu opens because lists do not carry trailers: one the server holds plays in the app, one on the web opens in the system's viewer) and My List. The detail page has the same Trailer button
 
 Also built in this phase, not on the original list: Home shows a row for every genre with a per-profile setting to limit them
 (`docs/plans/10-home-rows.md`), collections open on their own page with a tablet view, the player uses the whole screen
 including the camera cut-out, and a `perf` build type (`./gradlew :androidApp:installPerf`) for judging smoothness, as the
-debug build is slow. Not started: thumbs.
+debug build is slow. Cut: thumbs. A baseline profile for first-scroll speed moves to Phase 6 (it needs Macrobenchmark, which is not in the stack yet: ask first).
 
 _Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a genre page from Home,
 and see the mini player on iOS 26._
@@ -232,13 +226,13 @@ _Depends on Phase 4 (Home rows) and Phase 6 (profiles and the first settings). S
   true-black (AMOLED) or lifted "cinematic dark" backgrounds, corner radius, density and text size.
   Each goes into `docs/design/` and `design/tokens.json` first, so the drift check covers every theme.
   Not offered: a light theme, Android dynamic colour, a free colour picker, custom fonts, and accents
-  derived from artwork (the BlurHash wash in Phase 4 is a background, not a theme)
+  derived from artwork (artwork stays artwork, never a theme)
 - [ ] Navigation: choose and order the tabs, set the start tab, hide libraries
 - [ ] Player preferences, extending Phase 6's quality and subtitle settings: seek step (default
   10s), gestures on or off, auto-skip intro and credits (off by default), auto-advance and "are you still
   watching?" on or off, default audio and subtitle language
-- [ ] Motion: looping motion (skeleton shimmer, ambient gradient drift) is off by default and an opt-in
-  "Ambient motion" setting, and is never on when the system asks for Reduce Motion. One-shot motion (the
+- [ ] Motion: looping motion (skeleton shimmer) is off by default and an opt-in
+  "Looping motion" setting, and is never on when the system asks for Reduce Motion. One-shot motion (the
   shared-element transition, crossfades) is on and follows the system setting
 - [ ] Settings that travel: copy settings from another profile, export and import as a file.
   **Open question:** also sync through Jellyfin's per-client `DisplayPreferences` (`CustomPrefs`)

@@ -1,7 +1,7 @@
 # Plan 10: Home rows (second part of roadmap Phase 4)
 
 Goal: Home shows the rows the design asks for, on Android and iOS: Continue watching (done), Recently added per
-library, a few genre rows, and My media, each with its own loading, error and hidden-when-empty states and a "See
+library, a row for every genre, and My media, each with its own loading, error and hidden-when-empty states and a "See
 all" action in its header.
 
 **Status (2026-10-22):** Phases A and B built (A with tests; B run on the Android emulator against the test server); C (iOS) is written and was only parsed (no Xcode). Calls marked *(my call)* are guesses for the owner to confirm.

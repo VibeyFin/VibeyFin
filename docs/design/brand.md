@@ -8,7 +8,7 @@ Further sections: **UX guardrails** (behavior both apps must share), **iOS & iPa
 2. **Resume beats discover.** Continue watching sits above the fold, and tapping it plays — no detour.
 3. **Native first.** Each app uses its platform's own components, type, navigation, motion and icons. If the platform has a control for it, use that control; build custom only where Jellyfin needs it (posters, rows, the player).
 4. **One brand across both.** What stays identical: the name, electric aqua, dark-only, artwork ratios and treatment, the brand display face, voice, and every rule in **UX guardrails**.
-5. **Calm motion.** Native transitions only; nothing bounces for effect, spins or auto-rotates. Looping motion (a skeleton shimmer, a drifting ambient gradient) is off by default, opt-in, and never plays when the system asks for Reduce Motion.
+5. **Calm motion.** Native transitions only; nothing bounces for effect, spins or auto-rotates. Looping motion (a skeleton shimmer) is off by default, opt-in, and never plays when the system asks for Reduce Motion.
 
 ## What is shared vs native
 
@@ -39,7 +39,7 @@ Dark only, on both platforms (force dark appearance; ignore the system light mod
 - `accent` — electric aqua — fills the one primary action per screen (Play / Resume) and playback progress. iOS: set it as the app's AccentColor, so the system tints tab selection, links and borderless buttons natively. Android: it is `primary`; tonal surfaces use `accent-soft` / `on-accent-soft` (secondaryContainer).
 - Over artwork or video, text and controls sit on `scrim` (synopsis on `scrim-strong`) — identical on both.
 - Downloaded state is `positive` (= `ink`) with the filled icon; `danger` (systemRed / M3 error) only for errors, always with a word or icon. Aqua never signals status.
-- No dynamic theming: no Material You wallpaper colors, and no artwork-derived accents or control colors; aqua stays the one primary and progress color. A background may use an item's BlurHash as a static wash behind a hero or the player, under the `scrim`; that is artwork, not decoration or a theme.
+- No dynamic theming: no Material You wallpaper colors, and no artwork-derived accents or control colors; aqua stays the one primary and progress color.
 
 ## Type
 
@@ -59,7 +59,7 @@ System fonts for UI on each platform; one brand face.
 
 ## Artwork
 
-- Ratios: poster 2:3, thumbnail and backdrop 16:9, Home hero 4:5 crop on phones; the detail hero is the full-bleed Backdrop, center-cropped to 2:3 on phones and at its own 16:9 on tablets (see **Reference screens**). `radius-artwork` (8) on both (continuous on iOS).
+- Ratios: poster 2:3, thumbnail and backdrop 16:9, Home hero 4:3 card on phones, 2.6:1 from 600dp; the detail hero is the full-bleed Backdrop, center-cropped to 2:3 on phones and at its own 16:9 on tablets (see **Reference screens**). `radius-artwork` (8) on both (continuous on iOS).
 - BlurHash color block → image fades in. Missing image: `surface-2` tile with the title. Never a broken-image icon.
 - Request images at rendered size × density. One badge per card, top-left; watched check top-right; progress on the bottom edge.
 

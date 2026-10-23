@@ -15,4 +15,4 @@ Goal: a Search tab that finds movies, shows, episodes, people and collections, a
 
 ## Not in this plan
 
-Recent searches, filters in the results, voice search, thumbs (`UserData.likes`).
+Voice search. (Recent searches and result filters were built later, see `screens.md` "Search"; thumbs were cut.)

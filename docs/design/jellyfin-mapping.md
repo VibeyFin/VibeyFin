@@ -42,7 +42,7 @@ time. Home's own rows (Continue watching, libraries) are not filtered, so none o
 | Episodes | `GET /Shows/{id}/Episodes?seasonId={seasonId}` | Fetch on season change; cache per season. |
 | Play / Resume target (series) | `GET /Shows/NextUp?seriesId={id}` | Its `ParentIndexNumber` picks the season the row opens on. |
 | Trailer action | `LocalTrailerCount` → `GET /Items/{id}/LocalTrailers`; else `RemoteTrailers[].Url` | Hide the action when both are empty. Tile trailers depend on the content having trailers. |
-| Like | `UserData.Likes` | `POST /UserItems/{id}/Rating?likes=true or false`, `DELETE` to clear — check against your server's OpenAPI. |
+| Like (cut: not built) | `UserData.Likes` | `POST /UserItems/{id}/Rating?likes=true or false`, `DELETE` to clear — check against your server's OpenAPI. |
 
 ## Search
 
@@ -72,5 +72,5 @@ time. Home's own rows (Continue watching, libraries) are not filtered, so none o
 
 - Mark watched / unwatched: `POST` / `DELETE /UserPlayedItems/{id}`.
 - My List: `POST` / `DELETE /UserFavoriteItems/{id}`.
-- Like (thumbs): `POST` / `DELETE /UserItems/{id}/Rating`, read from `UserData.Likes`.
+- Like (thumbs, cut from the roadmap): `POST` / `DELETE /UserItems/{id}/Rating`, read from `UserData.Likes`.
 - Sign-in: `POST /Users/AuthenticateByName`, or Quick Connect (`/QuickConnect/Initiate` → poll → authenticate with the secret).

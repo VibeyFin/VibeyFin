@@ -2,7 +2,7 @@
 
 > **Changed 2026-10-22 at the owner's request:** the buttons no longer filter Home in place. Each opens a category page
 > titled with its name; Categories is a dropdown with search first. Later the same day: the Studios button was removed, and
-> New became by release year, newest first, instead of added in the last 30 days. Decisions 5 to 9 and Phases B to D below
+> New became the newest added to the server first, instead of added in the last 30 days (it was briefly by release year; the code and `screens.md` sort it by date added). Decisions 5 to 9 and Phases B to D below
 > describe the first design (in-place filtering); read them with this note. What replaced them is in `screens.md`
 > "Category buttons" and "Category page", and in `FilteredListViewModel`.
 
@@ -39,8 +39,8 @@ filter", "Chrome"), `guardrails.md`, `jellyfin-mapping.md` ("Home category butto
    stays under the avatar and opens over the shell. Detail screens (`Item`, `Children`, `Player`) open from
    whichever tab is current and belong to that tab's back stack. *(my call: the player stays above the shell,
    full screen, outside any tab.)*
-2. **Library and Downloads** show a "Not available yet" page (`Strings.notAvailableYet`) with the five states
-   not applying; they are placeholders, nothing else is built.
+2. **Library and Downloads** showed a "Not available yet" page (`Strings.notAvailableYet`) when this plan was written. Library is
+   now the real Library browse (see `screens.md` "Library"); only Downloads is still a placeholder, until offline lands.
 3. **Re-tapping the current tab** pops it to its root, and a second tap on Home's root scrolls to the top
    *(my call, platform convention)*.
 4. **iOS mini player:** on iOS 26+ it moves to the tab bar's bottom accessory (`tabViewBottomAccessory`); on
@@ -58,8 +58,8 @@ filter", "Chrome"), `guardrails.md`, `jellyfin-mapping.md` ("Home category butto
 8. **Continue watching under a filter:** use server-side filters on `/UserItems/Resume` and `/Shows/NextUp`
    if the spec supports them; otherwise filter the already fetched cards on the client by type, genre and
    studio (for an episode, its series' genres and studios). *(Check the spec in Phase B.)*
-9. **The hero** (when Home has one) is picked again from the filtered items, once per filter change. Until
-   the hero exists, a filter only changes the rows.
+9. **The hero** (when Home has one): Home is never filtered (see the note at the top), so the hero is picked once per app
+   session and does not change with a button. See `screens.md` "Home hero".
 
 ## Phase A: Tab shell
 

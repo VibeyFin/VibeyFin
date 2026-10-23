@@ -17,10 +17,10 @@ A Jetpack Compose app that follows Material 3. Use the `android` theme and `m3-*
 | Secondary action | `FilledTonalButton`; tertiary `TextButton`; icons `IconButton` |
 | Quick actions on a card | Long-press → `ModalBottomSheet` with the actions as list items |
 | Overflow | `⋮` `IconButton` → `DropdownMenu` |
-| Home category buttons (Shows, Movies, New, Categories) | `LazyRow` of M3 `AssistChip`s under the top app bar, never selected. Categories carries a trailing dropdown arrow and opens a `ModalBottomSheet` with the player's `OptionList`, no search; the others open their page |
+| Home category buttons (Shows, Movies, New, Categories) | `LazyRow` of M3 `AssistChip`s (filled, no outline) under the top app bar, never selected. Categories carries a trailing dropdown arrow and opens a `ModalBottomSheet` with the player's `OptionList`, no search; the others open their page |
 | Audio / subtitles | `ModalBottomSheet` |
 | Season buttons (series detail) | `LazyRow` of `FilterChip`s, selected = `accent-soft`; `rememberLazyListState` scrolled to the next-up season on open |
-| Featured row (optional) | `HorizontalMultiBrowseCarousel` — user-scrolled, never auto-advancing |
+| Home hero (optional) | A single rounded card, never a carousel or auto-advancing (see `screens.md` **Home hero**) |
 | Messages | `Snackbar` with an action ("Try again" for a failed write); the action is plain text, not aqua |
 | Casting | Google Cast button + MediaRouter |
 | Player | Compose controls over Media3 `PlayerSurface`; `MediaSession` notification; PiP with `setAutoEnterEnabled` on Android 12+ |

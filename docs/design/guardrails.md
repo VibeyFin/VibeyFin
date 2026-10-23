@@ -10,13 +10,13 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 - **Must** hide empty rows. Never show a row that says "No items" on Home.
 - Each row holds at most 20 items, then a "See all" action in its header.
 - Home has no fixed cap on rows: every genre the server lists gets one (biggest first), unless the profile limits them in Settings ("Genre rows on Home": all, top 20, 10, 5 or 3, or none). Rows load a few at a time and show from top to bottom.
-- Hero: one item per app session (recently added or a favorite) that has both a Backdrop and a Logo image. **Never** an auto-rotating carousel.
+- Hero: one item per app session, picked at random from recently added and My List, that has both a Backdrop and a Logo image and has **not** been watched. A rounded card (4:3 on a phone, 2.6:1 from 600dp) with Play beside My List; a profile setting turns it off. **Never** an auto-rotating carousel. Its skeleton is in the first frame, and Home waits for the setting before drawing, so nothing slides in.
 - Pull to refresh reloads Continue watching first.
 
 ## Cards
 
 - Poster tap → detail. Continue-watching tap → **resume playback directly**; its info button → detail.
-- Long-press → quick actions: Play / Resume, Mark as watched, Add to My List, Download. Same actions on both; iOS presents a context menu, Android a bottom sheet (see **iOS & iPadOS**, **Android**).
+- Long-press on a poster → a bottom sheet (both platforms) with Details, Trailer (only when the title has one) and My List. The rows are there at once; a title with no trailer never shows a Trailer row that then disappears. It works the same in search results. Episode cards have their own long-press menu: View episode and the watched mark.
 - Progress bar only while in progress (between the server's resume thresholds). Watched items get the check badge, no bar.
 - **Never** more than one badge per card. Priority: New episode > 4K / HDR > rating.
 
@@ -24,10 +24,11 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 
 - Opens on a full-width backdrop hero; title (Logo image, else `brand-display`), facts, overview and actions sit over the image, always on `scrim`. Cast and More like this scroll below it.
 - Exactly one primary button, and its label says what happens: "Play", "Resume · 38m left" (the time left; a round icon-only "start over" arrow sits beside it as the secondary button, only when there is something to resume), "Play S2 E4".
-- Secondary actions (icon over label) after it: My List, Like, Trailer (only when the item has one), Download — max four. Mark as watched lives in the overflow menu.
+- Secondary actions (icon over label) after it: My List (a heart), Trailer (only when the item has one) and Watched (a tick); Download joins them when offline playback lands (hidden until then, since a button that does nothing is worse than none). Max four. There is no Like and no overflow menu.
 - Series: a row of season buttons (about four visible, scrolling sideways) and the selected season's episode list below. **Must** open on the season of the episode Play / Resume starts, with that episode marked; picking a season swaps the list in place.
 - Synopsis 3 lines + "More". Technical info (video, audio, subtitles, file) in a collapsed section at the bottom.
-- Trailers play in the player, never inline with sound on the detail screen.
+- A trailer the server holds plays in the player; one on the web opens straight in YouTube (or the system's viewer for another site). **Never** inline with sound on the detail screen.
+- Opening a detail page: the screen dims at once, a skeleton shaped like the page shows, and the finished page fades up whole. **Never** a spinner, and never a page that builds itself piece by piece in front of the user.
 
 ## Playback
 
@@ -49,7 +50,8 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 ## Search
 
 - Results after a 300ms debounce, posters in a 3-column grid; recent searches when the field is empty.
-- Group by type (Movies, Shows, Episodes, People) once there are results in more than one.
+- Group by type (Movies, Shows, Episodes, People, Collections) once there are results in more than one; filter buttons (All, Movies, Shows, Episodes, People, Collections) narrow them. A person opens their own page, a collection its own page.
+- Recent searches are kept per profile on the device, at most ten.
 
 ## Sign-in and profiles
 
