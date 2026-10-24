@@ -3,7 +3,9 @@ import Shared
 
 /// What opens inside a tab, over its root.
 enum TabRoute: Hashable {
+    /// The root page of Settings; the pages its links open are `settingsPage`.
     case settings
+    case settingsPage(SettingsPageId)
     /// What is inside a library, folder, series or season; `title` shows while it loads.
     case children(parentId: String, title: String)
     case item(itemId: String)
@@ -58,6 +60,8 @@ struct TabShell: View {
     @State private var selection: MainTab = .home
     @Namespace private var zoomNamespace
     @StateObject private var tileMenu = TileMenuObservable()
+    /// One shared Settings ViewModel for the whole page tree.
+    @StateObject private var settings = SettingsObservable()
     @State private var trailerPlaying: TrailerPlay?
     @Environment(\.openURL) private var openURL
     @State private var homePath: [TabRoute] = []
@@ -176,7 +180,9 @@ struct TabShell: View {
                 .navigationDestination(for: TabRoute.self) { route in
                     switch route {
                     case .settings:
-                        SettingsView()
+                        SettingsPageView(pageId: SettingsPageId.root, model: settings, onExit: onExit)
+                    case .settingsPage(let id):
+                        SettingsPageView(pageId: id, model: settings, onExit: onExit)
                     case .children(let parentId, let title):
                         ChildrenView(parentId: parentId, title: title, onOpen: { open($0, in: path) }, onOpenSeries: { path.wrappedValue.append(.item(itemId: $0)) }, onExit: onExit)
                     case .item(let itemId):

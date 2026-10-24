@@ -16,6 +16,10 @@ class SettingsModel {
 
     fun onAction(key: SettingKey) = host.viewModel.onAction(key)
 
+    fun onConfirmSignOut() = host.viewModel.onConfirmSignOut()
+
+    fun onDismissSignOut() = host.viewModel.onDismissSignOut()
+
     // The handlers below are removed with the native renderers in Tasks 7 and 8.
 
     fun onAlwaysAskChanged(value: Boolean) = host.viewModel.onAlwaysAskChanged(value)

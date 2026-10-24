@@ -104,7 +104,7 @@ final class OnboardingFlowUITests: XCTestCase {
             }
         }
 
-        step("Settings shows the Playback skip rows and Skip Back takes 15") {
+        step("Settings pages") {
             // Settings is in the profile menu on Home; its button is labelled with the user's name.
             let profile = button(username)
             XCTAssertTrue(profile.waitForExistence(timeout: 10), "Profile menu is missing")
@@ -115,28 +115,43 @@ final class OnboardingFlowUITests: XCTestCase {
             XCTAssertTrue(settings.waitForExistence(timeout: 5), "Settings menu item is missing")
             settings.tap()
 
+            // The root page links to the pages; a link's button is labelled with its title and its value.
+            let quality = button("Quality", contains: true)
+            XCTAssertTrue(quality.waitForExistence(timeout: 10), "Quality link is missing")
+            quality.tap()
+            let p1080 = button("1080p", contains: true)
+            XCTAssertTrue(p1080.waitForExistence(timeout: 5), "1080p choice is missing")
+            p1080.tap()
+            goBack()
+
+            // The root shows the new choice as the link's value.
+            let shows1080 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Quality", "1080p")).firstMatch
+            XCTAssertTrue(shows1080.waitForExistence(timeout: 5), "Quality doesn't show 1080p")
+
+            let skipping = button("Skipping", contains: true)
+            XCTAssertTrue(skipping.waitForExistence(timeout: 5), "Skipping link is missing")
+            skipping.tap()
+
             // A menu picker's button is labelled with its title and the chosen value.
             let skipBack = button("Skip Back", contains: true)
             XCTAssertTrue(skipBack.waitForExistence(timeout: 10), "Skip Back row is missing")
             XCTAssertTrue(button("Skip Forward", contains: true).exists, "Skip Forward row is missing")
-
             skipBack.tap()
-            let fifteen = button("15 seconds")
-            XCTAssertTrue(fifteen.waitForExistence(timeout: 5), "15 seconds choice is missing")
+            let fifteen = button("15 s")
+            XCTAssertTrue(fifteen.waitForExistence(timeout: 5), "15 s choice is missing")
             fifteen.tap()
             // The menu is still closing: wait for the row to show 15 rather than reading its label at once.
             let shows15 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Skip Back", "15")).firstMatch
             XCTAssertTrue(shows15.waitForExistence(timeout: 5), "Skip Back doesn't show 15")
 
-            // Buffer ahead sits below the skip rows and defaults to 20 seconds. The default is read off the row,
-            // not off the menu, where the chosen item isn't a plain button; a different choice is then picked.
+            // Buffer ahead is a menu like Skip Back. It defaults to 20 s.
             let bufferAhead = button("Buffer Ahead", contains: true)
             XCTAssertTrue(bufferAhead.waitForExistence(timeout: 5), "Buffer ahead row is missing")
             let shows20 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Buffer Ahead", "20")).firstMatch
-            XCTAssertTrue(shows20.waitForExistence(timeout: 5), "Buffer ahead doesn't show its 20 seconds default")
+            XCTAssertTrue(shows20.waitForExistence(timeout: 5), "Buffer ahead doesn't show its 20 s default")
             bufferAhead.tap()
-            let thirty = button("30 seconds")
-            XCTAssertTrue(thirty.waitForExistence(timeout: 5), "30 seconds choice is missing")
+            let thirty = button("30 s")
+            XCTAssertTrue(thirty.waitForExistence(timeout: 5), "30 s choice is missing")
             thirty.tap()
             let shows30 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Buffer Ahead", "30")).firstMatch
             XCTAssertTrue(shows30.waitForExistence(timeout: 5), "Buffer ahead doesn't show 30")
@@ -241,6 +256,13 @@ final class OnboardingFlowUITests: XCTestCase {
             shot.lifetime = .keepAlways
             activity.add(shot)
         }
+    }
+
+    /// The navigation bar's back chevron (its label is the previous page's title, or empty).
+    private func goBack() {
+        let back = app.navigationBars.buttons.element(boundBy: 0)
+        XCTAssertTrue(back.waitForExistence(timeout: 5), "Back button is missing")
+        back.tap()
     }
 
     private func button(_ label: String, contains: Bool = false) -> XCUIElement {

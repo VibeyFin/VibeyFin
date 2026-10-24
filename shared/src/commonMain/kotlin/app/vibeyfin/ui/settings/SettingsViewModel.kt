@@ -23,6 +23,8 @@ data class SettingsUiState(
     val hasProfile: Boolean = false,
     /** Sign out was tapped and waits for the confirmation. */
     val confirmSignOut: Boolean = false,
+    /** The connected server's id, for the native app to open "Who's watching?" there after Switch profile or Sign out. Empty when disconnected. */
+    val serverId: String = "",
     // The flat fields below are removed with the native renderers in Tasks 7 and 8.
     val alwaysAskWhoIsWatching: Boolean = false,
     val showPlaybackStats: Boolean = false,
@@ -98,6 +100,7 @@ class SettingsViewModel(
             pages = settingsPages(values),
             hasProfile = values.hasProfile,
             confirmSignOut = v[16] as Boolean,
+            serverId = connected?.server?.id.orEmpty(),
             alwaysAskWhoIsWatching = values.alwaysAskWhoIsWatching,
             showPlaybackStats = values.showPlaybackStats,
             bingeThreshold = values.bingeThreshold,
