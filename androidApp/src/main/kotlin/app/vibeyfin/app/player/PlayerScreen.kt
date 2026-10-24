@@ -377,8 +377,9 @@ fun PlayerRoute(
     val screenReaderOn = remember(context) {
         context.getSystemService(AccessibilityManager::class.java)?.isTouchExplorationEnabled == true
     }
-    LaunchedEffect(controlsVisible, interactions, playing, scrubbing, showTracks) {
-        if (controlsVisible && playing && !scrubbing && !showTracks && !screenReaderOn) {
+    // Held while the track or speed sheet is open; closing one changes a key, so the full delay starts again.
+    LaunchedEffect(controlsVisible, interactions, playing, scrubbing, showTracks, showSpeeds) {
+        if (controlsVisible && playing && !scrubbing && !showTracks && !showSpeeds && !screenReaderOn) {
             delay(CONTROLS_HIDE_MS)
             controlsVisible = false
         }
