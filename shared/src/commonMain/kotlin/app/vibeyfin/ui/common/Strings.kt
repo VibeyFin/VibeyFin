@@ -490,7 +490,7 @@ object Strings {
     fun skipBackLabel(seconds: Int) = "Back $seconds seconds"
     fun skipForwardLabel(seconds: Int) = "Forward $seconds seconds"
     fun seekFlash(seconds: Int) = "${seconds}s"
-    val autoSkipSegments = "Skip intros and recaps"
+    val autoSkipSegments = "Auto skip intros and recaps"
     val autoSkipSegmentsHelp = "Jump past marked intros and recaps without asking."
     val bufferAhead = "Buffer ahead"
     val bufferAheadAuto = "Auto"
@@ -517,4 +517,127 @@ object Strings {
     val stillWatchingContinue = "Keep watching"
     val stillWatchingStop = "Stop watching"
     fun stillWatchingAfter(n: Int) = "After $n episodes"
+
+    // Settings pages, groups and rows (the data-driven Settings screen)
+    val settingsRootTitle = "Settings"
+    val settingsProfileCardHelp = "Profile, server and sign-out"
+
+    val settingsGroupPlayback = "Playback"
+    val settingsGroupHome = "Home"
+    val settingsGroupNotifications = "Notifications"
+    val settingsGroupKids = "Kids and PIN"
+    val settingsGroupDevice = "This device"
+    val settingsGroupAdvanced = "Advanced"
+    val settingsKidsFooter = "Applies to this profile only."
+    val settingsDeviceHelp = "Otherwise the last profile reopens."
+    val settingsAbout = "About VibeyFin"
+
+    // Profile page
+    val profilePageTitle = "Profile"
+    val profileAccountGroup = "Account"
+    val switchProfileHelp = "Asks for the PIN first if one is set."
+    val profileServerGroup = "Server"
+    val profileServerName = "Server"
+    val profileServerAddress = "Address"
+    val profileServerAlsoAt = "Also reachable at"
+    val profileServerFooter = "Read only. Add or remove servers from \u201CWho\u2019s watching?\u201D."
+    val signOutFooter =
+        "Asks to confirm. Your tile stays in \u201CWho\u2019s watching?\u201D and asks for the password next time. Not shown on a kids profile."
+    val signOutConfirmTitle = "Sign out of this profile?"
+    val signOutConfirmMessage = "Your tile stays in Who's watching? and asks for the password next time."
+
+    // Quality page
+    val qualityTitle = "Quality"
+    val qualityGroup = "Maximum quality"
+    val qualityMaximum = "Maximum"
+    val qualityMaximumHelp = "Original quality, direct play when possible."
+    val qualityFooter =
+        "The cap for everything this profile plays. Lower uses less data; the server may transcode to fit."
+
+    /** The label of one stream-quality cap, given in bits per second; 0 is Maximum. Anything off the list reads as Maximum. */
+    fun qualityLabel(bitsPerSecond: Int) = when (bitsPerSecond) {
+        40_000_000 -> "4K \u00B7 40 Mbps"
+        10_000_000 -> "1080p \u00B7 10 Mbps"
+        4_000_000 -> "720p \u00B7 4 Mbps"
+        1_500_000 -> "480p \u00B7 1.5 Mbps"
+        else -> qualityMaximum
+    }
+
+    // Skipping and autoplay page
+    val skippingTitle = "Skipping and autoplay"
+    val skippingGroup = "Skipping"
+    val skippingFooter =
+        "Back: 5, 10, 15 or 30 s. Forward: 10, 15, 30, 45 or 60 s. These are the intervals the player's button glyphs come in, so the button and the setting agree."
+    val autoSkipHelp = "Off by default. The Skip buttons show either way."
+    val autoplayGroup = "Autoplay"
+    val stillWatchingAfterTitle = "Still watching after"
+    val stillWatchingAfterHelp = "Off, or after 2 to 5 episodes in a row."
+    val bufferingGroup = "Buffering"
+    fun skipSecondsShort(seconds: Int) = "$seconds s"
+
+    /** The root's one-line summary of the skipping page: "10 s · 10 s · Still watching after 3". */
+    fun skippingSummary(back: Int, forward: Int, stillWatching: Int) =
+        "${skipSecondsShort(back)} \u00B7 ${skipSecondsShort(forward)} \u00B7 " +
+            if (stillWatching == 0) "Still watching off" else "Still watching after $stillWatching"
+
+    // Subtitles page
+    val subtitlesTitle = "Subtitles"
+    val subtitlesSystemValue = "System"
+    val subtitlesCustomValue = "Custom"
+    val captionsFollowSystemTitle = "Use system caption style"
+    val captionsFollowSystemHelp = "Follows the OS caption settings."
+    val captionsFollowSystemFooter = "Turn off to set your own below."
+    val subtitleStyleGroup = "Style"
+    val subtitleSizeTitle = "Size"
+    val subtitleSizeSmall = "S"
+    val subtitleSizeMedium = "M"
+    val subtitleSizeLarge = "L"
+    val subtitleSizeExtraLarge = "XL"
+    val subtitleColorTitle = "Text"
+    val subtitleBackgroundTitle = "Background"
+    val subtitleBackgroundNone = "None"
+    val subtitleBackgroundShadow = "Shadow"
+    val subtitleBackgroundBox = "Box"
+    val subtitleReset = "Reset to defaults"
+    val subtitlePreviewSample = "This is how subtitles will look."
+
+    // Kids and PIN page
+    val kidsPinTitle = "Kids and PIN"
+    val kidsProfileTitle = "Kids profile"
+    val kidsProfileHelp = "Hides Advanced settings and signing out. The server's own limits still apply."
+    val pinGroup = "PIN"
+    val pinTitle = "PIN"
+    val pinHelp = "4 digits."
+    val pinFooter = "A household lock, not security. It keeps the next person on the sofa out of Settings and other profiles."
+    val pinSet = "Set PIN"
+    val pinChange = "Change PIN"
+    val pinRemove = "Remove PIN"
+    val pinAskGroup = "Ask for the PIN to"
+    val pinAskOpenProfile = "Open this profile"
+    val pinAskOpenSettings = "Open Settings"
+    val pinAskSwitchProfile = "Switch profile"
+    val serverPolicyGroup = "Set by your Jellyfin server"
+    val serverPolicyRating = "Highest rating"
+    val serverPolicyBlockedTags = "Blocked tags"
+    val serverPolicyHours = "Allowed hours"
+    val serverPolicyAnyTime = "Any time"
+    val serverPolicyFooter = "Read only. An admin changes these in Jellyfin; the server enforces them."
+
+    // PIN prompt
+    val pinPromptEnter = "Enter PIN"
+    val pinPromptNew = "Choose a PIN"
+    val pinPromptConfirm = "Enter the PIN again"
+    val pinPromptWrong = "That PIN is wrong. Try again."
+    val pinPromptMismatch = "The PINs don't match. Try again."
+
+    // Notifications page
+    val notificationsTitle = "Notifications"
+    val notificationsOn = "On"
+    val notificationsOff = "Off"
+    val notificationsToggle = "Notify me about new episodes and movies"
+    val notificationsWhichGroup = "Which shows"
+    val notificationsFollowed = "Shows I follow and new movies"
+    val notificationsEverything = "Everything new in the library"
+    val notificationsFooter =
+        "Jellyfin sends no push, so the app checks in the background: expect a delay. Switching this on asks for notification permission."
 }
