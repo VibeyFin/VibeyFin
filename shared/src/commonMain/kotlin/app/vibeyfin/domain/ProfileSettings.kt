@@ -91,7 +91,7 @@ class ProfileSettings(
 
     /** Subtitle size, one of [SUBTITLE_SIZE_CHOICES]. Null when nobody is signed in. */
     val subtitleSize: Flow<Int?> = forAccount { dao, a ->
-        dao.observeSubtitleSize(a.serverId, a.userId).map { if (it in SUBTITLE_SIZE_CHOICES) it else 1 }
+        dao.observeSubtitleSize(a.serverId, a.userId).map { if (it in SUBTITLE_SIZE_CHOICES) it else DEFAULT_SUBTITLE_SIZE }
     }
 
     /** Accepts one of [SUBTITLE_SIZE_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
@@ -103,7 +103,7 @@ class ProfileSettings(
 
     /** Subtitle text colour, one of [SUBTITLE_COLOR_CHOICES]. Null when nobody is signed in. */
     val subtitleTextColor: Flow<Int?> = forAccount { dao, a ->
-        dao.observeSubtitleTextColor(a.serverId, a.userId).map { if (it in SUBTITLE_COLOR_CHOICES) it else 0 }
+        dao.observeSubtitleTextColor(a.serverId, a.userId).map { if (it in SUBTITLE_COLOR_CHOICES) it else DEFAULT_SUBTITLE_TEXT_COLOR }
     }
 
     /** Accepts one of [SUBTITLE_COLOR_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
@@ -115,7 +115,7 @@ class ProfileSettings(
 
     /** Subtitle background, one of [SUBTITLE_BACKGROUND_CHOICES]. Null when nobody is signed in. */
     val subtitleBackground: Flow<Int?> = forAccount { dao, a ->
-        dao.observeSubtitleBackground(a.serverId, a.userId).map { if (it in SUBTITLE_BACKGROUND_CHOICES) it else 1 }
+        dao.observeSubtitleBackground(a.serverId, a.userId).map { if (it in SUBTITLE_BACKGROUND_CHOICES) it else DEFAULT_SUBTITLE_BACKGROUND }
     }
 
     /** Accepts one of [SUBTITLE_BACKGROUND_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
@@ -186,6 +186,13 @@ class ProfileSettings(
 
         /** Streaming bitrate caps in bits per second, in the order the setting lists them; 0 is Maximum. */
         val QUALITY_CHOICES = listOf(0, 40_000_000, 10_000_000, 4_000_000, 1_500_000)
+
+        /** Medium text, white, over a shadow; the same values the DAO's reset query writes. */
+        const val DEFAULT_SUBTITLE_SIZE = 1
+
+        const val DEFAULT_SUBTITLE_TEXT_COLOR = 0
+
+        const val DEFAULT_SUBTITLE_BACKGROUND = 1
 
         /** Subtitle sizes: small, medium, large, extra large. */
         val SUBTITLE_SIZE_CHOICES = listOf(0, 1, 2, 3)

@@ -165,11 +165,11 @@ data class PlaybackUiState(
     /** Subtitles use the platform's caption style, so the four values below are ignored. */
     val captionsFollowSystem: Boolean = true,
     /** Subtitle size: 0 small, 1 medium, 2 large, 3 extra large. */
-    val subtitleSize: Int = 1,
+    val subtitleSize: Int = ProfileSettings.DEFAULT_SUBTITLE_SIZE,
     /** Subtitle text colour: 0 white, 1 yellow, 2 light blue. */
-    val subtitleTextColor: Int = 0,
+    val subtitleTextColor: Int = ProfileSettings.DEFAULT_SUBTITLE_TEXT_COLOR,
     /** Subtitle background: 0 none, 1 shadow, 2 box. */
-    val subtitleBackground: Int = 1,
+    val subtitleBackground: Int = ProfileSettings.DEFAULT_SUBTITLE_BACKGROUND,
     /** Set while an intro, recap or the like is playing; stays for the whole segment. */
     val skipOffer: SkipOffer? = null,
     /** Where the player should seek to now (set by `onSkip`); it clears this with `onSeekHandled`. */
@@ -256,7 +256,7 @@ class PlaybackViewModel(
         profileSettings.subtitleSize,
         profileSettings.subtitleTextColor,
         profileSettings.subtitleBackground,
-    ) { follow, size, color, background -> listOf(follow, size, color, background) }
+    ) { follow, size, color, background -> SubtitleSettings(follow, size, color, background) }
 
     val uiState: StateFlow<PlaybackUiState> = combine(
         content,
@@ -269,10 +269,10 @@ class PlaybackViewModel(
             exit = exit,
             showDiagnostics = showStats ?: false,
             bufferAheadSeconds = bufferAhead ?: ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
-            captionsFollowSystem = subtitle[0] as Boolean? ?: true,
-            subtitleSize = subtitle[1] as Int? ?: 1,
-            subtitleTextColor = subtitle[2] as Int? ?: 0,
-            subtitleBackground = subtitle[3] as Int? ?: 1,
+            captionsFollowSystem = subtitle.followSystem ?: true,
+            subtitleSize = subtitle.size ?: ProfileSettings.DEFAULT_SUBTITLE_SIZE,
+            subtitleTextColor = subtitle.textColor ?: ProfileSettings.DEFAULT_SUBTITLE_TEXT_COLOR,
+            subtitleBackground = subtitle.background ?: ProfileSettings.DEFAULT_SUBTITLE_BACKGROUND,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlaybackUiState())
 
@@ -945,3 +945,6 @@ private fun List<PlaybackTrack>.toSubtitleOptions(): List<TrackOption> =
         listOf(TrackOption(SUBTITLES_OFF, Strings.subtitlesOff, selected = none { it.selected })) +
             map { TrackOption(it.index, it.name ?: Strings.track(it.index), it.selected) }
     }
+
+/** The four subtitle style settings as read from [ProfileSettings]; null while nobody is signed in. */
+private data class SubtitleSettings(val followSystem: Boolean?, val size: Int?, val textColor: Int?, val background: Int?)

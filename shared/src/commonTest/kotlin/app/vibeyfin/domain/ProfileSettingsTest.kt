@@ -126,4 +126,32 @@ class ProfileSettingsTest {
         assertEquals(0, app.profileSettings.subtitleTextColor.first())
         assertEquals(1, app.profileSettings.subtitleBackground.first())
     }
+
+    @Test
+    fun `out of range subtitle colour and background are ignored when written`() = runTest {
+        app.signedIn()
+        app.profileSettings.setSubtitleTextColor(2)
+        app.profileSettings.setSubtitleBackground(2)
+
+        app.profileSettings.setSubtitleTextColor(3)
+        app.profileSettings.setSubtitleTextColor(-1)
+        app.profileSettings.setSubtitleBackground(3)
+        app.profileSettings.setSubtitleBackground(-1)
+
+        assertEquals(2, app.profileSettings.subtitleTextColor.first())
+        assertEquals(2, app.profileSettings.subtitleBackground.first())
+    }
+
+    @Test
+    fun `out of range stored subtitle values read as the defaults`() = runTest {
+        app.signedIn()
+        val dao = app.database.accountDao()
+        dao.setSubtitleSize("srv-1", "u1", 9)
+        dao.setSubtitleTextColor("srv-1", "u1", 9)
+        dao.setSubtitleBackground("srv-1", "u1", 9)
+
+        assertEquals(ProfileSettings.DEFAULT_SUBTITLE_SIZE, app.profileSettings.subtitleSize.first())
+        assertEquals(ProfileSettings.DEFAULT_SUBTITLE_TEXT_COLOR, app.profileSettings.subtitleTextColor.first())
+        assertEquals(ProfileSettings.DEFAULT_SUBTITLE_BACKGROUND, app.profileSettings.subtitleBackground.first())
+    }
 }

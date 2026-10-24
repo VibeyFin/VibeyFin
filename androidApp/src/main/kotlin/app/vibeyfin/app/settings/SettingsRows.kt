@@ -53,9 +53,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.media3.ui.CaptionStyleCompat
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
-import app.vibeyfin.app.player.SUBTITLE_EDGE_DROP_SHADOW
 import app.vibeyfin.app.player.SUBTITLE_SHADOW
 import app.vibeyfin.app.player.SUBTITLE_WHITE
 import app.vibeyfin.app.player.SubtitleViewStyle
@@ -307,7 +307,7 @@ internal fun SubtitlePreviewCard(sample: String, style: SubtitleViewStyle) {
             color = color,
             style = TextStyle(
                 fontSize = (size * PREVIEW_PLAYER_HEIGHT).sp,
-                shadow = if (!style.followSystem && style.edgeType == SUBTITLE_EDGE_DROP_SHADOW) Shadow(CaptionShadow, blurRadius = 6f) else null,
+                shadow = if (!style.followSystem && style.edgeType == CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW) Shadow(CaptionShadow, blurRadius = 6f) else null,
             ),
             textAlign = TextAlign.Center,
             modifier = Modifier.background(box, RoundedCornerShape(VibeyFinTokens.Radius.m3Xs)).padding(horizontal = VibeyFinTokens.Space.s1),

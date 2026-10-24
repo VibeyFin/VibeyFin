@@ -17,9 +17,9 @@ internal const val SUBTITLE_TRANSPARENT = 0x00000000
 internal val SUBTITLE_SIZE_FRACTIONS = floatArrayOf(0.04f, 0.0533f, 0.07f, 0.09f)
 private val SUBTITLE_COLORS = intArrayOf(SUBTITLE_WHITE, SUBTITLE_YELLOW, SUBTITLE_LIGHT_BLUE)
 
-/** How [CaptionStyleCompat] edges are drawn; same values as its EDGE_TYPE_* constants. */
-internal const val SUBTITLE_EDGE_NONE = 0
-internal const val SUBTITLE_EDGE_DROP_SHADOW = 2
+// The values of the Subtitle background setting (see PlaybackUiState.subtitleBackground).
+private const val BACKGROUND_SHADOW = 1
+private const val BACKGROUND_BOX = 2
 
 /**
  * What the subtitle view should show. [followSystem] means the OS caption settings win and the other
@@ -39,17 +39,20 @@ internal fun subtitleStyle(followSystem: Boolean, size: Int, color: Int, backgro
         followSystem = followSystem,
         sizeFraction = SUBTITLE_SIZE_FRACTIONS[size.coerceIn(0, SUBTITLE_SIZE_FRACTIONS.lastIndex)],
         foreground = SUBTITLE_COLORS[color.coerceIn(0, SUBTITLE_COLORS.lastIndex)],
-        background = if (background == 2) SUBTITLE_BOX else SUBTITLE_TRANSPARENT,
-        edgeType = if (background == 1) SUBTITLE_EDGE_DROP_SHADOW else SUBTITLE_EDGE_NONE,
+        background = if (background == BACKGROUND_BOX) SUBTITLE_BOX else SUBTITLE_TRANSPARENT,
+        edgeType = if (background == BACKGROUND_SHADOW) CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW else CaptionStyleCompat.EDGE_TYPE_NONE,
         edgeColor = SUBTITLE_SHADOW,
     )
 
 internal fun SubtitleView.apply(style: SubtitleViewStyle) {
     if (style.followSystem) {
         val captioning = context.getSystemService(Context.CAPTIONING_SERVICE) as CaptioningManager
+        setApplyEmbeddedStyles(true)
         setStyle(CaptionStyleCompat.createFromCaptionStyle(captioning.userStyle))
         setFractionalTextSize(SubtitleView.DEFAULT_TEXT_SIZE_FRACTION * captioning.fontScale)
     } else {
+        // The user chose explicit colours, so a subtitle's own styling must not override them.
+        setApplyEmbeddedStyles(false)
         setStyle(
             CaptionStyleCompat(
                 style.foreground,
