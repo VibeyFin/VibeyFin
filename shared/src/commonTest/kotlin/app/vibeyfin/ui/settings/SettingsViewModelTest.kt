@@ -189,6 +189,16 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `buffer ahead defaults to 20 and follows its handler`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        assertEquals(20, viewModel.uiState.first { it.hasProfile }.bufferAheadSeconds)
+
+        viewModel.onBufferAheadChanged(60)
+        assertEquals(60, viewModel.uiState.first { it.bufferAheadSeconds == 60 }.bufferAheadSeconds)
+    }
+
+    @Test
     fun `switching profile shows that profile's skip settings or the defaults`() = runTest {
         val server = app.signedIn()
         server.on("GET", "/Users/Me", Reply.json("""{"Id":"u2","Name":"Sam"}"""))

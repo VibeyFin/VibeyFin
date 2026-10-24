@@ -56,6 +56,18 @@ class ProfileSettings(
         dao.setSkipForwardSeconds(account.serverId, account.userId, value)
     }
 
+    /** Seconds of video the player loads ahead; one of [BUFFER_AHEAD_CHOICES]. Null when nobody is signed in. */
+    val bufferAheadSeconds: Flow<Int?> = forAccount { dao, a ->
+        dao.observeBufferAheadSeconds(a.serverId, a.userId).map { if (it in BUFFER_AHEAD_CHOICES) it else DEFAULT_BUFFER_AHEAD_SECONDS }
+    }
+
+    /** Accepts one of [BUFFER_AHEAD_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setBufferAheadSeconds(value: Int) {
+        if (value !in BUFFER_AHEAD_CHOICES) return
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setBufferAheadSeconds(account.serverId, account.userId, value)
+    }
+
     /** Does nothing when nobody is signed in. */
     suspend fun setAutoSkipSegments(value: Boolean) {
         val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
@@ -103,6 +115,11 @@ class ProfileSettings(
 
         /** The skip-forward lengths, in seconds, in the order the setting lists them. */
         val SKIP_FORWARD_CHOICES = listOf(10, 15, 30, 45, 60)
+
+        const val DEFAULT_BUFFER_AHEAD_SECONDS = 20
+
+        /** How far ahead the player loads, in seconds, in the order the setting lists them; 0 is Auto, the platform player's own choice. */
+        val BUFFER_AHEAD_CHOICES = listOf(0, 10, 20, 30, 40, 50, 60)
 
         /** Episodes in a row before the player asks "Are you still watching?". */
         const val DEFAULT_BINGE_THRESHOLD = 3

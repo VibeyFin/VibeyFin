@@ -29,6 +29,8 @@ data class SettingsUiState(
     val skipForwardSeconds: Int = ProfileSettings.DEFAULT_SKIP_FORWARD_SECONDS,
     /** The player jumps past marked intros and recaps without asking. */
     val autoSkipSegments: Boolean = false,
+    /** Seconds the player loads ahead; 0 is Auto, the platform player's own choice. */
+    val bufferAheadSeconds: Int = ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
 )
 
 /** Device-wide settings from [DevicePreferences] and the signed-in profile's from the database, one column per option. */
@@ -46,6 +48,7 @@ class SettingsViewModel(
             profileSettings.skipBackSeconds,
             profileSettings.skipForwardSeconds,
             profileSettings.autoSkipSegments,
+            profileSettings.bufferAheadSeconds,
         ),
     ) { v ->
         val showStats = v[1] as Boolean?
@@ -60,6 +63,7 @@ class SettingsViewModel(
             skipBackSeconds = v[5] as Int? ?: ProfileSettings.DEFAULT_SKIP_BACK_SECONDS,
             skipForwardSeconds = v[6] as Int? ?: ProfileSettings.DEFAULT_SKIP_FORWARD_SECONDS,
             autoSkipSegments = v[7] as Boolean? ?: false,
+            bufferAheadSeconds = v[8] as Int? ?: ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -89,6 +93,10 @@ class SettingsViewModel(
 
     fun onSkipForwardChanged(value: Int) {
         viewModelScope.launch { profileSettings.setSkipForwardSeconds(value) }
+    }
+
+    fun onBufferAheadChanged(value: Int) {
+        viewModelScope.launch { profileSettings.setBufferAheadSeconds(value) }
     }
 
     fun onAutoSkipChanged(value: Boolean) {

@@ -25,5 +25,7 @@ class SettingsModel {
 
     fun onHomeGenreRowsChanged(value: Int) = host.viewModel.onHomeGenreRowsChanged(value)
 
+    fun onBufferAheadChanged(value: Int) = host.viewModel.onBufferAheadChanged(value)
+
     fun close() = host.close()
 }

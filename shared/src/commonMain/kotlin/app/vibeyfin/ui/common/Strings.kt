@@ -492,6 +492,11 @@ object Strings {
     fun seekFlash(seconds: Int) = "${seconds}s"
     val autoSkipSegments = "Skip intros and recaps"
     val autoSkipSegmentsHelp = "Jump past marked intros and recaps without asking."
+    val bufferAhead = "Buffer ahead"
+    val bufferAheadAuto = "Auto"
+    fun bufferAheadChoice(seconds: Int) = if (seconds == 0) bufferAheadAuto else "$seconds seconds"
+    val bufferAheadHelp =
+        "How much video the player loads ahead of where you are. A longer buffer rides out a slow connection but uses more data and memory. Auto leaves it to the device's player."
     val skipHelp = "These set the player's buttons and the double-tap on the left and right of the picture."
     val heroMovie = "Movie"
     val heroShow = "Show"

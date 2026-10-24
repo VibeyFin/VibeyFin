@@ -181,6 +181,16 @@ class PlaybackViewModelTest {
     }
 
     @Test
+    fun `bufferAheadSeconds follows the profile setting`() = runTest {
+        server()
+        val viewModel = viewModel()
+        assertEquals(20, viewModel.uiState.first { it.stream != null }.bufferAheadSeconds)
+
+        app.profileSettings.setBufferAheadSeconds(50)
+        assertEquals(50, viewModel.uiState.first { it.bufferAheadSeconds == 50 }.bufferAheadSeconds)
+    }
+
+    @Test
     fun `missing values stay null`() = runTest {
         server()
 

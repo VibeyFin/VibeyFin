@@ -67,4 +67,23 @@ class ProfileSettingsTest {
         assertEquals(ProfileSettings.DEFAULT_SKIP_BACK_SECONDS, app.profileSettings.skipBackSeconds.first())
         assertEquals(ProfileSettings.DEFAULT_SKIP_FORWARD_SECONDS, app.profileSettings.skipForwardSeconds.first())
     }
+
+    @Test
+    fun `buffer ahead is null with nobody signed in and 20 seconds for a new profile`() = runTest {
+        assertNull(app.profileSettings.bufferAheadSeconds.first())
+        app.signedIn()
+        assertEquals(20, app.profileSettings.bufferAheadSeconds.first())
+    }
+
+    @Test
+    fun `a buffer length from the choices is saved and another is ignored`() = runTest {
+        app.signedIn()
+
+        app.profileSettings.setBufferAheadSeconds(40)
+        assertEquals(40, app.profileSettings.bufferAheadSeconds.first())
+        app.profileSettings.setBufferAheadSeconds(0)
+        assertEquals(0, app.profileSettings.bufferAheadSeconds.first())
+        app.profileSettings.setBufferAheadSeconds(25)
+        assertEquals(0, app.profileSettings.bufferAheadSeconds.first())
+    }
 }

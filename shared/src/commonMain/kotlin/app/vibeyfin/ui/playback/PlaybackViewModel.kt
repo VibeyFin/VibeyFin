@@ -160,6 +160,8 @@ data class PlaybackUiState(
     val diagnostics: PlaybackDiagnostics? = null,
     /** The signed-in profile wants the stats overlay. */
     val showDiagnostics: Boolean = false,
+    /** Seconds of video the player should load ahead; 0 is Auto, the platform player's own choice. */
+    val bufferAheadSeconds: Int = ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
     /** Set while an intro, recap or the like is playing; stays for the whole segment. */
     val skipOffer: SkipOffer? = null,
     /** Where the player should seek to now (set by `onSkip`); it clears this with `onSeekHandled`. */
@@ -240,8 +242,17 @@ class PlaybackViewModel(
 ) : ViewModel() {
     private val content = MutableStateFlow(PlaybackUiState())
 
-    val uiState: StateFlow<PlaybackUiState> = combine(content, connection.sessionEnded(), profileSettings.showPlaybackStats) { content, exit, showStats ->
-        content.copy(exit = exit, showDiagnostics = showStats ?: false)
+    val uiState: StateFlow<PlaybackUiState> = combine(
+        content,
+        connection.sessionEnded(),
+        profileSettings.showPlaybackStats,
+        profileSettings.bufferAheadSeconds,
+    ) { content, exit, showStats, bufferAhead ->
+        content.copy(
+            exit = exit,
+            showDiagnostics = showStats ?: false,
+            bufferAheadSeconds = bufferAhead ?: ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlaybackUiState())
 
     private var lastPositionMs = 0L

@@ -67,6 +67,12 @@ abstract class AccountDao {
     @Query("UPDATE account_settings SET autoSkipSegments = :value WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun setAutoSkipSegments(serverId: String, userId: String, value: Boolean)
 
+    @Query("SELECT bufferAheadSeconds FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeBufferAheadSeconds(serverId: String, userId: String): Flow<Int?>
+
+    @Query("UPDATE account_settings SET bufferAheadSeconds = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setBufferAheadSeconds(serverId: String, userId: String, value: Int)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract suspend fun insertAccount(account: AccountEntity): Long
 
