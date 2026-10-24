@@ -25,16 +25,6 @@ data class SettingsUiState(
     val confirmSignOut: Boolean = false,
     /** The connected server's id, for the native app to open "Who's watching?" there after Switch profile or Sign out. Empty when disconnected. */
     val serverId: String = "",
-    // The flat fields below are removed with the native renderers in Tasks 7 and 8.
-    val alwaysAskWhoIsWatching: Boolean = false,
-    val showPlaybackStats: Boolean = false,
-    val bingeThreshold: Int = ProfileSettings.DEFAULT_BINGE_THRESHOLD,
-    val homeGenreRows: Int = ProfileSettings.HOME_GENRES_ALL,
-    val showHomeHero: Boolean = true,
-    val skipBackSeconds: Int = ProfileSettings.DEFAULT_SKIP_BACK_SECONDS,
-    val skipForwardSeconds: Int = ProfileSettings.DEFAULT_SKIP_FORWARD_SECONDS,
-    val autoSkipSegments: Boolean = false,
-    val bufferAheadSeconds: Int = ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
 )
 
 /** Device-wide settings from [DevicePreferences] and the signed-in profile's from the database, built into pages by [settingsPages]. */
@@ -103,15 +93,6 @@ class SettingsViewModel(
             hasProfile = values.hasProfile,
             confirmSignOut = v[16] as Boolean,
             serverId = connected?.server?.id.orEmpty(),
-            alwaysAskWhoIsWatching = values.alwaysAskWhoIsWatching,
-            showPlaybackStats = values.showPlaybackStats,
-            bingeThreshold = values.bingeThreshold,
-            homeGenreRows = values.homeGenreRows,
-            showHomeHero = values.showHomeHero,
-            skipBackSeconds = values.skipBackSeconds,
-            skipForwardSeconds = values.skipForwardSeconds,
-            autoSkipSegments = values.autoSkipSegments,
-            bufferAheadSeconds = values.bufferAheadSeconds,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -169,24 +150,4 @@ class SettingsViewModel(
     fun onDismissSignOut() {
         confirmSignOut.value = false
     }
-
-    // The handlers below are removed with the native renderers in Tasks 7 and 8.
-
-    fun onAlwaysAskChanged(value: Boolean) = onToggle(SettingKey.AlwaysAsk, value)
-
-    fun onShowPlaybackStatsChanged(value: Boolean) = onToggle(SettingKey.ShowStats, value)
-
-    fun onBingeThresholdChanged(value: Int) = onChoose(SettingKey.BingeThreshold, value)
-
-    fun onShowHomeHeroChanged(value: Boolean) = onToggle(SettingKey.ShowHero, value)
-
-    fun onHomeGenreRowsChanged(value: Int) = onChoose(SettingKey.HomeGenreRows, value)
-
-    fun onSkipBackChanged(value: Int) = onChoose(SettingKey.SkipBack, value)
-
-    fun onSkipForwardChanged(value: Int) = onChoose(SettingKey.SkipForward, value)
-
-    fun onBufferAheadChanged(value: Int) = onChoose(SettingKey.BufferAhead, value)
-
-    fun onAutoSkipChanged(value: Boolean) = onToggle(SettingKey.AutoSkip, value)
 }

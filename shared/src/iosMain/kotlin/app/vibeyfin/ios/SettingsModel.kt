@@ -25,25 +25,5 @@ class SettingsModel {
 
     fun onDismissSignOut() = host.viewModel.onDismissSignOut()
 
-    // The handlers below are removed with the native renderers in Tasks 7 and 8.
-
-    fun onAlwaysAskChanged(value: Boolean) = host.viewModel.onAlwaysAskChanged(value)
-
-    fun onShowPlaybackStatsChanged(value: Boolean) = host.viewModel.onShowPlaybackStatsChanged(value)
-
-    fun onBingeThresholdChanged(value: Int) = host.viewModel.onBingeThresholdChanged(value)
-
-    fun onShowHomeHeroChanged(value: Boolean) = host.viewModel.onShowHomeHeroChanged(value)
-
-    fun onSkipBackChanged(value: Int) = host.viewModel.onSkipBackChanged(value)
-
-    fun onSkipForwardChanged(value: Int) = host.viewModel.onSkipForwardChanged(value)
-
-    fun onAutoSkipChanged(value: Boolean) = host.viewModel.onAutoSkipChanged(value)
-
-    fun onHomeGenreRowsChanged(value: Int) = host.viewModel.onHomeGenreRowsChanged(value)
-
-    fun onBufferAheadChanged(value: Int) = host.viewModel.onBufferAheadChanged(value)
-
     fun close() = host.close()
 }

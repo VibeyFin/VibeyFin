@@ -24,9 +24,9 @@ data class SettingsValues(
     val bufferAheadSeconds: Int = ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
     val maxStreamingBitrate: Int = 0,
     val captionsFollowSystem: Boolean = true,
-    val subtitleSize: Int = 1,
-    val subtitleTextColor: Int = 0,
-    val subtitleBackground: Int = 1,
+    val subtitleSize: Int = ProfileSettings.DEFAULT_SUBTITLE_SIZE,
+    val subtitleTextColor: Int = ProfileSettings.DEFAULT_SUBTITLE_TEXT_COLOR,
+    val subtitleBackground: Int = ProfileSettings.DEFAULT_SUBTITLE_BACKGROUND,
     val profileName: String = "",
     val serverName: String = "",
     /** The signed-in server's addresses, the one that worked last first. */

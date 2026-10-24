@@ -47,11 +47,17 @@ class SettingsViewModelTest {
         app.close()
     }
 
+    private fun SettingsUiState.item(key: SettingKey) = pages.values.flatMap { page -> page.sections.flatMap { it.items } }.first { it.key == key }
+
+    private fun SettingsUiState.checked(key: SettingKey) = (item(key) as ToggleItem).checked
+
+    private fun SettingsUiState.value(key: SettingKey) = (item(key) as ChoiceItem).value
+
     private fun viewModel() = viewModels.track(SettingsViewModel(app.preferences, app.profileSettings, app.connection, app.servers, applicationScope))
 
     @Test
     fun alwaysAskStartsOff() = runTest {
-        assertFalse(viewModel().uiState.first().alwaysAskWhoIsWatching)
+        assertFalse(viewModel().uiState.first().checked(SettingKey.AlwaysAsk))
     }
 
     @Test
@@ -59,9 +65,9 @@ class SettingsViewModelTest {
         val viewModel = viewModel()
         viewModel.uiState.first()
 
-        viewModel.onAlwaysAskChanged(true)
+        viewModel.onToggle(SettingKey.AlwaysAsk, true)
 
-        assertTrue(viewModel.uiState.first { it.alwaysAskWhoIsWatching }.alwaysAskWhoIsWatching)
+        assertTrue(viewModel.uiState.first { it.checked(SettingKey.AlwaysAsk) }.checked(SettingKey.AlwaysAsk))
         assertTrue(app.preferences.alwaysAskWhoIsWatching.first())
     }
 
@@ -69,11 +75,11 @@ class SettingsViewModelTest {
     fun theToggleCanBeTurnedOffAgain() = runTest {
         app.preferences.setAlwaysAskWhoIsWatching(true)
         val viewModel = viewModel()
-        assertTrue(viewModel.uiState.first { it.alwaysAskWhoIsWatching }.alwaysAskWhoIsWatching)
+        assertTrue(viewModel.uiState.first { it.checked(SettingKey.AlwaysAsk) }.checked(SettingKey.AlwaysAsk))
 
-        viewModel.onAlwaysAskChanged(false)
+        viewModel.onToggle(SettingKey.AlwaysAsk, false)
 
-        assertEquals(false, viewModel.uiState.first { !it.alwaysAskWhoIsWatching }.alwaysAskWhoIsWatching)
+        assertEquals(false, viewModel.uiState.first { !it.checked(SettingKey.AlwaysAsk) }.checked(SettingKey.AlwaysAsk))
     }
 
     @Test
@@ -93,8 +99,8 @@ class SettingsViewModelTest {
         app.signedIn()
         val state = viewModel().uiState.first { it.hasProfile }
 
-        assertFalse(state.showPlaybackStats)
-        assertEquals(3, state.bingeThreshold)
+        assertFalse(state.checked(SettingKey.ShowStats))
+        assertEquals(3, state.value(SettingKey.BingeThreshold))
     }
 
     @Test
@@ -106,13 +112,13 @@ class SettingsViewModelTest {
 
         app.connection.activate("srv-1", "u1")
         viewModel.uiState.first { it.hasProfile }
-        viewModel.onBingeThresholdChanged(5)
-        viewModel.uiState.first { it.bingeThreshold == 5 }
+        viewModel.onChoose(SettingKey.BingeThreshold, 5)
+        viewModel.uiState.first { it.value(SettingKey.BingeThreshold) == 5 }
 
         app.connection.activate("srv-1", "u2")
         assertEquals(3, app.profileSettings.bingeThreshold.first())
-        viewModel.onBingeThresholdChanged(0)
-        viewModel.uiState.first { it.bingeThreshold == 0 }
+        viewModel.onChoose(SettingKey.BingeThreshold, 0)
+        viewModel.uiState.first { it.value(SettingKey.BingeThreshold) == 0 }
 
         app.connection.activate("srv-1", "u1")
         assertEquals(5, app.profileSettings.bingeThreshold.first())
@@ -125,7 +131,7 @@ class SettingsViewModelTest {
         viewModel.uiState.first { it.hasProfile }
 
         for (invalid in listOf(1, 6, -1, 100)) {
-            viewModel.onBingeThresholdChanged(invalid)
+            viewModel.onChoose(SettingKey.BingeThreshold, invalid)
             assertEquals(3, app.profileSettings.bingeThreshold.first())
         }
     }
@@ -134,12 +140,12 @@ class SettingsViewModelTest {
     fun `a new profile starts with the top five genre rows and can change it`() = runTest {
         app.signedIn()
         val viewModel = viewModel()
-        assertEquals(5, viewModel.uiState.first { it.hasProfile }.homeGenreRows)
+        assertEquals(5, viewModel.uiState.first { it.hasProfile }.value(SettingKey.HomeGenreRows))
 
-        viewModel.onHomeGenreRowsChanged(0)
-        assertEquals(0, viewModel.uiState.first { it.homeGenreRows == 0 }.homeGenreRows)
-        viewModel.onHomeGenreRowsChanged(-1)
-        assertEquals(-1, viewModel.uiState.first { it.homeGenreRows == -1 }.homeGenreRows)
+        viewModel.onChoose(SettingKey.HomeGenreRows, 0)
+        assertEquals(0, viewModel.uiState.first { it.value(SettingKey.HomeGenreRows) == 0 }.value(SettingKey.HomeGenreRows))
+        viewModel.onChoose(SettingKey.HomeGenreRows, -1)
+        assertEquals(-1, viewModel.uiState.first { it.value(SettingKey.HomeGenreRows) == -1 }.value(SettingKey.HomeGenreRows))
     }
 
     @Test
@@ -149,7 +155,7 @@ class SettingsViewModelTest {
         viewModel.uiState.first { it.hasProfile }
 
         for (invalid in listOf(1, 4, 7, 21, -2)) {
-            viewModel.onHomeGenreRowsChanged(invalid)
+            viewModel.onChoose(SettingKey.HomeGenreRows, invalid)
             assertEquals(5, app.profileSettings.homeGenreRows.first())
         }
     }
@@ -158,12 +164,12 @@ class SettingsViewModelTest {
     fun `the home hero is on until the profile turns it off`() = runTest {
         app.signedIn()
         val viewModel = viewModel()
-        assertTrue(viewModel.uiState.first { it.hasProfile }.showHomeHero)
+        assertTrue(viewModel.uiState.first { it.hasProfile }.checked(SettingKey.ShowHero))
 
-        viewModel.onShowHomeHeroChanged(false)
-        assertFalse(viewModel.uiState.first { !it.showHomeHero }.showHomeHero)
-        viewModel.onShowHomeHeroChanged(true)
-        assertTrue(viewModel.uiState.first { it.showHomeHero }.showHomeHero)
+        viewModel.onToggle(SettingKey.ShowHero, false)
+        assertFalse(viewModel.uiState.first { !it.checked(SettingKey.ShowHero) }.checked(SettingKey.ShowHero))
+        viewModel.onToggle(SettingKey.ShowHero, true)
+        assertTrue(viewModel.uiState.first { it.checked(SettingKey.ShowHero) }.checked(SettingKey.ShowHero))
     }
 
     @Test
@@ -172,9 +178,9 @@ class SettingsViewModelTest {
         val viewModel = viewModel()
         viewModel.uiState.first { it.hasProfile }
 
-        viewModel.onShowPlaybackStatsChanged(true)
+        viewModel.onToggle(SettingKey.ShowStats, true)
 
-        assertTrue(viewModel.uiState.first { it.showPlaybackStats }.showPlaybackStats)
+        assertTrue(viewModel.uiState.first { it.checked(SettingKey.ShowStats) }.checked(SettingKey.ShowStats))
     }
 
     @Test
@@ -182,9 +188,9 @@ class SettingsViewModelTest {
         app.signedIn()
         val state = viewModel().uiState.first { it.hasProfile }
 
-        assertEquals(10, state.skipBackSeconds)
-        assertEquals(10, state.skipForwardSeconds)
-        assertFalse(state.autoSkipSegments)
+        assertEquals(10, state.value(SettingKey.SkipBack))
+        assertEquals(10, state.value(SettingKey.SkipForward))
+        assertFalse(state.checked(SettingKey.AutoSkip))
     }
 
     @Test
@@ -193,22 +199,22 @@ class SettingsViewModelTest {
         val viewModel = viewModel()
         viewModel.uiState.first { it.hasProfile }
 
-        viewModel.onSkipBackChanged(30)
-        assertEquals(30, viewModel.uiState.first { it.skipBackSeconds == 30 }.skipBackSeconds)
-        viewModel.onSkipForwardChanged(45)
-        assertEquals(45, viewModel.uiState.first { it.skipForwardSeconds == 45 }.skipForwardSeconds)
-        viewModel.onAutoSkipChanged(true)
-        assertTrue(viewModel.uiState.first { it.autoSkipSegments }.autoSkipSegments)
+        viewModel.onChoose(SettingKey.SkipBack, 30)
+        assertEquals(30, viewModel.uiState.first { it.value(SettingKey.SkipBack) == 30 }.value(SettingKey.SkipBack))
+        viewModel.onChoose(SettingKey.SkipForward, 45)
+        assertEquals(45, viewModel.uiState.first { it.value(SettingKey.SkipForward) == 45 }.value(SettingKey.SkipForward))
+        viewModel.onToggle(SettingKey.AutoSkip, true)
+        assertTrue(viewModel.uiState.first { it.checked(SettingKey.AutoSkip) }.checked(SettingKey.AutoSkip))
     }
 
     @Test
     fun `buffer ahead defaults to 20 and follows its handler`() = runTest {
         app.signedIn()
         val viewModel = viewModel()
-        assertEquals(20, viewModel.uiState.first { it.hasProfile }.bufferAheadSeconds)
+        assertEquals(20, viewModel.uiState.first { it.hasProfile }.value(SettingKey.BufferAhead))
 
-        viewModel.onBufferAheadChanged(60)
-        assertEquals(60, viewModel.uiState.first { it.bufferAheadSeconds == 60 }.bufferAheadSeconds)
+        viewModel.onChoose(SettingKey.BufferAhead, 60)
+        assertEquals(60, viewModel.uiState.first { it.value(SettingKey.BufferAhead) == 60 }.value(SettingKey.BufferAhead))
     }
 
     @Test
@@ -220,20 +226,20 @@ class SettingsViewModelTest {
 
         app.connection.activate("srv-1", "u1")
         viewModel.uiState.first { it.hasProfile }
-        viewModel.onSkipBackChanged(30)
-        viewModel.onSkipForwardChanged(45)
-        viewModel.onAutoSkipChanged(true)
-        viewModel.uiState.first { it.skipBackSeconds == 30 && it.skipForwardSeconds == 45 && it.autoSkipSegments }
+        viewModel.onChoose(SettingKey.SkipBack, 30)
+        viewModel.onChoose(SettingKey.SkipForward, 45)
+        viewModel.onToggle(SettingKey.AutoSkip, true)
+        viewModel.uiState.first { it.value(SettingKey.SkipBack) == 30 && it.value(SettingKey.SkipForward) == 45 && it.checked(SettingKey.AutoSkip) }
 
         app.connection.activate("srv-1", "u2")
-        val other = viewModel.uiState.first { it.skipBackSeconds == 10 }
-        assertEquals(10, other.skipForwardSeconds)
-        assertFalse(other.autoSkipSegments)
+        val other = viewModel.uiState.first { it.value(SettingKey.SkipBack) == 10 }
+        assertEquals(10, other.value(SettingKey.SkipForward))
+        assertFalse(other.checked(SettingKey.AutoSkip))
 
         app.connection.activate("srv-1", "u1")
-        val back = viewModel.uiState.first { it.skipBackSeconds == 30 }
-        assertEquals(45, back.skipForwardSeconds)
-        assertTrue(back.autoSkipSegments)
+        val back = viewModel.uiState.first { it.value(SettingKey.SkipBack) == 30 }
+        assertEquals(45, back.value(SettingKey.SkipForward))
+        assertTrue(back.checked(SettingKey.AutoSkip))
     }
 
     private fun SettingsUiState.page(id: SettingsPageId) = pages.getValue(id).visibleOnly()
@@ -288,7 +294,7 @@ class SettingsViewModelTest {
         viewModel.onChoose(SettingKey.SkipBack, 30)
         viewModel.onToggle(SettingKey.AutoSkip, true)
         viewModel.onChoose(SettingKey.BufferAhead, 60)
-        val changed = viewModel.uiState.first { it.bufferAheadSeconds == 60 }.page(SettingsPageId.Skipping)
+        val changed = viewModel.uiState.first { it.value(SettingKey.BufferAhead) == 60 }.page(SettingsPageId.Skipping)
         val items = changed.sections.flatMap { it.items }.associateBy { it.key }
         assertEquals(30, (items.getValue(SettingKey.SkipBack) as ChoiceItem).value)
         assertTrue((items.getValue(SettingKey.AutoSkip) as ToggleItem).checked)
