@@ -40,7 +40,7 @@
 
 ## Parallelism
 
-Task 1 first. Tasks 2, 3 and 4 run in parallel after it (distinct files). 7 (Android) and 8 (iOS) run in parallel after 6. After Task 9, B (10–14) and C (15–19) run in parallel; D (20–21) is independent of A after Task 1. Task 22 last.
+Task 1 first. Tasks 2, 3 and 4 run in parallel after it (in practice run in order in the main checkout; Ruling 5) (distinct files). 7 (Android) and 8 (iOS) run in parallel after 6. After Task 9, B (10–14) and C (15–19) run in parallel; D (20–21) is independent of A after Task 1. Task 22 last.
 
 ---
 
@@ -157,7 +157,7 @@ Task 1 first. Tasks 2, 3 and 4 run in parallel after it (distinct files). 7 (And
 
 **Interfaces:**
 - Consumes: Task 5 state and handlers.
-- Produces: `@Serializable data class SettingsPageRoute(val id: String)`; `@Composable fun SettingsPageScreen(page: SettingsPage, onToggle, onChoose, onAction, onOpen: (SettingsPageId) -> Unit, onBack)`; row composables `ToggleRow`, `ChoiceRow` (menu up to five options, a checklist page above), `LinkRow`, `ActionRow`, `InfoRow`, `SectionHeader` following the `SettingsScreens` mockup (`android.md`).
+- Produces: `@Serializable data class SettingsPageRoute(val id: String)`; `@Composable fun SettingsPageScreen(page: SettingsPage, onToggle, onChoose, onAction, onOpen: (SettingsPageId) -> Unit, onBack)`; row composables `ToggleRow`, `ChoiceRow` (always a dropdown menu; a choice marked `asPage`, Quality, draws inline checklist rows in its section, Rulings 6 and 7), `LinkRow`, `ActionRow`, `InfoRow`, `SectionHeader` following the `SettingsScreens` mockup (`android.md`).
 
 - [ ] **Step 1: Failing test** in `androidApp/src/androidTest` (or Compose JVM test if present): `` `the root page renders its groups and a link opens the sub page` ``.
 - [ ] **Step 2: Run** the test. Expected: FAIL.
@@ -173,13 +173,49 @@ Task 1 first. Tasks 2, 3 and 4 run in parallel after it (distinct files). 7 (And
 
 **Interfaces:**
 - Consumes: Task 5 `SettingsModel`.
-- Produces: `struct SettingsPageView: View { let page: SettingsPage; ... }` with `List` + `Section`, `Toggle`, `Picker(.menu)` up to five options and a checklist `NavigationLink` above, `NavigationLink` for links, a `.destructive` button for Sign out with `confirmationDialog`; `TabRoute.settingsPage(SettingsPageId)`.
+- Produces: `struct SettingsPageView: View { let page: SettingsPage; ... }` with `List` + `Section`, `Toggle`, `Picker(.menu)` for every choice (a choice marked `asPage`, Quality, draws inline checklist rows in its section; Rulings 6 and 7), `NavigationLink` for links, a `.destructive` button for Sign out with `confirmationDialog`; `TabRoute.settingsPage(SettingsPageId)`.
 
 - [ ] **Step 1: Extend the UITest** `iosApp/UITests/OnboardingFlowUITests.swift` (`testOnboardingFlow`, settings steps at lines 125-145): `step("Settings pages")` opens Quality, picks 1080p, goes back, opens Skipping and changes Buffer ahead (label lookups are case-insensitive).
 - [ ] **Step 2: Run** `scripts/ios-smoke.sh`. Expected: FAIL at the new step.
 - [ ] **Step 3: Implement** the renderer; no string literals (`Strings.shared`, `titleCased()`).
 - [ ] **Step 4: Run** `scripts/ios-smoke.sh` (`IOS_SIMULATOR="iPhone 18 Pro"`). Expected: PASS; say if it could not run.
 - [ ] **Step 5: Commit** `feat: draw Settings from the page tree on iOS`.
+
+### Task 8a: Android tablet two-pane Settings
+
+**Files:**
+- Create: `shared/src/commonMain/kotlin/app/vibeyfin/ui/settings/SettingsSelection.kt`, `androidApp/.../settings/SettingsTabletScreen.kt`
+- Modify: `androidApp/.../settings/SettingsScreen.kt`, `navigation/VibeyFinNavHost.kt` (the `Settings` destination chooses phone or tablet by width)
+- Test: `shared/src/commonTest/.../ui/settings/SettingsSelectionTest.kt`, `androidApp/src/test/.../SettingsMappingTest.kt`
+
+**Interfaces:**
+- Produces (shared): `fun firstSettablePage(pages: Map<SettingsPageId, SettingsPage>): SettingsPageId?` returns the first page after Root, in `SettingsPageId` order, that has at least one visible item to set (Quality for a normal profile; never Profile unless nothing else exists).
+- Produces (Android): `@Composable fun SettingsTabletScreen(state: SettingsUiState, onToggle, onChoose, onAction, onBack)`; the selected page id is `rememberSaveable`, defaults to `firstSettablePage`, and survives rotation.
+
+Design (design system `SettingsTablet`): two panes, the grouped root on the left, the chosen page on the right, same rows and renderers as the phone; the selected root row is an `accent-soft` pill; the detail column is capped at about 640dp and centred, never stretched; opening Settings selects the first page with something to set; below the 600dp tablet width (Split View, folded) it is the phone's push navigation. Built with a plain two-column `Row` at the repo's existing 600dp tablet breakpoint, not `ListDetailPaneScaffold` (not in the stack; Ruling 8).
+
+- [ ] **Step 1: Failing tests:** `` `the first settable page is Quality for a normal profile` ``, `` `a profile with no Playback items selects the next page that has something` ``, `` `nothing selectable returns null` `` (shared); `` `the selected page falls back to the first settable one when the saved id is not drawn` `` (Android JVM).
+- [ ] **Step 2: Run** `./gradlew :shared:testAndroidHostTest :androidApp:testDebugUnitTest`. Expected: FAIL.
+- [ ] **Step 3: Implement** `firstSettablePage` and `SettingsTabletScreen` (reuse the row composables; tapping a Link row on the root selects its page instead of navigating; Sign out and Switch profile behave as on the phone).
+- [ ] **Step 4: Run** the same commands and `:androidApp:assembleDebug`; on a tablet-size emulator (or `adb shell wm size 1600x2560` and restore after) check Root, Quality, Subtitles, Profile and rotation. Expected: builds; pages match `SettingsTablet`.
+- [ ] **Step 5: Commit** `feat: two-pane Settings on Android tablets`.
+
+### Task 8b: iPad two-pane Settings
+
+**Files:**
+- Modify: `iosApp/iosApp/App/TabShell.swift` (`.settings` route), `iosApp/iosApp/Settings/SettingsView.swift`
+- Create: `iosApp/iosApp/Settings/SettingsSplitView.swift`
+- Test: `iosApp/UITests/OnboardingFlowUITests.swift` (extend; iPad run is manual)
+
+**Interfaces:**
+- Consumes: `firstSettablePage` from Task 8a through the `SettingsModel` facade (add `fun firstSettablePage(): SettingsPageId?` to `shared/src/iosMain/.../ios/SettingsModel.kt`).
+- Produces: `struct SettingsSplitView: View` using `NavigationSplitView` (root as an inset grouped sidebar `List` with the system selection tinted aqua; the selected page in the detail column with its own title, no back button; detail capped about 640pt and centred); used when `horizontalSizeClass == .regular`, otherwise the phone's `NavigationStack` flow; selection kept in `@SceneStorage`.
+
+- [ ] **Step 1: Extend the UITest** with an iPad-only step (skipped when the device is a phone): Settings opens with Quality selected; tapping Subtitles in the sidebar shows its page in the detail column.
+- [ ] **Step 2: Run** `scripts/ios-smoke.sh` (iPad simulator via `IOS_SIMULATOR`). Expected: FAIL at the new step.
+- [ ] **Step 3: Implement** `SettingsSplitView` and wire it into the `.settings` route; reuse `SettingsPageView` rows for the detail.
+- [ ] **Step 4: Run** `scripts/ios-smoke.sh` and `swiftc -typecheck` of the app. Expected: PASS where the simulator is reachable; say plainly if it is not.
+- [ ] **Step 5: Commit** `feat: two-pane Settings on iPad`.
 
 ### Task 9: iOS subtitle style spike, then docs for A
 
@@ -367,3 +403,7 @@ Task 1 first. Tasks 2, 3 and 4 run in parallel after it (distinct files). 7 (And
 - [ ] **Step 3: History.** `git log --oneline develop..HEAD` reads as the story; fold any fixup into its commit with `git commit --fixup <sha>` and `GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash develop` (non-interactive); never force-push without asking.
 - [ ] **Step 4: Verify** `:shared:allTests`, `:androidApp:assembleDebug`, `scripts/ios-smoke.sh`, `scripts/check-title-case.sh`; report results.
 - [ ] **Step 5: Open the PR** (draft) into `develop` with a summary and the test-server and device caveats.
+
+## Rulings made during execution
+
+The plan above is the original argument; these rulings, made while building, bind where they differ (full text in the execution ledger): a non-`asPage` choice is always a menu (6); an `asPage` choice is inline checklist rows in its own section (7); tablet selection follows the tapped row (9); the root has no "Buffering" row, Buffer ahead lives on Skipping and autoplay (owner decision, 8c); iOS subtitle style is disabled with a note until a simulator spike (11); the tablet two-pane is a plain two-column layout at 600dp, not material3-adaptive (8).
