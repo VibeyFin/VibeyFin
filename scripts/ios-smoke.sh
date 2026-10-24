@@ -2,13 +2,13 @@
 # iOS smoke test: builds the app, installs it fresh on a simulator and runs the XCUITest onboarding
 # flow (launch, add server, who's watching, sign in) against the local test server.
 #
-#   scripts/ios-smoke.sh                       # default simulator "iPhone 17"
+#   scripts/ios-smoke.sh                       # default simulator "iPhone 18 Pro"
 #   IOS_SIMULATOR="iPhone 17e" scripts/ios-smoke.sh
 #   TEST_RUNNER_VIBEYFIN_TEST_SERVER=host:port scripts/ios-smoke.sh   # other server, see the test file
 set -eu
 cd "$(dirname "$0")/.."
 
-SIMULATOR="${IOS_SIMULATOR:-iPhone 17}"
+SIMULATOR="${IOS_SIMULATOR:-iPhone 18 Pro}"
 BUNDLE_ID="app.vibeyfin"
 DERIVED="${IOS_DERIVED_DATA:-build/ios-smoke}"
 RESULTS="$DERIVED/results.xcresult"
