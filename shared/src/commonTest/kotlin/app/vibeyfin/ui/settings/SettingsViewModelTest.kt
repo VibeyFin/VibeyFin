@@ -255,6 +255,17 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `the root Playback group links to Quality, Subtitles and Skipping only`() = runTest {
+        app.signedIn()
+        val root = viewModel().uiState.first { it.hasProfile }.page(SettingsPageId.Root)
+
+        val playback = root.sections.single { it.title == Strings.playbackSection }
+        assertTrue(playback.items.all { it is LinkItem })
+        assertEquals(listOf(SettingKey.Quality, SettingKey.Subtitles, SettingKey.Skipping), playback.items.map { it.key })
+        assertFalse(root.keys().contains(SettingKey.BufferAhead))
+    }
+
+    @Test
     fun `the stats overlay lives in Advanced`() = runTest {
         app.signedIn()
         val root = viewModel().uiState.first { it.hasProfile }.page(SettingsPageId.Root)

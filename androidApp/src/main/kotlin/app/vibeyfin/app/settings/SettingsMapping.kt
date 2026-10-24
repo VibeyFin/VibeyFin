@@ -59,8 +59,8 @@ private fun rootLinks(pages: Map<SettingsPageId, SettingsPage>): List<LinkItem> 
 
 /**
  * The root row that is open on a tablet: the saved one while it is still a drawn link, otherwise the first
- * link to the first settable page. It is a row, not a page, because two rows can lead to one page (Skipping
- * and Buffering); only the tapped one is selected. Null when there is nothing to open.
+ * link to the first settable page. It is a row, not a page, because two rows can lead to one page; only
+ * the tapped one is selected. Null when there is nothing to open.
  */
 internal fun selectedLink(saved: SettingKey?, pages: Map<SettingsPageId, SettingsPage>): LinkItem? {
     val links = rootLinks(pages)

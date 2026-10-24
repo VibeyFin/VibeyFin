@@ -75,10 +75,6 @@ fun rootPage(v: SettingsValues): SettingsPage {
                         help = Strings.skippingSummary(v.skipBackSeconds, v.skipForwardSeconds, v.bingeThreshold),
                         target = SettingsPageId.Skipping, visible = profile,
                     ),
-                    LinkItem(
-                        SettingKey.BufferAhead, Strings.bufferingGroup,
-                        target = SettingsPageId.Skipping, value = bufferLabel(v.bufferAheadSeconds), visible = profile,
-                    ),
                 ),
             ),
             SettingsSection(

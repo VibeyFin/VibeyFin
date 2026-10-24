@@ -8,6 +8,7 @@ import app.vibeyfin.ui.settings.SettingKey
 import app.vibeyfin.ui.settings.SettingOption
 import app.vibeyfin.ui.settings.SettingsPage
 import app.vibeyfin.ui.settings.SettingsPageId
+import app.vibeyfin.ui.settings.SettingsSection
 import app.vibeyfin.ui.settings.SettingsValues
 import app.vibeyfin.ui.settings.settingsPages
 import kotlin.test.Test
@@ -29,6 +30,7 @@ class SettingsMappingTest {
         )
         assertTrue(links(root).all { it in pages })
         assertTrue(SettingsPageId.Subtitles in links(root))
+        assertEquals(1, links(root).count { it == SettingsPageId.Skipping })
     }
 
     @Test
@@ -48,10 +50,10 @@ class SettingsMappingTest {
     @Test
     fun `row ids differ for the same key on two pages`() {
         val root = pages.getValue(SettingsPageId.Root).sections.flatMap { it.items }
-        val skipping = pages.getValue(SettingsPageId.Skipping).sections.flatMap { it.items }
-        val a = root.first { it.key == SettingKey.BufferAhead }
-        val b = skipping.first { it.key == SettingKey.BufferAhead }
-        assertNotEquals(rowId(SettingsPageId.Root, a), rowId(SettingsPageId.Skipping, b))
+        val quality = pages.getValue(SettingsPageId.Quality).sections.flatMap { it.items }
+        val a = root.first { it.key == SettingKey.Quality }
+        val b = quality.first { it.key == SettingKey.Quality }
+        assertNotEquals(rowId(SettingsPageId.Root, a), rowId(SettingsPageId.Quality, b))
     }
 
     @Test
@@ -111,12 +113,19 @@ class SettingsMappingTest {
     }
 
     @Test
-    fun `tapping Buffering selects only the Buffering row while showing the Skipping page`() {
-        val link = selectedLink(SettingKey.BufferAhead, pages)
-        assertEquals(SettingKey.BufferAhead, link?.key)
-        assertEquals(SettingsPageId.Skipping, link?.target)
-        // The other row that leads to Skipping is not the selected one.
-        assertNotEquals(SettingKey.Skipping, link?.key)
+    fun `when two link rows target one page only the tapped one is selected`() {
+        fun link(key: SettingKey) = LinkItem(key, key.name, target = SettingsPageId.Skipping)
+        val custom = mapOf(
+            SettingsPageId.Root to SettingsPage(
+                SettingsPageId.Root, "Settings",
+                listOf(SettingsSection(null, null, listOf(link(SettingKey.Skipping), link(SettingKey.Quality)))),
+            ),
+            SettingsPageId.Skipping to pages.getValue(SettingsPageId.Skipping),
+        )
+        val tapped = selectedLink(SettingKey.Quality, custom)
+        assertEquals(SettingKey.Quality, tapped?.key)
+        assertEquals(SettingsPageId.Skipping, tapped?.target)
+        assertEquals(SettingKey.Skipping, selectedLink(SettingKey.Skipping, custom)?.key)
     }
 
     @Test
