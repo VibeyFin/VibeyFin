@@ -20,6 +20,8 @@ struct PlayerView: View {
     /// The second under the finger while the scrubber is dragged.
     @State private var scrubPosition: TimeInterval?
     @State private var hideTask: Task<Void, Never>?
+    /// A track or speed menu is showing: the controls stay up, and the quiet moment starts when it closes.
+    @State private var menuOpen = false
     /// The video was playing when "Are you still watching?" paused it.
     @State private var pausedForPrompt = false
     /// The skip seek handed to the player last, until the model's state has cleared it.
@@ -279,7 +281,8 @@ struct PlayerView: View {
                         onTouch: {
                             model.userInteraction()
                             hideTask?.cancel()
-                        }
+                        },
+                        onOpenChange: menuOpenChanged
                     )
                 }
                 if let state, state.hasTrackChoices {
@@ -297,7 +300,8 @@ struct PlayerView: View {
                         onTouch: {
                             model.userInteraction()
                             hideTask?.cancel()
-                        }
+                        },
+                        onOpenChange: menuOpenChanged
                     )
                 }
                 if pip.isSupported {
@@ -542,12 +546,22 @@ struct PlayerView: View {
     /// someone using VoiceOver, who would lose them.
     private func scheduleHide() {
         hideTask?.cancel()
-        guard controller.isPlaying, scrubPosition == nil, state?.message == nil,
+        guard controller.isPlaying, scrubPosition == nil, !menuOpen, state?.message == nil,
               !UIAccessibility.isVoiceOverRunning else { return }
         hideTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: hideDelay)
             guard !Task.isCancelled else { return }
             setControlsVisible(false)
+        }
+    }
+
+    private func menuOpenChanged(_ open: Bool) {
+        menuOpen = open
+        model.userInteraction()
+        if open {
+            hideTask?.cancel()
+        } else {
+            scheduleHide()
         }
     }
 

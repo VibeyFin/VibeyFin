@@ -83,9 +83,11 @@ struct PlayerTrackMenu: View {
     let subtitles: [TrackOption]
     let onSelectAudio: (Int32) -> Void
     let onSelectSubtitle: (Int32) -> Void
-    /// A touch landed on the button, so the menu is about to open. A menu can't say when it opens or
-    /// closes, so this is the only moment the player can hold its controls up.
+    /// A touch landed on the button, so the menu is about to open. The first moment the player can hold
+    /// its controls up; `onOpenChange` then says when the menu really closes.
     var onTouch: () -> Void = {}
+    /// The menu opened (`true`) or closed (`false`), see `onMenuOpenChange`.
+    var onOpenChange: (Bool) -> Void = { _ in }
 
     /// A subtitle is showing: the "Off" row has a negative index.
     private var subtitleIsOn: Bool {
@@ -105,6 +107,7 @@ struct PlayerTrackMenu: View {
         }
         .modifier(PlayerControlStyle())
         .simultaneousGesture(TapGesture().onEnded(onTouch))
+        .onMenuOpenChange(onOpenChange)
         .accessibilityLabel(Strings.shared.audioAndSubtitles)
     }
 
@@ -133,6 +136,8 @@ struct PlayerSpeedMenu: View {
     let onSelect: (Float) -> Void
     /// See `PlayerTrackMenu.onTouch`.
     var onTouch: () -> Void = {}
+    /// See `PlayerTrackMenu.onOpenChange`.
+    var onOpenChange: (Bool) -> Void = { _ in }
 
     var body: some View {
         Menu {
@@ -155,6 +160,7 @@ struct PlayerSpeedMenu: View {
         }
         .modifier(PlayerCapsuleStyle())
         .simultaneousGesture(TapGesture().onEnded(onTouch))
+        .onMenuOpenChange(onOpenChange)
         .accessibilityLabel(Strings.shared.labelled(label: Strings.shared.speed, value: Strings.shared.speedValue(speed: selected)))
     }
 }
