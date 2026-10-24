@@ -347,6 +347,13 @@ object Strings {
         return "${tenths / 10}.${tenths % 10} s"
     }
 
+    /** What sits between the parts of one meta line, such as the series name and the episode. */
+    const val META_SEPARATOR = "  ·  "
+
+    /** The player's one meta line: the [subtitle] then the picture [badge], what is there; null when neither is. */
+    fun metaLine(subtitle: String?, badge: String?): String? =
+        listOfNotNull(subtitle, badge).filter { it.isNotBlank() }.joinToString(META_SEPARATOR).ifEmpty { null }
+
     /** The button that jumps over a marked part of the video. */
     fun skip(type: SegmentType): String = when (type) {
         SegmentType.Intro -> "Skip intro"
@@ -476,6 +483,21 @@ object Strings {
     val playbackStatsTitle = "Show playback stats"
     val playbackStatsHelp =
         "Show codec, bitrate and how the server is delivering the video in the player. Applies to this profile."
+    val playbackSection = "Playback"
+    val skipBack = "Skip back"
+    val skipForward = "Skip forward"
+    fun skipSeconds(seconds: Int) = "$seconds seconds"
+    fun skipBackLabel(seconds: Int) = "Back $seconds seconds"
+    fun skipForwardLabel(seconds: Int) = "Forward $seconds seconds"
+    fun seekFlash(seconds: Int) = "${seconds}s"
+    val autoSkipSegments = "Skip intros and recaps"
+    val autoSkipSegmentsHelp = "Jump past marked intros and recaps without asking."
+    val bufferAhead = "Buffer ahead"
+    val bufferAheadAuto = "Auto"
+    fun bufferAheadChoice(seconds: Int) = if (seconds == 0) bufferAheadAuto else "$seconds seconds"
+    val bufferAheadHelp =
+        "How much video the player loads ahead of where you are. A longer buffer rides out a slow connection but uses more data and memory. Auto leaves it to the device's player."
+    val skipHelp = "These set the player's buttons and the double-tap on the left and right of the picture."
     val heroMovie = "Movie"
     val heroShow = "Show"
     val homeHeroTitle = "Featured title on Home"

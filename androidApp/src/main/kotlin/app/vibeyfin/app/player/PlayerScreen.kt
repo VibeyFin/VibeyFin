@@ -28,6 +28,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import app.vibeyfin.app.theme.VibeyFinTokens
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -65,6 +69,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DecoderReuseEvaluation
 import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.analytics.AnalyticsListener
@@ -103,6 +108,9 @@ private val STATS_TOP_INSET = 72.dp
 private val SKIP_LIFT_WITH_CONTROLS = 80.dp
 
 private const val TIMING_TAG = "VibeyFinTiming"
+/** How much must be buffered before playback starts, and before it carries on after running dry. */
+private const val PLAYBACK_START_BUFFER_MS = 2_500
+private const val PLAYBACK_RESTART_BUFFER_MS = 5_000
 private const val HDR_TAG = "VibeyFinHdr"
 
 @Composable
@@ -132,13 +140,25 @@ fun PlayerRoute(
 
     val context = LocalContext.current
     val http = remember { DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(CONNECT_TIMEOUT_MS) }
-    val player = remember { buildPlayer(context, http) }
+    // The buffer length is fixed when the player is built, so the profile's value must be known by then. The state starts
+    // with the default and gets the saved value a moment later, before any stream arrives; until the first stream is
+    // there the player follows it (nothing is loaded yet, so a rebuild costs nothing), after that it stays as built.
+    // A changed setting therefore applies from the next video.
+    var bufferAheadSeconds by remember { mutableIntStateOf(state.bufferAheadSeconds) }
+    var streamSeen by remember { mutableStateOf(false) }
+    if (state.stream != null) streamSeen = true
+    if (!streamSeen) bufferAheadSeconds = state.bufferAheadSeconds
+    val player = remember(bufferAheadSeconds) { buildPlayer(context, http, bufferAheadSeconds) }
 
     val stillWatchingNow by rememberUpdatedState(state.stillWatching)
     var playing by remember { mutableStateOf(true) }
     var buffering by remember { mutableStateOf(true) }
     var positionMs by remember { mutableLongStateOf(0L) }
     var durationMs by remember { mutableLongStateOf(0L) }
+    var bufferedMs by remember { mutableLongStateOf(0L) }
+    // Whether there is something to seek in: skip buttons and double-taps do nothing while loading, buffering or showing an error.
+    // Read by the gesture handler too, which is set up once, so it must see the current value.
+    val playable by rememberUpdatedState(state.stream != null && state.message == null && !state.loading && !buffering)
 
     val close = {
         if (!leaving) {
@@ -284,6 +304,7 @@ fun PlayerRoute(
     LaunchedEffect(player) {
         while (isActive) {
             positionMs = player.currentPosition
+            bufferedMs = player.bufferedPosition
             if (player.duration != C.TIME_UNSET) durationMs = player.duration
             if (player.isPlaying || player.playbackState == Player.STATE_READY) viewModel.onPosition(positionMs)
             stats.publish()
@@ -343,12 +364,22 @@ fun PlayerRoute(
     var controlsVisible by remember { mutableStateOf(true) }
     LaunchedEffect(pip.active) { if (pip.active) controlsVisible = false }
     var interactions by remember { mutableIntStateOf(0) }
+    // The "10s" shown after a double-tap; each tap restarts the timer, so stacked skips keep it up.
+    var flashSide by remember { mutableStateOf<SkipSide?>(null) }
+    var flashCount by remember { mutableIntStateOf(0) }
+    LaunchedEffect(flashCount) {
+        if (flashCount > 0) {
+            delay(SEEK_FLASH_MS)
+            flashSide = null
+        }
+    }
     var scrubbing by remember { mutableStateOf(false) }
     val screenReaderOn = remember(context) {
         context.getSystemService(AccessibilityManager::class.java)?.isTouchExplorationEnabled == true
     }
-    LaunchedEffect(controlsVisible, interactions, playing, scrubbing, showTracks) {
-        if (controlsVisible && playing && !scrubbing && !showTracks && !screenReaderOn) {
+    // Held while the track or speed sheet is open; closing one changes a key, so the full delay starts again.
+    LaunchedEffect(controlsVisible, interactions, playing, scrubbing, showTracks, showSpeeds) {
+        if (controlsVisible && playing && !scrubbing && !showTracks && !showSpeeds && !screenReaderOn) {
             delay(CONTROLS_HIDE_MS)
             controlsVisible = false
         }
@@ -382,23 +413,57 @@ fun PlayerRoute(
         // A tap anywhere on the video shows or hides the controls.
         Box(
             Modifier.fillMaxSize().pointerInput(Unit) {
-                detectTapGestures {
-                    viewModel.onUserInteraction()
-                    controlsVisible = !controlsVisible
-                    interactions++
-                }
+                detectTapGestures(
+                    onTap = {
+                        viewModel.onUserInteraction()
+                        controlsVisible = !controlsVisible
+                        interactions++
+                    },
+                    // The left third skips back, the right third forward, the middle does nothing.
+                    onDoubleTap = { at ->
+                        val side = when {
+                            at.x < size.width / 3f -> SkipSide.Back
+                            at.x > size.width * 2f / 3f -> SkipSide.Forward
+                            else -> null
+                        }
+                        if (side != null && playable) {
+                            viewModel.onUserInteraction()
+                            if (side == SkipSide.Back) viewModel.onSkipBack(positionMs) else viewModel.onSkipForward(positionMs, durationMs)
+                            flashCount++
+                            flashSide = side
+                            interactions++
+                        }
+                    },
+                )
             },
         )
+        flashSide?.let { side ->
+            val seconds = if (side == SkipSide.Back) state.skipBackSeconds else state.skipForwardSeconds
+            Text(
+                text = Strings.seekFlash(seconds),
+                style = MaterialTheme.typography.titleMedium,
+                color = VibeyFinTokens.Colors.ink,
+                modifier = Modifier
+                    .align(if (side == SkipSide.Back) Alignment.CenterStart else Alignment.CenterEnd)
+                    .safeDrawingPadding()
+                    .padding(horizontal = 48.dp)
+                    .clip(CircleShape)
+                    .background(VibeyFinTokens.Colors.scrim)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
         if (!leaving && !pip.active) {
             AnimatedVisibility(visible = controlsVisible || state.message != null, enter = fadeIn(), exit = fadeOut()) {
                 PlayerControls(
                     title = state.title,
                     subtitle = state.subtitle,
                     positionMs = positionMs,
+                    bufferedMs = bufferedMs,
                     durationMs = durationMs,
                     playing = playing,
                     hasTrackChoices = state.hasTrackChoices && state.message == null,
                     badge = state.badge,
+                    showTransport = playable,
                     speedLabel = Strings.speedValue(state.speed),
                     trickplay = trickplay,
                     onClose = close,
@@ -426,6 +491,18 @@ fun PlayerRoute(
                     onScrubbing = {
                         viewModel.onUserInteraction()
                         scrubbing = it
+                        interactions++
+                    },
+                    skipBackSeconds = state.skipBackSeconds,
+                    skipForwardSeconds = state.skipForwardSeconds,
+                    onSkipBack = {
+                        viewModel.onUserInteraction()
+                        viewModel.onSkipBack(positionMs)
+                        interactions++
+                    },
+                    onSkipForward = {
+                        viewModel.onUserInteraction()
+                        viewModel.onSkipForward(positionMs, durationMs)
                         interactions++
                     },
                     onSeek = {
@@ -578,8 +655,19 @@ private fun renderersFactory(context: Context) =
     DefaultRenderersFactory(context).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
 
 @androidx.annotation.OptIn(UnstableApi::class)
-private fun buildPlayer(context: Context, http: DefaultHttpDataSource.Factory): ExoPlayer =
+private fun buildPlayer(context: Context, http: DefaultHttpDataSource.Factory, bufferAheadSeconds: Int): ExoPlayer =
     ExoPlayer.Builder(context, renderersFactory(context))
+        .apply {
+            // 0 is Auto: ExoPlayer's own load control. Otherwise it keeps this many seconds ahead of the position.
+            if (bufferAheadSeconds > 0) {
+                val ms = bufferAheadSeconds * 1000
+                setLoadControl(
+                    DefaultLoadControl.Builder()
+                        .setBufferDurationsMs(ms, ms, PLAYBACK_START_BUFFER_MS, PLAYBACK_RESTART_BUFFER_MS)
+                        .build(),
+                )
+            }
+        }
         .setMediaSourceFactory(DefaultMediaSourceFactory(http))
         .setAudioAttributes(
             AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
@@ -721,3 +809,8 @@ private fun displayHdrTypes(context: Context): String {
     }
     return "display HDR: ${names.ifEmpty { listOf("none") }.joinToString()}"
 }
+
+/** Which side of the picture a double-tap skips. */
+private enum class SkipSide { Back, Forward }
+
+private const val SEEK_FLASH_MS = 700L

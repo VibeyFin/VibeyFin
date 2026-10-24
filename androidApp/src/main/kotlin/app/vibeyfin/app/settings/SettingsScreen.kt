@@ -47,7 +47,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SettingsRoute(onBack: () -> Unit, viewModel: SettingsViewModel = koinViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    SettingsScreen(state, onBack, viewModel::onAlwaysAskChanged, viewModel::onShowPlaybackStatsChanged, viewModel::onBingeThresholdChanged, viewModel::onHomeGenreRowsChanged, viewModel::onShowHomeHeroChanged)
+    SettingsScreen(state, onBack, viewModel::onAlwaysAskChanged, viewModel::onShowPlaybackStatsChanged, viewModel::onBingeThresholdChanged, viewModel::onHomeGenreRowsChanged, viewModel::onShowHomeHeroChanged, viewModel::onSkipBackChanged, viewModel::onSkipForwardChanged, viewModel::onAutoSkipChanged, viewModel::onBufferAheadChanged)
 }
 
 @Composable
@@ -59,6 +59,10 @@ fun SettingsScreen(
     onBingeThresholdChanged: (Int) -> Unit = {},
     onHomeGenreRowsChanged: (Int) -> Unit = {},
     onShowHomeHeroChanged: (Boolean) -> Unit = {},
+    onSkipBackChanged: (Int) -> Unit = {},
+    onSkipForwardChanged: (Int) -> Unit = {},
+    onAutoSkipChanged: (Boolean) -> Unit = {},
+    onBufferAheadChanged: (Int) -> Unit = {},
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
@@ -115,6 +119,46 @@ fun SettingsScreen(
                         label = ::genreRowsLabel,
                         onChange = onHomeGenreRowsChanged,
                     )
+                    Spacer(Modifier.height(VibeyFinTokens.Space.s5))
+                    Text(
+                        text = Strings.playbackSection,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Spacer(Modifier.height(VibeyFinTokens.Space.s4))
+                    ChoiceRow(
+                        title = Strings.skipBack,
+                        help = Strings.skipHelp,
+                        value = state.skipBackSeconds,
+                        choices = ProfileSettings.SKIP_BACK_CHOICES,
+                        label = Strings::skipSeconds,
+                        onChange = onSkipBackChanged,
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    ChoiceRow(
+                        title = Strings.skipForward,
+                        help = null,
+                        value = state.skipForwardSeconds,
+                        choices = ProfileSettings.SKIP_FORWARD_CHOICES,
+                        label = Strings::skipSeconds,
+                        onChange = onSkipForwardChanged,
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    SwitchRow(
+                        title = Strings.autoSkipSegments,
+                        help = Strings.autoSkipSegmentsHelp,
+                        checked = state.autoSkipSegments,
+                        onCheckedChange = onAutoSkipChanged,
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    ChoiceRow(
+                        title = Strings.bufferAhead,
+                        help = Strings.bufferAheadHelp,
+                        value = state.bufferAheadSeconds,
+                        choices = ProfileSettings.BUFFER_AHEAD_CHOICES,
+                        label = Strings::bufferAheadChoice,
+                        onChange = onBufferAheadChanged,
+                    )
                 }
             }
             FloatingBackButton(onBack)
@@ -163,7 +207,7 @@ private fun SwitchRow(title: String, help: String, checked: Boolean, onCheckedCh
 
 /** A row that opens a menu of [choices], the one in use checked and named at the right. */
 @Composable
-private fun ChoiceRow(title: String, help: String, value: Int, choices: List<Int>, label: (Int) -> String, onChange: (Int) -> Unit) {
+private fun ChoiceRow(title: String, help: String?, value: Int, choices: List<Int>, label: (Int) -> String, onChange: (Int) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
         Row(
@@ -173,7 +217,7 @@ private fun ChoiceRow(title: String, help: String, value: Int, choices: List<Int
         ) {
             Column(modifier = Modifier.weight(1f).padding(end = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(text = title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
-                Text(text = help, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (help != null) Text(text = help, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             // The menu hangs from the value on the right, where the eye is, not from the row's left edge.
             Box {

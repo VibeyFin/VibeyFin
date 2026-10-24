@@ -7,6 +7,7 @@ struct SettingsView: View {
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
+            ScrollView {
             VStack(alignment: .leading, spacing: Space.s5) {
                 Text(Strings.shared.settings.titleCased()).screenTitle()
                 // The whole row is the toggle, so the label is a target too. The switch is light on
@@ -47,12 +48,13 @@ struct SettingsView: View {
                     }
                     .tint(Color(.label))
                     homeGenreRowsRow
+                    playbackSection
                 }
-                Spacer()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .screenMargin()
             .padding(.vertical, Space.s5)
+            }
         }
         .onAppear { model.start() }
         .backMenuTitle(Strings.shared.settings.titleCased())
@@ -60,6 +62,79 @@ struct SettingsView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         // Only the chevron, no "Back" label. The swipe from the edge still goes back.
         .toolbarRole(.editor)
+    }
+
+    /// Skip back and forward as menus, and auto-skip of intros and recaps. The footer says what the seconds drive.
+    private var playbackSection: some View {
+        VStack(alignment: .leading, spacing: Space.s5) {
+            Text(Strings.shared.playbackSection.titleCased())
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.primary)
+                .accessibilityAddTraits(.isHeader)
+            skipRow(
+                title: Strings.shared.skipBack,
+                choices: ProfileSettings.Companion.shared.SKIP_BACK_CHOICES,
+                selection: skipBack
+            )
+            skipRow(
+                title: Strings.shared.skipForward,
+                choices: ProfileSettings.Companion.shared.SKIP_FORWARD_CHOICES,
+                selection: skipForward
+            )
+            Toggle(isOn: autoSkip) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(Strings.shared.autoSkipSegments)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text(Strings.shared.autoSkipSegmentsHelp)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .tint(Color(.label))
+            Text(Strings.shared.skipHelp)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            bufferAheadRow
+        }
+    }
+
+    /// How far ahead the player loads, as a menu on the row; Auto leaves it to AVPlayer.
+    private var bufferAheadRow: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Strings.shared.bufferAhead.titleCased())
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text(Strings.shared.bufferAheadHelp)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: Space.s3)
+            Picker(Strings.shared.bufferAhead.titleCased(), selection: bufferAhead) {
+                ForEach(ProfileSettings.Companion.shared.BUFFER_AHEAD_CHOICES.map { $0.int32Value }, id: \.self) { choice in
+                    Text(Strings.shared.bufferAheadChoice(seconds: choice)).tag(choice)
+                }
+            }
+            .pickerStyle(.menu)
+            .tint(Color(.secondaryLabel))
+        }
+    }
+
+    private func skipRow(title: String, choices: [KotlinInt], selection: Binding<Int32>) -> some View {
+        HStack(alignment: .center) {
+            Text(title.titleCased())
+                .font(.headline)
+                .foregroundStyle(.primary)
+            Spacer(minLength: Space.s3)
+            Picker(title.titleCased(), selection: selection) {
+                ForEach(choices.map { $0.int32Value }, id: \.self) { choice in
+                    Text(Strings.shared.skipSeconds(seconds: choice)).tag(choice)
+                }
+            }
+            .pickerStyle(.menu)
+            .tint(Color(.secondaryLabel))
+        }
     }
 
     /// Off, or after 2 to 5 episodes in a row, as a menu on the row.
@@ -112,6 +187,34 @@ struct SettingsView: View {
         case -1: return Strings.shared.homeGenreRowsNone
         default: return Strings.shared.homeGenreRowsTop(n: value)
         }
+    }
+
+    private var skipBack: Binding<Int32> {
+        Binding(
+            get: { model.state?.skipBackSeconds ?? ProfileSettings.Companion.shared.DEFAULT_SKIP_BACK_SECONDS },
+            set: { model.setSkipBack($0) }
+        )
+    }
+
+    private var bufferAhead: Binding<Int32> {
+        Binding(
+            get: { model.state?.bufferAheadSeconds ?? ProfileSettings.Companion.shared.DEFAULT_BUFFER_AHEAD_SECONDS },
+            set: { model.setBufferAhead($0) }
+        )
+    }
+
+    private var skipForward: Binding<Int32> {
+        Binding(
+            get: { model.state?.skipForwardSeconds ?? ProfileSettings.Companion.shared.DEFAULT_SKIP_FORWARD_SECONDS },
+            set: { model.setSkipForward($0) }
+        )
+    }
+
+    private var autoSkip: Binding<Bool> {
+        Binding(
+            get: { model.state?.autoSkipSegments ?? false },
+            set: { model.setAutoSkip($0) }
+        )
     }
 
     private var showHomeHero: Binding<Bool> {

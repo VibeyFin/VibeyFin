@@ -103,6 +103,44 @@ final class OnboardingFlowUITests: XCTestCase {
                 XCTAssertTrue(item.waitForExistence(timeout: 20), "\(tab) tab is missing after sign-in")
             }
         }
+
+        step("Settings shows the Playback skip rows and Skip Back takes 15") {
+            // Settings is in the profile menu on Home; its button is labelled with the user's name.
+            let profile = button(username)
+            XCTAssertTrue(profile.waitForExistence(timeout: 10), "Profile menu is missing")
+            profile.tap()
+            let settings = button("Settings")
+            // Home is still loading right after sign-in and can swallow the first tap: open the menu once more.
+            if !settings.waitForExistence(timeout: 5) { profile.tap() }
+            XCTAssertTrue(settings.waitForExistence(timeout: 5), "Settings menu item is missing")
+            settings.tap()
+
+            // A menu picker's button is labelled with its title and the chosen value.
+            let skipBack = button("Skip Back", contains: true)
+            XCTAssertTrue(skipBack.waitForExistence(timeout: 10), "Skip Back row is missing")
+            XCTAssertTrue(button("Skip Forward", contains: true).exists, "Skip Forward row is missing")
+
+            skipBack.tap()
+            let fifteen = button("15 seconds")
+            XCTAssertTrue(fifteen.waitForExistence(timeout: 5), "15 seconds choice is missing")
+            fifteen.tap()
+            // The menu is still closing: wait for the row to show 15 rather than reading its label at once.
+            let shows15 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Skip Back", "15")).firstMatch
+            XCTAssertTrue(shows15.waitForExistence(timeout: 5), "Skip Back doesn't show 15")
+
+            // Buffer ahead sits below the skip rows and defaults to 20 seconds. The default is read off the row,
+            // not off the menu, where the chosen item isn't a plain button; a different choice is then picked.
+            let bufferAhead = button("Buffer Ahead", contains: true)
+            XCTAssertTrue(bufferAhead.waitForExistence(timeout: 5), "Buffer ahead row is missing")
+            let shows20 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Buffer Ahead", "20")).firstMatch
+            XCTAssertTrue(shows20.waitForExistence(timeout: 5), "Buffer ahead doesn't show its 20 seconds default")
+            bufferAhead.tap()
+            let thirty = button("30 seconds")
+            XCTAssertTrue(thirty.waitForExistence(timeout: 5), "30 seconds choice is missing")
+            thirty.tap()
+            let shows30 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Buffer Ahead", "30")).firstMatch
+            XCTAssertTrue(shows30.waitForExistence(timeout: 5), "Buffer ahead doesn't show 30")
+        }
     }
 
     /// A series lists its episodes down the page on a phone and sideways on a tablet, and tapping an episode's words opens its page.
@@ -150,6 +188,46 @@ final class OnboardingFlowUITests: XCTestCase {
             // An episode's page says plain "Play"; the series page below it says "Resume S1 E2 from ...".
             XCTAssertTrue(button("Play").waitForExistence(timeout: 20), "The episode page did not open")
         }
+    }
+
+    /// The player's controls stay up while the speed menu is open, and hide a quiet moment after it closes.
+    /// Runs after the onboarding test (alphabetical order), which leaves a signed-in profile behind.
+    func testPlayerControlsStayWhileMenuOpen() throws {
+        let match = NSPredicate(format: "label ==[c] %@", "Search")
+        let tab = app.tabBars.buttons.matching(match).firstMatch
+        let search = tab.waitForExistence(timeout: 20) ? tab : app.buttons.matching(match).firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 20), "Search tab is missing")
+        search.tap()
+        let field = app.searchFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "Search field is missing")
+        field.tap()
+        field.typeText("Test Show")
+        let result = button("Test Show", contains: true)
+        XCTAssertTrue(result.waitForExistence(timeout: 20), "Test Show is missing from the results")
+        result.tap()
+        let play = app.buttons.matching(NSPredicate(format: "label BEGINSWITH[c] %@", "Play")).firstMatch
+        XCTAssertTrue(play.waitForExistence(timeout: 20), "Play is missing")
+        play.tap()
+
+        // The speed button is labelled "Speed, 1x"; it only exists while the controls show.
+        let speed = button("Speed", contains: true)
+        XCTAssertTrue(speed.waitForExistence(timeout: 30), "The player controls didn't show")
+
+        speed.tap()
+        let choice = app.buttons.matching(NSPredicate(format: "label ==[c] %@", "1.5x")).firstMatch
+        XCTAssertTrue(choice.waitForExistence(timeout: 5), "The speed menu didn't open")
+        // Well past the 3 s the controls normally wait.
+        sleep(6)
+        XCTAssertTrue(choice.exists, "The speed menu closed by itself")
+        XCTAssertTrue(speed.exists, "The controls hid while the menu was open")
+
+        choice.tap()
+        sleep(1)
+        XCTAssertTrue(button("Speed", contains: true).exists, "The controls hid at once when the menu closed")
+        // And the quiet moment starts again after it closed.
+        let gone = NSPredicate(format: "exists == false")
+        expectation(for: gone, evaluatedWith: button("Speed", contains: true))
+        waitForExpectations(timeout: 8)
     }
 
     // MARK: - Helpers

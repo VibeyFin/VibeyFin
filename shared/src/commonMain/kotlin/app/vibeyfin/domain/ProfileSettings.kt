@@ -29,6 +29,51 @@ class ProfileSettings(
     /** Whether Home features one item above Continue watching. On by default. Null when nobody is signed in. */
     val showHomeHero: Flow<Boolean?> = forAccount { dao, a -> dao.observeShowHomeHero(a.serverId, a.userId).map { it ?: true } }
 
+    /** Seconds the skip-back button jumps; one of [SKIP_BACK_CHOICES]. Null when nobody is signed in. */
+    val skipBackSeconds: Flow<Int?> = forAccount { dao, a ->
+        dao.observeSkipBackSeconds(a.serverId, a.userId).map { if (it in SKIP_BACK_CHOICES) it else DEFAULT_SKIP_BACK_SECONDS }
+    }
+
+    /** Seconds the skip-forward button jumps; one of [SKIP_FORWARD_CHOICES]. Null when nobody is signed in. */
+    val skipForwardSeconds: Flow<Int?> = forAccount { dao, a ->
+        dao.observeSkipForwardSeconds(a.serverId, a.userId).map { if (it in SKIP_FORWARD_CHOICES) it else DEFAULT_SKIP_FORWARD_SECONDS }
+    }
+
+    /** Whether the player skips intros and recaps without asking. Off by default. Null when nobody is signed in. */
+    val autoSkipSegments: Flow<Boolean?> = forAccount { dao, a -> dao.observeAutoSkipSegments(a.serverId, a.userId).map { it ?: false } }
+
+    /** Accepts one of [SKIP_BACK_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setSkipBackSeconds(value: Int) {
+        if (value !in SKIP_BACK_CHOICES) return
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setSkipBackSeconds(account.serverId, account.userId, value)
+    }
+
+    /** Accepts one of [SKIP_FORWARD_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setSkipForwardSeconds(value: Int) {
+        if (value !in SKIP_FORWARD_CHOICES) return
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setSkipForwardSeconds(account.serverId, account.userId, value)
+    }
+
+    /** Seconds of video the player loads ahead; one of [BUFFER_AHEAD_CHOICES]. Null when nobody is signed in. */
+    val bufferAheadSeconds: Flow<Int?> = forAccount { dao, a ->
+        dao.observeBufferAheadSeconds(a.serverId, a.userId).map { if (it in BUFFER_AHEAD_CHOICES) it else DEFAULT_BUFFER_AHEAD_SECONDS }
+    }
+
+    /** Accepts one of [BUFFER_AHEAD_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setBufferAheadSeconds(value: Int) {
+        if (value !in BUFFER_AHEAD_CHOICES) return
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setBufferAheadSeconds(account.serverId, account.userId, value)
+    }
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setAutoSkipSegments(value: Boolean) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setAutoSkipSegments(account.serverId, account.userId, value)
+    }
+
     /** Does nothing when nobody is signed in. */
     suspend fun setShowHomeHero(value: Boolean) {
         val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
@@ -62,6 +107,20 @@ class ProfileSettings(
         .flatMapLatest { account -> if (account == null) flowOf(null) else observe(dao, account) }
 
     companion object {
+        const val DEFAULT_SKIP_BACK_SECONDS = 10
+        const val DEFAULT_SKIP_FORWARD_SECONDS = 10
+
+        /** The skip-back lengths, in seconds, in the order the setting lists them. */
+        val SKIP_BACK_CHOICES = listOf(5, 10, 15, 30)
+
+        /** The skip-forward lengths, in seconds, in the order the setting lists them. */
+        val SKIP_FORWARD_CHOICES = listOf(10, 15, 30, 45, 60)
+
+        const val DEFAULT_BUFFER_AHEAD_SECONDS = 20
+
+        /** How far ahead the player loads, in seconds, in the order the setting lists them; 0 is Auto, the platform player's own choice. */
+        val BUFFER_AHEAD_CHOICES = listOf(0, 10, 20, 30, 40, 50, 60)
+
         /** Episodes in a row before the player asks "Are you still watching?". */
         const val DEFAULT_BINGE_THRESHOLD = 3
 

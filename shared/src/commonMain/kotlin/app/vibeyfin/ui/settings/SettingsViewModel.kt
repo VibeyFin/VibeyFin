@@ -23,6 +23,14 @@ data class SettingsUiState(
     val homeGenreRows: Int = ProfileSettings.HOME_GENRES_ALL,
     /** Home features one item at the top. */
     val showHomeHero: Boolean = true,
+    /** Seconds the player's skip-back button and left double-tap jump. */
+    val skipBackSeconds: Int = ProfileSettings.DEFAULT_SKIP_BACK_SECONDS,
+    /** Seconds the player's skip-forward button and right double-tap jump. */
+    val skipForwardSeconds: Int = ProfileSettings.DEFAULT_SKIP_FORWARD_SECONDS,
+    /** The player jumps past marked intros and recaps without asking. */
+    val autoSkipSegments: Boolean = false,
+    /** Seconds the player loads ahead; 0 is Auto, the platform player's own choice. */
+    val bufferAheadSeconds: Int = ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
 )
 
 /** Device-wide settings from [DevicePreferences] and the signed-in profile's from the database, one column per option. */
@@ -30,20 +38,32 @@ class SettingsViewModel(
     private val preferences: DevicePreferences,
     private val profileSettings: ProfileSettings,
 ) : ViewModel() {
-    val uiState: StateFlow<SettingsUiState> = combine(
-        preferences.alwaysAskWhoIsWatching,
-        profileSettings.showPlaybackStats,
-        profileSettings.bingeThreshold,
-        profileSettings.homeGenreRows,
-        profileSettings.showHomeHero,
-    ) { alwaysAsk, showStats, threshold, genreRows, hero ->
+    val uiState: StateFlow<SettingsUiState> = combine<Any?, SettingsUiState>(
+        listOf(
+            preferences.alwaysAskWhoIsWatching,
+            profileSettings.showPlaybackStats,
+            profileSettings.bingeThreshold,
+            profileSettings.homeGenreRows,
+            profileSettings.showHomeHero,
+            profileSettings.skipBackSeconds,
+            profileSettings.skipForwardSeconds,
+            profileSettings.autoSkipSegments,
+            profileSettings.bufferAheadSeconds,
+        ),
+    ) { v ->
+        val showStats = v[1] as Boolean?
+        val threshold = v[2] as Int?
         SettingsUiState(
-            alwaysAskWhoIsWatching = alwaysAsk,
+            alwaysAskWhoIsWatching = v[0] as Boolean,
             hasProfile = showStats != null || threshold != null,
             showPlaybackStats = showStats ?: false,
             bingeThreshold = threshold ?: ProfileSettings.DEFAULT_BINGE_THRESHOLD,
-            homeGenreRows = genreRows ?: ProfileSettings.HOME_GENRES_ALL,
-            showHomeHero = hero ?: true,
+            homeGenreRows = v[3] as Int? ?: ProfileSettings.HOME_GENRES_ALL,
+            showHomeHero = v[4] as Boolean? ?: true,
+            skipBackSeconds = v[5] as Int? ?: ProfileSettings.DEFAULT_SKIP_BACK_SECONDS,
+            skipForwardSeconds = v[6] as Int? ?: ProfileSettings.DEFAULT_SKIP_FORWARD_SECONDS,
+            autoSkipSegments = v[7] as Boolean? ?: false,
+            bufferAheadSeconds = v[8] as Int? ?: ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -65,5 +85,21 @@ class SettingsViewModel(
 
     fun onHomeGenreRowsChanged(value: Int) {
         viewModelScope.launch { profileSettings.setHomeGenreRows(value) }
+    }
+
+    fun onSkipBackChanged(value: Int) {
+        viewModelScope.launch { profileSettings.setSkipBackSeconds(value) }
+    }
+
+    fun onSkipForwardChanged(value: Int) {
+        viewModelScope.launch { profileSettings.setSkipForwardSeconds(value) }
+    }
+
+    fun onBufferAheadChanged(value: Int) {
+        viewModelScope.launch { profileSettings.setBufferAheadSeconds(value) }
+    }
+
+    fun onAutoSkipChanged(value: Boolean) {
+        viewModelScope.launch { profileSettings.setAutoSkipSegments(value) }
     }
 }

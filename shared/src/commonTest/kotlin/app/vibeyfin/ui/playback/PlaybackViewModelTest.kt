@@ -181,6 +181,16 @@ class PlaybackViewModelTest {
     }
 
     @Test
+    fun `bufferAheadSeconds follows the profile setting`() = runTest {
+        server()
+        val viewModel = viewModel()
+        assertEquals(20, viewModel.uiState.first { it.stream != null }.bufferAheadSeconds)
+
+        app.profileSettings.setBufferAheadSeconds(50)
+        assertEquals(50, viewModel.uiState.first { it.bufferAheadSeconds == 50 }.bufferAheadSeconds)
+    }
+
+    @Test
     fun `missing values stay null`() = runTest {
         server()
 
@@ -1290,8 +1300,12 @@ class PlaybackViewModelTest {
         assertEquals(10, assertNotNull(seen.last().upNext).secondsLeft)
     }
 
-    private suspend fun serverWithSegments(vararg segments: String): PlaybackViewModel {
+    private suspend fun serverWithSegments(vararg segments: String): PlaybackViewModel = serverWithSettings({}, *segments)
+
+    /** Like [serverWithSegments], with profile settings saved (after sign-in) before the player opens. */
+    private suspend fun serverWithSettings(settings: suspend () -> Unit, vararg segments: String): PlaybackViewModel {
         server(segments = Reply.json(segmentsJson(*segments)))
+        settings()
         return viewModel().also { vm ->
             vm.uiState.first { it.stream != null }
             // The segments come in a separate call; wait until it has been made, so the first position isn't checked before it.
@@ -1888,5 +1902,141 @@ class PlaybackViewModelTest {
         // Asked again, for the new episode; and while it was switching nothing from the old one was left.
         assertEquals(1, jellyfin.requestsTo("GET", "/Items").count { it.query["ids"] == "e2" })
         assertTrue(seen.filter { it.title == "Northbound" && it.stream == null }.all { it.trickplay == null })
+    }
+
+    @Test
+    fun `skipBack seeks back by the profile value`() = runTest {
+        val vm = serverWithSettings({ app.profileSettings.setSkipBackSeconds(15) })
+        vm.uiState.first { it.skipBackSeconds == 15 }
+
+        vm.onSkipBack(60_000)
+
+        assertEquals(45_000L, vm.uiState.value.pendingSeekMs)
+    }
+
+    @Test
+    fun `skipBack clamps at zero`() = runTest {
+        val vm = serverWithSegments()
+
+        vm.onSkipBack(4_000)
+
+        assertEquals(0L, vm.uiState.value.pendingSeekMs)
+    }
+
+    @Test
+    fun `skipForward clamps at the duration`() = runTest {
+        val vm = serverWithSettings({ app.profileSettings.setSkipForwardSeconds(30) })
+        vm.uiState.first { it.skipForwardSeconds == 30 }
+
+        vm.onSkipForward(175_000, 180_000)
+
+        assertEquals(180_000L, vm.uiState.value.pendingSeekMs)
+    }
+
+    @Test
+    fun `skipForward with an unknown duration does nothing`() = runTest {
+        val vm = serverWithSegments()
+
+        vm.onSkipForward(60_000, 0)
+
+        assertNull(vm.uiState.value.pendingSeekMs)
+    }
+
+    @Test
+    fun `two skips before the player reports stack`() = runTest {
+        val vm = serverWithSegments()
+        val duration = 600_000L
+
+        // Both calls pass the same position: the second builds on the uncleared pendingSeekMs, not on a position the model advanced.
+        vm.onSkipForward(60_000, duration)
+        vm.onSkipForward(60_000, duration)
+
+        assertEquals(80_000L, vm.uiState.value.pendingSeekMs)
+    }
+
+    @Test
+    fun `autoSkip jumps over an intro once`() = runTest {
+        val vm = serverWithSettings({ app.profileSettings.setAutoSkipSegments(true) }, segmentJson("Intro", 10_000, 40_000))
+
+        vm.onPosition(12_000)
+        assertEquals(40_000L, vm.uiState.value.pendingSeekMs)
+        vm.onSeekHandled()
+        vm.onPosition(15_000)
+
+        assertNull(vm.uiState.value.pendingSeekMs)
+        assertNotNull(vm.uiState.value.skipOffer)
+    }
+
+    @Test
+    fun `autoSkip never skips an outro`() = runTest {
+        val vm = serverWithSettings({ app.profileSettings.setAutoSkipSegments(true) }, segmentJson("Outro", 170_000, 180_000))
+
+        vm.onPosition(172_000)
+
+        assertNull(vm.uiState.value.pendingSeekMs)
+        assertNotNull(vm.uiState.value.skipOffer)
+    }
+
+    @Test
+    fun `autoSkip off never seeks`() = runTest {
+        val vm = serverWithSegments(segmentJson("Intro", 10_000, 40_000))
+
+        vm.onPosition(12_000)
+
+        assertNotNull(vm.uiState.value.skipOffer)
+        assertNull(vm.uiState.value.pendingSeekMs)
+    }
+
+    @Test
+    fun `autoSkip jumps over a recap once`() = runTest {
+        val vm = serverWithSettings({ app.profileSettings.setAutoSkipSegments(true) }, segmentJson("Recap", 10_000, 30_000))
+
+        vm.onPosition(12_000)
+        assertEquals(30_000L, vm.uiState.value.pendingSeekMs)
+        vm.onSeekHandled()
+        vm.onPosition(15_000)
+
+        assertNull(vm.uiState.value.pendingSeekMs)
+    }
+
+    @Test
+    fun `the next episode auto skips an intro at the same times again`() = runTest {
+        val jellyfin = seriesServer()
+        val intro = Reply.json(segmentsJson(segmentJson("Intro", 10_000, 40_000)))
+        val nas = jellyfin.server("http://nas:8096")
+        nas.on("GET", "/MediaSegments/m1", intro)
+        nas.on("GET", "/MediaSegments/e2", intro)
+        app.profileSettings.setAutoSkipSegments(true)
+        val viewModel = viewModel(countdownStep = 1.milliseconds)
+        playing(viewModel, jellyfin)
+        jellyfin.awaitRequests("GET", "/MediaSegments/m1")
+        repeat(5) { yield() }
+        viewModel.onPosition(12_000)
+        assertEquals(40_000L, viewModel.uiState.value.pendingSeekMs)
+        viewModel.onSeekHandled()
+
+        viewModel.onPosition(tenMinutes - 30_000)
+        viewModel.uiState.first { it.title == "Northbound" && it.stream != null }
+        jellyfin.awaitRequests("GET", "/MediaSegments/e2")
+        repeat(5) { yield() }
+        viewModel.onPosition(12_000)
+
+        assertEquals(40_000L, viewModel.uiState.value.pendingSeekMs)
+    }
+
+    @Test
+    fun `resuming inside an intro with autoSkip on seeks to its end`() = runTest {
+        val jellyfin = server(
+            item = itemJson("m1", "Heat", year = 1995, runtimeTicks = 90 * TICKS_PER_MINUTE, positionTicks = (12_000L + RESUME_REWIND_MS) * 10_000),
+            segments = Reply.json(segmentsJson(segmentJson("Intro", 10_000, 40_000))),
+        )
+        app.profileSettings.setAutoSkipSegments(true)
+
+        val vm = viewModel()
+        assertEquals(12_000L, assertNotNull(vm.uiState.first { it.stream != null }.stream).startPositionMs)
+        while (jellyfin.requestsTo("GET", "/MediaSegments/m1").isEmpty()) yield()
+
+        repeat(10) { yield() }
+        assertEquals(40_000L, vm.uiState.first { it.pendingSeekMs != null }.pendingSeekMs)
     }
 }

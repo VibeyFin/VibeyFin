@@ -119,4 +119,24 @@ class StringsTest {
     fun aLabelAndItsValueAreOneSpokenPhrase() {
         assertEquals("Bitrate, 4.5 Mbps", Strings.labelled("Bitrate", "4.5 Mbps"))
     }
+
+    @Test
+    fun skipLabelsNameTheSeconds() {
+        assertEquals("10 seconds", Strings.skipSeconds(10))
+        assertEquals("Back 10 seconds", Strings.skipBackLabel(10))
+        assertEquals("Forward 30 seconds", Strings.skipForwardLabel(30))
+        assertEquals("30s", Strings.seekFlash(30))
+        assertEquals("Skip back", Strings.skipBack)
+        assertEquals("Skip forward", Strings.skipForward)
+    }
+
+    @Test
+    fun theMetaLineJoinsWhatIsThere() {
+        assertEquals("Series  ·  S1:E2  ·  4K", Strings.metaLine("Series  ·  S1:E2", "4K"))
+        assertEquals("Series  ·  S1:E2", Strings.metaLine("Series  ·  S1:E2", null))
+        assertEquals("Series  ·  S1:E2", Strings.metaLine("Series  ·  S1:E2", ""))
+        assertEquals("4K", Strings.metaLine(null, "4K"))
+        assertNull(Strings.metaLine(null, null))
+        assertNull(Strings.metaLine("", " "))
+    }
 }

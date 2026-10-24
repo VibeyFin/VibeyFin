@@ -51,6 +51,8 @@ final class PlayerController: ObservableObject {
     @Published private(set) var position: TimeInterval = 0
     /// Seconds; 0 until the item knows its length.
     @Published private(set) var duration: TimeInterval = 0
+    /// Seconds. The end of the loaded range holding the position; the position itself when none does.
+    @Published private(set) var bufferedPosition: TimeInterval = 0
     /// The player means to play: it is playing, or waiting for data to. A stall is not a pause.
     @Published private(set) var isPlaying = false
     /// Waiting for data, on a first load or after a stall or a seek.
@@ -114,7 +116,7 @@ final class PlayerController: ObservableObject {
 
     /// Opens `stream` unless it is the one already open. A new `id` is a new stream: the first,
     /// a retry, or the transcode fallback after a direct play that failed.
-    func open(_ stream: PlaybackStream) {
+    func open(_ stream: PlaybackStream, bufferAheadSeconds: Int32 = 0) {
         guard stream.id != openedStreamId else { return }
         openedStreamId = stream.id
         openedAt = CACurrentMediaTime()
@@ -139,11 +141,14 @@ final class PlayerController: ObservableObject {
         // The server wants its Authorization header on every request the player makes for this stream.
         let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": stream.headers])
         let item = AVPlayerItem(asset: asset)
+        // 0 is Auto: leave AVPlayer's own choice. A change applies from the next video.
+        if bufferAheadSeconds > 0 { item.preferredForwardBufferDuration = TimeInterval(bufferAheadSeconds) }
         observe(item)
         player.replaceCurrentItem(with: item)
 
         let start = TimeInterval(stream.startPositionMs) / 1000
         position = start
+        bufferedPosition = start
         duration = 0
         if start > 0 {
             // The seek goes in before the item is ready; the player applies it once it can, so the first
@@ -465,11 +470,22 @@ final class PlayerController: ObservableObject {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
+    /// The end of the loaded range that holds `time`. Published only when it moves by a tenth of a second or more.
+    private func updateBufferedPosition(_ time: CMTime) {
+        let end = player.currentItem?.loadedTimeRanges
+            .map(\.timeRangeValue)
+            .first { $0.containsTime(time) }
+            .map { CMTimeRangeGetEnd($0).seconds }
+        let value = max(end.flatMap { $0.isFinite ? $0 : nil } ?? time.seconds, time.seconds)
+        if abs(value - bufferedPosition) >= 0.1 { bufferedPosition = value }
+    }
+
     private func tick(_ time: CMTime) {
         guard time.isNumeric, openedStreamId != nil else { return }
         // While a seek is pending the player still reports the old time; keep showing the target.
         guard seeksInFlight == 0 else { return }
         position = time.seconds
+        updateBufferedPosition(time)
         if diagnosticsWanted, CACurrentMediaTime() - lastDiagnosticsAt >= 1 { pushDiagnostics() }
         // The shared model hears the position about once a second.
         let second = Int(time.seconds)

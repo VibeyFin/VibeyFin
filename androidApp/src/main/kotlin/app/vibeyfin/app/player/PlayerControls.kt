@@ -1,5 +1,6 @@
 package app.vibeyfin.app.player
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -31,11 +33,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -59,12 +64,16 @@ fun PlayerControls(
     title: String,
     subtitle: String?,
     positionMs: Long,
+    /** How far the player has loaded ahead; drawn as a lighter segment on the scrubber. */
+    bufferedMs: Long,
     durationMs: Long,
     playing: Boolean,
     /** Whether there are audio or subtitle tracks to choose from, which adds the button for them. */
     hasTrackChoices: Boolean,
     /** The picture's one badge ("4K", "HDR10"); null shows none. */
     badge: String?,
+    /** Whether the back, play and forward buttons show: only when there is a stream to control and nothing else is in the middle. */
+    showTransport: Boolean,
     /** The chosen playback speed as a label ("1.5x"), which is also the speed button. */
     speedLabel: String,
     onClose: () -> Unit,
@@ -73,6 +82,11 @@ fun PlayerControls(
     /** Turns the video into a picture-in-picture window; null when the device can't. */
     onPip: (() -> Unit)?,
     onTogglePlay: () -> Unit,
+    /** The profile's skip lengths, which pick the numbers on the two skip buttons. */
+    skipBackSeconds: Int,
+    skipForwardSeconds: Int,
+    onSkipBack: () -> Unit,
+    onSkipForward: () -> Unit,
     /** The user is dragging the scrubber, or has let go (false); the controls must not hide meanwhile. */
     onScrubbing: (Boolean) -> Unit,
     onSeek: (Long) -> Unit,
@@ -83,9 +97,16 @@ fun PlayerControls(
     Box(modifier.fillMaxSize()) {
         TopBar(title, subtitle, hasTrackChoices, badge, speedLabel, onClose, onTracks, onSpeed, onPip, Modifier.align(Alignment.TopStart)
         )
-        PlayPauseButton(playing, onTogglePlay, Modifier.align(Alignment.Center))
+        if (showTransport) {
+            Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s6)) {
+                TransportSkipButton(R.drawable.ic_replay, skipBackSeconds, Strings.skipBackLabel(skipBackSeconds), onSkipBack)
+                PlayPauseButton(playing, onTogglePlay)
+                TransportSkipButton(R.drawable.ic_forward, skipForwardSeconds, Strings.skipForwardLabel(skipForwardSeconds), onSkipForward)
+            }
+        }
         Scrubber(
             positionMs,
+            bufferedMs,
             durationMs,
             trickplay,
             onScrubbing,
@@ -143,7 +164,8 @@ private fun TopBar(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            subtitle?.let {
+            // One meta line: the subtitle, then the format badge as plain text.
+            Strings.metaLine(subtitle, badge)?.let {
                 Text(
                     text = it,
                     style = MaterialTheme.typography.bodySmall,
@@ -152,18 +174,6 @@ private fun TopBar(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-        }
-        if (badge != null) {
-            Spacer(Modifier.width(VibeyFinTokens.Space.s3))
-            Text(
-                text = badge,
-                style = MaterialTheme.typography.labelMedium,
-                color = VibeyFinTokens.Colors.ink,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(VibeyFinTokens.Colors.scrim)
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
-            )
         }
         Spacer(Modifier.width(VibeyFinTokens.Space.s3))
         TextChipButton(speedLabel, Strings.speed, onSpeed)
@@ -239,6 +249,34 @@ private fun ChipButton(icon: Int, description: String, onClick: () -> Unit) {
     }
 }
 
+/**
+ * A skip button: the arrow circle in `ink` on the scrim with the seconds over it, 48 dp to touch. The
+ * number is text rather than one drawable per value, so every setting (15, 45, 60 too) has a glyph.
+ */
+@Composable
+private fun TransportSkipButton(icon: Int, seconds: Int, description: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = description,
+            tint = VibeyFinTokens.Colors.ink,
+            modifier = Modifier.size(40.dp),
+        )
+        Text(
+            text = seconds.toString(),
+            style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"),
+            color = VibeyFinTokens.Colors.ink,
+            modifier = Modifier.padding(top = 3.dp).clearAndSetSemantics { },
+        )
+    }
+}
+
 /** A round chip on the scrim, like the back button: 72 dp to touch, a 36 dp glyph. */
 @Composable
 private fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -259,9 +297,11 @@ private fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, modifier: Mod
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Scrubber(
     positionMs: Long,
+    bufferedMs: Long,
     durationMs: Long,
     trickplay: TrickplayTiles?,
     onScrubbing: (Boolean) -> Unit,
@@ -306,6 +346,13 @@ private fun Scrubber(
                 },
                 valueRange = 0f..(if (known) durationMs.toFloat() else 1f),
                 enabled = known,
+                track = { state ->
+                    BufferedTrack(
+                        played = fraction(state.value, state.valueRange),
+                        buffered = if (known) maxOf(bufferedMs, shownMs).toFloat() / durationMs else 0f,
+                        enabled = known,
+                    )
+                },
                 colors = SliderDefaults.colors(
                     thumbColor = VibeyFinTokens.Colors.accent,
                     activeTrackColor = VibeyFinTokens.Colors.accent,
@@ -345,3 +392,29 @@ private fun Scrubber(
 /** Tabular numerals, so the times don't jitter as the digits change. */
 private val TimeStyle
     @Composable get() = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum")
+
+/**
+ * The scrubber's bar: the track, then a lighter segment up to what is buffered, then the played part in aqua up to the
+ * thumb. The buffered segment never ends before the thumb, so it is never seen behind the played part.
+ */
+@Composable
+private fun BufferedTrack(played: Float, buffered: Float, enabled: Boolean) {
+    val track = VibeyFinTokens.Colors.progressTrack
+    val bufferedColor = if (enabled) Color.White.copy(alpha = BUFFERED_ALPHA) else track
+    val playedColor = if (enabled) VibeyFinTokens.Colors.accent else track
+    Canvas(Modifier.fillMaxWidth().height(4.dp)) {
+        val corner = CornerRadius(size.height / 2)
+        fun bar(fraction: Float, color: Color) {
+            val width = size.width * fraction.coerceIn(0f, 1f)
+            if (width > 0f) drawRoundRect(color, size = Size(width, size.height), cornerRadius = corner)
+        }
+        bar(1f, track)
+        bar(buffered.coerceAtLeast(played), bufferedColor)
+        bar(played, playedColor)
+    }
+}
+
+private fun fraction(value: Float, range: ClosedFloatingPointRange<Float>): Float =
+    if (range.endInclusive > range.start) (value - range.start) / (range.endInclusive - range.start) else 0f
+
+private const val BUFFERED_ALPHA = 0.35f

@@ -16,6 +16,7 @@ Glass is the **navigation and controls layer** floating above content — never 
 
 - System-rendered, no code: tab bar, sidebar, navigation and toolbars, sheets, menus, context menus, alerts, the search field.
 - Custom glass where the controls float over media: player buttons (`.buttonStyle(.glass)`, `.glassEffect(in: .circle)`) grouped in a `GlassEffectContainer`; the Continue watching play disc.
+- **Player controls are white, never aqua.** Symbols are `.primary` on `.glass`, grouped in one `GlassEffectContainer`; the top-right controls share one glass capsule, not separate floating buttons. Aqua is only the scrubber's progress; the buffered part is white at about 35%.
 - **Never** glass on posters, rows, the hero card or text blocks. **Never** tint glass with aqua — the prominent Play button is the filled `.borderedProminent` capsule.
 - Content scrolls edge to edge under the bars; let the safe area inset the scroll content instead of adding manual padding.
 - Reduce Transparency and Increase Contrast restyle glass automatically — test with both on; our own `scrim`s don't change.
@@ -33,6 +34,9 @@ Glass is the **navigation and controls layer** floating above content — never 
 | Home category buttons (Shows, Movies, New, Categories) | Horizontal `ScrollView` of capsule buttons under the Home header: `surface-2` fill with `ink`, never selected; 36pt tall with a 44pt hit area. Not glass. Categories adds a trailing `chevron.down` and opens a `.sheet` with a plain list (medium and large detents), no search; the others open their page. A sheet rather than the player's `Menu`, because the list loads on demand and needs loading, empty and error states. A category page's Sort and Genre are capsules that open the same sheet |
 | Share | `ShareLink` |
 | Casting | `AVRoutePickerView` (AirPlay) |
+| Player skip buttons | `gobackward.<n>` / `goforward.<n>` SF Symbols, `n` from the profile's skip settings (back 10, forward 10 by default) |
+| Skip intervals setting | a `Picker` with `.pickerStyle(.menu)` in the settings list |
+| Buffer ahead setting | the same `Picker` row (Auto, 10 to 60 s, default 20 s). Player: `AVPlayerItem.preferredForwardBufferDuration`; the scrubber's buffered segment is the end of the `loadedTimeRanges` range holding the current time |
 | Player | Custom SwiftUI controls over `AVPlayerLayer` (Jellyfin trickplay and skip segments need it); PiP via `AVPictureInPictureController`; Now Playing via `MPNowPlayingInfoCenter` |
 | Loading | `ProgressView` in the player only; skeletons elsewhere (`.redacted(reason: .placeholder)`) |
 

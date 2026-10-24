@@ -53,16 +53,24 @@ struct StatsOverlay: View {
     }
 }
 
-/// "Skip intro", "Skip credits": a secondary button (aqua is for Play), shown for the whole segment
-/// whether or not the controls are up. Real Liquid Glass on iOS 26, the scrim before that. The label
-/// is the shared model's wording.
+/// "Skip intro", "Skip credits": white on a glass capsule with a leading skip symbol (never aqua),
+/// shown for the whole segment whether or not the controls are up. Real Liquid Glass on iOS 26, the
+/// scrim before that. The label is the shared model's wording. `systemImage` is nil for a plain
+/// quiet button such as "Stop watching".
 struct SkipButton: View {
     let label: String
+    var systemImage: String? = "forward.end.fill"
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Text(label.titleCased())
+            HStack(spacing: Space.s2) {
+                if let systemImage {
+                    Image(systemName: systemImage)
+                        .accessibilityHidden(true)
+                }
+                Text(label.titleCased())
+            }
                 .font(.headline)
                 .foregroundStyle(.primary)
                 .padding(.horizontal, Space.s4)
@@ -73,7 +81,7 @@ struct SkipButton: View {
     }
 }
 
-private struct SkipButtonStyle: ViewModifier {
+struct SkipButtonStyle: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
             content
@@ -103,11 +111,18 @@ struct StillWatchingPrompt: View {
                     .foregroundStyle(.primary)
                     .multilineTextAlignment(.center)
                 HStack(spacing: Space.s3) {
-                    SkipButton(label: Strings.shared.stillWatchingStop, action: onStop)
-                    PrimaryButton(action: onContinue) {
+                    SkipButton(label: Strings.shared.stillWatchingStop, systemImage: nil, action: onStop)
+                    // The one primary action, white like "Play now": the player never uses aqua.
+                    Button(action: onContinue) {
                         Text(Strings.shared.stillWatchingContinue.titleCased())
+                            .font(.headline)
+                            .foregroundStyle(Color(.systemBackground))
+                            .padding(.horizontal, Space.s4)
+                            .frame(minHeight: 44)
+                            .background(Capsule().fill(Color.primary))
+                            .contentShape(Capsule())
                     }
-                    .fixedSize()
+                    .buttonStyle(.plain)
                 }
             }
             .padding(Space.s5)
@@ -198,16 +213,29 @@ private final class TileBox {
 struct ScrubPreview: View {
     let thumbnail: UIImage
     let time: String
+    /// The picture's width; see `pictureWidth(forBarWidth:)`.
+    var pictureWidth: CGFloat = ScrubPreview.minPictureWidth
 
-    /// The width the preview takes, for keeping it on screen.
-    static let width: CGFloat = 160 + 2 * Space.s1
+    private static let minPictureWidth: CGFloat = 160
+    private static let maxPictureWidth: CGFloat = 300
+
+    /// The picture grows with the scrubber bar (about a fifth of it), so an iPad shows a larger preview
+    /// than a phone; a phone in landscape stays at the minimum. The tiles are 320 wide, so 300 stays sharp.
+    static func pictureWidth(forBarWidth barWidth: CGFloat) -> CGFloat {
+        min(max(barWidth * 0.2, minPictureWidth), maxPictureWidth)
+    }
+
+    /// The width the whole preview takes (picture and padding), for keeping it on screen.
+    static func width(forBarWidth barWidth: CGFloat) -> CGFloat {
+        pictureWidth(forBarWidth: barWidth) + 2 * Space.s1
+    }
 
     var body: some View {
         VStack(spacing: Space.s1) {
             Image(uiImage: thumbnail)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(width: 160)
+                .frame(width: pictureWidth)
                 .clipShape(RoundedRectangle(cornerRadius: Radius.artwork / 2, style: .continuous))
             Text(time)
                 .font(.footnote)

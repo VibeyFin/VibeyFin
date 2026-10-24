@@ -23,6 +23,9 @@ A Jetpack Compose app that follows Material 3. Use the `android` theme and `m3-*
 | Home hero (optional) | A single rounded card, never a carousel or auto-advancing (see `screens.md` **Home hero**) |
 | Messages | `Snackbar` with an action ("Try again" for a failed write); the action is plain text, not aqua |
 | Casting | Google Cast button + MediaRouter |
+| Player skip buttons | clickable 48 dp buttons with a generic arrow glyph and the seconds as text over it (seconds from the profile's skip settings; 10 back, 10 forward by default), play / pause between them |
+| Skip intervals setting | the settings `ChoiceRow` (a menu with the value at the right), like the other choice settings |
+| Buffer ahead setting | the same `ChoiceRow` (Auto, 10 to 60 s, default 20 s). Player: `DefaultLoadControl.setBufferDurationsMs`; the scrubber's buffered segment reads `player.bufferedPosition`, white at about 35% under the aqua fill |
 | Player | Compose controls over Media3 `PlayerSurface`; `MediaSession` notification; PiP with `setAutoEnterEnabled` on Android 12+ |
 | Loading | `LinearProgressIndicator` / skeletons; `CircularProgressIndicator` only in the player |
 

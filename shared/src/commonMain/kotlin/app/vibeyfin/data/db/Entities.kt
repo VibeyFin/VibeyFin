@@ -93,6 +93,18 @@ class AccountSettingsEntity(
     /** Whether Home features one item above Continue watching. */
     @ColumnInfo(defaultValue = "1")
     val showHomeHero: Boolean = true,
+    /** Seconds the player's skip-back button jumps. */
+    @ColumnInfo(defaultValue = "10")
+    val skipBackSeconds: Int = 10,
+    /** Seconds the player's skip-forward button jumps. */
+    @ColumnInfo(defaultValue = "10")
+    val skipForwardSeconds: Int = 10,
+    /** Whether the player skips intros and recaps without asking. */
+    @ColumnInfo(defaultValue = "0")
+    val autoSkipSegments: Boolean = false,
+    /** Seconds of video the player loads ahead; 0 leaves it to the platform player (Auto). */
+    @ColumnInfo(defaultValue = "20")
+    val bufferAheadSeconds: Int = 20,
 )
 
 /** Home's genre rows for a profile that has never chosen: the top five, so Home stays a sensible length on a big library. */
