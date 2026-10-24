@@ -22,6 +22,8 @@ struct SettingsItemRow: View {
     let item: SettingItem
     let page: SettingsPage
     @ObservedObject var model: SettingsObservable
+    /// Set in the iPad sidebar: a link is a selectable row, picked by its own key (two rows can open the same page), and not a push.
+    var selection: Binding<SettingKey?>?
     let onAction: (ActionItem) -> Void
 
     var body: some View {
@@ -78,14 +80,24 @@ struct SettingsItemRow: View {
         }
     }
 
+    @ViewBuilder
     private func linkRow(_ item: LinkItem) -> some View {
-        NavigationLink(value: TabRoute.settingsPage(item.target)) {
-            HStack {
-                RowLabel(title: item.title, help: item.help)
-                if let value = item.value {
-                    Spacer(minLength: Space.s3)
-                    Text(value).foregroundStyle(.secondary)
-                }
+        if let selection {
+            // The selected row is an accent-soft pill with its text left alone; the system's aqua highlight under white text is too faint.
+            linkLabel(item)
+                .tag(Optional(item.key))
+                .listRowBackground(selection.wrappedValue == item.key ? Brand.accentSoft : nil)
+        } else {
+            NavigationLink(value: TabRoute.settingsPage(item.target)) { linkLabel(item) }
+        }
+    }
+
+    private func linkLabel(_ item: LinkItem) -> some View {
+        HStack {
+            RowLabel(title: item.title, help: item.help)
+            if let value = item.value {
+                Spacer(minLength: Space.s3)
+                Text(value).foregroundStyle(.secondary)
             }
         }
     }

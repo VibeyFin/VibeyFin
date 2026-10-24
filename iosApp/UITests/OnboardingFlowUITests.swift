@@ -115,46 +115,63 @@ final class OnboardingFlowUITests: XCTestCase {
             XCTAssertTrue(settings.waitForExistence(timeout: 5), "Settings menu item is missing")
             settings.tap()
 
-            // The root page links to the pages; a link's button is labelled with its title and its value.
-            let quality = button("Quality", contains: true)
-            XCTAssertTrue(quality.waitForExistence(timeout: 10), "Quality link is missing")
-            quality.tap()
-            let p1080 = button("1080p", contains: true)
-            XCTAssertTrue(p1080.waitForExistence(timeout: 5), "1080p choice is missing")
-            p1080.tap()
-            goBack()
+            // On an iPad, Settings is two panes: the sidebar lists the pages and the first one with something to set is open.
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                // Only the detail column has a nav-bar title of its own; the sidebar's row labels also hold values.
+                let title = { (name: String) in self.app.navigationBars.staticTexts.matching(NSPredicate(format: "label ==[c] %@", name)).firstMatch }
+                XCTAssertTrue(title("Quality").waitForExistence(timeout: 10), "Quality is not open in the detail column")
+                let subtitles = app.cells.matching(NSPredicate(format: "label BEGINSWITH[c] %@", "Subtitles")).firstMatch
+                XCTAssertTrue(subtitles.waitForExistence(timeout: 5), "Subtitles is missing from the sidebar")
+                subtitles.tap()
+                XCTAssertTrue(title("Subtitles").waitForExistence(timeout: 5), "Subtitles did not open in the detail column")
+                XCTAssertFalse(title("Quality").exists, "Quality is still showing next to Subtitles")
+                // The sidebar's back button leaves Settings for Home.
+                let back = app.buttons["settings.back"]
+                XCTAssertTrue(back.waitForExistence(timeout: 5), "Back button is missing from the sidebar")
+                back.tap()
+                XCTAssertTrue(button(username).waitForExistence(timeout: 10), "Home did not come back")
+            } else {
+                // The root page links to the pages; a link's button is labelled with its title and its value.
+                let quality = button("Quality", contains: true)
+                XCTAssertTrue(quality.waitForExistence(timeout: 10), "Quality link is missing")
+                quality.tap()
+                let p1080 = button("1080p", contains: true)
+                XCTAssertTrue(p1080.waitForExistence(timeout: 5), "1080p choice is missing")
+                p1080.tap()
+                goBack()
 
-            // The root shows the new choice as the link's value.
-            let shows1080 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Quality", "1080p")).firstMatch
-            XCTAssertTrue(shows1080.waitForExistence(timeout: 5), "Quality doesn't show 1080p")
+                // The root shows the new choice as the link's value.
+                let shows1080 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Quality", "1080p")).firstMatch
+                XCTAssertTrue(shows1080.waitForExistence(timeout: 5), "Quality doesn't show 1080p")
 
-            let skipping = button("Skipping", contains: true)
-            XCTAssertTrue(skipping.waitForExistence(timeout: 5), "Skipping link is missing")
-            skipping.tap()
+                let skipping = button("Skipping", contains: true)
+                XCTAssertTrue(skipping.waitForExistence(timeout: 5), "Skipping link is missing")
+                skipping.tap()
 
-            // A menu picker's button is labelled with its title and the chosen value.
-            let skipBack = button("Skip Back", contains: true)
-            XCTAssertTrue(skipBack.waitForExistence(timeout: 10), "Skip Back row is missing")
-            XCTAssertTrue(button("Skip Forward", contains: true).exists, "Skip Forward row is missing")
-            skipBack.tap()
-            let fifteen = button("15 s")
-            XCTAssertTrue(fifteen.waitForExistence(timeout: 5), "15 s choice is missing")
-            fifteen.tap()
-            // The menu is still closing: wait for the row to show 15 rather than reading its label at once.
-            let shows15 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Skip Back", "15")).firstMatch
-            XCTAssertTrue(shows15.waitForExistence(timeout: 5), "Skip Back doesn't show 15")
+                // A menu picker's button is labelled with its title and the chosen value.
+                let skipBack = button("Skip Back", contains: true)
+                XCTAssertTrue(skipBack.waitForExistence(timeout: 10), "Skip Back row is missing")
+                XCTAssertTrue(button("Skip Forward", contains: true).exists, "Skip Forward row is missing")
+                skipBack.tap()
+                let fifteen = button("15 s")
+                XCTAssertTrue(fifteen.waitForExistence(timeout: 5), "15 s choice is missing")
+                fifteen.tap()
+                // The menu is still closing: wait for the row to show 15 rather than reading its label at once.
+                let shows15 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Skip Back", "15")).firstMatch
+                XCTAssertTrue(shows15.waitForExistence(timeout: 5), "Skip Back doesn't show 15")
 
-            // Buffer ahead is a menu like Skip Back. It defaults to 20 s.
-            let bufferAhead = button("Buffer Ahead", contains: true)
-            XCTAssertTrue(bufferAhead.waitForExistence(timeout: 5), "Buffer ahead row is missing")
-            let shows20 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Buffer Ahead", "20")).firstMatch
-            XCTAssertTrue(shows20.waitForExistence(timeout: 5), "Buffer ahead doesn't show its 20 s default")
-            bufferAhead.tap()
-            let thirty = button("30 s")
-            XCTAssertTrue(thirty.waitForExistence(timeout: 5), "30 s choice is missing")
-            thirty.tap()
-            let shows30 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Buffer Ahead", "30")).firstMatch
-            XCTAssertTrue(shows30.waitForExistence(timeout: 5), "Buffer ahead doesn't show 30")
+                // Buffer ahead is a menu like Skip Back. It defaults to 20 s.
+                let bufferAhead = button("Buffer Ahead", contains: true)
+                XCTAssertTrue(bufferAhead.waitForExistence(timeout: 5), "Buffer ahead row is missing")
+                let shows20 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Buffer Ahead", "20")).firstMatch
+                XCTAssertTrue(shows20.waitForExistence(timeout: 5), "Buffer ahead doesn't show its 20 s default")
+                bufferAhead.tap()
+                let thirty = button("30 s")
+                XCTAssertTrue(thirty.waitForExistence(timeout: 5), "30 s choice is missing")
+                thirty.tap()
+                let shows30 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Buffer Ahead", "30")).firstMatch
+                XCTAssertTrue(shows30.waitForExistence(timeout: 5), "Buffer ahead doesn't show 30")
+            }
         }
     }
 

@@ -37,6 +37,23 @@ final class SettingsObservable: ObservableObject {
         }
     }
 
+    /// The page the iPad opens Settings on; nil while loading or when nothing has anything to set.
+    func firstSettablePage() -> SettingsPageId? {
+        model.firstSettablePage()
+    }
+
+    /// The links the sidebar draws, in order.
+    func rootLinks() -> [LinkItem] {
+        guard let root = page(SettingsPageId.root) else { return [] }
+        return root.sections.flatMap { items(of: $0) }.compactMap { $0 as? LinkItem }
+    }
+
+    /// The first link row that opens the first settable page.
+    func defaultLinkKey() -> SettingKey? {
+        guard let first = firstSettablePage() else { return nil }
+        return rootLinks().first { $0.target == first }?.key
+    }
+
     func toggle(_ key: SettingKey, _ value: Bool) {
         model.onToggle(key: key, value: value)
     }

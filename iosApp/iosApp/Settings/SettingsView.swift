@@ -8,12 +8,14 @@ struct SettingsPageView: View {
     @ObservedObject var model: SettingsObservable
     /// Called when the session ends from here (Switch profile, a confirmed Sign out) and the app should show "Who's watching?".
     let onExit: (HomeExit) -> Void
+    /// Set in the iPad split view: a link row selects its page here instead of pushing it, and the list shows the selection.
+    var selection: Binding<SettingKey?>?
 
     var body: some View {
         let page = model.page(pageId)
         Group {
             if let page {
-                List {
+                List(selection: selection ?? .constant(nil)) {
                     ForEach(Array(page.sections.enumerated()), id: \.offset) { _, section in
                         sectionView(section, in: page)
                     }
@@ -61,7 +63,7 @@ struct SettingsPageView: View {
             Section {
                 // Keyed by page and setting: Buffer ahead is on the root and on Skipping.
                 ForEach(items, id: \.key) { item in
-                    SettingsItemRow(item: item, page: page, model: model, onAction: perform)
+                    SettingsItemRow(item: item, page: page, model: model, selection: selection, onAction: perform)
                 }
             } header: {
                 if let title = section.title { Text(title.titleCased()) }

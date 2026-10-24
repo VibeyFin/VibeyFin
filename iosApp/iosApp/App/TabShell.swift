@@ -180,7 +180,7 @@ struct TabShell: View {
                 .navigationDestination(for: TabRoute.self) { route in
                     switch route {
                     case .settings:
-                        SettingsPageView(pageId: SettingsPageId.root, model: settings, onExit: onExit)
+                        SettingsEntryView(model: settings, onExit: onExit)
                     case .settingsPage(let id):
                         SettingsPageView(pageId: id, model: settings, onExit: onExit)
                     case .children(let parentId, let title):
