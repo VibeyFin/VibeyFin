@@ -112,10 +112,17 @@ struct StillWatchingPrompt: View {
                     .multilineTextAlignment(.center)
                 HStack(spacing: Space.s3) {
                     SkipButton(label: Strings.shared.stillWatchingStop, systemImage: nil, action: onStop)
-                    PrimaryButton(action: onContinue) {
+                    // The one primary action, white like "Play now": the player never uses aqua.
+                    Button(action: onContinue) {
                         Text(Strings.shared.stillWatchingContinue.titleCased())
+                            .font(.headline)
+                            .foregroundStyle(Color(.systemBackground))
+                            .padding(.horizontal, Space.s4)
+                            .frame(minHeight: 44)
+                            .background(Capsule().fill(Color.primary))
+                            .contentShape(Capsule())
                     }
-                    .fixedSize()
+                    .buttonStyle(.plain)
                 }
             }
             .padding(Space.s5)
