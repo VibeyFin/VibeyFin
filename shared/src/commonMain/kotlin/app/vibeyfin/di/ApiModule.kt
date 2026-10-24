@@ -57,7 +57,7 @@ fun apiModule() = module {
     single { WatchRepository(get(), get()) }
 
     single(ApplicationScope) { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
-    single { PlaybackRepository(get(), get(), get()) }
+    single { PlaybackRepository(get(), get(), get(), get()) }
     single { WatchChanges() }
     single { PlaybackRecovery(get(), get()) }
     // One per player: it holds what that playback has reported so far.

@@ -55,7 +55,7 @@ class TestApp {
     val profileSettings = ProfileSettings(database.accountDao(), connection)
     val nowPlaying = NowPlaying()
     val binge = BingeCounter()
-    val playback = PlaybackRepository(connection, capabilities, ClientInfoProvider(FakeDeviceInfo(), preferences))
+    val playback = PlaybackRepository(connection, capabilities, ClientInfoProvider(FakeDeviceInfo(), preferences), profileSettings)
 
     val pending = PendingReports(database.pendingReportDao(), clock)
     val recovery = PlaybackRecovery(pending, connection)
