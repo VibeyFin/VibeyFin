@@ -1,8 +1,10 @@
 package app.vibeyfin.ui.settings
 
+import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.ViewModelTracker
+import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -221,5 +223,85 @@ class SettingsViewModelTest {
         val back = viewModel.uiState.first { it.skipBackSeconds == 30 }
         assertEquals(45, back.skipForwardSeconds)
         assertTrue(back.autoSkipSegments)
+    }
+
+    private fun SettingsUiState.page(id: SettingsPageId) = pages.getValue(id).visibleOnly()
+
+    private fun SettingsPage.keys() = sections.flatMap { section -> section.items.map { it.key } }
+
+    @Test
+    fun `the root has the groups Playback, Home, Notifications, Kids and PIN, This device and Advanced in that order`() = runTest {
+        app.signedIn()
+        val root = viewModel().uiState.first { it.hasProfile }.page(SettingsPageId.Root)
+
+        assertEquals(
+            listOf(
+                Strings.playbackSection, Strings.settingsGroupHome, Strings.notificationsTitle,
+                Strings.settingsGroupKids, Strings.settingsGroupDevice, Strings.settingsGroupAdvanced,
+            ),
+            root.sections.mapNotNull { it.title },
+        )
+    }
+
+    @Test
+    fun `the stats overlay lives in Advanced`() = runTest {
+        app.signedIn()
+        val root = viewModel().uiState.first { it.hasProfile }.page(SettingsPageId.Root)
+
+        val holding = root.sections.filter { section -> section.items.any { it.key == SettingKey.ShowStats } }
+        assertEquals(listOf(Strings.settingsGroupAdvanced), holding.map { it.title })
+    }
+
+    @Test
+    fun `skip, auto skip, still watching and buffering sit on the Skipping page`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        val skipping = viewModel.uiState.first { it.hasProfile }.page(SettingsPageId.Skipping)
+
+        assertEquals(
+            listOf(SettingKey.SkipBack, SettingKey.SkipForward, SettingKey.AutoSkip, SettingKey.BingeThreshold, SettingKey.BufferAhead),
+            skipping.keys(),
+        )
+
+        viewModel.onChoose(SettingKey.SkipBack, 30)
+        viewModel.onToggle(SettingKey.AutoSkip, true)
+        viewModel.onChoose(SettingKey.BufferAhead, 60)
+        val changed = viewModel.uiState.first { it.bufferAheadSeconds == 60 }.page(SettingsPageId.Skipping)
+        val items = changed.sections.flatMap { it.items }.associateBy { it.key }
+        assertEquals(30, (items.getValue(SettingKey.SkipBack) as ChoiceItem).value)
+        assertTrue((items.getValue(SettingKey.AutoSkip) as ToggleItem).checked)
+        assertEquals(60, (items.getValue(SettingKey.BufferAhead) as ChoiceItem).value)
+    }
+
+    @Test
+    fun `choosing a quality saves it and the Quality page checks it`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        val before = viewModel.uiState.first { it.hasProfile }.page(SettingsPageId.Quality)
+        val choice = before.sections.single().items.single() as ChoiceItem
+        assertEquals(ProfileSettings.QUALITY_CHOICES, choice.options.map { it.value })
+        assertEquals(0, choice.value)
+
+        viewModel.onChoose(SettingKey.Quality, 10_000_000)
+
+        val after = viewModel.uiState.first {
+            (it.page(SettingsPageId.Quality).sections.single().items.single() as ChoiceItem).value == 10_000_000
+        }
+        assertEquals(10_000_000, app.profileSettings.maxStreamingBitrate.first())
+        val link = after.page(SettingsPageId.Root).sections.flatMap { it.items }.first { it.key == SettingKey.Quality } as LinkItem
+        assertEquals(Strings.qualityLabel(10_000_000), link.value)
+    }
+
+    @Test
+    fun `device settings show without a profile and profile settings do not`() = runTest {
+        val signedOut = viewModel().uiState.first().page(SettingsPageId.Root)
+        assertTrue(SettingKey.AlwaysAsk in signedOut.keys())
+        assertEquals(emptyList(), signedOut.keys() - setOf(SettingKey.AlwaysAsk, SettingKey.About))
+
+        app.signedIn()
+        val signedIn = viewModel().uiState.first { it.hasProfile }.page(SettingsPageId.Root)
+        assertTrue(SettingKey.AlwaysAsk in signedIn.keys())
+        assertTrue(SettingKey.ShowStats in signedIn.keys())
+        assertTrue(SettingKey.ShowHero in signedIn.keys())
     }
 }

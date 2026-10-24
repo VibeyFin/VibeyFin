@@ -42,7 +42,7 @@ class SettingsModelTest {
         assertEquals("480p · 1.5 Mbps", Strings.qualityLabel(1_500_000))
         assertEquals("10 s · 10 s · Still watching after 3", Strings.skippingSummary(10, 10, 3))
         val titles = listOf(
-            Strings.settingsGroupPlayback, Strings.settingsGroupKids, Strings.settingsGroupDevice,
+            Strings.playbackSection, Strings.settingsGroupKids, Strings.settingsGroupDevice,
             Strings.skippingTitle, Strings.qualityTitle, Strings.subtitlesTitle, Strings.kidsPinTitle,
             Strings.notificationsTitle, Strings.signOut, Strings.switchProfile, Strings.pinAskOpenProfile,
         )

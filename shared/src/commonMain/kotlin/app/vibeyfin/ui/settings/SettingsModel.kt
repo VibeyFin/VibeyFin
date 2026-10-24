@@ -9,7 +9,7 @@ enum class SettingKey {
     AlwaysAsk, ShowStats, About,
     BingeThreshold, HomeGenreRows, ShowHero,
     SkipBack, SkipForward, AutoSkip, BufferAhead,
-    Quality,
+    Quality, Subtitles, Skipping,
     CaptionsFollowSystem, SubtitleSize, SubtitleColor, SubtitleBackground, SubtitlePreview, ResetSubtitles,
     SwitchProfile, SignOut, ServerName, ServerAddress, ServerAlsoAt,
     KidsProfile, Pin, ChangePin, RemovePin, PinOpenProfile, PinOpenSettings, PinSwitchProfile,

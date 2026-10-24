@@ -1,5 +1,6 @@
 package app.vibeyfin.di
 
+import app.vibeyfin.data.platform.DeviceInfo
 import app.vibeyfin.ui.addserver.AddServerViewModel
 import app.vibeyfin.ui.children.ChildrenViewModel
 import app.vibeyfin.ui.person.PersonViewModel
@@ -37,5 +38,5 @@ fun appModule() = module {
     viewModel { params -> ItemViewModel(params.get(), get(), get(), get(), get()) }
     viewModel { params -> PlaybackViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get(), startOver = params.getOrNull() ?: false) }
     viewModelOf(::StartupViewModel)
-    viewModelOf(::SettingsViewModel)
+    viewModel { SettingsViewModel(get(), get(), get<DeviceInfo>().appVersion) }
 }
