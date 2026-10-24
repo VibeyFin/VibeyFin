@@ -13,6 +13,9 @@ The app should become very configurable over time, so settings live per profile 
 - `androidMobileApp/`: the native Android app: Jetpack Compose screens, navigation and theme (package
   `app.vibeyfin.app`), plus Activity, manifest and icons. AGP 9 does not allow the KMP
   plugin and `com.android.application` in one module, which is why this is separate.
+- `androidDesign/`: Android library both Android apps use, and nothing else: `VibeyFinTokens` (checked against
+  `design/tokens.json` by `DesignTokensTest`), the `BrandDisplay` face and `compose_stability.conf`. Package
+  `app.vibeyfin.design`. No screens and no theme: each app builds its own from these values.
 - `iosApp/`: the native iOS app in SwiftUI (Xcode project with synchronized folders). It reads
   shared state through the facades in `shared/src/iosMain/.../ios`.
   Swift files sit in feature folders under `iosApp/iosApp/` (`App`, `Home`, `Item`, `Library`, `Player`,
@@ -116,7 +119,7 @@ apps share are in `guardrails.md`; which Jellyfin field drives which UI is in `j
 - Copy: `Strings` is written in sentence case, plain verbs; errors say what happened and how to fix
   it. iOS shows button, tab and title labels in title case through one helper, `titleCased()`;
   Android uses the text as is.
-- Token values are hand-written in `app/theme` (Android) and `Theme.swift` (iOS). A drift check
+- Token values are hand-written in `androidDesign` (Android) and `Theme.swift` (iOS). A drift check
   against `design/tokens.json` fails when they differ. Never hand-copy a hex value into a screen.
 - Netflix patterns stay: "Who's watching?" profile grid, hero billboard, rows of posters.
 

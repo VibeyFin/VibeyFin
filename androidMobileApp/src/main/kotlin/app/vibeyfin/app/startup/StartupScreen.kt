@@ -8,7 +8,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.domain.StartDestination
 import app.vibeyfin.ui.startup.StartupViewModel
 import org.koin.androidx.compose.koinViewModel

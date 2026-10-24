@@ -14,7 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 
 /**

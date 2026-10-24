@@ -38,8 +38,8 @@ import app.vibeyfin.app.components.OptionRow
 import app.vibeyfin.app.components.PickerSearch
 import app.vibeyfin.app.components.PickerSheet
 import app.vibeyfin.app.theme.ContentMaxWidth
-import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.ui.common.Strings

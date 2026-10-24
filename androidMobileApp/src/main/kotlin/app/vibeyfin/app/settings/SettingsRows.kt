@@ -59,7 +59,7 @@ import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.player.SUBTITLE_SHADOW
 import app.vibeyfin.app.player.SUBTITLE_WHITE
 import app.vibeyfin.app.player.SubtitleViewStyle
-import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.ui.settings.ActionItem
 import app.vibeyfin.ui.settings.ChoiceItem
 import app.vibeyfin.ui.settings.InfoItem

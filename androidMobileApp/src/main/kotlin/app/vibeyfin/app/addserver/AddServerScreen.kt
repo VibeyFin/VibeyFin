@@ -38,8 +38,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.vibeyFinTextFieldColors
-import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.ui.addserver.AddServerStep
 import app.vibeyfin.ui.addserver.AddServerUiState
 import app.vibeyfin.ui.addserver.AddServerViewModel

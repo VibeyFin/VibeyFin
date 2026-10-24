@@ -40,8 +40,8 @@ import app.vibeyfin.app.downloads.RemoveConfirmDialog
 import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.navigation.sharedPoster
-import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.home.HomeExit

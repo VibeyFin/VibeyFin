@@ -19,8 +19,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.WithMenuPress
+import app.vibeyfin.design.VibeyFinTokens
 
 /**
  * The app's dropdown menu: opens just below the control that owns it, with rounded corners and a soft

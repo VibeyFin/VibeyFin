@@ -9,7 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 
 /** What went wrong and a way to try again. The button is tonal: aqua is for the primary action. */

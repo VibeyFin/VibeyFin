@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.vibeyfin.design.VibeyFinTokens
 
 /** Screen margin: 16 dp on phones, 24 dp from the medium width class (600 dp) up. */
 @Composable

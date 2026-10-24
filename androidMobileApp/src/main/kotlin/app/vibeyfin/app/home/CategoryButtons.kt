@@ -12,7 +12,7 @@ import androidx.compose.ui.semantics.semantics
 import app.vibeyfin.app.components.FilterChipButton
 import app.vibeyfin.app.components.OptionRow
 import app.vibeyfin.app.components.PickerSheet
-import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.CategoryButton
 import app.vibeyfin.ui.home.FilterSheet

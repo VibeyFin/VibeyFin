@@ -15,8 +15,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import app.vibeyfin.app.navigation.LocalProfileButton
-import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.design.VibeyFinTokens
 
 /**
  * The header of the four tabs: the page name at the left and the profile at the right, one line, the same size and in the same

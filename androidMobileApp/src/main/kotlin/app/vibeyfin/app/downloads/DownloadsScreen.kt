@@ -57,8 +57,8 @@ import app.vibeyfin.app.components.TabHeader
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
-import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.DownloadRunner
 import app.vibeyfin.domain.DownloadState

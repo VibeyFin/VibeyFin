@@ -40,8 +40,8 @@ import androidx.compose.ui.unit.dp
 import app.vibeyfin.app.navigation.LocalTileLongPress
 import app.vibeyfin.app.navigation.SharedPick
 import app.vibeyfin.app.navigation.sharedPoster
-import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.animationsEnabled
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.BlurHash
 import app.vibeyfin.ui.common.Strings

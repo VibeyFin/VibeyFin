@@ -31,7 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import app.vibeyfin.app.theme.MenuPressIndication
-import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.design.VibeyFinTokens
 
 /** One row of an [OptionList]: [key] is handed back when it is chosen. */
 data class OptionRow(

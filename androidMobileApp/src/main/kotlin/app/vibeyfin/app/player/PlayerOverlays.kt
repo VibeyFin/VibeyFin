@@ -34,7 +34,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
-import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.domain.PlaybackDiagnostics
 import app.vibeyfin.domain.TrickplayTrack
 import app.vibeyfin.ui.common.Strings

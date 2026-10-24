@@ -76,8 +76,8 @@ import app.vibeyfin.app.downloads.DownloadActionMenuItem
 import app.vibeyfin.app.downloads.DownloadBadgeIcon
 import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
 import app.vibeyfin.app.navigation.LocalOpenTrailerUrl
-import app.vibeyfin.app.theme.BrandDisplay
-import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.design.BrandDisplay
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings

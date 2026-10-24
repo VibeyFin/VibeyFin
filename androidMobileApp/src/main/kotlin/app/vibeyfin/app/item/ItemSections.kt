@@ -88,7 +88,7 @@ import app.vibeyfin.app.components.bleed
 import app.vibeyfin.app.downloads.DownloadActionMenuItem
 import app.vibeyfin.app.downloads.EpisodeDownloadButton
 import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
-import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.model.CastMember
 import app.vibeyfin.domain.model.MediaItem

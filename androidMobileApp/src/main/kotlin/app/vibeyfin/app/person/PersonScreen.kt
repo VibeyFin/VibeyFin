@@ -48,10 +48,10 @@ import app.vibeyfin.app.components.MediaRowSection
 import app.vibeyfin.app.components.SkeletonBlock
 import app.vibeyfin.app.components.SkeletonLine
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
-import app.vibeyfin.app.theme.BrandDisplay
 import app.vibeyfin.app.theme.ContentMaxWidth
-import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.design.BrandDisplay
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.HomeExit

@@ -41,8 +41,8 @@ import app.vibeyfin.R
 import app.vibeyfin.app.downloads.DownloadActionMenuItem
 import app.vibeyfin.app.downloads.DownloadBadgeIcon
 import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
-import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.WithMenuPress
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.downloads.DownloadAction
 import app.vibeyfin.ui.downloads.actions

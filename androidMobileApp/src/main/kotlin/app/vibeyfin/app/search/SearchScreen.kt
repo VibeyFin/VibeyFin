@@ -73,8 +73,8 @@ import app.vibeyfin.app.components.SkeletonLine
 import app.vibeyfin.app.components.TabHeader
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.navigation.LocalTileLongPress
-import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.domain.model.SearchKind
 import app.vibeyfin.domain.model.SearchResult
 import app.vibeyfin.domain.model.asMediaItem

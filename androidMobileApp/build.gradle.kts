@@ -6,7 +6,7 @@ plugins {
 }
 
 composeCompiler {
-    stabilityConfigurationFiles.add(layout.projectDirectory.file("compose_stability.conf"))
+    stabilityConfigurationFiles.add(rootProject.layout.projectDirectory.file("androidDesign/compose_stability.conf"))
 }
 
 android {
@@ -58,6 +58,7 @@ android {
 
 dependencies {
     implementation(project(":shared"))
+    implementation(project(":androidDesign"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

@@ -6,6 +6,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
+import app.vibeyfin.design.VibeyFinTokens
 
 // VibeyFin is dark-only and never uses dynamic color. Every role is set explicitly: Material fills
 // unset roles with its baseline purple. Values come from the `android` column of design/tokens.json;

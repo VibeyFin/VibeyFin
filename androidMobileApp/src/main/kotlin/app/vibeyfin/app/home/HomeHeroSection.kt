@@ -61,8 +61,8 @@ import app.vibeyfin.R
 import app.vibeyfin.app.components.Artwork
 import app.vibeyfin.app.components.SkeletonBlock
 import app.vibeyfin.app.navigation.LocalTileLongPress
-import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.animationsEnabled
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.HERO_ADVANCE_MILLIS

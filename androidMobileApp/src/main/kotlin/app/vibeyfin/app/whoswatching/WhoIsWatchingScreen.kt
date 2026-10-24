@@ -57,8 +57,8 @@ import app.vibeyfin.app.components.VibeyFinSheet
 import app.vibeyfin.app.components.skeletonProfiles
 import app.vibeyfin.app.components.vibeyFinTextFieldColors
 import app.vibeyfin.app.settings.PinSheet
-import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.domain.model.Profile
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.ui.common.Strings

@@ -55,8 +55,8 @@ import app.vibeyfin.R
 import app.vibeyfin.app.components.BackButton
 import app.vibeyfin.app.components.ChipButton
 import app.vibeyfin.app.components.ChipInset
-import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.launch
 

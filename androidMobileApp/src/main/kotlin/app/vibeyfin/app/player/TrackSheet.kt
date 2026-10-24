@@ -17,7 +17,7 @@ import androidx.core.view.WindowInsetsCompat
 import app.vibeyfin.app.components.OptionList
 import app.vibeyfin.app.components.OptionRow
 import app.vibeyfin.app.components.VibeyFinSheet
-import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.playback.TrackOption
 

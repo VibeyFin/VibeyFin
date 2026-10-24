@@ -26,9 +26,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.vibeyfin.app.theme.BrandDisplay
-import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.design.BrandDisplay
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.domain.DiscoveredServer
 import app.vibeyfin.domain.model.Server
 import app.vibeyfin.ui.common.Strings

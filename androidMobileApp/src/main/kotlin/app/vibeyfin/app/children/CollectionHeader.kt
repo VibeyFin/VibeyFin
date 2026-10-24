@@ -32,8 +32,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.vibeyfin.app.components.Artwork
-import app.vibeyfin.app.theme.BrandDisplay
-import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.design.BrandDisplay
+import app.vibeyfin.design.VibeyFinTokens
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
 
