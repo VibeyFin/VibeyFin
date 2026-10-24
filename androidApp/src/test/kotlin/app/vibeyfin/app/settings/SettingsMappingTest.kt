@@ -1,0 +1,104 @@
+package app.vibeyfin.app.settings
+
+import app.vibeyfin.domain.ProfileSettings
+import app.vibeyfin.ui.common.Strings
+import app.vibeyfin.ui.settings.ChoiceItem
+import app.vibeyfin.ui.settings.LinkItem
+import app.vibeyfin.ui.settings.SettingKey
+import app.vibeyfin.ui.settings.SettingOption
+import app.vibeyfin.ui.settings.SettingsPage
+import app.vibeyfin.ui.settings.SettingsPageId
+import app.vibeyfin.ui.settings.SettingsValues
+import app.vibeyfin.ui.settings.settingsPages
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
+
+class SettingsMappingTest {
+    private val pages = settingsPages(SettingsValues(hasProfile = true))
+
+    private fun links(page: SettingsPage) = page.sections.flatMap { it.items }.filterIsInstance<LinkItem>().map { it.target }
+
+    @Test
+    fun `the root page keeps its groups and links to pages that exist`() {
+        val root = pages.getValue(SettingsPageId.Root).drawn { it in pages }
+        assertEquals(
+            listOf(null, Strings.playbackSection, Strings.settingsGroupHome, Strings.settingsGroupDevice, Strings.settingsGroupAdvanced),
+            root.sections.map { it.title },
+        )
+        assertTrue(links(root).all { it in pages })
+        assertTrue(SettingsPageId.Subtitles in links(root))
+    }
+
+    @Test
+    fun `a link to a missing page is hidden and an emptied group goes with it`() {
+        val root = pages.getValue(SettingsPageId.Root)
+        val drawn = root.drawn { false }
+        assertTrue(links(drawn).isEmpty())
+        assertTrue(drawn.sections.all { it.items.isNotEmpty() })
+    }
+
+    @Test
+    fun `without a profile the profile links are hidden`() {
+        val root = settingsPages(SettingsValues(hasProfile = false)).getValue(SettingsPageId.Root).drawn { true }
+        assertTrue(links(root).isEmpty())
+    }
+
+    @Test
+    fun `row ids differ for the same key on two pages`() {
+        val root = pages.getValue(SettingsPageId.Root).sections.flatMap { it.items }
+        val skipping = pages.getValue(SettingsPageId.Skipping).sections.flatMap { it.items }
+        val a = root.first { it.key == SettingKey.BufferAhead }
+        val b = skipping.first { it.key == SettingKey.BufferAhead }
+        assertNotEquals(rowId(SettingsPageId.Root, a), rowId(SettingsPageId.Skipping, b))
+    }
+
+    @Test
+    fun `a choice names the option in use`() {
+        val item = ChoiceItem(SettingKey.Quality, "Quality", value = 2, options = listOf(SettingOption(1, "One"), SettingOption(2, "Two")))
+        assertEquals("Two", item.valueLabel())
+        assertEquals(null, item.copy(value = 9).valueLabel())
+    }
+
+    @Test
+    fun `the subtitle preview follows the page's own rows`() {
+        val page = settingsPages(SettingsValues(hasProfile = true, captionsFollowSystem = false, subtitleSize = 3, subtitleBackground = 2)).getValue(SettingsPageId.Subtitles)
+        val style = page.subtitlePreviewStyle()
+        assertEquals(false, style.followSystem)
+        assertEquals(0.09f, style.sizeFraction)
+    }
+
+    @Test
+    fun `the Quality page is one titled section with its options inline and the footer`() {
+        val page = pages.getValue(SettingsPageId.Quality).visibleOnly()
+        val section = page.sections.single()
+        assertEquals(Strings.qualityGroup, section.title)
+        assertEquals(Strings.qualityFooter, section.footer)
+        val choice = section.items.single() as ChoiceItem
+        val checklist = choice.checklist()
+        assertEquals(choice.options, checklist.map { it.first })
+        assertEquals(1, checklist.count { it.second })
+        assertEquals(choice.value, checklist.single { it.second }.first.value)
+    }
+
+    @Test
+    fun `the checked option follows the chosen value`() {
+        val page = settingsPages(SettingsValues(hasProfile = true, maxStreamingBitrate = ProfileSettings.QUALITY_CHOICES.last())).getValue(SettingsPageId.Quality)
+        val checked = (page.sections.single().items.single() as ChoiceItem).checklist().single { it.second }
+        assertEquals(ProfileSettings.QUALITY_CHOICES.last(), checked.first.value)
+    }
+
+    @Test
+    fun `the subtitle preview is a section of its own above the toggle`() {
+        val page = pages.getValue(SettingsPageId.Subtitles).visibleOnly()
+        assertEquals(listOf(SettingKey.SubtitlePreview), page.sections[0].items.map { it.key })
+        assertEquals(SettingKey.CaptionsFollowSystem, page.sections[1].items.first().key)
+    }
+
+    @Test
+    fun `an unknown route id opens the root page`() {
+        assertEquals(SettingsPageId.Root, pageIdOrRoot("Nope"))
+        assertEquals(SettingsPageId.Skipping, pageIdOrRoot("Skipping"))
+    }
+}

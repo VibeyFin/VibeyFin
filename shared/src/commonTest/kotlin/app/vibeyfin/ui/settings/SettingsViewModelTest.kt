@@ -456,6 +456,15 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `the subtitle preview is a section of its own before the toggle`() = runTest {
+        app.signedIn()
+        val page = viewModel().uiState.first { it.hasProfile }.page(SettingsPageId.Subtitles).visibleOnly()
+        assertEquals(listOf(SettingKey.SubtitlePreview), page.sections[0].items.map { it.key })
+        assertEquals(null, page.sections[0].title)
+        assertEquals(SettingKey.CaptionsFollowSystem, page.sections[1].items.first().key)
+    }
+
+    @Test
     fun `choosing size, colour and background is stored and reset restores the defaults`() = runTest {
         app.signedIn()
         val viewModel = viewModel()

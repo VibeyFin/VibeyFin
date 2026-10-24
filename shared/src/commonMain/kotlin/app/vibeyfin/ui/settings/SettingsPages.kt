@@ -255,11 +255,18 @@ fun subtitlesPage(v: SettingsValues): SettingsPage {
         SettingsPageId.Subtitles,
         Strings.subtitlesTitle,
         listOf(
+            // The preview is a card of its own above the groups, not a row of the toggle's card.
+            SettingsSection(
+                title = null,
+                footer = null,
+                items = listOf(
+                    CustomItem(SettingKey.SubtitlePreview, Strings.subtitlePreviewSample, kind = CustomKind.SubtitlePreview, visible = profile),
+                ),
+            ),
             SettingsSection(
                 title = null,
                 footer = Strings.captionsFollowSystemFooter,
                 items = listOf(
-                    CustomItem(SettingKey.SubtitlePreview, Strings.subtitlePreviewSample, kind = CustomKind.SubtitlePreview, visible = profile),
                     ToggleItem(
                         SettingKey.CaptionsFollowSystem, Strings.captionsFollowSystemTitle, Strings.captionsFollowSystemHelp,
                         checked = v.captionsFollowSystem, visible = profile,

@@ -58,6 +58,8 @@ import app.vibeyfin.app.whoswatching.WhoIsWatchingRoute
 import app.vibeyfin.domain.StartDestination
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.home.HomeExit
+import app.vibeyfin.app.settings.pageIdOrRoot
+import app.vibeyfin.ui.settings.SettingsPageId
 
 private const val SLIDE_MS = 180
 
@@ -276,7 +278,22 @@ fun VibeyFinNavHost() {
                 )
             }
             composable<Settings> {
-                SettingsRoute(onBack = { navController.popBackStack() })
+                SettingsRoute(
+                    pageId = SettingsPageId.Root,
+                    onOpen = { navController.navigate(SettingsPageRoute(it.name)) },
+                    onExit = leave,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable<SettingsPageRoute> { entry ->
+                // An id this build does not know opens the root page instead of crashing.
+                val id = pageIdOrRoot(entry.toRoute<SettingsPageRoute>().id)
+                SettingsRoute(
+                    pageId = id,
+                    onOpen = { navController.navigate(SettingsPageRoute(it.name)) },
+                    onExit = leave,
+                    onBack = { navController.popBackStack() },
+                )
             }
             composable<AddServer> { entry ->
                 AddServerRoute(
