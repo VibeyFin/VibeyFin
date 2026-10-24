@@ -38,5 +38,8 @@ fun appModule() = module {
     viewModel { params -> ItemViewModel(params.get(), get(), get(), get(), get()) }
     viewModel { params -> PlaybackViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get(), startOver = params.getOrNull() ?: false) }
     viewModelOf(::StartupViewModel)
-    viewModel { SettingsViewModel(get(), get(), get(), get(), get(ApplicationScope), get<DeviceInfo>().appVersion) }
+    viewModel {
+        val device = get<DeviceInfo>()
+        SettingsViewModel(get(), get(), get(), get(), get(ApplicationScope), device.appVersion, device.subtitleStyleApplies)
+    }
 }

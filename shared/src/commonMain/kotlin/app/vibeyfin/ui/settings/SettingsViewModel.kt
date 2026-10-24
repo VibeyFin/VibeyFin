@@ -45,6 +45,7 @@ class SettingsViewModel(
     private val servers: ServerRepository,
     private val applicationScope: CoroutineScope,
     private val appVersion: String = "",
+    private val subtitleStyleApplies: Boolean = true,
 ) : ViewModel() {
     private val confirmSignOut = MutableStateFlow(false)
 
@@ -78,6 +79,7 @@ class SettingsViewModel(
         val values = SettingsValues(
             alwaysAskWhoIsWatching = v[0] as Boolean,
             appVersion = appVersion,
+            subtitleStyleApplies = subtitleStyleApplies,
             hasProfile = showStats != null || threshold != null,
             showPlaybackStats = showStats ?: defaults.showPlaybackStats,
             bingeThreshold = threshold ?: defaults.bingeThreshold,

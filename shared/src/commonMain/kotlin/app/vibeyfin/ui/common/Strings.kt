@@ -586,6 +586,7 @@ object Strings {
     val captionsFollowSystemHelp = "Follows the OS caption settings."
     val captionsFollowSystemFooter = "Turn off to set your own below."
     val subtitleStyleGroup = "Style"
+    val subtitleStyleIosNote = "Applies to text subtitles only; iOS burns subtitles in for now"
     val subtitleSizeTitle = "Size"
     val subtitleSizeSmall = "S"
     val subtitleSizeMedium = "M"

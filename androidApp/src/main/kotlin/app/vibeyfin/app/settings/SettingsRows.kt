@@ -40,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.graphics.Brush
@@ -66,6 +67,11 @@ import app.vibeyfin.ui.settings.LinkItem
 import app.vibeyfin.ui.settings.SettingKey
 import app.vibeyfin.ui.settings.SettingOption
 import app.vibeyfin.ui.settings.ToggleItem
+
+/** How dim a row is drawn when its item is disabled. */
+private const val DISABLED_ALPHA = 0.38f
+
+private fun Modifier.dimmedUnless(enabled: Boolean) = if (enabled) this else alpha(DISABLED_ALPHA)
 
 private val RowShape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md)
 
@@ -143,7 +149,7 @@ private fun iconFor(key: SettingKey): ImageVector = when (key) {
 fun ToggleRow(item: ToggleItem, onToggle: (Boolean) -> Unit) {
     RowFrame(
         // The whole row toggles, not just the switch, so the label is a target too.
-        modifier = Modifier.toggleable(value = item.checked, role = Role.Switch, onValueChange = onToggle),
+        modifier = Modifier.dimmedUnless(item.enabled).toggleable(value = item.checked, enabled = item.enabled, role = Role.Switch, onValueChange = onToggle),
     ) {
         RowText(item.title, item.help, Modifier.weight(1f))
         // Aqua is for the one primary action, so the switch is light on dark instead.
@@ -165,7 +171,7 @@ fun ToggleRow(item: ToggleItem, onToggle: (Boolean) -> Unit) {
 @Composable
 fun ChoiceRow(item: ChoiceItem, onChoose: (Int) -> Unit) {
     var open by remember { mutableStateOf(false) }
-    RowFrame(modifier = Modifier.clickable(role = Role.DropdownList) { open = true }) {
+    RowFrame(modifier = Modifier.dimmedUnless(item.enabled).clickable(enabled = item.enabled, role = Role.DropdownList) { open = true }) {
         RowText(item.title, item.help, Modifier.weight(1f))
         // The menu hangs from the value on the right, where the eye is, not from the row's left edge.
         Box {
@@ -235,7 +241,7 @@ fun LinkRow(item: LinkItem, selected: Boolean? = null, onOpen: () -> Unit) {
 
 @Composable
 fun ActionRow(item: ActionItem, onClick: () -> Unit) {
-    RowFrame(modifier = Modifier.clickable(role = Role.Button, onClick = onClick)) {
+    RowFrame(modifier = Modifier.dimmedUnless(item.enabled).clickable(enabled = item.enabled, role = Role.Button, onClick = onClick)) {
         // Destructive reads in the danger colour, and the word says what it does.
         RowText(
             item.title, item.help, Modifier.weight(1f),

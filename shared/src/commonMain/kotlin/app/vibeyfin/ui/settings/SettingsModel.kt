@@ -39,6 +39,9 @@ sealed interface SettingItem {
     val title: String
     val help: String?
     val visible: Boolean
+
+    /** False draws the row dimmed and inert; it still shows its value. */
+    val enabled: Boolean
 }
 
 data class ToggleItem(
@@ -47,6 +50,7 @@ data class ToggleItem(
     override val help: String? = null,
     val checked: Boolean,
     override val visible: Boolean = true,
+    override val enabled: Boolean = true,
 ) : SettingItem
 
 data class ChoiceItem(
@@ -58,6 +62,7 @@ data class ChoiceItem(
     /** Draw as a checklist page instead of a menu; for choices whose options need their own explanation. */
     val asPage: Boolean = false,
     override val visible: Boolean = true,
+    override val enabled: Boolean = true,
 ) : SettingItem
 
 data class LinkItem(
@@ -67,6 +72,7 @@ data class LinkItem(
     val target: SettingsPageId,
     val value: String? = null,
     override val visible: Boolean = true,
+    override val enabled: Boolean = true,
 ) : SettingItem
 
 data class ActionItem(
@@ -75,6 +81,7 @@ data class ActionItem(
     override val help: String? = null,
     val destructive: Boolean = false,
     override val visible: Boolean = true,
+    override val enabled: Boolean = true,
 ) : SettingItem
 
 data class InfoItem(
@@ -83,6 +90,7 @@ data class InfoItem(
     override val help: String? = null,
     val value: String,
     override val visible: Boolean = true,
+    override val enabled: Boolean = true,
 ) : SettingItem
 
 data class CustomItem(
@@ -91,4 +99,5 @@ data class CustomItem(
     override val help: String? = null,
     val kind: CustomKind,
     override val visible: Boolean = true,
+    override val enabled: Boolean = true,
 ) : SettingItem

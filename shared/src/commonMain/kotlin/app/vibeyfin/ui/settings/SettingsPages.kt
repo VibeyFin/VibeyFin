@@ -11,6 +11,8 @@ import app.vibeyfin.ui.common.Strings
 data class SettingsValues(
     val alwaysAskWhoIsWatching: Boolean = false,
     val appVersion: String = "",
+    /** False where subtitles are burned into the picture (iOS), so the style cannot apply. */
+    val subtitleStyleApplies: Boolean = true,
     val hasProfile: Boolean = false,
     val showPlaybackStats: Boolean = false,
     val bingeThreshold: Int = ProfileSettings.DEFAULT_BINGE_THRESHOLD,
@@ -246,7 +248,9 @@ fun skippingPage(v: SettingsValues): SettingsPage {
 
 fun subtitlesPage(v: SettingsValues): SettingsPage {
     val profile = v.hasProfile
-    val custom = profile && !v.captionsFollowSystem
+    val applies = v.subtitleStyleApplies
+    // Where the style cannot apply the rows stay visible, dimmed, so the page says why instead of hiding it.
+    val custom = profile && (!v.captionsFollowSystem || !applies)
     return SettingsPage(
         SettingsPageId.Subtitles,
         Strings.subtitlesTitle,
@@ -265,13 +269,13 @@ fun subtitlesPage(v: SettingsValues): SettingsPage {
                 items = listOf(
                     ToggleItem(
                         SettingKey.CaptionsFollowSystem, Strings.captionsFollowSystemTitle, Strings.captionsFollowSystemHelp,
-                        checked = v.captionsFollowSystem, visible = profile,
+                        checked = v.captionsFollowSystem, visible = profile, enabled = applies,
                     ),
                 ),
             ),
             SettingsSection(
                 Strings.subtitleStyleGroup,
-                footer = null,
+                footer = if (applies) null else Strings.subtitleStyleIosNote,
                 items = listOf(
                     ChoiceItem(
                         SettingKey.SubtitleSize, Strings.subtitleSizeTitle, value = v.subtitleSize,
@@ -279,7 +283,7 @@ fun subtitlesPage(v: SettingsValues): SettingsPage {
                             ProfileSettings.SUBTITLE_SIZE_CHOICES,
                             Strings.subtitleSizeSmall, Strings.subtitleSizeMedium, Strings.subtitleSizeLarge, Strings.subtitleSizeExtraLarge,
                         ),
-                        visible = custom,
+                        visible = custom, enabled = applies,
                     ),
                     ChoiceItem(
                         SettingKey.SubtitleColor, Strings.subtitleColorTitle, value = v.subtitleTextColor,
@@ -287,7 +291,7 @@ fun subtitlesPage(v: SettingsValues): SettingsPage {
                             ProfileSettings.SUBTITLE_COLOR_CHOICES,
                             Strings.subtitleColorWhite, Strings.subtitleColorYellow, Strings.subtitleColorLightBlue,
                         ),
-                        visible = custom,
+                        visible = custom, enabled = applies,
                     ),
                     ChoiceItem(
                         SettingKey.SubtitleBackground, Strings.subtitleBackgroundTitle, value = v.subtitleBackground,
@@ -295,14 +299,14 @@ fun subtitlesPage(v: SettingsValues): SettingsPage {
                             ProfileSettings.SUBTITLE_BACKGROUND_CHOICES,
                             Strings.subtitleBackgroundNone, Strings.subtitleBackgroundShadow, Strings.subtitleBackgroundBox,
                         ),
-                        visible = custom,
+                        visible = custom, enabled = applies,
                     ),
                 ),
             ),
             SettingsSection(
                 title = null,
                 footer = null,
-                items = listOf(ActionItem(SettingKey.ResetSubtitles, Strings.subtitleReset, visible = custom)),
+                items = listOf(ActionItem(SettingKey.ResetSubtitles, Strings.subtitleReset, visible = custom, enabled = applies)),
             ),
         ),
     )

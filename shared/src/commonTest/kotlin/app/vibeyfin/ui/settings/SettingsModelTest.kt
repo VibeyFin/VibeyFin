@@ -53,4 +53,26 @@ class SettingsModelTest {
             assertTrue(rest.none { it.first().isUpperCase() }, "not sentence case: $title")
         }
     }
+
+    private val styleKeys = setOf(
+        SettingKey.CaptionsFollowSystem, SettingKey.SubtitleSize, SettingKey.SubtitleColor,
+        SettingKey.SubtitleBackground, SettingKey.ResetSubtitles,
+    )
+
+    @Test
+    fun `where the style cannot apply the subtitle controls show disabled with a note`() {
+        val page = subtitlesPage(SettingsValues(hasProfile = true, subtitleStyleApplies = false)).visibleOnly()
+        val items = page.sections.flatMap { it.items }
+        assertEquals(styleKeys, items.filter { it.key in styleKeys }.map { it.key }.toSet())
+        assertTrue(items.filter { it.key in styleKeys }.none { it.enabled })
+        assertTrue(items.first { it.key == SettingKey.SubtitlePreview }.enabled)
+        assertEquals(Strings.subtitleStyleIosNote, page.sections.first { s -> s.items.any { it.key == SettingKey.SubtitleSize } }.footer)
+    }
+
+    @Test
+    fun `where the style applies nothing on the subtitles page is disabled and there is no note`() {
+        val page = subtitlesPage(SettingsValues(hasProfile = true, captionsFollowSystem = false)).visibleOnly()
+        assertTrue(page.sections.flatMap { it.items }.all { it.enabled })
+        assertTrue(page.sections.none { it.footer == Strings.subtitleStyleIosNote })
+    }
 }
