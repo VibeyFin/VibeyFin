@@ -62,6 +62,7 @@ when they are.
 | `shared/` | The Kotlin Multiplatform library: API client, storage, repositories, connection and session handling, and the ViewModels with their UI state. Logic only, no UI toolkit. |
 | `androidMobileApp/` | The Android phone and tablet app: Compose screens, navigation, theme, Activity and manifest. |
 | `androidDesign/` | Design tokens, brand typeface and Compose stability config shared by both Android apps. |
+| `androidTvApp/` | The Android TV app (spike): Compose for TV screens for the remote. |
 | `iosApp/` | The iOS app: SwiftUI screens, reading shared state through the Kotlin facades in `shared/src/iosMain`. |
 | `docs/` | The [roadmap](docs/ROADMAP.md), the [design system](docs/design/brand.md) and the [test server](docs/test-server.md). |
 | `scripts/` | Design drift and title-case checks, and a disposable local Jellyfin for testing (`scripts/test-server/`). |

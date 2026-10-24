@@ -16,6 +16,9 @@ The app should become very configurable over time, so settings live per profile 
 - `androidDesign/`: Android library both Android apps use, and nothing else: `VibeyFinTokens` (checked against
   `design/tokens.json` by `DesignTokensTest`), the `BrandDisplay` face and `compose_stability.conf`. Package
   `app.vibeyfin.design`. No screens and no theme: each app builds its own from these values.
+- `androidTvApp/`: the Android TV app (spike): Compose for TV (`androidx.tv:tv-material`) screens driven by
+  the same shared ViewModels, package `app.vibeyfin.tv`, same `applicationId` as the phone app (one Play listing).
+  It reuses the phone app's launcher icon and window theme resources. Judge smoothness with `:androidTvApp:installBenchmark`.
 - `iosApp/`: the native iOS app in SwiftUI (Xcode project with synchronized folders). It reads
   shared state through the facades in `shared/src/iosMain/.../ios`.
   Swift files sit in feature folders under `iosApp/iosApp/` (`App`, `Home`, `Item`, `Library`, `Player`,

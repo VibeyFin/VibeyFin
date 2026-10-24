@@ -33,4 +33,5 @@ dependencyResolutionManagement {
 include(":shared")
 include(":androidDesign")
 include(":androidMobileApp")
+include(":androidTvApp")
 include(":benchmark")
