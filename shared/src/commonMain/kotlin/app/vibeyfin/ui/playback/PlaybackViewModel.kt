@@ -162,6 +162,14 @@ data class PlaybackUiState(
     val showDiagnostics: Boolean = false,
     /** Seconds of video the player should load ahead; 0 is Auto, the platform player's own choice. */
     val bufferAheadSeconds: Int = ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
+    /** Subtitles use the platform's caption style, so the four values below are ignored. */
+    val captionsFollowSystem: Boolean = true,
+    /** Subtitle size: 0 small, 1 medium, 2 large, 3 extra large. */
+    val subtitleSize: Int = 1,
+    /** Subtitle text colour: 0 white, 1 yellow, 2 light blue. */
+    val subtitleTextColor: Int = 0,
+    /** Subtitle background: 0 none, 1 shadow, 2 box. */
+    val subtitleBackground: Int = 1,
     /** Set while an intro, recap or the like is playing; stays for the whole segment. */
     val skipOffer: SkipOffer? = null,
     /** Where the player should seek to now (set by `onSkip`); it clears this with `onSeekHandled`. */
@@ -242,16 +250,29 @@ class PlaybackViewModel(
 ) : ViewModel() {
     private val content = MutableStateFlow(PlaybackUiState())
 
+    /** The four subtitle style settings, in the order of the [PlaybackUiState] fields. */
+    private val subtitleStyle = combine(
+        profileSettings.captionsFollowSystem,
+        profileSettings.subtitleSize,
+        profileSettings.subtitleTextColor,
+        profileSettings.subtitleBackground,
+    ) { follow, size, color, background -> listOf(follow, size, color, background) }
+
     val uiState: StateFlow<PlaybackUiState> = combine(
         content,
         connection.sessionEnded(),
         profileSettings.showPlaybackStats,
         profileSettings.bufferAheadSeconds,
-    ) { content, exit, showStats, bufferAhead ->
+        subtitleStyle,
+    ) { content, exit, showStats, bufferAhead, subtitle ->
         content.copy(
             exit = exit,
             showDiagnostics = showStats ?: false,
             bufferAheadSeconds = bufferAhead ?: ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
+            captionsFollowSystem = subtitle[0] as Boolean? ?: true,
+            subtitleSize = subtitle[1] as Int? ?: 1,
+            subtitleTextColor = subtitle[2] as Int? ?: 0,
+            subtitleBackground = subtitle[3] as Int? ?: 1,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlaybackUiState())
 

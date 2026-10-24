@@ -148,6 +148,14 @@ fun PlayerRoute(
     var streamSeen by remember { mutableStateOf(false) }
     if (state.stream != null) streamSeen = true
     if (!streamSeen) bufferAheadSeconds = state.bufferAheadSeconds
+    val subtitleStyle = remember(
+        state.captionsFollowSystem,
+        state.subtitleSize,
+        state.subtitleTextColor,
+        state.subtitleBackground,
+    ) {
+        subtitleStyle(state.captionsFollowSystem, state.subtitleSize, state.subtitleTextColor, state.subtitleBackground)
+    }
     val player = remember(bufferAheadSeconds) { buildPlayer(context, http, bufferAheadSeconds) }
 
     val stillWatchingNow by rememberUpdatedState(state.stillWatching)
@@ -405,7 +413,10 @@ fun PlayerRoute(
                             it.setKeepContentOnPlayerReset(true)
                         }
                     },
-                    update = { it.visibility = if (leaving && surface) View.INVISIBLE else View.VISIBLE },
+                    update = {
+                        it.visibility = if (leaving && surface) View.INVISIBLE else View.VISIBLE
+                        it.subtitleView?.apply(subtitleStyle)
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
             }

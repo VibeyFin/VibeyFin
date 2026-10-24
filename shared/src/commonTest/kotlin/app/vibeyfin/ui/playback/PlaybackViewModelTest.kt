@@ -191,6 +191,24 @@ class PlaybackViewModelTest {
     }
 
     @Test
+    fun `subtitle style follows the profile settings`() = runTest {
+        server()
+        val viewModel = viewModel()
+        val initial = viewModel.uiState.first { it.stream != null }
+        assertEquals(true, initial.captionsFollowSystem)
+        assertEquals(1, initial.subtitleSize)
+        assertEquals(0, initial.subtitleTextColor)
+        assertEquals(1, initial.subtitleBackground)
+
+        app.profileSettings.setCaptionsFollowSystem(false)
+        app.profileSettings.setSubtitleSize(3)
+        app.profileSettings.setSubtitleTextColor(2)
+        app.profileSettings.setSubtitleBackground(2)
+        val changed = viewModel.uiState.first { it.subtitleSize == 3 && it.subtitleTextColor == 2 && it.subtitleBackground == 2 }
+        assertEquals(false, changed.captionsFollowSystem)
+    }
+
+    @Test
     fun `missing values stay null`() = runTest {
         server()
 
