@@ -47,7 +47,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SettingsRoute(onBack: () -> Unit, viewModel: SettingsViewModel = koinViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    SettingsScreen(state, onBack, viewModel::onAlwaysAskChanged, viewModel::onShowPlaybackStatsChanged, viewModel::onBingeThresholdChanged, viewModel::onHomeGenreRowsChanged, viewModel::onShowHomeHeroChanged, viewModel::onSkipBackChanged, viewModel::onSkipForwardChanged, viewModel::onAutoSkipChanged)
+    SettingsScreen(state, onBack, viewModel::onAlwaysAskChanged, viewModel::onShowPlaybackStatsChanged, viewModel::onBingeThresholdChanged, viewModel::onHomeGenreRowsChanged, viewModel::onShowHomeHeroChanged, viewModel::onSkipBackChanged, viewModel::onSkipForwardChanged, viewModel::onAutoSkipChanged, viewModel::onBufferAheadChanged)
 }
 
 @Composable
@@ -62,6 +62,7 @@ fun SettingsScreen(
     onSkipBackChanged: (Int) -> Unit = {},
     onSkipForwardChanged: (Int) -> Unit = {},
     onAutoSkipChanged: (Boolean) -> Unit = {},
+    onBufferAheadChanged: (Int) -> Unit = {},
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
@@ -148,6 +149,15 @@ fun SettingsScreen(
                         help = Strings.autoSkipSegmentsHelp,
                         checked = state.autoSkipSegments,
                         onCheckedChange = onAutoSkipChanged,
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    ChoiceRow(
+                        title = Strings.bufferAhead,
+                        help = Strings.bufferAheadHelp,
+                        value = state.bufferAheadSeconds,
+                        choices = ProfileSettings.BUFFER_AHEAD_CHOICES,
+                        label = Strings::bufferAheadChoice,
+                        onChange = onBufferAheadChanged,
                     )
                 }
             }

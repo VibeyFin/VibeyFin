@@ -69,6 +69,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DecoderReuseEvaluation
 import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.analytics.AnalyticsListener
@@ -107,6 +108,9 @@ private val STATS_TOP_INSET = 72.dp
 private val SKIP_LIFT_WITH_CONTROLS = 80.dp
 
 private const val TIMING_TAG = "VibeyFinTiming"
+/** How much must be buffered before playback starts, and before it carries on after running dry. */
+private const val PLAYBACK_START_BUFFER_MS = 2_500
+private const val PLAYBACK_RESTART_BUFFER_MS = 5_000
 private const val HDR_TAG = "VibeyFinHdr"
 
 @Composable
@@ -136,13 +140,22 @@ fun PlayerRoute(
 
     val context = LocalContext.current
     val http = remember { DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true).setConnectTimeoutMs(CONNECT_TIMEOUT_MS) }
-    val player = remember { buildPlayer(context, http) }
+    // The buffer length is fixed when the player is built, so the profile's value must be known by then. The state starts
+    // with the default and gets the saved value a moment later, before any stream arrives; until the first stream is
+    // there the player follows it (nothing is loaded yet, so a rebuild costs nothing), after that it stays as built.
+    // A changed setting therefore applies from the next video.
+    var bufferAheadSeconds by remember { mutableIntStateOf(state.bufferAheadSeconds) }
+    var streamSeen by remember { mutableStateOf(false) }
+    if (state.stream != null) streamSeen = true
+    if (!streamSeen) bufferAheadSeconds = state.bufferAheadSeconds
+    val player = remember(bufferAheadSeconds) { buildPlayer(context, http, bufferAheadSeconds) }
 
     val stillWatchingNow by rememberUpdatedState(state.stillWatching)
     var playing by remember { mutableStateOf(true) }
     var buffering by remember { mutableStateOf(true) }
     var positionMs by remember { mutableLongStateOf(0L) }
     var durationMs by remember { mutableLongStateOf(0L) }
+    var bufferedMs by remember { mutableLongStateOf(0L) }
     // Whether there is something to seek in: skip buttons and double-taps do nothing while loading, buffering or showing an error.
     // Read by the gesture handler too, which is set up once, so it must see the current value.
     val playable by rememberUpdatedState(state.stream != null && state.message == null && !state.loading && !buffering)
@@ -291,6 +304,7 @@ fun PlayerRoute(
     LaunchedEffect(player) {
         while (isActive) {
             positionMs = player.currentPosition
+            bufferedMs = player.bufferedPosition
             if (player.duration != C.TIME_UNSET) durationMs = player.duration
             if (player.isPlaying || player.playbackState == Player.STATE_READY) viewModel.onPosition(positionMs)
             stats.publish()
@@ -443,6 +457,7 @@ fun PlayerRoute(
                     title = state.title,
                     subtitle = state.subtitle,
                     positionMs = positionMs,
+                    bufferedMs = bufferedMs,
                     durationMs = durationMs,
                     playing = playing,
                     hasTrackChoices = state.hasTrackChoices && state.message == null,
@@ -639,8 +654,19 @@ private fun renderersFactory(context: Context) =
     DefaultRenderersFactory(context).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
 
 @androidx.annotation.OptIn(UnstableApi::class)
-private fun buildPlayer(context: Context, http: DefaultHttpDataSource.Factory): ExoPlayer =
+private fun buildPlayer(context: Context, http: DefaultHttpDataSource.Factory, bufferAheadSeconds: Int): ExoPlayer =
     ExoPlayer.Builder(context, renderersFactory(context))
+        .apply {
+            // 0 is Auto: ExoPlayer's own load control. Otherwise it keeps this many seconds ahead of the position.
+            if (bufferAheadSeconds > 0) {
+                val ms = bufferAheadSeconds * 1000
+                setLoadControl(
+                    DefaultLoadControl.Builder()
+                        .setBufferDurationsMs(ms, ms, PLAYBACK_START_BUFFER_MS, PLAYBACK_RESTART_BUFFER_MS)
+                        .build(),
+                )
+            }
+        }
         .setMediaSourceFactory(DefaultMediaSourceFactory(http))
         .setAudioAttributes(
             AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
