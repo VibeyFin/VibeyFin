@@ -105,14 +105,6 @@ class SettingsMappingTest {
     }
 
     @Test
-    fun `the selected page falls back to the first settable one when the saved id is not drawn`() {
-        assertEquals(SettingsPageId.Quality, selectedPage(SettingsPageId.KidsAndPin, pages))
-        assertEquals(SettingsPageId.Quality, selectedPage(null, pages))
-        assertEquals(SettingsPageId.Quality, selectedPage(SettingsPageId.Root, pages))
-        assertEquals(SettingsPageId.Subtitles, selectedPage(SettingsPageId.Subtitles, pages))
-    }
-
-    @Test
     fun `when two link rows target one page only the tapped one is selected`() {
         fun link(key: SettingKey) = LinkItem(key, key.name, target = SettingsPageId.Skipping)
         val custom = mapOf(

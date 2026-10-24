@@ -1,25 +1,12 @@
 package app.vibeyfin.ui.settings
 
+import androidx.lifecycle.viewModelScope
+import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.ViewModelTracker
-import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.ui.common.Strings
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -27,6 +14,19 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
@@ -337,7 +337,7 @@ class SettingsViewModelTest {
 
     @Test
     fun `the profile page shows the server name and addresses`() = runTest {
-        val server = app.signedIn()
+        app.signedIn()
         app.servers.save("srv-1", "Home", "10.10.7", "http://nas:8096", listOf("http://192.168.1.20:8096"))
         val state = viewModel().uiState.first { it.hasProfile && it.items(SettingsPageId.Profile).any { i -> i.key == SettingKey.ServerAlsoAt } }
 
@@ -424,6 +424,19 @@ class SettingsViewModelTest {
         assertFalse(viewModel.uiState.first { !it.confirmSignOut }.confirmSignOut)
         assertTrue(app.connection.state.value is ConnectionState.Connected)
         assertEquals(0, app.jellyfin.requestsTo("POST", "/Sessions/Logout").size)
+    }
+
+    @Test
+    fun `the sign-out confirmation closes when the connection drops`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hasProfile }
+        viewModel.onAction(SettingKey.SignOut)
+        viewModel.uiState.first { it.confirmSignOut }
+
+        app.connection.switchProfile()
+
+        assertFalse(viewModel.uiState.first { !it.confirmSignOut }.confirmSignOut)
     }
 
     @Test

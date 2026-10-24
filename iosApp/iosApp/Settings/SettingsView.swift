@@ -72,7 +72,7 @@ struct SettingsPageView: View {
         let items = model.items(of: section)
         if !items.isEmpty {
             Section {
-                // Keyed by page and setting: Buffer ahead is on the root and on Skipping.
+                // Keyed by page and setting, so a setting that ever sits on two pages stays distinct.
                 ForEach(items, id: \.key) { item in
                     SettingsItemRow(item: item, page: page, model: model, selection: selection, onAction: perform)
                 }

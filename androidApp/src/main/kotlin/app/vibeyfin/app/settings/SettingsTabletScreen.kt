@@ -82,6 +82,7 @@ fun SettingsTabletScreen(
                         key(detail.id) {
                             SettingsPageBody(
                                 detail, hasPage, Modifier.widthIn(max = DetailMaxWidth).fillMaxWidth().padding(horizontal = margin),
+                                // A link on a non-root page would need handling here if one is ever added.
                                 selectedLink = null, onToggle, onChoose, onAction, onOpen = {},
                             )
                         }

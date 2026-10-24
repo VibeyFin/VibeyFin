@@ -20,8 +20,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -177,8 +177,8 @@ internal fun SettingsPageBody(
             } else {
                 SectionCard {
                     section.items.forEach { item ->
-                        // Keyed by page and key: a key can sit on two pages, such as Buffer ahead.
-                        key(rowId(page.id, item)) { ItemRow(page, item, selectedLink, onToggle, onChoose, onAction, onOpen) }
+                        // Keyed by page and key, so a key that ever sits on two pages stays distinct.
+                        key(rowId(page.id, item)) { ItemRow(item, selectedLink, onToggle, onChoose, onAction, onOpen) }
                     }
                 }
             }
@@ -190,7 +190,6 @@ internal fun SettingsPageBody(
 
 @Composable
 private fun ItemRow(
-    page: SettingsPage,
     item: SettingItem,
     selectedLink: SettingKey?,
     onToggle: (SettingKey, Boolean) -> Unit,
@@ -211,8 +210,8 @@ private fun ItemRow(
         is InfoItem -> InfoRow(item)
         is CustomItem -> when (item.kind) {
             CustomKind.ProfileHeader -> ProfileHeaderRow(item.title, item.help)
-            // A preview that is not alone in its section sits in the card as a row.
-            CustomKind.SubtitlePreview -> SubtitlePreviewCard(item.title, page.subtitlePreviewStyle())
+            // The shared builder gives the preview a section of its own (drawn above), so no row; listed to keep the when exhaustive.
+            CustomKind.SubtitlePreview -> Unit
             // The PIN dots belong to the PIN screens, which are not in the tree yet.
             CustomKind.PinDots -> Unit
         }

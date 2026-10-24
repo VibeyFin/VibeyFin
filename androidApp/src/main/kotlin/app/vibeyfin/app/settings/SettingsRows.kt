@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -42,12 +43,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.layout.height
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -250,17 +250,32 @@ fun ActionRow(item: ActionItem, onClick: () -> Unit) {
     }
 }
 
+/** A value longer than this is drawn under its title, where it has the whole row to wrap in. */
+private const val INLINE_VALUE_MAX = 16
+
 @Composable
 fun InfoRow(item: InfoItem) {
-    RowFrame {
-        RowText(item.title, item.help, Modifier.weight(1f))
+    val value = @Composable { modifier: Modifier, align: TextAlign ->
         Text(
             item.value,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.End,
-            modifier = Modifier.weight(1f, fill = false),
+            textAlign = align,
+            modifier = modifier,
         )
+    }
+    if (item.value.length > INLINE_VALUE_MAX) {
+        RowFrame {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1 / 2)) {
+                RowText(item.title, item.help)
+                value(Modifier, TextAlign.Start)
+            }
+        }
+    } else {
+        RowFrame {
+            RowText(item.title, item.help, Modifier.weight(1f))
+            value(Modifier.weight(1f, fill = false), TextAlign.End)
+        }
     }
 }
 

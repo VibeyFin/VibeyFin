@@ -39,6 +39,13 @@ class SettingsViewModel(
 ) : ViewModel() {
     private val confirmSignOut = MutableStateFlow(false)
 
+    init {
+        // A dialog left open while the connection drops (a revoked token, say) would otherwise wait for a session that is gone.
+        viewModelScope.launch {
+            connection.state.collect { if (it !is ConnectionState.Connected) confirmSignOut.value = false }
+        }
+    }
+
     val uiState: StateFlow<SettingsUiState> = combine<Any?, SettingsUiState>(
         listOf(
             preferences.alwaysAskWhoIsWatching,

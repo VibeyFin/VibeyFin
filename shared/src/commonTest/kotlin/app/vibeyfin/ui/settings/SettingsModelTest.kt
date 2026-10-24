@@ -42,15 +42,33 @@ class SettingsModelTest {
         assertEquals("480p · 1.5 Mbps", Strings.qualityLabel(1_500_000))
         assertEquals("10 s · 10 s · Still watching after 3", Strings.skippingSummary(10, 10, 3))
         val titles = listOf(
-            Strings.playbackSection, Strings.settingsGroupKids, Strings.settingsGroupDevice,
-            Strings.skippingTitle, Strings.qualityTitle, Strings.subtitlesTitle, Strings.kidsPinTitle,
-            Strings.notificationsTitle, Strings.signOut, Strings.switchProfile, Strings.pinAskOpenProfile,
+            Strings.settingsRootTitle, Strings.settingsProfileCardHelp, Strings.settingsGroupHome, Strings.settingsGroupKids,
+            Strings.settingsGroupDevice, Strings.settingsGroupAdvanced, Strings.settingsKidsFooter, Strings.settingsDeviceHelp,
+            Strings.settingsAbout, Strings.playbackSection, Strings.profilePageTitle, Strings.profileAccountGroup,
+            Strings.switchProfileHelp, Strings.profileServerGroup, Strings.profileServerName, Strings.profileServerAddress,
+            Strings.profileServerAlsoAt, Strings.profileServerFooter, Strings.signOut, Strings.signOutFooter,
+            Strings.signOutConfirmTitle, Strings.signOutConfirmMessage, Strings.switchProfile,
+            Strings.qualityTitle, Strings.qualityGroup, Strings.qualityMaximumHelp, Strings.qualityFooter,
+            Strings.skippingTitle, Strings.skippingGroup, Strings.skippingFooter, Strings.autoSkipHelp, Strings.autoplayGroup,
+            Strings.stillWatchingAfterTitle, Strings.stillWatchingAfterHelp, Strings.bufferingGroup,
+            Strings.subtitlesTitle, Strings.captionsFollowSystemTitle, Strings.captionsFollowSystemHelp,
+            Strings.captionsFollowSystemFooter, Strings.subtitleStyleGroup, Strings.subtitleStyleIosNote, Strings.subtitleColorLightBlue,
+            Strings.subtitleReset, Strings.subtitlePreviewSample, Strings.kidsPinTitle, Strings.kidsProfileTitle,
+            Strings.kidsProfileHelp, Strings.pinGroup, Strings.pinHelp, Strings.pinFooter, Strings.pinSet, Strings.pinChange,
+            Strings.pinRemove, Strings.pinAskGroup, Strings.pinAskOpenProfile, Strings.pinAskOpenSettings, Strings.pinAskSwitchProfile,
+            Strings.serverPolicyGroup, Strings.serverPolicyRating, Strings.serverPolicyBlockedTags, Strings.serverPolicyHours,
+            Strings.serverPolicyAnyTime, Strings.serverPolicyFooter, Strings.notificationsTitle, Strings.notificationsToggle,
+            Strings.notificationsWhichGroup,
         )
-        // Sentence case: no word after the first starts with a capital, bar the names the app uses.
-        val names = setOf("Settings", "Jellyfin", "PIN", "VibeyFin", "Mbps", "OS", "Who's", "XL")
+        // Sentence case: a word starts with a capital only at the start of a sentence, or when it is a name the app uses.
+        val names = setOf("Settings", "Jellyfin", "PIN", "VibeyFin", "Mbps", "OS", "Who\u2019s", "Who's", "XL", "Kids", "Skip", "Advanced", "Home")
         for (title in titles) {
-            val rest = title.split(' ').drop(1).filter { it !in names }
-            assertTrue(rest.none { it.first().isUpperCase() }, "not sentence case: $title")
+            val words = title.split(' ')
+            val offenders = words.withIndex().drop(1).filter { (i, word) ->
+                val bare = word.trim('\u201C', '\u201D', '"', '.', '?', ',', ';')
+                bare.isNotEmpty() && bare.first().isUpperCase() && bare !in names && !words[i - 1].endsWith(".") && !words[i - 1].endsWith("?")
+            }
+            assertTrue(offenders.isEmpty(), "not sentence case: $title")
         }
     }
 

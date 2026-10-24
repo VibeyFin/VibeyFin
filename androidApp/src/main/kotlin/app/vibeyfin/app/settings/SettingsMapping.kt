@@ -5,8 +5,8 @@ import app.vibeyfin.app.player.subtitleStyle
 import app.vibeyfin.ui.settings.ChoiceItem
 import app.vibeyfin.ui.settings.LinkItem
 import app.vibeyfin.ui.settings.SettingItem
-import app.vibeyfin.ui.settings.SettingOption
 import app.vibeyfin.ui.settings.SettingKey
+import app.vibeyfin.ui.settings.SettingOption
 import app.vibeyfin.ui.settings.SettingsPage
 import app.vibeyfin.ui.settings.SettingsPageId
 import app.vibeyfin.ui.settings.ToggleItem
@@ -44,14 +44,6 @@ internal fun SettingsPage.subtitlePreviewStyle(): SubtitleViewStyle {
     val follow = (items.firstOrNull { it.key == SettingKey.CaptionsFollowSystem } as? ToggleItem)?.checked ?: true
     return subtitleStyle(follow, choice(SettingKey.SubtitleSize), choice(SettingKey.SubtitleColor), choice(SettingKey.SubtitleBackground))
 }
-
-/**
- * The page the tablet's detail pane shows: the saved one while it is drawn, otherwise the first one with
- * something to set. Root is never a detail page (it is the left pane); null when there is nothing to show.
- */
-internal fun selectedPage(saved: SettingsPageId?, pages: Map<SettingsPageId, SettingsPage>): SettingsPageId? =
-    saved?.takeIf { it != SettingsPageId.Root && pages[it]?.drawn { id -> id in pages }?.sections?.isNotEmpty() == true }
-        ?: firstSettablePage(pages)
 
 /** The root's visible links, in order, to pages the tree has. */
 private fun rootLinks(pages: Map<SettingsPageId, SettingsPage>): List<LinkItem> =
