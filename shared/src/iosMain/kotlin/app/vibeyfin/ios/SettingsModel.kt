@@ -1,8 +1,10 @@
 package app.vibeyfin.ios
 
 import app.vibeyfin.ui.settings.SettingKey
+import app.vibeyfin.ui.settings.SettingsPageId
 import app.vibeyfin.ui.settings.SettingsUiState
 import app.vibeyfin.ui.settings.SettingsViewModel
+import app.vibeyfin.ui.settings.firstSettablePage
 
 /** The settings screen's [SettingsViewModel] as SwiftUI needs it. */
 class SettingsModel {
@@ -15,6 +17,9 @@ class SettingsModel {
     fun onChoose(key: SettingKey, value: Int) = host.viewModel.onChoose(key, value)
 
     fun onAction(key: SettingKey) = host.viewModel.onAction(key)
+
+    /** The page the iPad's split view opens on; null when nothing has anything to set. */
+    fun firstSettablePage(): SettingsPageId? = firstSettablePage(host.viewModel.uiState.value.pages)
 
     fun onConfirmSignOut() = host.viewModel.onConfirmSignOut()
 
