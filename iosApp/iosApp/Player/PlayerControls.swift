@@ -244,6 +244,8 @@ struct PlayerScrubber: View {
     /// Seconds.
     let position: TimeInterval
     let duration: TimeInterval
+    /// Seconds; how far the stream is loaded. Drawn between the played part and the track.
+    var bufferedPosition: TimeInterval = 0
     /// While dragging, with the second under the finger.
     let onScrub: (TimeInterval) -> Void
     /// When the finger lifts, with the second to go to.
@@ -261,8 +263,10 @@ struct PlayerScrubber: View {
         GeometryReader { geometry in
             let width = geometry.size.width
             let fraction = duration > 0 ? min(max(position / duration, 0), 1) : 0
+            let bufferedFraction = duration > 0 ? min(max(bufferedPosition / duration, fraction), 1) : 0
             ZStack(alignment: .leading) {
                 Capsule().fill(Brand.progressTrack)
+                Capsule().fill(Color.white.opacity(0.35)).frame(width: width * bufferedFraction)
                 Capsule().fill(Brand.accent).frame(width: width * fraction)
             }
             .frame(height: isDragging ? 10 : 4)

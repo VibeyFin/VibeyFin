@@ -95,6 +95,29 @@ struct SettingsView: View {
             Text(Strings.shared.skipHelp)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+            bufferAheadRow
+        }
+    }
+
+    /// How far ahead the player loads, as a menu on the row; Auto leaves it to AVPlayer.
+    private var bufferAheadRow: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Strings.shared.bufferAhead.titleCased())
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text(Strings.shared.bufferAheadHelp)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: Space.s3)
+            Picker(Strings.shared.bufferAhead.titleCased(), selection: bufferAhead) {
+                ForEach(ProfileSettings.Companion.shared.BUFFER_AHEAD_CHOICES.map { $0.int32Value }, id: \.self) { choice in
+                    Text(Strings.shared.bufferAheadChoice(seconds: choice)).tag(choice)
+                }
+            }
+            .pickerStyle(.menu)
+            .tint(Color(.secondaryLabel))
         }
     }
 
@@ -170,6 +193,13 @@ struct SettingsView: View {
         Binding(
             get: { model.state?.skipBackSeconds ?? ProfileSettings.Companion.shared.DEFAULT_SKIP_BACK_SECONDS },
             set: { model.setSkipBack($0) }
+        )
+    }
+
+    private var bufferAhead: Binding<Int32> {
+        Binding(
+            get: { model.state?.bufferAheadSeconds ?? ProfileSettings.Companion.shared.DEFAULT_BUFFER_AHEAD_SECONDS },
+            set: { model.setBufferAhead($0) }
         )
     }
 

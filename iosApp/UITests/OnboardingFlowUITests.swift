@@ -125,6 +125,14 @@ final class OnboardingFlowUITests: XCTestCase {
             // The menu is still closing: wait for the row to show 15 rather than reading its label at once.
             let shows15 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Skip Back", "15")).firstMatch
             XCTAssertTrue(shows15.waitForExistence(timeout: 5), "Skip Back doesn't show 15")
+
+            // Buffer ahead sits below the skip rows and defaults to 20 seconds.
+            let bufferAhead = button("Buffer Ahead", contains: true)
+            XCTAssertTrue(bufferAhead.waitForExistence(timeout: 5), "Buffer ahead row is missing")
+            bufferAhead.tap()
+            let twenty = button("20 seconds")
+            XCTAssertTrue(twenty.waitForExistence(timeout: 5), "Buffer ahead doesn't show its 20 seconds default")
+            twenty.tap()
         }
     }
 

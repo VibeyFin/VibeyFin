@@ -43,6 +43,10 @@ final class SettingsObservable: ObservableObject {
         model.onSkipBackChanged(value: value)
     }
 
+    func setBufferAhead(_ value: Int32) {
+        model.onBufferAheadChanged(value: value)
+    }
+
     func setSkipForward(_ value: Int32) {
         model.onSkipForwardChanged(value: value)
     }

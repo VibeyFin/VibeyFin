@@ -132,7 +132,7 @@ struct PlayerView: View {
         }
         .onReceive(model.$state) { state in
             if let stream = state?.stream {
-                controller.open(stream)
+                controller.open(stream, bufferAheadSeconds: state?.bufferAheadSeconds ?? 0)
             } else if state?.message != nil {
                 controller.clear()
             }
@@ -335,6 +335,7 @@ struct PlayerView: View {
             PlayerScrubber(
                 position: shownPosition,
                 duration: controller.duration,
+                bufferedPosition: controller.bufferedPosition,
                 onScrub: { seconds in
                     model.userInteraction()
                     scrubPosition = seconds
