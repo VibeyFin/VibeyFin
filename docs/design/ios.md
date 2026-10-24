@@ -35,8 +35,11 @@ Glass is the **navigation and controls layer** floating above content — never 
 | Share | `ShareLink` |
 | Casting | `AVRoutePickerView` (AirPlay) |
 | Player skip buttons | `gobackward.<n>` / `goforward.<n>` SF Symbols, `n` from the profile's skip settings (back 10, forward 10 by default) |
-| Skip intervals setting | a `Picker` with `.pickerStyle(.menu)` in the settings list |
-| Buffer ahead setting | the same `Picker` row (Auto, 10 to 60 s, default 20 s). Player: `AVPlayerItem.preferredForwardBufferDuration`; the scrubber's buffered segment is the end of the `loadedTimeRanges` range holding the current time |
+| Settings rows | inset grouped list, small-caps section headers, footers carrying the help text; `Toggle` tinted aqua; a choice is a `Picker` with `.pickerStyle(.menu)`, never a sub-page; a link is a `NavigationLink` row |
+| Quality setting | the one checklist: inline rows in its own section (title once, footer below), the chosen row an `accent-soft` pill with no tick |
+| Settings on iPad | at regular width `NavigationSplitView`: the root as the sidebar (system selection following the tapped row), the page in the detail column capped at about 640 and centred; the back chevron is in the sidebar only. At compact width it is the phone's `NavigationStack` |
+| Skip intervals setting | a `Picker` with `.pickerStyle(.menu)` (Skip back 5 to 30 s, Skip forward 10 to 60 s), on the Skipping and autoplay page |
+| Buffer ahead setting | the same `Picker` row (Auto, 10 to 60 s, default 20 s), in its own group on Skipping and autoplay. Player: `AVPlayerItem.preferredForwardBufferDuration`; the scrubber's buffered segment is the end of the `loadedTimeRanges` range holding the current time |
 | Player | Custom SwiftUI controls over `AVPlayerLayer` (Jellyfin trickplay and skip segments need it); PiP via `AVPictureInPictureController`; Now Playing via `MPNowPlayingInfoCenter` |
 | Loading | `ProgressView` in the player only; skeletons elsewhere (`.redacted(reason: .placeholder)`) |
 

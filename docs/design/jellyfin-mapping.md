@@ -66,6 +66,7 @@ time. Home's own rows (Continue watching, libraries) are not filtered, so none o
 - Skip intro / recap: `GET /MediaSegments/{itemId}` → segments of type `Intro`, `Recap`, `Outro`, `Preview`, `Commercial` (10.10+, populated by a segment provider plugin). No segments → no skip button.
 - Trickplay: the item's `Trickplay` info (tile width/height, interval, thumbnail count) → tiles at `GET /Videos/{itemId}/Trickplay/{width}/{index}.jpg`. Cache a sheet, crop the tile in the client.
 - Report: `POST /Sessions/Playing` (start), `/Sessions/Playing/Progress` (every 10s, pause, seek), `/Sessions/Playing/Stopped` (stop, background).
+- Quality (Settings → Playback → Quality) maps to the stream request's max bitrate: Maximum sends no practical cap (original, direct play when possible), the others 40, 10, 4 and 1.5 Mbps. The same value feeds the device profile and the `PlaybackInfo` request.
 - Choose direct play over transcoding when the device can decode the stream; show "Transcoding" in the player's info sheet when it can't.
 
 ## Actions

@@ -1,6 +1,6 @@
 # Player
 
-The player on both platforms. Behaviour rules are in `guardrails.md` (Playback); this file is the layout and look. The interactive mockups (controls, scrubbing, skip offer, up next, Settings → Playback) are the `PlayerControls`, `PlayerScreen` and `PlaybackSettings` components of the VibeyFin design-system artifact: https://claude.ai/artifact/HeWVw1EzAbYcvssURJ2rNc
+The player on both platforms. Behaviour rules are in `guardrails.md` (Playback); this file is the layout and look. The interactive mockups (controls, scrubbing, skip offer, up next, Settings → Playback) are the `PlayerControls` and `PlayerScreen` components of the VibeyFin design-system artifact (the Settings screens are `SettingsPhone` and `SettingsTablet`, see `screens.md`): https://claude.ai/artifact/HeWVw1EzAbYcvssURJ2rNc
 
 ## iOS (SwiftUI, AVPlayer)
 
@@ -28,8 +28,13 @@ M3 on the scrim, no glass. Top app bar: `←`, title and meta line, speed, audio
 | Skip forward | 10, 15, 30, 45, 60 s | 10 s |
 | Skip intros and recaps | on / off | off |
 | Buffer ahead | Auto, 10, 20, 30, 40, 50, 60 s | 20 s |
+| Still watching after | Off, 2 to 5 episodes | 3 |
+| Quality | Maximum, 4K 40, 1080p 10, 720p 4, 480p 1.5 Mbps | Maximum |
+| Subtitle style | system style, or size, text colour, background | system style |
 
-Choices are the values SF Symbols has a `gobackward.<n>` / `goforward.<n>` glyph for, so button and setting agree. The values also drive the double-tap seek and the VoiceOver / TalkBack labels ("Back 10 seconds"). iOS: a `Picker` with `.pickerStyle(.menu)` per interval in the settings list, which is a custom stacked list in a scroll view rather than an inset grouped `Form`; Android: the settings `ChoiceRow` (a menu with the value at the right), like the other choice settings. Buffer ahead sits in its own Buffering group after the skip rows, with `Strings.bufferAheadHelp` as its help text: how much video the player loads ahead, a longer buffer riding out a slow connection at the cost of data and memory, Auto leaving it to the device's player. Auto is the platform player's own behaviour; a change applies from the next video.
+Skip back and forward, auto skip, still watching and Buffer ahead are on the **Skipping and autoplay** page; Quality and Subtitles are their own pages under Playback. Quality caps the bitrate the server may send (`jellyfin-mapping.md`) and applies from the next stream; the player has no quality menu. Subtitle style follows the OS caption style until the user turns that off; Android applies the chosen size, colour and background to the subtitle view, iOS burns subtitles in today so its controls are disabled with a note.
+
+Choices are the values SF Symbols has a `gobackward.<n>` / `goforward.<n>` glyph for, so button and setting agree. The values also drive the double-tap seek and the VoiceOver / TalkBack labels ("Back 10 seconds"). iOS: a `Picker` with `.pickerStyle(.menu)` per interval in the settings list; Android: the settings `ChoiceRow` (a menu with the value at the right), like the other choice settings. Buffer ahead sits in its own group on Skipping and autoplay, after the skip rows, with `Strings.bufferAheadHelp` as its help text: how much video the player loads ahead, a longer buffer riding out a slow connection at the cost of data and memory, Auto leaving it to the device's player. Auto is the platform player's own behaviour; a change applies from the next video.
 
 ## What changes in the code (for the plan)
 

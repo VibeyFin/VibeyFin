@@ -199,10 +199,25 @@ _Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a
 and see the mini player on iOS 26._
 
 ### Phase 6 — Accounts & polish
-- [ ] Profile picker: quick-switch between users, optional PIN (Jellyfin has no sub-profiles)
-- [ ] Parental controls / kids mode (per-user rating, blocked tags, access schedules)
-- [ ] New-episode notifications (Next Up / Latest polling or push)
-- [ ] Settings: quality & bandwidth, subtitle styling
+- [ ] Profile picker: quick-switch between users, optional PIN (Jellyfin has no sub-profiles). _Decided: a 4-digit
+  household lock per profile, a salted hash, independent of kids mode, not security; see the spec
+  `docs/superpowers/specs/2026-10-24-accounts-and-polish-design.md`_
+- [ ] Parental controls / kids mode (per-user rating, blocked tags, access schedules). _Decided: a local kids flag;
+  rating, tags and hours are read from the Jellyfin user's policy and shown read-only, the server enforces them_
+- [ ] New-episode notifications (Next Up / Latest polling or push). _Decided: off by default, background polling
+  (WorkManager, `BGAppRefreshTask`), new episodes and new movies, a setting called Notifications_
+- [x] Settings: quality & bandwidth, subtitle styling
+  - [x] Settings redesign (design system `SettingsPhone`, `SettingsTablet`): a grouped root and a sub-page per
+    category (Quality, Subtitles, Skipping and autoplay), choices as menus, Quality as an inline checklist
+  - [x] Profile page with Switch profile and Sign out (clears the token, the tile stays locked)
+  - [x] Tablet two-pane Settings: iPad `NavigationSplitView`, Android two columns at 600dp
+  - [x] Quality as a per-profile cap, Maximum by default, replacing the fixed 60 Mbps
+  - [x] Subtitle style settings, applied on Android; iOS shows them disabled while it burns subtitles in
+    (applying a style on iOS needs a spike on a simulator, open)
+- [ ] iOS mini player: mount `MiniPlayerView` with `.tabViewBottomAccessory` and check it on the simulator
+  (Phase 3's open item)
+- [ ] Baseline profile for first-scroll speed (Macrobenchmark and the baseline-profile plugin are approved;
+  done last, measured on the `benchmark` build)
 
 ### Phase 7 — Customisation _(later)_
 

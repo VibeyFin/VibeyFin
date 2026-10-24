@@ -24,8 +24,11 @@ A Jetpack Compose app that follows Material 3. Use the `android` theme and `m3-*
 | Messages | `Snackbar` with an action ("Try again" for a failed write); the action is plain text, not aqua |
 | Casting | Google Cast button + MediaRouter |
 | Player skip buttons | clickable 48 dp buttons with a generic arrow glyph and the seconds as text over it (seconds from the profile's skip settings; 10 back, 10 forward by default), play / pause between them |
-| Skip intervals setting | the settings `ChoiceRow` (a menu with the value at the right), like the other choice settings |
-| Buffer ahead setting | the same `ChoiceRow` (Auto, 10 to 60 s, default 20 s). Player: `DefaultLoadControl.setBufferDurationsMs`; the scrubber's buffered segment reads `player.bufferedPosition`, white at about 35% under the aqua fill |
+| Settings rows | Toggle: a `Switch` row. Choice: a `ChoiceRow`, a menu (`DropdownMenu`) with the value at the right, never a sub-page. Link: a row with a chevron to a sub-page. Rows sit in rounded `surfaceContainerLow` cards with a leading tonal icon circle and group titles in aqua text |
+| Quality setting | the one checklist: inline rows in its own section (title once, footer below), the chosen row an `accent-soft` pill with no tick |
+| Settings on tablets | from the 600dp tablet breakpoint a plain two-column layout (root left, page right, detail capped at about 640 and centred), the selected root row an `accent-soft` pill that follows the tapped row. Not `material3-adaptive`. Below it, push navigation |
+| Skip intervals setting | the settings `ChoiceRow` (Skip back 5 to 30 s, Skip forward 10 to 60 s), on the Skipping and autoplay page |
+| Buffer ahead setting | the same `ChoiceRow` (Auto, 10 to 60 s, default 20 s), in its own group on Skipping and autoplay. Player: `DefaultLoadControl.setBufferDurationsMs`; the scrubber's buffered segment reads `player.bufferedPosition`, white at about 35% under the aqua fill |
 | Player | Compose controls over Media3 `PlayerSurface`; `MediaSession` notification; PiP with `setAutoEnterEnabled` on Android 12+ |
 | Loading | `LinearProgressIndicator` / skeletons; `CircularProgressIndicator` only in the player |
 
