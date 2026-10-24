@@ -55,6 +55,8 @@ data class ChoiceItem(
     override val help: String? = null,
     val value: Int,
     val options: List<SettingOption>,
+    /** Draw as a checklist page instead of a menu; for choices whose options need their own explanation. */
+    val asPage: Boolean = false,
     override val visible: Boolean = true,
 ) : SettingItem
 

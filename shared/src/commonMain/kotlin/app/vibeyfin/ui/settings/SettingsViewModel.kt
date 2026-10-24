@@ -2,8 +2,14 @@ package app.vibeyfin.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.vibeyfin.domain.ConnectionManager
+import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.DevicePreferences
 import app.vibeyfin.domain.ProfileSettings
+import app.vibeyfin.domain.ServerRepository
+import app.vibeyfin.domain.model.Server
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -15,6 +21,8 @@ data class SettingsUiState(
     val pages: Map<SettingsPageId, SettingsPage> = settingsPages(SettingsValues()),
     /** Whether there is a signed-in profile whose settings are shown below the device ones. */
     val hasProfile: Boolean = false,
+    /** Sign out was tapped and waits for the confirmation. */
+    val confirmSignOut: Boolean = false,
     // The flat fields below are removed with the native renderers in Tasks 7 and 8.
     val alwaysAskWhoIsWatching: Boolean = false,
     val showPlaybackStats: Boolean = false,
@@ -31,8 +39,13 @@ data class SettingsUiState(
 class SettingsViewModel(
     private val preferences: DevicePreferences,
     private val profileSettings: ProfileSettings,
+    private val connection: ConnectionManager,
+    private val servers: ServerRepository,
+    private val applicationScope: CoroutineScope,
     private val appVersion: String = "",
 ) : ViewModel() {
+    private val confirmSignOut = MutableStateFlow(false)
+
     val uiState: StateFlow<SettingsUiState> = combine<Any?, SettingsUiState>(
         listOf(
             preferences.alwaysAskWhoIsWatching,
@@ -49,11 +62,17 @@ class SettingsViewModel(
             profileSettings.subtitleSize,
             profileSettings.subtitleTextColor,
             profileSettings.subtitleBackground,
+            connection.state,
+            servers.servers,
+            confirmSignOut,
         ),
     ) { v ->
         val defaults = SettingsValues()
         val showStats = v[1] as Boolean?
         val threshold = v[2] as Int?
+        val connected = v[14] as? ConnectionState.Connected
+        // The saved server, not the one the connection started with: addresses can be added later.
+        val server = (v[15] as List<*>).filterIsInstance<Server>().firstOrNull { it.id == connected?.server?.id } ?: connected?.server
         val values = SettingsValues(
             alwaysAskWhoIsWatching = v[0] as Boolean,
             appVersion = appVersion,
@@ -71,10 +90,14 @@ class SettingsViewModel(
             subtitleSize = v[11] as Int? ?: defaults.subtitleSize,
             subtitleTextColor = v[12] as Int? ?: defaults.subtitleTextColor,
             subtitleBackground = v[13] as Int? ?: defaults.subtitleBackground,
+            profileName = connected?.account?.name.orEmpty(),
+            serverName = server?.name.orEmpty(),
+            serverAddresses = server?.addresses.orEmpty(),
         )
         SettingsUiState(
             pages = settingsPages(values),
             hasProfile = values.hasProfile,
+            confirmSignOut = v[16] as Boolean,
             alwaysAskWhoIsWatching = values.alwaysAskWhoIsWatching,
             showPlaybackStats = values.showPlaybackStats,
             bingeThreshold = values.bingeThreshold,
@@ -124,9 +147,22 @@ class SettingsViewModel(
         viewModelScope.launch {
             when (key) {
                 SettingKey.ResetSubtitles -> profileSettings.resetSubtitleStyle()
+                SettingKey.SwitchProfile -> connection.switchProfile()
+                SettingKey.SignOut -> confirmSignOut.value = true
                 else -> Unit
             }
         }
+    }
+
+    /** The user confirmed signing out: revokes the token and returns to "Who's watching?". */
+    fun onConfirmSignOut() {
+        confirmSignOut.value = false
+        // The screen leaves right away and clears this view model, so the revoke and the lock must not depend on viewModelScope.
+        applicationScope.launch { connection.signOut() }
+    }
+
+    fun onDismissSignOut() {
+        confirmSignOut.value = false
     }
 
     // The handlers below are removed with the native renderers in Tasks 7 and 8.

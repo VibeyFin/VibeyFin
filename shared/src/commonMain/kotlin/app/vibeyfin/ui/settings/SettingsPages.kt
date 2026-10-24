@@ -25,11 +25,16 @@ data class SettingsValues(
     val subtitleSize: Int = 1,
     val subtitleTextColor: Int = 0,
     val subtitleBackground: Int = 1,
+    val profileName: String = "",
+    val serverName: String = "",
+    /** The signed-in server's addresses, the one that worked last first. */
+    val serverAddresses: List<String> = emptyList(),
 )
 
-/** Every page the shared code builds, keyed by its id. Pages built in later steps (Profile, Kids and PIN, Notifications) are not here yet. */
+/** Every page the shared code builds, keyed by its id. Pages built in later steps (Kids and PIN, Notifications) are not here yet. */
 fun settingsPages(values: SettingsValues): Map<SettingsPageId, SettingsPage> = listOf(
     rootPage(values),
+    profilePage(values),
     qualityPage(values),
     skippingPage(values),
     subtitlesPage(values),
@@ -123,6 +128,52 @@ fun rootPage(v: SettingsValues): SettingsPage {
     )
 }
 
+/** [kidsProfile] hides Sign out; the flag itself arrives with the kids setting. */
+fun profilePage(v: SettingsValues, kidsProfile: Boolean = false): SettingsPage {
+    val profile = v.hasProfile
+    return SettingsPage(
+        SettingsPageId.Profile,
+        Strings.profilePageTitle,
+        listOf(
+            SettingsSection(
+                title = null,
+                footer = null,
+                items = listOf(
+                    CustomItem(
+                        SettingKey.ProfileCard, v.profileName, v.serverAddresses.firstOrNull(),
+                        kind = CustomKind.ProfileHeader, visible = profile,
+                    ),
+                ),
+            ),
+            SettingsSection(
+                Strings.profileAccountGroup,
+                footer = null,
+                items = listOf(ActionItem(SettingKey.SwitchProfile, Strings.switchProfile, Strings.switchProfileHelp, visible = profile)),
+            ),
+            SettingsSection(
+                Strings.profileServerGroup,
+                Strings.profileServerFooter,
+                items = listOf(
+                    InfoItem(SettingKey.ServerName, Strings.profileServerName, value = v.serverName, visible = profile),
+                    InfoItem(
+                        SettingKey.ServerAddress, Strings.profileServerAddress,
+                        value = v.serverAddresses.firstOrNull().orEmpty(), visible = profile && v.serverAddresses.isNotEmpty(),
+                    ),
+                    InfoItem(
+                        SettingKey.ServerAlsoAt, Strings.profileServerAlsoAt,
+                        value = v.serverAddresses.drop(1).joinToString(", "), visible = profile && v.serverAddresses.size > 1,
+                    ),
+                ),
+            ),
+            SettingsSection(
+                title = null,
+                footer = Strings.signOutFooter,
+                items = listOf(ActionItem(SettingKey.SignOut, Strings.signOut, destructive = true, visible = profile && !kidsProfile)),
+            ),
+        ),
+    )
+}
+
 fun qualityPage(v: SettingsValues) = SettingsPage(
     SettingsPageId.Quality,
     Strings.qualityTitle,
@@ -135,6 +186,7 @@ fun qualityPage(v: SettingsValues) = SettingsPage(
                     SettingKey.Quality, Strings.qualityGroup,
                     value = v.maxStreamingBitrate,
                     options = ProfileSettings.QUALITY_CHOICES.map { SettingOption(it, Strings.qualityLabel(it)) },
+                    asPage = true,
                     visible = v.hasProfile,
                 ),
             ),
@@ -266,4 +318,7 @@ private fun genreRowOptions() = ProfileSettings.HOME_GENRE_CHOICES.map { value -
 }
 
 /** Pairs each choice with its label, in order. */
-private fun options(choices: List<Int>, vararg labels: String) = choices.zip(labels) { value, label -> SettingOption(value, label) }
+internal fun options(choices: List<Int>, vararg labels: String): List<SettingOption> {
+    require(choices.size == labels.size) { "${choices.size} choices but ${labels.size} labels" }
+    return choices.zip(labels) { value, label -> SettingOption(value, label) }
+}

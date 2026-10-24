@@ -4,8 +4,16 @@ import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.ViewModelTracker
+import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.ui.common.Strings
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -16,6 +24,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -23,6 +32,7 @@ import kotlin.test.assertTrue
 class SettingsViewModelTest {
     private val app = TestApp()
     private val viewModels = ViewModelTracker()
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
 
     @BeforeTest
     fun setUp() {
@@ -32,11 +42,12 @@ class SettingsViewModelTest {
     @AfterTest
     fun tearDown() = runTest {
         viewModels.stopAll()
+        applicationScope.cancel()
         Dispatchers.resetMain()
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(SettingsViewModel(app.preferences, app.profileSettings))
+    private fun viewModel() = viewModels.track(SettingsViewModel(app.preferences, app.profileSettings, app.connection, app.servers, applicationScope))
 
     @Test
     fun alwaysAskStartsOff() = runTest {
@@ -303,5 +314,174 @@ class SettingsViewModelTest {
         assertTrue(SettingKey.AlwaysAsk in signedIn.keys())
         assertTrue(SettingKey.ShowStats in signedIn.keys())
         assertTrue(SettingKey.ShowHero in signedIn.keys())
+    }
+
+    private fun SettingsUiState.items(id: SettingsPageId) = page(id).sections.flatMap { it.items }
+
+    @Test
+    fun `the profile page shows the server name and addresses`() = runTest {
+        val server = app.signedIn()
+        app.servers.save("srv-1", "Home", "10.10.7", "http://nas:8096", listOf("http://192.168.1.20:8096"))
+        val state = viewModel().uiState.first { it.hasProfile && it.items(SettingsPageId.Profile).any { i -> i.key == SettingKey.ServerAlsoAt } }
+
+        val items = state.items(SettingsPageId.Profile).associateBy { it.key }
+        val header = items.getValue(SettingKey.ProfileCard) as CustomItem
+        assertEquals(CustomKind.ProfileHeader, header.kind)
+        assertEquals("Alex", header.title)
+        assertEquals("http://nas:8096", header.help)
+        assertEquals("Home", (items.getValue(SettingKey.ServerName) as InfoItem).value)
+        assertEquals("http://nas:8096", (items.getValue(SettingKey.ServerAddress) as InfoItem).value)
+        assertEquals("http://192.168.1.20:8096", (items.getValue(SettingKey.ServerAlsoAt) as InfoItem).value)
+        assertTrue(SettingKey.SwitchProfile in items)
+        assertTrue((items.getValue(SettingKey.SignOut) as ActionItem).destructive)
+    }
+
+    @Test
+    fun `a single address leaves out the also reachable row`() = runTest {
+        app.signedIn()
+        val state = viewModel().uiState.first { it.hasProfile && it.items(SettingsPageId.Profile).any { i -> i.key == SettingKey.ServerName } }
+
+        assertFalse(SettingKey.ServerAlsoAt in state.items(SettingsPageId.Profile).map { it.key })
+    }
+
+    @Test
+    fun `the profile page is hidden without a profile and sign out is hidden on a kids profile`() = runTest {
+        assertEquals(emptyList(), viewModel().uiState.first().items(SettingsPageId.Profile).map { it.key })
+
+        val values = SettingsValues(hasProfile = true, profileName = "Alex", serverName = "Home", serverAddresses = listOf("a"))
+        val kids = profilePage(values, kidsProfile = true).visibleOnly().sections.flatMap { it.items }.map { it.key }
+        assertFalse(SettingKey.SignOut in kids)
+        assertTrue(SettingKey.SwitchProfile in kids)
+    }
+
+    @Test
+    fun `signing out asks to confirm and then clears the session`() = runTest {
+        val server = app.signedIn()
+        server.on("POST", "/Sessions/Logout", Reply.noContent())
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hasProfile }
+
+        viewModel.onAction(SettingKey.SignOut)
+        assertTrue(viewModel.uiState.first { it.confirmSignOut }.confirmSignOut)
+        assertTrue(app.connection.state.value is ConnectionState.Connected)
+
+        viewModel.onConfirmSignOut()
+        assertFalse(viewModel.uiState.first { !it.confirmSignOut }.confirmSignOut)
+        assertEquals(ConnectionState.Disconnected, app.connection.state.value)
+        assertEquals(1, app.jellyfin.requestsTo("POST", "/Sessions/Logout").size)
+        assertFalse(app.accounts.account("srv-1", "u1")!!.hasSession)
+    }
+
+    @Test
+    fun `sign-out finishes even when the view model is cleared right away`() = runTest {
+        val server = app.signedIn()
+        val logout = server.hold("POST", "/Sessions/Logout")
+        server.on("POST", "/Sessions/Logout", Reply.noContent())
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hasProfile }
+
+        viewModel.onConfirmSignOut()
+        viewModel.viewModelScope.cancel()
+        logout.open()
+
+        withContext(Dispatchers.Default) {
+            withTimeout(5_000) {
+                while (app.accounts.account("srv-1", "u1")!!.hasSession) delay(10)
+            }
+        }
+        assertEquals(1, app.jellyfin.requestsTo("POST", "/Sessions/Logout").size)
+        assertEquals(ConnectionState.Disconnected, app.connection.state.value)
+    }
+
+    @Test
+    fun `cancelling the confirmation keeps the session`() = runTest {
+        val server = app.signedIn()
+        server.on("POST", "/Sessions/Logout", Reply.noContent())
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hasProfile }
+
+        viewModel.onAction(SettingKey.SignOut)
+        viewModel.uiState.first { it.confirmSignOut }
+        viewModel.onDismissSignOut()
+
+        assertFalse(viewModel.uiState.first { !it.confirmSignOut }.confirmSignOut)
+        assertTrue(app.connection.state.value is ConnectionState.Connected)
+        assertEquals(0, app.jellyfin.requestsTo("POST", "/Sessions/Logout").size)
+    }
+
+    @Test
+    fun `switching profile leaves the profile signed in and disconnects`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hasProfile }
+
+        viewModel.onAction(SettingKey.SwitchProfile)
+
+        assertEquals(ConnectionState.Disconnected, app.connection.state.value)
+        assertTrue(app.accounts.account("srv-1", "u1")!!.hasSession)
+    }
+
+    @Test
+    fun `only Quality is drawn as a checklist page`() = runTest {
+        app.signedIn()
+        val state = viewModel().uiState.first { it.hasProfile }
+
+        assertTrue((state.items(SettingsPageId.Quality).single() as ChoiceItem).asPage)
+        val skipping = state.items(SettingsPageId.Skipping).filterIsInstance<ChoiceItem>()
+        assertTrue(skipping.isNotEmpty())
+        assertTrue(skipping.none { it.asPage })
+    }
+
+    @Test
+    fun `options refuses choices and labels of different lengths`() {
+        assertFailsWith<IllegalArgumentException> { options(listOf(1, 2, 3), "a", "b") }
+        assertEquals(listOf(SettingOption(1, "a")), options(listOf(1), "a"))
+    }
+
+    @Test
+    fun `the style rows show only when system captions are off`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        val styleKeys = setOf(SettingKey.SubtitleSize, SettingKey.SubtitleColor, SettingKey.SubtitleBackground, SettingKey.ResetSubtitles)
+
+        val system = viewModel.uiState.first { it.hasProfile }.page(SettingsPageId.Subtitles).keys()
+        assertTrue(SettingKey.CaptionsFollowSystem in system)
+        assertTrue(SettingKey.SubtitlePreview in system)
+        assertTrue(system.none { it in styleKeys })
+
+        viewModel.onToggle(SettingKey.CaptionsFollowSystem, false)
+        val custom = viewModel.uiState.first { !it.page(SettingsPageId.Subtitles).keys().none { k -> k in styleKeys } }
+            .page(SettingsPageId.Subtitles).keys()
+        assertTrue(custom.containsAll(styleKeys))
+    }
+
+    @Test
+    fun `choosing size, colour and background is stored and reset restores the defaults`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hasProfile }
+
+        viewModel.onChoose(SettingKey.SubtitleSize, ProfileSettings.SUBTITLE_SIZE_CHOICES.last())
+        viewModel.onChoose(SettingKey.SubtitleColor, ProfileSettings.SUBTITLE_COLOR_CHOICES.last())
+        viewModel.onChoose(SettingKey.SubtitleBackground, ProfileSettings.SUBTITLE_BACKGROUND_CHOICES.last())
+        assertEquals(ProfileSettings.SUBTITLE_SIZE_CHOICES.last(), app.profileSettings.subtitleSize.first())
+        assertEquals(ProfileSettings.SUBTITLE_COLOR_CHOICES.last(), app.profileSettings.subtitleTextColor.first())
+        assertEquals(ProfileSettings.SUBTITLE_BACKGROUND_CHOICES.last(), app.profileSettings.subtitleBackground.first())
+
+        viewModel.onAction(SettingKey.ResetSubtitles)
+        assertEquals(1, app.profileSettings.subtitleSize.first())
+        assertEquals(0, app.profileSettings.subtitleTextColor.first())
+        assertEquals(1, app.profileSettings.subtitleBackground.first())
+    }
+
+    @Test
+    fun `a quality that is not a choice leaves the stored quality unchanged`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hasProfile }
+
+        viewModel.onChoose(SettingKey.Quality, 123)
+
+        assertEquals(0, app.profileSettings.maxStreamingBitrate.first())
     }
 }
