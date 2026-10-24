@@ -101,4 +101,34 @@ class SettingsMappingTest {
         assertEquals(SettingsPageId.Root, pageIdOrRoot("Nope"))
         assertEquals(SettingsPageId.Skipping, pageIdOrRoot("Skipping"))
     }
+
+    @Test
+    fun `the selected page falls back to the first settable one when the saved id is not drawn`() {
+        assertEquals(SettingsPageId.Quality, selectedPage(SettingsPageId.KidsAndPin, pages))
+        assertEquals(SettingsPageId.Quality, selectedPage(null, pages))
+        assertEquals(SettingsPageId.Quality, selectedPage(SettingsPageId.Root, pages))
+        assertEquals(SettingsPageId.Subtitles, selectedPage(SettingsPageId.Subtitles, pages))
+    }
+
+    @Test
+    fun `tapping Buffering selects only the Buffering row while showing the Skipping page`() {
+        val link = selectedLink(SettingKey.BufferAhead, pages)
+        assertEquals(SettingKey.BufferAhead, link?.key)
+        assertEquals(SettingsPageId.Skipping, link?.target)
+        // The other row that leads to Skipping is not the selected one.
+        assertNotEquals(SettingKey.Skipping, link?.key)
+    }
+
+    @Test
+    fun `the default selects the first link row that targets the first settable page`() {
+        val link = selectedLink(null, pages)
+        assertEquals(SettingKey.Quality, link?.key)
+        assertEquals(SettingsPageId.Quality, link?.target)
+    }
+
+    @Test
+    fun `a saved key that is no longer drawn falls back to the default`() {
+        assertEquals(SettingKey.Quality, selectedLink(SettingKey.KidsProfile, pages)?.key)
+        assertEquals(SettingKey.Quality, selectedLink(SettingKey.AlwaysAsk, pages)?.key)
+    }
 }

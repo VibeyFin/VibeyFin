@@ -53,6 +53,7 @@ import app.vibeyfin.app.item.ItemRoute
 import app.vibeyfin.app.player.PlayerRoute
 import app.vibeyfin.app.servers.ServersRoute
 import app.vibeyfin.app.settings.SettingsRoute
+import app.vibeyfin.app.theme.isTabletWidth
 import app.vibeyfin.app.startup.StartupRoute
 import app.vibeyfin.app.whoswatching.WhoIsWatchingRoute
 import app.vibeyfin.domain.StartDestination
@@ -283,6 +284,7 @@ fun VibeyFinNavHost() {
                     onOpen = { navController.navigate(SettingsPageRoute(it.name)) },
                     onExit = leave,
                     onBack = { navController.popBackStack() },
+                    twoPane = isTabletWidth(),
                 )
             }
             composable<SettingsPageRoute> { entry ->

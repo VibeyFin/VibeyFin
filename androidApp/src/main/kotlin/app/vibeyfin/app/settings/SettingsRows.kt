@@ -205,13 +205,31 @@ fun ChecklistRow(option: SettingOption, selected: Boolean, onClick: () -> Unit) 
     }
 }
 
+/** [selected] is for the tablet's list pane: the open page is an `accent-soft` pill. Null (the phone) draws no pill. */
 @Composable
-fun LinkRow(item: LinkItem, onOpen: () -> Unit) {
-    RowFrame(modifier = Modifier.clickable(role = Role.Button, onClick = onOpen)) {
-        IconCircle(iconFor(item.key))
-        RowText(item.title, item.help, Modifier.weight(1f))
-        item.value?.let { Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+fun LinkRow(item: LinkItem, selected: Boolean? = null, onOpen: () -> Unit) {
+    val content: @Composable (Modifier) -> Unit = { modifier ->
+        RowFrame(modifier = modifier) {
+            IconCircle(iconFor(item.key))
+            RowText(
+                item.title, item.help, Modifier.weight(1f),
+                titleColor = if (selected == true) VibeyFinTokens.Colors.onAccentSoft else MaterialTheme.colorScheme.onSurface,
+            )
+            item.value?.let { Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+    if (selected == null) {
+        content(Modifier.clickable(role = Role.Button, onClick = onOpen))
+    } else {
+        Box(Modifier.padding(horizontal = VibeyFinTokens.Space.s2, vertical = VibeyFinTokens.Space.s1)) {
+            content(
+                Modifier
+                    .clip(CircleShape)
+                    .background(if (selected) VibeyFinTokens.Colors.accentSoft else Color.Transparent)
+                    .selectable(selected = selected, role = Role.Button, onClick = onOpen),
+            )
+        }
     }
 }
 

@@ -52,20 +52,29 @@ import app.vibeyfin.ui.settings.ToggleItem
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
-/** One page of the Settings tree, from its id; one the tree does not have (yet) shows only the back button. */
+/** One page of the Settings tree, from its id (or both panes of it when [twoPane]); one the tree does not have (yet) shows only the back button. */
 @Composable
 fun SettingsRoute(
     pageId: SettingsPageId,
     onOpen: (SettingsPageId) -> Unit,
     onExit: (HomeExit) -> Unit,
     onBack: () -> Unit,
+    twoPane: Boolean = false,
     viewModel: SettingsViewModel = koinViewModel(),
     connection: ConnectionManager = koinInject(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LeaveWhenDisconnected(connection, onExit)
     val page = state.pages[pageId]
-    if (page == null) {
+    if (twoPane) {
+        SettingsTabletScreen(
+            state = state,
+            onToggle = viewModel::onToggle,
+            onChoose = viewModel::onChoose,
+            onAction = viewModel::onAction,
+            onBack = onBack,
+        )
+    } else if (page == null) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { Box(Modifier.fillMaxSize()) { FloatingBackButton(onBack) } }
     } else {
         SettingsPageScreen(
@@ -117,9 +126,6 @@ fun SettingsPageScreen(
     onBack: () -> Unit,
     hasPage: (SettingsPageId) -> Boolean = { true },
 ) {
-    val drawn = page.drawn(hasPage)
-    val preview = page.subtitlePreviewStyle()
-
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
             Column(
@@ -127,38 +133,58 @@ fun SettingsPageScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Spacer(Modifier.height(BackButtonSpace))
-                Column(
-                    modifier = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().padding(horizontal = screenMargin()),
-                    verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
-                ) {
-                    Text(
-                        text = drawn.title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(bottom = VibeyFinTokens.Space.s3),
-                    )
-                    drawn.sections.forEachIndexed { index, section ->
-                        if (index > 0) Spacer(Modifier.height(VibeyFinTokens.Space.s3))
-                        section.title?.let { SectionHeader(it) }
-                        val standalone = section.items.singleOrNull()?.takeIf { it is CustomItem && it.kind == CustomKind.SubtitlePreview }
-                        if (standalone != null) {
-                            // The preview is a card of its own, not a row of a group's card.
-                            SubtitlePreviewCard(standalone.title, preview)
-                        } else {
-                            SectionCard {
-                                section.items.forEach { item ->
-                                    // Keyed by page and key: a key can sit on two pages, such as Buffer ahead.
-                                    key(rowId(page.id, item)) { ItemRow(page, item, onToggle, onChoose, onAction, onOpen) }
-                                }
-                            }
-                        }
-                        section.footer?.let { SectionFooter(it) }
-                    }
-                    Spacer(Modifier.height(VibeyFinTokens.Space.s5))
-                }
+                SettingsPageBody(
+                    page, hasPage, Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().padding(horizontal = screenMargin()),
+                    selectedLink = null, onToggle, onChoose, onAction, onOpen = { onOpen(it.target) },
+                )
             }
             FloatingBackButton(onBack)
         }
+    }
+}
+
+/**
+ * The title and sections of a page, shared by the phone's page and the tablet's two panes. [selectedLink]
+ * is the row whose page is open beside this list on a tablet (an `accent-soft` pill); null on a phone.
+ */
+@Composable
+internal fun SettingsPageBody(
+    page: SettingsPage,
+    hasPage: (SettingsPageId) -> Boolean,
+    modifier: Modifier,
+    selectedLink: SettingKey?,
+    onToggle: (SettingKey, Boolean) -> Unit,
+    onChoose: (SettingKey, Int) -> Unit,
+    onAction: (SettingKey) -> Unit,
+    onOpen: (LinkItem) -> Unit,
+) {
+    val drawn = page.drawn(hasPage)
+    val preview = page.subtitlePreviewStyle()
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
+        Text(
+            text = drawn.title,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(bottom = VibeyFinTokens.Space.s3),
+        )
+        drawn.sections.forEachIndexed { index, section ->
+            if (index > 0) Spacer(Modifier.height(VibeyFinTokens.Space.s3))
+            section.title?.let { SectionHeader(it) }
+            val standalone = section.items.singleOrNull()?.takeIf { it is CustomItem && it.kind == CustomKind.SubtitlePreview }
+            if (standalone != null) {
+                // The preview is a card of its own, not a row of a group's card.
+                SubtitlePreviewCard(standalone.title, preview)
+            } else {
+                SectionCard {
+                    section.items.forEach { item ->
+                        // Keyed by page and key: a key can sit on two pages, such as Buffer ahead.
+                        key(rowId(page.id, item)) { ItemRow(page, item, selectedLink, onToggle, onChoose, onAction, onOpen) }
+                    }
+                }
+            }
+            section.footer?.let { SectionFooter(it) }
+        }
+        Spacer(Modifier.height(VibeyFinTokens.Space.s5))
     }
 }
 
@@ -166,10 +192,11 @@ fun SettingsPageScreen(
 private fun ItemRow(
     page: SettingsPage,
     item: SettingItem,
+    selectedLink: SettingKey?,
     onToggle: (SettingKey, Boolean) -> Unit,
     onChoose: (SettingKey, Int) -> Unit,
     onAction: (SettingKey) -> Unit,
-    onOpen: (SettingsPageId) -> Unit,
+    onOpen: (LinkItem) -> Unit,
 ) {
     when (item) {
         is ToggleItem -> ToggleRow(item) { onToggle(item.key, it) }
@@ -179,7 +206,7 @@ private fun ItemRow(
         } else {
             ChoiceRow(item) { onChoose(item.key, it) }
         }
-        is LinkItem -> LinkRow(item) { onOpen(item.target) }
+        is LinkItem -> LinkRow(item, selected = selectedLink?.let { it == item.key }) { onOpen(item) }
         is ActionItem -> ActionRow(item) { onAction(item.key) }
         is InfoItem -> InfoRow(item)
         is CustomItem -> when (item.kind) {

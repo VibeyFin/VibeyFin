@@ -10,6 +10,7 @@ import app.vibeyfin.ui.settings.SettingKey
 import app.vibeyfin.ui.settings.SettingsPage
 import app.vibeyfin.ui.settings.SettingsPageId
 import app.vibeyfin.ui.settings.ToggleItem
+import app.vibeyfin.ui.settings.firstSettablePage
 
 /**
  * The page as the screen draws it: hidden items are gone, and so is a link to a page the tree does not
@@ -42,4 +43,27 @@ internal fun SettingsPage.subtitlePreviewStyle(): SubtitleViewStyle {
     fun choice(key: SettingKey) = (items.firstOrNull { it.key == key } as? ChoiceItem)?.value ?: 0
     val follow = (items.firstOrNull { it.key == SettingKey.CaptionsFollowSystem } as? ToggleItem)?.checked ?: true
     return subtitleStyle(follow, choice(SettingKey.SubtitleSize), choice(SettingKey.SubtitleColor), choice(SettingKey.SubtitleBackground))
+}
+
+/**
+ * The page the tablet's detail pane shows: the saved one while it is drawn, otherwise the first one with
+ * something to set. Root is never a detail page (it is the left pane); null when there is nothing to show.
+ */
+internal fun selectedPage(saved: SettingsPageId?, pages: Map<SettingsPageId, SettingsPage>): SettingsPageId? =
+    saved?.takeIf { it != SettingsPageId.Root && pages[it]?.drawn { id -> id in pages }?.sections?.isNotEmpty() == true }
+        ?: firstSettablePage(pages)
+
+/** The root's visible links, in order, to pages the tree has. */
+private fun rootLinks(pages: Map<SettingsPageId, SettingsPage>): List<LinkItem> =
+    pages[SettingsPageId.Root]?.drawn { it in pages }?.sections.orEmpty().flatMap { it.items }.filterIsInstance<LinkItem>()
+
+/**
+ * The root row that is open on a tablet: the saved one while it is still a drawn link, otherwise the first
+ * link to the first settable page. It is a row, not a page, because two rows can lead to one page (Skipping
+ * and Buffering); only the tapped one is selected. Null when there is nothing to open.
+ */
+internal fun selectedLink(saved: SettingKey?, pages: Map<SettingsPageId, SettingsPage>): LinkItem? {
+    val links = rootLinks(pages)
+    return links.firstOrNull { it.key == saved }
+        ?: firstSettablePage(pages)?.let { first -> links.firstOrNull { it.target == first } }
 }
