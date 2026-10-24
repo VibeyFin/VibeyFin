@@ -15,12 +15,15 @@ struct SettingsPageView: View {
         let page = model.page(pageId)
         Group {
             if let page {
-                List(selection: selection ?? .constant(nil)) {
-                    ForEach(Array(page.sections.enumerated()), id: \.offset) { _, section in
-                        sectionView(section, in: page)
-                    }
+                // Only the sidebar's list selects rows. A selection binding on a detail page makes every row selectable, so a tap
+                // highlights it instead of reaching its toggle or picker.
+                if let selection {
+                    List(selection: selection) { rows(of: page) }
+                        .listStyle(.insetGrouped)
+                } else {
+                    List { rows(of: page) }
+                        .listStyle(.insetGrouped)
                 }
-                .listStyle(.insetGrouped)
             } else {
                 Color(.systemGroupedBackground).ignoresSafeArea()
             }
@@ -46,6 +49,14 @@ struct SettingsPageView: View {
             }
         } message: {
             Text(Strings.shared.signOutConfirmMessage)
+        }
+    }
+
+    @ViewBuilder
+    private func rows(of page: SettingsPage) -> some View {
+        // A section has no id of its own: page and position are stable for a page that never reorders.
+        ForEach(page.sections.enumerated().map { (id: "\(page.id.name)-\($0.offset)", section: $0.element) }, id: \.id) { entry in
+            sectionView(entry.section, in: page)
         }
     }
 

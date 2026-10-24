@@ -1,7 +1,6 @@
 import SwiftUI
 import Shared
 
-/// Up to this many options a choice is a menu on its row; above it, a checklist page.
 /// A row's title with its help line under it.
 private struct RowLabel: View {
     let title: String
@@ -27,6 +26,12 @@ struct SettingsItemRow: View {
     let onAction: (ActionItem) -> Void
 
     var body: some View {
+        // A disabled item keeps its value on show, dimmed and inert.
+        rowContent.disabled(!item.enabled)
+    }
+
+    @ViewBuilder
+    private var rowContent: some View {
         switch item {
         case let toggle as ToggleItem: toggleRow(toggle)
         case let choice as ChoiceItem: choiceRow(choice)
@@ -180,7 +185,7 @@ struct ChecklistRows: View {
     }
 }
 
-/// The checklist page of a choice with more options than a menu holds. It reads the item from the live state, so the pill follows the tap.
+/// The profile card at the top of the Profile page: the avatar tile, the name and the server address.
 private struct ProfileHeaderRow: View {
     let name: String
     let address: String?
@@ -220,7 +225,6 @@ private struct SubtitleStyle {
     let background: Int32
 }
 
-/// A sample line drawn the way the chosen size, colour and background will draw the real subtitles.
 /// Subtitle sample colours: the viewer's own choices, not brand colours.
 private enum SubtitleSample {
     static let white = Color.white
@@ -228,8 +232,9 @@ private enum SubtitleSample {
     static let cyan = Color.cyan
 }
 
-/// A 120 pt gradient card with the sample line near the bottom, as in the design mockup. It draws its own card, so the row has no
-/// background or insets of its own.
+/// A 120 pt gradient card with a sample line near the bottom, drawn the way the chosen size, colour and background will draw the real
+/// subtitles, as in the design mockup. It draws its own card, so the row has no background of its own; its insets keep the card on
+/// the list's gutter and leave a gap before the next section.
 private struct SubtitlePreviewRow: View {
     let sample: String
     let style: SubtitleStyle
@@ -254,7 +259,7 @@ private struct SubtitlePreviewRow: View {
         .frame(maxWidth: .infinity)
         .frame(height: 120)
         .clipShape(RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
-        .listRowInsets(EdgeInsets())
+        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: Space.s3, trailing: 0))
         .listRowBackground(Color.clear)
         .accessibilityElement(children: .combine)
     }

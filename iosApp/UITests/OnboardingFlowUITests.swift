@@ -120,7 +120,12 @@ final class OnboardingFlowUITests: XCTestCase {
                 // Only the detail column has a nav-bar title of its own; the sidebar's row labels also hold values.
                 let title = { (name: String) in self.app.navigationBars.staticTexts.matching(NSPredicate(format: "label ==[c] %@", name)).firstMatch }
                 XCTAssertTrue(title("Quality").waitForExistence(timeout: 10), "Quality is not open in the detail column")
-                let subtitles = app.cells.matching(NSPredicate(format: "label BEGINSWITH[c] %@", "Subtitles")).firstMatch
+                // The sidebar rows are cells; fall back to buttons where the list exposes them that way.
+                let sidebarRow = { (name: String) in
+                    let cell = self.app.cells.matching(NSPredicate(format: "label BEGINSWITH[c] %@", name)).firstMatch
+                    return cell.exists ? cell : self.app.buttons.matching(NSPredicate(format: "label BEGINSWITH[c] %@", name)).firstMatch
+                }
+                let subtitles = sidebarRow("Subtitles")
                 XCTAssertTrue(subtitles.waitForExistence(timeout: 5), "Subtitles is missing from the sidebar")
                 subtitles.tap()
                 XCTAssertTrue(title("Subtitles").waitForExistence(timeout: 5), "Subtitles did not open in the detail column")
@@ -135,7 +140,8 @@ final class OnboardingFlowUITests: XCTestCase {
                 let quality = button("Quality", contains: true)
                 XCTAssertTrue(quality.waitForExistence(timeout: 10), "Quality link is missing")
                 quality.tap()
-                let p1080 = button("1080p", contains: true)
+                // The whole option label: "Quality, 1080p ..." on the root is longer, so only the option matches.
+                let p1080 = button("1080p \u{00B7} 10 Mbps")
                 XCTAssertTrue(p1080.waitForExistence(timeout: 5), "1080p choice is missing")
                 p1080.tap()
                 goBack()
