@@ -231,11 +231,12 @@ image() {
   mkdir -p "$(dirname "${MEDIA}/$1")"
   ff -f lavfi -i "$2" -frames:v 1 -update 1 -q:v 6 "/data/media/$1"
 }
-# logo <out relative to media>: transparent PNG with white bars (a stand-in wordmark).
+# logo <out relative to media>: transparent PNG with white bars (a stand-in wordmark). replace=1 matters: without it drawbox
+# blends the colour but leaves the alpha at 0 on an RGBA canvas, so the whole picture stays invisible.
 logo() {
   [ -f "${MEDIA}/$1" ] && return 0
   mkdir -p "$(dirname "${MEDIA}/$1")"
-  ff -f lavfi -i "color=c=black@0.0:s=600x200,format=rgba,drawbox=x=20:y=40:w=560:h=40:color=white@1:t=fill,drawbox=x=120:y=110:w=360:h=40:color=white@1:t=fill" \
+  ff -f lavfi -i "color=c=black@0.0:s=600x200,format=rgba,drawbox=x=20:y=40:w=560:h=40:color=white@1:t=fill:replace=1,drawbox=x=120:y=110:w=360:h=40:color=white@1:t=fill:replace=1" \
      -frames:v 1 -update 1 "/data/media/$1"
 }
 artwork() { # $1 = folder relative to media, $2 = seed pattern (poster, backdrop, logo)
