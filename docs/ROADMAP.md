@@ -190,7 +190,7 @@ _Starts after the state audit (see Cross-cutting)._
 
 Also built in this phase, not on the original list: Home shows a row for every genre with a per-profile setting to limit them
 (`docs/plans/10-home-rows.md`), collections open on their own page with a tablet view, the player uses the whole screen
-including the camera cut-out, and a `perf` build type (`./gradlew :androidApp:installPerf`) for judging smoothness, as the
+including the camera cut-out, and a `benchmark` build type (`./gradlew :androidApp:installBenchmark`) for judging smoothness, as the
 debug build is slow. Cut: thumbs. A baseline profile for first-scroll speed moves to Phase 6 (it needs Macrobenchmark, which is not in the stack yet: ask first).
 
 Owed after Phase 4: the phone pass (`docs/checklists/phone-pass.md`) and an iOS Xcode pass, its own task: build `iosApp` in Xcode and fix what the compiler finds (every Swift file so far is only parsed, and the `Shared` framework names such as `HeroNavPlay`, `SeeAllMyList` and `ItemFactsKt.getSeasonLabel` are read from the Kotlin source, not from a built framework).

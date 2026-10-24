@@ -40,8 +40,8 @@ android {
             signingConfigs.findByName("release")?.let { signingConfig = it }
         }
         // What to install to judge how smooth the app is: the release build (not debuggable, so Compose and the runtime skip their
-        // debug checks and the JIT works fully), signed with the debug key so it installs. `./gradlew :androidApp:installPerf`.
-        create("perf") {
+        // debug checks and the JIT works fully), signed with the debug key so it installs. `./gradlew :androidApp:installBenchmark`.
+        create("benchmark") {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += "release"

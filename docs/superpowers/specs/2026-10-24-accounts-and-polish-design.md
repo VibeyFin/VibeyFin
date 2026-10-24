@@ -38,7 +38,7 @@ Four tracks, each on **both Android and iOS**, built and reviewed as separate su
 ### D. Carry-overs (separate, do not gate A to C)
 
 - Mount the iOS mini player (`MiniPlayerView`) in `TabShell` with `.tabViewBottomAccessory` and check it on the simulator, including play and pause back to the player (Phase 3's open item).
-- Baseline profile for first-scroll speed (Phase 4 moved it here). Macrobenchmark and the baseline-profile Gradle plugin are **approved**; this item goes last so it cannot hold up A to C, and is measured on the `perf` build.
+- Baseline profile for first-scroll speed (Phase 4 moved it here). Macrobenchmark and the baseline-profile Gradle plugin are **approved**; this item goes last so it cannot hold up A to C, and is measured on the `benchmark` build.
 - Owed from Phase 4: the phone pass (`docs/checklists/phone-pass.md`) and the iOS Xcode pass. These are the owner's device checks and a build-and-fix task; list them in the sub-phase summaries, do not pretend they happened.
 
 ## Non-goals
