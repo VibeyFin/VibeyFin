@@ -73,6 +73,42 @@ abstract class AccountDao {
     @Query("UPDATE account_settings SET bufferAheadSeconds = :value WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun setBufferAheadSeconds(serverId: String, userId: String, value: Int)
 
+    @Query("SELECT maxStreamingBitrate FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeMaxStreamingBitrate(serverId: String, userId: String): Flow<Int?>
+
+    @Query("UPDATE account_settings SET maxStreamingBitrate = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setMaxStreamingBitrate(serverId: String, userId: String, value: Int)
+
+    @Query("SELECT captionsFollowSystem FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeCaptionsFollowSystem(serverId: String, userId: String): Flow<Boolean?>
+
+    @Query("UPDATE account_settings SET captionsFollowSystem = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setCaptionsFollowSystem(serverId: String, userId: String, value: Boolean)
+
+    @Query("SELECT subtitleSize FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeSubtitleSize(serverId: String, userId: String): Flow<Int?>
+
+    @Query("UPDATE account_settings SET subtitleSize = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setSubtitleSize(serverId: String, userId: String, value: Int)
+
+    @Query("SELECT subtitleTextColor FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeSubtitleTextColor(serverId: String, userId: String): Flow<Int?>
+
+    @Query("UPDATE account_settings SET subtitleTextColor = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setSubtitleTextColor(serverId: String, userId: String, value: Int)
+
+    @Query("SELECT subtitleBackground FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeSubtitleBackground(serverId: String, userId: String): Flow<Int?>
+
+    @Query("UPDATE account_settings SET subtitleBackground = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setSubtitleBackground(serverId: String, userId: String, value: Int)
+
+    @Query(
+        "UPDATE account_settings SET captionsFollowSystem = 1, subtitleSize = 1, subtitleTextColor = 0, subtitleBackground = 1 " +
+            "WHERE serverId = :serverId AND userId = :userId",
+    )
+    abstract suspend fun resetSubtitleStyle(serverId: String, userId: String)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract suspend fun insertAccount(account: AccountEntity): Long
 

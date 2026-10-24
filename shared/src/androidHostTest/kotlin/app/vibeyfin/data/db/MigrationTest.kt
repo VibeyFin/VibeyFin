@@ -76,7 +76,7 @@ class MigrationTest {
             // Settings a profile never changed take the default of every column added since.
             assertEquals(
                 1,
-                database.count("account_settings", "userId = 'u1' AND showPlaybackStats = 0 AND bingeThreshold = 3 AND homeGenreRows = 0 AND showHomeHero = 1 AND skipBackSeconds = 10 AND skipForwardSeconds = 10 AND autoSkipSegments = 0 AND bufferAheadSeconds = 20"),
+                database.count("account_settings", "userId = 'u1' AND showPlaybackStats = 0 AND bingeThreshold = 3 AND homeGenreRows = 0 AND showHomeHero = 1 AND skipBackSeconds = 10 AND skipForwardSeconds = 10 AND autoSkipSegments = 0 AND bufferAheadSeconds = 20 AND maxStreamingBitrate = 0 AND captionsFollowSystem = 1 AND subtitleSize = 1 AND subtitleTextColor = 0 AND subtitleBackground = 1"),
                 "settings defaults, from v$version",
             )
             if (version >= 3) assertEquals(1, database.count("pending_reports", "itemId = 'm1' AND positionTicks = 1200"), "pending report, from v$version")
@@ -99,5 +99,7 @@ class MigrationTest {
 
     @Test fun version7MigratesToTheCurrentSchema() = assertMigratesFrom(7)
 
-    @Test fun theCurrentVersionOpensAsItIs() = assertMigratesFrom(8)
+    @Test fun version8MigratesToTheCurrentSchema() = assertMigratesFrom(8)
+
+    @Test fun theCurrentVersionOpensAsItIs() = assertMigratesFrom(9)
 }

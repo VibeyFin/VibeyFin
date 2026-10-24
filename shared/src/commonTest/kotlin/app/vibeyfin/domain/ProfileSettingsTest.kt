@@ -86,4 +86,44 @@ class ProfileSettingsTest {
         app.profileSettings.setBufferAheadSeconds(25)
         assertEquals(0, app.profileSettings.bufferAheadSeconds.first())
     }
+
+    @Test
+    fun `quality is Maximum for a new profile and a value outside the choices is ignored`() = runTest {
+        app.signedIn()
+
+        assertEquals(0, app.profileSettings.maxStreamingBitrate.first())
+        app.profileSettings.setMaxStreamingBitrate(123)
+        assertEquals(0, app.profileSettings.maxStreamingBitrate.first())
+        app.profileSettings.setMaxStreamingBitrate(10_000_000)
+        assertEquals(10_000_000, app.profileSettings.maxStreamingBitrate.first())
+    }
+
+    @Test
+    fun `subtitle style defaults to the system style with medium white text over a shadow`() = runTest {
+        assertNull(app.profileSettings.captionsFollowSystem.first())
+        app.signedIn()
+
+        assertEquals(true, app.profileSettings.captionsFollowSystem.first())
+        assertEquals(1, app.profileSettings.subtitleSize.first())
+        assertEquals(0, app.profileSettings.subtitleTextColor.first())
+        assertEquals(1, app.profileSettings.subtitleBackground.first())
+    }
+
+    @Test
+    fun `resetting the subtitle style puts every option back`() = runTest {
+        app.signedIn()
+        app.profileSettings.setCaptionsFollowSystem(false)
+        app.profileSettings.setSubtitleSize(3)
+        app.profileSettings.setSubtitleTextColor(2)
+        app.profileSettings.setSubtitleBackground(2)
+        app.profileSettings.setSubtitleSize(9)
+        assertEquals(3, app.profileSettings.subtitleSize.first())
+
+        app.profileSettings.resetSubtitleStyle()
+
+        assertEquals(true, app.profileSettings.captionsFollowSystem.first())
+        assertEquals(1, app.profileSettings.subtitleSize.first())
+        assertEquals(0, app.profileSettings.subtitleTextColor.first())
+        assertEquals(1, app.profileSettings.subtitleBackground.first())
+    }
 }

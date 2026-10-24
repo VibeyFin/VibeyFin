@@ -105,6 +105,21 @@ class AccountSettingsEntity(
     /** Seconds of video the player loads ahead; 0 leaves it to the platform player (Auto). */
     @ColumnInfo(defaultValue = "20")
     val bufferAheadSeconds: Int = 20,
+    /** Highest streaming bitrate in bits per second; 0 is Maximum. */
+    @ColumnInfo(defaultValue = "0")
+    val maxStreamingBitrate: Int = 0,
+    /** Whether subtitles follow the system caption style (Android) or the device's own (iOS) instead of the options below. */
+    @ColumnInfo(defaultValue = "1")
+    val captionsFollowSystem: Boolean = true,
+    /** Subtitle size: 0 small, 1 medium, 2 large, 3 extra large. */
+    @ColumnInfo(defaultValue = "1")
+    val subtitleSize: Int = 1,
+    /** Subtitle text colour: 0 white, 1 yellow, 2 light blue. */
+    @ColumnInfo(defaultValue = "0")
+    val subtitleTextColor: Int = 0,
+    /** Subtitle background: 0 none, 1 shadow, 2 box. */
+    @ColumnInfo(defaultValue = "1")
+    val subtitleBackground: Int = 1,
 )
 
 /** Home's genre rows for a profile that has never chosen: the top five, so Home stays a sensible length on a big library. */

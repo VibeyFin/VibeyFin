@@ -68,6 +68,69 @@ class ProfileSettings(
         dao.setBufferAheadSeconds(account.serverId, account.userId, value)
     }
 
+    /** Highest streaming bitrate in bits per second, one of [QUALITY_CHOICES]; 0 is Maximum. Null when nobody is signed in. */
+    val maxStreamingBitrate: Flow<Int?> = forAccount { dao, a ->
+        dao.observeMaxStreamingBitrate(a.serverId, a.userId).map { if (it in QUALITY_CHOICES) it else 0 }
+    }
+
+    /** Accepts one of [QUALITY_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setMaxStreamingBitrate(value: Int) {
+        if (value !in QUALITY_CHOICES) return
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setMaxStreamingBitrate(account.serverId, account.userId, value)
+    }
+
+    /** Whether subtitles use the platform's caption style. Null when nobody is signed in. */
+    val captionsFollowSystem: Flow<Boolean?> = forAccount { dao, a -> dao.observeCaptionsFollowSystem(a.serverId, a.userId) }
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setCaptionsFollowSystem(value: Boolean) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setCaptionsFollowSystem(account.serverId, account.userId, value)
+    }
+
+    /** Subtitle size, one of [SUBTITLE_SIZE_CHOICES]. Null when nobody is signed in. */
+    val subtitleSize: Flow<Int?> = forAccount { dao, a ->
+        dao.observeSubtitleSize(a.serverId, a.userId).map { if (it in SUBTITLE_SIZE_CHOICES) it else 1 }
+    }
+
+    /** Accepts one of [SUBTITLE_SIZE_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setSubtitleSize(value: Int) {
+        if (value !in SUBTITLE_SIZE_CHOICES) return
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setSubtitleSize(account.serverId, account.userId, value)
+    }
+
+    /** Subtitle text colour, one of [SUBTITLE_COLOR_CHOICES]. Null when nobody is signed in. */
+    val subtitleTextColor: Flow<Int?> = forAccount { dao, a ->
+        dao.observeSubtitleTextColor(a.serverId, a.userId).map { if (it in SUBTITLE_COLOR_CHOICES) it else 0 }
+    }
+
+    /** Accepts one of [SUBTITLE_COLOR_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setSubtitleTextColor(value: Int) {
+        if (value !in SUBTITLE_COLOR_CHOICES) return
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setSubtitleTextColor(account.serverId, account.userId, value)
+    }
+
+    /** Subtitle background, one of [SUBTITLE_BACKGROUND_CHOICES]. Null when nobody is signed in. */
+    val subtitleBackground: Flow<Int?> = forAccount { dao, a ->
+        dao.observeSubtitleBackground(a.serverId, a.userId).map { if (it in SUBTITLE_BACKGROUND_CHOICES) it else 1 }
+    }
+
+    /** Accepts one of [SUBTITLE_BACKGROUND_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setSubtitleBackground(value: Int) {
+        if (value !in SUBTITLE_BACKGROUND_CHOICES) return
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setSubtitleBackground(account.serverId, account.userId, value)
+    }
+
+    /** Puts all four subtitle options back to their defaults in one write. Does nothing when nobody is signed in. */
+    suspend fun resetSubtitleStyle() {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.resetSubtitleStyle(account.serverId, account.userId)
+    }
+
     /** Does nothing when nobody is signed in. */
     suspend fun setAutoSkipSegments(value: Boolean) {
         val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
@@ -120,6 +183,18 @@ class ProfileSettings(
 
         /** How far ahead the player loads, in seconds, in the order the setting lists them; 0 is Auto, the platform player's own choice. */
         val BUFFER_AHEAD_CHOICES = listOf(0, 10, 20, 30, 40, 50, 60)
+
+        /** Streaming bitrate caps in bits per second, in the order the setting lists them; 0 is Maximum. */
+        val QUALITY_CHOICES = listOf(0, 40_000_000, 10_000_000, 4_000_000, 1_500_000)
+
+        /** Subtitle sizes: small, medium, large, extra large. */
+        val SUBTITLE_SIZE_CHOICES = listOf(0, 1, 2, 3)
+
+        /** Subtitle text colours: white, yellow, light blue. */
+        val SUBTITLE_COLOR_CHOICES = listOf(0, 1, 2)
+
+        /** Subtitle backgrounds: none, shadow, box. */
+        val SUBTITLE_BACKGROUND_CHOICES = listOf(0, 1, 2)
 
         /** Episodes in a row before the player asks "Are you still watching?". */
         const val DEFAULT_BINGE_THRESHOLD = 3
