@@ -126,13 +126,18 @@ final class OnboardingFlowUITests: XCTestCase {
             let shows15 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Skip Back", "15")).firstMatch
             XCTAssertTrue(shows15.waitForExistence(timeout: 5), "Skip Back doesn't show 15")
 
-            // Buffer ahead sits below the skip rows and defaults to 20 seconds.
+            // Buffer ahead sits below the skip rows and defaults to 20 seconds. The default is read off the row,
+            // not off the menu, where the chosen item isn't a plain button; a different choice is then picked.
             let bufferAhead = button("Buffer Ahead", contains: true)
             XCTAssertTrue(bufferAhead.waitForExistence(timeout: 5), "Buffer ahead row is missing")
+            let shows20 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Buffer Ahead", "20")).firstMatch
+            XCTAssertTrue(shows20.waitForExistence(timeout: 5), "Buffer ahead doesn't show its 20 seconds default")
             bufferAhead.tap()
-            let twenty = button("20 seconds")
-            XCTAssertTrue(twenty.waitForExistence(timeout: 5), "Buffer ahead doesn't show its 20 seconds default")
-            twenty.tap()
+            let thirty = button("30 seconds")
+            XCTAssertTrue(thirty.waitForExistence(timeout: 5), "30 seconds choice is missing")
+            thirty.tap()
+            let shows30 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Buffer Ahead", "30")).firstMatch
+            XCTAssertTrue(shows30.waitForExistence(timeout: 5), "Buffer ahead doesn't show 30")
         }
     }
 
