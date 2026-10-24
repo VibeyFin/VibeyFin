@@ -110,6 +110,8 @@ final class OnboardingFlowUITests: XCTestCase {
             XCTAssertTrue(profile.waitForExistence(timeout: 10), "Profile menu is missing")
             profile.tap()
             let settings = button("Settings")
+            // Home is still loading right after sign-in and can swallow the first tap: open the menu once more.
+            if !settings.waitForExistence(timeout: 5) { profile.tap() }
             XCTAssertTrue(settings.waitForExistence(timeout: 5), "Settings menu item is missing")
             settings.tap()
 
