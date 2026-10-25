@@ -5,6 +5,7 @@ import app.vibeyfin.domain.model.Account
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -128,10 +129,14 @@ class ProfileSettings(
     /** Whether the app posts notifications for the profile. Off by default. Null when nobody is signed in. */
     val notificationsEnabled: Flow<Boolean?> = forAccount { dao, a -> dao.observeNotificationsEnabled(a.serverId, a.userId).map { it ?: false } }
 
-    /** Does nothing when nobody is signed in. */
+    /**
+     * Does nothing when nobody is signed in. Switching off forgets what was notified, so switching on again starts
+     * with [NewTitlesPoller]'s first-poll rule instead of announcing the titles added in between.
+     */
     suspend fun setNotificationsEnabled(value: Boolean) {
         val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
         dao.setNotificationsEnabled(account.serverId, account.userId, value)
+        if (!value) dao.clearNotified(account.serverId, account.userId)
     }
 
     /** What notifies, one of [NOTIFICATION_SCOPE_CHOICES]. Null when nobody is signed in. */
@@ -139,11 +144,16 @@ class ProfileSettings(
         dao.observeNotificationScope(a.serverId, a.userId).map { if (it in NOTIFICATION_SCOPE_CHOICES) it else DEFAULT_NOTIFICATION_SCOPE }
     }
 
-    /** Accepts one of [NOTIFICATION_SCOPE_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    /**
+     * Accepts one of [NOTIFICATION_SCOPE_CHOICES]; anything else is ignored. Does nothing when nobody is signed in.
+     * A different scope forgets what was notified, like switching off, so a wider scope doesn't announce a backlog.
+     */
     suspend fun setNotificationScope(value: Int) {
         if (value !in NOTIFICATION_SCOPE_CHOICES) return
         val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        val before = dao.observeNotificationScope(account.serverId, account.userId).first() ?: DEFAULT_NOTIFICATION_SCOPE
         dao.setNotificationScope(account.serverId, account.userId, value)
+        if (value != before) dao.clearNotified(account.serverId, account.userId)
     }
 
     /** Whether the profile is a Kids profile. Off by default. Null when nobody is signed in. */
@@ -254,11 +264,16 @@ class ProfileSettings(
         /** Subtitle backgrounds: none, shadow, box. */
         val SUBTITLE_BACKGROUND_CHOICES = listOf(0, 1, 2)
 
-        /** Shows the profile follows and new movies. */
-        const val DEFAULT_NOTIFICATION_SCOPE = 0
+        /** Notification scope: new episodes of the shows the profile follows, and new movies. */
+        const val NOTIFY_FOLLOWED = 0
 
-        /** What notifies: 0 shows I follow and new movies, 1 everything new. */
-        val NOTIFICATION_SCOPE_CHOICES = listOf(0, 1)
+        /** Notification scope: everything new in the library. */
+        const val NOTIFY_EVERYTHING = 1
+
+        const val DEFAULT_NOTIFICATION_SCOPE = NOTIFY_FOLLOWED
+
+        /** What notifies, in the order the setting lists them. */
+        val NOTIFICATION_SCOPE_CHOICES = listOf(NOTIFY_FOLLOWED, NOTIFY_EVERYTHING)
 
         /** Episodes in a row before the player asks "Are you still watching?". */
         const val DEFAULT_BINGE_THRESHOLD = 3

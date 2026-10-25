@@ -16,6 +16,7 @@ import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.DevicePreferences
 import app.vibeyfin.domain.LanDiscovery
+import app.vibeyfin.domain.NewTitlesPoller
 import app.vibeyfin.domain.PlaybackCapabilitiesSource
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.ServerResolver
@@ -92,6 +93,9 @@ class AppModuleTest {
             koin.get<StartupViewModel>(),
             koin.get<SettingsViewModel>(),
         )
+
+        // Background work resolves too, though no screen asks for it.
+        koin.get<NewTitlesPoller>()
 
         // Some start loading as soon as they exist; stop them before the database goes.
         viewModels.forEach { it.viewModelScope.coroutineContext.job.cancelAndJoin() }

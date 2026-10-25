@@ -124,8 +124,20 @@ abstract class AccountDao {
     @Query("SELECT COUNT(*) > 0 FROM notified_items WHERE serverId = :serverId AND userId = :userId AND itemId = :itemId")
     abstract suspend fun wasNotified(serverId: String, userId: String, itemId: String): Boolean
 
+    /** Whether anything was ever notified for the profile: false before its first poll. */
+    @Query("SELECT COUNT(*) > 0 FROM notified_items WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun hasNotified(serverId: String, userId: String): Boolean
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun markNotified(entity: NotifiedItemEntity)
+
+    /** Records [entity] unless it is already there; the row id, or -1 when it was (so two polls at once report it once). */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    abstract suspend fun insertNotified(entity: NotifiedItemEntity): Long
+
+    /** Forgets everything notified for the profile, so its next poll is a first poll again. */
+    @Query("DELETE FROM notified_items WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun clearNotified(serverId: String, userId: String)
 
     @Query("DELETE FROM notified_items WHERE serverId = :serverId AND userId = :userId AND notifiedAt < :before")
     abstract suspend fun pruneNotified(serverId: String, userId: String, before: Long)
