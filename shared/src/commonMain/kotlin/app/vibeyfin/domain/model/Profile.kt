@@ -9,6 +9,8 @@ data class Profile(
     val hasSession: Boolean,
     /** Signing in needs a password; false for a user the server says has none. */
     val needsPassword: Boolean,
+    /** Opening the profile asks for its PIN first; the tile shows a lock badge. */
+    val pinRequiredToOpen: Boolean = false,
 ) {
     /** Shown with a lock: there is no session and a password is needed to get one. */
     val locked: Boolean get() = !hasSession && needsPassword

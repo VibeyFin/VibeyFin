@@ -121,6 +121,31 @@ abstract class AccountDao {
     @Query("UPDATE account_settings SET pinHash = :hash, pinSalt = :salt WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun setPin(serverId: String, userId: String, hash: ByteArray?, salt: ByteArray?)
 
+    @Query(
+        "SELECT pinHash IS NOT NULL AS hasPin, pinOpenProfile, pinOpenSettings, pinSwitchProfile " +
+            "FROM account_settings WHERE serverId = :serverId AND userId = :userId",
+    )
+    abstract fun observePinGates(serverId: String, userId: String): Flow<PinGateRow?>
+
+    @Query(
+        "SELECT pinHash IS NOT NULL AS hasPin, pinOpenProfile, pinOpenSettings, pinSwitchProfile " +
+            "FROM account_settings WHERE serverId = :serverId AND userId = :userId",
+    )
+    abstract suspend fun getPinGates(serverId: String, userId: String): PinGateRow?
+
+    /** The profiles on [serverId] that have a PIN and ask for it before they open. */
+    @Query("SELECT userId FROM account_settings WHERE serverId = :serverId AND pinHash IS NOT NULL AND pinOpenProfile = 1")
+    abstract fun observePinToOpen(serverId: String): Flow<List<String>>
+
+    @Query("UPDATE account_settings SET pinOpenProfile = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setPinOpenProfile(serverId: String, userId: String, value: Boolean)
+
+    @Query("UPDATE account_settings SET pinOpenSettings = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setPinOpenSettings(serverId: String, userId: String, value: Boolean)
+
+    @Query("UPDATE account_settings SET pinSwitchProfile = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setPinSwitchProfile(serverId: String, userId: String, value: Boolean)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract suspend fun insertAccount(account: AccountEntity): Long
 

@@ -52,7 +52,7 @@ fun apiModule() = module {
     single { ServerConnector(get(), get()) }
     single { ConnectionManager(get(), get(), get(), get(), get()) }
     single { AuthRepository(get(), get(), get()) }
-    single { StartupRouter(get(), get(), get(), get()) }
+    single { StartupRouter(get(), get(), get(), get(), get()) }
     single { LibraryRepository(get()) }
     single { WatchRepository(get(), get()) }
 

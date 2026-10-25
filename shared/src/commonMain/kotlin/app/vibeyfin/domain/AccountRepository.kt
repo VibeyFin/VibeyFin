@@ -5,7 +5,7 @@ import app.vibeyfin.data.db.AccountEntity
 import app.vibeyfin.data.vault.TokenVault
 import app.vibeyfin.domain.model.Account
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -14,9 +14,11 @@ class AccountRepository(
     private val vault: TokenVault,
     private val clock: Clock,
 ) {
-    /** Profiles on [serverId], most recently used first. */
+    /** Profiles on [serverId], most recently used first, each knowing whether it asks for its PIN to open. */
     fun observeAccounts(serverId: String): Flow<List<Account>> =
-        dao.observeAccounts(serverId).map { accounts -> accounts.map { it.toAccount() } }
+        combine(dao.observeAccounts(serverId), dao.observePinToOpen(serverId)) { accounts, pinToOpen ->
+            accounts.map { it.toAccount().copy(pinRequiredToOpen = it.userId in pinToOpen) }
+        }
 
     suspend fun account(serverId: String, userId: String): Account? = dao.getAccount(serverId, userId)?.toAccount()
 

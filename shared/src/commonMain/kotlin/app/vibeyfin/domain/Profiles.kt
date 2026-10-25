@@ -45,6 +45,7 @@ fun mergeProfiles(
             avatarUrl = avatar(account.userId, listed?.imageTag ?: account.imageTag),
             hasSession = account.hasSession,
             needsPassword = listed?.hasPassword ?: true,
+            pinRequiredToOpen = account.pinRequiredToOpen,
         )
     }
     val savedIds = saved.mapTo(HashSet()) { it.userId }

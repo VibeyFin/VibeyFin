@@ -18,6 +18,8 @@ data class Account(
     val imageTag: String?,
     val hasSession: Boolean,
     val lastUsedAt: Instant,
+    /** The profile has a PIN and asks for it before it opens. */
+    val pinRequiredToOpen: Boolean = false,
 )
 
 /** Points at one profile on one server. */

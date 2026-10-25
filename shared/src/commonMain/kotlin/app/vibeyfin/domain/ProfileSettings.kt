@@ -134,6 +134,27 @@ class ProfileSettings(
         dao.setKidsProfile(account.serverId, account.userId, value)
     }
 
+    /** When the profile asks for its PIN. Null when nobody is signed in. */
+    val pinGates: Flow<PinGates?> = forAccount { dao, a -> dao.observePinGates(a.serverId, a.userId).map { it.toGates() } }
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setPinOpenProfile(value: Boolean) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setPinOpenProfile(account.serverId, account.userId, value)
+    }
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setPinOpenSettings(value: Boolean) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setPinOpenSettings(account.serverId, account.userId, value)
+    }
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setPinSwitchProfile(value: Boolean) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setPinSwitchProfile(account.serverId, account.userId, value)
+    }
+
     /** Puts all four subtitle options back to their defaults in one write. Does nothing when nobody is signed in. */
     suspend fun resetSubtitleStyle() {
         val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return

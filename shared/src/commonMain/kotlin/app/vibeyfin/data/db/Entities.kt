@@ -140,6 +140,9 @@ class AccountSettingsEntity(
 /** A profile's stored PIN: both null when it has none. */
 class PinCredentials(val pinHash: ByteArray?, val pinSalt: ByteArray?)
 
+/** Whether a profile has a PIN, and its three switches as stored (they only count once there is a PIN). */
+data class PinGateRow(val hasPin: Boolean, val pinOpenProfile: Boolean, val pinOpenSettings: Boolean, val pinSwitchProfile: Boolean)
+
 /** Home's genre rows for a profile that has never chosen: the top five, so Home stays a sensible length on a big library. */
 const val NEW_PROFILE_HOME_GENRE_ROWS = 5
 

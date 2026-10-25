@@ -1,6 +1,7 @@
 package app.vibeyfin.domain
 
 import app.vibeyfin.data.db.AccountDao
+import app.vibeyfin.data.db.PinGateRow
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
@@ -19,6 +20,26 @@ sealed interface PinResult {
 }
 
 /**
+ * When a profile asks for its PIN. Each switch is already combined with [hasPin]: a profile without a PIN asks for nothing.
+ * Turning kids mode off, changing the PIN and removing it ask whenever [hasPin] is true; no switch covers them.
+ */
+data class PinGates(
+    val hasPin: Boolean = false,
+    /** Opening this profile, from its tile or when the app reopens it. */
+    val openProfile: Boolean = false,
+    val openSettings: Boolean = false,
+    /** Leaving this profile for "Who's watching?", from inside the app or at launch. */
+    val switchProfile: Boolean = false,
+)
+
+internal fun PinGateRow?.toGates(): PinGates = if (this == null || !hasPin) PinGates() else PinGates(
+    hasPin = true,
+    openProfile = pinOpenProfile,
+    openSettings = pinOpenSettings,
+    switchProfile = pinSwitchProfile,
+)
+
+/**
  * A profile's PIN: set, removed and checked. Only a salted hash is stored, never the PIN. Wrong guesses are counted
  * in memory per profile; [MAX_ATTEMPTS] in a row lock that profile for [LOCK_SECONDS], and a restart clears the count.
  */
@@ -32,6 +53,9 @@ class PinLock(
     private val tries = mutableMapOf<Pair<String, String>, Tries>()
 
     suspend fun hasPin(serverId: String, userId: String): Boolean = dao.getPin(serverId, userId)?.pinHash != null
+
+    /** When [userId] on [serverId] asks for its PIN; nothing for a profile this device has never saved. */
+    suspend fun gates(serverId: String, userId: String): PinGates = dao.getPinGates(serverId, userId).toGates()
 
     /** Sets the PIN of the profile that is signed in, with a fresh salt. Does nothing when nobody is. */
     suspend fun setPin(pin: String) {

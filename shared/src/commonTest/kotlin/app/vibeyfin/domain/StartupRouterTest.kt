@@ -98,4 +98,51 @@ class StartupRouterTest {
 
         assertEquals(StartDestination.WhoIsWatching("srv-1"), app.router.decide())
     }
+
+    @Test
+    fun `the picker at launch asks for the last profile's PIN with Always ask on`() = runTest {
+        app.serverAt("http://nas:8096")
+        app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-1")
+        app.setPin("u1", "1234")
+        app.database.accountDao().setPinOpenProfile("srv-1", "u1", false)
+        app.preferences.setLastProfile(ProfileRef("srv-1", "u1"))
+        app.preferences.setAlwaysAskWhoIsWatching(true)
+
+        assertEquals(StartDestination.WhoIsWatching("srv-1", pinFor = ProfileRef("srv-1", "u1")), app.router.decide())
+        assertEquals(ConnectionState.Disconnected, app.connection.state.value)
+    }
+
+    @Test
+    fun `a PIN whose switch profile is off leaves the picker open with Always ask on`() = runTest {
+        app.serverAt("http://nas:8096")
+        app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-1")
+        app.setPin("u1", "1234")
+        app.database.accountDao().setPinSwitchProfile("srv-1", "u1", false)
+        app.preferences.setLastProfile(ProfileRef("srv-1", "u1"))
+        app.preferences.setAlwaysAskWhoIsWatching(true)
+
+        assertEquals(StartDestination.WhoIsWatching("srv-1"), app.router.decide())
+    }
+
+    @Test
+    fun `a last profile with open-this-profile on is not picked and the picker stays up`() = runTest {
+        app.serverAt("http://nas:8096")
+        app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-1")
+        app.setPin("u1", "1234")
+        app.preferences.setLastProfile(ProfileRef("srv-1", "u1"))
+
+        assertEquals(StartDestination.WhoIsWatching("srv-1"), app.router.decide())
+        assertEquals(ConnectionState.Disconnected, app.connection.state.value)
+    }
+
+    @Test
+    fun `a PIN with only switch profile on still reopens the profile`() = runTest {
+        app.serverAt("http://nas:8096").on("GET", "/Users/Me", Reply.json("""{"Id":"u1"}"""))
+        app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-1")
+        app.setPin("u1", "1234")
+        app.database.accountDao().setPinOpenProfile("srv-1", "u1", false)
+        app.preferences.setLastProfile(ProfileRef("srv-1", "u1"))
+
+        assertEquals(StartDestination.Home, app.router.decide())
+    }
 }
