@@ -9,6 +9,7 @@
 #     category buttons: genres Drama, Thriller and Science Fiction, and release years 2026 to 1999 for "New".
 #     Jellyfin reads the .nfo as local metadata (no online lookup).
 #   movies/Filler 01 (2003) ... Filler 24 (2026)   copies of one clip, genres in turn, to fill a category page
+#   movies/Kid Friendly (G), Grown Up Only (R), Tagged For Adults (G, tag no-kids) (2026)   rated clips for the kids user
 #   failures/<Name> (2026)/<Name> (2026).mkv         20 s clips with one thing a player may refuse: Plain Clip (the
 #                                                    baseline), DTS Audio, MKV VP9 Opus, Text Subtitles, Image Subtitles
 #   failures/Truncated (2026)/Truncated (2026).mp4   an MP4 cut in half: no moov atom, nothing can be read from it
@@ -107,6 +108,17 @@ for n in $(seq 1 24); do
 done
 # A title long enough to wrap onto two lines in a poster tile, to check a row keeps one height as it scrolls.
 nfo_movie "The Extraordinarily Long Title Of A Film (2026)" "The Extraordinarily Long Title Of A Film That Keeps Going" 2026 "A24" "Drama"
+# Rated fixtures for the kids user (seed-userdata.sh): a G movie, an R movie, and a G movie with the tag "no-kids".
+# The kids user is capped at PG and blocks that tag, so it sees only Kid Friendly. Same clip copied, so cheap.
+rated_movie() { # $1 = folder name, $2 = title, $3 = year, $4 = rating, $5 = extra nfo (optional)
+  local name="$1" dir="${MEDIA}/movies/$1"
+  mkdir -p "$dir"
+  [ -f "${dir}/${name}.mkv" ] || cp "${MEDIA}/movies/Quiet Harbor (2025)/Quiet Harbor (2025).mkv" "${dir}/${name}.mkv"
+  echo "<movie><title>$2</title><lockdata>true</lockdata><year>$3</year><mpaa>$4</mpaa>${5:-}</movie>" > "${dir}/movie.nfo"
+}
+rated_movie "Kid Friendly (2026)" "Kid Friendly" 2026 "G"
+rated_movie "Grown Up Only (2026)" "Grown Up Only" 2026 "R"
+rated_movie "Tagged For Adults (2026)" "Tagged For Adults" 2026 "G" "<tag>no-kids</tag>"
 # Failure fixtures: 20 s clips, no chapters (so no segments), in the Failures library (no trickplay).
 failure() { # $1 = title, $2 = extension, rest = ffmpeg arguments after the two generated inputs
   local title="$1" ext="$2" out

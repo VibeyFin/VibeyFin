@@ -155,6 +155,29 @@ scripts/test-server/seed-userdata.sh  # user data and the box set; run again any
 | Partly watched (Continue watching) | Saga Show S01E02 at 1.2 s of 3 s (40 %), Neon Night at 2 s of 5 s |
 | My List (favourites) | Saga Show, Neon Night, Starlit Crown, Solo Season |
 
+## Kids user and rated fixtures
+
+For the Phase 6 profile limits and the Settings PIN. `make-media.sh` writes three more 5 s movies (the Quiet Harbor clip
+copied, `.nfo` with `<mpaa>` and `lockdata`); `seed-userdata.sh` creates the kids user and sets its policy through the API
+(`POST /Users/New`, then `POST /Users/{id}/Policy`; idempotent, the policy is set again on every run). Existing fixtures are
+unchanged. After adding them to an existing server: `POST /Library/Refresh`, then `seed-userdata.sh`.
+
+| Fixture | Where | What it is | Needed by |
+| --- | --- | --- | --- |
+| user `kids` | server user, password `vibeyfin-kids` (throwaway) | Not an admin. `MaxParentalRating` 10 (PG), `BlockedTags` `no-kids`, one access schedule Everyday 0 to 24 h (open all day, so a test never fails by the clock; edit the schedule in the Jellyfin dashboard to try a closed window) | Profile policy page, rating cap, blocked tag, schedule; the PIN flow |
+| `kid-friendly` | `movies/Kid Friendly (2026)/` | Rated G | Visible to `kids` |
+| `grown-up-only` | `movies/Grown Up Only (2026)/` | Rated R | Hidden from `kids` (above the cap) |
+| `tagged-for-adults` | `movies/Tagged For Adults (2026)/` | Rated G, tag `no-kids` | Hidden from `kids` (blocked tag) |
+
+`admin` is the user without limits. Notes: items with no rating (every older fixture) stay visible to `kids`, because
+"block unrated" is off; Starlit Crown and Starlit Crown II are PG-13, so `kids` does not see them either. Level 10 is
+named "PG" by the server (`GET /Localization/ParentalRatings`).
+
+Using them with the PIN flow: sign in as `kids` (password `vibeyfin-kids`), open Settings, set a PIN on that profile, then
+return to "Who's watching?" and sign in as `kids` again: the Settings tab asks for the PIN (a wrong PIN stays locked, the
+right one opens). Home as `kids` lists Kid Friendly but not Grown Up Only or Tagged For Adults; as `admin` it lists all
+three. Signing in as `kids` also needs the server's password prompt only once, as for any profile.
+
 ## Checking it
 
 `scripts/test-server/list-fixtures.sh` compares every fixture in the catalogue with what the running
