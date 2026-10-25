@@ -20,7 +20,7 @@ import kotlinx.coroutines.IO
         AccountSettingsEntity::class,
         PendingReportEntity::class,
     ],
-    version = 9,
+    version = 10,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -30,6 +30,7 @@ import kotlinx.coroutines.IO
         AutoMigration(from = 6, to = 7),
         AutoMigration(from = 7, to = 8),
         AutoMigration(from = 8, to = 9),
+        AutoMigration(from = 9, to = 10),
     ],
 )
 @ConstructedBy(VibeyFinDatabaseConstructor::class)

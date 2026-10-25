@@ -109,6 +109,18 @@ abstract class AccountDao {
     )
     abstract suspend fun resetSubtitleStyle(serverId: String, userId: String)
 
+    @Query("SELECT kidsProfile FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeKidsProfile(serverId: String, userId: String): Flow<Boolean?>
+
+    @Query("UPDATE account_settings SET kidsProfile = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setKidsProfile(serverId: String, userId: String, value: Boolean)
+
+    @Query("SELECT pinHash, pinSalt FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun getPin(serverId: String, userId: String): PinCredentials?
+
+    @Query("UPDATE account_settings SET pinHash = :hash, pinSalt = :salt WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setPin(serverId: String, userId: String, hash: ByteArray?, salt: ByteArray?)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract suspend fun insertAccount(account: AccountEntity): Long
 

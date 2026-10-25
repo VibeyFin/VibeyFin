@@ -7,6 +7,7 @@ import app.vibeyfin.data.prefs.DataStoreDevicePreferences
 import app.vibeyfin.domain.AccountRepository
 import app.vibeyfin.domain.DevicePreferences
 import app.vibeyfin.domain.PendingReports
+import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SearchHistory
 import app.vibeyfin.domain.ServerRepository
@@ -26,6 +27,7 @@ fun dataModule() = module {
     single { ServerRepository(get(), get(), get(), get()) }
     single { AccountRepository(get(), get(), get()) }
     single { ProfileSettings(get(), get()) }
+    single { PinLock(get(), get(), get()) }
     single { SearchHistory(get(), get()) }
     single { PendingReports(get(), get()) }
 }

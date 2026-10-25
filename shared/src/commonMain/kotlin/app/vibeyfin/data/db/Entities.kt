@@ -120,7 +120,25 @@ class AccountSettingsEntity(
     /** Subtitle background: 0 none, 1 shadow, 2 box. */
     @ColumnInfo(defaultValue = "1")
     val subtitleBackground: Int = 1,
+    /** Whether this is a Kids profile. */
+    @ColumnInfo(defaultValue = "0")
+    val kidsProfile: Boolean = false,
+    /** SHA-256 of [pinSalt] followed by the PIN; null when the profile has no PIN. The PIN itself is never stored. */
+    val pinHash: ByteArray? = null,
+    val pinSalt: ByteArray? = null,
+    /** Whether opening this profile asks for the PIN. Only matters once a PIN exists. */
+    @ColumnInfo(defaultValue = "1")
+    val pinOpenProfile: Boolean = true,
+    /** Whether opening Settings asks for the PIN. Only matters once a PIN exists. */
+    @ColumnInfo(defaultValue = "1")
+    val pinOpenSettings: Boolean = true,
+    /** Whether switching away from this profile asks for the PIN. Only matters once a PIN exists. */
+    @ColumnInfo(defaultValue = "1")
+    val pinSwitchProfile: Boolean = true,
 )
+
+/** A profile's stored PIN: both null when it has none. */
+class PinCredentials(val pinHash: ByteArray?, val pinSalt: ByteArray?)
 
 /** Home's genre rows for a profile that has never chosen: the top five, so Home stays a sensible length on a big library. */
 const val NEW_PROFILE_HOME_GENRE_ROWS = 5

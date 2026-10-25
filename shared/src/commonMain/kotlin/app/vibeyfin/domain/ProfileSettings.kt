@@ -125,6 +125,15 @@ class ProfileSettings(
         dao.setSubtitleBackground(account.serverId, account.userId, value)
     }
 
+    /** Whether the profile is a Kids profile. Off by default. Null when nobody is signed in. */
+    val kidsProfile: Flow<Boolean?> = forAccount { dao, a -> dao.observeKidsProfile(a.serverId, a.userId).map { it ?: false } }
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setKidsProfile(value: Boolean) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setKidsProfile(account.serverId, account.userId, value)
+    }
+
     /** Puts all four subtitle options back to their defaults in one write. Does nothing when nobody is signed in. */
     suspend fun resetSubtitleStyle() {
         val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
