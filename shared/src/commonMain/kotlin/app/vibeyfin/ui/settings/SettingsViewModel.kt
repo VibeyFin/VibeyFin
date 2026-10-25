@@ -2,17 +2,26 @@ package app.vibeyfin.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.DevicePreferences
+import app.vibeyfin.domain.PinGates
+import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.model.Server
+import app.vibeyfin.ui.common.PinGate
+import app.vibeyfin.ui.common.PinPrompt
+import app.vibeyfin.ui.common.PinReason
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -25,6 +34,17 @@ data class SettingsUiState(
     val confirmSignOut: Boolean = false,
     /** The connected server's id, for the native app to open "Who's watching?" there after Switch profile or Sign out. Empty when disconnected. */
     val serverId: String = "",
+    /** A kids profile is signed in; its pages leave out Advanced, Sign out and Notifications. */
+    val kidsProfile: Boolean = false,
+    /** The PIN sheet, while one is open. */
+    val pinPrompt: PinPrompt? = null,
+    /**
+     * Settings waits for the profile's PIN, or has not yet found out whether it needs one: draw no pages while true.
+     * It starts true so a gated profile never sees its settings flash by.
+     */
+    val locked: Boolean = true,
+    /** The PIN to open Settings was dismissed: the native screen goes back. */
+    val leave: Boolean = false,
 )
 
 /** Device-wide settings from [DevicePreferences] and the signed-in profile's from the database, built into pages by [settingsPages]. */
@@ -33,13 +53,36 @@ class SettingsViewModel(
     private val profileSettings: ProfileSettings,
     private val connection: ConnectionManager,
     private val servers: ServerRepository,
+    private val pins: PinLock,
+    auth: AuthRepository,
     private val applicationScope: CoroutineScope,
     private val appVersion: String = "",
     private val subtitleStyleApplies: Boolean = true,
 ) : ViewModel() {
     private val confirmSignOut = MutableStateFlow(false)
+    private val pin = PinGate(pins, auth, viewModelScope)
+    private val locked = MutableStateFlow(true)
+    private val leave = MutableStateFlow(false)
 
     init {
+        // Decided per profile as the connection gets one, so Settings opened before the profile is signed in still asks.
+        // The same profile coming back (Forgot PIN signs in again) is not asked twice.
+        viewModelScope.launch {
+            connection.state
+                .map { (it as? ConnectionState.Connected)?.account }
+                .distinctUntilChangedBy { it?.serverId to it?.userId }
+                .collect { account ->
+                    val gates = account?.let { pins.gates(it.serverId, it.userId) } ?: PinGates()
+                    if (account != null && gates.openSettings) {
+                        locked.value = true
+                        pin.ask(PinReason.OpenSettings, account.serverId, account.userId, account.name, onDismiss = { leave.value = true }) {
+                            locked.value = false
+                        }
+                    } else {
+                        locked.value = false
+                    }
+                }
+        }
         // A dialog left open while the connection drops (a revoked token, say) would otherwise wait for a session that is gone.
         viewModelScope.launch {
             connection.state.collect { if (it !is ConnectionState.Connected) confirmSignOut.value = false }
@@ -65,6 +108,10 @@ class SettingsViewModel(
             connection.state,
             servers.servers,
             confirmSignOut,
+            profileSettings.kidsProfile,
+            pin.prompt,
+            locked,
+            leave,
         ),
     ) { v ->
         val defaults = SettingsValues()
@@ -78,6 +125,7 @@ class SettingsViewModel(
             appVersion = appVersion,
             subtitleStyleApplies = subtitleStyleApplies,
             hasProfile = showStats != null || threshold != null,
+            kidsProfile = v[17] as Boolean? ?: false,
             showPlaybackStats = showStats ?: defaults.showPlaybackStats,
             bingeThreshold = threshold ?: defaults.bingeThreshold,
             homeGenreRows = v[3] as Int? ?: defaults.homeGenreRows,
@@ -100,6 +148,10 @@ class SettingsViewModel(
             hasProfile = values.hasProfile,
             confirmSignOut = v[16] as Boolean,
             serverId = connected?.server?.id.orEmpty(),
+            kidsProfile = values.kidsProfile,
+            pinPrompt = v[18] as PinPrompt?,
+            locked = v[19] as Boolean,
+            leave = v[20] as Boolean,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -112,6 +164,15 @@ class SettingsViewModel(
                 SettingKey.ShowHero -> profileSettings.setShowHomeHero(value)
                 SettingKey.AutoSkip -> profileSettings.setAutoSkipSegments(value)
                 SettingKey.CaptionsFollowSystem -> profileSettings.setCaptionsFollowSystem(value)
+                SettingKey.KidsProfile -> if (value) {
+                    profileSettings.setKidsProfile(true)
+                } else {
+                    // Turning kids mode on needs nothing; turning it off asks for the PIN whenever there is one.
+                    guarded(PinReason.KidsOff, { it.hasPin }) { profileSettings.setKidsProfile(false) }
+                }
+                SettingKey.PinOpenProfile -> profileSettings.setPinOpenProfile(value)
+                SettingKey.PinOpenSettings -> profileSettings.setPinOpenSettings(value)
+                SettingKey.PinSwitchProfile -> profileSettings.setPinSwitchProfile(value)
                 else -> Unit
             }
         }
@@ -140,8 +201,12 @@ class SettingsViewModel(
         viewModelScope.launch {
             when (key) {
                 SettingKey.ResetSubtitles -> profileSettings.resetSubtitleStyle()
-                SettingKey.SwitchProfile -> connection.switchProfile()
-                SettingKey.SignOut -> confirmSignOut.value = true
+                SettingKey.SwitchProfile -> guarded(PinReason.SwitchProfile, { it.switchProfile }) { connection.switchProfile() }
+                // A kids profile has no Sign out row; this keeps a stale tap from reaching it.
+                SettingKey.SignOut -> if (profileSettings.kidsProfile.first() != true) confirmSignOut.value = true
+                SettingKey.RemovePin -> guarded(PinReason.RemovePin, { it.hasPin }) { pins.removePin() }
+                // Choosing the new PIN belongs to the Kids and PIN page; here the current one is checked first.
+                SettingKey.ChangePin -> guarded(PinReason.ChangePin, { it.hasPin }) {}
                 else -> Unit
             }
         }
@@ -156,5 +221,26 @@ class SettingsViewModel(
 
     fun onDismissSignOut() {
         confirmSignOut.value = false
+    }
+
+    /** A PIN was entered in the open PIN sheet. */
+    fun onSubmitPin(pin: String) = this.pin.submitPin(pin)
+
+    /** "Forgot PIN?": the sheet asks for the profile's Jellyfin password instead. */
+    fun onForgotPin() = pin.forgotPin()
+
+    /** The Jellyfin password entered after "Forgot PIN?". */
+    fun onSubmitPassword(password: String) = pin.submitPassword(password)
+
+    fun onDismissPin() = pin.dismiss()
+
+    /** Runs [action] for the signed-in profile, after its PIN when [needed] says so for its current [PinGates]. */
+    private suspend fun guarded(reason: PinReason, needed: (PinGates) -> Boolean, action: suspend () -> Unit) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        if (needed(pins.gates(account.serverId, account.userId))) {
+            pin.ask(reason, account.serverId, account.userId, account.name, onPass = action)
+        } else {
+            action()
+        }
     }
 }

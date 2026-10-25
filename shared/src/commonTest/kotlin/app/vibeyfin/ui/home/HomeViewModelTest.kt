@@ -1,6 +1,7 @@
 package app.vibeyfin.ui.home
 
 import app.vibeyfin.ui.common.LoadMessages
+import app.vibeyfin.ui.common.PinReason
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CoroutineScope
@@ -51,7 +52,7 @@ class HomeViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(HomeViewModel(app.connection, app.library, app.watch, app.watchChanges, app.clock, app.profileSettings, app.searchHistory))
+    private fun viewModel() = viewModels.track(HomeViewModel(app.connection, app.library, app.watch, app.watchChanges, app.clock, app.profileSettings, app.searchHistory, app.pins, app.auth))
 
     private suspend fun signedIn(): FakeServer {
         val server = app.serverAt("http://nas:8096")
@@ -102,6 +103,50 @@ class HomeViewModelTest {
         assertEquals(ConnectionState.Disconnected, app.connection.state.value)
         assertEquals("token-1", app.accounts.sessionToken("srv-1", "u1"))
         assertEquals(0, app.jellyfin.requestsTo("POST", "/Sessions/Logout").size)
+    }
+
+    @Test
+    fun `switching profile asks for the PIN when the switch is on`() = runTest {
+        signedIn()
+        app.setPin("u1", "1234")
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.userName != null }
+
+        viewModel.onSwitchProfile()
+        assertEquals(PinReason.SwitchProfile, viewModel.uiState.first { it.pinPrompt != null }.pinPrompt!!.reason)
+        assertIs<ConnectionState.Connected>(app.connection.state.value)
+
+        viewModel.onSubmitPin("1234")
+        assertEquals(HomeExit.WhoIsWatching("srv-1"), viewModel.uiState.first { it.exit != null }.exit)
+        assertEquals(ConnectionState.Disconnected, app.connection.state.value)
+    }
+
+    @Test
+    fun `switching server asks for the current profile's PIN`() = runTest {
+        signedIn()
+        app.setPin("u1", "1234")
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.userName != null }
+
+        viewModel.onSwitchServer()
+        assertEquals(PinReason.SwitchProfile, viewModel.uiState.first { it.pinPrompt != null }.pinPrompt!!.reason)
+        assertIs<ConnectionState.Connected>(app.connection.state.value)
+
+        viewModel.onSubmitPin("1234")
+        assertEquals(HomeExit.Servers, viewModel.uiState.first { it.exit != null }.exit)
+        assertEquals(ConnectionState.Disconnected, app.connection.state.value)
+    }
+
+    @Test
+    fun `a kids profile cannot sign out from Home`() = runTest {
+        signedIn()
+        app.profileSettings.setKidsProfile(true)
+        val viewModel = viewModel()
+        assertTrue(viewModel.uiState.first { it.userName != null && it.kidsProfile }.kidsProfile)
+
+        viewModel.onSignOut()
+
+        assertEquals("token-1", app.accounts.sessionToken("srv-1", "u1"))
     }
 
     @Test

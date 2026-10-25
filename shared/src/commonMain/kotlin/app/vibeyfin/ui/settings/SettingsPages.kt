@@ -14,6 +14,8 @@ data class SettingsValues(
     /** False where subtitles are burned into the picture (iOS), so the style cannot apply. */
     val subtitleStyleApplies: Boolean = true,
     val hasProfile: Boolean = false,
+    /** A kids profile: no Advanced settings, no Sign out, no Notifications. */
+    val kidsProfile: Boolean = false,
     val showPlaybackStats: Boolean = false,
     val bingeThreshold: Int = ProfileSettings.DEFAULT_BINGE_THRESHOLD,
     val homeGenreRows: Int = ProfileSettings.HOME_GENRES_ALL,
@@ -44,6 +46,7 @@ fun settingsPages(values: SettingsValues): Map<SettingsPageId, SettingsPage> = l
 
 fun rootPage(v: SettingsValues): SettingsPage {
     val profile = v.hasProfile
+    val grownUp = !v.kidsProfile
     return SettingsPage(
         SettingsPageId.Root,
         Strings.settingsRootTitle,
@@ -94,7 +97,10 @@ fun rootPage(v: SettingsValues): SettingsPage {
                 Strings.notificationsTitle,
                 footer = null,
                 items = listOf(
-                    LinkItem(SettingKey.Notifications, Strings.notificationsTitle, target = SettingsPageId.Notifications, visible = profile),
+                    LinkItem(
+                        SettingKey.Notifications, Strings.notificationsTitle,
+                        target = SettingsPageId.Notifications, visible = profile && grownUp,
+                    ),
                 ),
             ),
             SettingsSection(
@@ -118,16 +124,16 @@ fun rootPage(v: SettingsValues): SettingsPage {
                 Strings.settingsGroupAdvanced,
                 footer = null,
                 items = listOf(
-                    ToggleItem(SettingKey.ShowStats, Strings.playbackStatsTitle, checked = v.showPlaybackStats, visible = profile),
-                    InfoItem(SettingKey.About, Strings.settingsAbout, value = v.appVersion, visible = v.appVersion.isNotEmpty()),
+                    ToggleItem(SettingKey.ShowStats, Strings.playbackStatsTitle, checked = v.showPlaybackStats, visible = profile && grownUp),
+                    InfoItem(SettingKey.About, Strings.settingsAbout, value = v.appVersion, visible = grownUp && v.appVersion.isNotEmpty()),
                 ),
             ),
         ),
     )
 }
 
-/** [kidsProfile] hides Sign out; the flag itself arrives with the kids setting. */
-fun profilePage(v: SettingsValues, kidsProfile: Boolean = false): SettingsPage {
+/** A kids profile has no Sign out: only the password, which a child should not know, gets past its PIN. */
+fun profilePage(v: SettingsValues): SettingsPage {
     val profile = v.hasProfile
     return SettingsPage(
         SettingsPageId.Profile,
@@ -166,7 +172,7 @@ fun profilePage(v: SettingsValues, kidsProfile: Boolean = false): SettingsPage {
             SettingsSection(
                 title = null,
                 footer = Strings.signOutFooter,
-                items = listOf(ActionItem(SettingKey.SignOut, Strings.signOut, destructive = true, visible = profile && !kidsProfile)),
+                items = listOf(ActionItem(SettingKey.SignOut, Strings.signOut, destructive = true, visible = profile && !v.kidsProfile)),
             ),
         ),
     )

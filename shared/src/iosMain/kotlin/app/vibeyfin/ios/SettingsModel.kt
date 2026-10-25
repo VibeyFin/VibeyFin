@@ -25,5 +25,16 @@ class SettingsModel {
 
     fun onDismissSignOut() = host.viewModel.onDismissSignOut()
 
+    /** A PIN was entered in the open PIN sheet. */
+    fun onSubmitPin(pin: String) = host.viewModel.onSubmitPin(pin)
+
+    /** "Forgot PIN?": the PIN sheet asks for the profile's Jellyfin password instead. */
+    fun onForgotPin() = host.viewModel.onForgotPin()
+
+    fun onDismissPin() = host.viewModel.onDismissPin()
+
+    /** The Jellyfin password entered after "Forgot PIN?". */
+    fun onSubmitPassword(password: String) = host.viewModel.onSubmitPassword(password)
+
     fun close() = host.close()
 }

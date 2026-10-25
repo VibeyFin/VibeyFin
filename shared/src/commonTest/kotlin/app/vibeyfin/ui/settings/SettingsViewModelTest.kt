@@ -6,13 +6,19 @@ import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.ViewModelTracker
+import app.vibeyfin.ui.common.PinReason
 import app.vibeyfin.ui.common.Strings
+import app.vibeyfin.testing.authJson
+import io.ktor.http.HttpStatusCode
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -53,7 +59,9 @@ class SettingsViewModelTest {
 
     private fun SettingsUiState.value(key: SettingKey) = (item(key) as ChoiceItem).value
 
-    private fun viewModel() = viewModels.track(SettingsViewModel(app.preferences, app.profileSettings, app.connection, app.servers, applicationScope))
+    private fun viewModel() = viewModels.track(
+        SettingsViewModel(app.preferences, app.profileSettings, app.connection, app.servers, app.pins, app.auth, applicationScope),
+    )
 
     @Test
     fun alwaysAskStartsOff() = runTest {
@@ -365,8 +373,8 @@ class SettingsViewModelTest {
     fun `the profile page is hidden without a profile and sign out is hidden on a kids profile`() = runTest {
         assertEquals(emptyList(), viewModel().uiState.first().items(SettingsPageId.Profile).map { it.key })
 
-        val values = SettingsValues(hasProfile = true, profileName = "Alex", serverName = "Home", serverAddresses = listOf("a"))
-        val kids = profilePage(values, kidsProfile = true).visibleOnly().sections.flatMap { it.items }.map { it.key }
+        val values = SettingsValues(hasProfile = true, kidsProfile = true, profileName = "Alex", serverName = "Home", serverAddresses = listOf("a"))
+        val kids = profilePage(values).visibleOnly().sections.flatMap { it.items }.map { it.key }
         assertFalse(SettingKey.SignOut in kids)
         assertTrue(SettingKey.SwitchProfile in kids)
     }
@@ -522,5 +530,193 @@ class SettingsViewModelTest {
         viewModel.onChoose(SettingKey.Quality, 123)
 
         assertEquals(0, app.profileSettings.maxStreamingBitrate.first())
+    }
+
+    /** Signed in as Alex, with "1234" as the PIN when [pin] is true; the switches are on unless turned off. */
+    private suspend fun signedInWithPin(pin: Boolean = true) = app.signedIn().also {
+        if (pin) app.setPin("u1", "1234")
+        // "right" is Alex's Jellyfin password.
+        it.on("POST", "/Users/AuthenticateByName") { request ->
+            if (request.body.contains(""""Pw":"right"""")) Reply.json(authJson(token = "token-2")) else Reply.status(HttpStatusCode.Unauthorized)
+        }
+    }
+
+    private suspend fun SettingsViewModel.open() = uiState.first { it.hasProfile && !it.locked }
+
+    @Test
+    fun `a profile without a PIN or kids flag sees no prompt anywhere`() = runTest {
+        signedInWithPin(pin = false)
+        val viewModel = viewModel()
+        assertNull(viewModel.open().pinPrompt)
+
+        viewModel.onToggle(SettingKey.KidsProfile, true)
+        app.profileSettings.kidsProfile.first { it == true }
+        viewModel.onToggle(SettingKey.KidsProfile, false)
+        app.profileSettings.kidsProfile.first { it == false }
+        viewModel.onAction(SettingKey.SwitchProfile)
+
+        assertNull(viewModel.uiState.value.pinPrompt)
+        assertEquals(ConnectionState.Disconnected, app.connection.state.value)
+    }
+
+    @Test
+    fun `opening Settings asks for the PIN when the switch is on and opens after the right one`() = runTest {
+        signedInWithPin()
+        val viewModel = viewModel()
+        val asked = viewModel.uiState.first { it.pinPrompt != null }
+        assertEquals(PinReason.OpenSettings, asked.pinPrompt!!.reason)
+        assertTrue(asked.locked)
+
+        viewModel.onSubmitPin("0000")
+        val wrong = viewModel.uiState.first { it.pinPrompt?.error != null }
+        assertEquals(Strings.pinPromptWrong, wrong.pinPrompt!!.error)
+        assertTrue(wrong.locked)
+
+        viewModel.onSubmitPin("1234")
+        val open = viewModel.uiState.first { !it.locked }
+        assertNull(open.pinPrompt)
+    }
+
+    @Test
+    fun `dismissing the Settings PIN leaves Settings`() = runTest {
+        signedInWithPin()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.pinPrompt != null }
+
+        viewModel.onDismissPin()
+
+        val state = viewModel.uiState.first { it.leave }
+        assertTrue(state.locked)
+        assertNull(state.pinPrompt)
+    }
+
+    @Test
+    fun `switching profile asks for the PIN when the switch is on`() = runTest {
+        signedInWithPin()
+        app.database.accountDao().setPinOpenSettings("srv-1", "u1", false)
+        val viewModel = viewModel()
+        viewModel.open()
+
+        viewModel.onAction(SettingKey.SwitchProfile)
+        assertEquals(PinReason.SwitchProfile, viewModel.uiState.first { it.pinPrompt != null }.pinPrompt!!.reason)
+        assertTrue(app.connection.state.value is ConnectionState.Connected)
+
+        viewModel.onSubmitPin("1234")
+        app.connection.state.first { it == ConnectionState.Disconnected }
+    }
+
+    @Test
+    fun `turning kids mode off asks for the PIN even when every switch is off`() = runTest {
+        signedInWithPin()
+        val dao = app.database.accountDao()
+        dao.setPinOpenProfile("srv-1", "u1", false)
+        dao.setPinOpenSettings("srv-1", "u1", false)
+        dao.setPinSwitchProfile("srv-1", "u1", false)
+        app.profileSettings.setKidsProfile(true)
+        val viewModel = viewModel()
+        assertNull(viewModel.open().pinPrompt)
+
+        viewModel.onToggle(SettingKey.KidsProfile, false)
+        assertEquals(PinReason.KidsOff, viewModel.uiState.first { it.pinPrompt != null }.pinPrompt!!.reason)
+        assertEquals(true, app.profileSettings.kidsProfile.first())
+
+        viewModel.onSubmitPin("1234")
+        app.profileSettings.kidsProfile.first { it == false }
+        assertNull(viewModel.uiState.first { it.pinPrompt == null }.pinPrompt)
+    }
+
+    @Test
+    fun `removing the PIN asks for it first`() = runTest {
+        signedInWithPin()
+        app.database.accountDao().setPinOpenSettings("srv-1", "u1", false)
+        val viewModel = viewModel()
+        viewModel.open()
+
+        viewModel.onAction(SettingKey.RemovePin)
+        assertEquals(PinReason.RemovePin, viewModel.uiState.first { it.pinPrompt != null }.pinPrompt!!.reason)
+        assertTrue(app.pins.hasPin("srv-1", "u1"))
+
+        viewModel.onSubmitPin("1234")
+        viewModel.uiState.first { it.pinPrompt == null }
+        assertFalse(app.pins.hasPin("srv-1", "u1"))
+    }
+
+    @Test
+    fun `five wrong PINs lock the prompt and say how long`() = runTest {
+        signedInWithPin()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.pinPrompt != null }
+
+        repeat(5) { viewModel.onSubmitPin("0000") }
+
+        val locked = viewModel.uiState.first { it.pinPrompt?.lockedSeconds != null }.pinPrompt!!
+        assertEquals(30, locked.lockedSeconds)
+        assertEquals(Strings.pinPromptLocked(30), locked.error)
+    }
+
+    @Test
+    fun `Forgot PIN with the right password removes the PIN and keeps kids mode`() = runTest {
+        signedInWithPin()
+        app.profileSettings.setKidsProfile(true)
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.pinPrompt != null }
+
+        viewModel.onForgotPin()
+        val forgot = viewModel.uiState.first { it.pinPrompt?.forgot == true }.pinPrompt!!
+        assertEquals(Strings.pinForgotMessage("Alex"), forgot.message)
+
+        viewModel.onSubmitPassword("wrong")
+        assertNotNull(viewModel.uiState.first { it.pinPrompt?.error != null }.pinPrompt!!.error)
+        assertTrue(app.pins.hasPin("srv-1", "u1"))
+        // A wrong password is not a rejected token: the session stays as it was.
+        assertIs<ConnectionState.Connected>(app.connection.state.value)
+        assertEquals("token-1", app.accounts.sessionToken("srv-1", "u1"))
+
+        viewModel.onSubmitPassword("right")
+        val open = viewModel.uiState.first { !it.locked }
+        assertNull(open.pinPrompt)
+        assertFalse(app.pins.hasPin("srv-1", "u1"))
+        assertEquals(true, app.profileSettings.kidsProfile.first())
+    }
+
+    @Test
+    fun `kids profiles hide Advanced and Sign out and Notifications`() = runTest {
+        signedInWithPin(pin = false)
+        app.profileSettings.setKidsProfile(true)
+        val state = viewModel().uiState.first { it.hasProfile && it.kidsProfile }
+
+        val root = state.page(SettingsPageId.Root).keys()
+        assertFalse(SettingKey.ShowStats in root)
+        assertFalse(SettingKey.About in root)
+        assertFalse(SettingKey.Notifications in root)
+        assertTrue(SettingKey.KidsProfile in root)
+        assertFalse(SettingKey.SignOut in state.page(SettingsPageId.Profile).keys())
+    }
+
+    @Test
+    fun `changing the PIN asks for the current one first`() = runTest {
+        signedInWithPin()
+        app.database.accountDao().setPinOpenSettings("srv-1", "u1", false)
+        val viewModel = viewModel()
+        viewModel.open()
+
+        viewModel.onAction(SettingKey.ChangePin)
+
+        assertEquals(PinReason.ChangePin, viewModel.uiState.first { it.pinPrompt != null }.pinPrompt!!.reason)
+    }
+
+    @Test
+    fun `Settings opened before the profile is signed in still asks for its PIN`() = runTest {
+        val viewModel = viewModel()
+        assertFalse(viewModel.uiState.first { !it.locked }.hasProfile)
+
+        app.serverAt("http://nas:8096").on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex"}"""))
+        app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-1")
+        app.setPin("u1", "1234")
+        app.connection.activate("srv-1", "u1")
+
+        val asked = viewModel.uiState.first { it.pinPrompt != null }
+        assertEquals(PinReason.OpenSettings, asked.pinPrompt!!.reason)
+        assertTrue(asked.locked)
     }
 }

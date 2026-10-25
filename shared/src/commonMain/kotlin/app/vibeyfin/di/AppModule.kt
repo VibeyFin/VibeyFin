@@ -28,7 +28,9 @@ fun appModule() = module {
     includes(dataModule(), apiModule())
     viewModelOf(::ServersViewModel)
     viewModel { params -> AddServerViewModel(params.getOrNull(), get(), get()) }
-    viewModel { params -> WhoIsWatchingViewModel(params.get(), get(), get(), get(), get()) }
+    viewModel { params ->
+        WhoIsWatchingViewModel(params.get(), get(), get(), get(), get(), get(), params.getOrNull(), params.getOrNull() ?: false)
+    }
     viewModelOf(::HomeViewModel)
     viewModel { params -> ChildrenViewModel(params.get(), get(), get()) }
     viewModel { params -> PersonViewModel(params.get(), get(), get()) }
@@ -40,6 +42,6 @@ fun appModule() = module {
     viewModelOf(::StartupViewModel)
     viewModel {
         val device = get<DeviceInfo>()
-        SettingsViewModel(get(), get(), get(), get(), get(ApplicationScope), device.appVersion, device.subtitleStyleApplies)
+        SettingsViewModel(get(), get(), get(), get(), get(), get(), get(ApplicationScope), device.appVersion, device.subtitleStyleApplies)
     }
 }
