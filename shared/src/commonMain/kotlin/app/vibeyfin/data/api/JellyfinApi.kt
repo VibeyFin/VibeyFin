@@ -57,6 +57,9 @@ class JellyfinApi(
     /** `GET /Users/Me`: the signed-in user. A rejected token is [ApiError.Unauthorized]. */
     suspend fun me(): ApiResult<UserDto> = get("/Users/Me")
 
+    /** `GET /Localization/ParentalRatings`: the rating names the server knows, each with its numeric level. */
+    suspend fun parentalRatings(): ApiResult<List<ParentalRatingDto>> = get("/Localization/ParentalRatings")
+
     /** `POST /Sessions/Logout`: revokes this session's token on the server. */
     suspend fun logout(): ApiResult<Unit> = execute({ }) {
         method = HttpMethod.Post
