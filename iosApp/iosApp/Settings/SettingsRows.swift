@@ -129,7 +129,7 @@ struct SettingsItemRow: View {
         switch item.kind {
         case .profileheader: ProfileHeaderRow(name: item.title, address: item.help)
         case .subtitlepreview: SubtitlePreviewRow(sample: item.title, style: subtitleStyle())
-        // The PIN dots belong to the PIN page, which iOS doesn't have yet.
+        case .pindots: PinDotsRow(title: item.title, description: item.help)
         default: EmptyView()
         }
     }
@@ -279,5 +279,23 @@ private struct SubtitlePreviewRow: View {
         case 2: return SubtitleSample.cyan
         default: return SubtitleSample.white
         }
+    }
+}
+
+/// "PIN" with four filled dots: a PIN is set. The digits are never kept, so the dots only say that one exists.
+private struct PinDotsRow: View {
+    let title: String
+    let description: String?
+
+    var body: some View {
+        HStack {
+            Text(title)
+            Spacer()
+            PinDotsView(filled: 4)
+        }
+        .frame(minHeight: 44)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(description ?? "")
     }
 }

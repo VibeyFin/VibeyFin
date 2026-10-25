@@ -48,6 +48,8 @@ data class SettingsUiState(
     val locked: Boolean = true,
     /** The PIN to open Settings was dismissed: the native screen goes back. */
     val leave: Boolean = false,
+    /** The connection is Disconnected (switch profile, sign out), not merely expired: the native screen leaves. */
+    val disconnected: Boolean = false,
 )
 
 /** Device-wide settings from [DevicePreferences] and the signed-in profile's from the database, built into pages by [settingsPages]. */
@@ -165,6 +167,7 @@ class SettingsViewModel(
             pinPrompt = v[18] as PinPrompt?,
             locked = v[19] as Boolean,
             leave = v[20] as Boolean,
+            disconnected = v[14] is ConnectionState.Disconnected,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 

@@ -47,6 +47,12 @@ private struct TrailerPlay: Identifiable {
     let id: String
 }
 
+/// Holds the open Settings' model by reference. The stack can build a pushed page with the destination closure of the body before the
+/// push, so a model held in `@State` directly was still nil there on the first open (an empty, black page) and the previous one after.
+private final class SettingsSession {
+    var current: SettingsObservable?
+}
+
 private enum MainTab: Hashable {
     case home, search, library, downloads
 }
@@ -60,8 +66,8 @@ struct TabShell: View {
     @State private var selection: MainTab = .home
     @Namespace private var zoomNamespace
     @StateObject private var tileMenu = TileMenuObservable()
-    /// One shared Settings ViewModel for the whole page tree.
-    @StateObject private var settings = SettingsObservable()
+    /// One shared Settings ViewModel for the whole page tree, made again each time Settings opens so the PIN to open it is asked every time.
+    @State private var settings = SettingsSession()
     @State private var trailerPlaying: TrailerPlay?
     @Environment(\.openURL) private var openURL
     @State private var homePath: [TabRoute] = []
@@ -76,7 +82,7 @@ struct TabShell: View {
                     onExit: onExit,
                     onOpen: { open($0, in: $homePath) },
                     onDetails: { homePath.append(.item(itemId: $0)) },
-                    onSettings: { homePath.append(.settings) },
+                    onSettings: { settings.current = SettingsObservable(); homePath.append(.settings) },
                     onOpenList: { homePath.append(TabRoute.opening($0)) }
                 )
                 .navigationBarBackButtonHidden(true)
@@ -180,9 +186,9 @@ struct TabShell: View {
                 .navigationDestination(for: TabRoute.self) { route in
                     switch route {
                     case .settings:
-                        SettingsEntryView(model: settings, onExit: onExit)
+                        if let model = settings.current { SettingsEntryView(model: model, onExit: onExit) }
                     case .settingsPage(let id):
-                        SettingsPageView(pageId: id, model: settings, onExit: onExit)
+                        if let model = settings.current { SettingsPageView(pageId: id, model: model, onExit: onExit) }
                     case .children(let parentId, let title):
                         ChildrenView(parentId: parentId, title: title, onOpen: { open($0, in: path) }, onOpenSeries: { path.wrappedValue.append(.item(itemId: $0)) }, onExit: onExit)
                     case .item(let itemId):

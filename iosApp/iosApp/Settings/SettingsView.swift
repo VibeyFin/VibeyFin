@@ -28,7 +28,19 @@ struct SettingsPageView: View {
                 Color(.systemGroupedBackground).ignoresSafeArea()
             }
         }
-        .onAppear { model.start() }
+        .onAppear {
+            model.start()
+            model.pageOpened(pageId)
+        }
+        // The page the question comes from presents it, so the sheet is never on a view covered by a pushed page: Switch profile from the
+        // Profile page (its action is there, and on iPad the sidebar root has none), the rest (change, remove, set, kids mode off) from Kids and PIN. The PIN to open Settings belongs to the entry view.
+        .settingsPinSheet(model) { reason in
+            switch pageId {
+            case .profile: return reason == .switchprofile
+            case .kidsandpin: return reason == .changepin || reason == .removepin || reason == .kidsoff || reason == .choosepin
+            default: return false
+            }
+        }
         .navigationTitle((page?.title ?? "").titleCased())
         .navigationBarTitleDisplayMode(.inline)
         // Only the chevron, no "Back" label. The swipe from the edge still goes back.
@@ -43,9 +55,9 @@ struct SettingsPageView: View {
             titleVisibility: .visible
         ) {
             Button(Strings.shared.signOut.titleCased(), role: .destructive) {
-                // The sign-out runs on the shared application scope, so leaving at once can't cancel the token revoke.
+                // The sign-out runs on the shared application scope, so leaving can't cancel the token revoke. The way out is
+                // taken once the state says Disconnected (see SettingsEntryView).
                 model.confirmSignOut()
-                leave()
             }
         } message: {
             Text(Strings.shared.signOutConfirmMessage)
@@ -86,17 +98,28 @@ struct SettingsPageView: View {
     }
 
     private func perform(_ item: ActionItem) {
+        // Switch profile may first ask for the PIN, so nothing leaves here: SettingsEntryView leaves once the state is Disconnected.
         model.perform(item.key)
-        // Switch profile ends the session on the spot; Sign out waits for its confirmation.
-        if item.key == SettingKey.switchprofile { leave() }
     }
+}
 
-    /// The state is Disconnected from here on, so the way back is the same as Home's: "Who's watching?" on the server we were on.
-    private func leave() {
-        if model.lastServerId.isEmpty {
-            onExit(HomeExitServers.shared)
-        } else {
-            onExit(HomeExitWhoIsWatching(serverId: model.lastServerId))
+extension View {
+    /// The PIN sheet for the prompts of the reasons `presents` accepts. Each reason is accepted by exactly one view, so two pages of the
+    /// stack never bind the same sheet.
+    func settingsPinSheet(_ model: SettingsObservable, _ presents: @escaping (PinReason) -> Bool) -> some View {
+        sheet(isPresented: Binding(
+            get: { model.state?.pinPrompt.map { presents($0.reason) } ?? false },
+            set: { if !$0 { model.dismissPin() } }
+        )) {
+            if let prompt = model.state?.pinPrompt {
+                PinSheet(
+                    prompt: prompt,
+                    onSubmitPin: { model.submitPin($0) },
+                    onForgotPin: { model.forgotPin() },
+                    onSubmitPassword: { model.submitPassword($0) },
+                    onDismiss: { model.dismissPin() }
+                )
+            }
         }
     }
 }

@@ -6,13 +6,41 @@ struct SettingsEntryView: View {
     @ObservedObject var model: SettingsObservable
     let onExit: (HomeExit) -> Void
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dismiss) private var dismiss
+    /// Leaving is done once, however many times the state reports Disconnected.
+    @State private var exited = false
 
     var body: some View {
-        if sizeClass == .regular {
-            SettingsSplitView(model: model, onExit: onExit)
-        } else {
-            SettingsPageView(pageId: SettingsPageId.root, model: model, onExit: onExit)
+        Group {
+            // Until the profile's PIN is right (or it needs none) no page is built: nothing of Settings is drawn, reachable or opened.
+            if model.state?.locked ?? true {
+                Color(.systemGroupedBackground).ignoresSafeArea()
+            } else if sizeClass == .regular {
+                SettingsSplitView(model: model, onExit: onExit)
+            } else {
+                SettingsPageView(pageId: SettingsPageId.root, model: model, onExit: onExit)
+            }
         }
+        .onAppear { model.start() }
+        // The session ended (Switch profile once its PIN was right, a confirmed Sign out): "Who's watching?" on the server we were on, the
+        // same way back as Home's. One observer here, not on every page of the stack, and only for Disconnected: an expired token takes
+        // the global route to "Who's watching?" instead.
+        .onChange(of: model.state?.disconnected ?? false) { disconnected in
+            guard disconnected, !exited else { return }
+            exited = true
+            if model.lastServerId.isEmpty {
+                onExit(HomeExitServers.shared)
+            } else {
+                onExit(HomeExitWhoIsWatching(serverId: model.lastServerId))
+            }
+        }
+        // The PIN to open Settings was dismissed: back to where Settings was opened from.
+        .onChange(of: model.state?.leave) { leave in
+            if leave == true { dismiss() }
+        }
+        // Only the PIN to open Settings: while it is asked the root is the page on top. The other questions come from pages that are pushed
+        // over this view, so each of those presents its own (see `settingsPinSheet`).
+        .settingsPinSheet(model) { $0 == .opensettings }
     }
 }
 

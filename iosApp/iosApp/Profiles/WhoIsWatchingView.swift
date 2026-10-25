@@ -6,8 +6,8 @@ struct WhoIsWatchingView: View {
 
     let onSignedIn: () -> Void
 
-    init(serverId: String, onSignedIn: @escaping () -> Void) {
-        _model = StateObject(wrappedValue: WhoIsWatchingObservable(serverId: serverId))
+    init(serverId: String, pinFor: ProfileRef? = nil, openAfterPin: Bool = false, onSignedIn: @escaping () -> Void) {
+        _model = StateObject(wrappedValue: WhoIsWatchingObservable(serverId: serverId, pinFor: pinFor, openAfterPin: openAfterPin))
         self.onSignedIn = onSignedIn
     }
 
@@ -26,8 +26,17 @@ struct WhoIsWatchingView: View {
         .onChange(of: model.state?.signedIn) { signedIn in
             if signedIn == true { onSignedIn() }
         }
+        // One sheet: the PIN question replaces a sign-in sheet that is open under it and gives it back once answered.
         .sheet(isPresented: sheetBinding) {
-            if let state = model.state, let sheet = state.sheet {
+            if let state = model.state, let prompt = state.pinPrompt {
+                PinSheet(
+                    prompt: prompt,
+                    onSubmitPin: { model.submitPin($0) },
+                    onForgotPin: { model.forgotPin() },
+                    onSubmitPassword: { model.submitPassword($0) },
+                    onDismiss: { model.dismissPin() }
+                )
+            } else if let state = model.state, let sheet = state.sheet {
                 SignInSheetView(
                     sheet: sheet,
                     error: state.error,
@@ -43,9 +52,10 @@ struct WhoIsWatchingView: View {
 
     private var sheetBinding: Binding<Bool> {
         Binding(
-            get: { model.state?.sheet != nil },
+            get: { model.state?.pinPrompt != nil || model.state?.sheet != nil },
             set: { shown in
-                if !shown { model.dismissSheet() }
+                guard !shown else { return }
+                if model.state?.pinPrompt != nil { model.dismissPin() } else { model.dismissSheet() }
             }
         )
     }
@@ -135,14 +145,14 @@ private struct ProfileTile: View {
         VStack(spacing: Space.s2) {
             ZStack(alignment: .bottomTrailing) {
                 Avatar(profile: profile)
-                if profile.locked {
+                if profile.locked || profile.pinRequiredToOpen {
                     Image(systemName: "lock.fill")
                         .font(.caption.bold())
                         .foregroundStyle(.primary)
                         .frame(width: 26, height: 26)
                         .background(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous).fill(Brand.scrim))
                         .padding(6)
-                        .accessibilityLabel(Strings.shared.needsPassword)
+                        .accessibilityLabel(profile.locked ? Strings.shared.needsPassword : Strings.shared.needsPin)
                 }
             }
             Text(profile.name)

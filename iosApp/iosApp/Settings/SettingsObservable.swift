@@ -66,6 +66,19 @@ final class SettingsObservable: ObservableObject {
         model.onAction(key: key)
     }
 
+    /// A page appeared; the Kids and PIN page reads the server's limits then.
+    func pageOpened(_ id: SettingsPageId) {
+        model.onPageOpened(page: id)
+    }
+
+    func submitPin(_ pin: String) { model.onSubmitPin(pin: pin) }
+
+    func forgotPin() { model.onForgotPin() }
+
+    func submitPassword(_ password: String) { model.onSubmitPassword(password: password) }
+
+    func dismissPin() { model.onDismissPin() }
+
     func confirmSignOut() {
         model.onConfirmSignOut()
     }

@@ -135,6 +135,23 @@ struct HomeView: View {
                 model.listOpened()
             }
         }
+        // The PIN for Switch profile and Switch server. On a clear background view so it doesn't share a modifier slot with the picker sheet.
+        .background {
+            Color.clear.sheet(isPresented: Binding(
+                get: { model.state?.pinPrompt != nil },
+                set: { if !$0 { model.dismissPin() } }
+            )) {
+                if let prompt = model.state?.pinPrompt {
+                    PinSheet(
+                        prompt: prompt,
+                        onSubmitPin: { model.submitPin($0) },
+                        onForgotPin: { model.forgotPin() },
+                        onSubmitPassword: { model.submitPassword($0) },
+                        onDismiss: { model.dismissPin() }
+                    )
+                }
+            }
+        }
         .sheet(isPresented: Binding(
             get: { model.state?.sheet != nil },
             set: { if !$0 { model.dismissSheet() } }
@@ -177,7 +194,10 @@ struct HomeView: View {
             Button(Strings.shared.switchProfile.titleCased()) { model.switchProfile() }
             Button(Strings.shared.switchServer.titleCased()) { model.switchServer() }
             Button(Strings.shared.settings.titleCased()) { onSettings() }
-            Button(Strings.shared.signOut.titleCased()) { model.signOut() }
+            // A kids profile can't sign out.
+            if model.state?.kidsProfile != true {
+                Button(Strings.shared.signOut.titleCased()) { model.signOut() }
+            }
         } label: {
             ZStack {
                 Circle().fill(Color(.systemGray4))

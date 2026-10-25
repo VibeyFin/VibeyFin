@@ -177,7 +177,106 @@ final class OnboardingFlowUITests: XCTestCase {
                 thirty.tap()
                 let shows30 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Buffer Ahead", "30")).firstMatch
                 XCTAssertTrue(shows30.waitForExistence(timeout: 5), "Buffer ahead doesn't show 30")
+                // Back to Home: Skipping, then the root.
+                goBack()
+                goBack()
             }
+        }
+
+        // The kids user (scripts/test-server/seed-userdata.sh) sets a PIN; Settings then asks for it. Ends signed in as the first user again.
+        step("Kids PIN") {
+            let isPad = UIDevice.current.userInterfaceIdiom == .pad
+            let kidsUser = "kids", kidsPassword = "vibeyfin-kids", pin = "1234"
+
+            // Opens a profile menu item on Home.
+            func menu(_ name: String, as user: String) {
+                let profile = button(user)
+                XCTAssertTrue(profile.waitForExistence(timeout: 10), "Profile menu is missing for \(user)")
+                profile.tap()
+                let item = button(name)
+                if !item.waitForExistence(timeout: 5) { profile.tap() }
+                XCTAssertTrue(item.waitForExistence(timeout: 5), "\(name) menu item is missing")
+                item.tap()
+            }
+            func enter(_ digits: String) {
+                for digit in digits {
+                    let key = app.buttons["pin.key.\(digit)"]
+                    XCTAssertTrue(key.waitForExistence(timeout: 5), "PIN key \(digit) is missing")
+                    key.tap()
+                }
+            }
+            func leaveSettings() {
+                if isPad {
+                    let back = app.buttons["settings.back"]
+                    XCTAssertTrue(back.waitForExistence(timeout: 5), "Back button is missing from the sidebar")
+                    back.tap()
+                } else {
+                    goBack()
+                    goBack()
+                }
+            }
+            func openKidsAndPin() {
+                // The sidebar row is a cell on an iPad, the root's link a button on a phone.
+                let cell = app.cells.matching(NSPredicate(format: "label BEGINSWITH[c] %@", "Kids and PIN")).firstMatch
+                let link = cell.waitForExistence(timeout: 5) ? cell : button("Kids and PIN", contains: true)
+                XCTAssertTrue(link.waitForExistence(timeout: 10), "Kids and PIN link is missing")
+                link.tap()
+            }
+
+            // Sign in as the kids user.
+            menu("Switch profile", as: username)
+            XCTAssertTrue(button("Other user", contains: true).waitForExistence(timeout: 10), "Who's watching isn't showing")
+            button("Other user", contains: true).tap()
+            let user = app.textFields.firstMatch
+            XCTAssertTrue(user.waitForExistence(timeout: 5), "Username field is missing")
+            user.tap()
+            user.typeText(kidsUser)
+            let secret = app.secureTextFields.firstMatch
+            secret.tap()
+            secret.typeText(kidsPassword)
+            button("Sign in").tap()
+
+            // Set a PIN: typed twice.
+            menu("Settings", as: kidsUser)
+            openKidsAndPin()
+            let setPin = button("Set PIN", contains: true)
+            XCTAssertTrue(setPin.waitForExistence(timeout: 10), "Set PIN is missing")
+            setPin.tap()
+            XCTAssertTrue(text("Choose a PIN").waitForExistence(timeout: 5), "The PIN sheet didn't ask for a new PIN")
+            enter(pin)
+            XCTAssertTrue(text("Enter the PIN again").waitForExistence(timeout: 5), "The PIN sheet didn't ask for the PIN again")
+            enter(pin)
+            XCTAssertTrue(button("Remove PIN", contains: true).waitForExistence(timeout: 10), "The PIN wasn't set")
+            leaveSettings()
+
+            // A wrong PIN doesn't open Settings; the right one does.
+            menu("Settings", as: kidsUser)
+            XCTAssertTrue(text("Enter PIN").waitForExistence(timeout: 10), "Settings didn't ask for the PIN")
+            enter("0000")
+            let wrong = app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "PIN is wrong")).firstMatch
+            XCTAssertTrue(wrong.waitForExistence(timeout: 5), "A wrong PIN wasn't refused")
+            XCTAssertFalse(button("Kids and PIN", contains: true).exists, "Settings opened on a wrong PIN")
+            enter(pin)
+            XCTAssertTrue(
+                app.cells.matching(NSPredicate(format: "label BEGINSWITH[c] %@", "Kids and PIN")).firstMatch.waitForExistence(timeout: 10)
+                    || button("Kids and PIN", contains: true).waitForExistence(timeout: 1),
+                "Settings didn't open on the right PIN"
+            )
+            if isPad { leaveSettings() } else { goBack() }
+
+            // Back to the first user: switching away from the kids profile asks for the PIN too.
+            menu("Switch profile", as: kidsUser)
+            XCTAssertTrue(text("Enter PIN").waitForExistence(timeout: 10), "Switch profile didn't ask for the PIN")
+            enter(pin)
+            let first = button(username)
+            XCTAssertTrue(first.waitForExistence(timeout: 10), "The first user's tile is missing")
+            first.tap()
+            // Home-only: the profile's tile on Who's watching is a button with the same label.
+            let library = NSPredicate(format: "label ==[c] %@", "Library")
+            let libraryTab = app.tabBars.buttons.matching(library).firstMatch.exists
+                ? app.tabBars.buttons.matching(library).firstMatch
+                : app.buttons.matching(library).firstMatch
+            XCTAssertTrue(libraryTab.waitForExistence(timeout: 20), "Home didn't open for the first user")
         }
     }
 

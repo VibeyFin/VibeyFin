@@ -452,11 +452,12 @@ class SettingsViewModelTest {
     fun `switching profile leaves the profile signed in and disconnects`() = runTest {
         app.signedIn()
         val viewModel = viewModel()
-        viewModel.uiState.first { it.hasProfile }
+        assertFalse(viewModel.uiState.first { it.hasProfile }.disconnected)
 
         viewModel.onAction(SettingKey.SwitchProfile)
 
         assertEquals(ConnectionState.Disconnected, app.connection.state.value)
+        assertTrue(viewModel.uiState.first { it.disconnected }.disconnected)
         assertTrue(app.accounts.account("srv-1", "u1")!!.hasSession)
     }
 

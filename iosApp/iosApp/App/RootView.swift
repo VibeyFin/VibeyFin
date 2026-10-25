@@ -4,7 +4,8 @@ import Shared
 enum Route: Hashable {
     /// A non-nil address is checked as soon as the screen opens.
     case addServer(address: String?)
-    case whoIsWatching(serverId: String)
+    /// `pinUserId` is the profile whose PIN the screen asks for first; with `openAfterPin` the right PIN opens it.
+    case whoIsWatching(serverId: String, pinUserId: String? = nil, openAfterPin: Bool = false)
 }
 
 struct RootView: View {
@@ -41,9 +42,14 @@ struct RootView: View {
                         switch route {
                         case .addServer(let address):
                             AddServerView(initialAddress: address)
-                        case .whoIsWatching(let serverId):
+                        case .whoIsWatching(let serverId, let pinUserId, let openAfterPin):
                             // The tabs become the only screens: back from them must not return to sign-in.
-                            WhoIsWatchingView(serverId: serverId, onSignedIn: { path = []; signedIn = true })
+                            WhoIsWatchingView(
+                                serverId: serverId,
+                                pinFor: pinUserId.map { ProfileRef(serverId: serverId, userId: $0) },
+                                openAfterPin: openAfterPin,
+                                onSignedIn: { path = []; signedIn = true }
+                            )
                         }
                     }
                 }
@@ -59,7 +65,7 @@ struct RootView: View {
                 if destination is StartDestinationHome {
                     signedIn = true
                 } else if let who = destination as? StartDestinationWhoIsWatching {
-                    path = [.whoIsWatching(serverId: who.serverId)]
+                    path = [.whoIsWatching(serverId: who.serverId, pinUserId: who.pinFor?.userId, openAfterPin: who.openAfterPin)]
                 }
                 ready = true
             }
