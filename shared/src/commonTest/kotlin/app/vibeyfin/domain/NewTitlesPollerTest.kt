@@ -334,4 +334,65 @@ class NewTitlesPollerTest {
 
         assertFalse(dao.wasNotified("srv-1", "u1", "seen-before"))
     }
+
+    @Test
+    fun `pollAll polls every profile that has notifications on and skips the others`() = runTest {
+        val server = followedServer()
+        server.library(listOf(movie("m1")))
+        enable()
+        app.accounts.saveSession("srv-1", "u2", "Sam", null, "token-2")
+        enable(userId = "u2")
+        app.accounts.saveSession("srv-1", "u3", "Pat", null, "token-3")
+
+        val all = poller.pollAll()
+
+        assertEquals(listOf("u1", "u2"), all.map { it.userId }.sorted())
+        assertEquals(2, addedRequests().size)
+    }
+
+    @Test
+    fun `one profile failing does not stop the others`() = runTest {
+        val server = followedServer()
+        server.on("GET", "/Items") { request ->
+            if (request.authorization?.contains("token-2") == true) Reply.status(HttpStatusCode.Unauthorized)
+            else Reply.json(page(listOf(movie("m1"))))
+        }
+        app.accounts.saveSession("srv-1", "u2", "Sam", null, "token-2")
+        enable(userId = "u2")
+        enable()
+
+        val all = poller.pollAll()
+
+        assertEquals(listOf("u1"), all.map { it.userId })
+        assertFalse(app.accounts.account("srv-1", "u2")!!.hasSession)
+    }
+
+    @Test
+    fun `a signed out or kids profile is skipped`() = runTest {
+        val server = followedServer()
+        server.library(listOf(movie("m1")))
+        enable()
+        dao.setKidsProfile("srv-1", "u1", true)
+        app.accounts.saveSession("srv-1", "u2", "Sam", null, "token-2")
+        enable(userId = "u2")
+        app.accounts.expire("srv-1", "u2")
+
+        assertEquals(emptyList(), poller.pollAll())
+        assertTrue(app.jellyfin.requestsTo("GET", "/Items").isEmpty())
+    }
+
+    @Test
+    fun `titles are reported per profile`() = runTest {
+        val server = followedServer()
+        server.library(listOf(movie("m1")))
+        enable(scope = ProfileSettings.NOTIFY_EVERYTHING)
+        app.accounts.saveSession("srv-1", "u2", "Sam", null, "token-2")
+        enable(userId = "u2", scope = ProfileSettings.NOTIFY_EVERYTHING)
+
+        val all = poller.pollAll().sortedBy { it.userId }
+
+        assertEquals(listOf("Alex", "Sam"), all.map { it.profileName })
+        assertEquals(listOf("srv-1", "srv-1"), all.map { it.serverId })
+        assertEquals(listOf(listOf(NewTitle("m1", "Movie m1", null, true))), all.map { it.titles }.distinct())
+    }
 }

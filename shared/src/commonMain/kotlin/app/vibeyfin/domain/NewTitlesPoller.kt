@@ -8,6 +8,7 @@ import app.vibeyfin.data.api.nextUp
 import app.vibeyfin.data.api.resumeItems
 import app.vibeyfin.data.db.AccountDao
 import app.vibeyfin.data.db.NotifiedItemEntity
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
@@ -15,6 +16,9 @@ import kotlin.time.Instant
 
 /** A title to notify about: a new episode ([seriesName] is its show) or a new movie. */
 data class NewTitle(val itemId: String, val title: String, val seriesName: String?, val isMovie: Boolean)
+
+/** The [titles] new for one profile, as [NewTitlesPoller.pollAll] reports them. */
+data class ProfileNewTitles(val serverId: String, val userId: String, val profileName: String, val titles: List<NewTitle>)
 
 /**
  * Finds the episodes and movies added to the library since a profile was last told, for new-title notifications.
@@ -35,6 +39,22 @@ class NewTitlesPoller(
     private val dao: AccountDao,
     private val clock: Clock,
 ) {
+    /**
+     * Polls every saved profile that has notifications on and a session, each as itself and in turn, for background
+     * work that runs while no profile is current. Returns only the profiles with something to report. A profile that
+     * fails or turns out locked reports nothing and doesn't stop the others; [poll] applies the same rules again.
+     */
+    suspend fun pollAll(): List<ProfileNewTitles> = dao.getNotifiableProfiles().mapNotNull { profile ->
+        val titles = try {
+            poll(profile.serverId, profile.userId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            emptyList()
+        }
+        titles.takeIf { it.isNotEmpty() }?.let { ProfileNewTitles(profile.serverId, profile.userId, profile.name, it) }
+    }
+
     /**
      * The titles that are new for the profile, each reported once. Empty, without asking the server, when the
      * profile's notifications are off, it is a kids profile, or it has no session (signed out or locked).

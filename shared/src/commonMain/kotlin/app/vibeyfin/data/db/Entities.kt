@@ -149,6 +149,9 @@ class PinCredentials(val pinHash: ByteArray?, val pinSalt: ByteArray?)
 /** Whether a profile has a PIN, and its three switches as stored (they only count once there is a PIN). */
 data class PinGateRow(val hasPin: Boolean, val pinOpenProfile: Boolean, val pinOpenSettings: Boolean, val pinSwitchProfile: Boolean)
 
+/** A profile to poll for new titles: notifications on, not a kids profile, and a stored token. */
+data class NotifiableProfile(val serverId: String, val userId: String, val name: String)
+
 /** Home's genre rows for a profile that has never chosen: the top five, so Home stays a sensible length on a big library. */
 const val NEW_PROFILE_HOME_GENRE_ROWS = 5
 

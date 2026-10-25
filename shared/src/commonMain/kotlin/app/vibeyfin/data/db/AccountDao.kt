@@ -142,6 +142,13 @@ abstract class AccountDao {
     @Query("DELETE FROM notified_items WHERE serverId = :serverId AND userId = :userId AND notifiedAt < :before")
     abstract suspend fun pruneNotified(serverId: String, userId: String, before: Long)
 
+    /** Every saved profile on any server that has notifications on, a session and is not a kids profile. */
+    @Query(
+        "SELECT a.serverId, a.userId, a.name FROM accounts a JOIN account_settings s ON s.serverId = a.serverId AND s.userId = a.userId " +
+            "WHERE s.notificationsEnabled = 1 AND s.kidsProfile = 0 AND a.sealedToken IS NOT NULL ORDER BY a.serverId, a.name",
+    )
+    abstract suspend fun getNotifiableProfiles(): List<NotifiableProfile>
+
     @Query("SELECT kidsProfile FROM account_settings WHERE serverId = :serverId AND userId = :userId")
     abstract fun observeKidsProfile(serverId: String, userId: String): Flow<Boolean?>
 
