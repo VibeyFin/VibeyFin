@@ -674,6 +674,13 @@ object Strings {
         "Enter $name's Jellyfin password to remove the PIN. Kids mode stays as it is; the password is not saved."
     val pinForgotSubmit = "Remove PIN"
 
+    /** The keypad's delete key, and the four dots read out by a screen reader. */
+    val pinKeypadDelete = "Delete"
+    fun pinDigitsEntered(count: Int) = if (count == 1) "1 of 4 digits entered" else "$count of 4 digits entered"
+
+    /** A tile's lock badge when the profile asks for its PIN to open. */
+    val needsPin = "Needs a PIN"
+
     // Notifications page
     val notificationsTitle = "Notifications"
     val notificationsOn = "On"
