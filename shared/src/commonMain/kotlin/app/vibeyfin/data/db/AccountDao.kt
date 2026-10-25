@@ -109,6 +109,27 @@ abstract class AccountDao {
     )
     abstract suspend fun resetSubtitleStyle(serverId: String, userId: String)
 
+    @Query("SELECT notificationsEnabled FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeNotificationsEnabled(serverId: String, userId: String): Flow<Boolean?>
+
+    @Query("UPDATE account_settings SET notificationsEnabled = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setNotificationsEnabled(serverId: String, userId: String, value: Boolean)
+
+    @Query("SELECT notificationScope FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeNotificationScope(serverId: String, userId: String): Flow<Int?>
+
+    @Query("UPDATE account_settings SET notificationScope = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setNotificationScope(serverId: String, userId: String, value: Int)
+
+    @Query("SELECT COUNT(*) > 0 FROM notified_items WHERE serverId = :serverId AND userId = :userId AND itemId = :itemId")
+    abstract suspend fun wasNotified(serverId: String, userId: String, itemId: String): Boolean
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun markNotified(entity: NotifiedItemEntity)
+
+    @Query("DELETE FROM notified_items WHERE serverId = :serverId AND userId = :userId AND notifiedAt < :before")
+    abstract suspend fun pruneNotified(serverId: String, userId: String, before: Long)
+
     @Query("SELECT kidsProfile FROM account_settings WHERE serverId = :serverId AND userId = :userId")
     abstract fun observeKidsProfile(serverId: String, userId: String): Flow<Boolean?>
 

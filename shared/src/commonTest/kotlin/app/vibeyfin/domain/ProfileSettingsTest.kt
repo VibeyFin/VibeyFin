@@ -1,5 +1,6 @@
 package app.vibeyfin.domain
 
+import app.vibeyfin.data.db.NotifiedItemEntity
 import app.vibeyfin.testing.TestApp
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -153,5 +154,48 @@ class ProfileSettingsTest {
         assertEquals(ProfileSettings.DEFAULT_SUBTITLE_SIZE, app.profileSettings.subtitleSize.first())
         assertEquals(ProfileSettings.DEFAULT_SUBTITLE_TEXT_COLOR, app.profileSettings.subtitleTextColor.first())
         assertEquals(ProfileSettings.DEFAULT_SUBTITLE_BACKGROUND, app.profileSettings.subtitleBackground.first())
+    }
+
+    @Test
+    fun `the notification settings are null with nobody signed in`() = runTest {
+        assertNull(app.profileSettings.notificationsEnabled.first())
+        assertNull(app.profileSettings.notificationScope.first())
+    }
+
+    @Test
+    fun `a new profile has notifications off and the follow scope`() = runTest {
+        app.signedIn()
+
+        assertEquals(false, app.profileSettings.notificationsEnabled.first())
+        assertEquals(0, app.profileSettings.notificationScope.first())
+    }
+
+    @Test
+    fun `the notification settings are saved and a scope outside the choices changes nothing`() = runTest {
+        app.signedIn()
+
+        app.profileSettings.setNotificationsEnabled(true)
+        app.profileSettings.setNotificationScope(1)
+        app.profileSettings.setNotificationScope(7)
+
+        assertEquals(true, app.profileSettings.notificationsEnabled.first())
+        assertEquals(1, app.profileSettings.notificationScope.first())
+    }
+
+    @Test
+    fun `a notified item is remembered per profile and pruned by age`() = runTest {
+        val dao = app.database.accountDao()
+        app.signedIn()
+        val account = (app.connection.state.value as ConnectionState.Connected).account
+
+        assertFalse(dao.wasNotified(account.serverId, account.userId, "i1"))
+        dao.markNotified(NotifiedItemEntity(account.serverId, account.userId, "i1", 100))
+        dao.markNotified(NotifiedItemEntity(account.serverId, account.userId, "i2", 500))
+        assertEquals(true, dao.wasNotified(account.serverId, account.userId, "i1"))
+
+        dao.pruneNotified(account.serverId, account.userId, 300)
+
+        assertFalse(dao.wasNotified(account.serverId, account.userId, "i1"))
+        assertEquals(true, dao.wasNotified(account.serverId, account.userId, "i2"))
     }
 }

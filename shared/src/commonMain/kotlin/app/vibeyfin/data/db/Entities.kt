@@ -135,6 +135,12 @@ class AccountSettingsEntity(
     /** Whether switching away from this profile asks for the PIN. Only matters once a PIN exists. */
     @ColumnInfo(defaultValue = "1")
     val pinSwitchProfile: Boolean = true,
+    /** Whether the app posts notifications for this profile. */
+    @ColumnInfo(defaultValue = "0")
+    val notificationsEnabled: Boolean = false,
+    /** What notifies: 0 shows the profile follows and new movies, 1 everything new. */
+    @ColumnInfo(defaultValue = "0")
+    val notificationScope: Int = 0,
 )
 
 /** A profile's stored PIN: both null when it has none. */
@@ -179,4 +185,24 @@ class PendingReportEntity(
     val positionTicks: Long,
     val failed: Boolean,
     val updatedAt: Long,
+)
+
+/** An item the profile was already notified about, so it is never notified twice. Old rows are pruned by [notifiedAt]. */
+@Entity(
+    tableName = "notified_items",
+    primaryKeys = ["serverId", "userId", "itemId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = AccountEntity::class,
+            parentColumns = ["serverId", "userId"],
+            childColumns = ["serverId", "userId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+)
+class NotifiedItemEntity(
+    val serverId: String,
+    val userId: String,
+    val itemId: String,
+    val notifiedAt: Long,
 )
