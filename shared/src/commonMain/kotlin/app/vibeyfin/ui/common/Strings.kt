@@ -1,6 +1,7 @@
 package app.vibeyfin.ui.common
 
 import app.vibeyfin.domain.PlayMethod
+import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SegmentType
 import kotlin.math.roundToInt
 
@@ -689,6 +690,9 @@ object Strings {
     val notificationsWhichGroup = "Which shows"
     val notificationsFollowed = "Shows I follow and new movies"
     val notificationsEverything = "Everything new in the library"
+    val notificationsBlocked = "Notifications are blocked for VibeyFin. Allow them in system settings, then switch this on again."
+    fun notificationsScopeLabel(scope: Int) =
+        if (scope == ProfileSettings.NOTIFY_EVERYTHING) notificationsEverything else notificationsFollowed
     val notificationsFooter =
         "Jellyfin sends no push, so the app checks in the background: expect a delay. Switching this on asks for notification permission."
 }

@@ -534,6 +534,84 @@ class SettingsViewModelTest {
         assertEquals(0, app.profileSettings.maxStreamingBitrate.first())
     }
 
+    /** The root page links to Notifications with the same key, so the toggle is read from its own page. */
+    private fun SettingsUiState.notificationsOn() =
+        (pages.getValue(SettingsPageId.Notifications).sections.flatMap { it.items }.first { it.key == SettingKey.Notifications } as ToggleItem).checked
+
+    private fun SettingsUiState.scopeRowShown() =
+        pages.getValue(SettingsPageId.Notifications).visibleOnly().sections.flatMap { it.items }.any { it.key == SettingKey.NotificationScope }
+
+    @Test
+    fun `switching notifications on asks for permission once and saves the setting`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        assertFalse(viewModel.uiState.first { it.hasProfile }.requestNotificationPermission)
+
+        viewModel.onToggle(SettingKey.Notifications, true)
+
+        assertTrue(viewModel.uiState.first { it.requestNotificationPermission }.notificationsOn())
+        assertTrue(app.profileSettings.notificationsEnabled.first() == true)
+        viewModel.onNotificationPermissionRequested()
+        assertFalse(viewModel.uiState.first { !it.requestNotificationPermission }.requestNotificationPermission)
+        assertTrue(viewModel.uiState.first().notificationsOn())
+    }
+
+    @Test
+    fun `the scope choice is saved`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hasProfile }
+
+        viewModel.onChoose(SettingKey.NotificationScope, ProfileSettings.NOTIFY_EVERYTHING)
+
+        assertEquals(ProfileSettings.NOTIFY_EVERYTHING, viewModel.uiState.first { it.value(SettingKey.NotificationScope) == ProfileSettings.NOTIFY_EVERYTHING }.value(SettingKey.NotificationScope))
+        assertEquals(ProfileSettings.NOTIFY_EVERYTHING, app.profileSettings.notificationScope.first())
+    }
+
+    @Test
+    fun `the notification scope row shows only while notifications are on`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        assertFalse(viewModel.uiState.first { it.hasProfile }.scopeRowShown())
+
+        viewModel.onToggle(SettingKey.Notifications, true)
+        assertTrue(viewModel.uiState.first { it.notificationsOn() }.scopeRowShown())
+
+        viewModel.onToggle(SettingKey.Notifications, false)
+        assertFalse(viewModel.uiState.first { !it.notificationsOn() }.scopeRowShown())
+    }
+
+    @Test
+    fun `the Notifications page and its link are hidden for a kids profile`() = runTest {
+        app.signedIn()
+        app.profileSettings.setKidsProfile(true)
+        val viewModel = viewModel()
+        val state = viewModel.uiState.first { it.hasProfile && it.kidsProfile }
+
+        assertTrue(state.pages.getValue(SettingsPageId.Notifications).visibleOnly().sections.isEmpty())
+        assertFalse(state.pages.getValue(SettingsPageId.Root).visibleOnly().sections.flatMap { it.items }.any { it.key == SettingKey.Notifications })
+
+        viewModel.onToggle(SettingKey.Notifications, true)
+        assertEquals(false, app.profileSettings.notificationsEnabled.first())
+        assertFalse(viewModel.uiState.first().requestNotificationPermission)
+    }
+
+    @Test
+    fun `permission denied switches notifications back off and says why`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hasProfile }
+        viewModel.onToggle(SettingKey.Notifications, true)
+        viewModel.uiState.first { it.requestNotificationPermission }
+
+        viewModel.onNotificationPermissionDenied()
+
+        val state = viewModel.uiState.first { !it.notificationsOn() }
+        assertFalse(state.requestNotificationPermission)
+        assertEquals(false, app.profileSettings.notificationsEnabled.first())
+        assertEquals(Strings.notificationsBlocked, state.pages.getValue(SettingsPageId.Notifications).sections.first().footer)
+    }
+
     /** Signed in as Alex, with "1234" as the PIN when [pin] is true; the switches are on unless turned off. */
     private suspend fun signedInWithPin(pin: Boolean = true) = app.signedIn().also {
         if (pin) app.setPin("u1", "1234")

@@ -39,5 +39,11 @@ class SettingsModel {
     /** The Jellyfin password entered after "Forgot PIN?". */
     fun onSubmitPassword(password: String) = host.viewModel.onSubmitPassword(password)
 
+    /** The one-shot permission request in the state was shown: acknowledge it. */
+    fun onNotificationPermissionRequested() = host.viewModel.onNotificationPermissionRequested()
+
+    /** The OS refused notification permission: the setting goes back off. */
+    fun onNotificationPermissionDenied() = host.viewModel.onNotificationPermissionDenied()
+
     fun close() = host.close()
 }

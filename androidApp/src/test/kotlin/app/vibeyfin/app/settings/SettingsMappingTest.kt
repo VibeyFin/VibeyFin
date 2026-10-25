@@ -26,7 +26,7 @@ class SettingsMappingTest {
         val root = pages.getValue(SettingsPageId.Root).drawn { it in pages }
         assertEquals(
             listOf(
-                null, Strings.playbackSection, Strings.settingsGroupHome,
+                null, Strings.playbackSection, Strings.settingsGroupHome, Strings.notificationsTitle,
                 Strings.settingsGroupKids, Strings.settingsGroupDevice, Strings.settingsGroupAdvanced,
             ),
             root.sections.map { it.title },

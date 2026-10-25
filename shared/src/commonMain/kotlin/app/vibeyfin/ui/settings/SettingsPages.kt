@@ -31,6 +31,10 @@ data class SettingsValues(
     /** The profile's PIN and when it asks for it; nothing asks while there is no PIN. */
     val pinGates: PinGates = PinGates(),
     val policy: PolicyState = PolicyState.Loading,
+    val notificationsEnabled: Boolean = false,
+    val notificationScope: Int = ProfileSettings.DEFAULT_NOTIFICATION_SCOPE,
+    /** The OS refused notification permission, so the page points to system settings. */
+    val notificationsBlocked: Boolean = false,
     val showPlaybackStats: Boolean = false,
     val bingeThreshold: Int = ProfileSettings.DEFAULT_BINGE_THRESHOLD,
     val homeGenreRows: Int = ProfileSettings.HOME_GENRES_ALL,
@@ -50,7 +54,7 @@ data class SettingsValues(
     val serverAddresses: List<String> = emptyList(),
 )
 
-/** Every page the shared code builds, keyed by its id. Notifications is built in a later step and is not here yet. */
+/** Every page the shared code builds, keyed by its id. */
 fun settingsPages(values: SettingsValues): Map<SettingsPageId, SettingsPage> = listOf(
     rootPage(values),
     profilePage(values),
@@ -58,6 +62,7 @@ fun settingsPages(values: SettingsValues): Map<SettingsPageId, SettingsPage> = l
     skippingPage(values),
     subtitlesPage(values),
     kidsAndPinPage(values),
+    notificationsPage(values),
 ).associateBy { it.id }
 
 fun rootPage(v: SettingsValues): SettingsPage {
@@ -189,6 +194,35 @@ fun profilePage(v: SettingsValues): SettingsPage {
                 title = null,
                 footer = Strings.signOutFooter,
                 items = listOf(ActionItem(SettingKey.SignOut, Strings.signOut, destructive = true, visible = profile && !v.kidsProfile)),
+            ),
+        ),
+    )
+}
+
+/** Hidden for a kids profile, like its link on the root page. The scope shows only while notifications are on. */
+fun notificationsPage(v: SettingsValues): SettingsPage {
+    val visible = v.hasProfile && !v.kidsProfile
+    return SettingsPage(
+        SettingsPageId.Notifications,
+        Strings.notificationsTitle,
+        listOf(
+            SettingsSection(
+                title = null,
+                footer = if (v.notificationsBlocked) Strings.notificationsBlocked else Strings.notificationsFooter,
+                items = listOf(
+                    ToggleItem(SettingKey.Notifications, Strings.notificationsToggle, checked = v.notificationsEnabled, visible = visible),
+                ),
+            ),
+            SettingsSection(
+                Strings.notificationsWhichGroup,
+                footer = null,
+                items = listOf(
+                    ChoiceItem(
+                        SettingKey.NotificationScope, Strings.notificationsWhichGroup, value = v.notificationScope,
+                        options = ProfileSettings.NOTIFICATION_SCOPE_CHOICES.map { SettingOption(it, Strings.notificationsScopeLabel(it)) },
+                        visible = visible && v.notificationsEnabled,
+                    ),
+                ),
             ),
         ),
     )

@@ -50,6 +50,12 @@ data class SettingsUiState(
     val leave: Boolean = false,
     /** The connection is Disconnected (switch profile, sign out), not merely expired: the native screen leaves. */
     val disconnected: Boolean = false,
+    /**
+     * One-shot: notifications were just switched on, so the native screen asks the OS for notification permission and
+     * then calls [SettingsViewModel.onNotificationPermissionRequested]. If the OS says no, it calls
+     * [SettingsViewModel.onNotificationPermissionDenied].
+     */
+    val requestNotificationPermission: Boolean = false,
 )
 
 /** Device-wide settings from [DevicePreferences] and the signed-in profile's from the database, built into pages by [settingsPages]. */
@@ -69,6 +75,8 @@ class SettingsViewModel(
     private val pin = PinGate(pins, auth, viewModelScope)
     private val locked = MutableStateFlow(true)
     private val leave = MutableStateFlow(false)
+    private val requestNotificationPermission = MutableStateFlow(false)
+    private val notificationsBlocked = MutableStateFlow(false)
     private val policyState = MutableStateFlow<PolicyState>(PolicyState.Loading)
     private var policyLoad: Job? = null
 
@@ -125,6 +133,10 @@ class SettingsViewModel(
             leave,
             policyState,
             profileSettings.pinGates,
+            profileSettings.notificationsEnabled,
+            profileSettings.notificationScope,
+            requestNotificationPermission,
+            notificationsBlocked,
         ),
     ) { v ->
         val defaults = SettingsValues()
@@ -141,6 +153,9 @@ class SettingsViewModel(
             kidsProfile = v[17] as Boolean? ?: false,
             pinGates = v[22] as PinGates? ?: PinGates(),
             policy = v[21] as PolicyState,
+            notificationsEnabled = v[23] as Boolean? ?: defaults.notificationsEnabled,
+            notificationScope = v[24] as Int? ?: defaults.notificationScope,
+            notificationsBlocked = v[26] as Boolean,
             showPlaybackStats = showStats ?: defaults.showPlaybackStats,
             bingeThreshold = threshold ?: defaults.bingeThreshold,
             homeGenreRows = v[3] as Int? ?: defaults.homeGenreRows,
@@ -168,6 +183,7 @@ class SettingsViewModel(
             locked = v[19] as Boolean,
             leave = v[20] as Boolean,
             disconnected = v[14] is ConnectionState.Disconnected,
+            requestNotificationPermission = v[25] as Boolean,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -185,6 +201,13 @@ class SettingsViewModel(
                 } else {
                     // Turning kids mode on needs nothing; turning it off asks for the PIN whenever there is one.
                     guarded(PinReason.KidsOff, { it.hasPin }) { profileSettings.setKidsProfile(false) }
+                }
+                SettingKey.Notifications -> {
+                    // A kids profile has no Notifications page; this keeps a stale toggle from reaching it.
+                    if (profileSettings.kidsProfile.first() == true) return@launch
+                    profileSettings.setNotificationsEnabled(value)
+                    notificationsBlocked.value = false
+                    requestNotificationPermission.value = value
                 }
                 SettingKey.PinOpenProfile -> profileSettings.setPinOpenProfile(value)
                 SettingKey.PinOpenSettings -> profileSettings.setPinOpenSettings(value)
@@ -207,6 +230,7 @@ class SettingsViewModel(
                 SettingKey.SubtitleSize -> profileSettings.setSubtitleSize(value)
                 SettingKey.SubtitleColor -> profileSettings.setSubtitleTextColor(value)
                 SettingKey.SubtitleBackground -> profileSettings.setSubtitleBackground(value)
+                SettingKey.NotificationScope -> profileSettings.setNotificationScope(value)
                 else -> Unit
             }
         }
@@ -243,6 +267,18 @@ class SettingsViewModel(
                 is ApiResult.Failure -> PolicyState.Failed(result.error)
             }
         }
+    }
+
+    /** The native screen showed the OS permission prompt (or found it needless): the one-shot is spent. */
+    fun onNotificationPermissionRequested() {
+        requestNotificationPermission.value = false
+    }
+
+    /** The OS refused notification permission: the setting goes back off and the page says where to allow it. */
+    fun onNotificationPermissionDenied() {
+        requestNotificationPermission.value = false
+        notificationsBlocked.value = true
+        viewModelScope.launch { profileSettings.setNotificationsEnabled(false) }
     }
 
     private fun choosePin() {
