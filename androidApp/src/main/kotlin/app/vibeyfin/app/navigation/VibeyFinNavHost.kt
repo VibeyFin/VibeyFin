@@ -20,6 +20,7 @@ import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -49,6 +50,7 @@ import app.vibeyfin.app.settings.pageIdOrRoot
 import app.vibeyfin.app.startup.StartupRoute
 import app.vibeyfin.app.theme.isTabletWidth
 import app.vibeyfin.app.whoswatching.WhoIsWatchingRoute
+import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.StartDestination
 import app.vibeyfin.domain.model.ItemKind
@@ -201,7 +203,7 @@ fun VibeyFinNavHost() {
                             is StartDestination.WhoIsWatching -> {
                                 // Servers sits underneath so back from "Who's watching?" has somewhere to go.
                                 navController.navigate(Servers) { popUpTo(Startup) { inclusive = true } }
-                                navController.navigate(WhoIsWatching(destination.serverId))
+                                navController.navigate(WhoIsWatching(destination.serverId, destination.pinFor?.userId, destination.openAfterPin))
                             }
                             StartDestination.Home ->
                                 navController.navigate(HomeTab) { popUpTo(Startup) { inclusive = true } }
@@ -217,8 +219,11 @@ fun VibeyFinNavHost() {
                 )
             }
             composable<WhoIsWatching> { entry ->
+                val route = entry.toRoute<WhoIsWatching>()
                 WhoIsWatchingRoute(
-                    serverId = entry.toRoute<WhoIsWatching>().serverId,
+                    serverId = route.serverId,
+                    pinFor = route.pinUserId?.let { ProfileRef(route.serverId, it) },
+                    openAfterPin = route.openAfterPin,
                     onBack = { navController.popBackStack() },
                     // Home becomes the root: back from it leaves the app instead of returning to sign-in.
                     onSignedIn = { navController.navigate(HomeTab) { popUpTo(Servers) { inclusive = true } } },
@@ -288,8 +293,12 @@ fun VibeyFinNavHost() {
             composable<SettingsPageRoute> { entry ->
                 // An id this build does not know opens the root page instead of crashing.
                 val id = pageIdOrRoot(entry.toRoute<SettingsPageRoute>().id)
+                // One SettingsViewModel for the whole Settings flow, kept by the root entry: the PIN is asked once and
+                // leaving Settings discards it. Without a root entry on the stack (deep link, restored state) the page keeps its own.
+                val settingsRoot = remember(entry) { runCatching { navController.getBackStackEntry<Settings>() }.getOrNull() }
                 SettingsRoute(
                     pageId = id,
+                    viewModel = koinViewModel(viewModelStoreOwner = settingsRoot ?: entry),
                     onOpen = { navController.navigate(SettingsPageRoute(it.name)) },
                     onExit = leave,
                     onBack = { navController.popBackStack() },

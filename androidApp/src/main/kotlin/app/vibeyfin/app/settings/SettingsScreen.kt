@@ -65,14 +65,22 @@ fun SettingsRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LeaveWhenDisconnected(connection, onExit)
+    // The PIN dismissed on open: leave Settings.
+    LaunchedEffect(state.leave) { if (state.leave) onBack() }
+    // The Kids and PIN page reads the server's limits whenever it is shown (on a tablet, when its row is selected).
     val page = state.pages[pageId]
-    if (twoPane) {
+    if (!twoPane) LaunchedEffect(pageId, state.locked) { if (!state.locked) viewModel.onPageOpened(pageId) }
+    if (state.locked) {
+        // Nothing of Settings shows until the PIN is right.
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { Box(Modifier.fillMaxSize()) { FloatingBackButton(onBack) } }
+    } else if (twoPane) {
         SettingsTabletScreen(
             state = state,
             onToggle = viewModel::onToggle,
             onChoose = viewModel::onChoose,
             onAction = viewModel::onAction,
             onBack = onBack,
+            onPageOpened = viewModel::onPageOpened,
         )
     } else if (page == null) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { Box(Modifier.fillMaxSize()) { FloatingBackButton(onBack) } }
@@ -85,6 +93,15 @@ fun SettingsRoute(
             onAction = viewModel::onAction,
             onOpen = onOpen,
             onBack = onBack,
+        )
+    }
+    state.pinPrompt?.let { prompt ->
+        PinSheet(
+            prompt = prompt,
+            onSubmitPin = viewModel::onSubmitPin,
+            onForgotPin = viewModel::onForgotPin,
+            onSubmitPassword = viewModel::onSubmitPassword,
+            onDismiss = viewModel::onDismissPin,
         )
     }
     if (state.confirmSignOut) {
@@ -212,8 +229,7 @@ private fun ItemRow(
             CustomKind.ProfileHeader -> ProfileHeaderRow(item.title, item.help)
             // The shared builder gives the preview a section of its own (drawn above), so no row; listed to keep the when exhaustive.
             CustomKind.SubtitlePreview -> Unit
-            // The PIN dots belong to the PIN screens, which are not in the tree yet.
-            CustomKind.PinDots -> Unit
+            CustomKind.PinDots -> PinDotsItemRow(item.title, item.help)
         }
     }
 }

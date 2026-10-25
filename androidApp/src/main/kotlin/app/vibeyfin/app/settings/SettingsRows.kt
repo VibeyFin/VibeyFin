@@ -332,3 +332,12 @@ internal fun SubtitlePreviewCard(sample: String, style: SubtitleViewStyle) {
 
 /** The player height the size fractions are taken of, for the preview's text size. */
 private const val PREVIEW_PLAYER_HEIGHT = 360f
+
+/** The PIN row: its title and four lit dots, read out as one description. */
+@Composable
+fun PinDotsItemRow(title: String, description: String?) {
+    RowFrame {
+        RowText(title, null, Modifier.weight(1f))
+        PinDotsRow(filled = 4, description = description ?: title)
+    }
+}

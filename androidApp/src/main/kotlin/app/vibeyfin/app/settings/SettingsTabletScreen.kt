@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -50,6 +51,7 @@ fun SettingsTabletScreen(
     onChoose: (SettingKey, Int) -> Unit,
     onAction: (SettingKey) -> Unit,
     onBack: () -> Unit,
+    onPageOpened: (SettingsPageId) -> Unit = {},
 ) {
     // The open row is kept, not its page: two root rows can lead to the same page.
     var saved by rememberSaveable { mutableStateOf<SettingKey?>(null) }
@@ -58,6 +60,8 @@ fun SettingsTabletScreen(
     val detail = selected?.let { state.pages[it.target] }
     val hasPage: (SettingsPageId) -> Boolean = { it in state.pages }
     val margin = screenMargin()
+    // The page beside the list is the one shown, so it is the one opened.
+    LaunchedEffect(detail?.id) { detail?.id?.let(onPageOpened) }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
