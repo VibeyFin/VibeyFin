@@ -2,6 +2,8 @@ package app.vibeyfin.domain
 
 import app.vibeyfin.data.db.AccountDao
 import app.vibeyfin.data.db.PinGateRow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
@@ -52,6 +54,9 @@ class PinLock(
 
     private val tries = mutableMapOf<Pair<String, String>, Tries>()
 
+    // One check, set or removal at a time, so PINs entered quickly each count once against the lockout.
+    private val mutex = Mutex()
+
     suspend fun hasPin(serverId: String, userId: String): Boolean = dao.getPin(serverId, userId)?.pinHash != null
 
     /** When [userId] on [serverId] asks for its PIN; nothing for a profile this device has never saved. */
@@ -59,42 +64,48 @@ class PinLock(
 
     /** Sets the PIN of the profile that is signed in, with a fresh salt. Does nothing when nobody is. */
     suspend fun setPin(pin: String) {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        val salt = Random.nextBytes(SALT_BYTES)
-        dao.setPin(account.serverId, account.userId, hashPin(salt, pin), salt)
-        tries.remove(account.serverId to account.userId)
+        mutex.withLock {
+            val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+            val salt = Random.nextBytes(SALT_BYTES)
+            dao.setPin(account.serverId, account.userId, hashPin(salt, pin), salt)
+            tries.remove(account.serverId to account.userId)
+        }
     }
 
     /** Removes the PIN of the profile that is signed in. Does nothing when nobody is. */
     suspend fun removePin() {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setPin(account.serverId, account.userId, null, null)
-        tries.remove(account.serverId to account.userId)
+        mutex.withLock {
+            val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+            dao.setPin(account.serverId, account.userId, null, null)
+            tries.remove(account.serverId to account.userId)
+        }
     }
 
     suspend fun verify(serverId: String, userId: String, pin: String): PinResult {
-        val stored = dao.getPin(serverId, userId)
-        val hash = stored?.pinHash
-        val salt = stored?.pinSalt
-        if (hash == null || salt == null) return PinResult.Ok
+        mutex.withLock {
+            val stored = dao.getPin(serverId, userId)
+            val hash = stored?.pinHash
+            val salt = stored?.pinSalt
+            if (hash == null || salt == null) return PinResult.Ok
 
-        val state = tries.getOrPut(serverId to userId) { Tries() }
-        val now = clock.now()
-        state.lockedUntil?.let { until ->
-            if (now < until) return PinResult.Locked(secondsLeft(until - now))
-            state.lockedUntil = null
-            state.wrong = 0
+            val state = tries.getOrPut(serverId to userId) { Tries() }
+            val now = clock.now()
+            state.lockedUntil?.let { until ->
+                if (now < until) return PinResult.Locked(secondsLeft(until - now))
+                state.lockedUntil = null
+                state.wrong = 0
+            }
+            if (hashPin(salt, pin).contentEquals(hash)) {
+                state.wrong = 0
+                return PinResult.Ok
+            }
+            state.wrong++
+            if (state.wrong >= MAX_ATTEMPTS) {
+                state.lockedUntil = now + LOCK_SECONDS.seconds
+                return PinResult.Locked(LOCK_SECONDS)
+            }
+            return PinResult.Wrong(MAX_ATTEMPTS - state.wrong)
         }
-        if (hashPin(salt, pin).contentEquals(hash)) {
-            state.wrong = 0
-            return PinResult.Ok
-        }
-        state.wrong++
-        if (state.wrong >= MAX_ATTEMPTS) {
-            state.lockedUntil = now + LOCK_SECONDS.seconds
-            return PinResult.Locked(LOCK_SECONDS)
-        }
-        return PinResult.Wrong(MAX_ATTEMPTS - state.wrong)
     }
 
     private fun secondsLeft(left: kotlin.time.Duration): Int = left.inWholeMilliseconds.let { ((it + 999) / 1000).toInt() }

@@ -631,6 +631,20 @@ object Strings {
     val pinPromptConfirm = "Enter the PIN again"
     val pinPromptWrong = "That PIN is wrong. Try again."
     val pinPromptMismatch = "The PINs don't match. Try again."
+    val pinPromptOpenProfile = "Enter this profile's PIN to open it."
+    val pinPromptOpenSettings = "Enter your PIN to open Settings."
+    val pinPromptSwitchProfile = "Enter your PIN to switch profile."
+    val pinPromptChangePin = "Enter your current PIN to change it."
+    val pinPromptRemovePin = "Enter your PIN to remove it."
+    val pinPromptKidsOff = "Enter your PIN to turn off kids mode."
+    fun pinPromptAttemptsLeft(attempts: Int) =
+        if (attempts == 1) "That PIN is wrong. 1 try left before a short wait." else "That PIN is wrong. $attempts tries left before a short wait."
+    fun pinPromptLocked(seconds: Int) =
+        if (seconds == 1) "Too many wrong PINs. Try again in 1 second." else "Too many wrong PINs. Try again in $seconds seconds."
+    val pinForgot = "Forgot PIN?"
+    fun pinForgotMessage(name: String) =
+        "Enter $name's Jellyfin password to remove the PIN. Kids mode stays as it is; the password is not saved."
+    val pinForgotSubmit = "Remove PIN"
 
     // Notifications page
     val notificationsTitle = "Notifications"

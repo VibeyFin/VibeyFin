@@ -1,7 +1,11 @@
 package app.vibeyfin.domain
 
 import app.vibeyfin.testing.TestApp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -107,4 +111,17 @@ class PinLockTest {
     }
 
     private fun ByteArray.toHex() = joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
+
+    @Test
+    fun `wrong PINs checked at the same time each count once`() = runTest {
+        app.signedIn()
+        lock.setPin("1234")
+
+        val results = withContext(Dispatchers.Default) {
+            (1..5).map { async { lock.verify("srv-1", "u1", "0000") } }.awaitAll()
+        }
+
+        assertEquals(setOf(4, 3, 2, 1), results.filterIsInstance<PinResult.Wrong>().map { it.attemptsLeft }.toSet())
+        assertEquals(listOf(PinResult.Locked(secondsLeft = 30)), results.filterIsInstance<PinResult.Locked>())
+    }
 }
