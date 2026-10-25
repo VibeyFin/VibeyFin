@@ -255,7 +255,7 @@ class SettingsViewModelTest {
     private fun SettingsPage.keys() = sections.flatMap { section -> section.items.map { it.key } }
 
     @Test
-    fun `the root has the groups Playback, Home, Notifications, Kids and PIN, This device and Advanced in that order`() = runTest {
+    fun `the root has its six groups in the designed order`() = runTest {
         app.signedIn()
         val root = viewModel().uiState.first { it.hasProfile }.page(SettingsPageId.Root)
 
@@ -269,7 +269,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `the root Playback group links to Quality, Subtitles and Skipping only`() = runTest {
+    fun `the root Playback group links to Quality and Subtitles and Skipping only`() = runTest {
         app.signedIn()
         val root = viewModel().uiState.first { it.hasProfile }.page(SettingsPageId.Root)
 
@@ -289,7 +289,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `skip, auto skip, still watching and buffering sit on the Skipping page`() = runTest {
+    fun `skip and auto skip still watching and buffering sit on the Skipping page`() = runTest {
         app.signedIn()
         val viewModel = viewModel()
         val skipping = viewModel.uiState.first { it.hasProfile }.page(SettingsPageId.Skipping)
@@ -503,7 +503,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `choosing size, colour and background is stored and reset restores the defaults`() = runTest {
+    fun `choosing size and colour and background is stored and reset restores the defaults`() = runTest {
         app.signedIn()
         val viewModel = viewModel()
         viewModel.uiState.first { it.hasProfile }

@@ -59,7 +59,7 @@ class ProfilePolicyTest {
     }
 
     @Test
-    fun `a failed load is an error, not an empty policy`() = runTest {
+    fun `a failed load is an error and not an empty policy`() = runTest {
         val server = app.signedIn()
         server.on("GET", "/Users/Me", Reply.status(HttpStatusCode.InternalServerError))
 
@@ -74,7 +74,7 @@ class ProfilePolicyTest {
     }
 
     @Test
-    fun `level 0 is a cap, the strictest one`() = runTest {
+    fun `level 0 is a cap and the strictest one`() = runTest {
         val server = app.signedIn()
         server.user("""{"MaxParentalRating":0}""")
         server.ratings("""[{"Name":"G","Value":5}]""")
@@ -107,7 +107,7 @@ class ProfilePolicyTest {
     }
 
     @Test
-    fun `schedules keep their order, an overnight range and an unknown day`() = runTest {
+    fun `schedules keep their order and an overnight range and an unknown day`() = runTest {
         val server = app.signedIn()
         server.user(
             """{"AccessSchedules":[
