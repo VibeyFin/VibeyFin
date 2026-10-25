@@ -16,7 +16,6 @@ data class WhoIsWatching(
     val serverId: String,
     /** Opens on this profile's PIN (the user id on [serverId]), set at launch. */
     val pinUserId: String? = null,
-    val openAfterPin: Boolean = false,
 )
 
 @Serializable

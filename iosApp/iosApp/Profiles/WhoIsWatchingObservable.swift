@@ -10,9 +10,9 @@ final class WhoIsWatchingObservable: ObservableObject {
     private let model: WhoIsWatchingModel
     private var started = false
 
-    /// `pinFor` and `openAfterPin` come from the launch destination: the screen opens on that profile's PIN.
-    init(serverId: String, pinFor: ProfileRef? = nil, openAfterPin: Bool = false) {
-        model = WhoIsWatchingModel(serverId: serverId, pinFor: pinFor, openAfterPin: openAfterPin)
+    /// `pinFor` comes from the launch destination: the screen opens on that profile's PIN.
+    init(serverId: String, pinFor: ProfileRef? = nil) {
+        model = WhoIsWatchingModel(serverId: serverId, pinFor: pinFor)
     }
 
     /// Starts watching. Called when the screen appears, not from `init`, because SwiftUI may build

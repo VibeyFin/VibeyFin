@@ -9,13 +9,12 @@ sealed interface StartDestination {
     data object Servers : StartDestination
 
     /**
-     * "Who's watching?" on [serverId]. With [pinFor] set, the picker asks for that profile's PIN first: to open it
-     * when [openAfterPin] is true, otherwise to let anyone pick another profile (dismissing goes back to [pinFor]).
+     * "Who's watching?" on [serverId]. With [pinFor] set, the picker asks for that profile's PIN first, to let anyone
+     * pick another profile (dismissing goes back to [pinFor]).
      */
     data class WhoIsWatching(
         val serverId: String,
         val pinFor: ProfileRef? = null,
-        val openAfterPin: Boolean = false,
     ) : StartDestination
 
     /** The last profile still has a session and is already the current connection. */
@@ -26,7 +25,7 @@ sealed interface StartDestination {
  * Decides the first screen:
  * - no saved servers: Servers;
  * - the last profile has a session and "always ask" is off: straight to Home, unless it asks for its PIN to open,
- *   when "Who's watching?" asks for that PIN and then opens it;
+ *   when the picker stays up and a tap on its tile asks for that PIN;
  * - otherwise: "Who's watching?" for the last used server. If the last profile asks for its PIN to switch profile,
  *   the picker asks for it first, even with "always ask" on: showing the picker is leaving that profile.
  */

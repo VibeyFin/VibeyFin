@@ -7,14 +7,14 @@ import app.vibeyfin.ui.whoswatching.WhoIsWatchingViewModel
 import org.koin.core.parameter.parametersOf
 
 /**
- * The "Who's watching?" screen for the server [serverId], as SwiftUI needs it. [pinFor] and [openAfterPin] come from
+ * The "Who's watching?" screen for the server [serverId], as SwiftUI needs it. [pinFor] comes from
  * `StartDestination.WhoIsWatching`: the profile whose PIN the screen asks for first.
  */
-class WhoIsWatchingModel(serverId: String, pinFor: ProfileRef?, openAfterPin: Boolean) {
-    constructor(serverId: String) : this(serverId, null, false)
+class WhoIsWatchingModel(serverId: String, pinFor: ProfileRef?) {
+    constructor(serverId: String) : this(serverId, null)
 
     private val host = ViewModelHost(WhoIsWatchingViewModel::class) {
-        it.get<WhoIsWatchingViewModel> { parametersOf(serverId, pinFor, openAfterPin) }
+        it.get<WhoIsWatchingViewModel> { parametersOf(serverId, pinFor) }
     }
 
     fun observe(onChange: (WhoIsWatchingUiState) -> Unit) = host.observe(host.viewModel.uiState, onChange)

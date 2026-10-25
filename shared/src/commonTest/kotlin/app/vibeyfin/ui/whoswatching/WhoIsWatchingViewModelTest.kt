@@ -62,8 +62,8 @@ class WhoIsWatchingViewModelTest {
         app.close()
     }
 
-    private fun viewModel(pinFor: ProfileRef? = null, openAfterPin: Boolean = false) = viewModels.track(
-        WhoIsWatchingViewModel("srv-1", app.servers, app.accounts, app.auth, app.connection, app.pins, pinFor, openAfterPin),
+    private fun viewModel(pinFor: ProfileRef? = null) = viewModels.track(
+        WhoIsWatchingViewModel("srv-1", app.servers, app.accounts, app.auth, app.connection, app.pins, pinFor),
     )
 
     private suspend fun WhoIsWatchingViewModel.loaded() = uiState.first { !it.loading }
@@ -394,17 +394,6 @@ class WhoIsWatchingViewModelTest {
 
         assertTrue(viewModel.uiState.first { it.signedIn }.signedIn)
         assertEquals("u1", assertIs<ConnectionState.Connected>(app.connection.state.value).account.userId)
-    }
-
-    @Test
-    fun `reopening a profile at launch opens it after the right PIN`() = runTest {
-        alexWithPin()
-        val viewModel = viewModel(pinFor = ProfileRef("srv-1", "u1"), openAfterPin = true)
-        assertEquals(PinReason.OpenProfile, viewModel.uiState.first { it.pinPrompt != null }.pinPrompt!!.reason)
-
-        viewModel.onSubmitPin("1234")
-
-        assertTrue(viewModel.uiState.first { it.signedIn }.signedIn)
     }
 
     @Test

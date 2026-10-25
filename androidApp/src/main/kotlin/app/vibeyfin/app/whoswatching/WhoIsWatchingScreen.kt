@@ -79,8 +79,7 @@ fun WhoIsWatchingRoute(
     onBack: () -> Unit,
     onSignedIn: () -> Unit,
     pinFor: ProfileRef? = null,
-    openAfterPin: Boolean = false,
-    viewModel: WhoIsWatchingViewModel = koinViewModel(parameters = { parametersOf(serverId, pinFor, openAfterPin) }),
+    viewModel: WhoIsWatchingViewModel = koinViewModel(parameters = { parametersOf(serverId, pinFor) }),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.signedIn) {

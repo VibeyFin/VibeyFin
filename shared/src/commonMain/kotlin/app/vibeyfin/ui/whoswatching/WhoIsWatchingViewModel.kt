@@ -63,8 +63,8 @@ data class WhoIsWatchingUiState(
 
 /**
  * "Who's watching?" on [serverId]. A tile whose profile asks for its PIN to open asks for it before signing in. With
- * [pinFor] set, the screen opens on that profile's PIN: to open it when [openAfterPin] is true, otherwise because
- * showing the picker leaves that profile ("switch profile"), and dismissing the PIN goes back to it.
+ * [pinFor] set, the screen opens on that profile's PIN because showing the picker leaves that profile
+ * ("switch profile"), and dismissing the PIN goes back to it.
  */
 class WhoIsWatchingViewModel(
     private val serverId: String,
@@ -74,7 +74,6 @@ class WhoIsWatchingViewModel(
     private val connection: ConnectionManager,
     private val pins: PinLock,
     private val pinFor: ProfileRef? = null,
-    private val openAfterPin: Boolean = false,
 ) : ViewModel() {
     private data class Local(
         val server: Server? = null,
@@ -148,11 +147,7 @@ class WhoIsWatchingViewModel(
             val account = accounts.account(ref.serverId, ref.userId) ?: return@launch
             // The picker does not know yet whether the server wants a password; asking for one is the safe guess.
             val profile = Profile(account.userId, account.name, null, account.hasSession, needsPassword = true)
-            if (openAfterPin) {
-                pin.ask(PinReason.OpenProfile, ref.serverId, ref.userId, account.name) { open(profile) }
-            } else {
-                pin.ask(PinReason.SwitchProfile, ref.serverId, ref.userId, account.name, onDismiss = { goBackTo(profile) }) {}
-            }
+            pin.ask(PinReason.SwitchProfile, ref.serverId, ref.userId, account.name, onDismiss = { goBackTo(profile) }) {}
         }
     }
 

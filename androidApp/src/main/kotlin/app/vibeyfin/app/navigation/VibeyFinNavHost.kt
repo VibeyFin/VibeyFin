@@ -203,7 +203,7 @@ fun VibeyFinNavHost() {
                             is StartDestination.WhoIsWatching -> {
                                 // Servers sits underneath so back from "Who's watching?" has somewhere to go.
                                 navController.navigate(Servers) { popUpTo(Startup) { inclusive = true } }
-                                navController.navigate(WhoIsWatching(destination.serverId, destination.pinFor?.userId, destination.openAfterPin))
+                                navController.navigate(WhoIsWatching(destination.serverId, destination.pinFor?.userId))
                             }
                             StartDestination.Home ->
                                 navController.navigate(HomeTab) { popUpTo(Startup) { inclusive = true } }
@@ -223,7 +223,6 @@ fun VibeyFinNavHost() {
                 WhoIsWatchingRoute(
                     serverId = route.serverId,
                     pinFor = route.pinUserId?.let { ProfileRef(route.serverId, it) },
-                    openAfterPin = route.openAfterPin,
                     onBack = { navController.popBackStack() },
                     // Home becomes the root: back from it leaves the app instead of returning to sign-in.
                     onSignedIn = { navController.navigate(HomeTab) { popUpTo(Servers) { inclusive = true } } },

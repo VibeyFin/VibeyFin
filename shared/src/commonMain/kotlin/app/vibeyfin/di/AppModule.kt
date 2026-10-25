@@ -29,7 +29,7 @@ fun appModule() = module {
     viewModelOf(::ServersViewModel)
     viewModel { params -> AddServerViewModel(params.getOrNull(), get(), get()) }
     viewModel { params ->
-        WhoIsWatchingViewModel(params.get(), get(), get(), get(), get(), get(), params.getOrNull(), params.getOrNull() ?: false)
+        WhoIsWatchingViewModel(params.get(), get(), get(), get(), get(), get(), params.getOrNull())
     }
     viewModelOf(::HomeViewModel)
     viewModel { params -> ChildrenViewModel(params.get(), get(), get()) }

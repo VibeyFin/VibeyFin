@@ -6,8 +6,8 @@ struct WhoIsWatchingView: View {
 
     let onSignedIn: () -> Void
 
-    init(serverId: String, pinFor: ProfileRef? = nil, openAfterPin: Bool = false, onSignedIn: @escaping () -> Void) {
-        _model = StateObject(wrappedValue: WhoIsWatchingObservable(serverId: serverId, pinFor: pinFor, openAfterPin: openAfterPin))
+    init(serverId: String, pinFor: ProfileRef? = nil, onSignedIn: @escaping () -> Void) {
+        _model = StateObject(wrappedValue: WhoIsWatchingObservable(serverId: serverId, pinFor: pinFor))
         self.onSignedIn = onSignedIn
     }
 
