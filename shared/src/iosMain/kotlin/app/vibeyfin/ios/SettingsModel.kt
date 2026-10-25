@@ -21,6 +21,9 @@ class SettingsModel {
     /** The page the iPad's split view opens on; null when nothing has anything to set. */
     fun firstSettablePage(): SettingsPageId? = firstSettablePage(host.viewModel.uiState.value.pages)
 
+    /** A page was opened; the Kids and PIN page reads the server's limits then. */
+    fun onPageOpened(page: SettingsPageId) = host.viewModel.onPageOpened(page)
+
     fun onConfirmSignOut() = host.viewModel.onConfirmSignOut()
 
     fun onDismissSignOut() = host.viewModel.onDismissSignOut()

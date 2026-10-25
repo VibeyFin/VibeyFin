@@ -11,6 +11,7 @@ import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.PROGRESS_INTERVAL
 import app.vibeyfin.domain.PendingReports
 import app.vibeyfin.domain.PinLock
+import app.vibeyfin.domain.ProfilePolicy
 import app.vibeyfin.domain.hashPin
 import app.vibeyfin.domain.NowPlaying
 import app.vibeyfin.domain.PlaybackRecovery
@@ -49,6 +50,7 @@ class TestApp {
     val connection = ConnectionManager(connector, servers, accounts, preferences, jellyfin.unauthorized, scope)
     val auth = AuthRepository(connector, accounts, connection)
     val pins = PinLock(database.accountDao(), connection, clock)
+    val policy = ProfilePolicy(connection)
     val router = StartupRouter(servers, accounts, preferences, connection, pins)
     val library = LibraryRepository(connection)
     val searchHistory = SearchHistory(InMemoryPreferencesDataStore(), connection)

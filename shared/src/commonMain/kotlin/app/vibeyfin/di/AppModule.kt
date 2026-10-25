@@ -42,6 +42,6 @@ fun appModule() = module {
     viewModelOf(::StartupViewModel)
     viewModel {
         val device = get<DeviceInfo>()
-        SettingsViewModel(get(), get(), get(), get(), get(), get(), get(ApplicationScope), device.appVersion, device.subtitleStyleApplies)
+        SettingsViewModel(get(), get(), get(), get(), get(), get(), get(), get(ApplicationScope), device.appVersion, device.subtitleStyleApplies)
     }
 }

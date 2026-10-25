@@ -25,7 +25,10 @@ class SettingsMappingTest {
     fun `the root page keeps its groups and links to pages that exist`() {
         val root = pages.getValue(SettingsPageId.Root).drawn { it in pages }
         assertEquals(
-            listOf(null, Strings.playbackSection, Strings.settingsGroupHome, Strings.settingsGroupDevice, Strings.settingsGroupAdvanced),
+            listOf(
+                null, Strings.playbackSection, Strings.settingsGroupHome,
+                Strings.settingsGroupKids, Strings.settingsGroupDevice, Strings.settingsGroupAdvanced,
+            ),
             root.sections.map { it.title },
         )
         assertTrue(links(root).all { it in pages })
@@ -129,7 +132,7 @@ class SettingsMappingTest {
 
     @Test
     fun `a saved key that is no longer drawn falls back to the default`() {
-        assertEquals(SettingKey.Quality, selectedLink(SettingKey.KidsProfile, pages)?.key)
+        assertEquals(SettingKey.Quality, selectedLink(SettingKey.ShowHero, pages)?.key)
         assertEquals(SettingKey.Quality, selectedLink(SettingKey.AlwaysAsk, pages)?.key)
     }
 }

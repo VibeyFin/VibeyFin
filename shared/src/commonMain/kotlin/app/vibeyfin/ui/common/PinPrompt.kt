@@ -17,7 +17,11 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /** Why the PIN is asked for. */
-enum class PinReason { OpenProfile, OpenSettings, SwitchProfile, ChangePin, RemovePin, KidsOff }
+enum class PinReason { OpenProfile, OpenSettings, SwitchProfile, ChangePin, RemovePin, KidsOff,
+
+    /** Choosing a new PIN, for Set PIN and after the current one was right for Change PIN: it is typed twice. */
+    ChoosePin,
+}
 
 /**
  * The PIN sheet. [error] says what went wrong; while [lockedSeconds] is set, too many wrong PINs were entered and the
@@ -30,6 +34,8 @@ data class PinPrompt(
     val lockedSeconds: Int? = null,
     val forgot: Boolean = false,
     val checking: Boolean = false,
+    /** Choosing a PIN: the first entry is in and the sheet asks for it again. */
+    val confirming: Boolean = false,
     /** The profile whose PIN this is, for the Forgot PIN text. */
     val profileName: String = "",
 ) {
@@ -42,6 +48,7 @@ data class PinPrompt(
             PinReason.ChangePin -> Strings.pinPromptChangePin
             PinReason.RemovePin -> Strings.pinPromptRemovePin
             PinReason.KidsOff -> Strings.pinPromptKidsOff
+            PinReason.ChoosePin -> if (confirming) Strings.pinPromptConfirm else Strings.pinPromptNew
         }
 }
 
@@ -61,6 +68,7 @@ class PinGate(
         val username: String,
         val onPass: suspend () -> Unit,
         val onDismiss: () -> Unit,
+        val choosing: Boolean = false,
     )
 
     private val _prompt = MutableStateFlow<PinPrompt?>(null)
@@ -69,6 +77,9 @@ class PinGate(
     private var pending: Pending? = null
     private var countdown: Job? = null
     private val checks = Mutex()
+
+    // The first of the two entries while choosing a PIN.
+    private var chosen: String? = null
 
     /** Opens the sheet for [userId]'s PIN; [onPass] runs after the right PIN (or password), [onDismiss] if it is closed. */
     fun ask(
@@ -80,8 +91,20 @@ class PinGate(
         onPass: suspend () -> Unit,
     ) {
         countdown?.cancel()
+        chosen = null
         pending = Pending(serverId, userId, username, onPass, onDismiss)
         _prompt.value = PinPrompt(reason, profileName = username)
+    }
+
+    /**
+     * Opens the sheet to choose a new PIN for the signed-in profile: it takes the same four digits twice, a different
+     * second entry says so and starts over, and the PIN is set once both match. Closing it sets nothing.
+     */
+    fun choose(serverId: String, userId: String, username: String) {
+        countdown?.cancel()
+        chosen = null
+        pending = Pending(serverId, userId, username, onPass = {}, onDismiss = {}, choosing = true)
+        _prompt.value = PinPrompt(PinReason.ChoosePin, profileName = username)
     }
 
     fun submitPin(pin: String) {
@@ -92,6 +115,7 @@ class PinGate(
             // PINs typed quickly are checked in order, and one that arrives after the sheet closed or locked is dropped.
             checks.withLock {
                 if (pending !== asked || _prompt.value?.lockedSeconds != null) return@withLock
+                if (asked.choosing) return@withLock choosePin(asked, pin)
                 when (val result = pins.verify(asked.serverId, asked.userId, pin)) {
                     PinResult.Ok -> pass(asked)
                     is PinResult.Wrong -> _prompt.update {
@@ -103,9 +127,28 @@ class PinGate(
         }
     }
 
+    private suspend fun choosePin(asked: Pending, pin: String) {
+        if (pin.length != PIN_LENGTH || !pin.all { it in '0'..'9' }) return
+        val first = chosen
+        when {
+            first == null -> {
+                chosen = pin
+                _prompt.update { it?.copy(confirming = true, error = null) }
+            }
+            first == pin -> {
+                pins.setPin(pin)
+                if (pending === asked) close()
+            }
+            else -> {
+                chosen = null
+                _prompt.update { it?.copy(confirming = false, error = Strings.pinPromptMismatch) }
+            }
+        }
+    }
+
     /** "Forgot PIN?": the sheet asks for the profile's Jellyfin password instead. */
     fun forgotPin() {
-        if (pending == null) return
+        if (pending?.choosing != false) return
         _prompt.update { it?.copy(forgot = true, error = null) }
     }
 
@@ -141,8 +184,13 @@ class PinGate(
 
     private fun close() {
         countdown?.cancel()
+        chosen = null
         pending = null
         _prompt.value = null
+    }
+
+    private companion object {
+        const val PIN_LENGTH = 4
     }
 
     private fun lockFor(seconds: Int) {

@@ -8,13 +8,16 @@ import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.DevicePreferences
 import app.vibeyfin.domain.PinGates
 import app.vibeyfin.domain.PinLock
+import app.vibeyfin.domain.ProfilePolicy
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.ServerRepository
+import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.domain.model.Server
 import app.vibeyfin.ui.common.PinGate
 import app.vibeyfin.ui.common.PinPrompt
 import app.vibeyfin.ui.common.PinReason
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -54,6 +57,7 @@ class SettingsViewModel(
     private val connection: ConnectionManager,
     private val servers: ServerRepository,
     private val pins: PinLock,
+    private val policy: ProfilePolicy,
     auth: AuthRepository,
     private val applicationScope: CoroutineScope,
     private val appVersion: String = "",
@@ -63,6 +67,8 @@ class SettingsViewModel(
     private val pin = PinGate(pins, auth, viewModelScope)
     private val locked = MutableStateFlow(true)
     private val leave = MutableStateFlow(false)
+    private val policyState = MutableStateFlow<PolicyState>(PolicyState.Loading)
+    private var policyLoad: Job? = null
 
     init {
         // Decided per profile as the connection gets one, so Settings opened before the profile is signed in still asks.
@@ -72,6 +78,9 @@ class SettingsViewModel(
                 .map { (it as? ConnectionState.Connected)?.account }
                 .distinctUntilChangedBy { it?.serverId to it?.userId }
                 .collect { account ->
+                    // Limits read for the previous profile must not show for this one.
+                    policyLoad?.cancel()
+                    policyState.value = PolicyState.Loading
                     val gates = account?.let { pins.gates(it.serverId, it.userId) } ?: PinGates()
                     if (account != null && gates.openSettings) {
                         locked.value = true
@@ -112,6 +121,8 @@ class SettingsViewModel(
             pin.prompt,
             locked,
             leave,
+            policyState,
+            profileSettings.pinGates,
         ),
     ) { v ->
         val defaults = SettingsValues()
@@ -126,6 +137,8 @@ class SettingsViewModel(
             subtitleStyleApplies = subtitleStyleApplies,
             hasProfile = showStats != null || threshold != null,
             kidsProfile = v[17] as Boolean? ?: false,
+            pinGates = v[22] as PinGates? ?: PinGates(),
+            policy = v[21] as PolicyState,
             showPlaybackStats = showStats ?: defaults.showPlaybackStats,
             bingeThreshold = threshold ?: defaults.bingeThreshold,
             homeGenreRows = v[3] as Int? ?: defaults.homeGenreRows,
@@ -205,11 +218,33 @@ class SettingsViewModel(
                 // A kids profile has no Sign out row; this keeps a stale tap from reaching it.
                 SettingKey.SignOut -> if (profileSettings.kidsProfile.first() != true) confirmSignOut.value = true
                 SettingKey.RemovePin -> guarded(PinReason.RemovePin, { it.hasPin }) { pins.removePin() }
-                // Choosing the new PIN belongs to the Kids and PIN page; here the current one is checked first.
-                SettingKey.ChangePin -> guarded(PinReason.ChangePin, { it.hasPin }) {}
+                SettingKey.SetPin -> choosePin()
+                // The current PIN first, then a new one typed twice.
+                SettingKey.ChangePin -> guarded(PinReason.ChangePin, { it.hasPin }) { choosePin() }
                 else -> Unit
             }
         }
+    }
+
+    /**
+     * A page was opened. The Kids and PIN page reads the Jellyfin user's limits then, every time it opens and not
+     * cached; reopening it is the retry after a failed read. Other pages need nothing.
+     */
+    fun onPageOpened(page: SettingsPageId) {
+        if (page != SettingsPageId.KidsAndPin) return
+        policyLoad?.cancel()
+        policyState.value = PolicyState.Loading
+        policyLoad = viewModelScope.launch {
+            policyState.value = when (val result = policy.load()) {
+                is ApiResult.Success -> PolicyState.Loaded(result.value)
+                is ApiResult.Failure -> PolicyState.Failed(result.error)
+            }
+        }
+    }
+
+    private fun choosePin() {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        pin.choose(account.serverId, account.userId, account.name)
     }
 
     /** The user confirmed signing out: revokes the token and returns to "Who's watching?". */

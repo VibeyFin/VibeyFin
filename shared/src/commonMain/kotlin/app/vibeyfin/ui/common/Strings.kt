@@ -624,6 +624,34 @@ object Strings {
     val serverPolicyHours = "Allowed hours"
     val serverPolicyAnyTime = "Any time"
     val serverPolicyFooter = "Read only. An admin changes these in Jellyfin; the server enforces them."
+    val serverPolicyLoading = "Checking your Jellyfin server\u2026"
+    val serverPolicyFailed = "Couldn\u2019t read the limits from your Jellyfin server."
+    val serverPolicyNone = "No limits are set on your Jellyfin server"
+    val serverPolicyNoRating = "No limit"
+    val serverPolicyNoTags = "None"
+    val pinSetDescription = "A 4-digit PIN is set"
+
+    /** A rating the server has no name for: "Level 10". Level 0 is the strictest cap, not "all". */
+    fun serverPolicyLevel(level: Int) = "Level $level"
+
+    /** One access window: "Weekdays 08:00 to 20:30", or "Saturdays 22:00 to 06:00 the next day" when it runs overnight. */
+    fun serverPolicyWindow(days: String, startMinutes: Int, endMinutes: Int): String {
+        val overnight = if (startMinutes > endMinutes) " the next day" else ""
+        return "$days ${hhmm(startMinutes)} to ${hhmm(endMinutes)}$overnight"
+    }
+
+    private fun hhmm(minutes: Int) = "${(minutes / 60).toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}"
+
+    val serverPolicyEveryday = "Every day"
+    val serverPolicyWeekdays = "Weekdays"
+    val serverPolicyWeekends = "Weekends"
+    val serverPolicySundays = "Sundays"
+    val serverPolicyMondays = "Mondays"
+    val serverPolicyTuesdays = "Tuesdays"
+    val serverPolicyWednesdays = "Wednesdays"
+    val serverPolicyThursdays = "Thursdays"
+    val serverPolicyFridays = "Fridays"
+    val serverPolicySaturdays = "Saturdays"
 
     // PIN prompt
     val pinPromptEnter = "Enter PIN"

@@ -13,6 +13,7 @@ enum class SettingKey {
     CaptionsFollowSystem, SubtitleSize, SubtitleColor, SubtitleBackground, SubtitlePreview, ResetSubtitles,
     SwitchProfile, SignOut, ServerName, ServerAddress, ServerAlsoAt,
     KidsProfile, Pin, ChangePin, RemovePin, PinOpenProfile, PinOpenSettings, PinSwitchProfile,
+    SetPin, PolicyStatus,
     RatingLimit, BlockedTags, AllowedHours,
     Notifications, NotificationScope,
 }

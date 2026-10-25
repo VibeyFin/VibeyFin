@@ -2,6 +2,7 @@ package app.vibeyfin.ui.settings
 
 import androidx.lifecycle.viewModelScope
 import app.vibeyfin.domain.ConnectionState
+import app.vibeyfin.domain.PinResult
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
@@ -60,7 +61,7 @@ class SettingsViewModelTest {
     private fun SettingsUiState.value(key: SettingKey) = (item(key) as ChoiceItem).value
 
     private fun viewModel() = viewModels.track(
-        SettingsViewModel(app.preferences, app.profileSettings, app.connection, app.servers, app.pins, app.auth, applicationScope),
+        SettingsViewModel(app.preferences, app.profileSettings, app.connection, app.servers, app.pins, app.policy, app.auth, applicationScope),
     )
 
     @Test
@@ -718,5 +719,215 @@ class SettingsViewModelTest {
         val asked = viewModel.uiState.first { it.pinPrompt != null }
         assertEquals(PinReason.OpenSettings, asked.pinPrompt!!.reason)
         assertTrue(asked.locked)
+    }
+
+    private fun SettingsUiState.kidsPage() = pages.getValue(SettingsPageId.KidsAndPin).visibleOnly()
+
+    private fun SettingsUiState.kidsKeys() = kidsPage().sections.flatMap { it.items }.map { it.key }
+
+    private suspend fun SettingsViewModel.promptWith(reason: PinReason) = uiState.first { it.pinPrompt?.reason == reason }.pinPrompt!!
+
+    @Test
+    fun `setting a PIN needs the same four digits twice`() = runTest {
+        signedInWithPin(pin = false)
+        val viewModel = viewModel()
+        viewModel.open()
+
+        viewModel.onAction(SettingKey.SetPin)
+        assertEquals(Strings.pinPromptNew, viewModel.promptWith(PinReason.ChoosePin).message)
+
+        viewModel.onSubmitPin("1234")
+        assertEquals(Strings.pinPromptConfirm, viewModel.uiState.first { it.pinPrompt?.confirming == true }.pinPrompt!!.message)
+
+        // A different second entry says so and starts over at the first step.
+        viewModel.onSubmitPin("4321")
+        val restarted = viewModel.uiState.first { it.pinPrompt?.error != null }.pinPrompt!!
+        assertEquals(Strings.pinPromptMismatch, restarted.error)
+        assertFalse(restarted.confirming)
+        assertFalse(app.pins.hasPin("srv-1", "u1"))
+
+        viewModel.onSubmitPin("1234")
+        viewModel.uiState.first { it.pinPrompt?.confirming == true }
+        viewModel.onSubmitPin("1234")
+        viewModel.uiState.first { it.pinPrompt == null }
+
+        assertTrue(app.pins.hasPin("srv-1", "u1"))
+        assertEquals(PinResult.Ok, app.pins.verify("srv-1", "u1", "1234"))
+        assertTrue(viewModel.uiState.first { it.item(SettingKey.ChangePin).visible }.item(SettingKey.ChangePin).visible)
+    }
+
+    @Test
+    fun `changing the PIN checks the current one and then chooses a new one twice`() = runTest {
+        signedInWithPin()
+        app.database.accountDao().setPinOpenSettings("srv-1", "u1", false)
+        val viewModel = viewModel()
+        viewModel.open()
+
+        viewModel.onAction(SettingKey.ChangePin)
+        viewModel.promptWith(PinReason.ChangePin)
+        viewModel.onSubmitPin("1234")
+        viewModel.promptWith(PinReason.ChoosePin)
+        viewModel.onSubmitPin("5678")
+        viewModel.uiState.first { it.pinPrompt?.confirming == true }
+        viewModel.onSubmitPin("5678")
+        viewModel.uiState.first { it.pinPrompt == null }
+
+        assertEquals(PinResult.Ok, app.pins.verify("srv-1", "u1", "5678"))
+        assertIs<PinResult.Wrong>(app.pins.verify("srv-1", "u1", "1234"))
+    }
+
+    @Test
+    fun `dismissing the new PIN sheet sets nothing`() = runTest {
+        signedInWithPin(pin = false)
+        val viewModel = viewModel()
+        viewModel.open()
+
+        viewModel.onAction(SettingKey.SetPin)
+        viewModel.promptWith(PinReason.ChoosePin)
+        viewModel.onSubmitPin("1234")
+        viewModel.onDismissPin()
+
+        assertNull(viewModel.uiState.value.pinPrompt)
+        assertFalse(app.pins.hasPin("srv-1", "u1"))
+    }
+
+    @Test
+    fun `the gate switches appear only once a PIN exists`() = runTest {
+        signedInWithPin(pin = false)
+        val viewModel = viewModel()
+        val without = viewModel.open().kidsKeys()
+
+        assertTrue(SettingKey.KidsProfile in without)
+        assertTrue(SettingKey.SetPin in without)
+        listOf(SettingKey.ChangePin, SettingKey.RemovePin, SettingKey.PinOpenProfile, SettingKey.PinOpenSettings, SettingKey.PinSwitchProfile)
+            .forEach { assertFalse(it in without, "$it") }
+
+        app.setPin("u1", "1234")
+        // The page waits for the PIN to open Settings, because the switches default to on.
+        val with = viewModel.uiState.first { SettingKey.ChangePin in it.kidsKeys() }.kidsKeys()
+        assertFalse(SettingKey.SetPin in with)
+        listOf(SettingKey.ChangePin, SettingKey.RemovePin, SettingKey.PinOpenProfile, SettingKey.PinOpenSettings, SettingKey.PinSwitchProfile)
+            .forEach { assertTrue(it in with, "$it") }
+        assertTrue(viewModel.uiState.value.checked(SettingKey.PinOpenSettings))
+    }
+
+    @Test
+    fun `a gate switch is stored`() = runTest {
+        signedInWithPin()
+        app.database.accountDao().setPinOpenSettings("srv-1", "u1", false)
+        val viewModel = viewModel()
+        viewModel.open()
+
+        viewModel.onToggle(SettingKey.PinSwitchProfile, false)
+
+        assertFalse(viewModel.uiState.first { !it.checked(SettingKey.PinSwitchProfile) }.checked(SettingKey.PinSwitchProfile))
+        assertFalse(app.pins.gates("srv-1", "u1").switchProfile)
+    }
+
+    private fun SettingsUiState.infoValue(key: SettingKey) = (item(key) as InfoItem).value
+
+    @Test
+    fun `the server limits show read only and a failed load says so`() = runTest {
+        val server = signedInWithPin(pin = false)
+        server.on(
+            "GET", "/Users/Me",
+            Reply.json(
+                """{"Id":"u1","Name":"Alex","Policy":{"MaxParentalRating":10,"BlockedTags":["horror","gore"],
+                |"AccessSchedules":[{"DayOfWeek":"Weekday","StartHour":8.0,"EndHour":20.5},
+                |{"DayOfWeek":"Saturday","StartHour":22.0,"EndHour":6.0}]}}""".trimMargin(),
+            ),
+        )
+        server.on("GET", "/Localization/ParentalRatings", Reply.json("""[{"Name":"PG","Value":10}]"""))
+        val viewModel = viewModel()
+        viewModel.open()
+
+        // Until the page opens there is nothing to show but the loading line.
+        assertEquals(Strings.serverPolicyLoading, viewModel.uiState.value.item(SettingKey.PolicyStatus).title)
+        viewModel.onPageOpened(SettingsPageId.KidsAndPin)
+        val limits = viewModel.uiState.first { SettingKey.RatingLimit in it.kidsKeys() }
+
+        assertEquals("PG", limits.infoValue(SettingKey.RatingLimit))
+        assertEquals("horror, gore", limits.infoValue(SettingKey.BlockedTags))
+        assertEquals("Weekdays 08:00 to 20:30, Saturdays 22:00 to 06:00 the next day", limits.infoValue(SettingKey.AllowedHours))
+        assertEquals(Strings.serverPolicyGroup, limits.kidsPage().sections.first { SettingKey.RatingLimit in it.items.map { i -> i.key } }.title)
+        assertFalse(SettingKey.PolicyStatus in limits.kidsKeys())
+
+        // Rows with no value say so, and a rating the server has no name for shows its level.
+        server.on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex","Policy":{"MaxParentalRating":0,"BlockedTags":[]}}"""))
+        server.on("GET", "/Localization/ParentalRatings", Reply.status(HttpStatusCode.InternalServerError))
+        viewModel.onPageOpened(SettingsPageId.KidsAndPin)
+        val level = viewModel.uiState.first { it.kidsKeys().contains(SettingKey.RatingLimit) && it.infoValue(SettingKey.RatingLimit) != "PG" }
+        assertEquals(Strings.serverPolicyLevel(0), level.infoValue(SettingKey.RatingLimit))
+        assertEquals(Strings.serverPolicyNoTags, level.infoValue(SettingKey.BlockedTags))
+        assertEquals(Strings.serverPolicyAnyTime, level.infoValue(SettingKey.AllowedHours))
+
+        // No limits at all says so.
+        server.on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex","Policy":{}}"""))
+        viewModel.onPageOpened(SettingsPageId.KidsAndPin)
+        val none = viewModel.uiState.first { it.kidsKeys().contains(SettingKey.PolicyStatus) && it.item(SettingKey.PolicyStatus).title == Strings.serverPolicyNone }
+        assertEquals(Strings.serverPolicyNone, none.item(SettingKey.PolicyStatus).title)
+
+        // A failed load says so instead of showing no limits.
+        server.on("GET", "/Users/Me", Reply.status(HttpStatusCode.InternalServerError))
+        viewModel.onPageOpened(SettingsPageId.KidsAndPin)
+        val failed = viewModel.uiState.first { it.kidsKeys().contains(SettingKey.PolicyStatus) && it.item(SettingKey.PolicyStatus).title == Strings.serverPolicyFailed }
+        assertNotNull(failed.item(SettingKey.PolicyStatus).help)
+        assertFalse(SettingKey.RatingLimit in failed.kidsKeys())
+    }
+
+    @Test
+    fun `a PIN that is not four digits is ignored while choosing`() = runTest {
+        signedInWithPin(pin = false)
+        val viewModel = viewModel()
+        viewModel.open()
+        viewModel.onAction(SettingKey.SetPin)
+        viewModel.promptWith(PinReason.ChoosePin)
+
+        viewModel.onSubmitPin("12")
+        viewModel.onSubmitPin("12a4")
+        // The checks run one after another; a valid entry after them proves they were consumed.
+        viewModel.onSubmitPin("1234")
+        viewModel.uiState.first { it.pinPrompt?.confirming == true }
+        viewModel.onSubmitPin("1234")
+        viewModel.uiState.first { it.pinPrompt == null }
+
+        assertEquals(PinResult.Ok, app.pins.verify("srv-1", "u1", "1234"))
+        assertIs<PinResult.Wrong>(app.pins.verify("srv-1", "u1", "12a4"))
+    }
+
+    @Test
+    fun `the limits of the previous profile are dropped when the profile changes`() = runTest {
+        val server = signedInWithPin(pin = false)
+        server.on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex","Policy":{"BlockedTags":["horror"]}}"""))
+        val viewModel = viewModel()
+        viewModel.open()
+        viewModel.onPageOpened(SettingsPageId.KidsAndPin)
+        viewModel.uiState.first { SettingKey.BlockedTags in it.kidsKeys() }
+
+        server.on("GET", "/Users/Me", Reply.json("""{"Id":"u2","Name":"Sam"}"""))
+        app.accounts.saveSession("srv-1", "u2", "Sam", null, "token-2")
+        app.connection.activate("srv-1", "u2")
+
+        val state = viewModel.uiState.first { it.item(SettingKey.PolicyStatus).title == Strings.serverPolicyLoading }
+        assertFalse(SettingKey.BlockedTags in state.kidsKeys())
+    }
+
+    @Test
+    fun `the kids toggle works without a PIN and independently of it and a kids profile still sees the page`() = runTest {
+        signedInWithPin(pin = false)
+        val viewModel = viewModel()
+        assertTrue(SettingKey.KidsProfile in viewModel.open().kidsKeys())
+
+        viewModel.onToggle(SettingKey.KidsProfile, true)
+        val kids = viewModel.uiState.first { it.kidsProfile }
+        assertTrue((kids.kidsPage().sections.flatMap { it.items }.first { it.key == SettingKey.KidsProfile } as ToggleItem).checked)
+        assertFalse(app.pins.hasPin("srv-1", "u1"))
+        assertTrue(SettingKey.SetPin in kids.kidsKeys())
+        val root = kids.pages.getValue(SettingsPageId.Root).visibleOnly().sections.flatMap { it.items }
+        assertTrue(root.any { it is LinkItem && it.target == SettingsPageId.KidsAndPin })
+
+        // Setting a PIN leaves the flag alone.
+        app.setPin("u1", "1234")
+        assertTrue(viewModel.uiState.first { SettingKey.ChangePin in it.kidsKeys() }.kidsProfile)
     }
 }

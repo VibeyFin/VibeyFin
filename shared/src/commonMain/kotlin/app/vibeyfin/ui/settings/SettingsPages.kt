@@ -1,7 +1,19 @@
 package app.vibeyfin.ui.settings
 
+import app.vibeyfin.data.api.ApiError
+import app.vibeyfin.domain.AccessDays
+import app.vibeyfin.domain.PinGates
+import app.vibeyfin.domain.PolicySummary
 import app.vibeyfin.domain.ProfileSettings
+import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
+
+/** What the Kids and PIN page knows of the Jellyfin user's limits; they are read when the page opens. */
+sealed interface PolicyState {
+    data object Loading : PolicyState
+    data class Failed(val error: ApiError) : PolicyState
+    data class Loaded(val summary: PolicySummary) : PolicyState
+}
 
 /**
  * Everything the Settings pages show, read from [app.vibeyfin.domain.DevicePreferences] and
@@ -16,6 +28,9 @@ data class SettingsValues(
     val hasProfile: Boolean = false,
     /** A kids profile: no Advanced settings, no Sign out, no Notifications. */
     val kidsProfile: Boolean = false,
+    /** The profile's PIN and when it asks for it; nothing asks while there is no PIN. */
+    val pinGates: PinGates = PinGates(),
+    val policy: PolicyState = PolicyState.Loading,
     val showPlaybackStats: Boolean = false,
     val bingeThreshold: Int = ProfileSettings.DEFAULT_BINGE_THRESHOLD,
     val homeGenreRows: Int = ProfileSettings.HOME_GENRES_ALL,
@@ -35,13 +50,14 @@ data class SettingsValues(
     val serverAddresses: List<String> = emptyList(),
 )
 
-/** Every page the shared code builds, keyed by its id. Pages built in later steps (Kids and PIN, Notifications) are not here yet. */
+/** Every page the shared code builds, keyed by its id. Notifications is built in a later step and is not here yet. */
 fun settingsPages(values: SettingsValues): Map<SettingsPageId, SettingsPage> = listOf(
     rootPage(values),
     profilePage(values),
     qualityPage(values),
     skippingPage(values),
     subtitlesPage(values),
+    kidsAndPinPage(values),
 ).associateBy { it.id }
 
 fun rootPage(v: SettingsValues): SettingsPage {
@@ -176,6 +192,92 @@ fun profilePage(v: SettingsValues): SettingsPage {
             ),
         ),
     )
+}
+
+fun kidsAndPinPage(v: SettingsValues): SettingsPage {
+    val profile = v.hasProfile
+    val hasPin = v.pinGates.hasPin
+    return SettingsPage(
+        SettingsPageId.KidsAndPin,
+        Strings.kidsPinTitle,
+        listOf(
+            SettingsSection(
+                title = null,
+                footer = null,
+                items = listOf(
+                    ToggleItem(SettingKey.KidsProfile, Strings.kidsProfileTitle, Strings.kidsProfileHelp, checked = v.kidsProfile, visible = profile),
+                ),
+            ),
+            SettingsSection(
+                Strings.pinGroup,
+                Strings.pinFooter,
+                items = listOf(
+                    CustomItem(SettingKey.Pin, Strings.pinTitle, Strings.pinSetDescription, kind = CustomKind.PinDots, visible = profile && hasPin),
+                    ActionItem(SettingKey.SetPin, Strings.pinSet, Strings.pinHelp, visible = profile && !hasPin),
+                    ActionItem(SettingKey.ChangePin, Strings.pinChange, visible = profile && hasPin),
+                    ActionItem(SettingKey.RemovePin, Strings.pinRemove, destructive = true, visible = profile && hasPin),
+                ),
+            ),
+            SettingsSection(
+                Strings.pinAskGroup,
+                footer = null,
+                items = listOf(
+                    ToggleItem(SettingKey.PinOpenProfile, Strings.pinAskOpenProfile, checked = v.pinGates.openProfile, visible = profile && hasPin),
+                    ToggleItem(SettingKey.PinOpenSettings, Strings.pinAskOpenSettings, checked = v.pinGates.openSettings, visible = profile && hasPin),
+                    ToggleItem(SettingKey.PinSwitchProfile, Strings.pinAskSwitchProfile, checked = v.pinGates.switchProfile, visible = profile && hasPin),
+                ),
+            ),
+            policySection(v.policy, profile),
+        ),
+    )
+}
+
+/** The limits Jellyfin enforces, read only, in one of: loading, failed, no limits, or the three rows. */
+private fun policySection(policy: PolicyState, profile: Boolean): SettingsSection {
+    fun status(title: String, help: String? = null) =
+        listOf(InfoItem(SettingKey.PolicyStatus, title, help, value = "", visible = profile))
+    val items = when (policy) {
+        PolicyState.Loading -> status(Strings.serverPolicyLoading)
+        is PolicyState.Failed -> status(Strings.serverPolicyFailed, LoadMessages.forError(policy.error))
+        is PolicyState.Loaded -> {
+            val p = policy.summary
+            if (p.maxRatingLevel == null && p.blockedTags.isEmpty() && p.schedules.isEmpty()) {
+                status(Strings.serverPolicyNone)
+            } else {
+                listOf(
+                    InfoItem(
+                        SettingKey.RatingLimit, Strings.serverPolicyRating,
+                        value = p.maxRatingLevel?.let { p.ratingName ?: Strings.serverPolicyLevel(it) } ?: Strings.serverPolicyNoRating,
+                        visible = profile,
+                    ),
+                    InfoItem(
+                        SettingKey.BlockedTags, Strings.serverPolicyBlockedTags,
+                        value = p.blockedTags.joinToString(", ").ifEmpty { Strings.serverPolicyNoTags }, visible = profile,
+                    ),
+                    InfoItem(
+                        SettingKey.AllowedHours, Strings.serverPolicyHours,
+                        value = p.schedules.joinToString(", ") { Strings.serverPolicyWindow(daysLabel(it.days), it.startMinutes, it.endMinutes) }
+                            .ifEmpty { Strings.serverPolicyAnyTime },
+                        visible = profile,
+                    ),
+                )
+            }
+        }
+    }
+    return SettingsSection(Strings.serverPolicyGroup, Strings.serverPolicyFooter, items)
+}
+
+private fun daysLabel(days: AccessDays) = when (days) {
+    AccessDays.Everyday -> Strings.serverPolicyEveryday
+    AccessDays.Weekday -> Strings.serverPolicyWeekdays
+    AccessDays.Weekend -> Strings.serverPolicyWeekends
+    AccessDays.Sunday -> Strings.serverPolicySundays
+    AccessDays.Monday -> Strings.serverPolicyMondays
+    AccessDays.Tuesday -> Strings.serverPolicyTuesdays
+    AccessDays.Wednesday -> Strings.serverPolicyWednesdays
+    AccessDays.Thursday -> Strings.serverPolicyThursdays
+    AccessDays.Friday -> Strings.serverPolicyFridays
+    AccessDays.Saturday -> Strings.serverPolicySaturdays
 }
 
 fun qualityPage(v: SettingsValues) = SettingsPage(
