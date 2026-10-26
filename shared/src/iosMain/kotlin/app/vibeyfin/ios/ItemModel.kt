@@ -1,5 +1,6 @@
 package app.vibeyfin.ios
 
+import app.vibeyfin.ui.downloads.DownloadAction
 import app.vibeyfin.ui.item.ItemUiState
 import app.vibeyfin.ui.item.ItemViewModel
 import org.koin.core.parameter.parametersOf
@@ -35,6 +36,30 @@ class ItemModel(itemId: String) {
     fun onRetryAction() = host.viewModel.onRetryAction()
 
     fun onDismissMessage() = host.viewModel.onDismissMessage()
+
+    // Downloads.
+
+    fun onDownload() = host.viewModel.onDownload()
+
+    fun onDownloadEpisode(episodeId: String) = host.viewModel.onDownloadEpisode(episodeId)
+
+    fun onDownloadSeries() = host.viewModel.onDownloadSeries()
+
+    fun onDownloadSeason(seasonId: String) = host.viewModel.onDownloadSeason(seasonId)
+
+    fun onDownloadAction(itemId: String, action: DownloadAction) = host.viewModel.onDownloadAction(itemId, action)
+
+    fun onRemoveSeriesDownloads() = host.viewModel.onRemoveSeriesDownloads()
+
+    fun onToggleUnwatchedOnly() = host.viewModel.onToggleUnwatchedOnly()
+
+    fun onConfirmDownload() = host.viewModel.onConfirmDownload()
+
+    fun onDismissDownloadPrompt() = host.viewModel.onDismissDownloadPrompt()
+
+    fun onConfirmRemove() = host.viewModel.onConfirmRemove()
+
+    fun onDismissRemoval() = host.viewModel.onDismissRemoval()
 
     fun close() = host.close()
 }

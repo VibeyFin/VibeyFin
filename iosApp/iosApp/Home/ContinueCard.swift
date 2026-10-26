@@ -11,6 +11,8 @@ struct ContinueCardTile: View {
     let onPlay: () -> Void
     let onDetails: () -> Void
     let onMarkWatched: () -> Void
+    /// Offline there is no page to open and nothing to send, so the card has no menu.
+    var showsMenu = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s2) {
@@ -44,30 +46,34 @@ struct ContinueCardTile: View {
                 }
                 .buttonStyle(PressableButtonStyle())
                 .accessibilityHidden(true)
-                Menu {
-                    Button(action: onDetails) {
-                        Label(Strings.shared.details.titleCased(), systemImage: "info.circle")
+                if showsMenu {
+                    Menu {
+                        Button(action: onDetails) {
+                            Label(Strings.shared.details.titleCased(), systemImage: "info.circle")
+                        }
+                        Button(action: onMarkWatched) {
+                            Label(Strings.shared.markWatched.titleCased(), systemImage: "checkmark.circle")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 32, height: 24)
                     }
-                    Button(action: onMarkWatched) {
-                        Label(Strings.shared.markWatched.titleCased(), systemImage: "checkmark.circle")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 32, height: 24)
+                    .accessibilityLabel(Strings.shared.moreActions)
                 }
-                .accessibilityLabel(Strings.shared.moreActions)
             }
         }
         .frame(width: Size.thumbWidth, alignment: .leading)
         // Long press on the picture: the same actions as the "…".
         .contextMenu {
-            Button(action: onDetails) {
-                Label(Strings.shared.details.titleCased(), systemImage: "info.circle")
-            }
-            Button(action: onMarkWatched) {
-                Label(Strings.shared.markWatched.titleCased(), systemImage: "checkmark.circle")
+            if showsMenu {
+                Button(action: onDetails) {
+                    Label(Strings.shared.details.titleCased(), systemImage: "info.circle")
+                }
+                Button(action: onMarkWatched) {
+                    Label(Strings.shared.markWatched.titleCased(), systemImage: "checkmark.circle")
+                }
             }
         }
     }
@@ -109,6 +115,7 @@ struct ContinueRowView: View {
     let onDetails: (String) -> Void
     let onMarkWatched: (String) -> Void
     let onRetry: () -> Void
+    var showsMenu = true
 
     var body: some View {
         // Nothing to show (it came back empty): no title and no gap, like any other row.
@@ -135,7 +142,8 @@ struct ContinueRowView: View {
                                 card: card,
                                 onPlay: { onPlay(card.id) },
                                 onDetails: { onDetails(card.id) },
-                                onMarkWatched: { onMarkWatched(card.id) }
+                                onMarkWatched: { onMarkWatched(card.id) },
+                                showsMenu: showsMenu
                             )
                         }
                     }

@@ -337,6 +337,16 @@ final class OnboardingFlowUITests: XCTestCase {
                 : app.buttons.matching(library).firstMatch
             XCTAssertTrue(libraryTab.waitForExistence(timeout: 20), "Home didn't open for the first user")
         }
+
+        step("Downloads tab opens on its empty state") {
+            let match = NSPredicate(format: "label ==[c] %@", "Downloads")
+            let tab = app.tabBars.buttons.matching(match).firstMatch.exists
+                ? app.tabBars.buttons.matching(match).firstMatch
+                : app.buttons.matching(match).firstMatch
+            tab.tap()
+            let empty = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "Nothing downloaded yet")).firstMatch
+            XCTAssertTrue(empty.waitForExistence(timeout: 10), "Downloads shows no empty state on a fresh install")
+        }
     }
 
     /// A series lists its episodes down the page on a phone and sideways on a tablet, and tapping an episode's words opens its page.

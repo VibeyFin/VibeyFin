@@ -11,7 +11,18 @@ import app.vibeyfin.data.platform.IosPlaybackCapabilities
 import app.vibeyfin.data.prefs.createDevicePreferencesDataStore
 import app.vibeyfin.data.vault.KeychainTokenVault
 import app.vibeyfin.data.vault.TokenVault
+import app.vibeyfin.data.download.IosBackgroundTransfer
+import app.vibeyfin.data.download.IosDownloadFiles
+import app.vibeyfin.data.download.IosDownloadScheduler
+import app.vibeyfin.data.platform.IosNetworkMonitor
+import app.vibeyfin.domain.DownloadRunner
+import app.vibeyfin.domain.ExternalVideoTransfer
+import app.vibeyfin.domain.DownloadFiles
+import app.vibeyfin.domain.DownloadScheduler
 import app.vibeyfin.domain.LanDiscovery
+import app.vibeyfin.domain.NetworkMonitor
+import app.vibeyfin.domain.NoProgressSyncScheduler
+import app.vibeyfin.domain.ProgressSyncScheduler
 import app.vibeyfin.domain.NoLanDiscovery
 import app.vibeyfin.domain.PlaybackCapabilitiesSource
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -33,6 +44,15 @@ actual fun platformModule(): Module = module {
     single<PlaybackCapabilitiesSource> { IosPlaybackCapabilities() }
     // Broadcasting needs a multicast entitlement Apple has to approve, so iOS adds servers by address.
     single<LanDiscovery> { NoLanDiscovery }
+    // Until the downloads phase for iOS lands an NWPathMonitor, iOS never goes offline by itself.
+    single<NetworkMonitor> { IosNetworkMonitor() }
+    // Downloads: the files in Application Support (out of backups), and videos through a background URLSession.
+    single { IosDownloadFiles("${appSupportDirectory()}/downloads") }
+    single<DownloadFiles> { get<IosDownloadFiles>() }
+    single { IosBackgroundTransfer(get(), get()) }
+    single<ExternalVideoTransfer> { get<IosBackgroundTransfer>() }
+    single<DownloadScheduler> { IosDownloadScheduler(get(ApplicationScope), get()) { get<DownloadRunner>() } }
+    single<ProgressSyncScheduler> { NoProgressSyncScheduler }
 }
 
 /** Application Support is private to the app and, unlike Documents, not shown in the Files app. */

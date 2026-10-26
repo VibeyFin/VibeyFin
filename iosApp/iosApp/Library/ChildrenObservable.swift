@@ -31,6 +31,26 @@ final class ChildrenObservable: ObservableObject {
         model.onRetry()
     }
 
+    // Downloading the season, when the list is a season's.
+
+    func downloadSeason() { model.onDownloadSeason() }
+
+    func removeSeasonDownloads() { model.onRemoveSeasonDownloads() }
+
+    func toggleUnwatchedOnly() { model.onToggleUnwatchedOnly() }
+
+    func confirmDownload() { model.onConfirmDownload() }
+
+    func dismissDownloadPrompt() { model.onDismissDownloadPrompt() }
+
+    func confirmRemove() { model.onConfirmRemove() }
+
+    func dismissRemoval() { model.onDismissRemoval() }
+
+    func retryDownload() { model.onRetryDownload() }
+
+    func dismissDownloadMessage() { model.onDismissDownloadMessage() }
+
     deinit {
         model.close()
     }

@@ -16,5 +16,25 @@ class ChildrenModel(parentId: String) {
 
     fun onRetry() = host.viewModel.onRetry()
 
+    // Downloading the season, when the list is a season's.
+
+    fun onDownloadSeason() = host.viewModel.onDownloadSeason()
+
+    fun onRemoveSeasonDownloads() = host.viewModel.onRemoveSeasonDownloads()
+
+    fun onToggleUnwatchedOnly() = host.viewModel.onToggleUnwatchedOnly()
+
+    fun onConfirmDownload() = host.viewModel.onConfirmDownload()
+
+    fun onDismissDownloadPrompt() = host.viewModel.onDismissDownloadPrompt()
+
+    fun onConfirmRemove() = host.viewModel.onConfirmRemove()
+
+    fun onDismissRemoval() = host.viewModel.onDismissRemoval()
+
+    fun onRetryDownload() = host.viewModel.onRetryDownload()
+
+    fun onDismissDownloadMessage() = host.viewModel.onDismissDownloadMessage()
+
     fun close() = host.close()
 }

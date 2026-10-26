@@ -69,6 +69,30 @@ final class ItemObservable: ObservableObject {
         model.onDismissMessage()
     }
 
+    // Downloads.
+
+    func download() { model.onDownload() }
+
+    func downloadEpisode(_ id: String) { model.onDownloadEpisode(episodeId: id) }
+
+    func downloadSeries() { model.onDownloadSeries() }
+
+    func downloadSeason(_ id: String) { model.onDownloadSeason(seasonId: id) }
+
+    func downloadAction(_ id: String, _ action: DownloadAction) { model.onDownloadAction(itemId: id, action: action) }
+
+    func removeSeriesDownloads() { model.onRemoveSeriesDownloads() }
+
+    func toggleUnwatchedOnly() { model.onToggleUnwatchedOnly() }
+
+    func confirmDownload() { model.onConfirmDownload() }
+
+    func dismissDownloadPrompt() { model.onDismissDownloadPrompt() }
+
+    func confirmRemove() { model.onConfirmRemove() }
+
+    func dismissRemoval() { model.onDismissRemoval() }
+
     deinit {
         model.close()
     }

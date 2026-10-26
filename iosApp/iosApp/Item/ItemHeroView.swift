@@ -14,6 +14,7 @@ struct ItemHeroView: View {
     let onToggleFavorite: () -> Void
     let onPlayTrailer: (String) -> Void
     let onTogglePlayed: () -> Void
+    let downloads: DownloadActions
 
     var body: some View {
         HeroDetailsView(
@@ -24,7 +25,8 @@ struct ItemHeroView: View {
             onOpenSeries: onOpenSeries,
             onToggleFavorite: onToggleFavorite,
             onPlayTrailer: onPlayTrailer,
-            onTogglePlayed: onTogglePlayed
+            onTogglePlayed: onTogglePlayed,
+            downloads: downloads
         )
         .padding(.horizontal, Space.s4)
         .padding(.bottom, Space.s4)
@@ -120,6 +122,7 @@ struct HeroDetailsView: View {
     let onToggleFavorite: () -> Void
     let onPlayTrailer: (String) -> Void
     let onTogglePlayed: () -> Void
+    let downloads: DownloadActions
 
     @State private var overviewExpanded = false
     @Environment(\.openURL) private var openURL
@@ -286,9 +289,55 @@ struct HeroDetailsView: View {
             } else {
                 Color.clear.frame(height: 1).frame(maxWidth: .infinity)
             }
-            // Download returns with offline playback (Phase 10): a button that does nothing is worse than none.
+            if state.offersDownload {
+                downloadButton
+            } else {
+                Color.clear.frame(height: 1).frame(maxWidth: .infinity)
+            }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    /// Download: the arrow when there is nothing, the ring while it comes in, the check once it is here. A tap starts a movie or an
+    /// episode with none; otherwise (and for a show) it opens a menu: pause, resume, remove, and for a show which season or all of it.
+    @ViewBuilder
+    private var downloadButton: some View {
+        let isSeries = item.kind == ItemKind.series
+        let face = VStack(spacing: Space.s1) {
+            DownloadBadgeView(badge: state.downloadBadge, progress: state.downloadProgress?.floatValue)
+                .font(.title2)
+                .frame(height: 30)
+            Text(state.downloadLabel.titleCased()).font(.caption.weight(.medium))
+        }
+        .foregroundStyle(.primary)
+        .frame(maxWidth: .infinity, minHeight: 72)
+        .contentShape(Rectangle())
+        if !isSeries && state.download == nil {
+            Button(action: downloads.download) { face }
+                .buttonStyle(PressableButtonStyle())
+                .accessibilityLabel(state.downloadDescription)
+        } else {
+            Menu {
+                if isSeries {
+                    if let season = state.seasons.seasons.first(where: { $0.id == state.seasons.selectedId }) {
+                        Button { downloads.downloadSeason(season.id) } label: {
+                            Label(Strings.shared.downloadSeasonNamed(season: season.seasonLabel), systemImage: "arrow.down.to.line")
+                        }
+                    }
+                    Button { downloads.downloadSeries() } label: {
+                        Label(Strings.shared.downloadAllEpisodes, systemImage: "arrow.down.to.line")
+                    }
+                    if !state.seriesDownloads.isEmpty {
+                        Button(role: .destructive) { downloads.removeSeries() } label: {
+                            Label(Strings.shared.removeDownloadsOf(count: Int32(state.seriesDownloads.count)), systemImage: "trash")
+                        }
+                    }
+                } else if let download = state.download {
+                    DownloadActionButtons(actions: DownloadBridge.shared.actions(download: download)) { downloads.action(item.id, $0) }
+                }
+            } label: { face }
+            .accessibilityLabel(state.downloadDescription)
+        }
     }
 
     private func actionButton(label: String, description: String, systemImage: String, pop: Bool? = nil, action: @escaping () -> Void) -> some View {

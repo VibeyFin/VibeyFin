@@ -60,6 +60,16 @@ struct ItemView: View {
             onRetry: { model.retryAction() },
             onDismiss: { model.dismissMessage() }
         )
+        // The questions before a season or a show is downloaded, and before downloads are deleted.
+        .downloadPrompts(
+            prompt: model.state?.downloadPrompt,
+            removal: model.state?.removePrompt,
+            onToggleUnwatched: { model.toggleUnwatchedOnly() },
+            onConfirm: { model.confirmDownload() },
+            onDismiss: { model.dismissDownloadPrompt() },
+            onConfirmRemove: { model.confirmRemove() },
+            onDismissRemoval: { model.dismissRemoval() }
+        )
         .backMenuTitle(model.state?.item?.title ?? "")
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
@@ -68,6 +78,18 @@ struct ItemView: View {
         .onChange(of: model.state?.exit != nil) { hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
         }
+    }
+
+    /// The ways in to downloads, for the hero's button and the episodes'.
+    private var downloadActions: DownloadActions {
+        DownloadActions(
+            download: { model.download() },
+            downloadEpisode: { model.downloadEpisode($0) },
+            action: { model.downloadAction($0, $1) },
+            downloadSeries: { model.downloadSeries() },
+            downloadSeason: { model.downloadSeason($0) },
+            removeSeries: { model.removeSeriesDownloads() }
+        )
     }
 
     /// What Play opens the player on: the item, or for a show its next episode.
@@ -87,7 +109,10 @@ struct ItemView: View {
                     onToggleWatched: { model.toggleEpisodePlayed($0) },
                     onViewEpisode: onOpen,
                     onRetrySeasons: { model.retrySeasons() },
-                    onRetryEpisodes: { model.retryEpisodes() }
+                    onRetryEpisodes: { model.retryEpisodes() },
+                    downloads: state.downloads,
+                    canDownload: state.canDownload,
+                    downloadActions: downloadActions
                 )
             }
             if !item.cast.isEmpty {
@@ -150,7 +175,8 @@ struct ItemView: View {
                             onOpenSeries: onOpenSeries,
                             onToggleFavorite: { model.toggleFavorite() },
                             onPlayTrailer: onPlayTrailer,
-                            onTogglePlayed: { model.togglePlayed() }
+                            onTogglePlayed: { model.togglePlayed() },
+                            downloads: downloadActions
                         )
                         sections
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -194,7 +220,8 @@ struct ItemView: View {
                             onOpenSeries: onOpenSeries,
                             onToggleFavorite: { model.toggleFavorite() },
                             onPlayTrailer: onPlayTrailer,
-                            onTogglePlayed: { model.togglePlayed() }
+                            onTogglePlayed: { model.togglePlayed() },
+                            downloads: downloadActions
                         )
                         .frame(maxWidth: min(proxy.size.width * 0.46, 520), alignment: .leading)
                         .padding(.horizontal, margin)

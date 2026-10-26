@@ -64,6 +64,9 @@ struct TabShell: View {
     /// One shared Settings ViewModel for the whole page tree, made again each time Settings opens so the PIN to open it is asked every time.
     @State private var settings = SettingsSession()
     @StateObject private var player = PlayerSession()
+    // Offline (no network, or the switch in Settings): three tabs, from what is on the device. The banner says so, and how to leave it.
+    @StateObject private var offlineMode = OfflineModeObservable()
+    @StateObject private var banner = AppBannerObservable()
     @Environment(\.openURL) private var openURL
     @State private var homePath: [TabRoute] = []
     @State private var searchPath: [TabRoute] = []
@@ -71,20 +74,47 @@ struct TabShell: View {
     @State private var downloadsPath: [TabRoute] = []
     @ObservedObject private var taps = NotificationTaps.shared
 
+    private var offline: Bool { offlineMode.isOffline }
+
     var body: some View {
+        VStack(spacing: 0) {
+            OfflineBannerView(model: banner)
+            tabs
+        }
+        .onAppear {
+            offlineMode.start()
+            banner.start()
+        }
+        // Library needs the server: going offline while on it moves to Home, which the bar still offers.
+        .onChange(of: offline) { isOffline in
+            if isOffline && selection == .library { selection = .home }
+        }
+    }
+
+    private var tabs: some View {
         TabView(selection: tappedSelection) {
             stack($homePath) {
-                HomeView(
-                    onExit: onExit,
-                    onOpen: { open($0, in: $homePath) },
-                    onDetails: { homePath.append(.item(itemId: $0)) },
-                    onSettings: { settings.current = SettingsObservable(); homePath.append(.settings) },
-                    onOpenList: { homePath.append(TabRoute.opening($0)) }
-                )
-                .navigationBarBackButtonHidden(true)
-                .backMenuTitle(Strings.shared.tabHome.titleCased())
-                // Home draws its own title, so the system bar above it would only be empty space.
-                .toolbar(.hidden, for: .navigationBar)
+                if offline {
+                    OfflineHomeView(
+                        onOpenDownloads: { selection = .downloads },
+                        onSettings: { settings.current = SettingsObservable(); homePath.append(.settings) },
+                        onExit: onExit
+                    )
+                    .navigationBarBackButtonHidden(true)
+                    .toolbar(.hidden, for: .navigationBar)
+                } else {
+                    HomeView(
+                        onExit: onExit,
+                        onOpen: { open($0, in: $homePath) },
+                        onDetails: { homePath.append(.item(itemId: $0)) },
+                        onSettings: { settings.current = SettingsObservable(); homePath.append(.settings) },
+                        onOpenList: { homePath.append(TabRoute.opening($0)) }
+                    )
+                    .navigationBarBackButtonHidden(true)
+                    .backMenuTitle(Strings.shared.tabHome.titleCased())
+                    // Home draws its own title, so the system bar above it would only be empty space.
+                    .toolbar(.hidden, for: .navigationBar)
+                }
             }
             .tabItem { Label(Strings.shared.tabHome.titleCased(), systemImage: "house") }
             .tag(MainTab.home)
@@ -92,6 +122,15 @@ struct TabShell: View {
             stack($searchPath) {
                 SearchView(
                     onOpenResult: { result in
+                        // Offline there is no page to open: what was found is on the device, so it plays (a show opens its downloads).
+                        if offline {
+                            if result.kind == .movie || result.kind == .episode {
+                                player.play(result.id)
+                            } else {
+                                selection = .downloads
+                            }
+                            return
+                        }
                         switch result.kind {
                         case .person: searchPath.append(.person(personId: result.id))
                         case .collection: searchPath.append(.children(parentId: result.id, title: result.title))
@@ -104,11 +143,15 @@ struct TabShell: View {
             .tabItem { Label(Strings.shared.tabSearch.titleCased(), systemImage: "magnifyingglass") }
             .tag(MainTab.search)
 
-            stack($libraryPath) { FilteredListView(filter: HomeFilterLibrary.shared, isRoot: true, onOpen: { open($0, in: $libraryPath) }, onExit: onExit) }
-                .tabItem { Label(Strings.shared.tabLibrary.titleCased(), systemImage: "play.rectangle.on.rectangle") }
-                .tag(MainTab.library)
+            if !offline {
+                stack($libraryPath) { FilteredListView(filter: HomeFilterLibrary.shared, isRoot: true, onOpen: { open($0, in: $libraryPath) }, onExit: onExit) }
+                    .tabItem { Label(Strings.shared.tabLibrary.titleCased(), systemImage: "play.rectangle.on.rectangle") }
+                    .tag(MainTab.library)
+            }
 
-            stack($downloadsPath) { NotAvailableYetView() }
+            stack($downloadsPath) {
+                DownloadsView(onOpen: { downloadsPath.append(.item(itemId: $0)) }, offline: offline, onExit: onExit)
+            }
                 .tabItem { Label(Strings.shared.tabDownloads.titleCased(), systemImage: "arrow.down.circle") }
                 .tag(MainTab.downloads)
         }
@@ -221,20 +264,6 @@ struct TabShell: View {
                         }
                     }
                 }
-        }
-    }
-}
-
-/// What Library and Downloads show until their features land.
-private struct NotAvailableYetView: View {
-    var body: some View {
-        ZStack {
-            Color(.systemBackground).ignoresSafeArea()
-            Text(Strings.shared.notAvailableYet)
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .screenMargin()
         }
     }
 }
