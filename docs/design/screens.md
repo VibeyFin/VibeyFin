@@ -272,7 +272,7 @@ the scope is clear from position and from the footers.
   on Skipping and autoplay.
 - **Home**: Featured title, Genre rows.
 - **Notifications**: opens its page (below).
-- **Kids and PIN**: the root row exists, but its page is _planned, not built yet_, so the renderers hide the link for now.
+- **Kids and PIN** (the group): one row, **Kids profile**, which opens the Kids and PIN page (below). It stays on a kids profile too, since turning kids mode off asks for the PIN on that page.
 - **This device**: Always ask who's watching.
 - **Advanced**: Playback stats overlay, About.
 
@@ -321,9 +321,9 @@ for notification permission; a refusal switches it back off and the footer says 
 to allow them. Hidden for a kids profile, which never notifies. What a notification looks like and what a tap does:
 `android.md`, `ios.md` and `guardrails.md`.
 
-### Kids and PIN _(planned)_
+### Kids and PIN
 
-The root row exists, but this page is not built yet (the renderers hide a link to a missing page); the decided design is in the spec `docs/superpowers/specs/2026-10-24-accounts-and-polish-design.md`.
+Opened from the **Kids profile** row in the root's Kids and PIN group; the design is in the spec `docs/superpowers/specs/2026-10-24-accounts-and-polish-design.md`.
 "Kids profile" is a local flag and the PIN (4 digits, a salted hash, never the Jellyfin password) a household lock,
 independent of each other. The rating cap, blocked tags and hours are read from the Jellyfin user's policy and
 shown read-only.

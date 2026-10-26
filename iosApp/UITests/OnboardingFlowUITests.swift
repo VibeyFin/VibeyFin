@@ -275,9 +275,9 @@ final class OnboardingFlowUITests: XCTestCase {
             }
             func openKidsAndPin() {
                 // The sidebar row is a cell on an iPad, the root's link a button on a phone.
-                let cell = app.cells.matching(NSPredicate(format: "label BEGINSWITH[c] %@", "Kids and PIN")).firstMatch
-                let link = cell.waitForExistence(timeout: 5) ? cell : button("Kids and PIN", contains: true)
-                XCTAssertTrue(link.waitForExistence(timeout: 10), "Kids and PIN link is missing")
+                let cell = app.cells.matching(NSPredicate(format: "label BEGINSWITH[c] %@", "Kids profile")).firstMatch
+                let link = cell.waitForExistence(timeout: 5) ? cell : button("Kids profile", contains: true)
+                XCTAssertTrue(link.waitForExistence(timeout: 10), "Kids profile link is missing")
                 link.tap()
             }
 
@@ -313,11 +313,11 @@ final class OnboardingFlowUITests: XCTestCase {
             enter("0000")
             let wrong = app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "PIN is wrong")).firstMatch
             XCTAssertTrue(wrong.waitForExistence(timeout: 5), "A wrong PIN wasn't refused")
-            XCTAssertFalse(button("Kids and PIN", contains: true).exists, "Settings opened on a wrong PIN")
+            XCTAssertFalse(button("Kids profile", contains: true).exists, "Settings opened on a wrong PIN")
             enter(pin)
             XCTAssertTrue(
-                app.cells.matching(NSPredicate(format: "label BEGINSWITH[c] %@", "Kids and PIN")).firstMatch.waitForExistence(timeout: 10)
-                    || button("Kids and PIN", contains: true).waitForExistence(timeout: 1),
+                app.cells.matching(NSPredicate(format: "label BEGINSWITH[c] %@", "Kids profile")).firstMatch.waitForExistence(timeout: 10)
+                    || button("Kids profile", contains: true).waitForExistence(timeout: 1),
                 "Settings didn't open on the right PIN"
             )
             if isPad { leaveSettings() } else { goBack() }

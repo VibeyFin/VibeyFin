@@ -54,7 +54,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 - **Subtitle style** follows the OS caption style unless the user turned "Use system caption style" off and chose one. iOS burns subtitles in today, so its style controls are disabled with a note until that is solved.
 - **Sign out** is on the Profile page, asks for confirmation, clears the token and keeps the profile's tile locked in "Who's watching?". It runs to completion even if the user leaves the screen (it is not tied to the screen's lifetime). It is the only way to clear a token besides a 401. Never on a kids profile.
 - **Tablets:** two panes at regular width; the selected root row follows the tapped row; Quality is selected on open.
-- **PIN** _(planned: the Kids and PIN root row exists, but its page is not built yet, and renderers hide a link to a missing page)_: 4 digits, optional, per profile, a salted hash, never the Jellyfin password. A household lock, not security, and never presented as security. It is independent of the kids flag. Turning kids mode off, changing the PIN and removing it always ask for the PIN. "Forgot PIN?" checks the Jellyfin password with a normal sign-in and removes the PIN.
+- **PIN** (Settings, Kids and PIN group, **Kids profile** row): 4 digits, optional, per profile, a salted hash, never the Jellyfin password. A household lock, not security, and never presented as security. It is independent of the kids flag. Turning kids mode off, changing the PIN and removing it always ask for the PIN. "Forgot PIN?" checks the Jellyfin password with a normal sign-in and removes the PIN.
 
 ## Navigation
 
