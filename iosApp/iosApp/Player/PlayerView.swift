@@ -32,9 +32,6 @@ struct PlayerView: View {
     @State private var trickplayTiles: TrickplayTiles?
     /// Going to the background, held back while automatic picture-in-picture may still announce itself.
     @State private var pendingBackground: Task<Void, Never>?
-    /// The side of the last double-tap seek, while its "10s" shows.
-    @State private var seekFlash: SeekSide?
-    @State private var flashTask: Task<Void, Never>?
 
     /// How long the controls stay after the last touch while playing.
     private let hideDelay: UInt64 = 3_000_000_000
@@ -69,9 +66,13 @@ struct PlayerView: View {
             }
             .ignoresSafeArea()
             .accessibilityHidden(true)
-            if let side = seekFlash, let seconds = state.map({ side == .back ? $0.skipBackSeconds : $0.skipForwardSeconds }) {
-                seekFlashView(side: side, seconds: Int(seconds))
+            // Any skip, from a double tap or the buttons, shows how far the skips in a row have gone.
+            ZStack {
+                if let run = state?.skipRun {
+                    seekFlashView(side: run.forward ? .forward : .back, seconds: Int(run.seconds))
+                }
             }
+            .animation(.easeOut(duration: 0.15), value: state?.skipRun == nil)
             if let message = state?.message {
                 errorPanel(message)
                 closeOverlay
@@ -138,7 +139,6 @@ struct PlayerView: View {
         }
         .onDisappear {
             hideTask?.cancel()
-            flashTask?.cancel()
             pendingBackground?.cancel()
             // The window plays on without this screen being visible; it is torn down when the window closes.
             remote.remove()
@@ -549,13 +549,6 @@ struct PlayerView: View {
             return
         }
         skip(side)
-        withAnimation(.easeOut(duration: 0.12)) { seekFlash = side }
-        flashTask?.cancel()
-        flashTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 600_000_000)
-            guard !Task.isCancelled else { return }
-            withAnimation(.easeOut(duration: 0.2)) { seekFlash = nil }
-        }
     }
 
     /// Near the tapped side; fades in and out, and under Reduce Motion does nothing else.

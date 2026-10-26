@@ -66,7 +66,7 @@ struct PlayerTransport: View {
     }
 }
 
-/// The "10s" that flashes by the side of a double-tap seek.
+/// The seconds skipped so far ("30s"), by the side the skips go.
 struct SeekFlash: View {
     let text: String
 
