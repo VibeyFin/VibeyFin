@@ -225,9 +225,9 @@ _Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a
   test server. Next: `./gradlew :benchmark:connectedBenchmarkReleaseAndroidTest`, then `./gradlew :androidApp:generateBaselineProfile`,
   commit `baseline-prof.txt` and record the numbers in `docs/checklists/phone-pass.md` section 8.
 
-Owed from Phase 6, not done: the phone pass (`docs/checklists/phone-pass.md`), a clean `scripts/ios-smoke.sh` run (the last runs were
-interrupted or failed before Settings, with another session's UITests on the same machine and test server), and a look at the iOS PiP
-and Control Center behaviour on a real iPhone. iOS code in this phase was compiled for the simulator and run only where the smoke test got that far.
+Owed from Phase 6, not done: the phone pass (`docs/checklists/phone-pass.md`), a look at the iOS PiP and Control Center behaviour on a real iPhone (the simulator has no PiP). `scripts/ios-smoke.sh` passes
+(3 of 3 UITests on an iPhone 16 simulator, iOS 27.0, after the Kids profile row and first-user tile lookups in the UITest were corrected);
+it does not exercise playback, PiP or Control Center.
 
 ### Phase 7 — Customisation _(later)_
 

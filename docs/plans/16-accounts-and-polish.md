@@ -405,12 +405,12 @@ _Steps 2, 3 and 5 are open: they need a device or emulator signed in on the test
 - [x] **Step 1: Docs.** Tick Phase 6 and the carry-overs in `docs/ROADMAP.md` (mini player, baseline profile), list the owed phone pass and Xcode pass as not done by me, and note that iOS items were only run where `scripts/ios-smoke.sh` ran.
 - [x] **Step 2: Clean the worktrees.** `git worktree list`; for each helper worktree under `.claude/worktrees` run `git worktree remove --force <path>` and `git branch -D <branch>`; then `git worktree prune`. Expected: only the main checkout remains.
 - [x] **Step 3: History.** `git log --oneline develop..HEAD` reads as the story; fold any fixup into its commit with `git commit --fixup <sha>` and `GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash develop` (non-interactive); never force-push without asking.
-- [ ] **Step 4: Verify** `:shared:allTests`, `:androidApp:assembleDebug`, `scripts/ios-smoke.sh`, `scripts/check-title-case.sh`; report results.
+- [x] **Step 4: Verify** `:shared:allTests`, `:androidApp:assembleDebug`, `scripts/ios-smoke.sh`, `scripts/check-title-case.sh`; report results.
 - [ ] **Step 5: Open the PR** (draft) into `develop` with a summary and the test-server and device caveats.
 
 ## Rulings made during execution
 
 The plan above is the original argument; these rulings, made while building, bind where they differ (full text in the execution ledger): a non-`asPage` choice is always a menu (6); an `asPage` choice is inline checklist rows in its own section (7); tablet selection follows the tapped row (9); the root has no "Buffering" row, Buffer ahead lives on Skipping and autoplay (owner decision, 8c); iOS subtitle style is disabled with a note until a simulator spike (11); the tablet two-pane is a plain two-column layout at 600dp, not material3-adaptive (8).
 
-_Steps 4 and 5 are open: a clean `scripts/ios-smoke.sh` run is owed, and the draft PR is not opened yet._
+_Step 4 is done: `:shared:allTests`, `:androidApp:assembleDebug`, `check-title-case.sh` and `scripts/ios-smoke.sh` (3 of 3 on an iPhone 16 simulator) pass. Step 5 is open: the draft PR is not opened yet._
 

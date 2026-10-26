@@ -326,7 +326,8 @@ final class OnboardingFlowUITests: XCTestCase {
             menu("Switch profile", as: kidsUser)
             XCTAssertTrue(text("Enter PIN").waitForExistence(timeout: 10), "Switch profile didn't ask for the PIN")
             enter(pin)
-            let first = button(username)
+            // The tile reads "A, admin": the avatar's initial, then the name.
+            let first = button(username, contains: true)
             XCTAssertTrue(first.waitForExistence(timeout: 10), "The first user's tile is missing")
             first.tap()
             // Home-only: the profile's tile on Who's watching is a button with the same label.
