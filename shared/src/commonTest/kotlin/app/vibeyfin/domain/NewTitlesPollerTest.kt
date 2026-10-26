@@ -395,4 +395,19 @@ class NewTitlesPollerTest {
         assertEquals(listOf("srv-1", "srv-1"), all.map { it.serverId })
         assertEquals(listOf(listOf(NewTitle("m1", "Movie m1", null, true))), all.map { it.titles }.distinct())
     }
+
+    @Test
+    fun `the count of profiles to poll follows the toggle and the session`() = runTest {
+        app.signedIn()
+        assertEquals(0, dao.observeNotifiableProfileCount().first())
+        enable()
+        app.accounts.saveSession("srv-1", "u2", "Sam", null, "token-2")
+        enable(userId = "u2")
+        assertEquals(2, dao.observeNotifiableProfileCount().first())
+
+        app.accounts.expire("srv-1", "u2")
+        dao.setNotificationsEnabled("srv-1", "u1", false)
+
+        assertEquals(0, dao.observeNotifiableProfileCount().first())
+    }
 }

@@ -704,4 +704,14 @@ object Strings {
     /** The body: the title, plus whose it is when more than one profile on this device gets notifications. */
     fun addedTitleNotificationBody(title: String, profileName: String?) =
         if (profileName == null) title else "$title, for $profileName"
+
+    // New-title notifications on Android: the channel, and the summary over several new episodes of one show
+    val addedTitlesChannel = "New episodes and movies"
+    val addedTitlesChannelDescription = "New episodes of the shows you follow and new movies, for each profile with notifications on"
+    /** The summary over a show's episodes, which may come from several checks; [seriesName] is null when the server did not say which show. */
+    fun addedEpisodesSummary(seriesName: String?) =
+        if (seriesName.isNullOrBlank()) "New episodes" else "New episodes of $seriesName"
+    /** The summary's body: the episodes this check found, plus whose they are as in [addedTitleNotificationBody]. */
+    fun addedEpisodesSummaryBody(titles: List<String>, profileName: String?) =
+        addedTitleNotificationBody(titles.joinToString(", "), profileName)
 }

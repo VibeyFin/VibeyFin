@@ -149,6 +149,13 @@ abstract class AccountDao {
     )
     abstract suspend fun getNotifiableProfiles(): List<NotifiableProfile>
 
+    /** How many profiles [getNotifiableProfiles] lists, as it changes: zero means nothing needs to poll in the background. */
+    @Query(
+        "SELECT COUNT(*) FROM accounts a JOIN account_settings s ON s.serverId = a.serverId AND s.userId = a.userId " +
+            "WHERE s.notificationsEnabled = 1 AND s.kidsProfile = 0 AND a.sealedToken IS NOT NULL",
+    )
+    abstract fun observeNotifiableProfileCount(): Flow<Int>
+
     @Query("SELECT kidsProfile FROM account_settings WHERE serverId = :serverId AND userId = :userId")
     abstract fun observeKidsProfile(serverId: String, userId: String): Flow<Boolean?>
 

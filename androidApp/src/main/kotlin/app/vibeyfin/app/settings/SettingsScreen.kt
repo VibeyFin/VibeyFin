@@ -70,6 +70,11 @@ fun SettingsRoute(
     LeaveWhenDisconnected(connection, onExit)
     // The PIN dismissed on open: leave Settings.
     LaunchedEffect(state.leave) { if (state.leave) onBack() }
+    NotificationPermissionRequest(
+        requested = state.requestNotificationPermission,
+        onRequested = viewModel::onNotificationPermissionRequested,
+        onDenied = viewModel::onNotificationPermissionDenied,
+    )
     // The Kids and PIN page reads the server's limits whenever it is shown (on a tablet, when its row is selected).
     val page = state.pages[pageId]
     if (!twoPane) LaunchedEffect(pageId, state.locked) { if (!state.locked) viewModel.onPageOpened(pageId) }

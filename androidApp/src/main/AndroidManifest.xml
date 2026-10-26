@@ -10,6 +10,9 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
+    <!-- New-title notifications, asked for when a profile switches Notifications on (Android 13 and up). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Backups are off: tokens live in a non-exportable Keystore key and can't be restored
          onto another device, so restored data would only produce unreadable tokens.
          Cleartext HTTP is allowed because most Jellyfin servers sit on a LAN at http://host:8096
