@@ -27,7 +27,7 @@ class SettingsMappingTest {
         assertEquals(
             listOf(
                 null, Strings.playbackSection, Strings.settingsGroupHome, Strings.notificationsTitle,
-                Strings.settingsGroupKids, Strings.settingsGroupDevice, Strings.settingsGroupAdvanced,
+                Strings.settingsGroupKids, Strings.settingsGroupDevice, Strings.tabDownloads, Strings.settingsGroupAdvanced,
             ),
             root.sections.map { it.title },
         )

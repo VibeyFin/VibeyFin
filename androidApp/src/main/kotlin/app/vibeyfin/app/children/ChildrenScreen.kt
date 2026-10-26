@@ -5,6 +5,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
+import app.vibeyfin.app.downloads.RemoveConfirmDialog
+import app.vibeyfin.app.downloads.DownloadConfirmDialog
+import app.vibeyfin.app.components.ActionSnackbar
+import app.vibeyfin.R
+import androidx.compose.ui.res.painterResource
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -87,17 +97,35 @@ fun ChildrenRoute(
     LaunchedEffect(state.exit) {
         state.exit?.let(onExit)
     }
-    ChildrenScreen(
-        title = title,
-        collectionHint = collectionHint,
-        imageHint = imageHint,
-        state = state,
-        onBack = onBack,
-        onOpen = onOpen,
-        onLoadMore = viewModel::onLoadMore,
-        onRetry = viewModel::onRetry,
-        onOpenSeries = onOpenSeries,
-    )
+    val ensureNotifications = rememberDownloadNotificationPermission()
+    Box(Modifier.fillMaxSize()) {
+        ChildrenScreen(
+            title = title,
+            collectionHint = collectionHint,
+            imageHint = imageHint,
+            state = state,
+            onBack = onBack,
+            onOpen = onOpen,
+            onLoadMore = viewModel::onLoadMore,
+            onRetry = viewModel::onRetry,
+            onOpenSeries = onOpenSeries,
+            onDownloadSeason = viewModel::onDownloadSeason,
+            onRemoveSeasonDownloads = viewModel::onRemoveSeasonDownloads,
+        )
+        ActionSnackbar(state.downloadMessage, onRetry = viewModel::onRetryDownload, onDismiss = viewModel::onDismissDownloadMessage)
+    }
+    state.downloadPrompt?.let { prompt ->
+        DownloadConfirmDialog(
+            prompt,
+            onToggleUnwatched = viewModel::onToggleUnwatchedOnly,
+            onConfirm = {
+                ensureNotifications()
+                viewModel.onConfirmDownload()
+            },
+            onDismiss = viewModel::onDismissDownloadPrompt,
+        )
+    }
+    state.removePrompt?.let { RemoveConfirmDialog(it, onConfirm = viewModel::onConfirmRemove, onDismiss = viewModel::onDismissRemoval) }
 }
 
 @Composable
@@ -118,6 +146,9 @@ fun ChildrenScreen(
     controls: (@Composable () -> Unit)? = null,
     // On a season's list: opens its show.
     onOpenSeries: ((String) -> Unit)? = null,
+    // On a season's list: downloads the season, or removes what of it is downloaded.
+    onDownloadSeason: (() -> Unit)? = null,
+    onRemoveSeasonDownloads: (() -> Unit)? = null,
 ) {
     // With controls the title is pinned above them; without, it is the first row of the list and scrolls away.
     val pinned = controls != null
@@ -176,7 +207,7 @@ fun ChildrenScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    else -> ItemGrid(title, state, collectionPage, imageHint, isRoot, onOpen, onLoadMore, onRetry, showTitle = !pinned, onOpenSeries = onOpenSeries)
+                    else -> ItemGrid(title, state, collectionPage, imageHint, isRoot, onOpen, onLoadMore, onRetry, showTitle = !pinned, onOpenSeries = onOpenSeries, onDownloadSeason = onDownloadSeason, onRemoveSeasonDownloads = onRemoveSeasonDownloads)
                 }
             }
             if (!isRoot) FloatingBackButton(onBack)
@@ -203,6 +234,33 @@ private fun Title(title: String, subtitle: String?, isRoot: Boolean) {
     }
 }
 
+/** "Download season", with how many of its episodes are downloaded, and a way to remove them. */
+@Composable
+private fun SeasonDownloadRow(state: ChildrenUiState, onDownload: () -> Unit, onRemove: (() -> Unit)?) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        FilledTonalButton(onClick = onDownload) {
+            Icon(painterResource(R.drawable.ic_download), contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(VibeyFinTokens.Space.s2))
+            Text(Strings.downloadSeasonButton)
+        }
+        if (state.seasonDownloads.isNotEmpty()) {
+            Text(
+                text = Strings.seasonDownloadedCount(state.seasonDownloaded, state.items.size),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            if (onRemove != null) {
+                TextButton(onClick = onRemove) { Text(Strings.removeDownloadsOf(state.seasonDownloads.size), color = VibeyFinTokens.Colors.inkMuted) }
+            }
+        }
+    }
+}
+
 @Composable
 private fun ItemGrid(
     title: String,
@@ -215,6 +273,8 @@ private fun ItemGrid(
     onRetry: () -> Unit,
     showTitle: Boolean,
     onOpenSeries: ((String) -> Unit)?,
+    onDownloadSeason: (() -> Unit)?,
+    onRemoveSeasonDownloads: (() -> Unit)?,
 ) {
     // Saved with the screen, so coming back from an item's page finds the list where it was left.
     val gridState = rememberLazyGridState()
@@ -263,6 +323,12 @@ private fun ItemGrid(
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
+            }
+        }
+        // A season's list can be downloaded as a whole.
+        if (onDownloadSeason != null && state.offersSeasonDownload) {
+            item(span = { GridItemSpan(maxLineSpan) }, key = "download") {
+                SeasonDownloadRow(state, onDownloadSeason, onRemoveSeasonDownloads)
             }
         }
         if (collectionPage) {

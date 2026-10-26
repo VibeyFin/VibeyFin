@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Debug builds only: drives the downloads from adb until their screens exist (see DebugDownloadReceiver). -->
+    <application>
+        <receiver
+            android:name="app.vibeyfin.debug.DebugDownloadReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="app.vibeyfin.debug.SIGN_IN" />
+                <action android:name="app.vibeyfin.debug.DOWNLOAD" />
+                <action android:name="app.vibeyfin.debug.PAUSE" />
+                <action android:name="app.vibeyfin.debug.RESUME" />
+                <action android:name="app.vibeyfin.debug.REMOVE" />
+                <action android:name="app.vibeyfin.debug.STATUS" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

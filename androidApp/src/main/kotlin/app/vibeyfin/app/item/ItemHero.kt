@@ -66,6 +66,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.vibeyfin.R
 import app.vibeyfin.app.components.Artwork
+import app.vibeyfin.app.components.VibeyFinMenu
+import app.vibeyfin.app.components.VibeyFinMenuItem
+import app.vibeyfin.app.downloads.DownloadActionMenuItem
+import app.vibeyfin.app.downloads.DownloadBadgeIcon
+import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
+import app.vibeyfin.domain.model.ItemKind
+import app.vibeyfin.ui.downloads.actions
+import app.vibeyfin.ui.item.seasonLabel
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import app.vibeyfin.app.components.SkeletonBlock
 import app.vibeyfin.app.theme.BrandDisplay
 import app.vibeyfin.app.theme.VibeyFinTokens
@@ -155,6 +166,7 @@ fun HeroDetails(
     onToggleFavorite: () -> Unit,
     onPlayTrailer: (String) -> Unit,
     onTogglePlayed: () -> Unit,
+    downloads: DownloadCallbacks,
 ) {
     Column(
         horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
@@ -197,31 +209,31 @@ fun HeroDetails(
         } else if (state.playLoading) {
             SkeletonBlock(Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge), shape = RoundedCornerShape(50))
         }
-        ActionButtons(state, centered = centered, onToggleFavorite, onPlayTrailer, onTogglePlayed)
+        ActionButtons(state, centered = centered, onToggleFavorite, onPlayTrailer, onTogglePlayed, downloads)
     }
 }
 
 /**
- * The actions under Play, each an icon over a label: My List (the server's favourites), Trailer (only when there is one) and
- * Watched. Download joins them with offline playback. A trailer the server holds plays in the app; one on the web opens in the system's viewer.
+ * The actions under Play, each an icon over a label: My List (the server's favourites), Trailer (only when there is one),
+ * Watched, and Download (only when the server lets the user). A trailer the server holds plays in the app; one on the web opens in the system's viewer.
+ * Download starts a movie or an episode at once; once it exists, and for a show, the button opens a menu.
  */
 @Composable
-private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorite: () -> Unit, onPlayTrailer: (String) -> Unit, onTogglePlayed: () -> Unit) {
+private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorite: () -> Unit, onPlayTrailer: (String) -> Unit, onTogglePlayed: () -> Unit, downloads: DownloadCallbacks) {
     val openTrailerUrl = app.vibeyfin.app.navigation.LocalOpenTrailerUrl.current
-    // My List, Trailer, Watched; Download is added when offline lands.
     // Only the actions that exist are drawn, so three share the width as evenly as four. The first starts at the left edge of Play and the last ends at its right edge, with the rest spread evenly between.
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         ActionButton(
             centered = centered,
             label = Strings.myList,
             description = Strings.myListAction(state.isFavorite),
-            icon = rememberVectorPainter(if (state.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder),
+            icon = { modifier -> Icon(rememberVectorPainter(if (state.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder), contentDescription = null, tint = VibeyFinTokens.Colors.ink, modifier = modifier) },
             popKey = state.isFavorite,
             onClick = onToggleFavorite,
         )
         val trailer = state.trailer
         if (trailer != null) {
-            ActionButton(label = Strings.trailer, description = Strings.trailer, icon = painterResource(R.drawable.ic_trailer), centered = centered) {
+            ActionButton(label = Strings.trailer, description = Strings.trailer, icon = { modifier -> Icon(painterResource(R.drawable.ic_trailer), contentDescription = null, tint = VibeyFinTokens.Colors.ink, modifier = modifier) }, centered = centered) {
                 when (trailer) {
                     is Trailer.Local -> onPlayTrailer(trailer.itemId)
                     is Trailer.Remote -> openTrailerUrl(trailer.url)
@@ -233,18 +245,66 @@ private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorit
                 centered = centered,
                 label = Strings.watchedAction,
                 description = state.markLabel,
-                icon = rememberVectorPainter(if (state.watched) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle),
+                icon = { modifier -> Icon(rememberVectorPainter(if (state.watched) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle), contentDescription = null, tint = VibeyFinTokens.Colors.ink, modifier = modifier) },
                 popKey = state.watched,
                 onClick = onTogglePlayed,
             )
         }
-        // Download returns with offline playback (Phase 10): a button that does nothing is worse than none.
+        if (state.offersDownload) DownloadButton(state, centered, downloads)
     }
 }
 
+/**
+ * Download: the arrow when there is nothing, the ring while it comes in, the check once it is here. Tapping starts a movie or an
+ * episode with none; otherwise (and for a show) it opens a menu of what can be done: pause, resume, remove, or for a show which
+ * season or all of it.
+ */
+@Composable
+private fun RowScope.DownloadButton(state: ItemUiState, centered: Boolean, downloads: DownloadCallbacks) {
+    var menu by remember { mutableStateOf(false) }
+    val ensureNotifications = rememberDownloadNotificationPermission()
+    val item = state.item ?: return
+    val isSeries = item.kind == ItemKind.Series
+    ActionButton(
+        centered = centered,
+        label = state.downloadLabel,
+        description = state.downloadDescription,
+        icon = { modifier -> DownloadBadgeIcon(state.downloadBadge, state.downloadProgress, modifier) },
+        onClick = {
+            if (!isSeries && state.download == null) {
+                ensureNotifications()
+                downloads.onDownload()
+            } else {
+                menu = true
+            }
+        },
+        menu = {
+        VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
+            if (isSeries) {
+                val season = state.seasons.seasons.firstOrNull { it.id == state.seasons.selectedId }
+                if (season != null) {
+                    VibeyFinMenuItem(Strings.downloadSeasonNamed(season.seasonLabel), painterVector(R.drawable.ic_download)) { menu = false; downloads.onDownloadSeason(season.id) }
+                }
+                VibeyFinMenuItem(Strings.downloadAllEpisodes, painterVector(R.drawable.ic_download)) { menu = false; downloads.onDownloadSeries() }
+                if (state.seriesDownloads.isNotEmpty()) {
+                    VibeyFinMenuItem(Strings.removeDownloadsOf(state.seriesDownloads.size), Icons.Default.Delete) { menu = false; downloads.onRemoveSeries() }
+                }
+            } else {
+                state.download?.actions?.forEach { action ->
+                    DownloadActionMenuItem(action) { menu = false; downloads.onAction(item.id, action) }
+                }
+            }
+        }
+        },
+    )
+}
+
+@Composable
+private fun painterVector(id: Int) = ImageVector.vectorResource(id)
+
 /** One action: the icon over its label, in a quarter of the row. */
 @Composable
-private fun RowScope.ActionButton(label: String, description: String, icon: androidx.compose.ui.graphics.painter.Painter, centered: Boolean, popKey: Boolean? = null, onClick: () -> Unit) {
+private fun RowScope.ActionButton(label: String, description: String, icon: @Composable (Modifier) -> Unit, centered: Boolean, popKey: Boolean? = null, menu: @Composable () -> Unit = {}, onClick: () -> Unit) {
     // A toggle springs when it flips: it swells, then settles with a little bounce.
     val pop = remember { Animatable(1f) }
     var first by remember { mutableStateOf(true) }
@@ -254,20 +314,23 @@ private fun RowScope.ActionButton(label: String, description: String, icon: andr
         pop.snapTo(0.6f)
         pop.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
     }
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1, Alignment.CenterVertically),
-        modifier = Modifier
-            // A generous target: at least 64 wide and 72 tall, well over the 48 dp minimum.
-            .defaultMinSize(minWidth = 64.dp, minHeight = 72.dp)
-            .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
-            .clickable(role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = description }
-            .padding(vertical = VibeyFinTokens.Space.s2),
-    ) {
-        Icon(painter = icon, contentDescription = null, tint = VibeyFinTokens.Colors.ink, modifier = Modifier.size(30.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value })
-        // Medium weight in the full ink: the labels read against the picture.
-        Text(label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Medium), color = VibeyFinTokens.Colors.ink, maxLines = 1)
+    Box {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1, Alignment.CenterVertically),
+            modifier = Modifier
+                // A generous target: at least 64 wide and 72 tall, well over the 48 dp minimum.
+                .defaultMinSize(minWidth = 64.dp, minHeight = 72.dp)
+                .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
+                .clickable(role = Role.Button, onClick = onClick)
+                .semantics { contentDescription = description }
+                .padding(vertical = VibeyFinTokens.Space.s2),
+        ) {
+            icon(Modifier.size(30.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value })
+            // Medium weight in the full ink: the labels read against the picture.
+            Text(label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Medium), color = VibeyFinTokens.Colors.ink, maxLines = 1)
+        }
+        menu()
     }
 }
 

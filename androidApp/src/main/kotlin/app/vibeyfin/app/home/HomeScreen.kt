@@ -385,7 +385,7 @@ private fun LazyGridScope.fullWidth(key: String, animate: Boolean = true, conten
 
 /** The row of what the user is in the middle of. Its cards run past the grid's margins to the screen edge. */
 @Composable
-private fun ContinueWatching(
+internal fun ContinueWatching(
     row: ContinueRow,
     margin: Dp,
     onPlay: (String) -> Unit,

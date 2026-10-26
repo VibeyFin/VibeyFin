@@ -39,12 +39,24 @@ import androidx.navigation.toRoute
 import app.vibeyfin.app.addserver.AddServerRoute
 import app.vibeyfin.app.children.ChildrenRoute
 import app.vibeyfin.app.components.TileMenuSheet
+import org.koin.compose.koinInject
+import app.vibeyfin.ui.banner.AppBannerViewModel
+import app.vibeyfin.domain.OfflineMode
+import app.vibeyfin.app.home.OfflineHomeRoute
+import androidx.compose.foundation.layout.Column
+import app.vibeyfin.app.components.AppBanner
+import app.vibeyfin.app.downloads.DownloadsRoute
+import app.vibeyfin.app.person.PersonRoute
+import app.vibeyfin.ui.item.Trailer
+import app.vibeyfin.ui.tile.TileMenuViewModel
+import org.koin.androidx.compose.koinViewModel
+import app.vibeyfin.app.search.SearchRoute
+import app.vibeyfin.domain.model.ItemKind
+import app.vibeyfin.domain.model.SearchKind
 import app.vibeyfin.app.filtered.FilteredListRoute
 import app.vibeyfin.app.home.HomeRoute
 import app.vibeyfin.app.item.ItemRoute
-import app.vibeyfin.app.person.PersonRoute
 import app.vibeyfin.app.player.PlayerRoute
-import app.vibeyfin.app.search.SearchRoute
 import app.vibeyfin.app.servers.ServersRoute
 import app.vibeyfin.app.settings.SettingsRoute
 import app.vibeyfin.app.settings.pageIdOrRoot
@@ -54,16 +66,11 @@ import app.vibeyfin.app.whoswatching.WhoIsWatchingRoute
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.StartDestination
-import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
-import app.vibeyfin.domain.model.SearchKind
 import app.vibeyfin.ui.home.HomeExit
-import app.vibeyfin.ui.item.Trailer
 import app.vibeyfin.ui.notifications.NotificationOpenViewModel
 import app.vibeyfin.ui.notifications.NotificationRoute
 import app.vibeyfin.ui.settings.SettingsPageId
-import app.vibeyfin.ui.tile.TileMenuViewModel
-import org.koin.androidx.compose.koinViewModel
 
 private const val SLIDE_MS = 180
 
@@ -128,6 +135,11 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
         Tab.entries.forEach { navController.clearBackStack(it.graph) }
         if (exit is HomeExit.WhoIsWatching) navController.navigate(WhoIsWatching(exit.serverId))
     }
+    // Offline (no network, or the switch in Settings): three tabs, and what is on the device. The banner says so, and how to leave it.
+    val appOffline: OfflineMode = koinInject()
+    val offline by appOffline.isOffline.collectAsStateWithLifecycle()
+    val bannerModel: AppBannerViewModel = koinViewModel()
+    val banner by bannerModel.banner.collectAsStateWithLifecycle()
     val backStackEntry by navController.currentBackStackEntryAsState()
     // The bar belongs to the three tabs and what opens from them; sign-in, settings and the player are without it.
     val currentTab = backStackEntry?.destination?.hierarchy?.let { path ->
@@ -146,6 +158,8 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
             }
         }
     }
+    // Library needs the server: going offline while on it moves to Home (what the bar still offers).
+    LaunchedEffect(offline, currentTab) { if (offline && currentTab == Tab.Library) select(Tab.Home) }
     // Back from the root of Library or Downloads goes to Home, as on any app with a bar, not out of the app.
     // A tapped new-title notification is routed once the app is inside a profile, never during startup or "Who's watching?".
     val inApp = backStackEntry?.destination?.let { destination ->
@@ -173,7 +187,7 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
         containerColor = if (onPlayer) androidx.compose.ui.graphics.Color.Black else MaterialTheme.colorScheme.background,
         contentWindowInsets = if (onPlayer) WindowInsets(0, 0, 0, 0) else ScaffoldDefaults.contentWindowInsets,
         bottomBar = {
-            if (currentTab != null) MainNavigationBar(currentTab, select)
+            if (currentTab != null) MainNavigationBar(currentTab, select, offline)
         },
     ) { padding ->
         // The long-press menu of a poster, wherever the poster is: Details, Trailer (when the title has one) and My List.
@@ -195,7 +209,9 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
             onMyList = tileMenu::onToggleFavorite,
             onDismiss = tileMenu::onClose,
         )
-        SharedTransitionLayout(Modifier.padding(padding).consumeWindowInsets(padding)) {
+        Column(Modifier.padding(padding).consumeWindowInsets(padding)) {
+        if (!onPlayer) banner?.let { AppBanner(it, onAction = bannerModel::onAction) }
+        SharedTransitionLayout(Modifier.weight(1f)) {
         CompositionLocalProvider(
             LocalSharedTransitionScope provides this,
             LocalTileLongPress provides { item -> tileMenu.onOpen(item) },
@@ -252,7 +268,14 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
             // screens, once per graph, so each tab has its own back stack.
             navigation<HomeTab>(startDestination = Home) {
                 sharedComposable<Home> {
-                    HomeRoute(
+                    if (offline) {
+                        OfflineHomeRoute(
+                            onPlay = { itemId -> navController.navigate(Player(itemId)) },
+                            onOpenDownloads = { select(Tab.Downloads) },
+                            onSettings = { navController.navigate(Settings) },
+                            onExit = leave,
+                        )
+                    } else HomeRoute(
                         onExit = leave,
                         onOpen = open,
                         // A Continue watching card plays at once; it never goes through the detail page.
@@ -269,9 +292,11 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
                     SearchRoute(
                         onOpenResult = { result ->
                             navController.navigate(
-                                when (result.kind) {
-                                    SearchKind.Person -> Person(result.id)
-                                    SearchKind.Collection -> Children(result.id, result.title, collection = true, imageUrl = result.backdropUrl ?: result.imageUrl)
+                                when {
+                                    // Offline there is no page to open: what was found is on the device, so it plays.
+                                    offline && (result.kind == SearchKind.Movie || result.kind == SearchKind.Episode) -> Player(result.id)
+                                    result.kind == SearchKind.Person -> Person(result.id)
+                                    result.kind == SearchKind.Collection -> Children(result.id, result.title, collection = true, imageUrl = result.backdropUrl ?: result.imageUrl)
                                     else -> Item(result.id)
                                 },
                             )
@@ -288,7 +313,14 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
                 details(navController, leave)
             }
             navigation<DownloadsTab>(startDestination = Downloads) {
-                sharedComposable<Downloads> { NotAvailableYet() }
+                sharedComposable<Downloads> {
+                    DownloadsRoute(
+                        onOpen = { itemId -> navController.navigate(Item(itemId)) },
+                        onPlay = { itemId -> navController.navigate(Player(itemId)) },
+                        offline = offline,
+                        onExit = leave,
+                    )
+                }
                 details(navController, leave)
             }
             composable<Player> { entry ->
@@ -330,6 +362,7 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
                     onSaved = { navController.popBackStack() },
                 )
             }
+        }
         }
         }
         }
