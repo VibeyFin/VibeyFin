@@ -43,6 +43,7 @@ data class SettingsValues(
     val skipForwardSeconds: Int = ProfileSettings.DEFAULT_SKIP_FORWARD_SECONDS,
     val autoSkipSegments: Boolean = false,
     val bufferAheadSeconds: Int = ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
+    val pictureInPicture: Boolean = true,
     val maxStreamingBitrate: Int = 0,
     val captionsFollowSystem: Boolean = true,
     val subtitleSize: Int = ProfileSettings.DEFAULT_SUBTITLE_SIZE,
@@ -371,6 +372,13 @@ fun skippingPage(v: SettingsValues): SettingsPage {
                             (2..5).map { SettingOption(it, Strings.stillWatchingAfter(it)) },
                         visible = profile,
                     ),
+                ),
+            ),
+            SettingsSection(
+                title = null,
+                Strings.pictureInPictureHelp,
+                items = listOf(
+                    ToggleItem(SettingKey.PictureInPicture, Strings.pictureInPicture, checked = v.pictureInPicture, visible = profile),
                 ),
             ),
             SettingsSection(

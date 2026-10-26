@@ -70,6 +70,16 @@ class ProfileSettingsTest {
     }
 
     @Test
+    fun `picture in picture is null with nobody signed in and on for a new profile and saved when switched`() = runTest {
+        assertNull(app.profileSettings.pictureInPicture.first())
+        app.signedIn()
+        assertEquals(true, app.profileSettings.pictureInPicture.first())
+
+        app.profileSettings.setPictureInPicture(false)
+        assertEquals(false, app.profileSettings.pictureInPicture.first())
+    }
+
+    @Test
     fun `buffer ahead is null with nobody signed in and 20 seconds for a new profile`() = runTest {
         assertNull(app.profileSettings.bufferAheadSeconds.first())
         app.signedIn()

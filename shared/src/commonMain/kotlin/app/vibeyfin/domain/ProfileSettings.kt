@@ -43,6 +43,9 @@ class ProfileSettings(
     /** Whether the player skips intros and recaps without asking. Off by default. Null when nobody is signed in. */
     val autoSkipSegments: Flow<Boolean?> = forAccount { dao, a -> dao.observeAutoSkipSegments(a.serverId, a.userId).map { it ?: false } }
 
+    /** Whether the player offers picture-in-picture and starts it when the app is left. On by default. Null when nobody is signed in. */
+    val pictureInPicture: Flow<Boolean?> = forAccount { dao, a -> dao.observePictureInPicture(a.serverId, a.userId).map { it ?: true } }
+
     /** Accepts one of [SKIP_BACK_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
     suspend fun setSkipBackSeconds(value: Int) {
         if (value !in SKIP_BACK_CHOICES) return
@@ -190,6 +193,12 @@ class ProfileSettings(
     suspend fun resetSubtitleStyle() {
         val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
         dao.resetSubtitleStyle(account.serverId, account.userId)
+    }
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setPictureInPicture(value: Boolean) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setPictureInPicture(account.serverId, account.userId, value)
     }
 
     /** Does nothing when nobody is signed in. */

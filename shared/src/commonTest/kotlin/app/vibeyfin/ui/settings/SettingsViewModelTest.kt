@@ -256,6 +256,16 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `picture in picture is on by default and follows its toggle`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        assertTrue(viewModel.uiState.first { it.hasProfile }.checked(SettingKey.PictureInPicture))
+
+        viewModel.onToggle(SettingKey.PictureInPicture, false)
+        assertFalse(viewModel.uiState.first { !it.checked(SettingKey.PictureInPicture) }.checked(SettingKey.PictureInPicture))
+    }
+
+    @Test
     fun `buffer ahead defaults to 20 and follows its handler`() = runTest {
         app.signedIn()
         val viewModel = viewModel()
@@ -335,7 +345,7 @@ class SettingsViewModelTest {
         val skipping = viewModel.uiState.first { it.hasProfile }.page(SettingsPageId.Skipping)
 
         assertEquals(
-            listOf(SettingKey.SkipBack, SettingKey.SkipForward, SettingKey.AutoSkip, SettingKey.BingeThreshold, SettingKey.BufferAhead),
+            listOf(SettingKey.SkipBack, SettingKey.SkipForward, SettingKey.AutoSkip, SettingKey.BingeThreshold, SettingKey.PictureInPicture, SettingKey.BufferAhead),
             skipping.keys(),
         )
 

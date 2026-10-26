@@ -571,6 +571,8 @@ object Strings {
     val autoplayGroup = "Autoplay"
     val stillWatchingAfterTitle = "Still watching after"
     val stillWatchingAfterHelp = "Off, or after 2 to 5 episodes in a row."
+    val pictureInPictureHelp =
+        "On by default. The player offers picture in picture and starts it when you leave the app. Off, playback pauses when you leave."
     val bufferingGroup = "Buffering"
     fun skipSecondsShort(seconds: Int) = "$seconds s"
 

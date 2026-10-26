@@ -191,6 +191,16 @@ class PlaybackViewModelTest {
     }
 
     @Test
+    fun `pictureInPicture follows the profile setting`() = runTest {
+        server()
+        val viewModel = viewModel()
+        assertEquals(true, viewModel.uiState.first { it.stream != null }.pictureInPicture)
+
+        app.profileSettings.setPictureInPicture(false)
+        assertEquals(false, viewModel.uiState.first { !it.pictureInPicture }.pictureInPicture)
+    }
+
+    @Test
     fun `subtitle style follows the profile settings`() = runTest {
         server()
         val viewModel = viewModel()

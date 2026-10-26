@@ -61,6 +61,12 @@ abstract class AccountDao {
     @Query("UPDATE account_settings SET skipForwardSeconds = :value WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun setSkipForwardSeconds(serverId: String, userId: String, value: Int)
 
+    @Query("SELECT pictureInPicture FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observePictureInPicture(serverId: String, userId: String): Flow<Boolean?>
+
+    @Query("UPDATE account_settings SET pictureInPicture = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setPictureInPicture(serverId: String, userId: String, value: Boolean)
+
     @Query("SELECT autoSkipSegments FROM account_settings WHERE serverId = :serverId AND userId = :userId")
     abstract fun observeAutoSkipSegments(serverId: String, userId: String): Flow<Boolean?>
 

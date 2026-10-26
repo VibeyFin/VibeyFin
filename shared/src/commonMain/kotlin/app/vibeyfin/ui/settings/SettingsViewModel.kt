@@ -152,6 +152,7 @@ class SettingsViewModel(
         perProfile(profileSettings.notificationScope),
         live(requestNotificationPermission),
         live(notificationsBlocked),
+        perProfile(profileSettings.pictureInPicture),
     )
 
     /** Eager, so the reads start with the ViewModel and not when the screen first draws. */
@@ -203,6 +204,7 @@ class SettingsViewModel(
             skipForwardSeconds = read(SKIP_FORWARD) ?: defaults.skipForwardSeconds,
             autoSkipSegments = read(AUTO_SKIP) ?: defaults.autoSkipSegments,
             bufferAheadSeconds = read(BUFFER_AHEAD) ?: defaults.bufferAheadSeconds,
+            pictureInPicture = read(PICTURE_IN_PICTURE) ?: defaults.pictureInPicture,
             maxStreamingBitrate = read(QUALITY) ?: defaults.maxStreamingBitrate,
             captionsFollowSystem = read(CAPTIONS_FOLLOW_SYSTEM) ?: defaults.captionsFollowSystem,
             subtitleSize = read(SUBTITLE_SIZE) ?: defaults.subtitleSize,
@@ -235,6 +237,7 @@ class SettingsViewModel(
                 SettingKey.ShowStats -> profileSettings.setShowPlaybackStats(value)
                 SettingKey.ShowHero -> profileSettings.setShowHomeHero(value)
                 SettingKey.AutoSkip -> profileSettings.setAutoSkipSegments(value)
+                SettingKey.PictureInPicture -> profileSettings.setPictureInPicture(value)
                 SettingKey.CaptionsFollowSystem -> profileSettings.setCaptionsFollowSystem(value)
                 SettingKey.KidsProfile -> if (value) {
                     profileSettings.setKidsProfile(true)
@@ -399,3 +402,4 @@ private const val NOTIFICATIONS = 23
 private const val NOTIFICATION_SCOPE = 24
 private const val REQUEST_PERMISSION = 25
 private const val NOTIFICATIONS_BLOCKED = 26
+private const val PICTURE_IN_PICTURE = 27

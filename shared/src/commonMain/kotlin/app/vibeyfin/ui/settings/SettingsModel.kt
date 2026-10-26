@@ -16,6 +16,7 @@ enum class SettingKey {
     SetPin, PolicyStatus,
     RatingLimit, BlockedTags, AllowedHours,
     Notifications, NotificationScope,
+    PictureInPicture,
 }
 
 data class SettingsPage(val id: SettingsPageId, val title: String, val sections: List<SettingsSection>) {

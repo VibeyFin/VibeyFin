@@ -160,6 +160,8 @@ data class PlaybackUiState(
     val diagnostics: PlaybackDiagnostics? = null,
     /** The signed-in profile wants the stats overlay. */
     val showDiagnostics: Boolean = false,
+    /** The player offers picture-in-picture and starts it when the app is left; off, leaving the app pauses. */
+    val pictureInPicture: Boolean = true,
     /** Seconds of video the player should load ahead; 0 is Auto, the platform player's own choice. */
     val bufferAheadSeconds: Int = ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
     /** Subtitles use the platform's caption style, so the four values below are ignored. */
@@ -361,6 +363,11 @@ class PlaybackViewModel(
         viewModelScope.launch {
             profileSettings.skipForwardSeconds.collect { seconds ->
                 content.update { it.copy(skipForwardSeconds = seconds ?: ProfileSettings.DEFAULT_SKIP_FORWARD_SECONDS) }
+            }
+        }
+        viewModelScope.launch {
+            profileSettings.pictureInPicture.collect { on ->
+                content.update { it.copy(pictureInPicture = on ?: true) }
             }
         }
         viewModelScope.launch {

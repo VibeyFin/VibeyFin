@@ -141,6 +141,9 @@ class AccountSettingsEntity(
     /** What notifies: 0 shows the profile follows and new movies, 1 everything new. */
     @ColumnInfo(defaultValue = "0")
     val notificationScope: Int = 0,
+    /** Whether the player offers picture-in-picture and starts it when the app is left. Off pauses on leaving. */
+    @ColumnInfo(defaultValue = "1")
+    val pictureInPicture: Boolean = true,
 )
 
 /** A profile's stored PIN: both null when it has none. */
