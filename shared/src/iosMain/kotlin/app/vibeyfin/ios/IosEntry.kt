@@ -1,6 +1,8 @@
 package app.vibeyfin.ios
 
 import app.vibeyfin.data.download.IosBackgroundTransfer
+import app.vibeyfin.data.download.NativeVideoConverter
+import app.vibeyfin.data.download.NativeVideoConverterHost
 import app.vibeyfin.di.initKoin
 import app.vibeyfin.domain.ExternalVideoTransfer
 import org.koin.mp.KoinPlatform
@@ -18,4 +20,9 @@ fun startKoinIos() {
 fun handleBackgroundDownloadEvents(identifier: String, completion: () -> Unit) {
     startKoinIos()
     (KoinPlatform.getKoin().get<ExternalVideoTransfer>() as IosBackgroundTransfer).handleBackgroundEvents(identifier, completion)
+}
+
+/** Called from the SwiftUI app's `init`, before anything is downloaded: hands over the Swift side that makes downloaded videos playable. */
+fun registerVideoConverter(converter: NativeVideoConverter) {
+    NativeVideoConverterHost.converter = converter
 }

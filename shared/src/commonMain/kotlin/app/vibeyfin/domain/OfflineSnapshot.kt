@@ -42,6 +42,8 @@ data class OfflineSnapshot(
     val subtitleTracks: List<PlaybackTrack> = emptyList(),
     /** Every picture and subtitle file in [sources] and [subtitleSources] has been fetched (or the server had none). */
     val assetsDone: Boolean = false,
+    /** The video stream's codec as Jellyfin names it (`h264`, `av1`…), so a download can be refused before it starts if the device cannot play it. */
+    val videoCodec: String? = null,
 ) {
     fun encode(): String = JSON.encodeToString(serializer(), this)
 

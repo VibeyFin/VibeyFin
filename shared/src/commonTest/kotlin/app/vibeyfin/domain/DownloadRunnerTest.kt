@@ -406,6 +406,77 @@ class DownloadRunnerTest {
         assertEquals(listOf(DownloadRunner.Waiting.Network), seen.filterNotNull().distinct())
     }
 
+    /** A platform converter that answers [answer], having written [output] at the target path when it converts. */
+    private inner class FakeConverter(val answer: VideoConversion, val playable: (String) -> Boolean = { true }) : VideoConverter {
+        var converted: Pair<String, String>? = null
+
+        override suspend fun convert(source: String, target: String, stop: kotlinx.coroutines.flow.StateFlow<Boolean>, onProgress: suspend (Float) -> Unit): VideoConversion {
+            converted = source to target
+            onProgress(1f)
+            if (answer == VideoConversion.Converted) app.files.open(target, append = false).also { it.write("mp4-bytes".encodeToByteArray(), 9) }.close()
+            return answer
+        }
+
+        override fun canPlayVideo(codec: String) = playable(codec)
+    }
+
+    private fun runnerWith(converter: VideoConverter) =
+        DownloadRunner(app.downloads, app.database.accountDao(), app.connection, app.files, app.network, app.wake, app.clock, speeds = app.speeds, converter = converter)
+
+    @Test
+    fun aVideoThePlayerCannotOpenIsReplacedByTheConvertedFile() = runTest {
+        movieOnServer()
+        queue()
+        val converter = FakeConverter(VideoConversion.Converted)
+
+        runnerWith(converter).run()
+
+        assertEquals("$folder/video.part" to "$folder/video.converting", converter.converted)
+        val done = row()
+        assertEquals(DOWNLOAD_DONE, done.state)
+        assertEquals("$folder/video.mp4", done.filePath)
+        assertEquals("mp4-bytes", app.files.text("$folder/video.mp4"))
+        assertNull(app.files.text("$folder/video.part"), "the original is not kept next to the copy")
+        assertNull(app.files.text("$folder/video.converting"))
+        assertEquals(9L, app.files.length("$folder/video.mp4"))
+    }
+
+    @Test
+    fun aVideoThePlayerCanOpenIsKeptAsItCame() = runTest {
+        movieOnServer()
+        queue()
+
+        runnerWith(FakeConverter(VideoConversion.NotNeeded)).run()
+
+        assertEquals("$folder/video.mkv", row().filePath)
+        assertEquals(body, app.files.text("$folder/video.mkv"))
+    }
+
+    @Test
+    fun aVideoInACodecThePlayerCannotDecodeFailsAsUnplayable() = runTest {
+        movieOnServer()
+        queue()
+
+        runnerWith(FakeConverter(VideoConversion.Unsupported)).run()
+
+        assertEquals(DOWNLOAD_FAILED, row().state)
+        assertEquals(DownloadFailure.Unplayable.name, row().error)
+        assertNull(app.files.text("$folder/video.part"), "what was fetched is no use")
+    }
+
+    @Test
+    fun aCodecTheDeviceCannotPlayIsRefusedBeforeAnyBytesAreFetched() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Items", Reply.json(itemsPage(downloadItemJson("m1", "Heat", size = body.length.toLong(), videoCodec = "av1"))))
+        server.on("GET", "/Items/m1/Download") { Reply.ranged(body, it) }
+        queue()
+
+        runnerWith(FakeConverter(VideoConversion.NotNeeded, playable = { it != "av1" })).run()
+
+        assertEquals(DownloadFailure.Unplayable.name, row().error)
+        assertTrue(app.jellyfin.requestsTo("GET", "/Items/m1/Download").isEmpty(), "the video was never asked for")
+    }
+
     @Test
     fun whenThePatienceRunsOutTheRunEndsAndSaysWhenToCome() = runTest {
         movieOnServer()

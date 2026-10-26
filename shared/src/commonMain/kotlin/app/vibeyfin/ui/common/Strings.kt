@@ -722,6 +722,8 @@ object Strings {
     val downloadsEmptyHelp = "Download a movie or an episode to watch it without a connection."
     val downloaded = "Downloaded"
     val downloading = "Downloading"
+    val converting = "Converting"
+    fun downloadConverting(percent: Int) = "Converting for this device · $percent%"
     val downloadQueued = "Waiting to download"
     val downloadWaitingForWifi = "Waiting for Wi-Fi"
     val downloadWaitingForNetwork = "Waiting for a connection"

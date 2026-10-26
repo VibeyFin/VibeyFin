@@ -71,7 +71,7 @@ fun apiModule() = module {
     // One per player, like PlaybackReporter: it holds where this playback is.
     factory { LocalPlaybackReporter(get(), get(ApplicationScope), get(), get(), get(), get()) }
     single { DownloadRepository(get(), get(), get(), get(), get(), get(), get()) }
-    single { DownloadRunner(get(), get(), get(), get(), get(), get(), get(), speeds = get(), external = getOrNull()) }
+    single { DownloadRunner(get(), get(), get(), get(), get(), get(), get(), speeds = get(), external = getOrNull(), converter = getOrNull()) }
     single { AuthRepository(get(), get(), get()) }
     single { StartupRouter(get(), get(), get(), get(), get()) }
     single { LibraryRepository(get()) }

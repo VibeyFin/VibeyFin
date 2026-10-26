@@ -17,6 +17,9 @@ enum class DownloadFailure {
     /** The item is no longer on the server. */
     NotOnServer,
 
+    /** The video is in a codec this device cannot play, and the app does not re-encode video. */
+    Unplayable,
+
     /** Anything else that cannot be put right by waiting. */
     Unknown,
     ;

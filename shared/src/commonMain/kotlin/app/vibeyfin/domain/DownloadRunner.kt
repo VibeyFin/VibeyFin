@@ -57,6 +57,8 @@ class DownloadRunner(
     private val speeds: DownloadSpeeds = DownloadSpeeds(),
     /** On a platform that transfers videos itself; null where the runner does (Android). */
     private val external: ExternalVideoTransfer? = null,
+    /** On a platform whose player cannot open every file (iOS); null where it can (Android). */
+    private val converter: VideoConverter? = null,
 ) {
     /** What the platform should do after [run] returns. */
     enum class Next {
@@ -89,6 +91,8 @@ class DownloadRunner(
         val waiting: Waiting? = null,
         /** How fast it is coming in; null before there is a measure. */
         val bytesPerSecond: Long? = null,
+        /** The finished file is being made playable on the device; [bytesDone] then counts how far that is. */
+        val converting: Boolean = false,
     ) {
         /** How long the rest of this file takes at this speed; null when the size or the speed is not known. */
         val timeLeft: Duration?
@@ -205,6 +209,8 @@ class DownloadRunner(
             val snapshot = dao.findItem(row.serverId, row.userId, row.itemId)?.let { OfflineSnapshot.decode(it.snapshotJson) }
             title = snapshot?.item?.title.orEmpty()
             checkStorageRules()?.let { return fail(it) }
+            // No point fetching gigabytes the player will not open.
+            if (converter != null && snapshot?.videoCodec?.let { !converter.canPlayVideo(it) } == true) return fail(DownloadFailure.Unplayable)
             fetchAssets()?.let { return it }
             return downloadVideo()
         }
@@ -357,10 +363,47 @@ class DownloadRunner(
         }
 
         private suspend fun complete(length: Long): Outcome {
-            val extension = row.container?.substringBefore(',')?.trim()?.lowercase()?.takeIf { it.isNotEmpty() && it.all(Char::isLetterOrDigit) } ?: "bin"
+            var extension = row.container?.substringBefore(',')?.trim()?.lowercase()?.takeIf { it.isNotEmpty() && it.all(Char::isLetterOrDigit) } ?: "bin"
+            val converted = "$base/video.converting"
+            var isConverted = false
+            if (converter != null) {
+                speeds.setConverting(base, 0f)
+                val result = try {
+                    converter.convert(part, converted, stop) { fraction ->
+                        speeds.setConverting(base, fraction)
+                        onProgress(Progress(row.itemId, title, (length * fraction).toLong(), length, remaining, converting = true))
+                    }
+                } finally {
+                    speeds.clearConverting(base)
+                }
+                when (result) {
+                    VideoConversion.NotNeeded -> Unit
+                    VideoConversion.Converted -> {
+                        isConverted = true
+                        extension = "mp4"
+                    }
+                    VideoConversion.Stopped -> {
+                        files.delete(converted)
+                        return Outcome.Stopped
+                    }
+                    VideoConversion.Unsupported -> {
+                        files.delete(part)
+                        return fail(DownloadFailure.Unplayable)
+                    }
+                    VideoConversion.Failed -> {
+                        files.delete(converted)
+                        return fail(DownloadFailure.Unknown)
+                    }
+                }
+            }
             val finalPath = "$base/video.$extension"
-            files.move(part, finalPath)
-            dao.complete(row.serverId, row.userId, row.itemId, length, finalPath, clock.now().toEpochMilliseconds())
+            if (isConverted) {
+                files.move(converted, finalPath)
+                files.delete(part)
+            } else {
+                files.move(part, finalPath)
+            }
+            dao.complete(row.serverId, row.userId, row.itemId, files.length(finalPath), finalPath, clock.now().toEpochMilliseconds())
             return Outcome.Finished
         }
 

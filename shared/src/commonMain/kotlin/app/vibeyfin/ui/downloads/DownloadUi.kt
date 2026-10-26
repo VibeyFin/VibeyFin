@@ -87,7 +87,7 @@ val Download.bytes: Long get() = bytesTotal ?: bytesDone
 /** The one line under a download: its state, and how far it is. [waiting] says what a download that is waiting waits for. */
 fun Download.statusLine(waiting: DownloadRunner.Waiting): String = when (state) {
     DownloadState.Done -> Strings.downloadedWithSize(bytes)
-    DownloadState.Running -> listOfNotNull(Strings.downloading, Strings.downloadProgress(bytesDone, bytesTotal), timeLeft?.let { Strings.downloadTimeLeft(it.inWholeSeconds) }).joinToString(" · ")
+    DownloadState.Running -> if (conversion != null) Strings.downloadConverting((conversion * 100).toInt()) else listOfNotNull(Strings.downloading, Strings.downloadProgress(bytesDone, bytesTotal), timeLeft?.let { Strings.downloadTimeLeft(it.inWholeSeconds) }).joinToString(" · ")
     DownloadState.Queued -> Strings.downloadQueued
     DownloadState.WaitingForNetwork -> when (waiting) {
         DownloadRunner.Waiting.Network -> Strings.downloadWaitingForNetwork
@@ -105,7 +105,7 @@ val Download.failureMessage: String? get() = if (state == DownloadState.Failed) 
 val Download.stateWord: String
     get() = when (state) {
         DownloadState.Done -> Strings.downloaded
-        DownloadState.Running -> Strings.downloading
+        DownloadState.Running -> if (conversion != null) Strings.converting else Strings.downloading
         DownloadState.Queued, DownloadState.WaitingForNetwork -> Strings.downloadQueued
         DownloadState.Paused -> Strings.downloadPaused
         DownloadState.Failed -> Strings.downloadFailed
@@ -117,6 +117,7 @@ fun DownloadFailure.message(): String = when (this) {
     DownloadFailure.StorageLimit -> LoadMessages.DOWNLOAD_STORAGE_LIMIT
     DownloadFailure.SignIn -> LoadMessages.DOWNLOAD_SIGN_IN
     DownloadFailure.NotOnServer -> LoadMessages.DOWNLOAD_NOT_ON_SERVER
+    DownloadFailure.Unplayable -> LoadMessages.DOWNLOAD_UNPLAYABLE
     DownloadFailure.Unknown -> LoadMessages.DOWNLOAD_INTERRUPTED
 }
 

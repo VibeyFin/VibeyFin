@@ -23,6 +23,7 @@ internal object LoadMessages {
     const val DOWNLOAD_INTERRUPTED = "The download stopped. Check your connection and try again."
     const val DOWNLOAD_SIGN_IN = "Sign in again to go on with this download."
     const val DOWNLOAD_NOT_ON_SERVER = "This is no longer on the server, so it can't be downloaded."
+    const val DOWNLOAD_UNPLAYABLE = "This video is in a format this device can't play, so it can't be downloaded here."
     const val DOWNLOAD_NO_FILE = "This has no file to download."
     const val NOT_DOWNLOADED = "This isn't downloaded, so it can't open without a connection."
     const val PLAYBACK_NETWORK = "Lost the connection to the server. Check your network and try again."

@@ -48,6 +48,8 @@ data class Download(
     val item: MediaItem,
     /** How fast it is coming in right now; null unless it is running and has been measured. */
     val bytesPerSecond: Long? = null,
+    /** How far the finished video is into being made playable on the device, 0 to 1; null when it is not being converted. */
+    val conversion: Float? = null,
 ) {
     /** How long the rest of the file takes at the current speed; null when that is not known. */
     val timeLeft: Duration?
@@ -55,7 +57,7 @@ data class Download(
 
     /** How much of the file is here, 0 to 1; null when the size is not known. */
     val progress: Float?
-        get() = bytesTotal?.takeIf { it > 0 }?.let { (bytesDone.toFloat() / it).coerceIn(0f, 1f) }
+        get() = conversion ?: bytesTotal?.takeIf { it > 0 }?.let { (bytesDone.toFloat() / it).coerceIn(0f, 1f) }
 }
 
 /** What to download: one movie or episode, a season's episodes, or every episode of a show. */
@@ -112,9 +114,9 @@ class DownloadRepository(
 ) {
     /** The profile's downloads, oldest request first. */
     fun observeAll(profile: ProfileRef): Flow<List<Download>> =
-        combine(dao.observeAll(profile.serverId, profile.userId), dao.observeItems(profile.serverId, profile.userId), speeds.speeds) { downloads, items, speed ->
+        combine(dao.observeAll(profile.serverId, profile.userId), dao.observeItems(profile.serverId, profile.userId), speeds.speeds, speeds.converting) { downloads, items, speed, converting ->
             val byId = items.associateBy { it.itemId }
-            downloads.mapNotNull { row -> byId[row.itemId]?.let { row.toDownload(it, speed[folder(profile, row.itemId)]) } }
+            downloads.mapNotNull { row -> byId[row.itemId]?.let { row.toDownload(it, speed[folder(profile, row.itemId)], converting[folder(profile, row.itemId)]) } }
         }.distinctUntilChanged()
 
     /** The shows and seasons the profile's downloaded episodes belong to, by id, as they were saved: the name and picture of a show. */
@@ -126,8 +128,8 @@ class DownloadRepository(
 
     /** One download, or null when the profile has none for [itemId]. */
     fun observe(profile: ProfileRef, itemId: String): Flow<Download?> =
-        combine(dao.observe(profile.serverId, profile.userId, itemId), dao.observeItems(profile.serverId, profile.userId), speeds.speeds) { row, items, speed ->
-            row?.let { r -> items.firstOrNull { it.itemId == itemId }?.let { r.toDownload(it, speed[folder(profile, itemId)]) } }
+        combine(dao.observe(profile.serverId, profile.userId, itemId), dao.observeItems(profile.serverId, profile.userId), speeds.speeds, speeds.converting) { row, items, speed, converting ->
+            row?.let { r -> items.firstOrNull { it.itemId == itemId }?.let { r.toDownload(it, speed[folder(profile, itemId)], converting[folder(profile, itemId)]) } }
         }.distinctUntilChanged()
 
     /** The bytes the profile's downloads take on the device, partial ones included. */
@@ -291,7 +293,7 @@ class DownloadRepository(
         return call.unwrap()
     }
 
-    private fun DownloadEntity.toDownload(item: DownloadItemEntity, speed: Long?): Download = Download(
+    private fun DownloadEntity.toDownload(item: DownloadItemEntity, speed: Long?, conversion: Float?): Download = Download(
         profile = ProfileRef(serverId, userId),
         itemId = itemId,
         state = when (state) {
@@ -309,6 +311,7 @@ class DownloadRepository(
         seasonId = seasonId,
         item = OfflineSnapshot.decode(item.snapshotJson).mediaItem(files),
         bytesPerSecond = speed.takeIf { state == DOWNLOAD_RUNNING },
+        conversion = conversion.takeIf { state == DOWNLOAD_RUNNING },
     )
 
     private fun <T> ProfileCall<T>.unwrap(): DownloadAttempt<T> = when (this) {
@@ -389,5 +392,6 @@ internal fun BaseItemDto.toSnapshot(baseUrl: String): OfflineSnapshot {
         subtitleTracks = tracks?.subtitles.orEmpty(),
         // Nothing to fetch for an item with no pictures and no subtitle files.
         assetsDone = sources.isEmpty() && subtitleSources.isEmpty(),
+        videoCodec = source?.mediaStreams.orEmpty().firstOrNull { it.type == "Video" }?.codec?.lowercase(),
     )
 }

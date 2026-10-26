@@ -14,6 +14,8 @@ import app.vibeyfin.data.vault.TokenVault
 import app.vibeyfin.data.download.IosBackgroundTransfer
 import app.vibeyfin.data.download.IosDownloadFiles
 import app.vibeyfin.data.download.IosDownloadScheduler
+import app.vibeyfin.data.download.IosVideoConverter
+import app.vibeyfin.domain.VideoConverter
 import app.vibeyfin.data.platform.IosNetworkMonitor
 import app.vibeyfin.domain.DownloadRunner
 import app.vibeyfin.domain.ExternalVideoTransfer
@@ -51,6 +53,8 @@ actual fun platformModule(): Module = module {
     single<DownloadFiles> { get<IosDownloadFiles>() }
     single { IosBackgroundTransfer(get(), get()) }
     single<ExternalVideoTransfer> { get<IosBackgroundTransfer>() }
+    // The remux that makes a downloaded MKV playable is Swift and FFmpeg: it registers itself at start (`registerVideoConverter`).
+    single<VideoConverter> { IosVideoConverter(get()) }
     single<DownloadScheduler> { IosDownloadScheduler(get(ApplicationScope), get()) { get<DownloadRunner>() } }
     single<ProgressSyncScheduler> { NoProgressSyncScheduler }
 }
