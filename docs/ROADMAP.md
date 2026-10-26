@@ -134,6 +134,10 @@ _Exit: finish an episode on one device, resume on another._
 - [x] HDR and format badge on the detail page and in the player, from `MediaStreams`
   (`VideoRangeType`, codec, resolution)
 
+Also built since: skips in a row add up, and the player shows the total ("30s") by the side the video moved, from the
+buttons and from a double-tap; on Android that is the platform's own double-tap seek look (a half circle, running chevrons)
+and the skip arrows turn on a press. Android built; iOS Kotlin compiled, Swift not built.
+
 _Exit: skip-intro and scrub previews working end to end._
 
 ### Phase 4 — Browse & discovery
@@ -257,7 +261,9 @@ _Depends on Phase 4 (Home rows) and Phase 6 (profiles and the first settings). S
 - [ ] Navigation: choose and order the tabs, set the start tab, hide libraries
 - [ ] Player preferences, extending Phase 6's quality and subtitle settings: seek step (default
   10s), gestures on or off, auto-skip intro and credits (off by default), auto-advance and "are you still
-  watching?" on or off, default audio and subtitle language
+  watching?" on or off, default audio and subtitle language. _Built already (Skipping and autoplay page):
+  skip back and forward steps, auto-skip intros and recaps, "Still watching" Off or after 2 to 5 episodes,
+  Buffer ahead. Still to do: gestures, auto-advance off, default languages_
 - [ ] Motion: looping motion (skeleton shimmer) is off by default and an opt-in
   "Looping motion" setting, and is never on when the system asks for Reduce Motion. One-shot motion (the
   shared-element transition, crossfades) is on and follows the system setting
@@ -312,7 +318,8 @@ promised by accident.
 ### Phase 8 — Seerr integration _(later)_
 
 Search, discover and request titles that are not in the library yet, from inside the app.
-_Depends on Phase 4 (search and detail page)._
+_Depends on Phase 4 (search and detail page)._ First part planned in `docs/plans/18-seerr.md` (connect,
+search, request, all in native screens; it settles the sign-in question below).
 
 - [ ] Connect a Seerr instance (base URL, optional, saved per profile): check it with `GET /status`
 - [ ] Sign in to Seerr as the Jellyfin user: `POST /auth/jellyfin` sets a `connect.sid` session

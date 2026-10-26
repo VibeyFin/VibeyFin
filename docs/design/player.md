@@ -13,12 +13,13 @@ Apple's scheme: **white on Liquid Glass, never aqua.** Aqua is only the scrubber
 - **Transport**, centered: `gobackward.<n>`, play / pause, `goforward.<n>` as glass discs of 56 / 76 / 56pt at the default text size (they scale with Dynamic Type). `n` comes from Settings → Playback (default 10 back, 10 forward).
 - **Bottom:** scrubber with aqua progress, no thumb, thickening to 10pt while dragged; elapsed left, remaining right (`-12:30`), tabular numerals; trickplay thumbnail and timestamp above the bar while dragging. The **buffered segment** is white at about 35% opacity between the aqua fill and the track, ending at the loaded position (`loadedTimeRanges`).
 - **Stalled:** while the player waits for data a white `ProgressView` replaces the three transport buttons, centred; the top bar and scrubber stay.
+- **Skip total:** after a skip, a "10s" capsule on the `scrim` (`.title3`, semibold, tabular numerals) by the side the video moved, holding the running total of skips in a row (`skipRun`); it fades in and out and is hidden from VoiceOver.
 - **Skip offer** ("Skip Intro", "Skip Recap", "Skip Credits"): a white glass capsule with a `forward.end` symbol, bottom-right above the scrubber. Shown for the whole segment, also with the controls hidden (then it is the only thing on screen, over a faint bottom scrim).
 - **Up next:** takes the skip offer's corner. A glass card (`radius-ios-card`): the next episode's thumbnail with a seconds-left badge, "Up Next", the title, a **white filled** "Play Now" capsule and a glass "Watch Credits".
 
 ## Android (Compose, Media3)
 
-M3 on the scrim, no glass. Top app bar: `←`, title and meta line, speed, audio and subtitles. Transport: three clickable 48 dp buttons, the two skip buttons a generic arrow glyph with the profile's seconds drawn as text over it (not Material `replay_10` `IconButton`s, which exist for a few values only), and play / pause on a `scrim-strong` disc, all `ink` on the scrim. Scrubber: M3 look with a bar handle and a buffered segment (white at about 35% opacity, up to `player.bufferedPosition`) between the aqua fill and the track. While stalled, a white `CircularProgressIndicator` replaces the three transport buttons. Skip offer: a tonal button (`accent-soft`). Up next: a `surface-2` card with a filled "Play now" and a tonal "Watch credits".
+M3 on the scrim, no glass. Top app bar: `←`, title and meta line, speed, audio and subtitles. Transport: three clickable 48 dp buttons, the two skip buttons a generic arrow glyph with the profile's seconds drawn as text over it (not Material `replay_10` `IconButton`s, which exist for a few values only), and play / pause on a `scrim-strong` disc, all `ink` on the scrim. A press turns a skip arrow about 30° the way it points and springs it back. After any skip, the side the video moved shows Android's own double-tap seek feedback (`SeekRipple.kt`): a light half circle (`ink` at 12%) curving in from that edge over about 38% of the width, a ripple for each tap, three chevrons lighting up in turn in the skip direction and the running total ("30s") under them. It takes no touches and is hidden from TalkBack. Scrubber: M3 look with a bar handle and a buffered segment (white at about 35% opacity, up to `player.bufferedPosition`) between the aqua fill and the track. While stalled, a white `CircularProgressIndicator` replaces the three transport buttons. Skip offer: a tonal button (`accent-soft`). Up next: a `surface-2` card with a filled "Play now" and a tonal "Watch credits".
 
 ## Settings → Playback (per profile)
 
@@ -38,7 +39,7 @@ Choices are the values SF Symbols has a `gobackward.<n>` / `goforward.<n>` glyph
 
 ## What changes in the code (for the plan)
 
-- Shared: `ProfileSettings` (per profile) with skip back / forward and auto-skip, exposed on `PlaybackUiState`; `Strings` for the new labels.
+- Shared: `ProfileSettings` (per profile) with skip back / forward and auto-skip, exposed on `PlaybackUiState`; `Strings` for the new labels. `PlaybackUiState.skipRun` (`SkipRun`: side, how far it moved, taps) adds up skips in a row and clears after `SKIP_RUN_WINDOW` (1 s).
 - iOS: `PlayerView` top bar regrouped into the glass cluster, controls recoloured to `.primary`, transport gains the two skip buttons, skip offer and up next restyled.
 - Android: transport gains the two skip buttons; top bar order as above.
 - Both: segment skip already exists in the shared model; confirm it shows on the test server (an intro and outro segment fixture in `make-media.sh` if missing).

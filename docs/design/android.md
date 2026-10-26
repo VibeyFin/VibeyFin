@@ -23,7 +23,8 @@ A Jetpack Compose app that follows Material 3. Use the `android` theme and `m3-*
 | Home hero (optional) | A single rounded card, never a carousel or auto-advancing (see `screens.md` **Home hero**) |
 | Messages | `Snackbar` with an action ("Try again" for a failed write); the action is plain text, not aqua |
 | Casting | Google Cast button + MediaRouter |
-| Player skip buttons | clickable 48 dp buttons with a generic arrow glyph and the seconds as text over it (seconds from the profile's skip settings; 10 back, 10 forward by default), play / pause between them |
+| Player skip buttons | clickable 48 dp buttons with a generic arrow glyph and the seconds as text over it (seconds from the profile's skip settings; 10 back, 10 forward by default), play / pause between them. A press turns the arrow about 30° its way and springs it back |
+| Skip feedback | `SeekRipple`: Android's double-tap seek look, a half circle on the side the video moved with a ripple per tap, three running chevrons and the total skipped so far ("30s"); shown for buttons and double-taps alike |
 | Settings rows | Toggle: a `Switch` row. Choice: a `ChoiceRow`, a menu (`DropdownMenu`) with the value at the right, never a sub-page. Link: a row with a chevron to a sub-page. Rows sit in rounded `surfaceContainerLow` cards with a leading tonal icon circle and group titles in aqua text |
 | Quality setting | the one checklist: inline rows in its own section (title once, footer below), the chosen row an `accent-soft` pill with no tick |
 | Settings on tablets | from the 600dp tablet breakpoint a plain two-column layout (root left, page right, detail capped at about 640 and centred), the selected root row an `accent-soft` pill that follows the tapped row. Not `material3-adaptive`. Below it, push navigation |

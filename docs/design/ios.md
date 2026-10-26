@@ -35,6 +35,7 @@ Glass is the **navigation and controls layer** floating above content — never 
 | Share | `ShareLink` |
 | Casting | `AVRoutePickerView` (AirPlay) |
 | Player skip buttons | `gobackward.<n>` / `goforward.<n>` SF Symbols, `n` from the profile's skip settings (back 10, forward 10 by default) |
+| Skip feedback | `SeekFlash`: a "10s" capsule on the scrim by the side the video moved, holding the total of skips in a row; shown for buttons and double-taps alike |
 | Settings rows | inset grouped list, small-caps section headers, footers carrying the help text; `Toggle` tinted aqua; a choice is a `Picker` with `.pickerStyle(.menu)`, never a sub-page; a link is a `NavigationLink` row |
 | Quality setting | the one checklist: inline rows in its own section (title once, footer below), the chosen row an `accent-soft` pill with no tick |
 | Settings on iPad | at regular width `NavigationSplitView`: the root as the sidebar (system selection following the tapped row), the page in the detail column capped at about 640 and centred; the back chevron is in the sidebar only. At compact width it is the phone's `NavigationStack` |

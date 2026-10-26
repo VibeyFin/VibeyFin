@@ -34,7 +34,8 @@ Targets: `androidTarget`, `iosArm64`, `iosSimulatorArm64`.
 - Networking: Ktor client + kotlinx.serialization (OkHttp engine on Android, Darwin on iOS).
 - UDP discovery: `ktor-network` sockets.
 - Storage: Room KMP with the bundled SQLite driver; DataStore Preferences KMP for device-wide prefs.
-- Images: Coil 3 on Android. On iOS, SwiftUI's `AsyncImage` or a loader chosen when images land (ask first).
+- Images: Coil 3 on Android. On iOS, SwiftUI's `AsyncImage` (`Components/Artwork.swift`); ask before adding an
+  image-loading library.
 - Playback: Media3 ExoPlayer on Android (`exoplayer`, `exoplayer-hls`, `ui`, `session`), AVPlayer on iOS. The
   player is native and driven by the shared `PlaybackViewModel`; there is no shared player abstraction.
 - Tests: `kotlin.test`, `kotlinx-coroutines-test`, Ktor `MockEngine`.
