@@ -11,7 +11,6 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewmodel.CreationExtras
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.domain.LiveDiagnostics
-import app.vibeyfin.domain.NowPlayingState
 import app.vibeyfin.domain.PlayMethod
 import app.vibeyfin.testing.FakeJellyfin
 import app.vibeyfin.testing.HLS_PATH
@@ -98,7 +97,7 @@ class PlaybackViewModelTest {
         countdownStep: Duration = 1.hours,
     ) = viewModels.track(
         PlaybackViewModel(
-            id, app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.nowPlaying, app.binge,
+            id, app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge,
             retryDelays, startOver, autoAdvance, countdownStep,
         ),
     )
@@ -682,7 +681,7 @@ class PlaybackViewModelTest {
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =
-                    PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.nowPlaying, app.binge) as T
+                    PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge) as T
             },
         )[PlaybackViewModel::class]
         viewModel.uiState.first { it.stream != null }
@@ -700,38 +699,9 @@ class PlaybackViewModelTest {
         object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =
-                PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.nowPlaying, app.binge) as T
+                PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge) as T
         },
     )[PlaybackViewModel::class]
-
-    @Test
-    fun leavingTheScreenWithoutClosingClearsNowPlaying() = runTest {
-        server()
-        val store = ViewModelStore()
-        val viewModel = clearableViewModel(store)
-        viewModel.uiState.first { it.stream != null }
-        viewModel.onPlaying(1_000)
-        assertNotNull(app.nowPlaying.state.value)
-
-        store.clear()
-
-        assertNull(app.nowPlaying.state.value)
-    }
-
-    @Test
-    fun leavingTheScreenKeepsNowPlayingOfAnotherItem() = runTest {
-        server()
-        val store = ViewModelStore()
-        val viewModel = clearableViewModel(store)
-        viewModel.uiState.first { it.stream != null }
-        viewModel.onPlaying(1_000)
-        // Another player already shows something else.
-        app.nowPlaying.update(NowPlayingState("other", "Other", null, playing = true, positionMs = 0))
-
-        store.clear()
-
-        assertEquals("other", app.nowPlaying.state.value?.itemId)
-    }
 
     // -- audio and subtitle selection --
 
@@ -1592,27 +1562,6 @@ class PlaybackViewModelTest {
         vm.onBackgrounded(4_000)
 
         assertEquals(1, jellyfin.awaitRequests("POST", "/Sessions/Playing/Stopped").size)
-    }
-
-    @Test
-    fun `NowPlaying reflects play and pause and clears on close`() = runTest {
-        server()
-        val vm = viewModel()
-        vm.uiState.first { it.stream != null }
-
-        vm.onPlaying(1_000)
-        val playing = assertNotNull(app.nowPlaying.state.value)
-        assertEquals("m1", playing.itemId)
-        assertEquals("Heat", playing.title)
-        assertTrue(playing.playing)
-
-        vm.onPaused(2_000)
-        val paused = assertNotNull(app.nowPlaying.state.value)
-        assertFalse(paused.playing)
-        assertEquals(2_000L, paused.positionMs)
-
-        vm.onClosed(2_000)
-        assertNull(app.nowPlaying.state.value)
     }
 
     // "Are you still watching?": the card's countdown is held back once enough episodes started by themselves.

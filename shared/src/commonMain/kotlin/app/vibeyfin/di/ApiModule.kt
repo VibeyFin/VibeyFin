@@ -9,7 +9,6 @@ import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.BingeCounter
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.LibraryRepository
-import app.vibeyfin.domain.NowPlaying
 import app.vibeyfin.domain.PlaybackRecovery
 import app.vibeyfin.domain.PlaybackReporter
 import app.vibeyfin.domain.PlaybackRepository
@@ -65,5 +64,4 @@ fun apiModule() = module {
 
     // Singles: both must survive a new PlaybackViewModel.
     single { BingeCounter() }
-    single { NowPlaying() }
 }

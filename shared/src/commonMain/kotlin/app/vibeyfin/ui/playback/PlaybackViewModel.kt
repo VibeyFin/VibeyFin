@@ -8,8 +8,6 @@ import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.DynamicRange
 import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.LiveDiagnostics
-import app.vibeyfin.domain.NowPlaying
-import app.vibeyfin.domain.NowPlayingState
 import app.vibeyfin.domain.PlaybackDiagnostics
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.toDiagnostics
@@ -244,7 +242,6 @@ class PlaybackViewModel(
     connection: ConnectionManager,
     private val watch: WatchRepository,
     private val profileSettings: ProfileSettings,
-    private val nowPlaying: NowPlaying,
     private val binge: BingeCounter,
     private val retryDelays: List<Duration> = NETWORK_RETRY_DELAYS,
     private val startOver: Boolean = false,
@@ -281,9 +278,6 @@ class PlaybackViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlaybackUiState())
 
     private var lastPositionMs = 0L
-
-    /** The player is playing (not paused), as last told; what [nowPlaying] shows. */
-    private var playingNow = false
 
     /** The item has been read, so where to start is known and a retry doesn't need to ask again. */
     private var started = false
@@ -421,16 +415,12 @@ class PlaybackViewModel(
     /** The player is playing: it started, or resumed. */
     fun onPlaying(positionMs: Long) {
         lastPositionMs = positionMs
-        playingNow = true
         reporter.playing(positionMs)
-        publishNowPlaying()
     }
 
     fun onPaused(positionMs: Long) {
         lastPositionMs = positionMs
-        playingNow = false
         reporter.paused(positionMs)
-        publishNowPlaying()
     }
 
     fun onSeeked(positionMs: Long) {
@@ -481,7 +471,6 @@ class PlaybackViewModel(
     fun onPosition(positionMs: Long) {
         lastPositionMs = positionMs
         reporter.position(positionMs)
-        publishNowPlaying()
         checkUpNext(positionMs)
         refreshSkipOffer()
         if ((networkRetries > 0 || reauthorized) && positionMs - failedAtMs >= RECOVERED_AFTER_MS) {
@@ -497,7 +486,6 @@ class PlaybackViewModel(
     fun onEnded(positionMs: Long) {
         lastPositionMs = positionMs
         reporter.stop(positionMs)
-        nowPlaying.clear()
         ended = true
         val upcoming = next
         if (autoAdvance && upcoming != null && !upNextDismissed) {
@@ -517,7 +505,6 @@ class PlaybackViewModel(
         if (inPictureInPicture) return
         lastPositionMs = positionMs
         reporter.stop(positionMs)
-        nowPlaying.clear()
         cancelCountdown()
         if (ended) content.update { it.copy(finished = true) }
     }
@@ -526,7 +513,6 @@ class PlaybackViewModel(
     fun onClosed(positionMs: Long) {
         lastPositionMs = positionMs
         reporter.stop(positionMs)
-        nowPlaying.clear()
         binge.reset()
         cancelCountdown()
     }
@@ -647,7 +633,6 @@ class PlaybackViewModel(
         // is queued, `Stopped` included, is still sent after the screen's scope is gone.
         reporter.stop(lastPositionMs)
         reporter.close()
-        nowPlaying.clear(itemId)
     }
 
     /** Reads the item for its title and where the user stopped, then opens it there. */
@@ -819,12 +804,6 @@ class PlaybackViewModel(
     }
 
     /** The plan's diagnostics with whatever the player measured on top. */
-    private fun publishNowPlaying() {
-        val shown = item ?: return
-        val state = content.value
-        nowPlaying.update(NowPlayingState(shown.id, state.title, state.subtitle, playingNow, lastPositionMs))
-    }
-
     private fun refreshDiagnostics() {
         val current = plan ?: return
         val base = current.toDiagnostics(audioNow)

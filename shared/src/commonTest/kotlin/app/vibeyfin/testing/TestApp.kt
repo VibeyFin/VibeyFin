@@ -13,7 +13,6 @@ import app.vibeyfin.domain.PendingReports
 import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.ProfilePolicy
 import app.vibeyfin.domain.hashPin
-import app.vibeyfin.domain.NowPlaying
 import app.vibeyfin.domain.PlaybackRecovery
 import app.vibeyfin.domain.PlaybackReporter
 import app.vibeyfin.domain.PlaybackRepository
@@ -58,7 +57,6 @@ class TestApp {
     val watch = WatchRepository(connection, watchChanges)
     val capabilities = FakePlaybackCapabilities()
     val profileSettings = ProfileSettings(database.accountDao(), connection)
-    val nowPlaying = NowPlaying()
     val binge = BingeCounter()
     val playback = PlaybackRepository(connection, capabilities, ClientInfoProvider(FakeDeviceInfo(), preferences), profileSettings)
 
