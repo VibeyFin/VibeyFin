@@ -15,14 +15,25 @@ import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.DevicePreferences
+import app.vibeyfin.domain.DownloadFiles
+import app.vibeyfin.domain.DownloadRepository
+import app.vibeyfin.domain.DownloadRunner
+import app.vibeyfin.domain.DownloadScheduler
 import app.vibeyfin.domain.LanDiscovery
 import app.vibeyfin.domain.NewTitlesPoller
+import app.vibeyfin.domain.NetworkMonitor
+import app.vibeyfin.domain.OfflineMode
 import app.vibeyfin.domain.PlaybackCapabilitiesSource
+import app.vibeyfin.domain.ProgressSyncScheduler
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.ServerResolver
 import app.vibeyfin.testing.FakeDeviceInfo
+import app.vibeyfin.testing.FakeDownloadFiles
+import app.vibeyfin.testing.FakeDownloadScheduler
 import app.vibeyfin.testing.FakeLanDiscovery
+import app.vibeyfin.testing.FakeNetworkMonitor
 import app.vibeyfin.testing.FakePlaybackCapabilities
+import app.vibeyfin.testing.FakeProgressSyncScheduler
 import app.vibeyfin.testing.FakeTokenVault
 import app.vibeyfin.testing.InMemoryPreferencesDataStore
 import app.vibeyfin.ui.addserver.AddServerViewModel
@@ -76,6 +87,10 @@ class AppModuleTest {
         single<DeviceInfo> { FakeDeviceInfo() }
         single<LanDiscovery> { FakeLanDiscovery() }
         single<PlaybackCapabilitiesSource> { FakePlaybackCapabilities() }
+        single<NetworkMonitor> { FakeNetworkMonitor() }
+        single<DownloadFiles> { FakeDownloadFiles() }
+        single<DownloadScheduler> { FakeDownloadScheduler() }
+        single<ProgressSyncScheduler> { FakeProgressSyncScheduler() }
     }
 
     @Test
@@ -128,6 +143,9 @@ class AppModuleTest {
 
         koin.get<ServerResolver>()
         koin.get<AuthRepository>()
+        assertEquals(false, koin.get<OfflineMode>().isOffline.value)
+        koin.get<DownloadRepository>()
+        koin.get<DownloadRunner>()
         assertEquals(ConnectionState.Disconnected, koin.get<ConnectionManager>().state.value)
         val info = koin.get<ClientInfoProvider>().current()
 

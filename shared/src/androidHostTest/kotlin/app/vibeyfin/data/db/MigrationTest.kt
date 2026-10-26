@@ -76,10 +76,16 @@ class MigrationTest {
             // Settings a profile never changed take the default of every column added since.
             assertEquals(
                 1,
-                database.count("account_settings", "userId = 'u1' AND showPlaybackStats = 0 AND bingeThreshold = 3 AND homeGenreRows = 0 AND showHomeHero = 1 AND skipBackSeconds = 10 AND skipForwardSeconds = 10 AND autoSkipSegments = 0 AND bufferAheadSeconds = 20 AND maxStreamingBitrate = 0 AND captionsFollowSystem = 1 AND subtitleSize = 1 AND subtitleTextColor = 0 AND subtitleBackground = 1 AND kidsProfile = 0 AND pinHash IS NULL AND pinSalt IS NULL AND pinOpenProfile = 1 AND pinOpenSettings = 1 AND pinSwitchProfile = 1 AND notificationsEnabled = 0 AND notificationScope = 0 AND pictureInPicture = 1"),
+                database.count("account_settings", "userId = 'u1' AND showPlaybackStats = 0 AND bingeThreshold = 3 AND homeGenreRows = 0 AND showHomeHero = 1 AND skipBackSeconds = 10 AND skipForwardSeconds = 10 AND autoSkipSegments = 0 AND bufferAheadSeconds = 20 AND maxStreamingBitrate = 0 AND captionsFollowSystem = 1 AND subtitleSize = 1 AND subtitleTextColor = 0 AND subtitleBackground = 1 AND kidsProfile = 0 AND pinHash IS NULL AND pinSalt IS NULL AND pinOpenProfile = 1 AND pinOpenSettings = 1 AND pinSwitchProfile = 1 AND notificationsEnabled = 0 AND notificationScope = 0 AND pictureInPicture = 1 " +
+                    "AND downloadOverMobile = 0 AND autoCleanWatched = 0 AND storageLimitMb = 0"),
                 "settings defaults, from v$version",
             )
-            if (version >= 3) assertEquals(1, database.count("pending_reports", "itemId = 'm1' AND positionTicks = 1200"), "pending report, from v$version")
+            if (version >= 3) {
+                assertEquals(1, database.count("pending_reports", "itemId = 'm1' AND positionTicks = 1200"), "pending report, from v$version")
+                // The offline columns take their defaults on a report that existed before them.
+                assertEquals(1, database.count("pending_reports", "itemId = 'm1' AND played = 0 AND watchedAt = 0"), "pending report defaults, from v$version")
+            }
+            assertEquals(0, database.count("downloads"), "no downloads yet, from v$version")
         } finally {
             database.close()
         }
@@ -107,5 +113,7 @@ class MigrationTest {
 
     @Test fun version11MigratesToTheCurrentSchema() = assertMigratesFrom(11)
 
-    @Test fun theCurrentVersionOpensAsItIs() = assertMigratesFrom(12)
+    @Test fun version12MigratesToTheCurrentSchema() = assertMigratesFrom(12)
+
+    @Test fun theCurrentVersionOpensAsItIs() = assertMigratesFrom(13)
 }

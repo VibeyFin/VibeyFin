@@ -10,12 +10,15 @@ data class UserDto(
     @SerialName("Name") val name: String? = null,
     @SerialName("PrimaryImageTag") val primaryImageTag: String? = null,
     @SerialName("HasPassword") val hasPassword: Boolean? = null,
+    /** What the server lets this user do; only sent for a signed-in user. */
     @SerialName("Policy") val policy: UserPolicyDto? = null,
 )
 
-/** `UserPolicyDto`: only the limits an administrator can put on a user. */
+/** `UserPolicy`, with only the fields we read: the limits an administrator can put on a user, and whether the user may download. */
 @Serializable
 data class UserPolicyDto(
+    /** Whether the user may download media. The server's own default, when it leaves the field out, is that they may. */
+    @SerialName("EnableContentDownloading") val enableContentDownloading: Boolean = true,
     @SerialName("MaxParentalRating") val maxParentalRating: Int? = null,
     @SerialName("BlockedTags") val blockedTags: List<String>? = null,
     @SerialName("AccessSchedules") val accessSchedules: List<AccessScheduleDto>? = null,

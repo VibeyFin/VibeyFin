@@ -144,6 +144,15 @@ class AccountSettingsEntity(
     /** Whether the player offers picture-in-picture and starts it when the app is left. Off pauses on leaving. */
     @ColumnInfo(defaultValue = "1")
     val pictureInPicture: Boolean = true,
+    /** Whether downloads may use mobile data (or any metered network). Off: they wait for Wi-Fi. */
+    @ColumnInfo(defaultValue = "0")
+    val downloadOverMobile: Boolean = false,
+    /** Whether a download is removed once the user has watched it. */
+    @ColumnInfo(defaultValue = "0")
+    val autoCleanWatched: Boolean = false,
+    /** The most the profile's downloads may take, in megabytes; 0 is no limit. */
+    @ColumnInfo(defaultValue = "0")
+    val storageLimitMb: Long = 0,
 )
 
 /** A profile's stored PIN: both null when it has none. */
@@ -162,8 +171,14 @@ const val NEW_PROFILE_HOME_GENRE_ROWS = 5
 const val PENDING_STOPPED = "stopped"
 
 /**
- * A report the server hasn't confirmed, kept so it survives a crash or a killed process. Today the only
- * [kind] is [PENDING_STOPPED]; offline progress and played marks (roadmap Phase 10) use the same table.
+ * [PendingReportEntity.kind] of what the user did to an item without a connection: where they stopped, and whether they finished it.
+ * There is one row per item and profile, the latest, with an empty `playSessionId`: the server never knew these sessions.
+ */
+const val PENDING_PROGRESS = "progress"
+
+/**
+ * A report the server hasn't confirmed, kept so it survives a crash or a killed process. A [kind] is
+ * [PENDING_STOPPED] or [PENDING_PROGRESS] (what was watched offline; roadmap Phase 10).
  * It belongs to the profile that made it, because that profile's token is the one that can send it.
  * A play session is one row: it is added when playback starts, its position follows playback, and it
  * is deleted once the server has answered.
@@ -178,7 +193,7 @@ const val PENDING_STOPPED = "stopped"
             onDelete = ForeignKey.CASCADE,
         ),
     ],
-    indices = [Index(value = ["serverId", "userId", "kind", "playSessionId"], unique = true)],
+    indices = [Index(value = ["serverId", "userId", "kind", "itemId", "playSessionId"], unique = true)],
 )
 class PendingReportEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -191,6 +206,111 @@ class PendingReportEntity(
     val positionTicks: Long,
     val failed: Boolean,
     val updatedAt: Long,
+    /** [PENDING_PROGRESS] only: the user finished the item. */
+    @ColumnInfo(defaultValue = "0")
+    val played: Boolean = false,
+    /** [PENDING_PROGRESS] only: when the user last watched it, epoch milliseconds. It decides whether the server's own record is newer. */
+    @ColumnInfo(defaultValue = "0")
+    val watchedAt: Long = 0,
+)
+
+/** [DownloadEntity.state]: waiting for its turn, or for a worker to start. */
+const val DOWNLOAD_QUEUED = "queued"
+
+/** [DownloadEntity.state]: bytes are coming in. */
+const val DOWNLOAD_RUNNING = "running"
+
+/** [DownloadEntity.state]: the user paused it. */
+const val DOWNLOAD_PAUSED = "paused"
+
+/** [DownloadEntity.state]: it may go on once the network is one it is allowed to use (Wi-Fi, unless the profile allows mobile data). */
+const val DOWNLOAD_WAITING_FOR_NETWORK = "waiting"
+
+/** [DownloadEntity.state]: it stopped with [DownloadEntity.error]; the user can try again. */
+const val DOWNLOAD_FAILED = "failed"
+
+/** [DownloadEntity.state]: the file and its artwork are on the device. */
+const val DOWNLOAD_DONE = "done"
+
+/**
+ * A movie or an episode the profile wants on the device, and how far it is. A series or a season is not a row: it is
+ * its episodes. Downloads belong to a profile, so removing the profile removes them (the files are cleaned up by the
+ * repository, which knows their paths). [bytesTotal] is -1 until the server has said how big the file is.
+ */
+@Entity(
+    tableName = "downloads",
+    primaryKeys = ["serverId", "userId", "itemId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = AccountEntity::class,
+            parentColumns = ["serverId", "userId"],
+            childColumns = ["serverId", "userId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+)
+class DownloadEntity(
+    val serverId: String,
+    val userId: String,
+    val itemId: String,
+    /** `Movie` or `Episode`, the [app.vibeyfin.domain.model.ItemKind] name. */
+    val kind: String,
+    val seriesId: String?,
+    val seasonId: String?,
+    val state: String,
+    val bytesDone: Long,
+    val bytesTotal: Long,
+    val mediaSourceId: String?,
+    val container: String?,
+    /** The file's version on the server when it was started, so a resume can tell it changed. */
+    val etag: String?,
+    /** The file, relative to the downloads folder; it is the `.part` file until the download is done. */
+    val filePath: String?,
+    /** Why it failed, as a short code the repository maps to a message; null unless [state] is [DOWNLOAD_FAILED]. */
+    val error: String?,
+    val addedAt: Long,
+    val updatedAt: Long,
+    val completedAt: Long?,
+)
+
+/**
+ * What the screens need to show a downloaded item without the server: the columns the lists sort and search by, and
+ * the rest of it (cast, streams, local artwork, subtitle files) in [snapshotJson], whose shape the repository owns so it can
+ * change without a migration. A series and a season are kept too ([kind]), as the parents their downloaded episodes sit under.
+ * [positionTicks] and [played] are the profile's own record of the item, the offline fallback: the server answers once online.
+ */
+@Entity(
+    tableName = "download_items",
+    primaryKeys = ["serverId", "userId", "itemId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = AccountEntity::class,
+            parentColumns = ["serverId", "userId"],
+            childColumns = ["serverId", "userId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index(value = ["serverId", "userId", "seriesId"])],
+)
+class DownloadItemEntity(
+    val serverId: String,
+    val userId: String,
+    val itemId: String,
+    /** The [app.vibeyfin.domain.model.ItemKind] name: `Movie`, `Series`, `Season` or `Episode`. */
+    val kind: String,
+    val title: String,
+    val seriesId: String?,
+    val seriesName: String?,
+    val seasonId: String?,
+    val seasonNumber: Int?,
+    val episodeNumber: Int?,
+    /** Lower-case title, show name and cast names, so offline search is one LIKE. */
+    val searchText: String,
+    val positionTicks: Long,
+    val played: Boolean,
+    /** When the position was last set, by the server (when the snapshot was taken) or by watching offline. */
+    val userDataAt: Long,
+    val snapshotJson: String,
 )
 
 /** An item the profile was already notified about, so it is never notified twice. Old rows are pruned by [notifiedAt]. */

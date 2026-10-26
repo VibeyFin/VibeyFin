@@ -6,6 +6,7 @@ import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.DevicePreferences
+import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.PinGates
 import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.ProfilePolicy
@@ -73,6 +74,7 @@ class SettingsViewModel(
     private val pins: PinLock,
     private val policy: ProfilePolicy,
     auth: AuthRepository,
+    private val downloads: DownloadRepository,
     private val applicationScope: CoroutineScope,
     private val appVersion: String = "",
     private val subtitleStyleApplies: Boolean = true,
@@ -153,6 +155,9 @@ class SettingsViewModel(
         live(requestNotificationPermission),
         live(notificationsBlocked),
         perProfile(profileSettings.pictureInPicture),
+        unread(preferences.offlineMode),
+        perProfile(profileSettings.downloadOverMobile),
+        perProfile(profileSettings.storageLimitMb),
     )
 
     /** Eager, so the reads start with the ViewModel and not when the screen first draws. */
@@ -205,6 +210,9 @@ class SettingsViewModel(
             autoSkipSegments = read(AUTO_SKIP) ?: defaults.autoSkipSegments,
             bufferAheadSeconds = read(BUFFER_AHEAD) ?: defaults.bufferAheadSeconds,
             pictureInPicture = read(PICTURE_IN_PICTURE) ?: defaults.pictureInPicture,
+            offlineMode = v[OFFLINE_MODE] as Boolean? ?: defaults.offlineMode,
+            downloadOverMobile = read(DOWNLOAD_OVER_MOBILE) ?: defaults.downloadOverMobile,
+            storageLimitGb = read<Long>(STORAGE_LIMIT)?.let { (it / MB_PER_GB).toInt() } ?: defaults.storageLimitGb,
             maxStreamingBitrate = read(QUALITY) ?: defaults.maxStreamingBitrate,
             captionsFollowSystem = read(CAPTIONS_FOLLOW_SYSTEM) ?: defaults.captionsFollowSystem,
             subtitleSize = read(SUBTITLE_SIZE) ?: defaults.subtitleSize,
@@ -238,6 +246,12 @@ class SettingsViewModel(
                 SettingKey.ShowHero -> profileSettings.setShowHomeHero(value)
                 SettingKey.AutoSkip -> profileSettings.setAutoSkipSegments(value)
                 SettingKey.PictureInPicture -> profileSettings.setPictureInPicture(value)
+                SettingKey.OfflineMode -> preferences.setOfflineMode(value)
+                // A download that waits for Wi-Fi is looked at again at once.
+                SettingKey.DownloadOverMobile -> {
+                    profileSettings.setDownloadOverMobile(value)
+                    downloads.schedule()
+                }
                 SettingKey.CaptionsFollowSystem -> profileSettings.setCaptionsFollowSystem(value)
                 SettingKey.KidsProfile -> if (value) {
                     profileSettings.setKidsProfile(true)
@@ -274,6 +288,11 @@ class SettingsViewModel(
                 SettingKey.SubtitleColor -> profileSettings.setSubtitleTextColor(value)
                 SettingKey.SubtitleBackground -> profileSettings.setSubtitleBackground(value)
                 SettingKey.NotificationScope -> profileSettings.setNotificationScope(value)
+                // In gigabytes; 0 is no limit.
+                SettingKey.StorageLimit -> {
+                    profileSettings.setStorageLimitMb(value * MB_PER_GB)
+                    downloads.schedule()
+                }
                 else -> Unit
             }
         }
@@ -403,3 +422,8 @@ private const val NOTIFICATION_SCOPE = 24
 private const val REQUEST_PERMISSION = 25
 private const val NOTIFICATIONS_BLOCKED = 26
 private const val PICTURE_IN_PICTURE = 27
+private const val OFFLINE_MODE = 28
+private const val DOWNLOAD_OVER_MOBILE = 29
+private const val STORAGE_LIMIT = 30
+
+private const val MB_PER_GB = 1_000L

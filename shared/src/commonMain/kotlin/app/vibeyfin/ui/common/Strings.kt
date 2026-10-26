@@ -716,4 +716,107 @@ object Strings {
     /** The summary's body: the episodes this check found, plus whose they are as in [addedTitleNotificationBody]. */
     fun addedEpisodesSummaryBody(titles: List<String>, profileName: String?) =
         addedTitleNotificationBody(titles.joinToString(", "), profileName)
+
+    // Downloads and offline mode
+    val downloadsEmptyTitle = "Nothing downloaded yet"
+    val downloadsEmptyHelp = "Download a movie or an episode to watch it without a connection."
+    val downloaded = "Downloaded"
+    val downloading = "Downloading"
+    val downloadQueued = "Waiting to download"
+    val downloadWaitingForWifi = "Waiting for Wi-Fi"
+    val downloadWaitingForNetwork = "Waiting for a connection"
+    val downloadWaitingForServer = "Waiting for the server"
+    val downloadPaused = "Paused"
+    val downloadFailed = "Download failed"
+    val remove = "Remove"
+    val removeDownload = "Remove download"
+    val removeAllDownloads = "Remove all downloads"
+    val downloadEpisode = "Download episode"
+    val downloadSeason = "Download season"
+    val downloadAllEpisodes = "Download all episodes"
+    val downloadUnwatchedOnly = "Only episodes I haven't watched"
+
+    /** A file size in the units people read: "850 MB", "1.4 GB". Decimal units, as the server and the system's storage screen use. */
+    fun fileSize(bytes: Long): String {
+        val kb = 1_000.0
+        val mb = kb * 1_000
+        val gb = mb * 1_000
+        val value = bytes.coerceAtLeast(0).toDouble()
+        return when {
+            value >= gb -> "${tenths(value / gb)} GB"
+            value >= mb -> "${(value / mb).roundToInt()} MB"
+            value >= kb -> "${(value / kb).roundToInt()} KB"
+            else -> "${value.toInt()} B"
+        }
+    }
+
+    private fun tenths(value: Double): String {
+        val rounded = (value * 10).roundToInt()
+        return "${rounded / 10}.${rounded % 10}"
+    }
+
+    /** The line under a download that is coming in; [total] is null until the server has said how big the file is. */
+    fun downloadProgress(done: Long, total: Long?) =
+        if (total == null || total <= 0) fileSize(done) else "${fileSize(done)} of ${fileSize(total)}"
+
+    fun downloadStorageUsed(bytes: Long) = "${fileSize(bytes)} used"
+    fun downloadConfirmTitle(episodes: Int) = if (episodes == 1) "Download 1 episode?" else "Download $episodes episodes?"
+    fun downloadConfirmSize(bytes: Long) = "They take about ${fileSize(bytes)}."
+
+    /** What a screen reader says for a download's state; the sighted see an icon or a ring. */
+    fun downloadStateDescription(title: String, state: String) = "$title, $state"
+
+    val offlineBannerTitle = "You're offline"
+    val offlineBannerHelp = "Showing what you've downloaded."
+    val offlineByChoiceHelp = "Offline mode is on. Showing what you've downloaded."
+    val goOnline = "Go online"
+    val serverUnreachableBannerTitle = "Can't reach the server"
+    val useOffline = "Use offline"
+    val serverUnreachableBannerHelp = "You can still watch what you've downloaded."
+    val offlineModeTitle = "Offline mode"
+    val offlineModeHelp = "Use only your downloads, even when you're online."
+    val offlineSearchHint = "Search your downloads"
+    val offlineSearchPrompt = "Find something you've downloaded"
+    val offlineSearchEmpty = "Nothing you've downloaded matches. Try another word."
+    val downloadOverMobileTitle = "Download over mobile data"
+    val downloadOverMobileHelp = "Off: downloads wait for Wi-Fi. Applies to this profile."
+    val autoCleanWatchedTitle = "Remove downloads once watched"
+    val autoCleanWatchedHelp = "Free the space when you finish a download. Applies to this profile."
+    val storageLimitTitle = "Storage limit for downloads"
+    val storageLimitHelp = "New downloads wait when the limit is reached. Applies to this profile."
+    val storageLimitNone = "No limit"
+
+    /** The notification that shows while downloads run in the background. */
+    val downloadsChannelName = "Downloads"
+    val downloadsNotificationIdle = "Downloading"
+    fun downloadingNotificationTitle(title: String) = "Downloading $title"
+    fun downloadsWaiting(count: Int) = if (count == 1) "1 more waiting" else "$count more waiting"
+
+    // Downloads: the actions, the confirmations and the Downloads screen.
+    fun downloadedWithSize(bytes: Long) = if (bytes > 0) "$downloaded · ${fileSize(bytes)}" else downloaded
+    val pauseDownload = "Pause download"
+    val resumeDownload = "Resume download"
+    fun downloadSeasonNamed(season: String) = "Download $season"
+    fun removeDownloadsOf(count: Int) = if (count == 1) "Remove 1 download" else "Remove $count downloads"
+    fun downloadedCount(count: Int) = "$count downloaded"
+    fun downloadActionDescription(title: String, state: String) = "Download $title, $state"
+    val downloadConfirmAction = "Download"
+    val downloadNothingNew = "Everything here is already downloaded."
+    fun downloadConfirmSize(bytes: Long, episodes: Int) =
+        if (bytes > 0) "${if (episodes == 1) "It takes" else "They take"} about ${fileSize(bytes)}." else null
+    fun removeConfirmTitle(count: Int, title: String) = if (count == 1) "Remove $title?" else "Remove $count downloads?"
+    fun removeConfirmBody(bytes: Long) =
+        if (bytes > 0) "This frees ${fileSize(bytes)}. You can download it again later." else "You can download it again later."
+    val removeConfirmAction = "Remove"
+    fun showDownloadLine(episodes: Int, bytes: Long) =
+        listOfNotNull(if (episodes == 1) "1 episode" else "$episodes episodes", if (bytes > 0) fileSize(bytes) else null).joinToString(" · ")
+    fun seasonDownloadedCount(done: Int, total: Int) = "$done of $total downloaded"
+    val downloadSeasonButton = "Download season"
+
+    /** How long a download has left, from its speed: "Under 1m left", "7m left", "1h 20m left". */
+    fun downloadTimeLeft(seconds: Long) = if (seconds < 60) "Under 1m left" else timeLeftShort(seconds * 1_000)
+    val downloadLabelWaiting = "Waiting"
+    val downloadLabelFailed = "Failed"
+    fun downloadDescription(title: String) = "Download $title"
+    fun storageLimitGb(gb: Int) = "$gb GB"
 }

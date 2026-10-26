@@ -16,6 +16,15 @@ internal object LoadMessages {
     const val REMOVE_FROM_MY_LIST_FAILED = "Couldn't remove this from My List. Check your connection and try again."
     const val MARK_WATCHED_FAILED = "Couldn't mark this as watched. Check your connection and try again."
     const val MARK_UNWATCHED_FAILED = "Couldn't mark this as unwatched. Check your connection and try again."
+    const val DOWNLOAD_FORBIDDEN =
+        "This account isn't allowed to download. Ask the server's admin to turn downloads on for it."
+    const val DOWNLOAD_NO_SPACE = "There isn't enough space on this device. Remove a download or free some space, then try again."
+    const val DOWNLOAD_STORAGE_LIMIT = "This would go over your storage limit for downloads. Remove a download or raise the limit in Settings."
+    const val DOWNLOAD_INTERRUPTED = "The download stopped. Check your connection and try again."
+    const val DOWNLOAD_SIGN_IN = "Sign in again to go on with this download."
+    const val DOWNLOAD_NOT_ON_SERVER = "This is no longer on the server, so it can't be downloaded."
+    const val DOWNLOAD_NO_FILE = "This has no file to download."
+    const val NOT_DOWNLOADED = "This isn't downloaded, so it can't open without a connection."
     const val PLAYBACK_NETWORK = "Lost the connection to the server. Check your network and try again."
 
     fun forError(error: ApiError): String = when (error) {

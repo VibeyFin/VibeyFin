@@ -47,7 +47,7 @@ class ChildrenViewModelTest {
     private fun pageRequests() = app.jellyfin.requestsTo("GET", "/Items").filter { it.query["parentId"] != null }
 
     private fun viewModel(parentId: String = "folder-1") =
-        viewModels.track(ChildrenViewModel(parentId, app.library, app.connection))
+        viewModels.track(ChildrenViewModel(parentId, app.library, app.connection, app.downloadRepository))
 
     /** Answers `/Items` from [all], [pageSize] at a time, like the server does. */
     private fun FakeServer.listOf(all: List<String>, pageSize: Int) =

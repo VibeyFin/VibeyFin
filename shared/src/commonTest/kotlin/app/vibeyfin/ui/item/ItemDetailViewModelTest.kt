@@ -42,7 +42,7 @@ class ItemDetailViewModelTest {
         app.close()
     }
 
-    private fun viewModel(id: String) = viewModels.track(ItemViewModel(id, app.library, app.connection, app.watch, app.watchChanges))
+    private fun viewModel(id: String) = viewModels.track(ItemViewModel(id, app.library, app.connection, app.watch, app.watchChanges, app.downloadRepository))
 
     /** What the fake server has been told is watched: a write sticks, so the page read again afterwards shows it as a real server would. */
     private val watchedOnServer = mutableSetOf<String>()

@@ -24,6 +24,7 @@ fun dataModule() = module {
     single { get<VibeyFinDatabase>().serverDao() }
     single { get<VibeyFinDatabase>().accountDao() }
     single { get<VibeyFinDatabase>().pendingReportDao() }
+    single { get<VibeyFinDatabase>().downloadDao() }
 
     single<DevicePreferences> { DataStoreDevicePreferences(get()) }
     single { ServerRepository(get(), get(), get(), get()) }

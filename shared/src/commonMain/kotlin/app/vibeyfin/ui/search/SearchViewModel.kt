@@ -5,12 +5,15 @@ import androidx.lifecycle.viewModelScope
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.LibraryRepository
+import app.vibeyfin.domain.OfflineLibrary
+import app.vibeyfin.domain.OfflineMode
 import app.vibeyfin.domain.SearchHistory
 import app.vibeyfin.domain.model.SearchKind
 import app.vibeyfin.domain.model.SearchResult
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
+import app.vibeyfin.ui.downloads.profileOrNull
 import app.vibeyfin.ui.home.HomeExit
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -18,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -48,6 +52,8 @@ data class SearchUiState(
     val history: List<String> = emptyList(),
     /** Set when the session ended and the screen must be left. */
     val exit: HomeExit? = null,
+    /** The app is offline: the search covers only what is downloaded, and the page says so. */
+    val offline: Boolean = false,
 ) {
     /** The field is empty: the page invites a search. */
     val showsPrompt: Boolean get() = query.isBlank()
@@ -65,24 +71,42 @@ data class SearchUiState(
             SearchFilter.Episodes to Strings.searchEpisodes,
             SearchFilter.People to Strings.searchPeople,
             SearchFilter.Collections to Strings.searchCollections,
-        ).map { (filter, label) -> SearchChip(filter, label, selected = filter == this.filter) }
+        )
+            // What is downloaded is movies and episodes; the rest has nothing to find offline.
+            .filter { (filter, _) -> !offline || filter == SearchFilter.All || filter == SearchFilter.Movies || filter == SearchFilter.Episodes }
+            .map { (filter, label) -> SearchChip(filter, label, selected = filter == this.filter) }
 
     /** A search came back and held nothing in what the filter lists. */
     val noResults: Boolean get() = !showsPrompt && !loading && message == null && searched.isNotEmpty() && visibleGroups.isEmpty()
 }
 
-/** Searches the library as the user types, a moment after the last key, and groups what matches. */
+/**
+ * Searches the library as the user types, a moment after the last key, and groups what matches. Offline it searches what is
+ * downloaded instead, by title, show and cast, and starts over when the app goes offline or comes back.
+ */
 class SearchViewModel(
     private val library: LibraryRepository,
     private val history: SearchHistory,
-    connection: ConnectionManager,
+    private val connection: ConnectionManager,
+    private val offlineMode: OfflineMode,
+    private val offlineLibrary: OfflineLibrary,
 ) : ViewModel() {
     private val content = MutableStateFlow(SearchUiState())
     private var job: Job? = null
 
-    val uiState: StateFlow<SearchUiState> = combine(content, history.entries, connection.sessionEnded()) { content, history, exit ->
-        content.copy(history = history, exit = exit)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())
+    val uiState: StateFlow<SearchUiState> = combine(content, history.entries, connection.sessionEnded(), offlineMode.isOffline) { content, history, exit, offline ->
+        content.copy(history = history, exit = exit, offline = offline)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState(offline = offlineMode.isOffline.value))
+
+    init {
+        // Going offline, or coming back, answers the same text from the other place.
+        viewModelScope.launch {
+            offlineMode.isOffline.drop(1).collect {
+                val term = content.value.query.trim()
+                if (term.isNotEmpty()) onRetry()
+            }
+        }
+    }
 
     /** The field changed: searches [text] once the user pauses, and drops any older search still out. */
     fun onQueryChange(text: String) {
@@ -142,6 +166,12 @@ class SearchViewModel(
     }
 
     private suspend fun search(term: String) {
+        if (offlineMode.isOffline.value) {
+            val profile = connection.state.value.profileOrNull()
+            val found = if (profile == null) emptyList() else offlineLibrary.search(profile, term)
+            content.update { it.copy(loading = false, groups = found.grouped(), searched = term, message = null) }
+            return
+        }
         when (val result = library.search(term)) {
             is ApiResult.Success -> content.update { it.copy(loading = false, groups = result.value.grouped(), searched = term, message = null) }
             is ApiResult.Failure -> content.update { it.copy(loading = false, message = LoadMessages.forError(result.error)) }

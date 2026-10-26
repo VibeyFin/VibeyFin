@@ -8,6 +8,11 @@ import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.DynamicRange
 import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.LiveDiagnostics
+import app.vibeyfin.domain.LocalPlayable
+import app.vibeyfin.domain.LocalPlaybackReporter
+import app.vibeyfin.domain.OfflineLibrary
+import app.vibeyfin.domain.OfflineMode
+import app.vibeyfin.domain.PlayReporter
 import app.vibeyfin.domain.PlaybackDiagnostics
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.toDiagnostics
@@ -28,6 +33,7 @@ import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
+import app.vibeyfin.ui.downloads.profileOrNull
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.item.badge
 import app.vibeyfin.ui.item.episodeLabel
@@ -40,6 +46,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -215,6 +222,8 @@ val PLAYBACK_SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
 
 /** A skip within this long of the last one, to the same side, adds to its [SkipRun]. */
 val SKIP_RUN_WINDOW = 1.seconds
+/** How long a download waits for the server's record of where the user stopped before using the device's. */
+private val SERVER_WAIT = 3.seconds
 
 /** Resuming starts this long before where the user stopped, so the scene they left is in view again. */
 const val RESUME_REWIND_MS = 5_000L
@@ -254,10 +263,15 @@ class PlaybackViewModel(
     private val library: LibraryRepository,
     private val playback: PlaybackRepository,
     private val reporter: PlaybackReporter,
-    connection: ConnectionManager,
+    private val connection: ConnectionManager,
     private val watch: WatchRepository,
     private val profileSettings: ProfileSettings,
     private val binge: BingeCounter,
+    /** What is downloaded: an item that is on the device plays from it, with or without the server. */
+    private val offline: OfflineLibrary,
+    private val offlineMode: OfflineMode,
+    /** Where a download's progress goes while it plays: the device, and the server later. */
+    private val localReporter: LocalPlaybackReporter,
     private val retryDelays: List<Duration> = NETWORK_RETRY_DELAYS,
     private val startOver: Boolean = false,
     private val autoAdvance: Boolean = true,
@@ -293,6 +307,13 @@ class PlaybackViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlaybackUiState())
 
     private var lastPositionMs = 0L
+
+    /** Where this item's events go: the server, or the device while a download plays. */
+    private var active: PlayReporter = reporter
+
+    /** The download being played; null when the item comes from the server. */
+    private var local: LocalPlayable? = null
+
 
     /** The item has been read, so where to start is known and a retry doesn't need to ask again. */
     private var started = false
@@ -432,17 +453,17 @@ class PlaybackViewModel(
     /** The player is playing: it started, or resumed. */
     fun onPlaying(positionMs: Long) {
         lastPositionMs = positionMs
-        reporter.playing(positionMs)
+        active.playing(positionMs)
     }
 
     fun onPaused(positionMs: Long) {
         lastPositionMs = positionMs
-        reporter.paused(positionMs)
+        active.paused(positionMs)
     }
 
     fun onSeeked(positionMs: Long) {
         lastPositionMs = positionMs
-        reporter.seeked(positionMs)
+        active.seeked(positionMs)
         checkUpNext(positionMs)
         refreshSkipOffer()
     }
@@ -508,7 +529,7 @@ class PlaybackViewModel(
     /** The current position, as often as the player knows it (about once a second). */
     fun onPosition(positionMs: Long) {
         lastPositionMs = positionMs
-        reporter.position(positionMs)
+        active.position(positionMs)
         checkUpNext(positionMs)
         refreshSkipOffer()
         if ((networkRetries > 0 || reauthorized) && positionMs - failedAtMs >= RECOVERED_AFTER_MS) {
@@ -523,7 +544,7 @@ class PlaybackViewModel(
      */
     fun onEnded(positionMs: Long) {
         lastPositionMs = positionMs
-        reporter.stop(positionMs)
+        active.stop(positionMs)
         ended = true
         val upcoming = next
         if (autoAdvance && upcoming != null && !upNextDismissed) {
@@ -542,7 +563,7 @@ class PlaybackViewModel(
         // A picture-in-picture window keeps playing; it ends the session when it is closed.
         if (inPictureInPicture) return
         lastPositionMs = positionMs
-        reporter.stop(positionMs)
+        active.stop(positionMs)
         cancelCountdown()
         if (ended) content.update { it.copy(finished = true) }
     }
@@ -550,7 +571,7 @@ class PlaybackViewModel(
     /** The user closed the player. */
     fun onClosed(positionMs: Long) {
         lastPositionMs = positionMs
-        reporter.stop(positionMs)
+        active.stop(positionMs)
         binge.reset()
         cancelCountdown()
     }
@@ -600,6 +621,8 @@ class PlaybackViewModel(
     /** The player couldn't play the stream, for the reason [failure]. Ignored when no stream is open. */
     fun onFailed(failure: PlaybackFailure) {
         val failed = content.value.stream ?: return
+        // A file on the device has no other way to be offered: whatever went wrong, it won't play.
+        if (local != null) return giveUp(LoadMessages.PLAYBACK_FAILED)
         when (failure) {
             PlaybackFailure.Network -> retrySameStream(failed)
             PlaybackFailure.Unauthorized -> askAgainAfterRejection()
@@ -626,7 +649,7 @@ class PlaybackViewModel(
         if (networkRetries == 0 && !reauthorized) failedAtMs = lastPositionMs
         cancelCountdown()
         networkRetries++
-        reporter.paused(lastPositionMs)
+        active.paused(lastPositionMs)
         content.update { it.copy(loading = true, stream = null, message = null, pendingSeekMs = null) }
         viewModelScope.launch {
             delay(wait)
@@ -646,21 +669,21 @@ class PlaybackViewModel(
         if (reauthorized) return giveUp(LoadMessages.PLAYBACK_FAILED)
         if (networkRetries == 0) failedAtMs = lastPositionMs
         reauthorized = true
-        reporter.stop(lastPositionMs, failed = true)
+        active.stop(lastPositionMs, failed = true)
         open(startAtMs = lastPositionMs)
     }
 
     /** The device can't play it: once more as a transcode, then an error. */
     private fun fallBackToTranscode() {
         if (method == PlayMethod.Transcode) return giveUp(LoadMessages.PLAYBACK_FAILED)
-        reporter.stop(lastPositionMs, failed = true)
+        active.stop(lastPositionMs, failed = true)
         transcodeOnly = true
         open(startAtMs = lastPositionMs)
     }
 
     private fun giveUp(message: String, lostConnection: Boolean = false) {
         cancelCountdown()
-        reporter.stop(lastPositionMs, failed = true)
+        active.stop(lastPositionMs, failed = true)
         method = null
         this.lostConnection = lostConnection
         content.update { it.copy(stream = null, loading = false, message = message, pendingSeekMs = null) }
@@ -669,23 +692,37 @@ class PlaybackViewModel(
     override fun onCleared() {
         // The player has usually said so already; this covers a screen that left without it. Whatever
         // is queued, `Stopped` included, is still sent after the screen's scope is gone.
-        reporter.stop(lastPositionMs)
+        active.stop(lastPositionMs)
         reporter.close()
+        localReporter.close()
     }
 
     /** Reads the item for its title and where the user stopped, then opens it there. */
     private fun start() {
         content.update { it.copy(loading = true, stream = null, message = null) }
         viewModelScope.launch {
-            when (val result = library.item(itemId)) {
-                is ApiResult.Success -> begin(result.value, honourStartOver = true)
-                is ApiResult.Failure -> content.update { it.copy(loading = false, message = LoadMessages.forError(result.error)) }
+            val profile = connection.state.value.profileOrNull()
+            val downloaded = profile?.let { offline.playable(it, itemId) }
+            when {
+                // On the device: it plays from there. With the server in reach its own record of where the user stopped is the one
+                // that counts (they may have watched on another device); without it, or when it is slow, the device's own.
+                downloaded != null -> {
+                    val server = if (offlineMode.isOffline.value) null else withTimeoutOrNull(SERVER_WAIT) { (library.item(itemId) as? ApiResult.Success)?.value }
+                    begin(server ?: downloaded.item, honourStartOver = true, downloaded = downloaded)
+                }
+                offlineMode.isOffline.value -> content.update { it.copy(loading = false, message = LoadMessages.NOT_DOWNLOADED) }
+                else -> when (val result = library.item(itemId)) {
+                    is ApiResult.Success -> begin(result.value, honourStartOver = true)
+                    is ApiResult.Failure -> content.update { it.copy(loading = false, message = LoadMessages.forError(result.error)) }
+                }
             }
         }
     }
 
     /** Starts [found] where the user left off (or at the beginning), and looks up what comes after it. */
-    private fun begin(found: MediaItem, honourStartOver: Boolean) {
+    private fun begin(found: MediaItem, honourStartOver: Boolean, downloaded: LocalPlayable? = null) {
+        local = downloaded
+        active = if (downloaded != null) localReporter else reporter
         val startAtMs = if ((honourStartOver && startOver) || found.played) 0L else (found.resumePositionMs - RESUME_REWIND_MS).coerceAtLeast(0)
         item = found
         started = true
@@ -704,7 +741,12 @@ class PlaybackViewModel(
     private fun lookUpNext(current: MediaItem) {
         if (!autoAdvance || current.kind != ItemKind.Episode || current.seriesId == null) return
         viewModelScope.launch {
-            val found = (watch.nextEpisode(current) as? ApiResult.Success)?.value ?: return@launch
+            // A download plays on into the next one downloaded; the server's own order is for what comes from the server.
+            val found = if (local != null) {
+                connection.state.value.profileOrNull()?.let { offline.nextAfter(it, current) }
+            } else {
+                (watch.nextEpisode(current) as? ApiResult.Success)?.value
+            } ?: return@launch
             // Only if the user is still on the episode this was asked for.
             if (item?.id == current.id) next = found
         }
@@ -779,7 +821,9 @@ class PlaybackViewModel(
      */
     private fun advance() {
         val target = next ?: return
-        reporter.stop(item?.runtimeMs ?: lastPositionMs)
+        active.stop(item?.runtimeMs ?: lastPositionMs)
+        val wasLocal = local != null
+        local = null
         itemId = target.id
         next = null
         item = null
@@ -803,7 +847,11 @@ class PlaybackViewModel(
         content.update {
             it.copy(loading = true, stream = null, upNext = null, skipOffer = null, trickplay = null, speed = 1f, badge = null, stillWatching = false, audioTracks = emptyList(), subtitleTracks = emptyList(), message = null, finished = false)
         }
-        begin(target, honourStartOver = false)
+        viewModelScope.launch {
+            // A download goes on into the next one, which is downloaded too: it is found there again to play from the device.
+            val downloaded = if (wasLocal) connection.state.value.profileOrNull()?.let { offline.playable(it, target.id) } else null
+            begin(downloaded?.item ?: target, honourStartOver = false, downloaded = downloaded)
+        }
     }
 
     private fun MediaItem.toUpNext(secondsLeft: Int) =
@@ -821,7 +869,7 @@ class PlaybackViewModel(
         remember(current)
         val updated = current.copy(audioStreamIndex = audioNow, subtitleStreamIndex = subtitleNow)
         plan = updated
-        reporter.begin(updated)
+        active.begin(updated)
         refreshDiagnostics()
         content.update {
             it.copy(
@@ -837,7 +885,7 @@ class PlaybackViewModel(
         audioNow = audio
         subtitleNow = subtitle
         remember(current)
-        reporter.stop(lastPositionMs)
+        active.stop(lastPositionMs)
         open(startAtMs = lastPositionMs)
     }
 
@@ -911,10 +959,42 @@ class PlaybackViewModel(
         return playing?.let { SkipOffer(Strings.skip(it.type), it.endMs) }
     }
 
+    /** Opens the file on the device: there is nothing to ask the server, no scrub preview, and no segments to skip. */
+    private fun openLocal(downloaded: LocalPlayable, startAtMs: Long) {
+        val ready = downloaded.plan
+        plan = ready
+        method = ready.method
+        audioNow = ready.audioStreamIndex
+        subtitleNow = ready.subtitleStreamIndex
+        active.begin(ready)
+        liveDiagnostics = null
+        content.update {
+            it.copy(
+                loading = false,
+                pendingSeekMs = null,
+                stream = PlaybackStream(
+                    id = ++streams,
+                    url = ready.url,
+                    headers = emptyMap(),
+                    startPositionMs = startAtMs,
+                    subtitleFiles = ready.subtitleFiles,
+                    audioInPlayer = true,
+                    dynamicRange = ready.videoFormat?.dynamicRange ?: DynamicRange.Sdr,
+                ),
+                diagnostics = ready.toDiagnostics(audioNow),
+                badge = ready.videoFormat?.badge(),
+                audioTracks = ready.audioTracks.toAudioOptions(),
+                subtitleTracks = ready.subtitleTracks.toSubtitleOptions(),
+            )
+        }
+    }
+
     private fun open(startAtMs: Long) {
         // A stream that restarts (a retry, a track change) is not the end of the episode.
         cancelCountdown()
         content.update { it.copy(loading = true, stream = null, message = null, pendingSeekMs = null) }
+        val downloaded = local
+        if (downloaded != null) return openLocal(downloaded, startAtMs)
         loadSegments()
         viewModelScope.launch {
             val picked = choice
@@ -926,7 +1006,7 @@ class PlaybackViewModel(
                     method = ready.method
                     audioNow = ready.audioStreamIndex
                     subtitleNow = ready.subtitleStreamIndex
-                    reporter.begin(ready)
+                    active.begin(ready)
                     liveDiagnostics = null
                     loadTrickplay(ready.mediaSourceId)
                     content.update {

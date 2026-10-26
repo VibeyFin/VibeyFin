@@ -1,5 +1,6 @@
 package app.vibeyfin.domain
 
+import app.vibeyfin.data.db.PENDING_PROGRESS
 import app.vibeyfin.data.db.PENDING_STOPPED
 import app.vibeyfin.data.db.PendingReportDao
 import app.vibeyfin.data.db.PendingReportEntity
@@ -18,6 +19,19 @@ data class PendingStop(
     val playSessionId: String,
     val positionTicks: Long,
     val failed: Boolean,
+)
+
+/**
+ * What a profile did to an item while the server could not be reached: [positionTicks] is where they stopped, [played]
+ * whether they finished it, and [watchedAt] (epoch milliseconds) when. It is sent once online, unless the server has a
+ * newer record of the item.
+ */
+data class PendingProgress(
+    val profile: ProfileRef,
+    val itemId: String,
+    val positionTicks: Long,
+    val played: Boolean,
+    val watchedAt: Long,
 )
 
 /**
@@ -63,7 +77,45 @@ class PendingReports(
         )
     }
 
-    /** Forgets sessions last heard of more than [age] ago. */
+    /** Keeps [progress] as the item's offline record, replacing an earlier one: the latest is the only one worth sending. */
+    suspend fun saveProgress(progress: PendingProgress) {
+        dao.replace(
+            PendingReportEntity(
+                serverId = progress.profile.serverId,
+                userId = progress.profile.userId,
+                kind = PENDING_PROGRESS,
+                itemId = progress.itemId,
+                mediaSourceId = "",
+                playSessionId = "",
+                positionTicks = progress.positionTicks,
+                failed = false,
+                updatedAt = clock.now().toEpochMilliseconds(),
+                played = progress.played,
+                watchedAt = progress.watchedAt,
+            ),
+        )
+    }
+
+    /** The offline record of [itemId] for [profile], if there is one. */
+    suspend fun progress(profile: ProfileRef, itemId: String): PendingProgress? =
+        dao.find(profile.serverId, profile.userId, PENDING_PROGRESS, itemId)?.toProgress()
+
+    /** Oldest first. */
+    suspend fun progress(): List<PendingProgress> = dao.all(PENDING_PROGRESS).map { it.toProgress() }
+
+    suspend fun remove(progress: PendingProgress) {
+        dao.deleteForItem(progress.profile.serverId, progress.profile.userId, PENDING_PROGRESS, progress.itemId)
+    }
+
+    private fun PendingReportEntity.toProgress() = PendingProgress(
+        profile = ProfileRef(serverId, userId),
+        itemId = itemId,
+        positionTicks = positionTicks,
+        played = played,
+        watchedAt = watchedAt,
+    )
+
+    /** Forgets play sessions last heard of more than [age] ago. Offline progress is never discarded by age: it is waiting for a connection, not for a crash to be noticed. */
     suspend fun discardOlderThan(age: Duration) {
         dao.deleteOlderThan(PENDING_STOPPED, (clock.now() - age).toEpochMilliseconds())
     }

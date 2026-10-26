@@ -1,18 +1,28 @@
 package app.vibeyfin.testing
 
 import app.vibeyfin.data.api.ClientInfoProvider
+import app.vibeyfin.data.api.ServerReachability
 import app.vibeyfin.data.db.VibeyFinDatabase
 import app.vibeyfin.data.prefs.DataStoreDevicePreferences
 import app.vibeyfin.domain.AccountRepository
 import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.BingeCounter
 import app.vibeyfin.domain.ConnectionManager
+import app.vibeyfin.domain.DownloadRepository
+import app.vibeyfin.domain.DownloadRunner
+import app.vibeyfin.domain.DownloadSpeeds
+import app.vibeyfin.domain.DownloadWake
 import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.PROGRESS_INTERVAL
 import app.vibeyfin.domain.PendingReports
 import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.ProfilePolicy
 import app.vibeyfin.domain.hashPin
+import app.vibeyfin.domain.LocalPlaybackReporter
+import app.vibeyfin.domain.OfflineLibrary
+import app.vibeyfin.domain.OfflineProgress
+import app.vibeyfin.domain.OfflineSync
+import app.vibeyfin.domain.OfflineMode
 import app.vibeyfin.domain.PlaybackRecovery
 import app.vibeyfin.domain.PlaybackReporter
 import app.vibeyfin.domain.PlaybackRepository
@@ -38,7 +48,8 @@ class TestApp {
     val database: VibeyFinDatabase = inMemoryDatabase()
     val clock = FakeClock()
     val vault = FakeTokenVault()
-    val jellyfin = FakeJellyfin()
+    val reachability = ServerReachability()
+    val jellyfin = FakeJellyfin(reachability = reachability)
 
     val servers = ServerRepository(database.serverDao(), database.accountDao(), vault, clock)
     val accounts = AccountRepository(database.accountDao(), vault, clock)
@@ -60,8 +71,26 @@ class TestApp {
     val binge = BingeCounter()
     val playback = PlaybackRepository(connection, capabilities, ClientInfoProvider(FakeDeviceInfo(), preferences), profileSettings)
 
+    val network = FakeNetworkMonitor()
+    val offline = OfflineMode(network, preferences, scope)
+    val downloads = database.downloadDao()
+    val files = FakeDownloadFiles()
+    val scheduler = FakeDownloadScheduler()
+    val wake = DownloadWake()
+    val speeds = DownloadSpeeds()
+    val downloadRepository = DownloadRepository(downloads, connection, files, scheduler, wake, clock, speeds)
+    val runner = DownloadRunner(downloads, database.accountDao(), connection, files, network, wake, clock, speeds = speeds)
+
     val pending = PendingReports(database.pendingReportDao(), clock)
+    val offlineLibrary = OfflineLibrary(downloads, files)
+    val offlineProgress = OfflineProgress(downloads, pending, clock)
+    val offlineSync = OfflineSync(pending, downloads, connection, watchChanges)
+    val progressScheduler = FakeProgressSyncScheduler()
     val recovery = PlaybackRecovery(pending, connection)
+
+    /** The reporter a download plays with, wired like the app's, working on [scope], which the test cancels before closing the app. */
+    fun localReporter(scope: CoroutineScope, interval: Duration = PROGRESS_INTERVAL) =
+        LocalPlaybackReporter(connection, scope, offlineProgress, offlineSync, progressScheduler, watchChanges, interval)
 
     /** A reporter wired like the app's, working on [scope], which the test cancels before closing the app. */
     fun reporter(scope: CoroutineScope, interval: Duration = PROGRESS_INTERVAL) =

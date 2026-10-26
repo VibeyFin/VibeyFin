@@ -32,6 +32,19 @@ abstract class PendingReportDao {
         touch(report.serverId, report.userId, report.kind, report.playSessionId, report.positionTicks, report.failed, report.updatedAt)
     }
 
+    /** Keeps one row per item and profile: a newer report replaces the older, whatever the item's earlier row said. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun replace(report: PendingReportEntity): Long
+
+    @Query(
+        "SELECT * FROM pending_reports " +
+            "WHERE serverId = :serverId AND userId = :userId AND kind = :kind AND itemId = :itemId LIMIT 1",
+    )
+    abstract suspend fun find(serverId: String, userId: String, kind: String, itemId: String): PendingReportEntity?
+
+    @Query("DELETE FROM pending_reports WHERE serverId = :serverId AND userId = :userId AND kind = :kind AND itemId = :itemId")
+    abstract suspend fun deleteForItem(serverId: String, userId: String, kind: String, itemId: String)
+
     @Query("SELECT * FROM pending_reports WHERE kind = :kind ORDER BY updatedAt, id")
     abstract suspend fun all(kind: String): List<PendingReportEntity>
 

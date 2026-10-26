@@ -31,6 +31,8 @@ data class BaseItemDto(
     @SerialName("SeriesId") val seriesId: String? = null,
     /** For an episode or a season: the tag of the show's own poster, which is the picture a row of shows wants. */
     @SerialName("SeriesPrimaryImageTag") val seriesPrimaryImageTag: String? = null,
+    /** On an episode: the season it belongs to. */
+    @SerialName("SeasonId") val seasonId: String? = null,
     @SerialName("UserData") val userData: UserItemDataDto? = null,
     /** The cast and crew; only sent when asked for (`fields=People`, see `DETAIL_FIELDS`). */
     @SerialName("People") val people: List<PersonDto> = emptyList(),
@@ -51,6 +53,8 @@ data class BaseItemDto(
     @SerialName("ProductionLocations") val productionLocations: List<String> = emptyList(),
     /** The tracks of the item's file; only sent when asked for (see `DETAIL_FIELDS`). */
     @SerialName("MediaStreams") val mediaStreams: List<MediaStreamDto> = emptyList(),
+    /** The versions of the item's file with their size; only sent when asked for (`fields=MediaSources`), as a download does. */
+    @SerialName("MediaSources") val mediaSources: List<MediaSourceDto> = emptyList(),
     /** Trickplay thumbnails by media source id, then by width in pixels; only sent when asked for. */
     @SerialName("Trickplay") val trickplay: Map<String, Map<String, TrickplayInfoDto>> = emptyMap(),
 )
@@ -81,6 +85,8 @@ data class UserItemDataDto(
     @SerialName("Played") val played: Boolean = false,
     /** The user's favourite: "My List". */
     @SerialName("IsFavorite") val isFavorite: Boolean = false,
+    /** When the user last watched it, as the server writes a date (`2026-10-23T18:00:00.0000000Z`); null when never. */
+    @SerialName("LastPlayedDate") val lastPlayedDate: String? = null,
 )
 
 

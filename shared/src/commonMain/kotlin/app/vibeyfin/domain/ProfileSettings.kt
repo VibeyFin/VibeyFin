@@ -207,6 +207,34 @@ class ProfileSettings(
         dao.setAutoSkipSegments(account.serverId, account.userId, value)
     }
 
+    /** Whether downloads may use mobile data. Off by default. Null when nobody is signed in. */
+    val downloadOverMobile: Flow<Boolean?> = forAccount { dao, a -> dao.observeDownloadOverMobile(a.serverId, a.userId).map { it ?: false } }
+
+    /** Whether a download is removed once watched. Off by default. Null when nobody is signed in. */
+    val autoCleanWatched: Flow<Boolean?> = forAccount { dao, a -> dao.observeAutoCleanWatched(a.serverId, a.userId).map { it ?: false } }
+
+    /** The most the downloads may take, in megabytes; [NO_STORAGE_LIMIT] when there is no limit. Null when nobody is signed in. */
+    val storageLimitMb: Flow<Long?> = forAccount { dao, a -> dao.observeStorageLimitMb(a.serverId, a.userId).map { it ?: NO_STORAGE_LIMIT } }
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setDownloadOverMobile(value: Boolean) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setDownloadOverMobile(account.serverId, account.userId, value)
+    }
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setAutoCleanWatched(value: Boolean) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setAutoCleanWatched(account.serverId, account.userId, value)
+    }
+
+    /** Accepts [NO_STORAGE_LIMIT] or a positive size; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setStorageLimitMb(value: Long) {
+        if (value < NO_STORAGE_LIMIT) return
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setStorageLimitMb(account.serverId, account.userId, value)
+    }
+
     /** Does nothing when nobody is signed in. */
     suspend fun setShowHomeHero(value: Boolean) {
         val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
@@ -286,6 +314,9 @@ class ProfileSettings(
 
         /** Episodes in a row before the player asks "Are you still watching?". */
         const val DEFAULT_BINGE_THRESHOLD = 3
+
+        /** The downloads' storage limit when there is none. */
+        const val NO_STORAGE_LIMIT = 0L
 
         /** Every genre gets a row on Home (what a profile that existed before the limit was added keeps). */
         const val HOME_GENRES_ALL = 0
