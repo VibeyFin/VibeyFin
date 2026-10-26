@@ -695,4 +695,13 @@ object Strings {
         if (scope == ProfileSettings.NOTIFY_EVERYTHING) notificationsEverything else notificationsFollowed
     val notificationsFooter =
         "Jellyfin sends no push, so the app checks in the background: expect a delay. Switching this on asks for notification permission."
+
+    // New-title notifications: one per movie, one per episode. No name starts with "new": Kotlin/Native renames those for Swift.
+    val addedMovieNotificationTitle = "New movie"
+    /** The title of an episode's notification; [seriesName] is null when the server did not say which show. */
+    fun addedEpisodeNotificationTitle(seriesName: String?) =
+        if (seriesName.isNullOrBlank()) "New episode" else "New episode of $seriesName"
+    /** The body: the title, plus whose it is when more than one profile on this device gets notifications. */
+    fun addedTitleNotificationBody(title: String, profileName: String?) =
+        if (profileName == null) title else "$title, for $profileName"
 }

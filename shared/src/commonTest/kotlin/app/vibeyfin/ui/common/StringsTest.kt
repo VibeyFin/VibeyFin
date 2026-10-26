@@ -139,4 +139,18 @@ class StringsTest {
         assertNull(Strings.metaLine(null, null))
         assertNull(Strings.metaLine("", " "))
     }
+
+    @Test
+    fun anEpisodeNotificationNamesItsShowWhenTheServerSaysWhichOne() {
+        assertEquals("New episode of Saga Show", Strings.addedEpisodeNotificationTitle("Saga Show"))
+        assertEquals("New episode", Strings.addedEpisodeNotificationTitle(null))
+        assertEquals("New episode", Strings.addedEpisodeNotificationTitle(" "))
+        assertEquals("New movie", Strings.addedMovieNotificationTitle)
+    }
+
+    @Test
+    fun aNotificationBodyNamesTheProfileOnlyWhenGiven() {
+        assertEquals("Pilot", Strings.addedTitleNotificationBody("Pilot", null))
+        assertEquals("Pilot, for Anna", Strings.addedTitleNotificationBody("Pilot", "Anna"))
+    }
 }
