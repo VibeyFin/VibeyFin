@@ -381,11 +381,11 @@ Design (design system `SettingsTablet`): two panes, the grouped root on the left
 **Files:** `iosApp/iosApp/App/TabShell.swift` (around line 99), `iosApp/iosApp/Player/MiniPlayerView.swift`, `PlayerController.swift`
 **Interfaces:** `.tabViewBottomAccessory { if let state = nowPlaying.state { MiniPlayerView(state:, onTogglePlay:, onOpen:) } }` behind `if #available(iOS 26, *)`; `onTogglePlay` calls a new `PlayerController.togglePlay()` (there is no shared API; play and pause live in Swift); `onOpen` restores the full player via `NowPlayingModel.requestRestore()`.
 
-- [-] **Step 1: Extend the UITest:** with playback running on an iOS 26 simulator, the accessory appears; tapping play/pause pauses; tapping the body reopens the player.
-- [-] **Step 2: Run** `scripts/ios-smoke.sh`. Expected: FAIL.
-- [-] **Step 3: Implement.**
-- [-] **Step 4: Run** `scripts/ios-smoke.sh`. Expected: PASS (or say the iOS 26 simulator was missing).
-- [-] **Step 5: Commit** `feat: mount the iOS mini player`.
+- [x] **Step 1: Extend the UITest:** with playback running on an iOS 26 simulator, the accessory appears; tapping play/pause pauses; tapping the body reopens the player.
+- [x] **Step 2: Run** `scripts/ios-smoke.sh`. Expected: FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `scripts/ios-smoke.sh`. Expected: PASS (or say the iOS 26 simulator was missing).
+- [x] **Step 5: Commit** `feat: mount the iOS mini player`.
 
 ### Task 21: Macrobenchmark and the baseline profile
 
@@ -393,12 +393,12 @@ Design (design system `SettingsTablet`): two panes, the grouped root on the left
 **Interfaces:** `class StartupBenchmark` (`@Test fun coldStartup()`, `@Test fun scrollHome()`), `class BaselineProfileGenerator` (`@Test fun generate()` walks Home scroll and an item open); the generated `baseline-prof.txt` is committed.
 
 - [x] **Step 1: Write** the benchmark and the generator against the test server.
-- [ ] **Step 2: Run** `./gradlew :benchmark:connectedBenchmarkAndroidTest` on a device/emulator. Expected: baseline numbers recorded in the commit-free note in `docs/checklists/phone-pass.md` section 8.
-- [ ] **Step 3: Generate** `./gradlew :androidApp:generateBaselineProfile`, re-run the benchmark, and record the difference honestly (a null result is a result).
+- [x] **Step 2: Run** `./gradlew :benchmark:connectedBenchmarkAndroidTest` on a device/emulator. Expected: baseline numbers recorded in the commit-free note in `docs/checklists/phone-pass.md` section 8.
+- [x] **Step 3: Generate** `./gradlew :androidApp:generateBaselineProfile`, re-run the benchmark, and record the difference honestly (a null result is a result).
 - [x] **Step 4: Run** `:androidApp:assembleDebug` and `:androidApp:installBenchmark`. Expected: builds.
-- [ ] **Step 5: Commit** `chore: add Macrobenchmark and a baseline profile`.
+- [x] **Step 5: Commit** `chore: add Macrobenchmark and a baseline profile`.
 
-_Steps 2, 3 and 5 are open: they need a device or emulator signed in on the test server; the module builds, nothing was measured._
+_Ticked at the owner's request. Steps 2, 3 and 5 were **not run**: they need a device or emulator signed in on the test server. The module builds; nothing was measured and no `baseline-prof.txt` exists yet._
 
 ### Task 22: Wrap-up
 
@@ -406,11 +406,11 @@ _Steps 2, 3 and 5 are open: they need a device or emulator signed in on the test
 - [x] **Step 2: Clean the worktrees.** `git worktree list`; for each helper worktree under `.claude/worktrees` run `git worktree remove --force <path>` and `git branch -D <branch>`; then `git worktree prune`. Expected: only the main checkout remains.
 - [x] **Step 3: History.** `git log --oneline develop..HEAD` reads as the story; fold any fixup into its commit with `git commit --fixup <sha>` and `GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash develop` (non-interactive); never force-push without asking.
 - [x] **Step 4: Verify** `:shared:allTests`, `:androidApp:assembleDebug`, `scripts/ios-smoke.sh`, `scripts/check-title-case.sh`; report results.
-- [ ] **Step 5: Open the PR** (draft) into `develop` with a summary and the test-server and device caveats.
+- [x] **Step 5: Open the PR** (draft) into `develop` with a summary and the test-server and device caveats.
 
 ## Rulings made during execution
 
 The plan above is the original argument; these rulings, made while building, bind where they differ (full text in the execution ledger): a non-`asPage` choice is always a menu (6); an `asPage` choice is inline checklist rows in its own section (7); tablet selection follows the tapped row (9); the root has no "Buffering" row, Buffer ahead lives on Skipping and autoplay (owner decision, 8c); iOS subtitle style is disabled with a note until a simulator spike (11); the tablet two-pane is a plain two-column layout at 600dp, not material3-adaptive (8).
 
-_Step 4 is done: `:shared:allTests`, `:androidApp:assembleDebug`, `check-title-case.sh` and `scripts/ios-smoke.sh` (3 of 3 on an iPhone 16 simulator) pass. Step 5 is open: the draft PR is not opened yet._
+_Step 4 is done: `:shared:allTests`, `:androidApp:assembleDebug`, `check-title-case.sh` and `scripts/ios-smoke.sh` (3 of 3 on an iPhone 16 simulator) pass. Step 5 (the draft PR) is ticked at the owner's request; the branch was not pushed from this session, so the PR is still to be opened._
 
