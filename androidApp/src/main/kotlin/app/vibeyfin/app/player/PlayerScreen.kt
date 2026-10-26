@@ -342,7 +342,7 @@ fun PlayerRoute(
     var screenBounds by remember { mutableStateOf<Rect?>(null) }
     val pip = rememberPlayerPip(
         sourceRect = screenBounds?.let { videoRect(it, videoRatio) },
-        enabled = state.stream != null && state.message == null && !leaving && playing && !state.stillWatching,
+        enabled = state.pictureInPicture && state.stream != null && state.message == null && !leaving && playing && !state.stillWatching,
         aspectRatio = videoRatio,
         onEntered = { viewModel.onEnteredPictureInPicture(player.currentPosition) },
         onLeft = { closed ->
@@ -486,7 +486,7 @@ fun PlayerRoute(
                         viewModel.onUserInteraction()
                         showSpeeds = true
                     },
-                    onPip = if (pip.available && state.stream != null) {
+                    onPip = if (state.pictureInPicture && pip.available && state.stream != null) {
                         {
                             viewModel.onUserInteraction()
                             pip.enter()
