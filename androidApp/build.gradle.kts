@@ -73,6 +73,8 @@ dependencies {
     implementation(libs.androidx.media3.session)
     implementation(libs.jellyfin.media3.ffmpeg.decoder)
 
+    implementation(libs.androidx.work.runtime.ktx)
+
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
 
@@ -83,4 +85,5 @@ dependencies {
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlin.test.junit)
+    testImplementation(libs.androidx.work.testing)
 }

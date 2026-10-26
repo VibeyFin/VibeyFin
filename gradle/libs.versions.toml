@@ -26,6 +26,8 @@ androidx-media3 = "1.11.1"
 # Jellyfin's build of the Media3 ffmpeg audio decoder (DTS, TrueHD, AC-3), resolved 2026-10-20 on Maven Central.
 # Google doesn't publish one. It is built against Media3 1.9.0, older than the 1.11.1 above.
 jellyfin-media3-ffmpeg = "1.9.0+1"
+# WorkManager for background polling of new titles, resolved 2026-10-26 on Google Maven (latest stable).
+androidx-work = "2.12.0"
 
 # Android SDK levels (not dependencies). compileSdk 37 is required by the latest stable
 # lifecycle 2.11.0 / Compose 1.12.x AARs; targetSdk is a separate runtime-behaviour choice.
@@ -74,6 +76,8 @@ androidx-media3-exoplayer-hls = { module = "androidx.media3:media3-exoplayer-hls
 androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "androidx-media3" }
 androidx-media3-session = { module = "androidx.media3:media3-session", version.ref = "androidx-media3" }
 jellyfin-media3-ffmpeg-decoder = { module = "org.jellyfin.media3:media3-ffmpeg-decoder", version.ref = "jellyfin-media3-ffmpeg" }
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "androidx-work" }
+androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "androidx-work" }
 koin-androidx-compose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
 
 androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidx-test-runner" }
