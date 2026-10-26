@@ -134,6 +134,16 @@ const val SUBTITLES_OFF = PlaybackRepository.SUBTITLES_OFF
 /** The button to jump over the part of the video that is playing: [label] says what, [toMs] is where it ends. */
 data class SkipOffer(val label: String, val toMs: Long)
 
+/**
+ * Skips in a row to one side, while their total shows: [forward] or back, [movedMs] how far they went
+ * together (less than the steps add up to at the start or the end), [taps] how many, so a screen can
+ * animate each one.
+ */
+data class SkipRun(val forward: Boolean, val movedMs: Long, val taps: Int) {
+    /** [movedMs] in whole seconds, for the label. */
+    val seconds: Int get() = ((movedMs + 500) / 1000).toInt()
+}
+
 data class PlaybackUiState(
     /** Asking the server how to play the item. */
     val loading: Boolean = true,
@@ -180,6 +190,8 @@ data class PlaybackUiState(
     val skipBackSeconds: Int = ProfileSettings.DEFAULT_SKIP_BACK_SECONDS,
     /** How far the skip-forward button jumps, from the profile. */
     val skipForwardSeconds: Int = ProfileSettings.DEFAULT_SKIP_FORWARD_SECONDS,
+    /** The skips just made in a row to one side; null once [SKIP_RUN_WINDOW] passes without another. */
+    val skipRun: SkipRun? = null,
     /** The scrub-preview thumbnails of the playing media source; null when the server made none or can't be asked. */
     val trickplay: TrickplayTrack? = null,
     /** The speed the user chose, one of [PLAYBACK_SPEEDS]; the player plays at it. */
@@ -200,6 +212,9 @@ data class PlaybackUiState(
 
 /** The speeds the player offers. */
 val PLAYBACK_SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
+
+/** A skip within this long of the last one, to the same side, adds to its [SkipRun]. */
+val SKIP_RUN_WINDOW = 1.seconds
 
 /** Resuming starts this long before where the user stopped, so the scene they left is in view again. */
 const val RESUME_REWIND_MS = 5_000L
@@ -300,6 +315,8 @@ class PlaybackViewModel(
     private var bingeThreshold = ProfileSettings.DEFAULT_BINGE_THRESHOLD
 
     private var countdown: Job? = null
+    /** Clears [PlaybackUiState.skipRun] after [SKIP_RUN_WINDOW]; each skip starts it again. */
+    private var skipRunEnd: Job? = null
     private var method: PlayMethod? = null
     private var streams = 0
 
@@ -439,13 +456,34 @@ class PlaybackViewModel(
 
     /** Seeks back by the profile's skip length from [positionMs], not below the start. */
     fun onSkipBack(positionMs: Long) {
-        seekTo((basePosition(positionMs) - content.value.skipBackSeconds * 1000L).coerceAtLeast(0L))
+        val from = basePosition(positionMs)
+        val to = (from - content.value.skipBackSeconds * 1000L).coerceAtLeast(0L)
+        seekTo(to)
+        addToSkipRun(forward = false, movedMs = from - to)
     }
 
     /** Seeks forward by the profile's skip length from [positionMs], not past [durationMs]; does nothing while the duration is unknown. */
     fun onSkipForward(positionMs: Long, durationMs: Long) {
         if (durationMs <= 0L) return
-        seekTo((basePosition(positionMs) + content.value.skipForwardSeconds * 1000L).coerceAtMost(durationMs))
+        val from = basePosition(positionMs)
+        val to = (from + content.value.skipForwardSeconds * 1000L).coerceAtMost(durationMs)
+        seekTo(to)
+        addToSkipRun(forward = true, movedMs = (to - from).coerceAtLeast(0L))
+    }
+
+    /** Adds a skip to the run to the same side, or starts a new run, and shows it for [SKIP_RUN_WINDOW] more. */
+    private fun addToSkipRun(forward: Boolean, movedMs: Long) {
+        content.update { state ->
+            val run = state.skipRun?.takeIf { it.forward == forward }
+            state.copy(
+                skipRun = SkipRun(forward, (run?.movedMs ?: 0L) + movedMs, (run?.taps ?: 0) + 1),
+            )
+        }
+        skipRunEnd?.cancel()
+        skipRunEnd = viewModelScope.launch {
+            delay(SKIP_RUN_WINDOW)
+            content.update { it.copy(skipRun = null) }
+        }
     }
 
     /**

@@ -42,6 +42,7 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -1945,6 +1946,61 @@ class PlaybackViewModelTest {
         vm.onSkipForward(60_000, duration)
 
         assertEquals(80_000L, vm.uiState.value.pendingSeekMs)
+    }
+
+    @Test
+    fun `skips in a row to one side add up`() = runTest {
+        val vm = serverWithSegments()
+        val duration = 600_000L
+
+        vm.onSkipForward(60_000, duration)
+        vm.onSeekHandled()
+        vm.onSkipForward(70_000, duration)
+        vm.onSeekHandled()
+        vm.onSkipForward(80_000, duration)
+
+        assertEquals(SkipRun(forward = true, movedMs = 30_000, taps = 3), vm.uiState.value.skipRun)
+        assertEquals(30, vm.uiState.value.skipRun?.seconds)
+    }
+
+    @Test
+    fun `a skip to the other side starts a new run`() = runTest {
+        val vm = serverWithSegments()
+        val duration = 600_000L
+
+        vm.onSkipForward(60_000, duration)
+        vm.onSkipForward(60_000, duration)
+        vm.onSkipBack(60_000)
+
+        assertEquals(SkipRun(forward = false, movedMs = 10_000, taps = 1), vm.uiState.value.skipRun)
+    }
+
+    @Test
+    fun `a skip run counts only how far it went`() = runTest {
+        val vm = serverWithSegments()
+
+        vm.onSkipBack(14_000)
+        vm.onSkipBack(14_000)
+
+        assertEquals(SkipRun(forward = false, movedMs = 14_000, taps = 2), vm.uiState.value.skipRun)
+    }
+
+    @Test
+    fun `a skip run clears after a quiet moment and the next skip starts again`() = runTest {
+        val vm = serverWithSegments()
+        val duration = 600_000L
+
+        vm.onSkipForward(60_000, duration)
+        advanceTimeBy(SKIP_RUN_WINDOW - 100.milliseconds)
+        vm.onSkipForward(60_000, duration)
+        advanceTimeBy(SKIP_RUN_WINDOW - 100.milliseconds)
+        assertEquals(2, vm.uiState.value.skipRun?.taps)
+
+        advanceTimeBy(200.milliseconds)
+        assertNull(vm.uiState.value.skipRun)
+
+        vm.onSkipForward(80_000, duration)
+        assertEquals(SkipRun(forward = true, movedMs = 10_000, taps = 1), vm.uiState.value.skipRun)
     }
 
     @Test
