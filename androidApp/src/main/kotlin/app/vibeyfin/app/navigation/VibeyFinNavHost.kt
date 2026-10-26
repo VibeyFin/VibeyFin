@@ -44,6 +44,11 @@ import app.vibeyfin.ui.banner.AppBannerViewModel
 import app.vibeyfin.domain.OfflineMode
 import app.vibeyfin.app.home.OfflineHomeRoute
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
 import app.vibeyfin.app.components.AppBanner
 import app.vibeyfin.app.downloads.DownloadsRoute
 import app.vibeyfin.app.person.PersonRoute
@@ -183,11 +188,19 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
     // The player is the whole screen: no inset of its own for the camera cut-out, so no bar of the page's colour beside the picture
     // (a foldable's cover screen, a phone turned sideways), and a black window behind it.
     val onPlayer = backStackEntry?.opensPlayer() == true
+    // From 600 dp (a tablet, an unfolded foldable) the tabs sit at the top, centered, and a swipe sideways on the bar changes tab.
+    val tablet = LocalConfiguration.current.screenWidthDp >= 600
+    val atTabRoot = currentTab != null && backStackEntry?.destination?.hasRoute(currentTab.root::class) == true
+    val tabs = Tab.entries.filter { !offline || it != Tab.Library }
+    val swipeTo: (Int) -> Unit = { step ->
+        val at = tabs.indexOf(currentTab)
+        tabs.getOrNull(at + step)?.takeIf { at >= 0 }?.let(select)
+    }
     Scaffold(
         containerColor = if (onPlayer) androidx.compose.ui.graphics.Color.Black else MaterialTheme.colorScheme.background,
         contentWindowInsets = if (onPlayer) WindowInsets(0, 0, 0, 0) else ScaffoldDefaults.contentWindowInsets,
         bottomBar = {
-            if (currentTab != null) MainNavigationBar(currentTab, select, offline)
+            if (currentTab != null && !tablet) MainNavigationBar(currentTab, select, offline)
         },
     ) { padding ->
         // The long-press menu of a poster, wherever the poster is: Details, Trailer (when the title has one) and My List.
@@ -209,9 +222,15 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
             onMyList = tileMenu::onToggleFavorite,
             onDismiss = tileMenu::onClose,
         )
-        Column(Modifier.padding(padding).consumeWindowInsets(padding)) {
+        Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
+        Column(Modifier.fillMaxSize()) {
         if (!onPlayer) banner?.let { AppBanner(it, onAction = bannerModel::onAction) }
-        SharedTransitionLayout(Modifier.weight(1f)) {
+        SharedTransitionLayout(
+            Modifier
+                .weight(1f)
+                // Search, Library and Downloads start below the tabs; Home and the pages opened from a tab run under them, over the artwork.
+                .padding(top = if (tablet && atTabRoot && currentTab != Tab.Home) TABLET_TABS_HEIGHT else 0.dp),
+        ) {
         CompositionLocalProvider(
             LocalSharedTransitionScope provides this,
             LocalTileLongPress provides { item -> tileMenu.onOpen(item) },
@@ -364,6 +383,16 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
             }
         }
         }
+        }
+        }
+        if (tablet && currentTab != null) {
+            TabletTabs(
+                selected = currentTab,
+                tabs = tabs,
+                onSelect = select,
+                onSwipe = swipeTo,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
         }
         }
     }
