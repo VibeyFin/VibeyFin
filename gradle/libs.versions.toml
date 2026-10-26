@@ -28,6 +28,11 @@ androidx-media3 = "1.11.1"
 jellyfin-media3-ffmpeg = "1.9.0+1"
 # WorkManager for background polling of new titles, resolved 2026-10-26 on Google Maven (latest stable).
 androidx-work = "2.12.0"
+# Macrobenchmark and the baseline profile, resolved 2026-10-26 on Google Maven (latest stable; the metadata's newest benchmark is an alpha).
+androidx-benchmark = "1.5.0"
+androidx-baselineprofile = "1.5.0"
+androidx-profileinstaller = "1.4.1"
+androidx-uiautomator = "2.4.0"
 
 # Android SDK levels (not dependencies). compileSdk 37 is required by the latest stable
 # lifecycle 2.11.0 / Compose 1.12.x AARs; targetSdk is a separate runtime-behaviour choice.
@@ -76,6 +81,9 @@ androidx-media3-exoplayer-hls = { module = "androidx.media3:media3-exoplayer-hls
 androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "androidx-media3" }
 androidx-media3-session = { module = "androidx.media3:media3-session", version.ref = "androidx-media3" }
 jellyfin-media3-ffmpeg-decoder = { module = "org.jellyfin.media3:media3-ffmpeg-decoder", version.ref = "jellyfin-media3-ffmpeg" }
+androidx-benchmark-macro-junit4 = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "androidx-benchmark" }
+androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "androidx-profileinstaller" }
+androidx-uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "androidx-uiautomator" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "androidx-work" }
 androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "androidx-work" }
 koin-androidx-compose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
@@ -90,6 +98,8 @@ kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-test = { id = "com.android.test", version.ref = "agp" }
+androidx-baselineprofile = { id = "androidx.baselineprofile", version.ref = "androidx-baselineprofile" }
 android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

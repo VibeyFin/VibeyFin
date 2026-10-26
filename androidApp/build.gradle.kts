@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.androidx.baselineprofile)
 }
 
 composeCompiler {
@@ -74,6 +75,10 @@ dependencies {
     implementation(libs.jellyfin.media3.ffmpeg.decoder)
 
     implementation(libs.androidx.work.runtime.ktx)
+
+    // Installs the baseline profile the benchmark module generates (`./gradlew :androidApp:generateBaselineProfile`).
+    implementation(libs.androidx.profileinstaller)
+    baselineProfile(project(":benchmark"))
 
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
