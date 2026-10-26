@@ -189,6 +189,7 @@ SUP
 failure "Plain Clip" mkv "${H264[@]}" -c:a aac -b:a 64k
 failure "DTS Audio" mkv "${H264[@]}" -c:a dts -strict -2
 failure "MKV VP9 Opus" mkv -c:v libvpx-vp9 -deadline realtime -cpu-used 8 -c:a libopus
+failure "AV1 AC3" mkv -c:v libsvtav1 -preset 12 -pix_fmt yuv420p10le -c:a ac3 -b:a 192k
 failure "Text Subtitles" mkv -i /data/work/english.srt -i /data/work/german.srt \
   -map 0:v -map 1:a -map 2 -map 3 "${H264[@]}" -c:a aac -b:a 64k -c:s srt \
   -metadata:s:s:0 language=eng -metadata:s:s:1 language=deu

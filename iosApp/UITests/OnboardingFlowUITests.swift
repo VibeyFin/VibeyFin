@@ -10,6 +10,8 @@ import XCTest
 final class OnboardingFlowUITests: XCTestCase {
     private var app: XCUIApplication!
 
+    private static var finishedDownloads = 0
+
     private var server: String { Self.setting("VIBEYFIN_TEST_SERVER", default: "localhost:8196") }
     private var username: String { Self.setting("VIBEYFIN_TEST_USER", default: "admin") }
     // Throwaway password of the disposable local Jellyfin in docs/test-server.md.
@@ -439,6 +441,102 @@ final class OnboardingFlowUITests: XCTestCase {
     // MARK: - Helpers
 
     /// Runs `body` as a named step and attaches a screenshot at the end, so a report shows each screen.
+    /// An MKV with HEVC video: AVPlayer cannot open the container, so the download is remuxed to MP4 on the device.
+    func testZDownloadMovie() throws {
+        try downloadAndExpectFinished(search: "HDR", result: "HDR")
+    }
+
+    /// An MKV with DTS audio: the audio is converted to AAC on the device.
+    func testZDownloadDtsAudio() throws {
+        try downloadAndExpectFinished(search: "DTS Audio", result: "DTS Audio")
+    }
+
+    private func downloadAndExpectFinished(search query: String, result title: String) throws {
+        let search = tabButton("Search")
+        XCTAssertTrue(search.waitForExistence(timeout: 20), "Search tab is missing")
+        search.tap()
+        let field = app.searchFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "Search field is missing")
+        field.tap()
+        field.typeText(query)
+        let found = button(title, contains: true)
+        XCTAssertTrue(found.waitForExistence(timeout: 20), "\(title) is missing from the results")
+        found.tap()
+        // "Download " with its space: the tab bar's "Downloads" also begins with the word.
+        let download = app.buttons.matching(NSPredicate(format: "label BEGINSWITH[c] %@", "Download ")).firstMatch
+        XCTAssertTrue(download.waitForExistence(timeout: 20), "Download button is missing")
+        download.tap()
+        tabButton("Downloads").tap()
+        let row = app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", title)).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 20), "Download row is missing")
+        // The tests share one install, so an earlier test's finished download is on this list too: wait for one more.
+        let finished = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH[c] %@", "Downloaded"))
+        let expected = Self.finishedDownloads + 1
+        let reached = NSPredicate(format: "count >= %d", expected)
+        expectation(for: reached, evaluatedWith: finished)
+        waitForExpectations(timeout: 120) { error in
+            if error != nil { XCTFail("The download did not finish: \(self.visibleTexts())") }
+        }
+        Self.finishedDownloads = expected
+    }
+
+    /// The converted MP4 from `testZDownloadMovie` opens in the player, and plays: its position moves.
+    func testZPlayDownloadedFile() throws {
+        tabButton("Downloads").tap()
+        let row = app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "HDR")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 20), "The downloaded movie is not on the Downloads tab")
+        row.tap()
+
+        let position = app.descendants(matching: .any).matching(NSPredicate(format: "label ==[c] %@", "Playback position")).firstMatch
+        if !position.waitForExistence(timeout: 30) {
+            app.tap() // the controls hide a moment after the player opens
+        }
+        XCTAssertTrue(position.waitForExistence(timeout: 15), "The player did not open: \(visibleTexts())")
+        let first = position.value as? String
+        var moved = false
+        for _ in 0..<10 where !moved {
+            sleep(2)
+            if !position.exists { app.tap() }
+            moved = position.exists && (position.value as? String) != first
+        }
+        step("playing a downloaded file") {}
+        XCTAssertTrue(moved, "The downloaded file did not play: position stayed \(first ?? "nil"). \(visibleTexts())")
+    }
+
+    /// The downloads' settings sit on the Settings root, next to the others: Offline mode for the device, mobile data and the storage limit for the profile.
+    func testZSettingsHasDownloadSettings() throws {
+        try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "The iPad shows Settings as a sidebar; its rows are checked on the phone")
+        let profile = button(username)
+        XCTAssertTrue(profile.waitForExistence(timeout: 20), "Profile menu is missing")
+        profile.tap()
+        let settings = button("Settings")
+        if !settings.waitForExistence(timeout: 5) { profile.tap() }
+        XCTAssertTrue(settings.waitForExistence(timeout: 5), "Settings menu item is missing")
+        settings.tap()
+        XCTAssertTrue(button("Quality", contains: true).waitForExistence(timeout: 10), "Settings did not open")
+        // The list draws only what is on screen, so scroll to each row.
+        for row in ["Offline mode", "Download over mobile data", "Storage limit for downloads"] {
+            for _ in 0..<8 where !switchOrButton(row).exists { app.swipeUp() }
+            XCTAssertTrue(switchOrButton(row).exists, "\(row) is missing from Settings. On screen: \(visibleTexts())")
+        }
+    }
+
+    private func switchOrButton(_ label: String) -> XCUIElement {
+        let match = NSPredicate(format: "label CONTAINS[c] %@", label)
+        let toggle = app.switches.matching(match).firstMatch
+        return toggle.exists ? toggle : app.buttons.matching(match).firstMatch
+    }
+
+    private func tabButton(_ name: String) -> XCUIElement {
+        let match = NSPredicate(format: "label ==[c] %@", name)
+        let tab = app.tabBars.buttons.matching(match).firstMatch
+        return tab.exists ? tab : app.buttons.matching(match).firstMatch
+    }
+
+    private func visibleTexts() -> String {
+        app.staticTexts.allElementsBoundByIndex.map { $0.label }.joined(separator: " | ")
+    }
+
     private func step(_ name: String, _ body: () -> Void) {
         XCTContext.runActivity(named: name) { activity in
             body()

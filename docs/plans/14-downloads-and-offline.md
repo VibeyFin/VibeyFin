@@ -208,6 +208,29 @@ a 401 on a background download marks that download as needing sign-in but does n
 background transfers (an iOS rule). Also open on both platforms: a Download entry in the poster menu, the "remove once watched"
 setting, embedded and image subtitles offline, and offline movie and show pages.
 
+### Phase E follow-up: downloads AVPlayer can play (iOS, built and run on the simulator)
+
+The first iOS build kept the original file, so an MKV, DTS or TrueHD audio, or a codec AVPlayer cannot decode never played. Now a finished
+download is rewritten **on the device**, once, by `VideoConverter` (`commonMain`; `IosVideoConverter` calls the Swift `FFmpegVideoConverter`, which
+calls `FFRemux.c`):
+
+- **A remux, not a transcode.** The video is copied bit for bit into an MP4 (HEVC tagged `hvc1`). Audio AVPlayer plays (AAC, AC-3, E-AC-3, ALAC, MP3)
+  is copied; the rest (DTS, TrueHD, Opus, Vorbis, FLAC) is decoded and written as AAC. Subtitles are left out: they are separate files. An MP4 or
+  MOV that is already fine is kept as it is. The original is deleted once the copy is in place; the work is `video.converting`, so a kill leaves
+  the full download and the next run converts again.
+- **Video is never re-encoded.** H.264 and HEVC always pass; AV1 passes only where `VTIsHardwareDecodeSupported(kCMVideoCodecType_AV1)` (A17 Pro
+  and later; not the simulator on a Mac without AV1). Anything else (VP9, MPEG-2, VC-1...) fails as `DownloadFailure.Unplayable`. The check runs
+  from the codec saved in the snapshot **before any bytes are fetched**, and again on the file.
+- **FFmpeg** is built by `scripts/ffmpeg/build-ios.sh` (LGPL, only the demuxers, decoders, parsers and the MP4 muxer remuxing needs; about 4.5 MB per SDK).
+  The h264 and hevc decoders are in it for one reason: FFmpeg reads frame reordering from them, and the MP4 writer needs it for decode times.
+- Looked at and not done: a server transcode stream as a fallback for what the device cannot decode (server load, quality loss, no resume, one audio
+  track); a pure-Swift MKV reader with `AVAssetWriter` (no DTS or TrueHD, and a demuxer to maintain). No maintained LGPL SwiftPM FFmpeg exists
+  (ffmpeg-kit is retired, its binaries are gone).
+- Verified on the iPhone 18 Pro simulator with `scripts/test-server` fixtures: `movie-hdr` (HEVC in MKV) and `dts-audio` finish as `video.mp4`
+  (`testZDownloadMovie`, `testZDownloadDtsAudio`); `av1-ac3` remuxes to a valid `av01` MP4 on macOS; a real server's AV1 episode was refused on
+  the simulator, as expected. **Not done:** playing a converted file in the app's player, a "Converting" state on the row, a codec name in the
+  failure message, a real device test with AV1.
+
 ## Verification
 
 - `./gradlew :shared:allTests` (Android host tests stand in for it on this Mac) and
