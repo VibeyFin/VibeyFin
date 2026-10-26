@@ -6,7 +6,9 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -19,6 +21,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -33,13 +39,20 @@ import androidx.compose.ui.unit.dp
 import app.vibeyfin.R
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.WithMenuPress
+import app.vibeyfin.app.downloads.DownloadActionMenuItem
+import app.vibeyfin.app.downloads.DownloadBadgeIcon
+import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
+import app.vibeyfin.ui.downloads.DownloadAction
+import app.vibeyfin.ui.downloads.actions
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.item.Trailer
 import app.vibeyfin.ui.tile.TileMenuUiState
 
 /**
  * What a long press on a poster opens: the title, then Details, the Trailer (only when the title has one: a grey line holds its place
- * while the server is asked) and My List. A trailer the server holds plays in the app; one on the web opens in the system's viewer.
+ * while the server is asked), Download (for a movie, an episode or a show, when the server lets the user) and My List. A trailer the
+ * server holds plays in the app; one on the web opens in the system's viewer. Download queues a movie or an episode at once and asks
+ * first for a show; once there is a download the row shows where it is and a tap opens its pause, resume and remove menu.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +61,8 @@ fun TileMenuSheet(
     onDetails: () -> Unit,
     onTrailer: (Trailer) -> Unit,
     onMyList: () -> Unit,
+    onDownload: () -> Unit,
+    onDownloadAction: (DownloadAction) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val item = state.item ?: return
@@ -85,6 +100,7 @@ fun TileMenuSheet(
                     else -> Unit
                 }
             }
+            if (state.offersDownload) DownloadRow(state, onDownload, onDownloadAction)
             // A change that could not be saved was taken back; the sheet says so.
             state.actionMessage?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s2).semantics { liveRegion = LiveRegionMode.Polite })
@@ -96,6 +112,37 @@ fun TileMenuSheet(
 }
 
 private val ROW_HEIGHT = 56.dp
+
+/** The Download row: the badge of the tile's download and its words. With no download a tap starts one; with one it opens its actions. */
+@Composable
+private fun DownloadRow(state: TileMenuUiState, onDownload: () -> Unit, onAction: (DownloadAction) -> Unit) {
+    val download = state.download
+    var menu by remember { mutableStateOf(false) }
+    val ensureNotifications = rememberDownloadNotificationPermission()
+    Box {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = ROW_HEIGHT)
+                .clickable(role = Role.Button) {
+                    // A movie or an episode with a download opens its menu; everything else (and a show, which asks) starts.
+                    if (download != null) {
+                        menu = true
+                    } else {
+                        ensureNotifications()
+                        onDownload()
+                    }
+                }
+                .padding(horizontal = VibeyFinTokens.Space.s4),
+            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            DownloadBadgeIcon(state.downloadBadge, state.downloadProgress, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(state.downloadLabel, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+        }
+        VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
+            download?.actions?.forEach { action -> DownloadActionMenuItem(action) { menu = false; onAction(action) } }
+        }
+    }
+}
 
 private class MenuIcon(val vector: ImageVector? = null, val resource: Int? = null)
 

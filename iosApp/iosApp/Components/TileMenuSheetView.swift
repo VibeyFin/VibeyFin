@@ -8,6 +8,8 @@ struct TileMenuSheetView: View {
     let onDetails: () -> Void
     let onTrailer: (Trailer) -> Void
     let onMyList: () -> Void
+    let onDownload: () -> Void
+    let onDownloadAction: (DownloadAction) -> Void
 
     var body: some View {
         if let item = state.item {
@@ -26,6 +28,7 @@ struct TileMenuSheetView: View {
                         .padding(.horizontal, Space.s4)
                         .frame(minHeight: 52, alignment: .leading)
                 }
+                if state.offersDownload { downloadRow }
                 if let message = state.actionMessage {
                     Text(message).font(.subheadline).foregroundStyle(.red).padding(.horizontal, Space.s4).padding(.vertical, Space.s2)
                 }
@@ -34,7 +37,28 @@ struct TileMenuSheetView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(.systemBackground))
-            .presentationDetents([.height(300)])
+            .presentationDetents([.height(state.offersDownload ? 352 : 300)])
+        }
+    }
+
+    /// Download: with no download a tap starts one (a show asks first); with one the row says where it is and opens pause, resume and remove.
+    @ViewBuilder
+    private var downloadRow: some View {
+        let label = HStack(spacing: Space.s4) {
+            DownloadBadgeView(badge: state.downloadBadge, progress: state.downloadProgress?.floatValue, tint: .secondary)
+                .frame(width: 24, height: 24)
+            Text(state.downloadLabel.titleCased()).foregroundStyle(.primary)
+            Spacer()
+        }
+        .padding(.horizontal, Space.s4)
+        .frame(minHeight: 52)
+        .contentShape(Rectangle())
+        if let download = state.download {
+            Menu {
+                DownloadActionButtons(actions: DownloadBridge.shared.actions(download: download), onAction: onDownloadAction)
+            } label: { label }
+        } else {
+            Button(action: onDownload) { label }.buttonStyle(PressableButtonStyle())
         }
     }
 

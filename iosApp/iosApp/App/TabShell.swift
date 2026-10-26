@@ -179,7 +179,19 @@ struct TabShell: View {
                             openURL(url)
                         }
                     },
-                    onMyList: { tileMenu.toggleFavorite() }
+                    onMyList: { tileMenu.toggleFavorite() },
+                    onDownload: { tileMenu.download() },
+                    onDownloadAction: { tileMenu.act($0) }
+                )
+                // The questions the menu's Download row can raise: how many episodes of a show, and before a download is deleted.
+                .downloadPrompts(
+                    prompt: state.downloadPrompt,
+                    removal: state.removePrompt,
+                    onToggleUnwatched: { tileMenu.toggleUnwatchedOnly() },
+                    onConfirm: { tileMenu.confirmDownload() },
+                    onDismiss: { tileMenu.dismissDownloadPrompt() },
+                    onConfirmRemove: { tileMenu.confirmRemove() },
+                    onDismissRemoval: { tileMenu.dismissRemoval() }
                 )
             }
         }

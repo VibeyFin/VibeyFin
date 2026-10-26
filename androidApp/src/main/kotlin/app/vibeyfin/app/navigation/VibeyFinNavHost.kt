@@ -220,8 +220,24 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
                 }
             },
             onMyList = tileMenu::onToggleFavorite,
+            onDownload = tileMenu::onDownload,
+            onDownloadAction = tileMenu::onDownloadAction,
             onDismiss = tileMenu::onClose,
         )
+        // The questions the menu's Download row can raise: how many episodes of a show, and before a download is deleted.
+        val ensureNotifications = app.vibeyfin.app.downloads.rememberDownloadNotificationPermission()
+        menu.downloadPrompt?.let { prompt ->
+            app.vibeyfin.app.downloads.DownloadConfirmDialog(
+                prompt,
+                onToggleUnwatched = tileMenu::onToggleUnwatchedOnly,
+                onConfirm = {
+                    ensureNotifications()
+                    tileMenu.onConfirmDownload()
+                },
+                onDismiss = tileMenu::onDismissDownloadPrompt,
+            )
+        }
+        menu.removePrompt?.let { app.vibeyfin.app.downloads.RemoveConfirmDialog(it, onConfirm = tileMenu::onConfirmRemove, onDismiss = tileMenu::onDismissRemoval) }
         Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
         Column(Modifier.fillMaxSize()) {
         if (!onPlayer) banner?.let { AppBanner(it, onAction = bannerModel::onAction) }

@@ -527,6 +527,24 @@ final class OnboardingFlowUITests: XCTestCase {
         return toggle.exists ? toggle : app.buttons.matching(match).firstMatch
     }
 
+    /// The long-press menu of a poster offers Download, so the page does not have to be opened. Runs last: the other download tests count finished downloads.
+    func testZZDownloadFromTileMenu() throws {
+        let home = tabButton("Home")
+        XCTAssertTrue(home.waitForExistence(timeout: 20), "Home tab is missing")
+        home.tap()
+        let poster = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "Plain Clip")).firstMatch
+        for _ in 0..<8 where !poster.exists { app.swipeUp() }
+        XCTAssertTrue(poster.waitForExistence(timeout: 20), "No Plain Clip poster on Home. On screen: \(visibleTexts())")
+        poster.press(forDuration: 1.2)
+
+        let download = button("Download")
+        XCTAssertTrue(download.waitForExistence(timeout: 10), "The menu has no Download row. On screen: \(visibleTexts())")
+        download.tap()
+
+        // The row follows the download: it was a 20 s clip, so it ends as Downloaded.
+        XCTAssertTrue(button("Downloaded").waitForExistence(timeout: 90), "The menu's Download row never reached Downloaded. On screen: \(visibleTexts())")
+    }
+
     private func tabButton(_ name: String) -> XCUIElement {
         let match = NSPredicate(format: "label ==[c] %@", name)
         let tab = app.tabBars.buttons.matching(match).firstMatch
