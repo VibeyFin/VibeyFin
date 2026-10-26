@@ -262,6 +262,22 @@ class PlaybackViewModelTest {
     }
 
     @Test
+    fun carriesAPictureOfTheItemForTheNowPlayingCard() = runTest {
+        server(item = itemJson("m1", "Heat", primaryTag = "p1", backdropTag = "b1"))
+
+        val withArtwork = viewModel().uiState.first { it.title.isNotEmpty() }
+
+        assertEquals(true, withArtwork.artworkUrl?.contains("/Items/m1/Images/"))
+    }
+
+    @Test
+    fun hasNoArtworkWhenTheItemHasNoPicture() = runTest {
+        server(item = itemJson("m1", "Heat"))
+
+        assertNull(viewModel().uiState.first { it.title.isNotEmpty() }.artworkUrl)
+    }
+
+    @Test
     fun showsTheShowAndEpisodeForAnEpisode() = runTest {
         server(
             item = itemJson("m1", "Northbound", type = "Episode", seriesName = "Paper Harbour", seasonNumber = 2, episodeNumber = 4),

@@ -142,6 +142,8 @@ data class PlaybackUiState(
     val title: String = "",
     /** For an episode: the show and "S1 E3". */
     val subtitle: String? = null,
+    /** A picture of the item for the system's Now Playing card: its landscape image, else its backdrop or poster. Null when it has none. */
+    val artworkUrl: String? = null,
     /** Null until the server has answered, and after a failure. */
     val stream: PlaybackStream? = null,
     /** The audio tracks to pick from; empty when there is only one. */
@@ -669,6 +671,7 @@ class PlaybackViewModel(
             it.copy(
                 title = found.title,
                 subtitle = Strings.metaLine(found.seriesName, found.episodeLabel()),
+                artworkUrl = found.landscapeUrl ?: found.backdropUrl ?: found.posterUrl,
             )
         }
         open(startAtMs)

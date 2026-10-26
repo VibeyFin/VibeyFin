@@ -18,10 +18,10 @@ private fun subtitleId(index: Int) = "vibeyfin-subtitle-$index"
  * The stream as a Media3 item. Every subtitle the server sends as a file goes in with the video and
  * none is shown yet: [applyTrackSelection] picks one, and switching later needs no new item.
  */
-fun PlaybackStream.toMediaItem(title: String? = null, subtitle: String? = null): MediaItem =
+fun PlaybackStream.toMediaItem(title: String? = null, subtitle: String? = null, artworkUrl: String? = null): MediaItem =
     MediaItem.Builder()
         .setUri(url)
-        .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setSubtitle(subtitle).build())
+        .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setSubtitle(subtitle).setArtworkUri(artworkUrl?.let(Uri::parse)).build())
         .setSubtitleConfigurations(subtitleFiles.map { it.toConfiguration() })
         .build()
 

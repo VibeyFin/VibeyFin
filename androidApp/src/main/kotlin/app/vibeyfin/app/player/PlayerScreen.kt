@@ -257,7 +257,7 @@ fun PlayerRoute(
             player.stop()
         } else {
             Log.d(TIMING_TAG, "stream ready ${SystemClock.elapsedRealtime() - openedAt} ms after the screen opened (negotiation done)")
-            open(player, http, stream, state.title, state.subtitle)
+            open(player, http, stream, state.title, state.subtitle, state.artworkUrl)
             viewModel.onPlaying(stream.startPositionMs)
         }
     }
@@ -694,10 +694,10 @@ private fun buildPlayer(context: Context, http: DefaultHttpDataSource.Factory, b
         }
 
 @androidx.annotation.OptIn(UnstableApi::class)
-private fun open(player: ExoPlayer, http: DefaultHttpDataSource.Factory, stream: PlaybackStream, title: String, subtitle: String?) {
+private fun open(player: ExoPlayer, http: DefaultHttpDataSource.Factory, stream: PlaybackStream, title: String, subtitle: String?, artworkUrl: String?) {
     // The factory is read when the player opens the URL, so the headers go in before the item does.
     http.setDefaultRequestProperties(stream.headers)
-    player.setMediaItem(stream.toMediaItem(title, subtitle), stream.startPositionMs)
+    player.setMediaItem(stream.toMediaItem(title, subtitle, artworkUrl), stream.startPositionMs)
     player.prepare()
     player.playWhenReady = true
 }
