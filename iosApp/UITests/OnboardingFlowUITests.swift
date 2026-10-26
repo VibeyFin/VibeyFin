@@ -545,6 +545,45 @@ final class OnboardingFlowUITests: XCTestCase {
         XCTAssertTrue(button("Downloaded").waitForExistence(timeout: 90), "The menu's Download row never reached Downloaded. On screen: \(visibleTexts())")
     }
 
+    /// The "..." menu of a Continue watching card offers Download. A card needs something half watched, so an episode is played for a while and closed.
+    func testZZZDownloadFromContinueCard() throws {
+        let search = tabButton("Search")
+        XCTAssertTrue(search.waitForExistence(timeout: 20), "Search tab is missing")
+        search.tap()
+        let field = app.searchFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "Search field is missing")
+        field.tap()
+        field.typeText("Test Show")
+        let result = button("Test Show", contains: true)
+        XCTAssertTrue(result.waitForExistence(timeout: 20), "Test Show is missing from the results")
+        result.tap()
+        let play = app.buttons.matching(NSPredicate(format: "label BEGINSWITH[c] %@", "Play")).firstMatch
+        XCTAssertTrue(play.waitForExistence(timeout: 20), "Play is missing")
+        play.tap()
+        XCTAssertTrue(button("Speed", contains: true).waitForExistence(timeout: 30), "The player controls didn't show")
+        // The player tells the server where it is every few seconds, so after a while there is a half watched episode; relaunching
+        // the app puts Home in front without having to find the player's controls, which hide while it plays.
+        sleep(15)
+        app.terminate()
+        app.launch()
+
+        let home = tabButton("Home")
+        XCTAssertTrue(home.waitForExistence(timeout: 20), "Home tab is missing")
+        home.tap()
+        let more = button("More actions")
+        XCTAssertTrue(more.waitForExistence(timeout: 30), "No Continue watching card on Home. On screen: \(visibleTexts())")
+        more.tap()
+        let download = button("Download")
+        XCTAssertTrue(download.waitForExistence(timeout: 10), "The card's menu has no Download entry. On screen: \(visibleTexts())")
+        download.tap()
+
+        // Once there is a download the same menu offers what to do with it instead.
+        let menu = button("More actions")
+        XCTAssertTrue(menu.waitForExistence(timeout: 10), "The card is gone from Home")
+        menu.tap()
+        XCTAssertTrue(button("Remove Download", contains: true).waitForExistence(timeout: 20), "The menu does not show the download. On screen: \(visibleTexts())")
+    }
+
     private func tabButton(_ name: String) -> XCUIElement {
         let match = NSPredicate(format: "label ==[c] %@", name)
         let tab = app.tabBars.buttons.matching(match).firstMatch
