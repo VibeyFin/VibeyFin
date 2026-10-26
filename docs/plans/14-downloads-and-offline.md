@@ -128,8 +128,10 @@ Checked with `big-download` behind `scripts/test-server/throttle-proxy.py`, the 
 
 ### What Phase C did differently
 
-- **No poster-menu entry.** `TileMenuViewModel` has no Download item: the long-press sheet sits over Home, where the count-and-size question
-  has no room. Downloading starts from the item page, an episode's menu and a season's list.
+- **Poster-menu entry, added later.** The long-press menu of a poster has a Download row (`TileMenuViewModel`, `TileMenuUiState.offersDownload`)
+  for a movie, an episode or a show, when the server lets the user. A movie or an episode goes into the queue at once; a show asks how many
+  episodes and how much room first, in the same dialog the item page uses. Once there is a download the row shows where it is (the badge and
+  "Downloading", "Paused", "Downloaded"...) and a tap opens pause, resume and remove. A season or a collection has none.
 - **No auto-clean setting yet.** The column exists (v7), but nothing would act on it before offline playback records what was watched, so it
   is not shown (a switch that does nothing is worse than none). It comes in Phase D.
 - **The "Offline mode" switch is in Settings and stored, but takes effect in Phase D** (the three-tab shell, offline Home and Search). The
@@ -171,7 +173,7 @@ Checked with `big-download` behind `scripts/test-server/throttle-proxy.py`, the 
 - **Anything downloaded plays from its file, online or not** (`PlaybackViewModel` + `OfflineLibrary.playable`): no negotiation, no scrub preview, no segments. Online, the server's own record of where the user stopped wins (waiting up to 3 s for it); otherwise the device's. A file that will not play is an error, never a transcode. Subtitle files that were downloaded are offered; embedded or image subtitles are not (known limit). After an episode, the next downloaded one plays. The Downloads tab plays a finished row.
 - **Progress** is saved on the device while playing (`LocalPlaybackReporter`: every 10 s and on pause, seek and stop), with Jellyfin's rules (under 5 % keeps no place, from 90 % it is watched). `OfflineSync` sends it whenever the server can be reached: at the stop, at app start, whenever a connection comes back, and from a WorkManager job (`ProgressSyncWorker`) that runs even with the app closed. A part-watched item sets the position and the date it was watched; a finished one is marked watched the ordinary way. **A record is dropped if the server's `LastPlayedDate` is newer** (watched elsewhere since): the server is the source of truth. Once online, `OfflineSync` also brings the server's watch state back into the downloaded items that have nothing waiting.
 - **Time left:** a running download's speed is kept in memory (`DownloadSpeeds`, smoothed), so the notification and the Downloads tab say "20 MB of 283 MB · 8m left". Each episode on a show's page has its own download button, and **Remove all downloads** is a trash icon.
-- **Not done:** the poster-menu Download entry, the "remove once watched" setting (the data is there), embedded subtitles, and offline pages for a movie or show (an offline tap plays, or opens the Downloads tab, instead of a page that would need the server).
+- **Not done:** the "remove once watched" setting (the data is there), embedded subtitles, and offline pages for a movie or show (an offline tap plays, or opens the Downloads tab, instead of a page that would need the server).
 
 ## Phase E: iOS
 
@@ -205,7 +207,7 @@ resolved). `scripts/ios-smoke.sh` and the XCUITest did not run.
 
 Not done: iOS syncs offline progress only while the app runs (no BGTask), so with the app closed it waits for the next launch;
 a 401 on a background download marks that download as needing sign-in but does not lock the profile; a force-quit cancels
-background transfers (an iOS rule). Also open on both platforms: a Download entry in the poster menu, the "remove once watched"
+background transfers (an iOS rule). Also open on both platforms: the "remove once watched"
 setting, embedded and image subtitles offline, and offline movie and show pages.
 
 ### Phase E follow-up: downloads AVPlayer can play (iOS, built and run on the simulator)
