@@ -1,5 +1,6 @@
 package app.vibeyfin.ios
 
+import app.vibeyfin.ui.downloads.DownloadAction
 import app.vibeyfin.ui.home.CategoryKind
 import app.vibeyfin.ui.home.HomeUiState
 import app.vibeyfin.ui.home.HomeViewModel
@@ -40,6 +41,14 @@ class HomeModel {
     fun onRetryRow(id: String) = host.viewModel.onRetryRow(id)
 
     fun onMarkWatched(cardId: String) = host.viewModel.onMarkWatched(cardId)
+
+    fun onDownload(cardId: String) = host.viewModel.onDownload(cardId)
+
+    fun onDownloadAction(cardId: String, action: DownloadAction) = host.viewModel.onDownloadAction(cardId, action)
+
+    fun onConfirmRemove() = host.viewModel.onConfirmRemove()
+
+    fun onDismissRemoval() = host.viewModel.onDismissRemoval()
 
     fun onRetryAction() = host.viewModel.onRetryAction()
 

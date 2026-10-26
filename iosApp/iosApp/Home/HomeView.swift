@@ -54,7 +54,11 @@ struct HomeView: View {
                                 onPlay: { player.play($0) },
                                 onDetails: onDetails,
                                 onMarkWatched: { model.markWatched($0) },
-                                onRetry: { model.retryContinue() }
+                                onRetry: { model.retryContinue() },
+                                downloads: state.downloads,
+                                canDownload: state.canDownload,
+                                onDownload: { model.download($0) },
+                                onDownloadAction: { model.act($0, $1) }
                             )
                             // Until the libraries are known two grey rows hold the place, so the rows that replace
                             // them don't push My media down from under the user's eyes.
@@ -108,6 +112,16 @@ struct HomeView: View {
             onDismiss: { model.dismissMessage() }
         )
         .onAppear { model.start() }
+        // The question before a Continue watching card's download is deleted.
+        .downloadPrompts(
+            prompt: nil,
+            removal: model.state?.removePrompt,
+            onToggleUnwatched: {},
+            onConfirm: {},
+            onDismiss: {},
+            onConfirmRemove: { model.confirmRemove() },
+            onDismissRemoval: { model.dismissRemoval() }
+        )
         .onChange(of: scenePhase) { phase in
             if phase == .active { model.foreground() }
         }

@@ -46,6 +46,14 @@ final class HomeObservable: ObservableObject {
         model.onMarkWatched(cardId: cardId)
     }
 
+    func download(_ cardId: String) { model.onDownload(cardId: cardId) }
+
+    func act(_ cardId: String, _ action: DownloadAction) { model.onDownloadAction(cardId: cardId, action: action) }
+
+    func confirmRemove() { model.onConfirmRemove() }
+
+    func dismissRemoval() { model.onDismissRemoval() }
+
     func retryAction() {
         model.onRetryAction()
     }

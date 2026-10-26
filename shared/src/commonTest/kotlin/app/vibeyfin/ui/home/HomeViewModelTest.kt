@@ -7,7 +7,13 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CoroutineScope
 import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.testing.FakeServer
+import app.vibeyfin.data.db.DOWNLOAD_PAUSED
+import app.vibeyfin.data.db.DOWNLOAD_QUEUED
 import app.vibeyfin.testing.Reply
+import app.vibeyfin.testing.downloadItemJson
+import app.vibeyfin.testing.itemsPage
+import app.vibeyfin.ui.downloads.DownloadAction
+import app.vibeyfin.ui.downloads.actions
 import app.vibeyfin.testing.TICKS_PER_MINUTE
 import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.ViewModelTracker
@@ -52,7 +58,7 @@ class HomeViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(HomeViewModel(app.connection, app.library, app.watch, app.watchChanges, app.clock, app.profileSettings, app.searchHistory, app.pins, app.auth))
+    private fun viewModel() = viewModels.track(HomeViewModel(app.connection, app.library, app.watch, app.watchChanges, app.clock, app.profileSettings, app.searchHistory, app.pins, app.auth, app.downloadRepository))
 
     private suspend fun signedIn(): FakeServer {
         val server = app.serverAt("http://nas:8096")
@@ -589,5 +595,60 @@ class HomeViewModelTest {
 
         assertEquals(0, app.jellyfin.requestsTo("POST", "/UserPlayedItems/nope").size)
         assertEquals(listOf("e1"), viewModel.uiState.value.continueRow.cards.map { it.id })
+    }
+    /** What the download plan reads for the card: the same episode, with its file. */
+    private fun FakeServer.episodeFile() = on(
+        "GET", "/Items",
+        Reply.json(itemsPage(downloadItemJson("e1", "Pilot", "Episode", seriesId = "s1", seriesName = "Show", seasonNumber = 2, episodeNumber = 5))),
+    )
+
+    @Test
+    fun aContinueCardCanBeDownloadedFromItsMenu() = runTest {
+        val server = signedIn()
+        server.libraries()
+        server.watching(resume = itemsJson(halfWatched), nextUp = itemsJson(nextEpisode))
+        server.episodeFile()
+        val viewModel = viewModel()
+        viewModel.loadedRow()
+
+        viewModel.onDownload("e1")
+
+        val state = viewModel.uiState.first { it.downloads.containsKey("e1") }
+        assertEquals("Pilot", state.downloads.getValue("e1").item.title)
+        assertEquals(DOWNLOAD_QUEUED, app.downloads.find("srv-1", "u1", "e1")!!.state)
+    }
+
+    @Test
+    fun aCardsDownloadCanBePausedFromItsMenuAndRemovingAsksFirst() = runTest {
+        val server = signedIn()
+        server.libraries()
+        server.watching(resume = itemsJson(halfWatched), nextUp = itemsJson(nextEpisode))
+        server.episodeFile()
+        val viewModel = viewModel()
+        viewModel.loadedRow()
+        viewModel.onDownload("e1")
+        assertEquals(listOf(DownloadAction.Pause, DownloadAction.Remove), viewModel.uiState.first { it.downloads.containsKey("e1") }.downloads.getValue("e1").actions)
+
+        viewModel.onDownloadAction("e1", DownloadAction.Pause)
+        viewModel.uiState.first { it.downloads["e1"]?.actions?.firstOrNull() == DownloadAction.Resume }
+        assertEquals(DOWNLOAD_PAUSED, app.downloads.find("srv-1", "u1", "e1")!!.state)
+
+        viewModel.onDownloadAction("e1", DownloadAction.Remove)
+        assertEquals(listOf("e1"), viewModel.uiState.first { it.removePrompt != null }.removePrompt!!.itemIds)
+        assertTrue(app.downloads.find("srv-1", "u1", "e1") != null, "nothing is deleted before the user says yes")
+        viewModel.onDismissRemoval()
+        assertNull(viewModel.uiState.first { it.removePrompt == null }.removePrompt)
+    }
+
+    @Test
+    fun aUserWhoMayNotDownloadIsToldSoForTheMenu() = runTest {
+        val server = signedIn()
+        server.libraries()
+        server.watching(resume = itemsJson(halfWatched))
+        server.on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex","Policy":{"EnableContentDownloading":false}}"""))
+        val viewModel = viewModel()
+        viewModel.loadedRow()
+
+        assertFalse(viewModel.uiState.first { !it.canDownload }.canDownload)
     }
 }
