@@ -14,6 +14,7 @@ struct RootView: View {
     @State private var signedIn = false
     @State private var ready = false
     @StateObject private var startup = StartupObservable()
+    @ObservedObject private var taps = NotificationTaps.shared
 
     /// Leaves the tabs and everything opened from them. Servers is the root, so back from "Who's
     /// watching?" has somewhere to go.
@@ -67,7 +68,13 @@ struct RootView: View {
                     path = [.whoIsWatching(serverId: who.serverId, pinUserId: who.pinFor?.userId)]
                 }
                 ready = true
+                if !signedIn { taps.pending = nil }
             }
+        }
+        // A tapped notification opens its title only from the tabs (TabShell). Before sign-in the app stays where it decided to open,
+        // "Who's watching?" with whatever PIN it asks for, and the tap is dropped.
+        .onReceive(taps.$pending) { tap in
+            if tap != nil && ready && !signedIn { taps.pending = nil }
         }
     }
 }

@@ -21,7 +21,31 @@ final class SettingsObservable: ObservableObject {
         model.observe { [weak self] state in
             if !state.serverId.isEmpty { self?.lastServerId = state.serverId }
             self?.state = state
+            self?.followNotifications(state)
         }
+    }
+
+    /// Whether the Notifications toggle was on in the last state; nil before the first.
+    private var notificationsOn: Bool?
+
+    /// Asks for notification permission when the shared state says to, and schedules or drops the background check on a real change:
+    /// after the permission flow when the user switched it on, and when it goes off (by the user, or because permission was refused).
+    /// Opening Settings is not a change: the first states go from the default off to the saved value, so only on-to-off counts.
+    private func followNotifications(_ state: SettingsUiState) {
+        if state.requestNotificationPermission {
+            // Acknowledged at once, so the next state doesn't ask a second time while the prompt is up.
+            let model = self.model
+            model.onNotificationPermissionRequested()
+            NotificationPermission.request { granted in
+                if granted { NewTitlesScheduler.refresh() } else { model.onNotificationPermissionDenied() }
+            }
+        }
+        let toggle = state.pages[SettingsPageId.notifications]?.sections
+            .flatMap { $0.items }
+            .first { $0.key == SettingKey.notifications } as? ToggleItem
+        let on = toggle?.checked ?? false
+        if notificationsOn == true && !on { NewTitlesScheduler.refresh() }
+        notificationsOn = on
     }
 
     /// The page with this id, only its visible rows; nil while the state is loading or the tree has no such page yet.

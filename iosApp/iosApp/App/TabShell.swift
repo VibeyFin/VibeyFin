@@ -74,6 +74,7 @@ struct TabShell: View {
     @State private var searchPath: [TabRoute] = []
     @State private var libraryPath: [TabRoute] = []
     @State private var downloadsPath: [TabRoute] = []
+    @ObservedObject private var taps = NotificationTaps.shared
 
     var body: some View {
         TabView(selection: tappedSelection) {
@@ -119,6 +120,9 @@ struct TabShell: View {
         .environment(\.zoomNamespace, zoomNamespace)
         .environment(\.tileMenu, tileMenu)
         .onAppear { tileMenu.start() }
+        .onReceive(taps.$pending) { tap in
+            if let tap { openTapped(tap) }
+        }
         // The long-press menu of a poster, wherever the poster is.
         .sheet(isPresented: Binding(get: { tileMenu.state?.item != nil }, set: { if !$0 { tileMenu.close() } })) {
             if let state = tileMenu.state {
@@ -163,6 +167,15 @@ struct TabShell: View {
                 selection = tab
             }
         )
+    }
+
+    /// A tapped new-title notification opens the title's page on Home, but only for the profile signed in now: it already got past any
+    /// PIN to open. A notification for another profile changes nothing, since leaving this one could skip its PIN to switch profile.
+    private func openTapped(_ tap: NewTitleTap) {
+        taps.pending = nil
+        guard NewTitlesModel().isSignedIn(serverId: tap.serverId, userId: tap.userId) else { return }
+        selection = .home
+        homePath.append(.item(itemId: tap.itemId))
     }
 
     /// Details from a poster's menu: opens in the tab on screen.

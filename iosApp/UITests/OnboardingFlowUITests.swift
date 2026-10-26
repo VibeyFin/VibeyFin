@@ -183,6 +183,64 @@ final class OnboardingFlowUITests: XCTestCase {
             }
         }
 
+        // Switching notifications on asks iOS for permission; the system alert is allowed. Ends on Home with the setting on.
+        step("Notifications") {
+            let isPad = UIDevice.current.userInterfaceIdiom == .pad
+            addUIInterruptionMonitor(withDescription: "Notification permission") { alert in
+                guard alert.buttons["Allow"].exists else { return false }
+                alert.buttons["Allow"].tap()
+                return true
+            }
+
+            let profile = button(username)
+            XCTAssertTrue(profile.waitForExistence(timeout: 10), "Profile menu is missing")
+            profile.tap()
+            let settings = button("Settings")
+            if !settings.waitForExistence(timeout: 5) { profile.tap() }
+            XCTAssertTrue(settings.waitForExistence(timeout: 5), "Settings menu item is missing")
+            settings.tap()
+
+            // The sidebar row is a cell on an iPad, the root's link a button on a phone (the section header above it is only text).
+            let cell = app.cells.matching(NSPredicate(format: "label BEGINSWITH[c] %@", "Notifications")).firstMatch
+            let link = cell.waitForExistence(timeout: 5) ? cell : button("Notifications", contains: true)
+            XCTAssertTrue(link.waitForExistence(timeout: 10), "Notifications link is missing")
+            link.tap()
+
+            let toggle = app.switches.matching(NSPredicate(format: "label CONTAINS[c] %@", "Notify me")).firstMatch
+            XCTAssertTrue(toggle.waitForExistence(timeout: 10), "Notifications switch is missing")
+            XCTAssertEqual(toggle.value as? String, "0", "Notifications are on before they were switched on")
+            toggle.tap()
+            // The system alert belongs to SpringBoard. Tap its Allow directly; the monitor above is only a fallback, as it is unreliable
+            // for SpringBoard alerts. No alert means permission was decided before (a reused simulator).
+            let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+            let allow = springboard.alerts.buttons.matching(NSPredicate(format: "label ==[c] %@", "Allow")).firstMatch
+            if allow.waitForExistence(timeout: 5) {
+                allow.tap()
+            } else {
+                // Gives the monitor its chance: it only runs on the next interaction with the app.
+                app.navigationBars.firstMatch.tap()
+            }
+            // Still on once the alert is answered: a refusal would have switched it back off.
+            XCTAssertFalse(allow.waitForExistence(timeout: 2), "The notification permission alert is still up")
+            let on = NSPredicate(format: "value == '1'")
+            expectation(for: on, evaluatedWith: toggle)
+            waitForExpectations(timeout: 10)
+            sleep(1)
+            XCTAssertEqual(toggle.value as? String, "1", "Notifications switched back off: permission was refused")
+            // Which shows to notify about appears once the setting is on.
+            XCTAssertTrue(button("Which shows", contains: true).waitForExistence(timeout: 5), "Which shows row is missing")
+
+            if isPad {
+                let back = app.buttons["settings.back"]
+                XCTAssertTrue(back.waitForExistence(timeout: 5), "Back button is missing from the sidebar")
+                back.tap()
+            } else {
+                goBack()
+                goBack()
+            }
+            XCTAssertTrue(button(username).waitForExistence(timeout: 10), "Home did not come back")
+        }
+
         // The kids user (scripts/test-server/seed-userdata.sh) sets a PIN; Settings then asks for it. Ends signed in as the first user again.
         step("Kids PIN") {
             let isPad = UIDevice.current.userInterfaceIdiom == .pad
