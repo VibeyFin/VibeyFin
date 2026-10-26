@@ -1,5 +1,8 @@
 package app.vibeyfin.app.player
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,10 +32,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -53,6 +58,7 @@ import app.vibeyfin.app.components.ChipInset
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.ui.common.Strings
+import kotlinx.coroutines.launch
 
 /**
  * The overlay above the video: back and title at the top, play or pause in the middle, the scrubber
@@ -99,9 +105,9 @@ fun PlayerControls(
         )
         if (showTransport) {
             Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s6)) {
-                TransportSkipButton(R.drawable.ic_replay, skipBackSeconds, Strings.skipBackLabel(skipBackSeconds), onSkipBack)
+                TransportSkipButton(R.drawable.ic_replay, skipBackSeconds, Strings.skipBackLabel(skipBackSeconds), forward = false, onSkipBack)
                 PlayPauseButton(playing, onTogglePlay)
-                TransportSkipButton(R.drawable.ic_forward, skipForwardSeconds, Strings.skipForwardLabel(skipForwardSeconds), onSkipForward)
+                TransportSkipButton(R.drawable.ic_forward, skipForwardSeconds, Strings.skipForwardLabel(skipForwardSeconds), forward = true, onSkipForward)
             }
         }
         Scrubber(
@@ -254,19 +260,28 @@ private fun ChipButton(icon: Int, description: String, onClick: () -> Unit) {
  * number is text rather than one drawable per value, so every setting (15, 45, 60 too) has a glyph.
  */
 @Composable
-private fun TransportSkipButton(icon: Int, seconds: Int, description: String, onClick: () -> Unit) {
+private fun TransportSkipButton(icon: Int, seconds: Int, description: String, forward: Boolean, onClick: () -> Unit) {
+    // Each press turns the arrow a little the way it points and springs it back, as Android's own players do.
+    val turn = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
     Box(
         modifier = Modifier
             .size(48.dp)
             .clip(CircleShape)
-            .clickable(role = Role.Button, onClick = onClick),
+            .clickable(role = Role.Button) {
+                onClick()
+                scope.launch {
+                    turn.snapTo(if (forward) SKIP_TURN_DEGREES else -SKIP_TURN_DEGREES)
+                    turn.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))
+                }
+            },
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = description,
             tint = VibeyFinTokens.Colors.ink,
-            modifier = Modifier.size(40.dp),
+            modifier = Modifier.size(40.dp).rotate(turn.value),
         )
         Text(
             text = seconds.toString(),
@@ -276,6 +291,9 @@ private fun TransportSkipButton(icon: Int, seconds: Int, description: String, on
         )
     }
 }
+
+/** How far a skip arrow turns on a press. */
+private const val SKIP_TURN_DEGREES = 30f
 
 /** A round chip on the scrim, like the back button: 72 dp to touch, a 36 dp glyph. */
 @Composable
