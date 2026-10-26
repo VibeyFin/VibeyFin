@@ -119,23 +119,24 @@ _Exit: finish an episode on one device, resume on another._
   reports an HDR display (plan 07)_
 - [x] Binge UX: "are you still watching?" (auto-advance itself is Phase 2) — _per-profile setting, Off or after 2 to 5 episodes, default 3_
 - [x] Playback speed (Media3 `setPlaybackSpeed`, AVPlayer `rate`)
-- [x] Picture-in-picture (both platforms, plus a button in the player). The iOS mini player is the open item below. Leaving the player while something plays keeps it playing in
+- [x] Picture-in-picture (both platforms, plus a button in the player). Leaving the player while something plays keeps it playing in
   the system's PiP window (Android: `setAutoEnterEnabled` on 12+ with the Media3 `PlayerSurface`; iOS:
   `AVPictureInPictureController` on the `AVPlayerLayer`). Entering PiP is not backgrounding: the
   progress beacon keeps running and `Stopped` goes out only when the PiP window is closed or playback
-  ends (Phase 1 sends it on backgrounding today). iOS 26+ also shows a mini player in
-  `.tabViewBottomAccessory` while PiP or audio continues, and tapping it returns to the full player
-  (`docs/design/ios.md`); below iOS 26 it is PiP only. **Decided:** Android stops at PiP, with no in-app mini player.
+  ends (Phase 1 sends it on backgrounding today). On iOS the player steps aside when the window
+  starts, so the page it was opened from shows, and tapping the window brings it back. **Decided:** no in-app mini player on either platform (it doubled the PiP
+  window); PiP is a per-profile setting, on by default (Phase 6), and off means leaving the app pauses.
   Its `MediaSession` drives media keys, the PiP window's controls and a media notification with play and pause (posted
   in-process by Media3's `PlayerNotificationManager` only while the player screen is in front or in a PiP window; in the
   background without PiP the video pauses, the notification goes and play commands are ignored; no service, no lock-screen
   controls). iOS PiP is built but was never seen running (the simulator reports PiP as
   unsupported).
-- [ ] **The iOS mini player is built but not mounted** (`MiniPlayerView`, fed by `NowPlayingModel`): the app has
-  no tab bar yet. It is finished when the tab bar mounts it with `.tabViewBottomAccessory` and it is
-  checked on the simulator, with a play and pause command from it to the player; whoever builds the tab bar owns that.
 - [x] HDR and format badge on the detail page and in the player, from `MediaStreams`
   (`VideoRangeType`, codec, resolution)
+
+Also built since: skips in a row add up, and the player shows the total ("30s") by the side the video moved, from the
+buttons and from a double-tap; on Android that is the platform's own double-tap seek look (a half circle, running chevrons)
+and the skip arrows turn on a press. Android built; iOS Kotlin compiled, Swift not built.
 
 _Exit: skip-intro and scrub previews working end to end._
 
@@ -147,7 +148,7 @@ _Starts after the state audit (see Cross-cutting)._
   tablet widths the same destinations sit at the top, `docs/design/screens.md` "Chrome"). Each tab keeps its
   own back stack and Settings stays under the profile avatar. Home is the Home that exists today. Library is the real Library
   browse (below); Downloads opens an empty page that says "Not available yet" (text in `Strings`) until offline lands (Phase 10).
-  The Search tab is second, with unified search below. The iOS mini player is still not mounted
+  The Search tab is second, with unified search below.
 - [x] Home rows: Latest, genres, My Media, plus Continue Watching (which holds Next Up). Recently added in each video
   library (`GET /Items/Latest`, 20 posters), every genre (biggest first), then My media as 16:9 tiles; each row loads and
   fails on its own, an empty row is not shown, a header has "See all", and there is no cap on rows. Android run on the emulator, iOS
@@ -190,19 +191,47 @@ _Starts after the state audit (see Cross-cutting)._
 
 Also built in this phase, not on the original list: Home shows a row for every genre with a per-profile setting to limit them
 (`docs/plans/10-home-rows.md`), collections open on their own page with a tablet view, the player uses the whole screen
-including the camera cut-out, and a `perf` build type (`./gradlew :androidApp:installPerf`) for judging smoothness, as the
+including the camera cut-out, and a `benchmark` build type (`./gradlew :androidApp:installBenchmark`) for judging smoothness, as the
 debug build is slow. Cut: thumbs. A baseline profile for first-scroll speed moves to Phase 6 (it needs Macrobenchmark, which is not in the stack yet: ask first).
 
 Owed after Phase 4: the phone pass (`docs/checklists/phone-pass.md`) and an iOS Xcode pass, its own task: build `iosApp` in Xcode and fix what the compiler finds (every Swift file so far is only parsed, and the `Shared` framework names such as `HeroNavPlay`, `SeeAllMyList` and `ItemFactsKt.getSeasonLabel` are read from the Kotlin source, not from a built framework).
 
-_Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a genre page from Home,
-and see the mini player on iOS 26._
+_Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a genre page from Home,_
 
 ### Phase 6 — Accounts & polish
-- [ ] Profile picker: quick-switch between users, optional PIN (Jellyfin has no sub-profiles)
-- [ ] Parental controls / kids mode (per-user rating, blocked tags, access schedules)
-- [ ] New-episode notifications (Next Up / Latest polling or push)
-- [ ] Settings: quality & bandwidth, subtitle styling
+- [x] Profile picker: quick-switch between users, optional PIN (Jellyfin has no sub-profiles). _Decided: a 4-digit
+  household lock per profile, a salted hash, independent of kids mode, not security; see the spec
+  `docs/superpowers/specs/2026-10-24-accounts-and-polish-design.md`_
+- [x] Parental controls / kids mode (per-user rating, blocked tags, access schedules). _Decided: a local kids flag;
+  rating, tags and hours are read from the Jellyfin user's policy and shown read-only, the server enforces them_
+- [x] New-episode notifications (Next Up / Latest polling or push). _Decided: off by default, background polling
+  (WorkManager, `BGAppRefreshTask`), new episodes and new movies, a setting called Notifications_
+  - [x] Notifications page (per profile, off by default, "Which shows" scope, permission asked when switched on)
+  - [x] Polling every profile with Notifications on, at most once per title
+  - [x] Android: `WorkManager` check about every 4 h, grouped notifications, tap opens the title (checked on an emulator)
+  - [x] iOS: `BGAppRefreshTask` check and local notifications (built as Swift source only, type-checked; not run on a device or simulator)
+- [x] Settings: quality & bandwidth, subtitle styling
+  - [x] Settings redesign (design system `SettingsPhone`, `SettingsTablet`): a grouped root and a sub-page per
+    category (Quality, Subtitles, Skipping and autoplay), choices as menus, Quality as an inline checklist
+  - [x] Profile page with Switch profile and Sign out (clears the token, the tile stays locked)
+  - [x] Tablet two-pane Settings: iPad `NavigationSplitView`, Android two columns at 600dp
+  - [x] Quality as a per-profile cap, Maximum by default, replacing the fixed 60 Mbps
+  - [x] Subtitle style settings, applied on Android; iOS shows them disabled while it burns subtitles in
+    (applying a style on iOS needs a spike on a simulator, open)
+- [x] Picture in picture as a per-profile setting (Skipping and autoplay page, on by default): off hides the button, stops the automatic
+  window and pauses on leaving. On iOS the player steps aside while the window plays; starting another title stops the first one
+  (with its `Stopped` report). _Built and unit-tested; the window, the step-aside and the new-playout stop were not seen on a device._
+- [ ] Now Playing in Control Center and on the Android notification: plan `docs/plans/17-now-playing.md`. Built: iOS remote commands
+  (play, pause, skip, scrub), a live card and artwork; Android notification artwork. _Not seen on a device; background playback is out of scope._
+- [x] iOS mini player: dropped. PiP steps the player aside and the system window is the only mini view; a setting turns PiP off.
+- [ ] Baseline profile for first-scroll speed: the `:benchmark` module, the startup and scroll benchmarks and the profile generator
+  are in and build (Macrobenchmark 1.5.0, `androidx.baselineprofile` 1.5.0). **Not run**: it needs a device or emulator signed in on the
+  test server. Next: `./gradlew :benchmark:connectedBenchmarkReleaseAndroidTest`, then `./gradlew :androidApp:generateBaselineProfile`,
+  commit `baseline-prof.txt` and record the numbers in `docs/checklists/phone-pass.md` section 8.
+
+Owed from Phase 6, not done: the phone pass (`docs/checklists/phone-pass.md`), a look at the iOS PiP and Control Center behaviour on a real iPhone (the simulator has no PiP). `scripts/ios-smoke.sh` passes
+(3 of 3 UITests on an iPhone 16 simulator, iOS 27.0, after the Kids profile row and first-user tile lookups in the UITest were corrected);
+it does not exercise playback, PiP or Control Center.
 
 ### Phase 7 — Customisation _(later)_
 
@@ -232,7 +261,9 @@ _Depends on Phase 4 (Home rows) and Phase 6 (profiles and the first settings). S
 - [ ] Navigation: choose and order the tabs, set the start tab, hide libraries
 - [ ] Player preferences, extending Phase 6's quality and subtitle settings: seek step (default
   10s), gestures on or off, auto-skip intro and credits (off by default), auto-advance and "are you still
-  watching?" on or off, default audio and subtitle language
+  watching?" on or off, default audio and subtitle language. _Built already (Skipping and autoplay page):
+  skip back and forward steps, auto-skip intros and recaps, "Still watching" Off or after 2 to 5 episodes,
+  Buffer ahead. Still to do: gestures, auto-advance off, default languages_
 - [ ] Motion: looping motion (skeleton shimmer) is off by default and an opt-in
   "Looping motion" setting, and is never on when the system asks for Reduce Motion. One-shot motion (the
   shared-element transition, crossfades) is on and follows the system setting
@@ -287,7 +318,8 @@ promised by accident.
 ### Phase 8 — Seerr integration _(later)_
 
 Search, discover and request titles that are not in the library yet, from inside the app.
-_Depends on Phase 4 (search and detail page)._
+_Depends on Phase 4 (search and detail page)._ First part planned in `docs/plans/18-seerr.md` (connect,
+search, request, all in native screens; it settles the sign-in question below).
 
 - [ ] Connect a Seerr instance (base URL, optional, saved per profile): check it with `GET /status`
 - [ ] Sign in to Seerr as the Jellyfin user: `POST /auth/jellyfin` sets a `connect.sid` session

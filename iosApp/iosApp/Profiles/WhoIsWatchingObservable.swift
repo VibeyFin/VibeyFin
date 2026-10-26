@@ -10,8 +10,9 @@ final class WhoIsWatchingObservable: ObservableObject {
     private let model: WhoIsWatchingModel
     private var started = false
 
-    init(serverId: String) {
-        model = WhoIsWatchingModel(serverId: serverId)
+    /// `pinFor` comes from the launch destination: the screen opens on that profile's PIN.
+    init(serverId: String, pinFor: ProfileRef? = nil) {
+        model = WhoIsWatchingModel(serverId: serverId, pinFor: pinFor)
     }
 
     /// Starts watching. Called when the screen appears, not from `init`, because SwiftUI may build
@@ -39,6 +40,12 @@ final class WhoIsWatchingObservable: ObservableObject {
     func submitPassword(_ password: String) {
         model.onSubmitPassword(password: password)
     }
+
+    func submitPin(_ pin: String) { model.onSubmitPin(pin: pin) }
+
+    func forgotPin() { model.onForgotPin() }
+
+    func dismissPin() { model.onDismissPin() }
 
     func submitOtherUser(username: String, password: String) {
         model.onSubmitOtherUser(username: username, password: password)

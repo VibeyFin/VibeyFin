@@ -102,6 +102,7 @@ import app.vibeyfin.ui.home.ContinueRow
 import app.vibeyfin.ui.home.HeroNav
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.home.HomeUiState
+import app.vibeyfin.app.settings.PinSheet
 import app.vibeyfin.ui.home.HomeViewModel
 import org.koin.androidx.compose.koinViewModel
 
@@ -175,6 +176,10 @@ fun HomeRoute(
         onSwitchServer = viewModel::onSwitchServer,
         onSettings = onSettings,
         onSignOut = viewModel::onSignOut,
+        onSubmitPin = viewModel::onSubmitPin,
+        onForgotPin = viewModel::onForgotPin,
+        onSubmitPassword = viewModel::onSubmitPassword,
+        onDismissPin = viewModel::onDismissPin,
     )
 }
 
@@ -203,7 +208,14 @@ fun HomeScreen(
     onSwitchServer: () -> Unit,
     onSettings: () -> Unit,
     onSignOut: () -> Unit,
+    onSubmitPin: (String) -> Unit,
+    onForgotPin: () -> Unit,
+    onSubmitPassword: (String) -> Unit,
+    onDismissPin: () -> Unit,
 ) {
+    state.pinPrompt?.let { prompt ->
+        PinSheet(prompt, onSubmitPin, onForgotPin, onSubmitPassword, onDismissPin)
+    }
     val margin = screenMargin()
     // The card whose actions are showing, after a long press.
     var menuCard by remember { mutableStateOf<ContinueCardState?>(null) }
@@ -236,7 +248,7 @@ fun HomeScreen(
                         modifier = Modifier.semantics { heading() },
                     )
                 }
-                ProfileMenu(state.userName, onSwitchProfile, onSwitchServer, onSettings, onSignOut)
+                ProfileMenu(state.userName, state.kidsProfile, onSwitchProfile, onSwitchServer, onSettings, onSignOut)
             }
             if (state.serverId != null) {
                 Content(
@@ -456,6 +468,7 @@ private fun MyMedia(state: HomeUiState, margin: Dp, onOpen: (MediaItem) -> Unit,
 @Composable
 private fun ProfileMenu(
     userName: String?,
+    kidsProfile: Boolean,
     onSwitchProfile: () -> Unit,
     onSwitchServer: () -> Unit,
     onSettings: () -> Unit,
@@ -484,7 +497,8 @@ private fun ProfileMenu(
             VibeyFinMenuItem(Strings.switchProfile, Icons.Filled.Person) { open = false; onSwitchProfile() }
             VibeyFinMenuItem(Strings.switchServer, Icons.Filled.Refresh) { open = false; onSwitchServer() }
             VibeyFinMenuItem(Strings.settings, Icons.Filled.Settings) { open = false; onSettings() }
-            VibeyFinMenuItem(Strings.signOut, Icons.AutoMirrored.Filled.ExitToApp) { open = false; onSignOut() }
+            // A kids profile cannot sign out; the view model ignores it too.
+            if (!kidsProfile) VibeyFinMenuItem(Strings.signOut, Icons.AutoMirrored.Filled.ExitToApp) { open = false; onSignOut() }
         }
     }
 }

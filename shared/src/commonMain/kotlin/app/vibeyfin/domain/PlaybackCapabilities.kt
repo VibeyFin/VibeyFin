@@ -37,11 +37,14 @@ interface PlaybackCapabilitiesSource {
 }
 
 /**
- * The highest bitrate we ask the server to stream, in bits per second. Above it the server
- * transcodes down, even when the device could decode the file. Generous because most servers are on
- * the same network; becomes a setting later.
+ * The bitrate the Maximum quality choice asks the server for, in bits per second. Above it the
+ * server transcodes down, even when the device could decode the file. Generous because most servers
+ * are on the same network. A lower quality is a profile setting ([ProfileSettings.maxStreamingBitrate]).
  */
 const val MAX_STREAMING_BITRATE = 60_000_000
+
+/** The bitrate to ask for given a quality setting: 0 is Maximum, anything else is the cap itself. */
+fun effectiveBitrate(setting: Int): Int = if (setting == 0) MAX_STREAMING_BITRATE else setting
 
 private const val VIDEO = "Video"
 
@@ -55,10 +58,10 @@ private const val TRANSCODE_AUDIO = "aac"
 /** The newest H.264 level (5.2) common phone decoders handle, as the server counts it (level × 10). */
 private const val H264_MAX_LEVEL = "52"
 
-internal fun PlaybackCapabilities.toDeviceProfile(): DeviceProfileDto = DeviceProfileDto(
+internal fun PlaybackCapabilities.toDeviceProfile(maxBitrate: Int): DeviceProfileDto = DeviceProfileDto(
     name = ClientInfo.CLIENT_NAME,
-    maxStreamingBitrate = MAX_STREAMING_BITRATE,
-    maxStaticBitrate = MAX_STREAMING_BITRATE,
+    maxStreamingBitrate = maxBitrate,
+    maxStaticBitrate = maxBitrate,
     directPlayProfiles = listOf(
         DirectPlayProfileDto(
             container = containers.joinToString(","),

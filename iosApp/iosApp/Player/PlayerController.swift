@@ -182,6 +182,9 @@ final class PlayerController: ObservableObject {
     func tearDown() {
         events = PlayerEvents()
         nowPlayingTitle = nil
+        artworkTask?.cancel()
+        nowPlayingArtworkUrl = nil
+        nowPlayingArtwork = nil
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         clear()
         playerSubscriptions.removeAll()
@@ -364,6 +367,7 @@ final class PlayerController: ObservableObject {
         let limit = duration > 0 ? duration : seconds
         let target = CMTime(seconds: min(max(0, seconds), limit), preferredTimescale: 600)
         position = target.seconds
+        updateNowPlayingInfo()
         seeksInFlight += 1
         let startedAt = CACurrentMediaTime()
         player.seek(to: target) { [weak self] finished in
@@ -385,6 +389,7 @@ final class PlayerController: ObservableObject {
         let intendsToPlay = status != .paused
         guard intendsToPlay != isPlaying else { return }
         isPlaying = intendsToPlay
+        updateNowPlayingInfo()
         guard openedStreamId != nil else { return }
         if intendsToPlay {
             events.playing(currentMilliseconds)
@@ -446,13 +451,31 @@ final class PlayerController: ObservableObject {
 
     private var nowPlayingTitle: String?
     private var nowPlayingSubtitle: String?
+    private var nowPlayingArtworkUrl: String?
+    private var nowPlayingArtwork: MPMediaItemArtwork?
+    private var artworkTask: Task<Void, Never>?
 
-    /// What the lock screen and the picture-in-picture window call the video.
-    func setNowPlaying(title: String?, subtitle: String?) {
+    /// What the lock screen, Control Center and the picture-in-picture window call the video, and the picture beside it.
+    func setNowPlaying(title: String?, subtitle: String?, artworkUrl: String?) {
+        if artworkUrl != nowPlayingArtworkUrl { loadArtwork(artworkUrl) }
         guard title != nowPlayingTitle || subtitle != nowPlayingSubtitle else { return }
         nowPlayingTitle = title
         nowPlayingSubtitle = subtitle
         updateNowPlayingInfo()
+    }
+
+    /// Fetches the picture for the card. A failed load leaves the card without one.
+    private func loadArtwork(_ urlString: String?) {
+        artworkTask?.cancel()
+        nowPlayingArtworkUrl = urlString
+        nowPlayingArtwork = nil
+        guard let urlString, let url = URL(string: urlString) else { return }
+        artworkTask = Task { @MainActor [weak self] in
+            guard let (data, _) = try? await URLSession.shared.data(from: url), !Task.isCancelled,
+                  let image = UIImage(data: data), let self, self.nowPlayingArtworkUrl == urlString else { return }
+            self.nowPlayingArtwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+            self.updateNowPlayingInfo()
+        }
     }
 
     private func updateNowPlayingInfo() {
@@ -461,12 +484,15 @@ final class PlayerController: ObservableObject {
             return
         }
         var info: [String: Any] = [
+            MPNowPlayingInfoPropertyMediaType: MPNowPlayingInfoMediaType.video.rawValue,
+            MPNowPlayingInfoPropertyDefaultPlaybackRate: Double(player.defaultRate),
             MPMediaItemPropertyTitle: title,
             MPNowPlayingInfoPropertyElapsedPlaybackTime: position,
             MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? Double(player.defaultRate) : 0,
         ]
         if let subtitle = nowPlayingSubtitle { info[MPMediaItemPropertyArtist] = subtitle }
         if duration > 0 { info[MPMediaItemPropertyPlaybackDuration] = duration }
+        if let nowPlayingArtwork { info[MPMediaItemPropertyArtwork] = nowPlayingArtwork }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 

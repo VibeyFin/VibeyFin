@@ -1,6 +1,7 @@
 package app.vibeyfin.ui.common
 
 import app.vibeyfin.domain.PlayMethod
+import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SegmentType
 import kotlin.math.roundToInt
 
@@ -490,7 +491,7 @@ object Strings {
     fun skipBackLabel(seconds: Int) = "Back $seconds seconds"
     fun skipForwardLabel(seconds: Int) = "Forward $seconds seconds"
     fun seekFlash(seconds: Int) = "${seconds}s"
-    val autoSkipSegments = "Skip intros and recaps"
+    val autoSkipSegments = "Auto skip intros and recaps"
     val autoSkipSegmentsHelp = "Jump past marked intros and recaps without asking."
     val bufferAhead = "Buffer ahead"
     val bufferAheadAuto = "Auto"
@@ -517,4 +518,202 @@ object Strings {
     val stillWatchingContinue = "Keep watching"
     val stillWatchingStop = "Stop watching"
     fun stillWatchingAfter(n: Int) = "After $n episodes"
+
+    // Settings pages, groups and rows (the data-driven Settings screen)
+    val settingsRootTitle = "Settings"
+    val settingsProfileCardHelp = "Profile, server and sign-out"
+
+    val settingsGroupHome = "Home"
+    val settingsGroupKids = "Kids and PIN"
+    val settingsGroupDevice = "This device"
+    val settingsGroupAdvanced = "Advanced"
+    val settingsKidsFooter = "Applies to this profile only."
+    val settingsDeviceHelp = "Otherwise the last profile reopens."
+    val settingsAbout = "About VibeyFin"
+
+    // Profile page
+    val profilePageTitle = "Profile"
+    val profileAccountGroup = "Account"
+    val switchProfileHelp = "Asks for the PIN first if one is set."
+    val profileServerGroup = "Server"
+    val profileServerName = "Server"
+    val profileServerAddress = "Address"
+    val profileServerAlsoAt = "Also reachable at"
+    val profileServerFooter = "Read only. Add or remove servers from \u201CWho\u2019s watching?\u201D."
+    val signOutFooter =
+        "Asks to confirm. Your tile stays in \u201CWho\u2019s watching?\u201D and asks for the password next time. Not shown on a kids profile."
+    val signOutConfirmTitle = "Sign out of this profile?"
+    val signOutConfirmMessage = "Your tile stays in \u201CWho\u2019s watching?\u201D and asks for the password next time."
+
+    // Quality page
+    val qualityTitle = "Quality"
+    val qualityGroup = "Maximum quality"
+    val qualityMaximum = "Maximum"
+    val qualityMaximumHelp = "Original quality, direct play when possible."
+    val qualityFooter =
+        "The cap for everything this profile plays. Lower uses less data; the server may transcode to fit."
+
+    /** The label of one stream-quality cap, given in bits per second; 0 is Maximum. Anything off the list reads as Maximum. */
+    fun qualityLabel(bitsPerSecond: Int) = when (bitsPerSecond) {
+        40_000_000 -> "4K \u00B7 40 Mbps"
+        10_000_000 -> "1080p \u00B7 10 Mbps"
+        4_000_000 -> "720p \u00B7 4 Mbps"
+        1_500_000 -> "480p \u00B7 1.5 Mbps"
+        else -> qualityMaximum
+    }
+
+    // Skipping and autoplay page
+    val skippingTitle = "Skipping and autoplay"
+    val skippingGroup = "Skipping"
+    val skippingFooter =
+        "Back: 5, 10, 15 or 30 s. Forward: 10, 15, 30, 45 or 60 s. These are the intervals the player's button glyphs come in, so the button and the setting agree."
+    val autoSkipHelp = "Off by default. The Skip buttons show either way."
+    val autoplayGroup = "Autoplay"
+    val stillWatchingAfterTitle = "Still watching after"
+    val stillWatchingAfterHelp = "Off, or after 2 to 5 episodes in a row."
+    val pictureInPictureHelp =
+        "On by default. The player offers picture in picture and starts it when you leave the app. Off, playback pauses when you leave."
+    val bufferingGroup = "Buffering"
+    fun skipSecondsShort(seconds: Int) = "$seconds s"
+
+    /** The root's one-line summary of the skipping page: "10 s · 10 s · Still watching after 3". */
+    fun skippingSummary(back: Int, forward: Int, stillWatching: Int) =
+        "${skipSecondsShort(back)} \u00B7 ${skipSecondsShort(forward)} \u00B7 " +
+            if (stillWatching == 0) "Still watching off" else "Still watching after $stillWatching"
+
+    // Subtitles page
+    val subtitlesTitle = "Subtitles"
+    val subtitlesSystemValue = "System"
+    val subtitlesCustomValue = "Custom"
+    val captionsFollowSystemTitle = "Use system caption style"
+    val captionsFollowSystemHelp = "Follows the OS caption settings."
+    val captionsFollowSystemFooter = "Turn off to set your own below."
+    val subtitleStyleGroup = "Style"
+    val subtitleStyleIosNote = "Applies to text subtitles only; iOS burns subtitles in for now"
+    val subtitleSizeTitle = "Size"
+    val subtitleSizeSmall = "S"
+    val subtitleSizeMedium = "M"
+    val subtitleSizeLarge = "L"
+    val subtitleSizeExtraLarge = "XL"
+    val subtitleColorTitle = "Text"
+    val subtitleColorWhite = "White"
+    val subtitleColorYellow = "Yellow"
+    val subtitleColorLightBlue = "Light blue"
+    val subtitleBackgroundTitle = "Background"
+    val subtitleBackgroundNone = "None"
+    val subtitleBackgroundShadow = "Shadow"
+    val subtitleBackgroundBox = "Box"
+    val subtitleReset = "Reset to defaults"
+    val subtitlePreviewSample = "This is how subtitles will look."
+
+    // Kids and PIN page
+    val kidsPinTitle = "Kids and PIN"
+    val kidsProfileTitle = "Kids profile"
+    val kidsProfileHelp = "Hides Advanced settings and signing out. The server's own limits still apply."
+    val pinGroup = "PIN"
+    val pinTitle = "PIN"
+    val pinHelp = "4 digits."
+    val pinFooter = "A household lock, not security. It keeps the next person on the sofa out of Settings and other profiles."
+    val pinSet = "Set PIN"
+    val pinChange = "Change PIN"
+    val pinRemove = "Remove PIN"
+    val pinAskGroup = "Ask for the PIN to"
+    val pinAskOpenProfile = "Open this profile"
+    val pinAskOpenSettings = "Open Settings"
+    val pinAskSwitchProfile = "Switch profile"
+    val serverPolicyGroup = "Set by your Jellyfin server"
+    val serverPolicyRating = "Highest rating"
+    val serverPolicyBlockedTags = "Blocked tags"
+    val serverPolicyHours = "Allowed hours"
+    val serverPolicyAnyTime = "Any time"
+    val serverPolicyFooter = "Read only. An admin changes these in Jellyfin; the server enforces them."
+    val serverPolicyLoading = "Checking your Jellyfin server\u2026"
+    val serverPolicyFailed = "Couldn\u2019t read the limits from your Jellyfin server."
+    val serverPolicyNone = "No limits are set on your Jellyfin server"
+    val serverPolicyNoRating = "No limit"
+    val serverPolicyNoTags = "None"
+    val pinSetDescription = "A 4-digit PIN is set"
+
+    /** A rating the server has no name for: "Level 10". Level 0 is the strictest cap, not "all". */
+    fun serverPolicyLevel(level: Int) = "Level $level"
+
+    /** One access window: "Weekdays 08:00 to 20:30", or "Saturdays 22:00 to 06:00 the next day" when it runs overnight. */
+    fun serverPolicyWindow(days: String, startMinutes: Int, endMinutes: Int): String {
+        val overnight = if (startMinutes > endMinutes) " the next day" else ""
+        return "$days ${hhmm(startMinutes)} to ${hhmm(endMinutes)}$overnight"
+    }
+
+    private fun hhmm(minutes: Int) = "${(minutes / 60).toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}"
+
+    val serverPolicyEveryday = "Every day"
+    val serverPolicyWeekdays = "Weekdays"
+    val serverPolicyWeekends = "Weekends"
+    val serverPolicySundays = "Sundays"
+    val serverPolicyMondays = "Mondays"
+    val serverPolicyTuesdays = "Tuesdays"
+    val serverPolicyWednesdays = "Wednesdays"
+    val serverPolicyThursdays = "Thursdays"
+    val serverPolicyFridays = "Fridays"
+    val serverPolicySaturdays = "Saturdays"
+
+    // PIN prompt
+    val pinPromptEnter = "Enter PIN"
+    val pinPromptNew = "Choose a PIN"
+    val pinPromptConfirm = "Enter the PIN again"
+    val pinPromptWrong = "That PIN is wrong. Try again."
+    val pinPromptMismatch = "The PINs don't match. Try again."
+    val pinPromptOpenProfile = "Enter this profile's PIN to open it."
+    val pinPromptOpenSettings = "Enter your PIN to open Settings."
+    val pinPromptSwitchProfile = "Enter your PIN to switch profile."
+    val pinPromptChangePin = "Enter your current PIN to change it."
+    val pinPromptRemovePin = "Enter your PIN to remove it."
+    val pinPromptKidsOff = "Enter your PIN to turn off kids mode."
+    fun pinPromptAttemptsLeft(attempts: Int) =
+        if (attempts == 1) "That PIN is wrong. 1 try left before a short wait." else "That PIN is wrong. $attempts tries left before a short wait."
+    fun pinPromptLocked(seconds: Int) =
+        if (seconds == 1) "Too many wrong PINs. Try again in 1 second." else "Too many wrong PINs. Try again in $seconds seconds."
+    val pinForgot = "Forgot PIN?"
+    fun pinForgotMessage(name: String) =
+        "Enter $name's Jellyfin password to remove the PIN. Kids mode stays as it is; the password is not saved."
+    val pinForgotSubmit = "Remove PIN"
+
+    /** The keypad's delete key, and the four dots read out by a screen reader. */
+    val pinKeypadDelete = "Delete"
+    fun pinDigitsEntered(count: Int) = if (count == 1) "1 of 4 digits entered" else "$count of 4 digits entered"
+
+    /** A tile's lock badge when the profile asks for its PIN to open. */
+    val needsPin = "Needs a PIN"
+
+    // Notifications page
+    val notificationsTitle = "Notifications"
+    val notificationsOn = "On"
+    val notificationsOff = "Off"
+    val notificationsToggle = "Notify me about new episodes and movies"
+    val notificationsWhichGroup = "Which shows"
+    val notificationsFollowed = "Shows I follow and new movies"
+    val notificationsEverything = "Everything new in the library"
+    val notificationsBlocked = "Notifications are blocked for VibeyFin. Allow them in system settings, then switch this on again."
+    fun notificationsScopeLabel(scope: Int) =
+        if (scope == ProfileSettings.NOTIFY_EVERYTHING) notificationsEverything else notificationsFollowed
+    val notificationsFooter =
+        "Jellyfin sends no push, so the app checks in the background: expect a delay. Switching this on asks for notification permission."
+
+    // New-title notifications: one per movie, one per episode. No name starts with "new": Kotlin/Native renames those for Swift.
+    val addedMovieNotificationTitle = "New movie"
+    /** The title of an episode's notification; [seriesName] is null when the server did not say which show. */
+    fun addedEpisodeNotificationTitle(seriesName: String?) =
+        if (seriesName.isNullOrBlank()) "New episode" else "New episode of $seriesName"
+    /** The body: the title, plus whose it is when more than one profile on this device gets notifications. */
+    fun addedTitleNotificationBody(title: String, profileName: String?) =
+        if (profileName == null) title else "$title, for $profileName"
+
+    // New-title notifications on Android: the channel, and the summary over several new episodes of one show
+    val addedTitlesChannel = "New episodes and movies"
+    val addedTitlesChannelDescription = "New episodes of the shows you follow and new movies, for each profile with notifications on"
+    /** The summary over a show's episodes, which may come from several checks; [seriesName] is null when the server did not say which show. */
+    fun addedEpisodesSummary(seriesName: String?) =
+        if (seriesName.isNullOrBlank()) "New episodes" else "New episodes of $seriesName"
+    /** The summary's body: the episodes this check found, plus whose they are as in [addedTitleNotificationBody]. */
+    fun addedEpisodesSummaryBody(titles: List<String>, profileName: String?) =
+        addedTitleNotificationBody(titles.joinToString(", "), profileName)
 }

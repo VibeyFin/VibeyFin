@@ -12,7 +12,11 @@ data object Servers
 data class AddServer(val address: String? = null)
 
 @Serializable
-data class WhoIsWatching(val serverId: String)
+data class WhoIsWatching(
+    val serverId: String,
+    /** Opens on this profile's PIN (the user id on [serverId]), set at launch. */
+    val pinUserId: String? = null,
+)
 
 @Serializable
 data object Home
@@ -47,6 +51,10 @@ data object Startup
 
 @Serializable
 data object Settings
+
+/** A page of the Settings tree below the root; [id] is a `SettingsPageId` name, so the route stays serialisable. */
+@Serializable
+data class SettingsPageRoute(val id: String)
 
 /** A cast member's page: their biography and what they appear in. */
 @Serializable

@@ -6,13 +6,18 @@ import app.vibeyfin.domain.AccountRepository
 import app.vibeyfin.domain.ActivateResult
 import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.ConnectionManager
+import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.PublicProfiles
 import app.vibeyfin.domain.QuickConnectState
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.SignInResult
 import app.vibeyfin.domain.mergeProfiles
 import app.vibeyfin.domain.model.Profile
+import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.domain.model.Server
+import app.vibeyfin.ui.common.PinGate
+import app.vibeyfin.ui.common.PinPrompt
+import app.vibeyfin.ui.common.PinReason
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -52,14 +57,23 @@ data class WhoIsWatchingUiState(
     val error: String? = null,
     /** Signed in; the screen moves on. */
     val signedIn: Boolean = false,
+    /** The PIN sheet, over the grid and any sign-in sheet, while one is open. */
+    val pinPrompt: PinPrompt? = null,
 )
 
+/**
+ * "Who's watching?" on [serverId]. A tile whose profile asks for its PIN to open asks for it before signing in. With
+ * [pinFor] set, the screen opens on that profile's PIN because showing the picker leaves that profile
+ * ("switch profile"), and dismissing the PIN goes back to it.
+ */
 class WhoIsWatchingViewModel(
     private val serverId: String,
     private val servers: ServerRepository,
-    accounts: AccountRepository,
+    private val accounts: AccountRepository,
     private val auth: AuthRepository,
     private val connection: ConnectionManager,
+    private val pins: PinLock,
+    private val pinFor: ProfileRef? = null,
 ) : ViewModel() {
     private data class Local(
         val server: Server? = null,
@@ -73,9 +87,10 @@ class WhoIsWatchingViewModel(
 
     private val local = MutableStateFlow(Local())
     private var quickConnectJob: Job? = null
+    private val pin = PinGate(pins, auth, viewModelScope)
 
     val uiState: StateFlow<WhoIsWatchingUiState> =
-        combine(accounts.observeAccounts(serverId), local) { saved, local ->
+        combine(accounts.observeAccounts(serverId), local, pin.prompt) { saved, local, pinPrompt ->
             WhoIsWatchingUiState(
                 loading = !local.loaded,
                 serverName = local.server?.name,
@@ -86,10 +101,12 @@ class WhoIsWatchingViewModel(
                 signingIn = local.signingIn,
                 error = local.error,
                 signedIn = local.signedIn,
+                pinPrompt = pinPrompt,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WhoIsWatchingUiState())
 
     init {
+        pinFor?.let { askAtLaunch(it) }
         viewModelScope.launch {
             // Both are in place before the grid stops loading, so the header never appears late.
             val server = servers.get(serverId)
@@ -110,6 +127,43 @@ class WhoIsWatchingViewModel(
 
     fun onProfileTapped(profile: Profile) {
         if (local.value.signingIn) return
+        if (profile.pinRequiredToOpen) {
+            pin.ask(PinReason.OpenProfile, serverId, profile.userId, profile.name) { open(profile) }
+        } else {
+            open(profile)
+        }
+    }
+
+    /** A PIN was entered in the open PIN sheet. */
+    fun onSubmitPin(pin: String) = this.pin.submitPin(pin)
+
+    /** "Forgot PIN?": the PIN sheet asks for the profile's Jellyfin password instead. */
+    fun onForgotPin() = pin.forgotPin()
+
+    fun onDismissPin() = pin.dismiss()
+
+    private fun askAtLaunch(ref: ProfileRef) {
+        viewModelScope.launch {
+            val account = accounts.account(ref.serverId, ref.userId) ?: return@launch
+            // The picker does not know yet whether the server wants a password; asking for one is the safe guess.
+            val profile = Profile(account.userId, account.name, null, account.hasSession, needsPassword = true)
+            pin.ask(PinReason.SwitchProfile, ref.serverId, ref.userId, account.name, onDismiss = { goBackTo(profile) }) {}
+        }
+    }
+
+    /** Dismissing the launch PIN goes back to that profile, through its open-this-profile PIN when it has one. */
+    private fun goBackTo(profile: Profile) {
+        viewModelScope.launch {
+            if (pins.gates(serverId, profile.userId).openProfile) {
+                pin.ask(PinReason.OpenProfile, serverId, profile.userId, profile.name) { open(profile) }
+            } else {
+                open(profile)
+            }
+        }
+    }
+
+    private fun open(profile: Profile) {
+        if (local.value.signingIn) return
         viewModelScope.launch {
             if (!profile.hasSession) return@launch withoutSession(profile, notice = null)
             local.update { it.copy(signingIn = true, error = null) }
@@ -129,8 +183,9 @@ class WhoIsWatchingViewModel(
         local.update { it.copy(sheet = SignInSheet.OtherUser, error = null) }
     }
 
-    /** Signs in with [password] for the profile in the open password sheet. */
+    /** Signs in with [password] for the profile in the open password sheet, or checks it after "Forgot PIN?". */
     fun onSubmitPassword(password: String) {
+        if (pin.prompt.value?.forgot == true) return pin.submitPassword(password)
         val sheet = local.value.sheet as? SignInSheet.Password ?: return
         signIn(sheet.profile.name, password, passwordOnly = true)
     }

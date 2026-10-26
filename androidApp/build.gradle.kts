@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.androidx.baselineprofile)
 }
 
 composeCompiler {
@@ -40,8 +41,8 @@ android {
             signingConfigs.findByName("release")?.let { signingConfig = it }
         }
         // What to install to judge how smooth the app is: the release build (not debuggable, so Compose and the runtime skip their
-        // debug checks and the JIT works fully), signed with the debug key so it installs. `./gradlew :androidApp:installPerf`.
-        create("perf") {
+        // debug checks and the JIT works fully), signed with the debug key so it installs. `./gradlew :androidApp:installBenchmark`.
+        create("benchmark") {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += "release"
@@ -73,6 +74,12 @@ dependencies {
     implementation(libs.androidx.media3.session)
     implementation(libs.jellyfin.media3.ffmpeg.decoder)
 
+    implementation(libs.androidx.work.runtime.ktx)
+
+    // Installs the baseline profile the benchmark module generates (`./gradlew :androidApp:generateBaselineProfile`).
+    implementation(libs.androidx.profileinstaller)
+    baselineProfile(project(":benchmark"))
+
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
 
@@ -83,4 +90,5 @@ dependencies {
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlin.test.junit)
+    testImplementation(libs.androidx.work.testing)
 }

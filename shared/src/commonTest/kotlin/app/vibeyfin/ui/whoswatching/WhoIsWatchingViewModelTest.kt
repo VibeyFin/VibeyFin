@@ -1,6 +1,9 @@
 package app.vibeyfin.ui.whoswatching
 
 import app.vibeyfin.domain.ConnectionState
+import app.vibeyfin.domain.model.ProfileRef
+import app.vibeyfin.ui.common.PinReason
+import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.testing.FakeServer
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
@@ -59,8 +62,8 @@ class WhoIsWatchingViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(
-        WhoIsWatchingViewModel("srv-1", app.servers, app.accounts, app.auth, app.connection),
+    private fun viewModel(pinFor: ProfileRef? = null) = viewModels.track(
+        WhoIsWatchingViewModel("srv-1", app.servers, app.accounts, app.auth, app.connection, app.pins, pinFor),
     )
 
     private suspend fun WhoIsWatchingViewModel.loaded() = uiState.first { !it.loading }
@@ -325,5 +328,122 @@ class WhoIsWatchingViewModelTest {
         assertNull(viewModel.uiState.value.sheet)
         kotlinx.coroutines.delay(10_000)
         assertEquals(pollsAtClose, app.jellyfin.requestsTo("GET", "/QuickConnect/Connect").size)
+    }
+
+    /** Alex has a saved session and the PIN "1234", with every switch on. */
+    private suspend fun alexWithPin() {
+        app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-u1")
+        app.setPin("u1", "1234")
+        server.on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex"}"""))
+    }
+
+    @Test
+    fun `entering a profile with open-this-profile on asks for its PIN`() = runTest {
+        alexWithPin()
+        val viewModel = viewModel()
+        val alex = viewModel.loaded().profiles.first { it.name == "Alex" }
+        assertTrue(alex.pinRequiredToOpen)
+        assertFalse(viewModel.loaded().profiles.first { it.name == "Kim" }.pinRequiredToOpen)
+
+        viewModel.onProfileTapped(alex)
+        assertEquals(PinReason.OpenProfile, viewModel.uiState.first { it.pinPrompt != null }.pinPrompt!!.reason)
+        assertEquals(ConnectionState.Disconnected, app.connection.state.value)
+
+        viewModel.onSubmitPin("0000")
+        assertEquals(Strings.pinPromptWrong, viewModel.uiState.first { it.pinPrompt?.error != null }.pinPrompt!!.error)
+        viewModel.onSubmitPin("1234")
+
+        val state = viewModel.uiState.first { it.signedIn }
+        assertNull(state.pinPrompt)
+        assertIs<ConnectionState.Connected>(app.connection.state.value)
+    }
+
+    @Test
+    fun `a profile whose open switch is off opens without its PIN`() = runTest {
+        alexWithPin()
+        app.database.accountDao().setPinOpenProfile("srv-1", "u1", false)
+        val viewModel = viewModel()
+        val alex = viewModel.loaded().profiles.first { it.name == "Alex" }
+
+        viewModel.onProfileTapped(alex)
+
+        assertNull(viewModel.uiState.first { it.signedIn }.pinPrompt)
+    }
+
+    @Test
+    fun `the picker at launch asks for the last profile's PIN and then lets anyone pick`() = runTest {
+        alexWithPin()
+        val viewModel = viewModel(pinFor = ProfileRef("srv-1", "u1"))
+        assertEquals(PinReason.SwitchProfile, viewModel.uiState.first { it.pinPrompt != null }.pinPrompt!!.reason)
+
+        viewModel.onSubmitPin("1234")
+
+        val state = viewModel.uiState.first { it.pinPrompt == null }
+        assertFalse(state.signedIn)
+        assertEquals(ConnectionState.Disconnected, app.connection.state.value)
+    }
+
+    @Test
+    fun `dismissing the launch PIN goes back to the last profile`() = runTest {
+        alexWithPin()
+        app.database.accountDao().setPinOpenProfile("srv-1", "u1", false)
+        val viewModel = viewModel(pinFor = ProfileRef("srv-1", "u1"))
+        viewModel.uiState.first { it.pinPrompt != null }
+
+        viewModel.onDismissPin()
+
+        assertTrue(viewModel.uiState.first { it.signedIn }.signedIn)
+        assertEquals("u1", assertIs<ConnectionState.Connected>(app.connection.state.value).account.userId)
+    }
+
+    @Test
+    fun `Forgot PIN on a tile signs in with the password and removes the PIN`() = runTest {
+        alexWithPin()
+        val viewModel = viewModel()
+        viewModel.onProfileTapped(viewModel.loaded().profiles.first { it.name == "Alex" })
+        viewModel.uiState.first { it.pinPrompt != null }
+
+        viewModel.onForgotPin()
+        viewModel.uiState.first { it.pinPrompt?.forgot == true }
+        viewModel.onSubmitPassword("right")
+
+        assertTrue(viewModel.uiState.first { it.signedIn }.signedIn)
+        assertFalse(app.pins.hasPin("srv-1", "u1"))
+    }
+
+    @Test
+    fun `dismissing the launch PIN with open-this-profile on asks for that PIN before opening`() = runTest {
+        alexWithPin()
+        app.preferences.setAlwaysAskWhoIsWatching(true)
+        val viewModel = viewModel(pinFor = ProfileRef("srv-1", "u1"))
+        viewModel.uiState.first { it.pinPrompt?.reason == PinReason.SwitchProfile }
+
+        viewModel.onDismissPin()
+
+        assertEquals(PinReason.OpenProfile, viewModel.uiState.first { it.pinPrompt?.reason == PinReason.OpenProfile }.pinPrompt!!.reason)
+        assertFalse(viewModel.uiState.value.signedIn)
+        assertEquals(ConnectionState.Disconnected, app.connection.state.value)
+
+        viewModel.onSubmitPin("1234")
+        assertTrue(viewModel.uiState.first { it.signedIn }.signedIn)
+    }
+
+    @Test
+    fun `Forgot PIN on the launch PIN signs in as the last profile and leaves the grid usable`() = runTest {
+        alexWithPin()
+        app.database.accountDao().setKidsProfile("srv-1", "u1", true)
+        val viewModel = viewModel(pinFor = ProfileRef("srv-1", "u1"))
+        viewModel.uiState.first { it.pinPrompt != null }
+
+        viewModel.onForgotPin()
+        viewModel.uiState.first { it.pinPrompt?.forgot == true }
+        viewModel.onSubmitPassword("right")
+
+        // A real sign-in as Alex: the PIN is gone, kids mode stays, and the picker stays open for whoever picks next.
+        val state = viewModel.uiState.first { it.pinPrompt == null }
+        assertFalse(state.signedIn)
+        assertEquals("u1", assertIs<ConnectionState.Connected>(app.connection.state.value).account.userId)
+        assertFalse(app.pins.hasPin("srv-1", "u1"))
+        assertEquals(true, app.database.accountDao().observeKidsProfile("srv-1", "u1").first())
     }
 }

@@ -16,6 +16,7 @@ import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.DevicePreferences
 import app.vibeyfin.domain.LanDiscovery
+import app.vibeyfin.domain.NewTitlesPoller
 import app.vibeyfin.domain.PlaybackCapabilitiesSource
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.ServerResolver
@@ -34,6 +35,7 @@ import app.vibeyfin.ui.playback.PlaybackViewModel
 import app.vibeyfin.ui.servers.ServersViewModel
 import app.vibeyfin.ui.settings.SettingsViewModel
 import app.vibeyfin.ui.startup.StartupViewModel
+import app.vibeyfin.ui.notifications.NotificationOpenViewModel
 import app.vibeyfin.ui.whoswatching.WhoIsWatchingViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -91,7 +93,11 @@ class AppModuleTest {
             koin.get<PlaybackViewModel> { parametersOf("item-1") },
             koin.get<StartupViewModel>(),
             koin.get<SettingsViewModel>(),
+            koin.get<NotificationOpenViewModel>(),
         )
+
+        // Background work resolves too, though no screen asks for it.
+        koin.get<NewTitlesPoller>()
 
         // Some start loading as soon as they exist; stop them before the database goes.
         viewModels.forEach { it.viewModelScope.coroutineContext.job.cancelAndJoin() }

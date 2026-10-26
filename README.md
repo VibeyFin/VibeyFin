@@ -2,16 +2,18 @@
 
 A Netflix-style [Jellyfin](https://jellyfin.org) client for phones and tablets, built with Kotlin
 Multiplatform. Dark and artwork-forward, visually inspired by Nuvio, with
-[Seerr](https://docs.seerr.dev) requests and recommendations planned for later.
+[Seerr](https://docs.seerr.dev) requests and recommendations planned for later, in native screens.
 
 The logic is shared between Android and iOS; the UI is native on each (Jetpack Compose on Android,
 SwiftUI on iOS). Android ships first.
 
 ## Status
 
-The roadmap's Phases 0 to 3 are done: you can connect to a server, sign in, browse libraries, play
-movies and episodes, and pick up where you left off on any device. Phase 4 (the navigation bar, richer
-Home, search) is next; there is no Seerr yet. See the [roadmap](docs/ROADMAP.md).
+The roadmap's Phases 0 to 4 and Phase 6 are done (Phase 5, a recommendation backend, is deferred): connect
+to a server, sign in, browse, search, play, pick up where you left off on any device, and tune playback and
+profiles in Settings. Phase 6 still owes Now Playing on the lock screen and a baseline profile. Next are
+customisation (Phase 7) and offline (Phase 10); Seerr is planned in [`docs/plans/18-seerr.md`](docs/plans/18-seerr.md)
+but not started. See the [roadmap](docs/ROADMAP.md).
 
 What works today:
 
@@ -19,29 +21,40 @@ What works today:
   saved once however many addresses reach it, and the one that last worked is tried first. Servers
   below Jellyfin 10.10 are rejected.
 - **Who's watching?** A profile grid per server. Sign in with a password or Quick Connect; a locked
-  tile means its session ended and it needs signing in again.
+  tile means its session ended and it needs signing in again. A profile can have a 4-digit PIN that
+  guards opening it, Settings and switching profile.
 - **Sessions:** sign in once. A profile keeps its session until the server rejects its token or you
   sign out, and the app reopens straight into the last profile unless you turn on "Always ask who's
   watching". Passwords are never stored; tokens are encrypted at rest (Android Keystore, iOS
   Keychain).
-- **Libraries:** Home lists the profile's libraries. Folders, series and seasons open a paged grid,
-  and a movie or episode opens a page with its picture, facts, genres, overview and a format badge
-  (HDR, codec, resolution). BlurHash placeholders hold the space while artwork loads.
+- **Navigation:** a tab bar with Home, Search, Library and Downloads (Downloads says "Not available
+  yet"), each with its own back stack; on tablets the tabs sit at the top.
+- **Home:** an optional featured title, category buttons (Shows, Movies, New, Categories), Continue
+  watching with Next up, Recently added per library, My List, a row per genre and My media.
+- **Browsing:** a Library tab with filters (Movies, Shows, Collections, sort, genre, decade, people),
+  detail pages for movies and series (cast, seasons and episodes, similar titles, special features,
+  trailers, collections), person and collection pages, and a long-press menu on any poster.
+- **Search:** one search over movies, shows, episodes, people and collections, with filter buttons and a
+  per-profile history.
 - **Playback:** direct play with a transcode fallback, audio and subtitle choice, resume from the
   server's position, auto-advance into the next episode, and a progress report to the server (also
   sent after a crash). A lost connection is retried and then explained.
-- **Continue Watching:** one row for what's in progress and what's next, plus mark played or unplayed.
-- **Player extras:** skip intro and credits from the server's media segments, scrub previews
-  (trickplay), playback speed, HDR output, picture-in-picture (Android; iOS written but never seen
-  running), an optional stats overlay and "Are you still watching?" after a few episodes in a row.
-  Both are per-profile settings.
+- **Player extras:** skip intro and credits from the server's media segments (or skip them
+  automatically), scrub previews (trickplay), skip buttons and double-tap seek that add up taps in a row,
+  playback speed, HDR output, picture-in-picture, an optional stats overlay and "Are you still
+  watching?" after a few episodes in a row.
+- **Settings (per profile):** quality cap, subtitle style, skip lengths, auto-skip, buffer ahead, still
+  watching, picture-in-picture, Home hero and genre rows, Kids profile (shows the server's parental
+  limits), PIN, and new-title notifications (off by default; WorkManager on Android, background refresh
+  on iOS). Tablets get a two-pane Settings.
 
-Not built yet: the navigation bar and search, downloads, Seerr. Android has been run on an emulator
-against a local test server (see [`docs/test-server.md`](docs/test-server.md)); no real device pass for
-HDR yet. **The iOS app has been built and driven on the simulator for Home, playback speed, the format
-badge and the still-watching prompt, but not for picture-in-picture, the stats overlay, skip or scrub
-previews**, so expect fixes when those are first seen running. The iOS mini
-player is built but not mounted, because the app has no tab bar yet.
+Not built yet: downloads and offline, customisation of Home rows and tabs, Seerr, translations (issue #27),
+TV apps. Android has been run on an emulator against a local test server (see
+[`docs/test-server.md`](docs/test-server.md)); there has been no real-device pass yet (`docs/checklists/phone-pass.md`),
+so real HDR output is unverified. **The iOS app builds and passes `scripts/ios-smoke.sh` on the simulator
+(onboarding, series episodes, player controls), but most screens have not been walked through by hand**,
+and picture-in-picture, Control Center and notifications have not been seen running on iOS. Expect fixes
+when they are.
 
 ## Project layout
 
@@ -92,6 +105,11 @@ compiles for it with:
 ./gradlew :shared:compileKotlinIosSimulatorArm64 :shared:compileTestKotlinIosSimulatorArm64 :shared:compileKotlinIosArm64
 ```
 
+With Xcode, a simulator and podman, `scripts/ios-smoke.sh` builds the iOS app, installs it fresh on a
+simulator and runs the XCUITests in `iosApp/UITests/` against the local test server
+(`IOS_SIMULATOR="iPhone 18 Pro"` picks the simulator). `./gradlew :shared:allTests` runs the shared tests
+on every target, which also needs Xcode.
+
 ## CI and releases
 
 - **Pull requests** run `.github/workflows/pr.yml`: the shared and Android unit tests and a debug build,
@@ -120,6 +138,7 @@ through a thin Ktor client.
 
 - [`docs/ROADMAP.md`](docs/ROADMAP.md): what is done and what comes next, including Seerr
   requests and recommendations (Phases 8 and 9).
-- [`docs/plans/`](docs/plans): how each stage was planned and what was verified.
+- [`docs/plans/`](docs/plans): how each stage was planned and what was verified, and the plans not
+  started yet (Now Playing, Seerr).
 - [`docs/design/`](docs/design/brand.md): the design system, per platform.
 - [`CLAUDE.md`](CLAUDE.md): the project's conventions, product decisions and architecture rules.

@@ -20,15 +20,22 @@ final class PlayerPictureInPicture: NSObject, ObservableObject, AVPictureInPictu
     private var controller: AVPictureInPictureController?
     private var restoring = false
     private var silenced = false
+    private var allowsStart = true
 
     /// Ties picture-in-picture to the video's layer. Does nothing where the device can't do it.
     func attach(to layer: AVPlayerLayer) {
         guard controller == nil, AVPictureInPictureController.isPictureInPictureSupported() else { return }
         let pip = AVPictureInPictureController(playerLayer: layer)
         pip?.delegate = self
-        pip?.canStartPictureInPictureAutomaticallyFromInline = true
+        pip?.canStartPictureInPictureAutomaticallyFromInline = allowsStart
         controller = pip
         isSupported = pip != nil
+    }
+
+    /// The profile allows picture-in-picture: without it, leaving the app does not turn the video into a window.
+    func allow(_ allowed: Bool) {
+        controller?.canStartPictureInPictureAutomaticallyFromInline = allowed
+        allowsStart = allowed
     }
 
     /// Turns the video into the window now, as leaving the app would.
@@ -38,9 +45,12 @@ final class PlayerPictureInPicture: NSObject, ObservableObject, AVPictureInPictu
         return controller.canStartPictureInPictureAutomaticallyFromInline && controller.isPictureInPicturePossible
     }
 
-    func start() {
-        guard let controller, controller.isPictureInPicturePossible else { return }
+    /// Returns whether the window was asked for.
+    @discardableResult
+    func start() -> Bool {
+        guard allowsStart, let controller, controller.isPictureInPicturePossible else { return false }
         controller.startPictureInPicture()
+        return true
     }
 
     /// Closes the window without reporting it: the caller has ended the session itself.

@@ -10,6 +10,23 @@ data class UserDto(
     @SerialName("Name") val name: String? = null,
     @SerialName("PrimaryImageTag") val primaryImageTag: String? = null,
     @SerialName("HasPassword") val hasPassword: Boolean? = null,
+    @SerialName("Policy") val policy: UserPolicyDto? = null,
+)
+
+/** `UserPolicyDto`: only the limits an administrator can put on a user. */
+@Serializable
+data class UserPolicyDto(
+    @SerialName("MaxParentalRating") val maxParentalRating: Int? = null,
+    @SerialName("BlockedTags") val blockedTags: List<String>? = null,
+    @SerialName("AccessSchedules") val accessSchedules: List<AccessScheduleDto>? = null,
+)
+
+/** `AccessSchedule`: [dayOfWeek] is Jellyfin's `DynamicDayOfWeek` (Sunday to Saturday, Everyday, Weekday, Weekend). */
+@Serializable
+data class AccessScheduleDto(
+    @SerialName("DayOfWeek") val dayOfWeek: String? = null,
+    @SerialName("StartHour") val startHour: Double = 0.0,
+    @SerialName("EndHour") val endHour: Double = 0.0,
 )
 
 @Serializable
@@ -35,4 +52,11 @@ data class QuickConnectResultDto(
 @Serializable
 data class QuickConnectRequestDto(
     @SerialName("Secret") val secret: String,
+)
+
+/** `ParentalRating`: a rating name and the level it stands for. Several names can share a level. */
+@Serializable
+data class ParentalRatingDto(
+    @SerialName("Name") val name: String? = null,
+    @SerialName("Value") val value: Int? = null,
 )

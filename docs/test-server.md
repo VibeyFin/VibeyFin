@@ -155,6 +155,60 @@ scripts/test-server/seed-userdata.sh  # user data and the box set; run again any
 | Partly watched (Continue watching) | Saga Show S01E02 at 1.2 s of 3 s (40 %), Neon Night at 2 s of 5 s |
 | My List (favourites) | Saga Show, Neon Night, Starlit Crown, Solo Season |
 
+## Kids user and rated fixtures
+
+For the Phase 6 profile limits and the Settings PIN. `make-media.sh` writes three more 5 s movies (the Quiet Harbor clip
+copied, `.nfo` with `<mpaa>` and `lockdata`); `seed-userdata.sh` creates the kids user and sets its policy through the API
+(`POST /Users/New`, then `POST /Users/{id}/Policy`; idempotent, the policy is set again on every run). Existing fixtures are
+unchanged. After adding them to an existing server: `POST /Library/Refresh`, then `seed-userdata.sh`.
+
+| Fixture | Where | What it is | Needed by |
+| --- | --- | --- | --- |
+| user `kids` | server user, password `vibeyfin-kids` (throwaway) | Not an admin. `MaxParentalRating` 10 (PG), `BlockedTags` `no-kids`, one access schedule Everyday 0 to 24 h (open all day, so a test never fails by the clock; edit the schedule in the Jellyfin dashboard to try a closed window) | Profile policy page, rating cap, blocked tag, schedule; the PIN flow |
+| `kid-friendly` | `movies/Kid Friendly (2026)/` | Rated G | Visible to `kids` |
+| `grown-up-only` | `movies/Grown Up Only (2026)/` | Rated R | Hidden from `kids` (above the cap) |
+| `tagged-for-adults` | `movies/Tagged For Adults (2026)/` | Rated G, tag `no-kids` | Hidden from `kids` (blocked tag) |
+
+`admin` is the user without limits. Notes: items with no rating (every older fixture) stay visible to `kids`, because
+"block unrated" is off; Starlit Crown and Starlit Crown II are PG-13, so `kids` does not see them either. Level 10 is
+named "PG" by the server (`GET /Localization/ParentalRatings`).
+
+Using them with the PIN flow: sign in as `kids` (password `vibeyfin-kids`), open Settings, set a PIN on that profile, then
+return to "Who's watching?" and sign in as `kids` again: the Settings tab asks for the PIN (a wrong PIN stays locked, the
+right one opens). Home as `kids` lists Kid Friendly but not Grown Up Only or Tagged For Adults; as `admin` it lists all
+three. Signing in as `kids` also needs the server's password prompt only once, as for any profile.
+
+## A series that gains an episode (notifications)
+
+For the Phase 6 new-title notifications. `make-media.sh` writes a series with one 3 s episode (the page fixtures' clip
+copied, `.nfo` with `lockdata`). A flag adds its second episode later, as a title the server has just added. Existing
+fixtures are unchanged.
+
+| Fixture | Where | What it is | Needed by |
+| --- | --- | --- | --- |
+| `growing-e01` | `shows/Growing Show/Season 01/Growing Show S01E01.mkv` | 3 s, "First Arrival" (`.nfo`); the series "Growing Show" (2026, Drama) | The show the notification is about |
+| `growing-e02` | `shows/Growing Show/Season 01/Growing Show S01E02.mkv` | 3 s, no `.nfo`, so the server titles it "Growing Show S01E02". Only after `make-media.sh --add-episode` (copies the file, then `POST /Library/Refresh`); `--remove-episode` deletes it and scans again | The new episode: one notification that opens it |
+
+Checking a notification (Android emulator, `admin`):
+
+1. Follow the show: add Growing Show to My List in the app (or choose "Everything new in the library" on the
+   Notifications page). Switch Notifications on and allow the permission.
+2. Run the work once before adding the episode (see below). A profile's first poll announces only what was added in the
+   last day, so on a server set up today it may announce `growing-e01`; after that it is marked as notified.
+3. `scripts/test-server/make-media.sh --add-episode`, wait for the scan (a few seconds), and run the work again: one
+   notification "New episode of Growing Show", "Growing Show S01E02". Tapping it opens the episode's page.
+4. To repeat: `--remove-episode`, then `--add-episode` again, then switch Notifications off and on. The server derives
+   the item id from the path, so the episode comes back with the same id, which the profile has already been notified
+   about; switching off forgets that, and the next poll is a first poll, which announces what was added in the last day.
+
+Running the work now: `adb shell cmd jobscheduler run -f -n androidx.work.systemjobscheduler app.vibeyfin <job id>`,
+with the id from `adb shell dumpsys jobscheduler | grep "JOB .*app.vibeyfin"` (the number after `u0a…/`). WorkManager
+skips a periodic run forced before its period is up ("being executed before schedule" in logcat): the first run happens
+when Notifications is switched on, and later ones need the clock moved past the 4 hours. On an emulator image without
+root: `adb shell settings put global auto_time 0`, then `adb shell cmd alarm set-time <epoch ms 5 h ahead>`, force the
+job, and `adb shell settings put global auto_time 1` afterwards. The work only runs while a profile has Notifications
+on and a network.
+
 ## Checking it
 
 `scripts/test-server/list-fixtures.sh` compares every fixture in the catalogue with what the running

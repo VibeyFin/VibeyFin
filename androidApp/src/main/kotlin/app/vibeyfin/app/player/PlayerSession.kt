@@ -12,6 +12,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.PictureInPictureModeChangedInfo
+import coil3.SingletonImageLoader
+import coil3.request.ImageRequest
+import coil3.request.target
+import coil3.toBitmap
 import androidx.core.util.Consumer
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -105,5 +109,14 @@ private class Description(private val context: Context) : PlayerNotificationMana
             PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         }
 
-    override fun getCurrentLargeIcon(player: Player, callback: PlayerNotificationManager.BitmapCallback): Bitmap? = null
+    /** The item's picture, fetched with the app's image loader; the notification shows without one until it arrives. */
+    override fun getCurrentLargeIcon(player: Player, callback: PlayerNotificationManager.BitmapCallback): Bitmap? {
+        val uri = player.mediaMetadata.artworkUri ?: return null
+        val request = ImageRequest.Builder(context)
+            .data(uri.toString())
+            .target(onSuccess = { callback.onBitmap(it.toBitmap()) })
+            .build()
+        SingletonImageLoader.get(context).enqueue(request)
+        return null
+    }
 }

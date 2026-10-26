@@ -9,12 +9,17 @@
 #     category buttons: genres Drama, Thriller and Science Fiction, and release years 2026 to 1999 for "New".
 #     Jellyfin reads the .nfo as local metadata (no online lookup).
 #   movies/Filler 01 (2003) ... Filler 24 (2026)   copies of one clip, genres in turn, to fill a category page
+#   movies/Kid Friendly (G), Grown Up Only (R), Tagged For Adults (G, tag no-kids) (2026)   rated clips for the kids user
 #   failures/<Name> (2026)/<Name> (2026).mkv         20 s clips with one thing a player may refuse: Plain Clip (the
 #                                                    baseline), DTS Audio, MKV VP9 Opus, Text Subtitles, Image Subtitles
 #   failures/Truncated (2026)/Truncated (2026).mp4   an MP4 cut in half: no moov atom, nothing can be read from it
 #   Page fixtures (3 s, 320x180 clips, small artwork, .nfo with lockdata): shows/Saga Show (Specials, Season 1 with
 #     8 episodes, Season 2; backdrop and logo), shows/Solo Season (one season, poster only), movies/Starlit Crown
 #     (2026) and II (2027) (artwork, cast, genres), movies/Bare Item (2026) (no artwork). User data: seed-userdata.sh
+#   shows/Growing Show/Season 01/Growing Show S01E01.mkv   3 s clip, the series that gains an episode (notifications)
+# Flags (each does only that, then exits; the server must be running):
+#   --add-episode      adds Growing Show S01E02 (titled by its file name) and asks the server to scan the library
+#   --remove-episode   removes it again and scans, so the episode can be added anew
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
@@ -26,6 +31,30 @@ mkdir -p "$EP_DIR" "$HDR_DIR" "${DATA}/work"
 ff() {
   podman run --rm -v "${DATA}:/data" --entrypoint /usr/lib/jellyfin-ffmpeg/ffmpeg "$JF_IMAGE" -hide_banner -loglevel error -y "$@"
 }
+
+# --add-episode / --remove-episode: Growing Show S01E02 appears or goes, then the server scans (docs/test-server.md).
+scan_library() {
+  local token
+  token=$(curl -sf -H "$AUTH_HDR" -H 'Content-Type: application/json' -X POST "${JF_URL}/Users/AuthenticateByName" \
+    -d "{\"Username\":\"${JF_USER}\",\"Pw\":\"${JF_PASS}\"}" | sed -E 's/.*"AccessToken":"([^"]+)".*/\1/')
+  curl -sf -X POST -H "${AUTH_HDR}, Token=\"${token}\"" "${JF_URL}/Library/Refresh"
+  echo "Library scan started on ${JF_URL}"
+}
+GROWING_E02="${MEDIA}/shows/Growing Show/Season 01/Growing Show S01E02"
+case "${1:-}" in
+  --add-episode)
+    [ -f "${MEDIA}/shows/Growing Show/Season 01/Growing Show S01E01.mkv" ] || { echo "Run make-media.sh without flags first" >&2; exit 1; }
+    # No .nfo: the server picks the new file up before a scan reads one, so its title is the file name.
+    cp "${MEDIA}/shows/Growing Show/Season 01/Growing Show S01E01.mkv" "${GROWING_E02}.mkv"
+    scan_library
+    exit 0 ;;
+  --remove-episode)
+    rm -f "${GROWING_E02}.mkv" "${GROWING_E02}.nfo"
+    scan_library
+    exit 0 ;;
+  "") ;;
+  *) echo "Unknown flag: $1 (use --add-episode or --remove-episode)" >&2; exit 2 ;;
+esac
 
 # Chapter metadata, in milliseconds.
 cat > "${DATA}/work/chapters.txt" <<'META'
@@ -107,6 +136,17 @@ for n in $(seq 1 24); do
 done
 # A title long enough to wrap onto two lines in a poster tile, to check a row keeps one height as it scrolls.
 nfo_movie "The Extraordinarily Long Title Of A Film (2026)" "The Extraordinarily Long Title Of A Film That Keeps Going" 2026 "A24" "Drama"
+# Rated fixtures for the kids user (seed-userdata.sh): a G movie, an R movie, and a G movie with the tag "no-kids".
+# The kids user is capped at PG and blocks that tag, so it sees only Kid Friendly. Same clip copied, so cheap.
+rated_movie() { # $1 = folder name, $2 = title, $3 = year, $4 = rating, $5 = extra nfo (optional)
+  local name="$1" dir="${MEDIA}/movies/$1"
+  mkdir -p "$dir"
+  [ -f "${dir}/${name}.mkv" ] || cp "${MEDIA}/movies/Quiet Harbor (2025)/Quiet Harbor (2025).mkv" "${dir}/${name}.mkv"
+  echo "<movie><title>$2</title><lockdata>true</lockdata><year>$3</year><mpaa>$4</mpaa>${5:-}</movie>" > "${dir}/movie.nfo"
+}
+rated_movie "Kid Friendly (2026)" "Kid Friendly" 2026 "G"
+rated_movie "Grown Up Only (2026)" "Grown Up Only" 2026 "R"
+rated_movie "Tagged For Adults (2026)" "Tagged For Adults" 2026 "G" "<tag>no-kids</tag>"
 # Failure fixtures: 20 s clips, no chapters (so no segments), in the Failures library (no trickplay).
 failure() { # $1 = title, $2 = extension, rest = ffmpeg arguments after the two generated inputs
   local title="$1" ext="$2" out
@@ -259,5 +299,12 @@ crown "Starlit Crown II (2027)" "Starlit Crown II" 2027 rgbtestsrc
 BARE="${MEDIA}/movies/Bare Item (2026)"
 clip "${BARE}/Bare Item (2026).mkv"
 echo "<movie><title>Bare Item</title><lockdata>true</lockdata><year>2026</year></movie>" > "${BARE}/movie.nfo"
+
+# Growing Show: one episode now; --add-episode adds the second later, as a new title for the notifications.
+GROWING="${MEDIA}/shows/Growing Show"
+mkdir -p "$GROWING"
+echo "<tvshow><title>Growing Show</title><lockdata>true</lockdata><year>2026</year><genre>Drama</genre><plot>A show that gains an episode.</plot></tvshow>" > "${GROWING}/tvshow.nfo"
+clip "${GROWING}/Season 01/Growing Show S01E01.mkv"
+episode_nfo "${GROWING}/Season 01/Growing Show S01E01" "First Arrival" 1 1 ""
 
 echo "Media ready under ${MEDIA}"

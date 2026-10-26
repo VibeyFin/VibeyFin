@@ -10,7 +10,9 @@ import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.PROGRESS_INTERVAL
 import app.vibeyfin.domain.PendingReports
-import app.vibeyfin.domain.NowPlaying
+import app.vibeyfin.domain.PinLock
+import app.vibeyfin.domain.ProfilePolicy
+import app.vibeyfin.domain.hashPin
 import app.vibeyfin.domain.PlaybackRecovery
 import app.vibeyfin.domain.PlaybackReporter
 import app.vibeyfin.domain.PlaybackRepository
@@ -46,16 +48,17 @@ class TestApp {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
     val connection = ConnectionManager(connector, servers, accounts, preferences, jellyfin.unauthorized, scope)
     val auth = AuthRepository(connector, accounts, connection)
-    val router = StartupRouter(servers, accounts, preferences, connection)
+    val pins = PinLock(database.accountDao(), connection, clock)
+    val policy = ProfilePolicy(connection)
+    val router = StartupRouter(servers, accounts, preferences, connection, pins)
     val library = LibraryRepository(connection)
     val searchHistory = SearchHistory(InMemoryPreferencesDataStore(), connection)
     val watchChanges = WatchChanges()
     val watch = WatchRepository(connection, watchChanges)
     val capabilities = FakePlaybackCapabilities()
     val profileSettings = ProfileSettings(database.accountDao(), connection)
-    val nowPlaying = NowPlaying()
     val binge = BingeCounter()
-    val playback = PlaybackRepository(connection, capabilities, ClientInfoProvider(FakeDeviceInfo(), preferences))
+    val playback = PlaybackRepository(connection, capabilities, ClientInfoProvider(FakeDeviceInfo(), preferences), profileSettings)
 
     val pending = PendingReports(database.pendingReportDao(), clock)
     val recovery = PlaybackRecovery(pending, connection)
@@ -79,6 +82,12 @@ class TestApp {
         accounts.saveSession("srv-1", "u1", "Alex", null, "token-1")
         connection.activate("srv-1", "u1")
         return server
+    }
+
+    /** Gives a saved profile a [pin] without signing in as it; the switches keep their stored values (on by default). */
+    suspend fun setPin(userId: String, pin: String, serverId: String = "srv-1") {
+        val salt = ByteArray(16) { it.toByte() }
+        database.accountDao().setPin(serverId, userId, hashPin(salt, pin), salt)
     }
 
     /**

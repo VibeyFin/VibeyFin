@@ -35,15 +35,26 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 ## Playback
 
 - Phones open the player full-screen landscape; rotation lock respected on exit. Tablets keep the current orientation.
-- Controls auto-hide after 3s without input; a tap toggles them. The transport has three buttons: skip back, play / pause, skip forward. Defaults are 10s back and 10s forward; both are set per profile in Settings → Playback (back 5, 10, 15, 30; forward 10, 15, 30, 45, 60), where Buffer ahead is set too (Auto, 10, 20, 30, 40, 50, 60 s; default 20 s). Double-tap the left / right third seeks the same amounts with a visible "10s" label.
+- Controls auto-hide after 3s without input; a tap toggles them. The transport has three buttons: skip back, play / pause, skip forward. Defaults are 10s back and 10s forward; both are set per profile in Settings → Playback → Skipping and autoplay (back 5, 10, 15, 30; forward 10, 15, 30, 45, 60), where Buffer ahead is set too, in its own group (Auto, 10, 20, 30, 40, 50, 60 s; default 20 s). Double-tap the left / right third seeks the same amounts. Every skip, from a button or a double-tap, shows the seconds skipped by that side ("10s"); skips in a row to the same side add up ("30s" after three), and the total clears 1s after the last skip or when the other side is tapped. The total counts how far the video moved, so a skip that hits the start or the end counts less than its step. The shared `PlaybackUiState.skipRun` owns the count; both apps only draw it.
 - The top bar holds only: close or back, the title with one meta line (episode, then the format badge as text), and the controls cluster (speed, audio and subtitles, picture in picture, AirPlay or Cast). Nothing else. Playback controls are never aqua: iOS is white on Liquid Glass, Android is `ink` on the scrim. Full spec in `player.md`.
 - The scrubber draws how far the stream is loaded: a white segment at about 35% opacity between the aqua played part and the track, ending at the loaded position, never before the played part. While the player stalls to load, a spinner replaces the three transport buttons; controls stay up.
 - Scrubbing shows the trickplay thumbnail above the thumb with the timestamp; no trickplay data → timestamp only.
-- Skip buttons ("Skip intro", "Skip recap") appear at segment start and stay for the whole segment, also when controls are hidden. **Never** auto-skip unless the user turned it on (Settings → Playback → Skip intros and recaps, off by default). Skip Credits shows at the Outro segment and gives way to up next when there is a next episode.
+- Skip buttons ("Skip intro", "Skip recap") appear at segment start and stay for the whole segment, also when controls are hidden. **Never** auto-skip unless the user turned it on (Settings → Playback → Skipping and autoplay → Auto skip intros and recaps, off by default). Skip Credits shows at the Outro segment and gives way to up next when there is a next episode.
 - Up next: at the Outro segment (or the last 30s without one) show the next-episode card with a 10s countdown, "Play now" and "Watch credits". At zero the next episode starts (about 20s early, the finished one counted as watched); "Watch credits" dismisses the card for that episode, which plays out and closes with no second countdown. A video under three minutes only counts down once it has ended. After 3 auto-played episodes without input, pause and ask "Still watching?".
 - Remember audio and subtitle language per series; fall back to the user's Jellyfin preferences.
 - **Must** report progress to the server on start, every 10s, on pause, seek and stop — and on app backgrounding.
 - **Never** start playback with sound from a non-player screen.
+
+## Settings
+
+- **Where:** under the profile avatar on Home, never a tab. Per-profile groups come first, the one device-wide group ("This device") after them. Settings are stored per profile; only "Always ask who's watching" is device-wide.
+- **Playback group:** Quality, Subtitles, Skipping and autoplay. No root Buffering row; Buffer ahead is on Skipping and autoplay in its own group.
+- **Choices:** a choice is a menu in its row (iOS `Picker(.menu)`, Android dropdown) and never opens a sub-page. Only Quality is a checklist, shown inline in its own section.
+- **Quality:** a per-profile cap, Maximum by default (the original, direct play when possible), then 4K 40, 1080p 10, 720p 4, 480p 1.5 Mbps. It applies to the next stream. No quality menu in the player and no per-network cap.
+- **Subtitle style** follows the OS caption style unless the user turned "Use system caption style" off and chose one. iOS burns subtitles in today, so its style controls are disabled with a note until that is solved.
+- **Sign out** is on the Profile page, asks for confirmation, clears the token and keeps the profile's tile locked in "Who's watching?". It runs to completion even if the user leaves the screen (it is not tied to the screen's lifetime). It is the only way to clear a token besides a 401. Never on a kids profile.
+- **Tablets:** two panes at regular width; the selected root row follows the tapped row; Quality is selected on open.
+- **PIN** (Settings, Kids and PIN group, **Kids profile** row): 4 digits, optional, per profile, a salted hash, never the Jellyfin password. A household lock, not security, and never presented as security. It is independent of the kids flag. Turning kids mode off, changing the PIN and removing it always ask for the PIN. "Forgot PIN?" checks the Jellyfin password with a normal sign-in and removes the PIN.
 
 ## Navigation
 
@@ -61,6 +72,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 
 - Server discovery on the local network first, manual URL second. Offer Quick Connect alongside username / password.
 - Multiple users on the server → profile picker on launch, remembered per device.
+- A tapped notification never signs a profile in and never bypasses a PIN: it opens its title only for the profile signed in now. For another profile the app either does nothing (iOS) or goes to "Who's watching?" (Android, only when the signed-in profile's PIN doesn't guard switching), where that profile is picked the usual way.
 
 ## Offline and errors
 

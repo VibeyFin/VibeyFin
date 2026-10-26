@@ -61,6 +61,8 @@ import app.vibeyfin.app.components.skeletonProfiles
 import app.vibeyfin.app.components.vibeyFinTextFieldColors
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.model.Profile
+import app.vibeyfin.domain.model.ProfileRef
+import app.vibeyfin.app.settings.PinSheet
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.whoswatching.SignInSheet
 import app.vibeyfin.ui.whoswatching.WhoIsWatchingUiState
@@ -76,7 +78,8 @@ fun WhoIsWatchingRoute(
     serverId: String,
     onBack: () -> Unit,
     onSignedIn: () -> Unit,
-    viewModel: WhoIsWatchingViewModel = koinViewModel(parameters = { parametersOf(serverId) }),
+    pinFor: ProfileRef? = null,
+    viewModel: WhoIsWatchingViewModel = koinViewModel(parameters = { parametersOf(serverId, pinFor) }),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.signedIn) {
@@ -92,6 +95,9 @@ fun WhoIsWatchingRoute(
         onSubmitPassword = viewModel::onSubmitPassword,
         onSubmitOtherUser = viewModel::onSubmitOtherUser,
         onDismissSheet = viewModel::onDismissSheet,
+        onSubmitPin = viewModel::onSubmitPin,
+        onForgotPin = viewModel::onForgotPin,
+        onDismissPin = viewModel::onDismissPin,
     )
 }
 
@@ -106,6 +112,9 @@ fun WhoIsWatchingScreen(
     onSubmitPassword: (String) -> Unit,
     onSubmitOtherUser: (String, String) -> Unit,
     onDismissSheet: () -> Unit,
+    onSubmitPin: (String) -> Unit,
+    onForgotPin: () -> Unit,
+    onDismissPin: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
@@ -146,6 +155,16 @@ fun WhoIsWatchingScreen(
             }
             FloatingBackButton(onBack)
         }
+    }
+    state.pinPrompt?.let { prompt ->
+        PinSheet(
+            prompt = prompt,
+            onSubmitPin = onSubmitPin,
+            onForgotPin = onForgotPin,
+            // The Forgot PIN password field shares the sign-in's submit.
+            onSubmitPassword = onSubmitPassword,
+            onDismiss = onDismissPin,
+        )
     }
     state.sheet?.let { sheet ->
         SignInSheet(
@@ -220,7 +239,7 @@ private fun ProfileTile(profile: Profile, enabled: Boolean, onClick: () -> Unit)
     ) {
         Box {
             Avatar(profile)
-            if (profile.locked) {
+            if (profile.locked || profile.pinRequiredToOpen) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
@@ -231,7 +250,7 @@ private fun ProfileTile(profile: Profile, enabled: Boolean, onClick: () -> Unit)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Lock,
-                        contentDescription = Strings.needsPassword,
+                        contentDescription = if (profile.locked) Strings.needsPassword else Strings.needsPin,
                         tint = VibeyFinTokens.Colors.ink,
                         modifier = Modifier.size(16.dp),
                     )

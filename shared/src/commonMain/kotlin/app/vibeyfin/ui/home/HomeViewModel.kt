@@ -4,20 +4,32 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
+import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.FilterOption
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.PageSort
+import app.vibeyfin.domain.PinLock
+import app.vibeyfin.domain.ProfileSettings
+import app.vibeyfin.domain.SearchHistory
 import app.vibeyfin.domain.WatchChanges
 import app.vibeyfin.domain.WatchRepository
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
-import app.vibeyfin.ui.item.seasonIndex
 import app.vibeyfin.ui.common.LoadMessages
+import app.vibeyfin.ui.common.PinGate
+import app.vibeyfin.ui.common.PinPrompt
+import app.vibeyfin.ui.common.PinReason
 import app.vibeyfin.ui.common.Strings
+import app.vibeyfin.ui.item.seasonIndex
+import kotlin.random.Random
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,22 +37,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.async
-import kotlin.random.Random
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.drop
-import app.vibeyfin.domain.ProfileSettings
-import app.vibeyfin.domain.SearchHistory
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.Instant
 
 /** Where Home sends the user when they leave it. */
 sealed interface HomeExit {
@@ -86,6 +91,10 @@ data class HomeUiState(
     val heroLoading: Boolean = false,
     /** Set when the hero's Play was tapped and the target is known; the screen opens it and calls `onHeroNavHandled`. */
     val heroNav: HeroNav? = null,
+    /** A kids profile: the menu has no Sign out. */
+    val kidsProfile: Boolean = false,
+    /** The PIN sheet, while switching profile or server waits for the profile's PIN. */
+    val pinPrompt: PinPrompt? = null,
 )
 
 /** The hero: the item once picked, or [loading] while it is being picked. */
@@ -135,7 +144,10 @@ class HomeViewModel(
     private val clock: Clock,
     private val profileSettings: ProfileSettings,
     private val searchHistory: SearchHistory,
+    private val pins: PinLock,
+    auth: AuthRepository,
 ) : ViewModel() {
+    private val pin = PinGate(pins, auth, viewModelScope)
     private val exit = MutableStateFlow<HomeExit?>(null)
     // Signed in, the libraries are always on their way, so the first thing to show is loading, not empty.
     private val libraries = MutableStateFlow(Libraries(loading = true))
@@ -189,7 +201,7 @@ class HomeViewModel(
         }
     }
 
-    val uiState: StateFlow<HomeUiState> = combine(screen, actionMessage, categoryUi, rows, hero) { screen, message, categories, rows, hero ->
+    private val content = combine(screen, actionMessage, categoryUi, rows, hero) { screen, message, categories, rows, hero ->
         // A signed-in Home waits for the hero setting to be read, so everything appears in the same first frame.
         if (screen.userName != null && !hero.ready) return@combine HomeUiState()
         screen.copy(
@@ -202,6 +214,10 @@ class HomeViewModel(
             rows = rows,
             loadingMyMedia = screen.loadingLibraries || screen.continueRow.loading && screen.continueRow.cards.isEmpty() || rows.any { it.loading },
         )
+    }
+
+    val uiState: StateFlow<HomeUiState> = combine(content, profileSettings.kidsProfile, pin.prompt) { content, kids, prompt ->
+        content.copy(kidsProfile = kids == true, pinPrompt = prompt)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     init {
@@ -621,16 +637,46 @@ class HomeViewModel(
         }
     }
 
-    /** Leaves this profile signed in and goes back to "Who's watching?" on the same server. */
+    /** Leaves this profile signed in and goes back to "Who's watching?" on the same server, after its PIN if it asks. */
     fun onSwitchProfile() {
         val serverId = currentServerId() ?: return
-        connection.switchProfile()
-        exit.value = HomeExit.WhoIsWatching(serverId)
+        leaveProfile(HomeExit.WhoIsWatching(serverId))
     }
 
+    /** Leaving for the servers list is leaving the profile too, so it asks for the PIN the same way. */
     fun onSwitchServer() {
-        connection.switchProfile()
-        exit.value = HomeExit.Servers
+        if (currentServerId() == null) {
+            connection.switchProfile()
+            exit.value = HomeExit.Servers
+            return
+        }
+        leaveProfile(HomeExit.Servers)
+    }
+
+    /** A PIN was entered in the open PIN sheet. */
+    fun onSubmitPin(pin: String) = this.pin.submitPin(pin)
+
+    /** "Forgot PIN?": the PIN sheet asks for the profile's Jellyfin password instead. */
+    fun onForgotPin() = pin.forgotPin()
+
+    /** The Jellyfin password entered after "Forgot PIN?". */
+    fun onSubmitPassword(password: String) = pin.submitPassword(password)
+
+    fun onDismissPin() = pin.dismiss()
+
+    private fun leaveProfile(to: HomeExit) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        viewModelScope.launch {
+            val leave: suspend () -> Unit = {
+                connection.switchProfile()
+                exit.value = to
+            }
+            if (pins.gates(account.serverId, account.userId).switchProfile) {
+                pin.ask(PinReason.SwitchProfile, account.serverId, account.userId, account.name, onPass = leave)
+            } else {
+                leave()
+            }
+        }
     }
 
     /**
@@ -640,6 +686,8 @@ class HomeViewModel(
     fun onSignOut() {
         val serverId = currentServerId() ?: return
         viewModelScope.launch {
+            // A kids profile has no Sign out; its menu hides it, and this keeps it that way.
+            if (profileSettings.kidsProfile.first() == true) return@launch
             // While still signed in: the history is the signed-in profile's.
             searchHistory.clear()
             connection.signOut()

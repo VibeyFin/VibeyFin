@@ -4,7 +4,8 @@ import Shared
 enum Route: Hashable {
     /// A non-nil address is checked as soon as the screen opens.
     case addServer(address: String?)
-    case whoIsWatching(serverId: String)
+    /// `pinUserId` is the profile whose PIN the screen asks for first.
+    case whoIsWatching(serverId: String, pinUserId: String? = nil)
 }
 
 struct RootView: View {
@@ -13,6 +14,7 @@ struct RootView: View {
     @State private var signedIn = false
     @State private var ready = false
     @StateObject private var startup = StartupObservable()
+    @ObservedObject private var taps = NotificationTaps.shared
 
     /// Leaves the tabs and everything opened from them. Servers is the root, so back from "Who's
     /// watching?" has somewhere to go.
@@ -41,9 +43,13 @@ struct RootView: View {
                         switch route {
                         case .addServer(let address):
                             AddServerView(initialAddress: address)
-                        case .whoIsWatching(let serverId):
+                        case .whoIsWatching(let serverId, let pinUserId):
                             // The tabs become the only screens: back from them must not return to sign-in.
-                            WhoIsWatchingView(serverId: serverId, onSignedIn: { path = []; signedIn = true })
+                            WhoIsWatchingView(
+                                serverId: serverId,
+                                pinFor: pinUserId.map { ProfileRef(serverId: serverId, userId: $0) },
+                                onSignedIn: { path = []; signedIn = true }
+                            )
                         }
                     }
                 }
@@ -59,10 +65,16 @@ struct RootView: View {
                 if destination is StartDestinationHome {
                     signedIn = true
                 } else if let who = destination as? StartDestinationWhoIsWatching {
-                    path = [.whoIsWatching(serverId: who.serverId)]
+                    path = [.whoIsWatching(serverId: who.serverId, pinUserId: who.pinFor?.userId)]
                 }
                 ready = true
+                if !signedIn { taps.pending = nil }
             }
+        }
+        // A tapped notification opens its title only from the tabs (TabShell). Before sign-in the app stays where it decided to open,
+        // "Who's watching?" with whatever PIN it asks for, and the tap is dropped.
+        .onReceive(taps.$pending) { tap in
+            if tap != nil && ready && !signedIn { taps.pending = nil }
         }
     }
 }

@@ -8,8 +8,6 @@ import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.DynamicRange
 import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.LiveDiagnostics
-import app.vibeyfin.domain.NowPlaying
-import app.vibeyfin.domain.NowPlayingState
 import app.vibeyfin.domain.PlaybackDiagnostics
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.toDiagnostics
@@ -136,12 +134,24 @@ const val SUBTITLES_OFF = PlaybackRepository.SUBTITLES_OFF
 /** The button to jump over the part of the video that is playing: [label] says what, [toMs] is where it ends. */
 data class SkipOffer(val label: String, val toMs: Long)
 
+/**
+ * Skips in a row to one side, while their total shows: [forward] or back, [movedMs] how far they went
+ * together (less than the steps add up to at the start or the end), [taps] how many, so a screen can
+ * animate each one.
+ */
+data class SkipRun(val forward: Boolean, val movedMs: Long, val taps: Int) {
+    /** [movedMs] in whole seconds, for the label. */
+    val seconds: Int get() = ((movedMs + 500) / 1000).toInt()
+}
+
 data class PlaybackUiState(
     /** Asking the server how to play the item. */
     val loading: Boolean = true,
     val title: String = "",
     /** For an episode: the show and "S1 E3". */
     val subtitle: String? = null,
+    /** A picture of the item for the system's Now Playing card: its landscape image, else its backdrop or poster. Null when it has none. */
+    val artworkUrl: String? = null,
     /** Null until the server has answered, and after a failure. */
     val stream: PlaybackStream? = null,
     /** The audio tracks to pick from; empty when there is only one. */
@@ -160,8 +170,18 @@ data class PlaybackUiState(
     val diagnostics: PlaybackDiagnostics? = null,
     /** The signed-in profile wants the stats overlay. */
     val showDiagnostics: Boolean = false,
+    /** The player offers picture-in-picture and starts it when the app is left; off, leaving the app pauses. */
+    val pictureInPicture: Boolean = true,
     /** Seconds of video the player should load ahead; 0 is Auto, the platform player's own choice. */
     val bufferAheadSeconds: Int = ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
+    /** Subtitles use the platform's caption style, so the four values below are ignored. */
+    val captionsFollowSystem: Boolean = true,
+    /** Subtitle size: 0 small, 1 medium, 2 large, 3 extra large. */
+    val subtitleSize: Int = ProfileSettings.DEFAULT_SUBTITLE_SIZE,
+    /** Subtitle text colour: 0 white, 1 yellow, 2 light blue. */
+    val subtitleTextColor: Int = ProfileSettings.DEFAULT_SUBTITLE_TEXT_COLOR,
+    /** Subtitle background: 0 none, 1 shadow, 2 box. */
+    val subtitleBackground: Int = ProfileSettings.DEFAULT_SUBTITLE_BACKGROUND,
     /** Set while an intro, recap or the like is playing; stays for the whole segment. */
     val skipOffer: SkipOffer? = null,
     /** Where the player should seek to now (set by `onSkip`); it clears this with `onSeekHandled`. */
@@ -170,6 +190,8 @@ data class PlaybackUiState(
     val skipBackSeconds: Int = ProfileSettings.DEFAULT_SKIP_BACK_SECONDS,
     /** How far the skip-forward button jumps, from the profile. */
     val skipForwardSeconds: Int = ProfileSettings.DEFAULT_SKIP_FORWARD_SECONDS,
+    /** The skips just made in a row to one side; null once [SKIP_RUN_WINDOW] passes without another. */
+    val skipRun: SkipRun? = null,
     /** The scrub-preview thumbnails of the playing media source; null when the server made none or can't be asked. */
     val trickplay: TrickplayTrack? = null,
     /** The speed the user chose, one of [PLAYBACK_SPEEDS]; the player plays at it. */
@@ -190,6 +212,9 @@ data class PlaybackUiState(
 
 /** The speeds the player offers. */
 val PLAYBACK_SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
+
+/** A skip within this long of the last one, to the same side, adds to its [SkipRun]. */
+val SKIP_RUN_WINDOW = 1.seconds
 
 /** Resuming starts this long before where the user stopped, so the scene they left is in view again. */
 const val RESUME_REWIND_MS = 5_000L
@@ -232,7 +257,6 @@ class PlaybackViewModel(
     connection: ConnectionManager,
     private val watch: WatchRepository,
     private val profileSettings: ProfileSettings,
-    private val nowPlaying: NowPlaying,
     private val binge: BingeCounter,
     private val retryDelays: List<Duration> = NETWORK_RETRY_DELAYS,
     private val startOver: Boolean = false,
@@ -242,23 +266,33 @@ class PlaybackViewModel(
 ) : ViewModel() {
     private val content = MutableStateFlow(PlaybackUiState())
 
+    /** The four subtitle style settings, in the order of the [PlaybackUiState] fields. */
+    private val subtitleStyle = combine(
+        profileSettings.captionsFollowSystem,
+        profileSettings.subtitleSize,
+        profileSettings.subtitleTextColor,
+        profileSettings.subtitleBackground,
+    ) { follow, size, color, background -> SubtitleSettings(follow, size, color, background) }
+
     val uiState: StateFlow<PlaybackUiState> = combine(
         content,
         connection.sessionEnded(),
         profileSettings.showPlaybackStats,
         profileSettings.bufferAheadSeconds,
-    ) { content, exit, showStats, bufferAhead ->
+        subtitleStyle,
+    ) { content, exit, showStats, bufferAhead, subtitle ->
         content.copy(
             exit = exit,
             showDiagnostics = showStats ?: false,
             bufferAheadSeconds = bufferAhead ?: ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
+            captionsFollowSystem = subtitle.followSystem ?: true,
+            subtitleSize = subtitle.size ?: ProfileSettings.DEFAULT_SUBTITLE_SIZE,
+            subtitleTextColor = subtitle.textColor ?: ProfileSettings.DEFAULT_SUBTITLE_TEXT_COLOR,
+            subtitleBackground = subtitle.background ?: ProfileSettings.DEFAULT_SUBTITLE_BACKGROUND,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlaybackUiState())
 
     private var lastPositionMs = 0L
-
-    /** The player is playing (not paused), as last told; what [nowPlaying] shows. */
-    private var playingNow = false
 
     /** The item has been read, so where to start is known and a retry doesn't need to ask again. */
     private var started = false
@@ -281,6 +315,8 @@ class PlaybackViewModel(
     private var bingeThreshold = ProfileSettings.DEFAULT_BINGE_THRESHOLD
 
     private var countdown: Job? = null
+    /** Clears [PlaybackUiState.skipRun] after [SKIP_RUN_WINDOW]; each skip starts it again. */
+    private var skipRunEnd: Job? = null
     private var method: PlayMethod? = null
     private var streams = 0
 
@@ -343,6 +379,11 @@ class PlaybackViewModel(
             }
         }
         viewModelScope.launch {
+            profileSettings.pictureInPicture.collect { on ->
+                content.update { it.copy(pictureInPicture = on ?: true) }
+            }
+        }
+        viewModelScope.launch {
             profileSettings.autoSkipSegments.collect { autoSkip = it ?: false }
         }
         start()
@@ -391,16 +432,12 @@ class PlaybackViewModel(
     /** The player is playing: it started, or resumed. */
     fun onPlaying(positionMs: Long) {
         lastPositionMs = positionMs
-        playingNow = true
         reporter.playing(positionMs)
-        publishNowPlaying()
     }
 
     fun onPaused(positionMs: Long) {
         lastPositionMs = positionMs
-        playingNow = false
         reporter.paused(positionMs)
-        publishNowPlaying()
     }
 
     fun onSeeked(positionMs: Long) {
@@ -419,13 +456,34 @@ class PlaybackViewModel(
 
     /** Seeks back by the profile's skip length from [positionMs], not below the start. */
     fun onSkipBack(positionMs: Long) {
-        seekTo((basePosition(positionMs) - content.value.skipBackSeconds * 1000L).coerceAtLeast(0L))
+        val from = basePosition(positionMs)
+        val to = (from - content.value.skipBackSeconds * 1000L).coerceAtLeast(0L)
+        seekTo(to)
+        addToSkipRun(forward = false, movedMs = from - to)
     }
 
     /** Seeks forward by the profile's skip length from [positionMs], not past [durationMs]; does nothing while the duration is unknown. */
     fun onSkipForward(positionMs: Long, durationMs: Long) {
         if (durationMs <= 0L) return
-        seekTo((basePosition(positionMs) + content.value.skipForwardSeconds * 1000L).coerceAtMost(durationMs))
+        val from = basePosition(positionMs)
+        val to = (from + content.value.skipForwardSeconds * 1000L).coerceAtMost(durationMs)
+        seekTo(to)
+        addToSkipRun(forward = true, movedMs = (to - from).coerceAtLeast(0L))
+    }
+
+    /** Adds a skip to the run to the same side, or starts a new run, and shows it for [SKIP_RUN_WINDOW] more. */
+    private fun addToSkipRun(forward: Boolean, movedMs: Long) {
+        content.update { state ->
+            val run = state.skipRun?.takeIf { it.forward == forward }
+            state.copy(
+                skipRun = SkipRun(forward, (run?.movedMs ?: 0L) + movedMs, (run?.taps ?: 0) + 1),
+            )
+        }
+        skipRunEnd?.cancel()
+        skipRunEnd = viewModelScope.launch {
+            delay(SKIP_RUN_WINDOW)
+            content.update { it.copy(skipRun = null) }
+        }
     }
 
     /**
@@ -451,7 +509,6 @@ class PlaybackViewModel(
     fun onPosition(positionMs: Long) {
         lastPositionMs = positionMs
         reporter.position(positionMs)
-        publishNowPlaying()
         checkUpNext(positionMs)
         refreshSkipOffer()
         if ((networkRetries > 0 || reauthorized) && positionMs - failedAtMs >= RECOVERED_AFTER_MS) {
@@ -467,7 +524,6 @@ class PlaybackViewModel(
     fun onEnded(positionMs: Long) {
         lastPositionMs = positionMs
         reporter.stop(positionMs)
-        nowPlaying.clear()
         ended = true
         val upcoming = next
         if (autoAdvance && upcoming != null && !upNextDismissed) {
@@ -487,7 +543,6 @@ class PlaybackViewModel(
         if (inPictureInPicture) return
         lastPositionMs = positionMs
         reporter.stop(positionMs)
-        nowPlaying.clear()
         cancelCountdown()
         if (ended) content.update { it.copy(finished = true) }
     }
@@ -496,7 +551,6 @@ class PlaybackViewModel(
     fun onClosed(positionMs: Long) {
         lastPositionMs = positionMs
         reporter.stop(positionMs)
-        nowPlaying.clear()
         binge.reset()
         cancelCountdown()
     }
@@ -617,7 +671,6 @@ class PlaybackViewModel(
         // is queued, `Stopped` included, is still sent after the screen's scope is gone.
         reporter.stop(lastPositionMs)
         reporter.close()
-        nowPlaying.clear(itemId)
     }
 
     /** Reads the item for its title and where the user stopped, then opens it there. */
@@ -641,6 +694,7 @@ class PlaybackViewModel(
             it.copy(
                 title = found.title,
                 subtitle = Strings.metaLine(found.seriesName, found.episodeLabel()),
+                artworkUrl = found.landscapeUrl ?: found.backdropUrl ?: found.posterUrl,
             )
         }
         open(startAtMs)
@@ -788,12 +842,6 @@ class PlaybackViewModel(
     }
 
     /** The plan's diagnostics with whatever the player measured on top. */
-    private fun publishNowPlaying() {
-        val shown = item ?: return
-        val state = content.value
-        nowPlaying.update(NowPlayingState(shown.id, state.title, state.subtitle, playingNow, lastPositionMs))
-    }
-
     private fun refreshDiagnostics() {
         val current = plan ?: return
         val base = current.toDiagnostics(audioNow)
@@ -924,3 +972,6 @@ private fun List<PlaybackTrack>.toSubtitleOptions(): List<TrackOption> =
         listOf(TrackOption(SUBTITLES_OFF, Strings.subtitlesOff, selected = none { it.selected })) +
             map { TrackOption(it.index, it.name ?: Strings.track(it.index), it.selected) }
     }
+
+/** The four subtitle style settings as read from [ProfileSettings]; null while nobody is signed in. */
+private data class SubtitleSettings(val followSystem: Boolean?, val size: Int?, val textColor: Int?, val background: Int?)

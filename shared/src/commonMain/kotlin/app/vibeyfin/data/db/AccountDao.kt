@@ -61,6 +61,12 @@ abstract class AccountDao {
     @Query("UPDATE account_settings SET skipForwardSeconds = :value WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun setSkipForwardSeconds(serverId: String, userId: String, value: Int)
 
+    @Query("SELECT pictureInPicture FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observePictureInPicture(serverId: String, userId: String): Flow<Boolean?>
+
+    @Query("UPDATE account_settings SET pictureInPicture = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setPictureInPicture(serverId: String, userId: String, value: Boolean)
+
     @Query("SELECT autoSkipSegments FROM account_settings WHERE serverId = :serverId AND userId = :userId")
     abstract fun observeAutoSkipSegments(serverId: String, userId: String): Flow<Boolean?>
 
@@ -72,6 +78,126 @@ abstract class AccountDao {
 
     @Query("UPDATE account_settings SET bufferAheadSeconds = :value WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun setBufferAheadSeconds(serverId: String, userId: String, value: Int)
+
+    @Query("SELECT maxStreamingBitrate FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeMaxStreamingBitrate(serverId: String, userId: String): Flow<Int?>
+
+    @Query("UPDATE account_settings SET maxStreamingBitrate = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setMaxStreamingBitrate(serverId: String, userId: String, value: Int)
+
+    @Query("SELECT captionsFollowSystem FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeCaptionsFollowSystem(serverId: String, userId: String): Flow<Boolean?>
+
+    @Query("UPDATE account_settings SET captionsFollowSystem = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setCaptionsFollowSystem(serverId: String, userId: String, value: Boolean)
+
+    @Query("SELECT subtitleSize FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeSubtitleSize(serverId: String, userId: String): Flow<Int?>
+
+    @Query("UPDATE account_settings SET subtitleSize = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setSubtitleSize(serverId: String, userId: String, value: Int)
+
+    @Query("SELECT subtitleTextColor FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeSubtitleTextColor(serverId: String, userId: String): Flow<Int?>
+
+    @Query("UPDATE account_settings SET subtitleTextColor = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setSubtitleTextColor(serverId: String, userId: String, value: Int)
+
+    @Query("SELECT subtitleBackground FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeSubtitleBackground(serverId: String, userId: String): Flow<Int?>
+
+    @Query("UPDATE account_settings SET subtitleBackground = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setSubtitleBackground(serverId: String, userId: String, value: Int)
+
+    @Query(
+        "UPDATE account_settings SET captionsFollowSystem = 1, subtitleSize = 1, subtitleTextColor = 0, subtitleBackground = 1 " +
+            "WHERE serverId = :serverId AND userId = :userId",
+    )
+    abstract suspend fun resetSubtitleStyle(serverId: String, userId: String)
+
+    @Query("SELECT notificationsEnabled FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeNotificationsEnabled(serverId: String, userId: String): Flow<Boolean?>
+
+    @Query("UPDATE account_settings SET notificationsEnabled = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setNotificationsEnabled(serverId: String, userId: String, value: Boolean)
+
+    @Query("SELECT notificationScope FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeNotificationScope(serverId: String, userId: String): Flow<Int?>
+
+    @Query("UPDATE account_settings SET notificationScope = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setNotificationScope(serverId: String, userId: String, value: Int)
+
+    @Query("SELECT COUNT(*) > 0 FROM notified_items WHERE serverId = :serverId AND userId = :userId AND itemId = :itemId")
+    abstract suspend fun wasNotified(serverId: String, userId: String, itemId: String): Boolean
+
+    /** Whether anything was ever notified for the profile: false before its first poll. */
+    @Query("SELECT COUNT(*) > 0 FROM notified_items WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun hasNotified(serverId: String, userId: String): Boolean
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun markNotified(entity: NotifiedItemEntity)
+
+    /** Records [entity] unless it is already there; the row id, or -1 when it was (so two polls at once report it once). */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    abstract suspend fun insertNotified(entity: NotifiedItemEntity): Long
+
+    /** Forgets everything notified for the profile, so its next poll is a first poll again. */
+    @Query("DELETE FROM notified_items WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun clearNotified(serverId: String, userId: String)
+
+    @Query("DELETE FROM notified_items WHERE serverId = :serverId AND userId = :userId AND notifiedAt < :before")
+    abstract suspend fun pruneNotified(serverId: String, userId: String, before: Long)
+
+    /** Every saved profile on any server that has notifications on, a session and is not a kids profile. */
+    @Query(
+        "SELECT a.serverId, a.userId, a.name FROM accounts a JOIN account_settings s ON s.serverId = a.serverId AND s.userId = a.userId " +
+            "WHERE s.notificationsEnabled = 1 AND s.kidsProfile = 0 AND a.sealedToken IS NOT NULL ORDER BY a.serverId, a.name",
+    )
+    abstract suspend fun getNotifiableProfiles(): List<NotifiableProfile>
+
+    /** How many profiles [getNotifiableProfiles] lists, as it changes: zero means nothing needs to poll in the background. */
+    @Query(
+        "SELECT COUNT(*) FROM accounts a JOIN account_settings s ON s.serverId = a.serverId AND s.userId = a.userId " +
+            "WHERE s.notificationsEnabled = 1 AND s.kidsProfile = 0 AND a.sealedToken IS NOT NULL",
+    )
+    abstract fun observeNotifiableProfileCount(): Flow<Int>
+
+    @Query("SELECT kidsProfile FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeKidsProfile(serverId: String, userId: String): Flow<Boolean?>
+
+    @Query("UPDATE account_settings SET kidsProfile = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setKidsProfile(serverId: String, userId: String, value: Boolean)
+
+    @Query("SELECT pinHash, pinSalt FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun getPin(serverId: String, userId: String): PinCredentials?
+
+    @Query("UPDATE account_settings SET pinHash = :hash, pinSalt = :salt WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setPin(serverId: String, userId: String, hash: ByteArray?, salt: ByteArray?)
+
+    @Query(
+        "SELECT pinHash IS NOT NULL AS hasPin, pinOpenProfile, pinOpenSettings, pinSwitchProfile " +
+            "FROM account_settings WHERE serverId = :serverId AND userId = :userId",
+    )
+    abstract fun observePinGates(serverId: String, userId: String): Flow<PinGateRow?>
+
+    @Query(
+        "SELECT pinHash IS NOT NULL AS hasPin, pinOpenProfile, pinOpenSettings, pinSwitchProfile " +
+            "FROM account_settings WHERE serverId = :serverId AND userId = :userId",
+    )
+    abstract suspend fun getPinGates(serverId: String, userId: String): PinGateRow?
+
+    /** The profiles on [serverId] that have a PIN and ask for it before they open. */
+    @Query("SELECT userId FROM account_settings WHERE serverId = :serverId AND pinHash IS NOT NULL AND pinOpenProfile = 1")
+    abstract fun observePinToOpen(serverId: String): Flow<List<String>>
+
+    @Query("UPDATE account_settings SET pinOpenProfile = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setPinOpenProfile(serverId: String, userId: String, value: Boolean)
+
+    @Query("UPDATE account_settings SET pinOpenSettings = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setPinOpenSettings(serverId: String, userId: String, value: Boolean)
+
+    @Query("UPDATE account_settings SET pinSwitchProfile = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setPinSwitchProfile(serverId: String, userId: String, value: Boolean)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract suspend fun insertAccount(account: AccountEntity): Long

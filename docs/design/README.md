@@ -6,8 +6,9 @@ version `1792521935-239c`). `design/tokens.json` is the token source of truth.
 
 - `brand.md`: principles, shared vs native, voice, colour, type, space, artwork, icons
 - `ios.md`, `android.md`: native UI rules per platform
-- `screens.md`: reference layouts for Home (with the category buttons) and the detail, series detail and tablet
-  detail screens
+- `screens.md`: reference layouts for Home (with the category buttons), the detail, series detail and tablet
+  detail screens, and Settings (phone and tablet; the design system's `SettingsPhone` and `SettingsTablet`)
+- `devices.md`: the device targets (phone, tablet, TV planned), the width classes and how the mockups are named
 - `guardrails.md`: screen behaviour both apps must share
 - `jellyfin-mapping.md`: which server data drives which UI
 - `review.md`: living design review of the built UI against these docs, with each finding's status
@@ -25,3 +26,9 @@ When re-syncing, keep these; the artifact does not have them yet.
   allows neither.
 - **`screens.md`** is the artifact's `DetailScreen`, `SeriesDetailScreen`, `EpisodeItem` and
   `DetailScreenTablet` component pages, merged into one file. The other component pages are not copied.
+- **Settings.** `SettingsPhone` and `SettingsTablet` (summarised in `screens.md`) differ in what was built:
+  a choice that is not marked as a page is always a menu (the design system's "up to five options" rule is
+  dropped), only Quality is a checklist, inline in its own section with a soft pill and no tick; there is no
+  root Buffering row (Buffer ahead is on Skipping and
+  autoplay); the Android tablet layout is a plain two-column layout at 600dp, not `ListDetailPaneScaffold`; the
+  iOS Subtitles page shows its controls disabled while subtitles are burned in.

@@ -13,6 +13,7 @@ import app.vibeyfin.data.api.playbackInfo
 import io.ktor.http.HttpHeaders
 import io.ktor.http.URLBuilder
 import io.ktor.http.appendPathSegments
+import kotlinx.coroutines.flow.first
 
 /**
  * Asks the server how to play an item on this device, and turns its answer into something a player
@@ -23,6 +24,7 @@ class PlaybackRepository(
     private val connection: ConnectionManager,
     private val capabilities: PlaybackCapabilitiesSource,
     private val clientInfo: ClientInfoProvider,
+    private val profileSettings: ProfileSettings,
 ) {
     /**
      * `PlaybackInfo` with this device's profile. With [forceTranscode] the server is told not to
@@ -44,10 +46,12 @@ class PlaybackRepository(
         val connected = connection.state.value as? ConnectionState.Connected
             ?: return PlaybackNegotiation.Failed(ApiError.Unauthorized)
         val api = connected.api
+        // Read once per call, so one negotiation never mixes two qualities. No profile means Maximum.
+        val maxBitrate = effectiveBitrate(profileSettings.maxStreamingBitrate.first() ?: 0)
         val request = PlaybackInfoRequestDto(
             userId = connected.account.userId,
-            deviceProfile = capabilities.current().toDeviceProfile(),
-            maxStreamingBitrate = MAX_STREAMING_BITRATE,
+            deviceProfile = capabilities.current().toDeviceProfile(maxBitrate),
+            maxStreamingBitrate = maxBitrate,
             enableDirectPlay = !forceTranscode,
             enableDirectStream = !forceTranscode,
             enableTranscoding = true,

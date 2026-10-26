@@ -11,7 +11,6 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewmodel.CreationExtras
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.domain.LiveDiagnostics
-import app.vibeyfin.domain.NowPlayingState
 import app.vibeyfin.domain.PlayMethod
 import app.vibeyfin.testing.FakeJellyfin
 import app.vibeyfin.testing.HLS_PATH
@@ -43,6 +42,7 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -98,7 +98,7 @@ class PlaybackViewModelTest {
         countdownStep: Duration = 1.hours,
     ) = viewModels.track(
         PlaybackViewModel(
-            id, app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.nowPlaying, app.binge,
+            id, app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge,
             retryDelays, startOver, autoAdvance, countdownStep,
         ),
     )
@@ -191,6 +191,34 @@ class PlaybackViewModelTest {
     }
 
     @Test
+    fun `pictureInPicture follows the profile setting`() = runTest {
+        server()
+        val viewModel = viewModel()
+        assertEquals(true, viewModel.uiState.first { it.stream != null }.pictureInPicture)
+
+        app.profileSettings.setPictureInPicture(false)
+        assertEquals(false, viewModel.uiState.first { !it.pictureInPicture }.pictureInPicture)
+    }
+
+    @Test
+    fun `subtitle style follows the profile settings`() = runTest {
+        server()
+        val viewModel = viewModel()
+        val initial = viewModel.uiState.first { it.stream != null }
+        assertEquals(true, initial.captionsFollowSystem)
+        assertEquals(1, initial.subtitleSize)
+        assertEquals(0, initial.subtitleTextColor)
+        assertEquals(1, initial.subtitleBackground)
+
+        app.profileSettings.setCaptionsFollowSystem(false)
+        app.profileSettings.setSubtitleSize(3)
+        app.profileSettings.setSubtitleTextColor(2)
+        app.profileSettings.setSubtitleBackground(2)
+        val changed = viewModel.uiState.first { it.subtitleSize == 3 && it.subtitleTextColor == 2 && it.subtitleBackground == 2 }
+        assertEquals(false, changed.captionsFollowSystem)
+    }
+
+    @Test
     fun `missing values stay null`() = runTest {
         server()
 
@@ -231,6 +259,22 @@ class PlaybackViewModelTest {
 
         assertEquals("Heat", state.title)
         assertNull(state.subtitle)
+    }
+
+    @Test
+    fun carriesAPictureOfTheItemForTheNowPlayingCard() = runTest {
+        server(item = itemJson("m1", "Heat", primaryTag = "p1", backdropTag = "b1"))
+
+        val withArtwork = viewModel().uiState.first { it.title.isNotEmpty() }
+
+        assertEquals(true, withArtwork.artworkUrl?.contains("/Items/m1/Images/"))
+    }
+
+    @Test
+    fun hasNoArtworkWhenTheItemHasNoPicture() = runTest {
+        server(item = itemJson("m1", "Heat"))
+
+        assertNull(viewModel().uiState.first { it.title.isNotEmpty() }.artworkUrl)
     }
 
     @Test
@@ -638,7 +682,7 @@ class PlaybackViewModelTest {
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =
-                    PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.nowPlaying, app.binge) as T
+                    PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge) as T
             },
         )[PlaybackViewModel::class]
         viewModel.uiState.first { it.stream != null }
@@ -656,38 +700,9 @@ class PlaybackViewModelTest {
         object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =
-                PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.nowPlaying, app.binge) as T
+                PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge) as T
         },
     )[PlaybackViewModel::class]
-
-    @Test
-    fun leavingTheScreenWithoutClosingClearsNowPlaying() = runTest {
-        server()
-        val store = ViewModelStore()
-        val viewModel = clearableViewModel(store)
-        viewModel.uiState.first { it.stream != null }
-        viewModel.onPlaying(1_000)
-        assertNotNull(app.nowPlaying.state.value)
-
-        store.clear()
-
-        assertNull(app.nowPlaying.state.value)
-    }
-
-    @Test
-    fun leavingTheScreenKeepsNowPlayingOfAnotherItem() = runTest {
-        server()
-        val store = ViewModelStore()
-        val viewModel = clearableViewModel(store)
-        viewModel.uiState.first { it.stream != null }
-        viewModel.onPlaying(1_000)
-        // Another player already shows something else.
-        app.nowPlaying.update(NowPlayingState("other", "Other", null, playing = true, positionMs = 0))
-
-        store.clear()
-
-        assertEquals("other", app.nowPlaying.state.value?.itemId)
-    }
 
     // -- audio and subtitle selection --
 
@@ -1550,27 +1565,6 @@ class PlaybackViewModelTest {
         assertEquals(1, jellyfin.awaitRequests("POST", "/Sessions/Playing/Stopped").size)
     }
 
-    @Test
-    fun `NowPlaying reflects play and pause and clears on close`() = runTest {
-        server()
-        val vm = viewModel()
-        vm.uiState.first { it.stream != null }
-
-        vm.onPlaying(1_000)
-        val playing = assertNotNull(app.nowPlaying.state.value)
-        assertEquals("m1", playing.itemId)
-        assertEquals("Heat", playing.title)
-        assertTrue(playing.playing)
-
-        vm.onPaused(2_000)
-        val paused = assertNotNull(app.nowPlaying.state.value)
-        assertFalse(paused.playing)
-        assertEquals(2_000L, paused.positionMs)
-
-        vm.onClosed(2_000)
-        assertNull(app.nowPlaying.state.value)
-    }
-
     // "Are you still watching?": the card's countdown is held back once enough episodes started by themselves.
 
     private suspend fun TestScope.nearTheEnd(viewModel: PlaybackViewModel, jellyfin: FakeJellyfin): MutableList<PlaybackUiState> {
@@ -1952,6 +1946,61 @@ class PlaybackViewModelTest {
         vm.onSkipForward(60_000, duration)
 
         assertEquals(80_000L, vm.uiState.value.pendingSeekMs)
+    }
+
+    @Test
+    fun `skips in a row to one side add up`() = runTest {
+        val vm = serverWithSegments()
+        val duration = 600_000L
+
+        vm.onSkipForward(60_000, duration)
+        vm.onSeekHandled()
+        vm.onSkipForward(70_000, duration)
+        vm.onSeekHandled()
+        vm.onSkipForward(80_000, duration)
+
+        assertEquals(SkipRun(forward = true, movedMs = 30_000, taps = 3), vm.uiState.value.skipRun)
+        assertEquals(30, vm.uiState.value.skipRun?.seconds)
+    }
+
+    @Test
+    fun `a skip to the other side starts a new run`() = runTest {
+        val vm = serverWithSegments()
+        val duration = 600_000L
+
+        vm.onSkipForward(60_000, duration)
+        vm.onSkipForward(60_000, duration)
+        vm.onSkipBack(60_000)
+
+        assertEquals(SkipRun(forward = false, movedMs = 10_000, taps = 1), vm.uiState.value.skipRun)
+    }
+
+    @Test
+    fun `a skip run counts only how far it went`() = runTest {
+        val vm = serverWithSegments()
+
+        vm.onSkipBack(14_000)
+        vm.onSkipBack(14_000)
+
+        assertEquals(SkipRun(forward = false, movedMs = 14_000, taps = 2), vm.uiState.value.skipRun)
+    }
+
+    @Test
+    fun `a skip run clears after a quiet moment and the next skip starts again`() = runTest {
+        val vm = serverWithSegments()
+        val duration = 600_000L
+
+        vm.onSkipForward(60_000, duration)
+        advanceTimeBy(SKIP_RUN_WINDOW - 100.milliseconds)
+        vm.onSkipForward(60_000, duration)
+        advanceTimeBy(SKIP_RUN_WINDOW - 100.milliseconds)
+        assertEquals(2, vm.uiState.value.skipRun?.taps)
+
+        advanceTimeBy(200.milliseconds)
+        assertNull(vm.uiState.value.skipRun)
+
+        vm.onSkipForward(80_000, duration)
+        assertEquals(SkipRun(forward = true, movedMs = 10_000, taps = 1), vm.uiState.value.skipRun)
     }
 
     @Test

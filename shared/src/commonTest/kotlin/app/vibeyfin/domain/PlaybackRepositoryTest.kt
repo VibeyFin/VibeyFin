@@ -234,6 +234,26 @@ class PlaybackRepositoryTest {
     }
 
     @Test
+    fun `the playback request carries the profile's quality cap and 60 Mbps for Maximum`() = runTest {
+        answerWith(playbackInfoJson(mediaSourceJson()))
+        app.profileSettings.setMaxStreamingBitrate(10_000_000)
+        ready()
+
+        val capped = requestBody()
+        assertEquals(10_000_000, capped.getValue("MaxStreamingBitrate").jsonPrimitive.int)
+        val cappedProfile = capped.getValue("DeviceProfile").jsonObject
+        assertEquals(10_000_000, cappedProfile.getValue("MaxStreamingBitrate").jsonPrimitive.int)
+        assertEquals(10_000_000, cappedProfile.getValue("MaxStaticBitrate").jsonPrimitive.int)
+
+        app.profileSettings.setMaxStreamingBitrate(0)
+        app.playback.negotiate("m1")
+
+        val maximum = Json.parseToJsonElement(app.jellyfin.requestsTo("POST", "/Items/m1/PlaybackInfo").last().body).jsonObject
+        assertEquals(60_000_000, maximum.getValue("MaxStreamingBitrate").jsonPrimitive.int)
+        assertEquals(60_000_000, maximum.getValue("DeviceProfile").jsonObject.getValue("MaxStreamingBitrate").jsonPrimitive.int)
+    }
+
+    @Test
     fun theRequestCarriesTheDeviceProfileAndLeavesTheTracksToTheServer() = runTest {
         answerWith(playbackInfoJson(mediaSourceJson()))
 

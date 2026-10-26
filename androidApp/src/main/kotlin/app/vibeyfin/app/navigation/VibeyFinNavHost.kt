@@ -2,62 +2,68 @@
 
 package app.vibeyfin.app.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
-import androidx.navigation.NavBackStackEntry
-import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraphBuilder
-import androidx.navigation.compose.navigation
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import app.vibeyfin.app.addserver.AddServerRoute
 import app.vibeyfin.app.children.ChildrenRoute
 import app.vibeyfin.app.components.TileMenuSheet
-import app.vibeyfin.app.person.PersonRoute
-import app.vibeyfin.ui.item.Trailer
-import app.vibeyfin.ui.tile.TileMenuViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import org.koin.androidx.compose.koinViewModel
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import app.vibeyfin.app.search.SearchRoute
-import app.vibeyfin.domain.model.ItemKind
-import app.vibeyfin.domain.model.SearchKind
 import app.vibeyfin.app.filtered.FilteredListRoute
-import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.app.home.HomeRoute
 import app.vibeyfin.app.item.ItemRoute
+import app.vibeyfin.app.person.PersonRoute
 import app.vibeyfin.app.player.PlayerRoute
+import app.vibeyfin.app.search.SearchRoute
 import app.vibeyfin.app.servers.ServersRoute
 import app.vibeyfin.app.settings.SettingsRoute
+import app.vibeyfin.app.settings.pageIdOrRoot
 import app.vibeyfin.app.startup.StartupRoute
+import app.vibeyfin.app.theme.isTabletWidth
 import app.vibeyfin.app.whoswatching.WhoIsWatchingRoute
+import app.vibeyfin.domain.model.ProfileRef
+import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.StartDestination
+import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
+import app.vibeyfin.domain.model.SearchKind
 import app.vibeyfin.ui.home.HomeExit
+import app.vibeyfin.ui.item.Trailer
+import app.vibeyfin.ui.notifications.NotificationOpenViewModel
+import app.vibeyfin.ui.notifications.NotificationRoute
+import app.vibeyfin.ui.settings.SettingsPageId
+import app.vibeyfin.ui.tile.TileMenuViewModel
+import org.koin.androidx.compose.koinViewModel
 
 private const val SLIDE_MS = 180
 
@@ -109,7 +115,7 @@ private fun popExit(leaving: NavBackStackEntry) =
     if (leaving.isDetail()) fadeOut(tween(DETAIL_FADE_MS)) else slideOutHorizontally(tween(SLIDE_MS)) { it / SLIDE_FRACTION } + fadeOut(tween(SLIDE_MS))
 
 @Composable
-fun VibeyFinNavHost() {
+fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
     val navController = rememberNavController()
     // A folder opens its list; anything else opens its page. Both open inside the tab the user is on.
     val open: (MediaItem) -> Unit = { item ->
@@ -141,6 +147,23 @@ fun VibeyFinNavHost() {
         }
     }
     // Back from the root of Library or Downloads goes to Home, as on any app with a bar, not out of the app.
+    // A tapped new-title notification is routed once the app is inside a profile, never during startup or "Who's watching?".
+    val inApp = backStackEntry?.destination?.let { destination ->
+        !(destination.hasRoute<Startup>() || destination.hasRoute<Servers>() || destination.hasRoute<WhoIsWatching>() || destination.hasRoute<AddServer>())
+    } == true
+    LaunchedEffect(inApp) { notificationOpen.onInApp(inApp) }
+    val notificationRoute by notificationOpen.route.collectAsStateWithLifecycle()
+    LaunchedEffect(notificationRoute) {
+        when (val route = notificationRoute ?: return@LaunchedEffect) {
+            is NotificationRoute.Item -> {
+                // The item opens inside the tab the user is on, or inside Home from the player or Settings.
+                if (currentTab == null) select(Tab.Home)
+                navController.navigate(Item(route.itemId))
+            }
+            is NotificationRoute.WhoIsWatching -> leave(HomeExit.WhoIsWatching(route.serverId))
+        }
+        notificationOpen.onRouted()
+    }
     val atOtherRoot = currentTab != null && currentTab != Tab.Home && backStackEntry?.destination?.hasRoute(currentTab.root::class) == true
     BackHandler(enabled = atOtherRoot) { select(Tab.Home) }
     // The player is the whole screen: no inset of its own for the camera cut-out, so no bar of the page's colour beside the picture
@@ -200,7 +223,7 @@ fun VibeyFinNavHost() {
                             is StartDestination.WhoIsWatching -> {
                                 // Servers sits underneath so back from "Who's watching?" has somewhere to go.
                                 navController.navigate(Servers) { popUpTo(Startup) { inclusive = true } }
-                                navController.navigate(WhoIsWatching(destination.serverId))
+                                navController.navigate(WhoIsWatching(destination.serverId, destination.pinFor?.userId))
                             }
                             StartDestination.Home ->
                                 navController.navigate(HomeTab) { popUpTo(Startup) { inclusive = true } }
@@ -216,8 +239,10 @@ fun VibeyFinNavHost() {
                 )
             }
             composable<WhoIsWatching> { entry ->
+                val route = entry.toRoute<WhoIsWatching>()
                 WhoIsWatchingRoute(
-                    serverId = entry.toRoute<WhoIsWatching>().serverId,
+                    serverId = route.serverId,
+                    pinFor = route.pinUserId?.let { ProfileRef(route.serverId, it) },
                     onBack = { navController.popBackStack() },
                     // Home becomes the root: back from it leaves the app instead of returning to sign-in.
                     onSignedIn = { navController.navigate(HomeTab) { popUpTo(Servers) { inclusive = true } } },
@@ -276,7 +301,27 @@ fun VibeyFinNavHost() {
                 )
             }
             composable<Settings> {
-                SettingsRoute(onBack = { navController.popBackStack() })
+                SettingsRoute(
+                    pageId = SettingsPageId.Root,
+                    onOpen = { navController.navigate(SettingsPageRoute(it.name)) },
+                    onExit = leave,
+                    onBack = { navController.popBackStack() },
+                    twoPane = isTabletWidth(),
+                )
+            }
+            composable<SettingsPageRoute> { entry ->
+                // An id this build does not know opens the root page instead of crashing.
+                val id = pageIdOrRoot(entry.toRoute<SettingsPageRoute>().id)
+                // One SettingsViewModel for the whole Settings flow, kept by the root entry: the PIN is asked once and
+                // leaving Settings discards it. Without a root entry on the stack (deep link, restored state) the page keeps its own.
+                val settingsRoot = remember(entry) { runCatching { navController.getBackStackEntry<Settings>() }.getOrNull() }
+                SettingsRoute(
+                    pageId = id,
+                    viewModel = koinViewModel(viewModelStoreOwner = settingsRoot ?: entry),
+                    onOpen = { navController.navigate(SettingsPageRoute(it.name)) },
+                    onExit = leave,
+                    onBack = { navController.popBackStack() },
+                )
             }
             composable<AddServer> { entry ->
                 AddServerRoute(

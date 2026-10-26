@@ -5,6 +5,7 @@ import app.vibeyfin.domain.model.Account
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -42,6 +43,9 @@ class ProfileSettings(
     /** Whether the player skips intros and recaps without asking. Off by default. Null when nobody is signed in. */
     val autoSkipSegments: Flow<Boolean?> = forAccount { dao, a -> dao.observeAutoSkipSegments(a.serverId, a.userId).map { it ?: false } }
 
+    /** Whether the player offers picture-in-picture and starts it when the app is left. On by default. Null when nobody is signed in. */
+    val pictureInPicture: Flow<Boolean?> = forAccount { dao, a -> dao.observePictureInPicture(a.serverId, a.userId).map { it ?: true } }
+
     /** Accepts one of [SKIP_BACK_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
     suspend fun setSkipBackSeconds(value: Int) {
         if (value !in SKIP_BACK_CHOICES) return
@@ -66,6 +70,135 @@ class ProfileSettings(
         if (value !in BUFFER_AHEAD_CHOICES) return
         val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
         dao.setBufferAheadSeconds(account.serverId, account.userId, value)
+    }
+
+    /** Highest streaming bitrate in bits per second, one of [QUALITY_CHOICES]; 0 is Maximum. Null when nobody is signed in. */
+    val maxStreamingBitrate: Flow<Int?> = forAccount { dao, a ->
+        dao.observeMaxStreamingBitrate(a.serverId, a.userId).map { if (it in QUALITY_CHOICES) it else 0 }
+    }
+
+    /** Accepts one of [QUALITY_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setMaxStreamingBitrate(value: Int) {
+        if (value !in QUALITY_CHOICES) return
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setMaxStreamingBitrate(account.serverId, account.userId, value)
+    }
+
+    /** Whether subtitles use the platform's caption style. Null when nobody is signed in. */
+    val captionsFollowSystem: Flow<Boolean?> = forAccount { dao, a -> dao.observeCaptionsFollowSystem(a.serverId, a.userId) }
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setCaptionsFollowSystem(value: Boolean) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setCaptionsFollowSystem(account.serverId, account.userId, value)
+    }
+
+    /** Subtitle size, one of [SUBTITLE_SIZE_CHOICES]. Null when nobody is signed in. */
+    val subtitleSize: Flow<Int?> = forAccount { dao, a ->
+        dao.observeSubtitleSize(a.serverId, a.userId).map { if (it in SUBTITLE_SIZE_CHOICES) it else DEFAULT_SUBTITLE_SIZE }
+    }
+
+    /** Accepts one of [SUBTITLE_SIZE_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setSubtitleSize(value: Int) {
+        if (value !in SUBTITLE_SIZE_CHOICES) return
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setSubtitleSize(account.serverId, account.userId, value)
+    }
+
+    /** Subtitle text colour, one of [SUBTITLE_COLOR_CHOICES]. Null when nobody is signed in. */
+    val subtitleTextColor: Flow<Int?> = forAccount { dao, a ->
+        dao.observeSubtitleTextColor(a.serverId, a.userId).map { if (it in SUBTITLE_COLOR_CHOICES) it else DEFAULT_SUBTITLE_TEXT_COLOR }
+    }
+
+    /** Accepts one of [SUBTITLE_COLOR_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setSubtitleTextColor(value: Int) {
+        if (value !in SUBTITLE_COLOR_CHOICES) return
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setSubtitleTextColor(account.serverId, account.userId, value)
+    }
+
+    /** Subtitle background, one of [SUBTITLE_BACKGROUND_CHOICES]. Null when nobody is signed in. */
+    val subtitleBackground: Flow<Int?> = forAccount { dao, a ->
+        dao.observeSubtitleBackground(a.serverId, a.userId).map { if (it in SUBTITLE_BACKGROUND_CHOICES) it else DEFAULT_SUBTITLE_BACKGROUND }
+    }
+
+    /** Accepts one of [SUBTITLE_BACKGROUND_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setSubtitleBackground(value: Int) {
+        if (value !in SUBTITLE_BACKGROUND_CHOICES) return
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setSubtitleBackground(account.serverId, account.userId, value)
+    }
+
+    /** Whether the app posts notifications for the profile. Off by default. Null when nobody is signed in. */
+    val notificationsEnabled: Flow<Boolean?> = forAccount { dao, a -> dao.observeNotificationsEnabled(a.serverId, a.userId).map { it ?: false } }
+
+    /**
+     * Does nothing when nobody is signed in. Switching off forgets what was notified, so switching on again starts
+     * with [NewTitlesPoller]'s first-poll rule instead of announcing the titles added in between.
+     */
+    suspend fun setNotificationsEnabled(value: Boolean) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setNotificationsEnabled(account.serverId, account.userId, value)
+        if (!value) dao.clearNotified(account.serverId, account.userId)
+    }
+
+    /** What notifies, one of [NOTIFICATION_SCOPE_CHOICES]. Null when nobody is signed in. */
+    val notificationScope: Flow<Int?> = forAccount { dao, a ->
+        dao.observeNotificationScope(a.serverId, a.userId).map { if (it in NOTIFICATION_SCOPE_CHOICES) it else DEFAULT_NOTIFICATION_SCOPE }
+    }
+
+    /**
+     * Accepts one of [NOTIFICATION_SCOPE_CHOICES]; anything else is ignored. Does nothing when nobody is signed in.
+     * A different scope forgets what was notified, like switching off, so a wider scope doesn't announce a backlog.
+     */
+    suspend fun setNotificationScope(value: Int) {
+        if (value !in NOTIFICATION_SCOPE_CHOICES) return
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        val before = dao.observeNotificationScope(account.serverId, account.userId).first() ?: DEFAULT_NOTIFICATION_SCOPE
+        dao.setNotificationScope(account.serverId, account.userId, value)
+        if (value != before) dao.clearNotified(account.serverId, account.userId)
+    }
+
+    /** Whether the profile is a Kids profile. Off by default. Null when nobody is signed in. */
+    val kidsProfile: Flow<Boolean?> = forAccount { dao, a -> dao.observeKidsProfile(a.serverId, a.userId).map { it ?: false } }
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setKidsProfile(value: Boolean) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setKidsProfile(account.serverId, account.userId, value)
+    }
+
+    /** When the profile asks for its PIN. Null when nobody is signed in. */
+    val pinGates: Flow<PinGates?> = forAccount { dao, a -> dao.observePinGates(a.serverId, a.userId).map { it.toGates() } }
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setPinOpenProfile(value: Boolean) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setPinOpenProfile(account.serverId, account.userId, value)
+    }
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setPinOpenSettings(value: Boolean) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setPinOpenSettings(account.serverId, account.userId, value)
+    }
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setPinSwitchProfile(value: Boolean) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setPinSwitchProfile(account.serverId, account.userId, value)
+    }
+
+    /** Puts all four subtitle options back to their defaults in one write. Does nothing when nobody is signed in. */
+    suspend fun resetSubtitleStyle() {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.resetSubtitleStyle(account.serverId, account.userId)
+    }
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setPictureInPicture(value: Boolean) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        dao.setPictureInPicture(account.serverId, account.userId, value)
     }
 
     /** Does nothing when nobody is signed in. */
@@ -120,6 +253,36 @@ class ProfileSettings(
 
         /** How far ahead the player loads, in seconds, in the order the setting lists them; 0 is Auto, the platform player's own choice. */
         val BUFFER_AHEAD_CHOICES = listOf(0, 10, 20, 30, 40, 50, 60)
+
+        /** Streaming bitrate caps in bits per second, in the order the setting lists them; 0 is Maximum. */
+        val QUALITY_CHOICES = listOf(0, 40_000_000, 10_000_000, 4_000_000, 1_500_000)
+
+        /** Medium text, white, over a shadow; the same values the DAO's reset query writes. */
+        const val DEFAULT_SUBTITLE_SIZE = 1
+
+        const val DEFAULT_SUBTITLE_TEXT_COLOR = 0
+
+        const val DEFAULT_SUBTITLE_BACKGROUND = 1
+
+        /** Subtitle sizes: small, medium, large, extra large. */
+        val SUBTITLE_SIZE_CHOICES = listOf(0, 1, 2, 3)
+
+        /** Subtitle text colours: white, yellow, light blue. */
+        val SUBTITLE_COLOR_CHOICES = listOf(0, 1, 2)
+
+        /** Subtitle backgrounds: none, shadow, box. */
+        val SUBTITLE_BACKGROUND_CHOICES = listOf(0, 1, 2)
+
+        /** Notification scope: new episodes of the shows the profile follows, and new movies. */
+        const val NOTIFY_FOLLOWED = 0
+
+        /** Notification scope: everything new in the library. */
+        const val NOTIFY_EVERYTHING = 1
+
+        const val DEFAULT_NOTIFICATION_SCOPE = NOTIFY_FOLLOWED
+
+        /** What notifies, in the order the setting lists them. */
+        val NOTIFICATION_SCOPE_CHOICES = listOf(NOTIFY_FOLLOWED, NOTIFY_EVERYTHING)
 
         /** Episodes in a row before the player asks "Are you still watching?". */
         const val DEFAULT_BINGE_THRESHOLD = 3

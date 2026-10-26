@@ -1,6 +1,6 @@
 # Phone pass
 
-Everything that has only been tried on the emulator, or only compiled, and so needs a look on a real phone. The debug build with all of Phase 4 and the tidy-up pass is installed on the phone; for smoothness use the `perf` build (`./gradlew :androidApp:installPerf`), because the debug build is slow on purpose.
+Everything that has only been tried on the emulator, or only compiled, and so needs a look on a real phone. The debug build with all of Phase 4 and the tidy-up pass is installed on the phone; for smoothness use the `benchmark` build (`./gradlew :androidApp:installBenchmark`), because the debug build is slow on purpose.
 
 Tick a box when it works. If something doesn't, see **What to send** at the end.
 
@@ -71,7 +71,7 @@ Do this on a title you don't mind changing, or on the local test server.
 - [ ] Up next: near the end the next-episode card counts down from ten and "Play now" starts it at once.
 - [ ] Scrubbing shows the preview picture above the thumb.
 
-## 8. Smoothness (use the `perf` build)
+## 8. Smoothness (use the `benchmark` build)
 
 - [ ] Home scrolls without hitching with a big library and many genre rows.
 - [ ] Opening and closing detail pages repeatedly feels the same each time.
@@ -81,7 +81,7 @@ Do this on a title you don't mind changing, or on the local test server.
 
 - What you did, in a sentence, and what you expected.
 - A screen recording if it's about motion (opening a page, scrolling, the hero loading); a screenshot if it's about layout.
-- Whether it was the `debug` or `perf` build, whether the phone was folded or unfolded, and the font size setting.
+- Whether it was the `debug` or `benchmark` build, whether the phone was folded or unfolded, and the font size setting.
 - If the app closed: `adb -s R3GL9028R6N logcat -d -b crash` straight after (adb is at `~/Library/Android/sdk/platform-tools/adb`).
 - Never send a token, password or server address; the log above doesn't contain them, but check before pasting.
 

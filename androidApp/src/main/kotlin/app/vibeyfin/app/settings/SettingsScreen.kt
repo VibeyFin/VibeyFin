@@ -1,250 +1,251 @@
 package app.vibeyfin.app.settings
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.Icon
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FloatingBackButton
-import app.vibeyfin.app.components.VibeyFinMenu
-import app.vibeyfin.app.components.VibeyFinMenuItem
+import app.vibeyfin.app.theme.ContentMaxWidth
 import app.vibeyfin.app.theme.VibeyFinTokens
-import app.vibeyfin.domain.ProfileSettings
+import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.domain.ConnectionManager
+import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.ui.common.Strings
-import app.vibeyfin.ui.settings.SettingsUiState
+import app.vibeyfin.ui.home.HomeExit
+import app.vibeyfin.ui.settings.ActionItem
+import app.vibeyfin.ui.settings.ChoiceItem
+import app.vibeyfin.ui.settings.CustomItem
+import app.vibeyfin.ui.settings.CustomKind
+import app.vibeyfin.ui.settings.InfoItem
+import app.vibeyfin.ui.settings.LinkItem
+import app.vibeyfin.ui.settings.SettingItem
+import app.vibeyfin.ui.settings.SettingKey
+import app.vibeyfin.ui.settings.SettingsPage
+import app.vibeyfin.ui.settings.SettingsPageId
 import app.vibeyfin.ui.settings.SettingsViewModel
+import app.vibeyfin.ui.settings.ToggleItem
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
+/** One page of the Settings tree, from its id (or both panes of it when [twoPane]); one the tree does not have (yet) shows only the back button. */
 @Composable
-fun SettingsRoute(onBack: () -> Unit, viewModel: SettingsViewModel = koinViewModel()) {
+fun SettingsRoute(
+    pageId: SettingsPageId,
+    onOpen: (SettingsPageId) -> Unit,
+    onExit: (HomeExit) -> Unit,
+    onBack: () -> Unit,
+    twoPane: Boolean = false,
+    viewModel: SettingsViewModel = koinViewModel(),
+    connection: ConnectionManager = koinInject(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    SettingsScreen(state, onBack, viewModel::onAlwaysAskChanged, viewModel::onShowPlaybackStatsChanged, viewModel::onBingeThresholdChanged, viewModel::onHomeGenreRowsChanged, viewModel::onShowHomeHeroChanged, viewModel::onSkipBackChanged, viewModel::onSkipForwardChanged, viewModel::onAutoSkipChanged, viewModel::onBufferAheadChanged)
+    LeaveWhenDisconnected(connection, onExit)
+    // The PIN dismissed on open: leave Settings.
+    LaunchedEffect(state.leave) { if (state.leave) onBack() }
+    NotificationPermissionRequest(
+        requested = state.requestNotificationPermission,
+        onRequested = viewModel::onNotificationPermissionRequested,
+        onDenied = viewModel::onNotificationPermissionDenied,
+    )
+    // The Kids and PIN page reads the server's limits whenever it is shown (on a tablet, when its row is selected).
+    val page = state.pages[pageId]
+    if (!twoPane) LaunchedEffect(pageId, state.locked) { if (!state.locked) viewModel.onPageOpened(pageId) }
+    if (state.locked) {
+        // Nothing of Settings shows until the PIN is right, or is found not needed; a spinner, so the wait never reads as an empty page.
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Box(Modifier.fillMaxSize()) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.Center).semantics { contentDescription = Strings.loadingPage },
+                )
+                FloatingBackButton(onBack)
+            }
+        }
+    } else if (twoPane) {
+        SettingsTabletScreen(
+            state = state,
+            onToggle = viewModel::onToggle,
+            onChoose = viewModel::onChoose,
+            onAction = viewModel::onAction,
+            onBack = onBack,
+            onPageOpened = viewModel::onPageOpened,
+        )
+    } else if (page == null) {
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { Box(Modifier.fillMaxSize()) { FloatingBackButton(onBack) } }
+    } else {
+        SettingsPageScreen(
+            page = page,
+            hasPage = { it in state.pages },
+            onToggle = viewModel::onToggle,
+            onChoose = viewModel::onChoose,
+            onAction = viewModel::onAction,
+            onOpen = onOpen,
+            onBack = onBack,
+        )
+    }
+    state.pinPrompt?.let { prompt ->
+        PinSheet(
+            prompt = prompt,
+            onSubmitPin = viewModel::onSubmitPin,
+            onForgotPin = viewModel::onForgotPin,
+            onSubmitPassword = viewModel::onSubmitPassword,
+            onDismiss = viewModel::onDismissPin,
+        )
+    }
+    if (state.confirmSignOut) {
+        AlertDialog(
+            onDismissRequest = viewModel::onDismissSignOut,
+            title = { Text(Strings.signOutConfirmTitle) },
+            text = { Text(Strings.signOutConfirmMessage) },
+            confirmButton = { TextButton(viewModel::onConfirmSignOut) { Text(Strings.signOut, color = VibeyFinTokens.Colors.danger) } },
+            dismissButton = { TextButton(viewModel::onDismissSignOut, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)) { Text(Strings.cancel) } },
+        )
+    }
 }
 
+/**
+ * Switch profile and Sign out end the connection here, where nothing else is watching it: go to
+ * "Who's watching?" of the server that was signed in to, or to Servers when it is not known.
+ */
 @Composable
-fun SettingsScreen(
-    state: SettingsUiState,
+private fun LeaveWhenDisconnected(connection: ConnectionManager, onExit: (HomeExit) -> Unit) {
+    val connectionState by connection.state.collectAsStateWithLifecycle()
+    var serverId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(connectionState) {
+        when (val state = connectionState) {
+            is ConnectionState.Connected -> serverId = state.server.id
+            ConnectionState.Disconnected -> serverId?.let { onExit(HomeExit.WhoIsWatching(it)) }
+            is ConnectionState.Expired -> Unit
+        }
+    }
+}
+
+/** A page drawn from its [SettingsPage]: sections of rows. */
+@Composable
+fun SettingsPageScreen(
+    page: SettingsPage,
+    onToggle: (SettingKey, Boolean) -> Unit,
+    onChoose: (SettingKey, Int) -> Unit,
+    onAction: (SettingKey) -> Unit,
+    onOpen: (SettingsPageId) -> Unit,
     onBack: () -> Unit,
-    onAlwaysAskChanged: (Boolean) -> Unit,
-    onShowPlaybackStatsChanged: (Boolean) -> Unit,
-    onBingeThresholdChanged: (Int) -> Unit = {},
-    onHomeGenreRowsChanged: (Int) -> Unit = {},
-    onShowHomeHeroChanged: (Boolean) -> Unit = {},
-    onSkipBackChanged: (Int) -> Unit = {},
-    onSkipForwardChanged: (Int) -> Unit = {},
-    onAutoSkipChanged: (Boolean) -> Unit = {},
-    onBufferAheadChanged: (Int) -> Unit = {},
+    hasPage: (SettingsPageId) -> Boolean = { true },
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .safeDrawingPadding()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = screenMargin()),
+                modifier = Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Spacer(Modifier.height(BackButtonSpace))
-                Text(
-                    text = Strings.settings,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
+                SettingsPageBody(
+                    page, hasPage, Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().padding(horizontal = screenMargin()),
+                    selectedLink = null, onToggle, onChoose, onAction, onOpen = { onOpen(it.target) },
                 )
-                Spacer(Modifier.height(VibeyFinTokens.Space.s5))
-                SwitchRow(
-                    title = Strings.alwaysAskWhoIsWatchingTitle,
-                    help = Strings.alwaysAskWhoIsWatchingHelp,
-                    checked = state.alwaysAskWhoIsWatching,
-                    onCheckedChange = onAlwaysAskChanged,
-                )
-                if (state.hasProfile) {
-                    Spacer(Modifier.height(VibeyFinTokens.Space.s5))
-                    SwitchRow(
-                        title = Strings.playbackStatsTitle,
-                        help = Strings.playbackStatsHelp,
-                        checked = state.showPlaybackStats,
-                        onCheckedChange = onShowPlaybackStatsChanged,
-                    )
-                    Spacer(Modifier.height(24.dp))
-                    ChoiceRow(
-                        title = Strings.stillWatchingTitle,
-                        help = Strings.stillWatchingHelp,
-                        value = state.bingeThreshold,
-                        choices = THRESHOLD_CHOICES,
-                        label = ::thresholdLabel,
-                        onChange = onBingeThresholdChanged,
-                    )
-                    Spacer(Modifier.height(24.dp))
-                    SwitchRow(
-                        title = Strings.homeHeroTitle,
-                        help = Strings.homeHeroHelp,
-                        checked = state.showHomeHero,
-                        onCheckedChange = onShowHomeHeroChanged,
-                    )
-                    Spacer(Modifier.height(24.dp))
-                    ChoiceRow(
-                        title = Strings.homeGenreRowsTitle,
-                        help = Strings.homeGenreRowsHelp,
-                        value = state.homeGenreRows,
-                        choices = ProfileSettings.HOME_GENRE_CHOICES,
-                        label = ::genreRowsLabel,
-                        onChange = onHomeGenreRowsChanged,
-                    )
-                    Spacer(Modifier.height(VibeyFinTokens.Space.s5))
-                    Text(
-                        text = Strings.playbackSection,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(Modifier.height(VibeyFinTokens.Space.s4))
-                    ChoiceRow(
-                        title = Strings.skipBack,
-                        help = Strings.skipHelp,
-                        value = state.skipBackSeconds,
-                        choices = ProfileSettings.SKIP_BACK_CHOICES,
-                        label = Strings::skipSeconds,
-                        onChange = onSkipBackChanged,
-                    )
-                    Spacer(Modifier.height(24.dp))
-                    ChoiceRow(
-                        title = Strings.skipForward,
-                        help = null,
-                        value = state.skipForwardSeconds,
-                        choices = ProfileSettings.SKIP_FORWARD_CHOICES,
-                        label = Strings::skipSeconds,
-                        onChange = onSkipForwardChanged,
-                    )
-                    Spacer(Modifier.height(24.dp))
-                    SwitchRow(
-                        title = Strings.autoSkipSegments,
-                        help = Strings.autoSkipSegmentsHelp,
-                        checked = state.autoSkipSegments,
-                        onCheckedChange = onAutoSkipChanged,
-                    )
-                    Spacer(Modifier.height(24.dp))
-                    ChoiceRow(
-                        title = Strings.bufferAhead,
-                        help = Strings.bufferAheadHelp,
-                        value = state.bufferAheadSeconds,
-                        choices = ProfileSettings.BUFFER_AHEAD_CHOICES,
-                        label = Strings::bufferAheadChoice,
-                        onChange = onBufferAheadChanged,
-                    )
-                }
             }
             FloatingBackButton(onBack)
         }
     }
 }
 
+/**
+ * The title and sections of a page, shared by the phone's page and the tablet's two panes. [selectedLink]
+ * is the row whose page is open beside this list on a tablet (an `accent-soft` pill); null on a phone.
+ */
 @Composable
-private fun SwitchRow(title: String, help: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(
-        // The whole row toggles, not just the switch, so the label is a target too.
-        modifier = Modifier.fillMaxWidth().toggleable(
-            value = checked,
-            role = Role.Switch,
-            onValueChange = onCheckedChange,
-        ),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Column(modifier = Modifier.weight(1f).padding(end = VibeyFinTokens.Space.s4), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Text(
-                text = help,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        // Aqua is for the one primary action, so the switch is light on dark instead.
-        Switch(
-            checked = checked,
-            onCheckedChange = null,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = VibeyFinTokens.Colors.bg,
-                checkedTrackColor = VibeyFinTokens.Colors.ink,
-                uncheckedThumbColor = VibeyFinTokens.Colors.inkMuted,
-                uncheckedTrackColor = VibeyFinTokens.Colors.surface3,
-                uncheckedBorderColor = VibeyFinTokens.Colors.lineStrong,
-            ),
+internal fun SettingsPageBody(
+    page: SettingsPage,
+    hasPage: (SettingsPageId) -> Boolean,
+    modifier: Modifier,
+    selectedLink: SettingKey?,
+    onToggle: (SettingKey, Boolean) -> Unit,
+    onChoose: (SettingKey, Int) -> Unit,
+    onAction: (SettingKey) -> Unit,
+    onOpen: (LinkItem) -> Unit,
+) {
+    val drawn = page.drawn(hasPage)
+    val preview = page.subtitlePreviewStyle()
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
+        Text(
+            text = drawn.title,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(bottom = VibeyFinTokens.Space.s3),
         )
-    }
-}
-
-/** A row that opens a menu of [choices], the one in use checked and named at the right. */
-@Composable
-private fun ChoiceRow(title: String, help: String?, value: Int, choices: List<Int>, label: (Int) -> String, onChange: (Int) -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        Row(
-            modifier = Modifier.fillMaxWidth().clickable(role = Role.DropdownList) { open = true },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Column(modifier = Modifier.weight(1f).padding(end = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(text = title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
-                if (help != null) Text(text = help, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            // The menu hangs from the value on the right, where the eye is, not from the row's left edge.
-            Box {
-                Text(
-                    text = label(value),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                VibeyFinMenu(expanded = open, onDismiss = { open = false }) {
-                    choices.forEach { choice ->
-                        VibeyFinMenuItem(label(choice), icon = null, selected = choice == value) {
-                            open = false
-                            onChange(choice)
-                        }
+        drawn.sections.forEachIndexed { index, section ->
+            if (index > 0) Spacer(Modifier.height(VibeyFinTokens.Space.s3))
+            section.title?.let { SectionHeader(it) }
+            val standalone = section.items.singleOrNull()?.takeIf { it is CustomItem && it.kind == CustomKind.SubtitlePreview }
+            if (standalone != null) {
+                // The preview is a card of its own, not a row of a group's card.
+                SubtitlePreviewCard(standalone.title, preview)
+            } else {
+                SectionCard {
+                    section.items.forEach { item ->
+                        // Keyed by page and key, so a key that ever sits on two pages stays distinct.
+                        key(rowId(page.id, item)) { ItemRow(item, selectedLink, onToggle, onChoose, onAction, onOpen) }
                     }
                 }
             }
+            section.footer?.let { SectionFooter(it) }
         }
+        Spacer(Modifier.height(VibeyFinTokens.Space.s5))
     }
 }
 
-private val THRESHOLD_CHOICES = listOf(0, 2, 3, 4, 5)
-
-private fun thresholdLabel(value: Int) = if (value == 0) Strings.stillWatchingOff else Strings.stillWatchingAfter(value)
-
-private fun genreRowsLabel(value: Int) = when (value) {
-    ProfileSettings.HOME_GENRES_ALL -> Strings.homeGenreRowsAll
-    ProfileSettings.HOME_GENRES_NONE -> Strings.homeGenreRowsNone
-    else -> Strings.homeGenreRowsTop(value)
+@Composable
+private fun ItemRow(
+    item: SettingItem,
+    selectedLink: SettingKey?,
+    onToggle: (SettingKey, Boolean) -> Unit,
+    onChoose: (SettingKey, Int) -> Unit,
+    onAction: (SettingKey) -> Unit,
+    onOpen: (LinkItem) -> Unit,
+) {
+    when (item) {
+        is ToggleItem -> ToggleRow(item) { onToggle(item.key, it) }
+        // A checklist choice draws its options inline in its own section: the section's title is its title.
+        is ChoiceItem -> if (item.asPage) {
+            item.checklist().forEach { (option, selected) -> ChecklistRow(option, selected) { onChoose(item.key, option.value) } }
+        } else {
+            ChoiceRow(item) { onChoose(item.key, it) }
+        }
+        is LinkItem -> LinkRow(item, selected = selectedLink?.let { it == item.key }) { onOpen(item) }
+        is ActionItem -> ActionRow(item) { onAction(item.key) }
+        is InfoItem -> InfoRow(item)
+        is CustomItem -> when (item.kind) {
+            CustomKind.ProfileHeader -> ProfileHeaderRow(item.title, item.help)
+            // The shared builder gives the preview a section of its own (drawn above), so no row; listed to keep the when exhaustive.
+            CustomKind.SubtitlePreview -> Unit
+            CustomKind.PinDots -> PinDotsItemRow(item.title, item.help)
+        }
+    }
 }

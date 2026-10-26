@@ -255,3 +255,89 @@ backdrop with the details in a left column over it, then the same rows as on the
   two columns at expanded width.
 - Portrait iPad keeps this layout when the width is regular; split-screen at compact width falls back to
   the phone layout.
+
+## Settings
+
+Settings sits under the profile avatar on Home, never in a tab. The same pages, rows and rules on both
+platforms, in each platform's own list style (`ios.md`, `android.md`). The design system's `SettingsPhone`
+and `SettingsTablet` are the mockups; rules are in `guardrails.md` (Settings).
+
+### Root (phone)
+
+A profile card, then groups. Per-profile groups come first and the one device-wide group after them, so
+the scope is clear from position and from the footers.
+
+- **Profile card** (tappable, chevron): opens the Profile page.
+- **Playback**: Quality, Subtitles, Skipping and autoplay. There is no Buffering row here: Buffer ahead lives
+  on Skipping and autoplay.
+- **Home**: Featured title, Genre rows.
+- **Notifications**: opens its page (below).
+- **Kids and PIN** (the group): one row, **Kids profile**, which opens the Kids and PIN page (below). It stays on a kids profile too, since turning kids mode off asks for the PIN on that page.
+- **This device**: Always ask who's watching.
+- **Advanced**: Playback stats overlay, About.
+
+A choice that is not a page of its own (Genre rows and the intervals) is a menu in its row: a `Picker` with
+`.pickerStyle(.menu)` on iOS, a `ChoiceRow` with a `DropdownMenu` on Android. It never opens a sub-page.
+A link row opens a sub-page.
+
+### Profile
+
+Avatar, name and server; **Switch profile** (to "Who's watching?"); a read-only Server group (name and
+addresses); **Sign out** in `danger` text with a confirmation. Sign out clears the token and keeps the
+profile's tile in "Who's watching?", locked (the explicit sign-out the session rules allow). Name and avatar
+are edited in Jellyfin, not here. A kids profile has no Sign out _(planned with kids mode)_.
+
+### Quality
+
+A per-profile cap on what the server sends: **Maximum** by default (the original, direct play when possible),
+then 4K 40, 1080p 10, 720p 4 and 480p 1.5 Mbps. It is the one choice shown as a checklist: the rows sit inline in
+their own section, the section title once, the footer (help text) below, and the chosen row is a soft
+`accent-soft` pill with no tick, on both platforms. There is no quality menu in the player.
+
+### Skipping and autoplay
+
+- Skip back 5, 10, 15 or 30 s; Skip forward 10, 15, 30, 45 or 60 s (the values SF Symbols has glyphs for).
+- "Auto skip intros and recaps", off by default (the segment buttons show either way).
+- "Still watching after": Off or 2 to 5 episodes, default 3.
+- **Buffer ahead** in its own group: Auto, 10 to 60 s, default 20 s, applied from the next video
+  (`Strings.bufferAheadHelp`).
+
+Each is a menu row.
+
+### Subtitles
+
+A live preview over artwork, then "Use system caption style" on by default; turning it off enables size, text
+colour and background (none, shadow, box), and "Reset to defaults" sits at the bottom. Android applies the
+style to the player. iOS burns subtitles into the picture today, so its page shows the controls disabled
+with the note "Applies to text subtitles only; iOS burns subtitles in for now". Applying a style on iOS needs
+a spike on a simulator and is an open item.
+
+### Notifications
+
+"Notify me about new episodes and movies", off by default, per profile. While it is on, a "Which shows" menu: "Shows I
+follow and new movies" (default; shows in Continue watching or My List) or "Everything new in the library". The
+footer says Jellyfin sends no push, so the app checks in the background and there is a delay. Switching it on asks
+for notification permission; a refusal switches it back off and the footer says notifications are blocked and where
+to allow them. Hidden for a kids profile, which never notifies. What a notification looks like and what a tap does:
+`android.md`, `ios.md` and `guardrails.md`.
+
+### Kids and PIN
+
+Opened from the **Kids profile** row in the root's Kids and PIN group; the design is in the spec `docs/superpowers/specs/2026-10-24-accounts-and-polish-design.md`.
+"Kids profile" is a local flag and the PIN (4 digits, a salted hash, never the Jellyfin password) a household lock,
+independent of each other. The rating cap, blocked tags and hours are read from the Jellyfin user's policy and
+shown read-only.
+
+### Settings on tablets
+
+At regular width (iPad regular, Android from the 600dp tablet breakpoint) Settings is two panes: the root on
+the left, the chosen page on the right.
+
+- The selected root row follows the row the user tapped, not the page that opened.
+- The detail column is capped at about 640 and centred; it never stretches across the screen.
+- Opening Settings selects the first page that has something to set (Quality); the selection survives rotation.
+- iPad: `NavigationSplitView`, the root as an inset grouped sidebar list with the system selection, the page in
+  the detail column with its own title; the back chevron is in the sidebar only.
+- Android: a plain two-column layout at the existing 600dp breakpoint (not `material3-adaptive`), the selected
+  row in an `accent-soft` pill.
+- At compact width (Split View, a folded device) it collapses to the phone's push navigation.

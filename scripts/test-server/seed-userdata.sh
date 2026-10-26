@@ -6,16 +6,19 @@
 #   Watched     Saga Show S01E01
 #   Resume      Saga Show S01E02 at 1.2 s of 3 s (40 %), Neon Night at 2 s of 5 s
 #   My List     Saga Show, Neon Night, Starlit Crown, Solo Season
+#   Kids user   "kids" (password vibeyfin-kids): MaxParentalRating 10 (PG), blocked tag no-kids, schedule Everyday 0-24 h
 #   Cleared     everything else among these fixtures (not played, no resume, not a favourite)
 # The expectations are the "Page fixtures" section of docs/test-server.md.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 export JF_URL JF_USER JF_PASS AUTH_HDR
+export KIDS_USER="kids" KIDS_PASS="vibeyfin-kids"
 
 exec python3 -I - <<'PY'
 import json, os, sys, time, urllib.parse, urllib.request
 
 URL, USER, PASS = os.environ["JF_URL"], os.environ["JF_USER"], os.environ["JF_PASS"]
+KIDS_USER, KIDS_PASS = os.environ["KIDS_USER"], os.environ["KIDS_PASS"]
 AUTH = os.environ["AUTH_HDR"].split(": ", 1)[1]
 TICKS = 10_000_000
 
@@ -86,5 +89,15 @@ for item_id in touched:
         "PlaybackPositionTicks": resume.get(item_id, 0),
         "PlayCount": 1 if item_id in watched else 0,
     })
+
+# Kids user: created once by name, policy set on every run. Capped at PG (level 10), blocks the tag "no-kids", and may
+# watch at any hour (0 to 24, so a test run never fails by the clock; edit the schedule to try a closed window).
+users = {u["Name"]: u for u in call("/Users", token)}
+kid = users.get(KIDS_USER) or call("/Users/New", token, body={"Name": KIDS_USER, "Password": KIDS_PASS})
+policy = call(f"/Users/{kid['Id']}", token)["Policy"]
+policy.update(MaxParentalRating=10, BlockedTags=["no-kids"], IsAdministrator=False,
+              AccessSchedules=[{"UserId": kid["Id"], "DayOfWeek": "Everyday", "StartHour": 0.0, "EndHour": 24.0}])
+call(f"/Users/{kid['Id']}/Policy", token, body=policy, method="POST")
+print(f"kids user {kid['Id']} ready")
 print(f"seeded user data for {len(touched)} items; Crown Collection {box_id}")
 PY

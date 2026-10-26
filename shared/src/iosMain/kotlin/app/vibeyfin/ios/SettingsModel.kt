@@ -1,7 +1,10 @@
 package app.vibeyfin.ios
 
+import app.vibeyfin.ui.settings.SettingKey
+import app.vibeyfin.ui.settings.SettingsPageId
 import app.vibeyfin.ui.settings.SettingsUiState
 import app.vibeyfin.ui.settings.SettingsViewModel
+import app.vibeyfin.ui.settings.firstSettablePage
 
 /** The settings screen's [SettingsViewModel] as SwiftUI needs it. */
 class SettingsModel {
@@ -9,23 +12,38 @@ class SettingsModel {
 
     fun observe(onChange: (SettingsUiState) -> Unit) = host.observe(host.viewModel.uiState, onChange)
 
-    fun onAlwaysAskChanged(value: Boolean) = host.viewModel.onAlwaysAskChanged(value)
+    fun onToggle(key: SettingKey, value: Boolean) = host.viewModel.onToggle(key, value)
 
-    fun onShowPlaybackStatsChanged(value: Boolean) = host.viewModel.onShowPlaybackStatsChanged(value)
+    fun onChoose(key: SettingKey, value: Int) = host.viewModel.onChoose(key, value)
 
-    fun onBingeThresholdChanged(value: Int) = host.viewModel.onBingeThresholdChanged(value)
+    fun onAction(key: SettingKey) = host.viewModel.onAction(key)
 
-    fun onShowHomeHeroChanged(value: Boolean) = host.viewModel.onShowHomeHeroChanged(value)
+    /** The page the iPad's split view opens on; null when nothing has anything to set. */
+    fun firstSettablePage(): SettingsPageId? = firstSettablePage(host.viewModel.uiState.value.pages)
 
-    fun onSkipBackChanged(value: Int) = host.viewModel.onSkipBackChanged(value)
+    /** A page was opened; the Kids and PIN page reads the server's limits then. */
+    fun onPageOpened(page: SettingsPageId) = host.viewModel.onPageOpened(page)
 
-    fun onSkipForwardChanged(value: Int) = host.viewModel.onSkipForwardChanged(value)
+    fun onConfirmSignOut() = host.viewModel.onConfirmSignOut()
 
-    fun onAutoSkipChanged(value: Boolean) = host.viewModel.onAutoSkipChanged(value)
+    fun onDismissSignOut() = host.viewModel.onDismissSignOut()
 
-    fun onHomeGenreRowsChanged(value: Int) = host.viewModel.onHomeGenreRowsChanged(value)
+    /** A PIN was entered in the open PIN sheet. */
+    fun onSubmitPin(pin: String) = host.viewModel.onSubmitPin(pin)
 
-    fun onBufferAheadChanged(value: Int) = host.viewModel.onBufferAheadChanged(value)
+    /** "Forgot PIN?": the PIN sheet asks for the profile's Jellyfin password instead. */
+    fun onForgotPin() = host.viewModel.onForgotPin()
+
+    fun onDismissPin() = host.viewModel.onDismissPin()
+
+    /** The Jellyfin password entered after "Forgot PIN?". */
+    fun onSubmitPassword(password: String) = host.viewModel.onSubmitPassword(password)
+
+    /** The one-shot permission request in the state was shown: acknowledge it. */
+    fun onNotificationPermissionRequested() = host.viewModel.onNotificationPermissionRequested()
+
+    /** The OS refused notification permission: the setting goes back off. */
+    fun onNotificationPermissionDenied() = host.viewModel.onNotificationPermissionDenied()
 
     fun close() = host.close()
 }

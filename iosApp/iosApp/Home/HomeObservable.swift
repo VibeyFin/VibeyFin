@@ -30,6 +30,14 @@ final class HomeObservable: ObservableObject {
         model.onSignOut()
     }
 
+    func submitPin(_ pin: String) { model.onSubmitPin(pin: pin) }
+
+    func forgotPin() { model.onForgotPin() }
+
+    func submitPassword(_ password: String) { model.onSubmitPassword(password: password) }
+
+    func dismissPin() { model.onDismissPin() }
+
     func retryLibraries() {
         model.onRetryLibraries()
     }
