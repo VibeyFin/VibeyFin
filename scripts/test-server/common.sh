@@ -9,3 +9,6 @@ JF_PASS="vibeyfin-test"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DATA="${DIR}/data"
 AUTH_HDR='Authorization: MediaBrowser Client="VibeyFin Test", Device="script", DeviceId="vibeyfin-test-script", Version="1.0"'
+# A second throwaway user the seed script creates with downloading switched off, for the "no permission" case.
+JF_NODL_USER="nodownload"
+JF_NODL_PASS="vibeyfin-test"

@@ -20,7 +20,7 @@ Tick a box when it works. If something doesn't, see **What to send** at the end.
 
 - [ ] Tap a poster: the screen dims at once, a skeleton shaped like the page shows, then the whole page fades up. No spinner, no piece-by-piece build-up, no poster flying across.
 - [ ] Same for a show, an episode and a collection. The back button returns to the same place in the list.
-- [ ] A movie shows My List, Trailer (only if it has one) and Watched under Play. There is **no Download button** yet (that's on purpose: it returns with offline playback).
+- [ ] A movie shows My List, Trailer (only if it has one) and Watched under Play. Download is the fourth action (icon over label); see the Downloads section below.
 - [ ] Watched ticks and un-ticks at once **(changes watch state)**.
 - [ ] On a show: the season row opens on the right season, episode cards have all their text on the still, and a long press on an episode offers **View episode** and the watched mark.
 - [ ] Cast: a tap opens the person's page (a round portrait or initials, name, born, biography with More/Less, Movies and Shows rows).
@@ -88,4 +88,5 @@ Do this on a title you don't mind changing, or on the local test server.
 ## Not on this list, on purpose
 
 - **iOS:** nothing here applies until the app is built in Xcode. The Xcode pass is its own task: see the roadmap's "iOS" notes. Known differences to look at then: the shared-element zoom is switched off to match Android, and every Swift file is parsed but never built.
-- **Download button, Downloads tab:** the tab is an empty "Not available yet" page until offline playback (Phase 10).
+- **Downloads (plan 14, phase C):** on a movie, Download starts at once and asks once for the notification permission; the ring fills, then a check, label "Downloaded". A show's Download opens a menu (season / all episodes); the confirmation shows count and size. The Downloads tab lists Movies and Shows, with progress, pause, resume and remove (confirmed). Turn the screen off and lock the phone mid-download and check it finishes. Use a small file on the real NAS only with the owner's say-so.
+- **Offline (plan 14, phase D):** download an episode, switch on flight mode: the banner says "You're offline", the bar has three tabs, Home shows it under Continue watching, Search finds it, and it plays. Watch part of it, switch the network on: within moments the server shows the position (or the watched mark). Settings → Offline mode forces the same with a network; the banner's Go online ends it.

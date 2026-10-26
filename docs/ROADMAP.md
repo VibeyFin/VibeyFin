@@ -165,7 +165,7 @@ _Starts after the state audit (see Cross-cutting)._
     player's picker sheet, and keeps its place when you come back from an item. The Categories sheet shows how many
     titles each genre holds. *Built since:* the buttons are filled, with no outline; New and My List pages also have Movies and
     Shows buttons that narrow the list and the genre counts; My List counts its genres from the list, not the library
-- [x] Detail page (Android built and run; iOS written and only parsed): metadata, cast, `/Items/{id}/Similar`, collections, extras; plan 11. Under Play four equal actions: My List (heart), Trailer and Watched (tick); Download is hidden until offline lands (Phase 10), the code is kept. The phone's picture is pinned and darkens as the page scrolls over it. On tablets and unfolded foldables a 16:9 backdrop with the details in a left column. The page opens on a full-width cinematic
+- [x] Detail page (Android built and run; iOS written and only parsed): metadata, cast, `/Items/{id}/Similar`, collections, extras; plan 11. Under Play four equal actions: My List (heart), Trailer and Watched (tick); Download is hidden until offline lands (Phase 10, plan 14); only the `Strings.download` text and comments are left. The phone's picture is pinned and darkens as the page scrolls over it. On tablets and unfolded foldables a 16:9 backdrop with the details in a left column. The page opens on a full-width cinematic
   backdrop hero (`Backdrop` image) with a dark gradient overlay (the `scrim` token), and the movie
   details and action buttons are layered over the image: the `Logo` image as the title (the
   `brand-display` title when there is none), the facts line (year, rating, runtime, genres), the
@@ -279,7 +279,7 @@ _Depends on Phase 4 (Home rows) and Phase 6 (profiles and the first settings). S
 _Exit: reorder and hide Home rows, add a row from a genre, change how its cards look, see one
 setting differ between two profiles on the same device, and reset it all to the defaults._
 
-### Phase 10 — Offline _(later)_
+### Phase 10 — Offline _(built; plan 14. Android built and run on the emulator, iOS compiled to klibs and parsed only; the phone pass is owed)_
 
 Watch without a connection. Numbered 10 so that nothing else is renumbered; it is built in Stage 3,
 after Phase 7. _Depends on Phase 2 (watch status, for cleaning up watched downloads) and Phase 6

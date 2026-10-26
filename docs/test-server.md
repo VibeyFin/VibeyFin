@@ -209,6 +209,33 @@ root: `adb shell settings put global auto_time 0`, then `adb shell cmd alarm set
 job, and `adb shell settings put global auto_time 1` afterwards. The work only runs while a profile has Notifications
 on and a network.
 
+## Download fixtures: large file, external subtitles, a user who may not download
+
+Added for downloads and offline mode (plan 14). `make-media.sh` creates the media; `seed-userdata.sh` creates the user.
+
+| Fixture | Path under `media/` | What it is | Needed by |
+| --- | --- | --- | --- |
+| `big-download` | `movies/Big Download (2026)/` | 60 s of random noise, 640x360 H.264 at a very high quality, 700 Hz AAC, about 283 MB (283,037,992 bytes). The server answers `Range` requests with `206` and a `Content-Range` | A download long enough to pause, kill the app, switch the screen off and resume. The emulator's own `network speed` does not slow traffic to the host, so use `throttle-proxy.py` (below) |
+| `download-subs` | `movies/Download Subs (2026)/` | 3 s clip with poster, backdrop, logo and one cast member, and two external subtitle files next to it (`.en.srt` "English subtitle", `.de.srt` "Deutscher Untertitel") | That a download keeps the artwork, the cast and the external subtitles, which are separate files on the server (`DeliveryUrl`) |
+| user `nodownload` | (not a file; created by `seed-userdata.sh`) | A second user, password `vibeyfin-test`, with `EnableContentDownloading` off | `GET /Items/{id}/Download` answers 403 for it; `GET /Users/Me` has `Policy.EnableContentDownloading: false`, so the Download button is hidden |
+
+What the server was seen to do (Jellyfin 12.2, checked while writing plan 14):
+
+- `GET /Items/{id}/Download` with `Range: bytes=1000-1009` answers `206` with `Content-Range: bytes 1000-1009/283037992`. It sends `Accept-Ranges`
+  and `Last-Modified`, but **no `ETag`**; the file's version is `MediaSources[0].ETag` in the item. So a resume checks `Last-Modified`.
+- The same call without a token is `401`; with the `nodownload` user it is `403`.
+- `POST /UserItems/{id}/UserData?userId=` takes `PlaybackPositionTicks`, `Played` and `LastPlayedDate` (`2026-10-20T18:00:00.0000000Z`) and
+  the item then reports that `LastPlayedDate`. Leaving `LastPlayedDate` out keeps the old one, so the date a fixture was last given stays.
+
+### Slowing a download: `throttle-proxy.py`
+
+`scripts/test-server/throttle-proxy.py <port> <bytes per second>` is a pass-through proxy to the server on `localhost:8196` that sends the
+bodies of `/Download` answers at the given speed (`8197 600000` makes `big-download` take about 8 minutes). Everything else passes at full
+speed. On the emulator add `http://10.0.2.2:8197` as the server's address (the app tries its best address first, and falls back to the
+other when the proxy is stopped). Use it to turn the screen off, force Doze (`adb shell dumpsys deviceidle force-idle`), drop Wi-Fi
+(`adb shell svc wifi disable`; reconnect with `adb shell cmd wifi connect-network AndroidWifi open`) or kill the process
+(`adb shell run-as app.vibeyfin kill -9 <pid>`) in the middle of a download, and compare the file with the source (`md5sum`).
+
 ## Checking it
 
 `scripts/test-server/list-fixtures.sh` compares every fixture in the catalogue with what the running

@@ -26,7 +26,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 
 - Opens on a full-width backdrop hero; title (Logo image, else `brand-display`), facts, overview and actions sit over the image, always on `scrim`. Cast and More like this scroll below it.
 - Exactly one primary button, and its label says what happens: "Play", "Resume · 38m left" (the time left; a round icon-only "start over" arrow sits beside it as the secondary button, only when there is something to resume), "Play S2 E4".
-- Secondary actions (icon over label) after it: My List (a heart), Trailer (only when the item has one) and Watched (a tick); Download joins them when offline playback lands (hidden until then, since a button that does nothing is worse than none). Max four. There is no Like and no overflow menu.
+- Secondary actions (icon over label) after it: My List (a heart), Trailer (only when the item has one) and Watched (a tick); Download is the fourth, shown only when the server lets the user download. Max four. There is no Like and no overflow menu.
 - Series: a row of season buttons (about four visible, scrolling sideways) and the selected season's episode list below. **Must** open on the season of the episode Play / Resume starts, with that episode marked; picking a season swaps the list in place.
 - Synopsis 3 lines + "More". Technical info (video, audio, subtitles, file) in a collapsed section at the bottom.
 - A trailer the server holds plays in the player; one on the web opens straight in YouTube (or the system's viewer for another site). **Never** inline with sound on the detail screen.

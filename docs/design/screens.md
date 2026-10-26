@@ -144,8 +144,8 @@ official rating, runtime, genres, overview, `UserData` (playback position, `IsFa
   "Play", "Resume · 38m left" (with the play icon). It is full width until there is something to resume;
   then a round icon-only "start over" button (a circular arrow, the grey secondary button) sits beside it.
 - Secondary actions as `action` buttons (icon over label): My List (Favorites, a heart), Trailer (only when
-  the item has a local or remote trailer) and Watched (a tick). Download joins them when offline playback
-  lands. There is no Like and no overflow menu (Likes were cut from the roadmap: Jellyfin's like flag is
+  the item has a local or remote trailer), Watched (a tick) and Download (only when the server lets the user;
+  see **Downloads**). There is no Like and no overflow menu (Likes were cut from the roadmap: Jellyfin's like flag is
   barely used, and My List covers it).
 - Tablets and landscape use **Detail on tablets** below.
 
@@ -216,8 +216,40 @@ rating, air date, and its `UserData` (played, resume position).
   left), its rating and the day it aired. A check sits at the top once watched, an aqua progress bar runs along the bottom edge
   when it is part watched, and the episode Play starts has a brighter outline.
 - On a card, a tap on the picture plays it and a tap on the words opens its page. A long press opens a menu on both platforms: **View episode** (its own page) and the watched mark.
-- No download button until offline playback lands, and no swipe actions on either platform.
-- Downloaded (later) is a filled check-disc in `positive` (`ink`) on both.
+- Each episode has its own **download button**: at the end of the row on a phone, at the top-left of the still on a card. It is the
+  arrow with nothing downloaded (a tap starts it), then the state badge (a tap opens pause, resume and remove). The long-press menu holds the
+  same actions.
+- No swipe actions on either platform.
+- Downloaded is a filled check-disc in `positive` (`ink`) on both.
+
+## Downloads
+
+The Download action, the Downloads tab and the questions around them. Everything is in `ink`: aqua never signals status, and a
+download's progress is not playback progress.
+
+- **Download button** (fourth secondary action, icon over label). One picture for the state, drawn from the shared `DownloadBadge`:
+  the download arrow (nothing downloaded), a ring that fills (coming in; grey and still while it waits for Wi-Fi or a connection),
+  pause bars (paused), a warning (failed), a filled check-disc (on the device). The label under it is "Download", "Downloading",
+  "Waiting", "Paused", "Failed", "Downloaded", and on a show "N downloaded". Android draws the ring by hand, not with M3's spinner,
+  which is for the player only.
+- **Tapping it:** on a movie or an episode with no download it starts one (and asks, once, for the notification permission on Android
+  13+). With a download, and on a show, it opens a menu: pause, resume, remove; for a show "Download Season N" (the selected one),
+  "Download all episodes" and "Remove N downloads".
+- **Season and show confirm first:** "Download 13 episodes?" with "They take about 965 KB." and, when some are watched, "Only episodes
+  I haven't watched". A season's own list page has a **Download season** button with "3 of 8 downloaded".
+- **Removing always asks:** "Remove Heat?" with "This frees 283 MB. You can download it again later." (what is on the device now).
+- **Downloads tab:** a large title with "1.4 GB used" and a trash icon (**Remove all downloads**, asks first); **Movies** (poster, title, status line) and **Shows**
+  (a card with the show's poster, "13 episodes · 965 KB" and a chevron that opens its episodes in place, a menu with go to the show and
+  remove all of it). A row's status line is "Downloaded · 850 MB", "Downloading · 120 MB of 850 MB" with a thin ink progress bar,
+  "Waiting for Wi-Fi", "Waiting for a connection", "Waiting for the server", "Paused · …", or "Download failed" with the reason under it. A running download adds the time left ("· 8m left"); the notification says the same ("20 MB of 283 MB · 8m left").
+  A row's menu is pause or resume, and remove; a tap opens the item's page. Empty: "Nothing downloaded yet".
+- **Settings:** "Offline mode" (device), "Download over mobile data" and "Storage limit for downloads" (profile).
+
+## Offline
+
+- **Banner:** a strip under the status bar, `surface-3`, title and one line, a plain text button when there is a way out: "You're offline" (no network, no button), "Offline mode · Showing what you've downloaded." with **Go online**, or "Can't reach the server" with **Use offline**.
+- **Tabs:** Home, Search, Downloads. **Home** has Continue watching, then Movies and Shows rows from the device; a movie or a card plays at once and a show opens Downloads. **Search** searches downloads (All, Movies, Episodes) and a result plays. **Downloads** plays a finished row.
+- Offline nothing opens a page that needs the server; Library is not there.
 
 ## Detail on tablets
 

@@ -20,6 +20,8 @@
 # Flags (each does only that, then exits; the server must be running):
 #   --add-episode      adds Growing Show S01E02 (titled by its file name) and asks the server to scan the library
 #   --remove-episode   removes it again and scans, so the episode can be added anew
+#   Download fixtures: movies/Big Download (2026) (about 280 MB, 60 s of noise: long enough to pause, kill and resume a
+#     download), movies/Download Subs (2026) (artwork, cast, and two external .srt files next to the clip)
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
@@ -306,5 +308,31 @@ mkdir -p "$GROWING"
 echo "<tvshow><title>Growing Show</title><lockdata>true</lockdata><year>2026</year><genre>Drama</genre><plot>A show that gains an episode.</plot></tvshow>" > "${GROWING}/tvshow.nfo"
 clip "${GROWING}/Season 01/Growing Show S01E01.mkv"
 episode_nfo "${GROWING}/Season 01/Growing Show S01E01" "First Arrival" 1 1 ""
+
+# ---- Download fixtures (docs/test-server.md "Download fixtures") ----
+# Big Download: 60 s of random noise in 640x360 H.264 at a very high quality, about 280 MB, so that a download takes
+# long enough on the emulator to pause it, kill the app and resume. Slow the emulator's network to stretch it further.
+BIG="${MEDIA}/movies/Big Download (2026)"
+mkdir -p "$BIG"
+if [ ! -f "${BIG}/Big Download (2026).mkv" ]; then
+  ff -f lavfi -i "color=c=gray:s=640x360:r=24:d=60,geq=lum='random(1)*255':cb=128:cr=128" \
+     -f lavfi -i "sine=frequency=700:duration=60" \
+     -c:v libx264 -preset veryfast -pix_fmt yuv420p -crf 6 -c:a aac -b:a 64k -shortest \
+     "/data/media/movies/Big Download (2026)/Big Download (2026).mkv"
+fi
+echo "<movie><title>Big Download</title><lockdata>true</lockdata><year>2026</year></movie>" > "${BIG}/movie.nfo"
+
+# Download Subs: a small clip with artwork and cast and two external subtitle files (English and German). External
+# subtitles are separate downloads from the video, so this is what checks that they come along.
+SUBS="${MEDIA}/movies/Download Subs (2026)"
+clip "${SUBS}/Download Subs (2026).mkv"
+artwork "movies/Download Subs (2026)" testsrc2
+printf '1\n00:00:00,500 --> 00:00:02,500\nEnglish subtitle\n' > "${SUBS}/Download Subs (2026).en.srt"
+printf '1\n00:00:00,500 --> 00:00:02,500\nDeutscher Untertitel\n' > "${SUBS}/Download Subs (2026).de.srt"
+cat > "${SUBS}/movie.nfo" <<'NFO'
+<movie><title>Download Subs</title><lockdata>true</lockdata><year>2026</year><genre>Drama</genre>
+<plot>A short movie with artwork, cast and two external subtitle files, to check what a download keeps.</plot>
+<actor><name>Ada Vance</name><role>Narrator</role><type>Actor</type><order>0</order></actor></movie>
+NFO
 
 echo "Media ready under ${MEDIA}"
