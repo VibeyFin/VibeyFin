@@ -42,11 +42,6 @@ private extension TabRoute {
     }
 }
 
-/// A trailer the server holds, to play from the poster's menu.
-private struct TrailerPlay: Identifiable {
-    let id: String
-}
-
 /// Holds the open Settings' model by reference. The stack can build a pushed page with the destination closure of the body before the
 /// push, so a model held in `@State` directly was still nil there on the first open (an empty, black page) and the previous one after.
 private final class SettingsSession {
@@ -68,7 +63,7 @@ struct TabShell: View {
     @StateObject private var tileMenu = TileMenuObservable()
     /// One shared Settings ViewModel for the whole page tree, made again each time Settings opens so the PIN to open it is asked every time.
     @State private var settings = SettingsSession()
-    @State private var trailerPlaying: TrailerPlay?
+    @StateObject private var player = PlayerSession()
     @Environment(\.openURL) private var openURL
     @State private var homePath: [TabRoute] = []
     @State private var searchPath: [TabRoute] = []
@@ -136,7 +131,7 @@ struct TabShell: View {
                     onTrailer: { trailer in
                         tileMenu.close()
                         if let local = trailer as? TrailerLocal {
-                            trailerPlaying = TrailerPlay(id: local.itemId)
+                            player.play(local.itemId)
                         } else if let remote = trailer as? TrailerRemote, let url = URL(string: remote.url) {
                             openURL(url)
                         }
@@ -145,10 +140,20 @@ struct TabShell: View {
                 )
             }
         }
-        // A trailer the server holds plays full screen, like any title.
-        .fullScreenCover(item: $trailerPlaying) { play in
-            PlayerView(itemId: play.id, onExit: onExit)
+        .environment(\.playerSession, player)
+        // Playback covers the tabs, and goes out of sight while picture-in-picture plays, so the page it was opened from shows.
+        .overlay {
+            if let request = player.request {
+                PlayerView(itemId: request.id, startOver: request.startOver, onExit: onExit)
+                    .id(request.token)
+                    .environment(\.playerSession, player)
+                    .opacity(player.minimised ? 0 : 1)
+                    .allowsHitTesting(!player.minimised)
+                    .accessibilityHidden(player.minimised)
+                    .transition(.opacity)
+            }
         }
+        .animation(.easeInOut(duration: 0.2), value: player.request)
     }
 
     /// Choosing the tab you are already on goes back to its root.

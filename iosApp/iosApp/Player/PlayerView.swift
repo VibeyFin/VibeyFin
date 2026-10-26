@@ -8,11 +8,13 @@ struct PlayerView: View {
     @StateObject private var model: PlaybackObservable
     @StateObject private var controller = PlayerController()
     @StateObject private var pip = PlayerPictureInPicture()
+    /// The Control Center and lock screen buttons, held for as long as this player lives.
+    @State private var remote = PlayerRemoteCommands()
 
     /// Called when the session ended and the player has closed.
     let onExit: (HomeExit) -> Void
 
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.playerSession) private var session
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -123,12 +125,23 @@ struct PlayerView: View {
             model.start()
             controller.activateAudioSession()
             OrientationLock.lockLandscape()
+            installRemoteCommands()
+            session.stopCurrent = {
+                pip.stop()
+                controller.pause()
+                model.closed(controller.currentMilliseconds)
+            }
+        }
+        // Out of sight while picture-in-picture plays: the page behind is upright, and the player is back in landscape when it returns.
+        .onChange(of: session.minimised) { minimised in
+            if minimised { OrientationLock.restore() } else { OrientationLock.lockLandscape() }
         }
         .onDisappear {
             hideTask?.cancel()
             flashTask?.cancel()
             pendingBackground?.cancel()
             // The window plays on without this screen being visible; it is torn down when the window closes.
+            remote.remove()
             if !pip.isActive { controller.tearDown() }
             OrientationLock.restore()
         }
@@ -156,7 +169,12 @@ struct PlayerView: View {
             controller.wantDiagnostics(state?.showDiagnostics == true)
             controller.setSpeed(state?.speed ?? 1)
             applyStillWatching(state?.stillWatching == true)
-            controller.setNowPlaying(title: state?.title, subtitle: state?.subtitle)
+            controller.setNowPlaying(title: state?.title, subtitle: state?.subtitle, artworkUrl: state?.artworkUrl)
+            remote.setSkipIntervals(
+                back: Int(state?.skipBackSeconds ?? ProfileSettings.Companion.shared.DEFAULT_SKIP_BACK_SECONDS),
+                forward: Int(state?.skipForwardSeconds ?? ProfileSettings.Companion.shared.DEFAULT_SKIP_FORWARD_SECONDS)
+            )
+            pip.allow(state?.pictureInPicture != false)
         }
         .onChange(of: controller.isPlaying) { isPlaying in
             if isPlaying {
@@ -193,13 +211,13 @@ struct PlayerView: View {
         .onChange(of: model.state?.finished == true) { finished in
             if finished {
                 pip.stop()
-                dismiss()
+                session.end()
             }
         }
         .onChange(of: model.state?.exit != nil) { hasExit in
             if hasExit, let exit = model.state?.exit {
                 pip.stop()
-                dismiss()
+                session.end()
                 onExit(exit)
             }
         }
@@ -304,7 +322,7 @@ struct PlayerView: View {
                         onOpenChange: menuOpenChanged
                     )
                 }
-                if pip.isSupported {
+                if pip.isSupported && state?.pictureInPicture != false {
                     PlayerIconButton(
                         systemName: "pip.enter",
                         label: Strings.shared.pictureInPicture,
@@ -448,15 +466,20 @@ struct PlayerView: View {
     /// Tells the shared model when the picture-in-picture window starts and how it ends. Dismissing the
     /// window ends the session, so the screen goes with it; expanding it leaves everything as it is.
     private func bindPictureInPicture() {
-        pip.entered = { model.enteredPictureInPicture(controller.currentMilliseconds) }
+        pip.entered = {
+            model.enteredPictureInPicture(controller.currentMilliseconds)
+            // The video is in the window now: the player steps aside so the page it was opened from shows, not an empty screen.
+            session.minimise()
+        }
         pip.left = { closed in
             model.leftPictureInPicture(controller.currentMilliseconds, closed: closed)
-            if closed { dismiss() }
+            if closed { session.end() } else { session.expand() }
         }
         // The window never came up: the model must stop treating the player as in picture-in-picture,
         // and if the app already went to the background meanwhile, that is handled now as it would have been.
         pip.failedToStart = {
             model.leftPictureInPicture(controller.currentMilliseconds, closed: false)
+            session.expand()
             if UIApplication.shared.applicationState == .background { leaveForBackground() }
         }
     }
@@ -478,7 +501,27 @@ struct PlayerView: View {
     private func close() {
         controller.pause()
         model.closed(controller.currentMilliseconds)
-        dismiss()
+        session.end()
+    }
+
+    /// The card's buttons act on this player the way its own controls do; a seek goes through the same path, so the server hears it.
+    private func installRemoteCommands() {
+        remote.install(PlayerRemoteCommands.Handlers(
+            play: { controller.play() },
+            pause: { controller.pause() },
+            togglePlayPause: {
+                model.userInteraction()
+                controller.togglePlayPause()
+            },
+            skip: { side in
+                let position = PlayerTime.milliseconds(controller.position)
+                switch side {
+                case .back: model.skipBack(position)
+                case .forward: model.skipForward(position, durationMs: PlayerTime.milliseconds(controller.duration))
+                }
+            },
+            seek: { controller.seek(to: $0) }
+        ))
     }
 
     /// Skips by the profile's seconds: the model answers with a seek that `onReceive` hands to the player.

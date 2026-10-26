@@ -6,7 +6,7 @@ import Shared
 /// hero is the backdrop at 16:9 with the details in a left column.
 struct ItemView: View {
     @StateObject private var model: ItemObservable
-    @State private var playing: PlayRequest?
+    @Environment(\.playerSession) private var player
     @State private var scrollOffset: CGFloat = 0
     @Environment(\.horizontalSizeClass) private var sizeClass
 
@@ -19,11 +19,6 @@ struct ItemView: View {
     let onOpenPerson: (String) -> Void
     /// Called when the session ended and the screen must be left.
     let onExit: (HomeExit) -> Void
-
-    private struct PlayRequest: Identifiable {
-        let id: String
-        let startOver: Bool
-    }
 
     init(itemId: String, onOpen: @escaping (MediaItem) -> Void, onOpenSeries: @escaping (String) -> Void, onOpenPerson: @escaping (String) -> Void, onExit: @escaping (HomeExit) -> Void) {
         _model = StateObject(wrappedValue: ItemObservable(itemId: itemId))
@@ -60,9 +55,6 @@ struct ItemView: View {
         }
         .animation(.easeInOut(duration: 0.16), value: model.state?.item?.id)
         .onAppear { model.start() }
-        .fullScreenCover(item: $playing) { request in
-            PlayerView(itemId: request.id, startOver: request.startOver, onExit: onExit)
-        }
         .failureBanner(
             model.state?.actionMessage,
             onRetry: { model.retryAction() },
@@ -80,7 +72,7 @@ struct ItemView: View {
 
     /// What Play opens the player on: the item, or for a show its next episode.
     private func play(startOver: Bool, state: ItemUiState) {
-        playing = PlayRequest(id: state.playTarget?.id ?? itemId, startOver: startOver)
+        player.play(state.playTarget?.id ?? itemId, startOver: startOver)
     }
 
     private func page(_ item: MediaItem, state: ItemUiState) -> some View {
@@ -91,7 +83,7 @@ struct ItemView: View {
                     wide: wide,
                     margin: margin,
                     onSelect: { model.selectSeason($0) },
-                    onPlay: { playing = PlayRequest(id: $0, startOver: false) },
+                    onPlay: { player.play($0) },
                     onToggleWatched: { model.toggleEpisodePlayed($0) },
                     onViewEpisode: onOpen,
                     onRetrySeasons: { model.retrySeasons() },
@@ -122,7 +114,7 @@ struct ItemView: View {
         .screenMargin()
         .padding(.vertical, Space.s5)
         let playHere: (Bool) -> Void = { play(startOver: $0, state: state) }
-        let playTrailer: (String) -> Void = { playing = PlayRequest(id: $0, startOver: false) }
+        let playTrailer: (String) -> Void = { player.play($0) }
         return Group {
             if wide {
                 wideLayout(item, state: state, sections: sections, onPlay: playHere, onPlayTrailer: playTrailer)

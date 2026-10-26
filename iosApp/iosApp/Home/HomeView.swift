@@ -1,16 +1,11 @@
 import SwiftUI
 import Shared
 
-/// Plays one item from Home, full screen. A Continue watching card plays at once.
-private struct PlayRequest: Identifiable {
-    let id: String
-}
-
 struct HomeView: View {
     @StateObject private var model = HomeObservable()
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @State private var playing: PlayRequest?
+    @Environment(\.playerSession) private var player
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Called when the screen should be left: the user chose to, or the session ended.
@@ -56,7 +51,7 @@ struct HomeView: View {
                             }
                             ContinueRowView(
                                 row: state.continueRow,
-                                onPlay: { playing = PlayRequest(id: $0) },
+                                onPlay: { player.play($0) },
                                 onDetails: onDetails,
                                 onMarkWatched: { model.markWatched($0) },
                                 onRetry: { model.retryContinue() }
@@ -116,16 +111,13 @@ struct HomeView: View {
         .onChange(of: scenePhase) { phase in
             if phase == .active { model.foreground() }
         }
-        .fullScreenCover(item: $playing) { request in
-            PlayerView(itemId: request.id, onExit: onExit)
-        }
         .onChange(of: model.state?.exit != nil) { hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
         }
         // The hero's Play found what to play (an episode for a show): the player opens on it, or the page when none was found.
         .onChange(of: model.state?.heroNav != nil) { has in
             guard has, let nav = model.state?.heroNav else { return }
-            if let play = nav as? HeroNavPlay { playing = PlayRequest(id: play.itemId) }
+            if let play = nav as? HeroNavPlay { player.play(play.itemId) }
             else if let details = nav as? HeroNavDetails { onDetails(details.itemId) }
             model.heroNavHandled()
         }
