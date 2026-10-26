@@ -25,7 +25,11 @@ struct SettingsPageView: View {
                         .listStyle(.insetGrouped)
                 }
             } else {
-                Color(.systemGroupedBackground).ignoresSafeArea()
+                // Only before the first state arrives: the shared state has every page from the start.
+                ZStack {
+                    Color(.systemGroupedBackground).ignoresSafeArea()
+                    ProgressView().accessibilityLabel(Strings.shared.loadingPage)
+                }
             }
         }
         .onAppear {

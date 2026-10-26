@@ -13,8 +13,12 @@ struct SettingsEntryView: View {
     var body: some View {
         Group {
             // Until the profile's PIN is right (or it needs none) no page is built: nothing of Settings is drawn, reachable or opened.
+            // A spinner meanwhile, so the wait never reads as an empty page.
             if model.state?.locked ?? true {
-                Color(.systemGroupedBackground).ignoresSafeArea()
+                ZStack {
+                    Color(.systemGroupedBackground).ignoresSafeArea()
+                    ProgressView().accessibilityLabel(Strings.shared.loadingPage)
+                }
             } else if sizeClass == .regular {
                 SettingsSplitView(model: model, onExit: onExit)
             } else {

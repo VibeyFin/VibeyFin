@@ -1,7 +1,18 @@
 package app.vibeyfin.ui.settings
 
 import androidx.lifecycle.viewModelScope
+import androidx.room3.Room
+import app.vibeyfin.data.db.VibeyFinDatabase
+import app.vibeyfin.data.db.buildVibeyFinDatabase
 import app.vibeyfin.domain.ConnectionState
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.yield
+import kotlinx.coroutines.launch
+import app.vibeyfin.domain.hashPin
+import app.vibeyfin.domain.ServerRepository
+import app.vibeyfin.domain.AccountRepository
+import app.vibeyfin.domain.DevicePreferences
+import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.PinResult
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.testing.Reply
@@ -28,6 +39,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -48,7 +64,10 @@ class SettingsViewModelTest {
 
     @AfterTest
     fun tearDown() = runTest {
+        // Waiting reads finish first, so the ViewModels can be stopped.
+        slowDatabases.forEach { it.release() }
         viewModels.stopAll()
+        slowDatabases.forEach { it.database.close() }
         applicationScope.cancel()
         Dispatchers.resetMain()
         app.close()
@@ -60,9 +79,29 @@ class SettingsViewModelTest {
 
     private fun SettingsUiState.value(key: SettingKey) = (item(key) as ChoiceItem).value
 
-    private fun viewModel() = viewModels.track(
-        SettingsViewModel(app.preferences, app.profileSettings, app.connection, app.servers, app.pins, app.policy, app.auth, applicationScope),
+    private fun viewModel(
+        preferences: DevicePreferences = app.preferences,
+        profileSettings: ProfileSettings = app.profileSettings,
+        pins: PinLock = app.pins,
+        appVersion: String = "",
+    ) = viewModels.track(
+        SettingsViewModel(preferences, profileSettings, app.connection, app.servers, pins, app.policy, app.auth, applicationScope, appVersion),
     )
+
+    /**
+     * A database whose reads wait until [release], like Room still opening on a cold start. It holds no rows, as for a profile that has
+     * just signed in for the first time.
+     */
+    private class SlowDatabase {
+        private val scheduler = TestCoroutineScheduler()
+        val database: VibeyFinDatabase = Room.inMemoryDatabaseBuilder<VibeyFinDatabase>().buildVibeyFinDatabase(StandardTestDispatcher(scheduler))
+
+        fun release() = scheduler.advanceUntilIdle()
+    }
+
+    private val slowDatabases = mutableListOf<SlowDatabase>()
+
+    private fun slowDatabase() = SlowDatabase().also { slowDatabases += it }
 
     @Test
     fun alwaysAskStartsOff() = runTest {
@@ -1008,5 +1047,185 @@ class SettingsViewModelTest {
         // Setting a PIN leaves the flag alone.
         app.setPin("u1", "1234")
         assertTrue(viewModel.uiState.first { SettingKey.ChangePin in it.kidsKeys() }.kidsProfile)
+    }
+
+    private fun SettingsUiState.rootKeys() = pages.getValue(SettingsPageId.Root).visibleOnly().sections.flatMap { it.items }.map { it.key }
+
+    @Test
+    fun `a signed-in profile has its pages from the moment the ViewModel exists`() = runTest {
+        app.signedIn()
+        val slow = slowDatabase()
+
+        val state = viewModel(profileSettings = ProfileSettings(slow.database.accountDao(), app.connection)).uiState.value
+
+        assertTrue(state.hasProfile)
+        assertTrue(SettingKey.Quality in state.rootKeys())
+        assertTrue(SettingKey.ProfileCard in state.items(SettingsPageId.Profile).map { it.key })
+    }
+
+    @Test
+    fun `Settings opens with default values while the profile's settings are still being read`() = runTest {
+        app.signedIn()
+        val slow = slowDatabase()
+        val viewModel = viewModel(profileSettings = ProfileSettings(slow.database.accountDao(), app.connection))
+
+        val open = withTimeout(1_000) { viewModel.uiState.first { !it.locked } }
+        assertTrue(open.hasProfile)
+        assertEquals(3, open.value(SettingKey.BingeThreshold))
+        assertEquals(10, open.value(SettingKey.SkipBack))
+        assertTrue(SettingKey.ShowHero in open.rootKeys())
+    }
+
+    @Test
+    fun `a device setting that is slow to load does not hold back the page`() = runTest {
+        app.signedIn()
+        val stuck = object : DevicePreferences by app.preferences {
+            override val alwaysAskWhoIsWatching: Flow<Boolean> = flow { awaitCancellation() }
+        }
+
+        val open = withTimeout(1_000) { viewModel(preferences = stuck).uiState.first { !it.locked } }
+        assertTrue(open.hasProfile)
+        assertFalse(open.checked(SettingKey.AlwaysAsk))
+    }
+
+    @Test
+    fun `rows a kids profile must not see stay hidden until the kids flag is read`() = runTest {
+        app.signedIn()
+        val slow = slowDatabase()
+        val viewModel = viewModel(profileSettings = ProfileSettings(slow.database.accountDao(), app.connection))
+
+        val reading = withTimeout(1_000) { viewModel.uiState.first { !it.locked } }
+        assertFalse(SettingKey.SignOut in reading.items(SettingsPageId.Profile).map { it.key })
+        assertFalse(SettingKey.Notifications in reading.rootKeys())
+        assertFalse(SettingKey.ShowStats in reading.rootKeys())
+
+        slow.release()
+        val read = viewModel.uiState.first { SettingKey.SignOut in it.items(SettingsPageId.Profile).map { i -> i.key } }
+        assertTrue(SettingKey.Notifications in read.rootKeys())
+    }
+
+    @Test
+    fun `Settings stays locked while a newly signed-in profile's PIN gate is read`() = runTest {
+        val slow = slowDatabase()
+        val viewModel = viewModel(pins = PinLock(slow.database.accountDao(), app.connection, app.clock))
+        assertFalse(viewModel.uiState.first { !it.locked }.hasProfile)
+
+        app.signedIn()
+        assertTrue(viewModel.uiState.first { it.hasProfile }.locked)
+
+        slow.release()
+        assertNull(viewModel.uiState.first { !it.locked }.pinPrompt)
+    }
+
+    @Test
+    fun `the app version shows with nobody signed in`() = runTest {
+        assertTrue(SettingKey.About in viewModel(appVersion = "1.0").uiState.first { !it.locked }.rootKeys())
+    }
+
+    /** Runs [block] against a [SlowDatabase], letting its reads through until the block is done. */
+    private suspend fun SlowDatabase.now(block: suspend () -> Unit) {
+        // Outside the test's scheduler: a read on the slow database's own scheduler from inside it is refused.
+        val job = CoroutineScope(Dispatchers.Unconfined).launch { block() }
+        while (job.isActive) {
+            release()
+            yield()
+        }
+    }
+
+    /** Saves [userId] in the slow database too, with a PIN when [pin] is given (every gate on, the default). */
+    private suspend fun SlowDatabase.saveProfile(userId: String, name: String, pin: String? = null) = now {
+        ServerRepository(database.serverDao(), database.accountDao(), app.vault, app.clock).save("srv-1", "Home", "10.10.7", "http://nas:8096")
+        AccountRepository(database.accountDao(), app.vault, app.clock).saveSession("srv-1", userId, name, null, "token-$userId")
+        if (pin != null) database.accountDao().setPin("srv-1", userId, hashPin(ByteArray(16) { it.toByte() }, pin), ByteArray(16) { it.toByte() })
+    }
+
+    /** Lets the slow database's reads through a few rounds, for work that reads more than once. */
+    private suspend fun SlowDatabase.settle() = repeat(5) {
+        release()
+        yield()
+    }
+
+    private fun TestScope.emissions(viewModel: SettingsViewModel): MutableList<SettingsUiState> {
+        val seen = mutableListOf<SettingsUiState>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect { seen += it } }
+        return seen
+    }
+
+    private fun SettingsUiState.showsContent() = hasProfile && !locked
+
+    @Test
+    fun `no emission shows a gated profile's settings before its PIN is entered`() = runTest {
+        app.signedIn()
+        val slow = slowDatabase()
+        slow.saveProfile("u1", "Alex", pin = "1234")
+        val viewModel = viewModel(
+            profileSettings = ProfileSettings(slow.database.accountDao(), app.connection),
+            pins = PinLock(slow.database.accountDao(), app.connection, app.clock),
+        )
+        val seen = emissions(viewModel)
+        assertTrue(viewModel.uiState.value.locked)
+
+        slow.settle()
+        val asked = viewModel.uiState.first { it.pinPrompt != null }
+        assertEquals(PinReason.OpenSettings, asked.pinPrompt!!.reason)
+        assertTrue(asked.locked)
+        val beforePin = seen.size
+
+        viewModel.onSubmitPin("1234")
+        slow.settle()
+        viewModel.uiState.first { it.showsContent() }
+        assertTrue(seen.take(beforePin).none { it.showsContent() })
+    }
+
+    @Test
+    fun `a gated profile signed in after another one stays locked until its own PIN`() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Users/Me") { Reply.json("""{"Id":"u2","Name":"Sam"}""") }
+        app.accounts.saveSession("srv-1", "u2", "Sam", null, "token-2")
+        val slow = slowDatabase()
+        slow.saveProfile("u1", "Alex")
+        slow.saveProfile("u2", "Sam", pin = "1234")
+        val viewModel = viewModel(
+            profileSettings = ProfileSettings(slow.database.accountDao(), app.connection),
+            pins = PinLock(slow.database.accountDao(), app.connection, app.clock),
+        )
+        val seen = emissions(viewModel)
+        slow.settle()
+        assertEquals("Alex", viewModel.uiState.first { it.showsContent() }.items(SettingsPageId.Profile).first().title)
+
+        app.connection.switchProfile()
+        app.connection.activate("srv-1", "u2")
+        val samFrom = seen.size
+        slow.settle()
+        assertEquals(PinReason.OpenSettings, viewModel.uiState.first { it.pinPrompt != null }.pinPrompt!!.reason)
+        val beforePin = seen.size
+
+        viewModel.onSubmitPin("1234")
+        slow.settle()
+        viewModel.uiState.first { it.showsContent() }
+        assertTrue(seen.subList(samFrom, beforePin).none { it.showsContent() })
+    }
+
+    @Test
+    fun `a direct change of profile shows none of the previous profile's values`() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Users/Me") { Reply.json("""{"Id":"u2","Name":"Sam"}""") }
+        app.accounts.saveSession("srv-1", "u2", "Sam", null, "token-2")
+        val slow = slowDatabase()
+        slow.saveProfile("u1", "Alex")
+        slow.saveProfile("u2", "Sam")
+        slow.now { slow.database.accountDao().setBingeThreshold("srv-1", "u1", 5) }
+        val viewModel = viewModel(profileSettings = ProfileSettings(slow.database.accountDao(), app.connection))
+        val seen = emissions(viewModel)
+        slow.settle()
+        val alex = viewModel.uiState.first { it.showsContent() && it.value(SettingKey.BingeThreshold) == 5 }
+        assertTrue(SettingKey.SignOut in alex.items(SettingsPageId.Profile).map { it.key })
+
+        val samFrom = seen.size
+        app.connection.activate("srv-1", "u2")
+        val sam = seen.drop(samFrom).filter { it.items(SettingsPageId.Profile).firstOrNull()?.title == "Sam" }
+        assertTrue(sam.isNotEmpty())
+        assertTrue(sam.none { it.value(SettingKey.BingeThreshold) == 5 })
+        assertTrue(sam.none { SettingKey.SignOut in it.items(SettingsPageId.Profile).map { i -> i.key } })
     }
 }

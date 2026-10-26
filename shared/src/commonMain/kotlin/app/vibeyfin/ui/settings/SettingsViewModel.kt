@@ -18,13 +18,19 @@ import app.vibeyfin.ui.common.PinPrompt
 import app.vibeyfin.ui.common.PinReason
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import app.vibeyfin.domain.model.Account
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -42,8 +48,8 @@ data class SettingsUiState(
     /** The PIN sheet, while one is open. */
     val pinPrompt: PinPrompt? = null,
     /**
-     * Settings waits for the profile's PIN, or has not yet found out whether it needs one: draw no pages while true.
-     * It starts true so a gated profile never sees its settings flash by.
+     * Settings waits for the profile's PIN, or has not yet found out whether it needs one: draw no pages while true, only a
+     * progress indicator (and the PIN sheet once it is asked). It starts true so a gated profile never sees its settings flash by.
      */
     val locked: Boolean = true,
     /** The PIN to open Settings was dismissed: the native screen goes back. */
@@ -73,7 +79,11 @@ class SettingsViewModel(
 ) : ViewModel() {
     private val confirmSignOut = MutableStateFlow(false)
     private val pin = PinGate(pins, auth, viewModelScope)
-    private val locked = MutableStateFlow(true)
+    /**
+     * The profile whose PIN to open Settings is known not to be needed or has been entered. Only the gate collector below and a passed
+     * PIN set it; the state is locked for every other profile, so the lock comes from the data and not from which collector ran first.
+     */
+    private val unlockedFor = MutableStateFlow<ProfileKey?>(null)
     private val leave = MutableStateFlow(false)
     private val requestNotificationPermission = MutableStateFlow(false)
     private val notificationsBlocked = MutableStateFlow(false)
@@ -91,14 +101,16 @@ class SettingsViewModel(
                     // Limits read for the previous profile must not show for this one.
                     policyLoad?.cancel()
                     policyState.value = PolicyState.Loading
-                    val gates = account?.let { pins.gates(it.serverId, it.userId) } ?: PinGates()
-                    if (account != null && gates.openSettings) {
-                        locked.value = true
+                    // A profile met again (after Disconnected) is decided again.
+                    unlockedFor.value = null
+                    if (account == null) return@collect
+                    val key = account.key()
+                    if (pins.gates(account.serverId, account.userId).openSettings) {
                         pin.ask(PinReason.OpenSettings, account.serverId, account.userId, account.name, onDismiss = { leave.value = true }) {
-                            locked.value = false
+                            unlockedFor.value = key
                         }
                     } else {
-                        locked.value = false
+                        unlockedFor.value = key
                     }
                 }
         }
@@ -108,84 +120,112 @@ class SettingsViewModel(
         }
     }
 
-    val uiState: StateFlow<SettingsUiState> = combine<Any?, SettingsUiState>(
-        listOf(
-            preferences.alwaysAskWhoIsWatching,
-            profileSettings.showPlaybackStats,
-            profileSettings.bingeThreshold,
-            profileSettings.homeGenreRows,
-            profileSettings.showHomeHero,
-            profileSettings.skipBackSeconds,
-            profileSettings.skipForwardSeconds,
-            profileSettings.autoSkipSegments,
-            profileSettings.bufferAheadSeconds,
-            profileSettings.maxStreamingBitrate,
-            profileSettings.captionsFollowSystem,
-            profileSettings.subtitleSize,
-            profileSettings.subtitleTextColor,
-            profileSettings.subtitleBackground,
-            connection.state,
-            servers.servers,
-            confirmSignOut,
-            profileSettings.kidsProfile,
-            pin.prompt,
-            locked,
-            leave,
-            policyState,
-            profileSettings.pinGates,
-            profileSettings.notificationsEnabled,
-            profileSettings.notificationScope,
-            requestNotificationPermission,
-            notificationsBlocked,
-        ),
-    ) { v ->
+    /**
+     * Each source with the value it starts from. A Room or DataStore read starts from null ("not read yet"), so the page is drawn from
+     * the defaults at once and no source that is slow on a cold start, or right after a sign-in, holds the others back.
+     */
+    private val sources: List<Pair<Flow<Any?>, Any?>> = listOf(
+        unread(preferences.alwaysAskWhoIsWatching),
+        perProfile(profileSettings.showPlaybackStats),
+        perProfile(profileSettings.bingeThreshold),
+        perProfile(profileSettings.homeGenreRows),
+        perProfile(profileSettings.showHomeHero),
+        perProfile(profileSettings.skipBackSeconds),
+        perProfile(profileSettings.skipForwardSeconds),
+        perProfile(profileSettings.autoSkipSegments),
+        perProfile(profileSettings.bufferAheadSeconds),
+        perProfile(profileSettings.maxStreamingBitrate),
+        perProfile(profileSettings.captionsFollowSystem),
+        perProfile(profileSettings.subtitleSize),
+        perProfile(profileSettings.subtitleTextColor),
+        perProfile(profileSettings.subtitleBackground),
+        live(connection.state),
+        servers.servers.onStart { emit(emptyList()) } to emptyList<Server>(),
+        live(confirmSignOut),
+        perProfile(profileSettings.kidsProfile),
+        live(pin.prompt),
+        live(unlockedFor),
+        live(leave),
+        live(policyState),
+        perProfile(profileSettings.pinGates),
+        perProfile(profileSettings.notificationsEnabled),
+        perProfile(profileSettings.notificationScope),
+        live(requestNotificationPermission),
+        live(notificationsBlocked),
+    )
+
+    /** Eager, so the reads start with the ViewModel and not when the screen first draws. */
+    val uiState: StateFlow<SettingsUiState> = combine(sources.map { it.first }) { state(it.asList()) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, state(sources.map { it.second }))
+
+    /**
+     * A profile setting tagged with the profile it was read for, starting from "not read yet" (null) each time the profile changes, so
+     * one profile's values never show under another, whatever order the sources arrive in.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun <T> perProfile(flow: Flow<T?>): Pair<Flow<Any?>, Any?> = connection.state
+        .map { (it as? ConnectionState.Connected)?.account?.key() }
+        .distinctUntilChanged()
+        .flatMapLatest { key -> flow.map { ProfileRead(key, it) }.onStart { emit(ProfileRead(key, null)) } } to ProfileRead(null, null)
+
+    private fun state(v: List<Any?>): SettingsUiState {
         val defaults = SettingsValues()
-        val showStats = v[1] as Boolean?
-        val threshold = v[2] as Int?
-        val connected = v[14] as? ConnectionState.Connected
+        val connected = v[CONNECTION] as? ConnectionState.Connected
+        val profile = connected?.account?.key()
+
+        /** The read at [index] when it is for the profile shown now; null (the default) when not read yet or for another profile. */
+        fun <T> read(index: Int): T? {
+            val read = v[index] as ProfileRead
+            @Suppress("UNCHECKED_CAST")
+            return if (profile != null && read.profile == profile) read.value as T? else null
+        }
+
         // The saved server, not the one the connection started with: addresses can be added later.
-        val server = (v[15] as List<*>).filterIsInstance<Server>().firstOrNull { it.id == connected?.server?.id } ?: connected?.server
+        val server = (v[SERVERS] as List<*>).filterIsInstance<Server>().firstOrNull { it.id == connected?.server?.id } ?: connected?.server
+        val kids = read<Boolean>(KIDS)
         val values = SettingsValues(
-            alwaysAskWhoIsWatching = v[0] as Boolean,
+            alwaysAskWhoIsWatching = v[ALWAYS_ASK] as Boolean? ?: defaults.alwaysAskWhoIsWatching,
             appVersion = appVersion,
             subtitleStyleApplies = subtitleStyleApplies,
-            hasProfile = showStats != null || threshold != null,
-            kidsProfile = v[17] as Boolean? ?: false,
-            pinGates = v[22] as PinGates? ?: PinGates(),
-            policy = v[21] as PolicyState,
-            notificationsEnabled = v[23] as Boolean? ?: defaults.notificationsEnabled,
-            notificationScope = v[24] as Int? ?: defaults.notificationScope,
-            notificationsBlocked = v[26] as Boolean,
-            showPlaybackStats = showStats ?: defaults.showPlaybackStats,
-            bingeThreshold = threshold ?: defaults.bingeThreshold,
-            homeGenreRows = v[3] as Int? ?: defaults.homeGenreRows,
-            showHomeHero = v[4] as Boolean? ?: defaults.showHomeHero,
-            skipBackSeconds = v[5] as Int? ?: defaults.skipBackSeconds,
-            skipForwardSeconds = v[6] as Int? ?: defaults.skipForwardSeconds,
-            autoSkipSegments = v[7] as Boolean? ?: defaults.autoSkipSegments,
-            bufferAheadSeconds = v[8] as Int? ?: defaults.bufferAheadSeconds,
-            maxStreamingBitrate = v[9] as Int? ?: defaults.maxStreamingBitrate,
-            captionsFollowSystem = v[10] as Boolean? ?: defaults.captionsFollowSystem,
-            subtitleSize = v[11] as Int? ?: defaults.subtitleSize,
-            subtitleTextColor = v[12] as Int? ?: defaults.subtitleTextColor,
-            subtitleBackground = v[13] as Int? ?: defaults.subtitleBackground,
+            hasProfile = connected != null,
+            // Until the flag is read a signed-in profile counts as a kids one, so rows a kids profile must not see never flash by.
+            kidsProfile = kids ?: (connected != null),
+            pinGates = read(PIN_GATES) ?: PinGates(),
+            policy = v[POLICY] as PolicyState,
+            notificationsEnabled = read(NOTIFICATIONS) ?: defaults.notificationsEnabled,
+            notificationScope = read(NOTIFICATION_SCOPE) ?: defaults.notificationScope,
+            notificationsBlocked = v[NOTIFICATIONS_BLOCKED] as Boolean,
+            showPlaybackStats = read(SHOW_STATS) ?: defaults.showPlaybackStats,
+            bingeThreshold = read(BINGE) ?: defaults.bingeThreshold,
+            homeGenreRows = read(GENRE_ROWS) ?: defaults.homeGenreRows,
+            showHomeHero = read(HERO) ?: defaults.showHomeHero,
+            skipBackSeconds = read(SKIP_BACK) ?: defaults.skipBackSeconds,
+            skipForwardSeconds = read(SKIP_FORWARD) ?: defaults.skipForwardSeconds,
+            autoSkipSegments = read(AUTO_SKIP) ?: defaults.autoSkipSegments,
+            bufferAheadSeconds = read(BUFFER_AHEAD) ?: defaults.bufferAheadSeconds,
+            maxStreamingBitrate = read(QUALITY) ?: defaults.maxStreamingBitrate,
+            captionsFollowSystem = read(CAPTIONS_FOLLOW_SYSTEM) ?: defaults.captionsFollowSystem,
+            subtitleSize = read(SUBTITLE_SIZE) ?: defaults.subtitleSize,
+            subtitleTextColor = read(SUBTITLE_COLOR) ?: defaults.subtitleTextColor,
+            subtitleBackground = read(SUBTITLE_BACKGROUND) ?: defaults.subtitleBackground,
             profileName = connected?.account?.name.orEmpty(),
             serverName = server?.name.orEmpty(),
             serverAddresses = server?.addresses.orEmpty(),
         )
-        SettingsUiState(
+        return SettingsUiState(
             pages = settingsPages(values),
             hasProfile = values.hasProfile,
-            confirmSignOut = v[16] as Boolean,
+            confirmSignOut = v[CONFIRM_SIGN_OUT] as Boolean,
             serverId = connected?.server?.id.orEmpty(),
-            kidsProfile = values.kidsProfile,
-            pinPrompt = v[18] as PinPrompt?,
-            locked = v[19] as Boolean,
-            leave = v[20] as Boolean,
-            disconnected = v[14] is ConnectionState.Disconnected,
-            requestNotificationPermission = v[25] as Boolean,
+            kidsProfile = kids == true,
+            pinPrompt = v[PIN_PROMPT] as PinPrompt?,
+            // Locked for a signed-in profile until its gate is known to be off or its PIN was entered; never by default unlocked.
+            locked = profile != null && v[UNLOCKED_FOR] != profile,
+            leave = v[LEAVE] as Boolean,
+            disconnected = v[CONNECTION] is ConnectionState.Disconnected,
+            requestNotificationPermission = v[REQUEST_PERMISSION] as Boolean,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
+    }
 
     /** A [ToggleItem] was switched. Keys that are not toggles are ignored. */
     fun onToggle(key: SettingKey, value: Boolean) {
@@ -318,3 +358,44 @@ class SettingsViewModel(
         }
     }
 }
+
+private fun <T> unread(flow: Flow<T?>): Pair<Flow<Any?>, Any?> = flow.onStart { emit(null) } to null
+
+private fun <T> live(flow: StateFlow<T>): Pair<Flow<Any?>, Any?> = flow to flow.value
+
+/** A profile by server and user id. */
+private typealias ProfileKey = Pair<String, String>
+
+private fun Account.key(): ProfileKey = serverId to userId
+
+/** A profile setting and the profile it was read for; [value] null is "not read yet". */
+private data class ProfileRead(val profile: ProfileKey?, val value: Any?)
+
+// The positions of the sources in [SettingsViewModel.sources].
+private const val ALWAYS_ASK = 0
+private const val SHOW_STATS = 1
+private const val BINGE = 2
+private const val GENRE_ROWS = 3
+private const val HERO = 4
+private const val SKIP_BACK = 5
+private const val SKIP_FORWARD = 6
+private const val AUTO_SKIP = 7
+private const val BUFFER_AHEAD = 8
+private const val QUALITY = 9
+private const val CAPTIONS_FOLLOW_SYSTEM = 10
+private const val SUBTITLE_SIZE = 11
+private const val SUBTITLE_COLOR = 12
+private const val SUBTITLE_BACKGROUND = 13
+private const val CONNECTION = 14
+private const val SERVERS = 15
+private const val CONFIRM_SIGN_OUT = 16
+private const val KIDS = 17
+private const val PIN_PROMPT = 18
+private const val UNLOCKED_FOR = 19
+private const val LEAVE = 20
+private const val POLICY = 21
+private const val PIN_GATES = 22
+private const val NOTIFICATIONS = 23
+private const val NOTIFICATION_SCOPE = 24
+private const val REQUEST_PERMISSION = 25
+private const val NOTIFICATIONS_BLOCKED = 26
