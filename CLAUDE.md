@@ -38,6 +38,9 @@ Targets: `androidTarget`, `iosArm64`, `iosSimulatorArm64`.
   image-loading library.
 - Playback: Media3 ExoPlayer on Android (`exoplayer`, `exoplayer-hls`, `ui`, `session`), AVPlayer on iOS. The
   player is native and driven by the shared `PlaybackViewModel`; there is no shared player abstraction.
+- iOS download remux: a small LGPL FFmpeg (n9.0.2, no GPL parts, static) built from source by `scripts/ffmpeg/build-ios.sh` (an Xcode
+  build phase runs it once; output in the git-ignored `iosApp/Vendor/`). It only rewrites a downloaded MKV and similar as MP4 for AVPlayer.
+  After rebuilding it by hand, `touch iosApp/iosApp/Remux/FFRemux.c` so Xcode relinks.
 - Tests: `kotlin.test`, `kotlinx-coroutines-test`, Ktor `MockEngine`.
 
 **Versions:** always resolve the latest *stable* release of each dependency yourself before adding
