@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-24-accounts-and-polish-design.md`. Mockups: the `SettingsScreens` page of the design system artifact (https://claude.ai/artifact/HeWVw1EzAbYcvssURJ2rNc).
 
+> **Status:** ticked means committed on `feature/phase-6-accounts-polish`. Walk-throughs on an emulator or device and clean iOS smoke runs are tracked as owed in `docs/ROADMAP.md`, not by these boxes.
+
 ## Global Constraints
 
 - One branch, **one PR** (`feature/phase-6-accounts-polish` into `develop`); clean history: small commits that each build, `task|fix|feat|chore: <short message>`, one line, **no trailer**; fold fixups into their commit before the PR.
@@ -57,11 +59,11 @@ Task 1 first. Tasks 2, 3 and 4 run in parallel after it (in practice run in orde
 - Produces on `AccountSettingsEntity` (each `@ColumnInfo(defaultValue = ...)`): `maxStreamingBitrate: Int = 0` ("0", 0 is Maximum), `captionsFollowSystem: Boolean = true` ("1"), `subtitleSize: Int = 1` ("1"), `subtitleTextColor: Int = 0` ("0"), `subtitleBackground: Int = 1` ("1").
 - Produces on `ProfileSettings`: `val maxStreamingBitrate: Flow<Int?>`, `suspend fun setMaxStreamingBitrate(value: Int)`, `val captionsFollowSystem: Flow<Boolean?>`, `val subtitleSize`, `subtitleTextColor`, `subtitleBackground: Flow<Int?>` and their setters, constants `QUALITY_CHOICES = listOf(0, 40_000_000, 10_000_000, 4_000_000, 1_500_000)`, `SUBTITLE_SIZE_CHOICES = listOf(0, 1, 2, 3)` (S, M, L, XL), `SUBTITLE_COLOR_CHOICES = listOf(0, 1, 2)` (white, yellow, light blue), `SUBTITLE_BACKGROUND_CHOICES = listOf(0, 1, 2)` (none, shadow, box), `suspend fun resetSubtitleStyle()`.
 
-- [ ] **Step 1: Failing tests.** In `ProfileSettingsTest`: `` `quality is Maximum for a new profile and a value outside the choices is ignored` `` (`app.signedIn()`, expects 0; `setMaxStreamingBitrate(123)` leaves 0; `setMaxStreamingBitrate(10_000_000)` reads 10_000_000), `` `subtitle style defaults to the system style with medium white text over a shadow` ``, `` `resetting the subtitle style puts every option back` ``. In `MigrationTest`: add `version8MigratesToTheCurrentSchema() = assertMigratesFrom(8)`, make `theCurrentVersionOpensAsItIs()` use 9, and extend the `account_settings` count at line 78 with `maxStreamingBitrate = 0 AND captionsFollowSystem = 1 AND subtitleSize = 1 AND subtitleTextColor = 0 AND subtitleBackground = 1`.
-- [ ] **Step 2: Run** `./gradlew :shared:allTests` and the host migration test. Expected: FAIL (columns missing).
-- [ ] **Step 3: Implement** the columns, `AutoMigration(from = 8, to = 9)`, `version = 9`, DAO observe/set pairs (`observeMaxStreamingBitrate`, `setMaxStreamingBitrate`, same for the other four) and the `ProfileSettings` flows and validated setters, copying the `bufferAheadSeconds` pattern at `ProfileSettings.kt:60-69`.
-- [ ] **Step 4: Run** the same commands. Expected: PASS, `9.json` generated.
-- [ ] **Step 5: Commit** `feat: add quality and subtitle style profile settings`.
+- [x] **Step 1: Failing tests.** In `ProfileSettingsTest`: `` `quality is Maximum for a new profile and a value outside the choices is ignored` `` (`app.signedIn()`, expects 0; `setMaxStreamingBitrate(123)` leaves 0; `setMaxStreamingBitrate(10_000_000)` reads 10_000_000), `` `subtitle style defaults to the system style with medium white text over a shadow` ``, `` `resetting the subtitle style puts every option back` ``. In `MigrationTest`: add `version8MigratesToTheCurrentSchema() = assertMigratesFrom(8)`, make `theCurrentVersionOpensAsItIs()` use 9, and extend the `account_settings` count at line 78 with `maxStreamingBitrate = 0 AND captionsFollowSystem = 1 AND subtitleSize = 1 AND subtitleTextColor = 0 AND subtitleBackground = 1`.
+- [x] **Step 2: Run** `./gradlew :shared:allTests` and the host migration test. Expected: FAIL (columns missing).
+- [x] **Step 3: Implement** the columns, `AutoMigration(from = 8, to = 9)`, `version = 9`, DAO observe/set pairs (`observeMaxStreamingBitrate`, `setMaxStreamingBitrate`, same for the other four) and the `ProfileSettings` flows and validated setters, copying the `bufferAheadSeconds` pattern at `ProfileSettings.kt:60-69`.
+- [x] **Step 4: Run** the same commands. Expected: PASS, `9.json` generated.
+- [x] **Step 5: Commit** `feat: add quality and subtitle style profile settings`.
 
 ### Task 2: Quality drives the stream request
 
@@ -73,11 +75,11 @@ Task 1 first. Tasks 2, 3 and 4 run in parallel after it (in practice run in orde
 - Consumes: `ProfileSettings.maxStreamingBitrate` (Task 1).
 - Produces: `internal fun PlaybackCapabilities.toDeviceProfile(maxBitrate: Int): DeviceProfileDto`; `PlaybackRepository(connection, capabilities, clientInfo, profileSettings: ProfileSettings)`; `fun effectiveBitrate(setting: Int): Int` (0 maps to `MAX_STREAMING_BITRATE`).
 
-- [ ] **Step 1: Failing test** `` `the playback request carries the profile's quality cap, and 60 Mbps for Maximum` `` (set 10_000_000, `negotiate`, assert both `maxStreamingBitrate` in the request body and the device profile's `maxStreamingBitrate`/`maxStaticBitrate`; with 0 assert 60_000_000).
-- [ ] **Step 2: Run** `./gradlew :shared:allTests --tests '*PlaybackRepositoryTest*'`. Expected: FAIL.
-- [ ] **Step 3: Implement** the signature changes; `negotiate` reads `profileSettings.maxStreamingBitrate.first()` once per call. Update both construction sites and keep `MAX_STREAMING_BITRATE` as the Maximum value (update its KDoc).
-- [ ] **Step 4: Run** `:shared:allTests`. Expected: PASS.
-- [ ] **Step 5: Commit** `feat: stream quality follows the profile setting`.
+- [x] **Step 1: Failing test** `` `the playback request carries the profile's quality cap, and 60 Mbps for Maximum` `` (set 10_000_000, `negotiate`, assert both `maxStreamingBitrate` in the request body and the device profile's `maxStreamingBitrate`/`maxStaticBitrate`; with 0 assert 60_000_000).
+- [x] **Step 2: Run** `./gradlew :shared:allTests --tests '*PlaybackRepositoryTest*'`. Expected: FAIL.
+- [x] **Step 3: Implement** the signature changes; `negotiate` reads `profileSettings.maxStreamingBitrate.first()` once per call. Update both construction sites and keep `MAX_STREAMING_BITRATE` as the Maximum value (update its KDoc).
+- [x] **Step 4: Run** `:shared:allTests`. Expected: PASS.
+- [x] **Step 5: Commit** `feat: stream quality follows the profile setting`.
 
 ### Task 3: Settings tree model and strings
 
@@ -95,11 +97,11 @@ Task 1 first. Tasks 2, 3 and 4 run in parallel after it (in practice run in orde
   - `sealed interface SettingItem { val key: SettingKey; val title: String; val help: String? }` with `ToggleItem(checked)`, `ChoiceItem(value: Int, options: List<SettingOption>)`, `LinkItem(target: SettingsPageId, value: String?)`, `ActionItem(destructive: Boolean)`, `InfoItem(value: String)`, `CustomItem` (`SubtitlePreview`, `PinDots`, `ProfileHeader`); `data class SettingOption(val value: Int, val label: String)`.
   - All carry `visible: Boolean` resolved by the builder (Swift cannot call predicates).
 
-- [ ] **Step 1: Failing test** `` `a page keeps only the items that are visible` `` and `` `strings for the settings pages exist and use sentence case` `` (asserts `Strings.autoSkipSegments == "Auto skip intros and recaps"`).
-- [ ] **Step 2: Run** `:shared:allTests`. Expected: FAIL.
-- [ ] **Step 3: Implement** the types as plain data classes and the string additions.
-- [ ] **Step 4: Run** `:shared:allTests` and `scripts/check-title-case.sh`. Expected: PASS.
-- [ ] **Step 5: Commit** `task: add the settings tree model and texts`.
+- [x] **Step 1: Failing test** `` `a page keeps only the items that are visible` `` and `` `strings for the settings pages exist and use sentence case` `` (asserts `Strings.autoSkipSegments == "Auto skip intros and recaps"`).
+- [x] **Step 2: Run** `:shared:allTests`. Expected: FAIL.
+- [x] **Step 3: Implement** the types as plain data classes and the string additions.
+- [x] **Step 4: Run** `:shared:allTests` and `scripts/check-title-case.sh`. Expected: PASS.
+- [x] **Step 5: Commit** `task: add the settings tree model and texts`.
 
 ### Task 4: Subtitle style on Android
 
@@ -111,11 +113,11 @@ Task 1 first. Tasks 2, 3 and 4 run in parallel after it (in practice run in orde
 **Interfaces:**
 - Produces: `fun subtitleStyle(followSystem: Boolean, size: Int, color: Int, background: Int): SubtitleViewStyle` returning size fraction, foreground, background and edge values; `fun androidx.media3.ui.SubtitleView.apply(style: SubtitleViewStyle)`.
 
-- [ ] **Step 1: Failing tests** `` `following the system returns the user style from the OS caption settings` `` (pure mapping) and `` `size, colour and background map to distinct values` ``.
-- [ ] **Step 2: Run** `./gradlew :androidApp:testDebugUnitTest`. Expected: FAIL.
-- [ ] **Step 3: Implement** the mapping with `CaptionStyleCompat`; apply in the `PlayerView` setup block (`it.subtitleView?.apply(style)`), re-applied when settings change. `PlaybackUiState` carries the four values (add fields, set from `ProfileSettings` in `PlaybackViewModel`).
-- [ ] **Step 4: Run** the unit test and `:androidApp:assembleDebug`. Expected: PASS.
-- [ ] **Step 5: Commit** `feat: apply subtitle style in the Android player`.
+- [x] **Step 1: Failing tests** `` `following the system returns the user style from the OS caption settings` `` (pure mapping) and `` `size, colour and background map to distinct values` ``.
+- [x] **Step 2: Run** `./gradlew :androidApp:testDebugUnitTest`. Expected: FAIL.
+- [x] **Step 3: Implement** the mapping with `CaptionStyleCompat`; apply in the `PlayerView` setup block (`it.subtitleView?.apply(style)`), re-applied when settings change. `PlaybackUiState` carries the four values (add fields, set from `ProfileSettings` in `PlaybackViewModel`).
+- [x] **Step 4: Run** the unit test and `:androidApp:assembleDebug`. Expected: PASS.
+- [x] **Step 5: Commit** `feat: apply subtitle style in the Android player`.
 
 ### Task 5: SettingsViewModel builds the pages
 
@@ -128,11 +130,11 @@ Task 1 first. Tasks 2, 3 and 4 run in parallel after it (in practice run in orde
 - Consumes: Task 1 settings, Task 3 types, `DevicePreferences`.
 - Produces: `data class SettingsUiState(val pages: Map<SettingsPageId, SettingsPage>, val hasProfile: Boolean)`; handlers `fun onToggle(key: SettingKey, value: Boolean)`, `fun onChoose(key: SettingKey, value: Int)`, `fun onAction(key: SettingKey)`. The iOS `SettingsModel` mirrors them (`onToggle(key:value:)`, ...).
 
-- [ ] **Step 1: Failing tests** (keep the existing ones passing through the new handlers): `` `the root has the groups Playback, Home, Notifications, Kids and PIN, This device and Advanced in that order` ``, `` `the stats overlay lives in Advanced` ``, `` `skip, auto skip, still watching and buffering sit on the Skipping page` ``, `` `choosing a quality saves it and the Quality page checks it` ``, `` `device settings show without a profile and profile settings do not` ``.
-- [ ] **Step 2: Run** `:shared:allTests`. Expected: FAIL.
-- [ ] **Step 3: Implement** `SettingsPages.kt` as pure functions from state to pages, and the ViewModel's `combine` over the existing flows plus the new ones; each handler maps `SettingKey` to the existing `ProfileSettings` setter.
-- [ ] **Step 4: Run** `:shared:allTests`. Expected: PASS.
-- [ ] **Step 5: Commit** `task: build Settings as a page tree in the ViewModel`.
+- [x] **Step 1: Failing tests** (keep the existing ones passing through the new handlers): `` `the root has the groups Playback, Home, Notifications, Kids and PIN, This device and Advanced in that order` ``, `` `the stats overlay lives in Advanced` ``, `` `skip, auto skip, still watching and buffering sit on the Skipping page` ``, `` `choosing a quality saves it and the Quality page checks it` ``, `` `device settings show without a profile and profile settings do not` ``.
+- [x] **Step 2: Run** `:shared:allTests`. Expected: FAIL.
+- [x] **Step 3: Implement** `SettingsPages.kt` as pure functions from state to pages, and the ViewModel's `combine` over the existing flows plus the new ones; each handler maps `SettingKey` to the existing `ProfileSettings` setter.
+- [x] **Step 4: Run** `:shared:allTests`. Expected: PASS.
+- [x] **Step 5: Commit** `task: build Settings as a page tree in the ViewModel`.
 
 ### Task 6: Profile page logic
 
@@ -143,11 +145,11 @@ Task 1 first. Tasks 2, 3 and 4 run in parallel after it (in practice run in orde
 **Interfaces:**
 - Produces: the `SettingsPageId.Profile` page (header, Switch profile action, server info rows, Sign out action with `destructive = true`), `SettingsViewModel.uiState.confirmSignOut: Boolean`, `fun onConfirmSignOut()` and `fun onDismissSignOut()`; Sign out calls `ConnectionManager.signOut()`; Switch profile calls `ConnectionManager.switchProfile()`. The viewmodel takes `ConnectionManager` and `ServerRepository` for the server rows.
 
-- [ ] **Step 1: Failing tests** `` `signing out asks to confirm and then clears the session` ``, `` `the profile page shows the server name and addresses` ``, `` `cancelling the confirmation keeps the session` ``.
-- [ ] **Step 2: Run** `:shared:allTests`. Expected: FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `:shared:allTests`. Expected: PASS.
-- [ ] **Step 5: Commit** `feat: add the Settings profile page`.
+- [x] **Step 1: Failing tests** `` `signing out asks to confirm and then clears the session` ``, `` `the profile page shows the server name and addresses` ``, `` `cancelling the confirmation keeps the session` ``.
+- [x] **Step 2: Run** `:shared:allTests`. Expected: FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `:shared:allTests`. Expected: PASS.
+- [x] **Step 5: Commit** `feat: add the Settings profile page`.
 
 ### Task 7: Android renderer and navigation
 
@@ -159,11 +161,11 @@ Task 1 first. Tasks 2, 3 and 4 run in parallel after it (in practice run in orde
 - Consumes: Task 5 state and handlers.
 - Produces: `@Serializable data class SettingsPageRoute(val id: String)`; `@Composable fun SettingsPageScreen(page: SettingsPage, onToggle, onChoose, onAction, onOpen: (SettingsPageId) -> Unit, onBack)`; row composables `ToggleRow`, `ChoiceRow` (always a dropdown menu; a choice marked `asPage`, Quality, draws inline checklist rows in its section, Rulings 6 and 7), `LinkRow`, `ActionRow`, `InfoRow`, `SectionHeader` following the `SettingsScreens` mockup (`android.md`).
 
-- [ ] **Step 1: Failing test** in `androidApp/src/androidTest` (or Compose JVM test if present): `` `the root page renders its groups and a link opens the sub page` ``.
-- [ ] **Step 2: Run** the test. Expected: FAIL.
-- [ ] **Step 3: Implement** the renderer; one `composable<SettingsPageRoute>` for every page; spacing from `VibeyFinTokens.Space`; remove the hand-laid spacers.
-- [ ] **Step 4: Run** `:androidApp:assembleDebug`, install on the emulator, open every page, check TalkBack labels and 200% font. Expected: builds; pages match the mockup.
-- [ ] **Step 5: Commit** `feat: draw Settings from the page tree on Android`.
+- [x] **Step 1: Failing test** in `androidApp/src/androidTest` (or Compose JVM test if present): `` `the root page renders its groups and a link opens the sub page` ``.
+- [x] **Step 2: Run** the test. Expected: FAIL.
+- [x] **Step 3: Implement** the renderer; one `composable<SettingsPageRoute>` for every page; spacing from `VibeyFinTokens.Space`; remove the hand-laid spacers.
+- [x] **Step 4: Run** `:androidApp:assembleDebug`, install on the emulator, open every page, check TalkBack labels and 200% font. Expected: builds; pages match the mockup.
+- [x] **Step 5: Commit** `feat: draw Settings from the page tree on Android`.
 
 ### Task 8: iOS renderer and navigation
 
@@ -175,11 +177,11 @@ Task 1 first. Tasks 2, 3 and 4 run in parallel after it (in practice run in orde
 - Consumes: Task 5 `SettingsModel`.
 - Produces: `struct SettingsPageView: View { let page: SettingsPage; ... }` with `List` + `Section`, `Toggle`, `Picker(.menu)` for every choice (a choice marked `asPage`, Quality, draws inline checklist rows in its section; Rulings 6 and 7), `NavigationLink` for links, a `.destructive` button for Sign out with `confirmationDialog`; `TabRoute.settingsPage(SettingsPageId)`.
 
-- [ ] **Step 1: Extend the UITest** `iosApp/UITests/OnboardingFlowUITests.swift` (`testOnboardingFlow`, settings steps at lines 125-145): `step("Settings pages")` opens Quality, picks 1080p, goes back, opens Skipping and changes Buffer ahead (label lookups are case-insensitive).
-- [ ] **Step 2: Run** `scripts/ios-smoke.sh`. Expected: FAIL at the new step.
-- [ ] **Step 3: Implement** the renderer; no string literals (`Strings.shared`, `titleCased()`).
-- [ ] **Step 4: Run** `scripts/ios-smoke.sh` (`IOS_SIMULATOR="iPhone 18 Pro"`). Expected: PASS; say if it could not run.
-- [ ] **Step 5: Commit** `feat: draw Settings from the page tree on iOS`.
+- [x] **Step 1: Extend the UITest** `iosApp/UITests/OnboardingFlowUITests.swift` (`testOnboardingFlow`, settings steps at lines 125-145): `step("Settings pages")` opens Quality, picks 1080p, goes back, opens Skipping and changes Buffer ahead (label lookups are case-insensitive).
+- [x] **Step 2: Run** `scripts/ios-smoke.sh`. Expected: FAIL at the new step.
+- [x] **Step 3: Implement** the renderer; no string literals (`Strings.shared`, `titleCased()`).
+- [x] **Step 4: Run** `scripts/ios-smoke.sh` (`IOS_SIMULATOR="iPhone 18 Pro"`). Expected: PASS; say if it could not run.
+- [x] **Step 5: Commit** `feat: draw Settings from the page tree on iOS`.
 
 ### Task 8a: Android tablet two-pane Settings
 
@@ -194,11 +196,11 @@ Task 1 first. Tasks 2, 3 and 4 run in parallel after it (in practice run in orde
 
 Design (design system `SettingsTablet`): two panes, the grouped root on the left, the chosen page on the right, same rows and renderers as the phone; the selected root row is an `accent-soft` pill; the detail column is capped at about 640dp and centred, never stretched; opening Settings selects the first page with something to set; below the 600dp tablet width (Split View, folded) it is the phone's push navigation. Built with a plain two-column `Row` at the repo's existing 600dp tablet breakpoint, not `ListDetailPaneScaffold` (not in the stack; Ruling 8).
 
-- [ ] **Step 1: Failing tests:** `` `the first settable page is Quality for a normal profile` ``, `` `a profile with no Playback items selects the next page that has something` ``, `` `nothing selectable returns null` `` (shared); `` `the selected page falls back to the first settable one when the saved id is not drawn` `` (Android JVM).
-- [ ] **Step 2: Run** `./gradlew :shared:testAndroidHostTest :androidApp:testDebugUnitTest`. Expected: FAIL.
-- [ ] **Step 3: Implement** `firstSettablePage` and `SettingsTabletScreen` (reuse the row composables; tapping a Link row on the root selects its page instead of navigating; Sign out and Switch profile behave as on the phone).
-- [ ] **Step 4: Run** the same commands and `:androidApp:assembleDebug`; on a tablet-size emulator (or `adb shell wm size 1600x2560` and restore after) check Root, Quality, Subtitles, Profile and rotation. Expected: builds; pages match `SettingsTablet`.
-- [ ] **Step 5: Commit** `feat: two-pane Settings on Android tablets`.
+- [x] **Step 1: Failing tests:** `` `the first settable page is Quality for a normal profile` ``, `` `a profile with no Playback items selects the next page that has something` ``, `` `nothing selectable returns null` `` (shared); `` `the selected page falls back to the first settable one when the saved id is not drawn` `` (Android JVM).
+- [x] **Step 2: Run** `./gradlew :shared:testAndroidHostTest :androidApp:testDebugUnitTest`. Expected: FAIL.
+- [x] **Step 3: Implement** `firstSettablePage` and `SettingsTabletScreen` (reuse the row composables; tapping a Link row on the root selects its page instead of navigating; Sign out and Switch profile behave as on the phone).
+- [x] **Step 4: Run** the same commands and `:androidApp:assembleDebug`; on a tablet-size emulator (or `adb shell wm size 1600x2560` and restore after) check Root, Quality, Subtitles, Profile and rotation. Expected: builds; pages match `SettingsTablet`.
+- [x] **Step 5: Commit** `feat: two-pane Settings on Android tablets`.
 
 ### Task 8b: iPad two-pane Settings
 
@@ -211,11 +213,11 @@ Design (design system `SettingsTablet`): two panes, the grouped root on the left
 - Consumes: `firstSettablePage` from Task 8a through the `SettingsModel` facade (add `fun firstSettablePage(): SettingsPageId?` to `shared/src/iosMain/.../ios/SettingsModel.kt`).
 - Produces: `struct SettingsSplitView: View` using `NavigationSplitView` (root as an inset grouped sidebar `List` with the system selection tinted aqua; the selected page in the detail column with its own title, no back button; detail capped about 640pt and centred); used when `horizontalSizeClass == .regular`, otherwise the phone's `NavigationStack` flow; selection kept in `@SceneStorage`.
 
-- [ ] **Step 1: Extend the UITest** with an iPad-only step (skipped when the device is a phone): Settings opens with Quality selected; tapping Subtitles in the sidebar shows its page in the detail column.
-- [ ] **Step 2: Run** `scripts/ios-smoke.sh` (iPad simulator via `IOS_SIMULATOR`). Expected: FAIL at the new step.
-- [ ] **Step 3: Implement** `SettingsSplitView` and wire it into the `.settings` route; reuse `SettingsPageView` rows for the detail.
-- [ ] **Step 4: Run** `scripts/ios-smoke.sh` and `swiftc -typecheck` of the app. Expected: PASS where the simulator is reachable; say plainly if it is not.
-- [ ] **Step 5: Commit** `feat: two-pane Settings on iPad`.
+- [x] **Step 1: Extend the UITest** with an iPad-only step (skipped when the device is a phone): Settings opens with Quality selected; tapping Subtitles in the sidebar shows its page in the detail column.
+- [x] **Step 2: Run** `scripts/ios-smoke.sh` (iPad simulator via `IOS_SIMULATOR`). Expected: FAIL at the new step.
+- [x] **Step 3: Implement** `SettingsSplitView` and wire it into the `.settings` route; reuse `SettingsPageView` rows for the detail.
+- [x] **Step 4: Run** `scripts/ios-smoke.sh` and `swiftc -typecheck` of the app. Expected: PASS where the simulator is reachable; say plainly if it is not.
+- [x] **Step 5: Commit** `feat: two-pane Settings on iPad`.
 
 ### Task 9: iOS subtitle style spike, then docs for A
 
@@ -223,11 +225,11 @@ Design (design system `SettingsTablet`): two panes, the grouped root on the left
 - Modify (spike): `shared/src/iosMain/.../IosPlaybackCapabilities.kt`, `iosApp/iosApp/Player/PlayerController.swift:143,221`
 - Modify (docs): `docs/design/screens.md` (a Settings section), `ios.md`, `android.md`, `guardrails.md`, `player.md`, `docs/ROADMAP.md`
 
-- [ ] **Step 1: Spike** (write nothing permanent): can AVPlayer render a WebVTT sidecar/HLS text track and take an `AVTextStyleRule` (set on the item, `textStyleRules`)? Try with the `subs-text` fixture on the simulator; note the result in the commit body-free message and in `docs/design/ios.md`.
-- [ ] **Step 2: Decide.** If it works, advertise the text formats in `IosPlaybackCapabilities.subtitleFormats`, apply `AVTextStyleRule` from the four settings in `PlayerController`, and re-run the smoke test. If it does not, the iOS Subtitles page shows its preview and controls greyed with the line "Applies to text subtitles only; iOS burns subtitles in for now" (`Strings`), and nothing else changes.
-- [ ] **Step 3: Docs.** Update the design docs and tick the Phase 6 roadmap lines for Settings (quality and subtitle styling, profile page). Remove the superseded `PlaybackSettings` references.
-- [ ] **Step 4: Run** `:shared:allTests`, `:androidApp:assembleDebug`, `scripts/ios-smoke.sh`.
-- [ ] **Step 5: Commit** `feat: subtitle style on iOS where the player renders text` (or `task: note why iOS subtitle style is limited`), and a separate `task: document the Settings redesign`.
+- [x] **Step 1: Spike** (write nothing permanent): can AVPlayer render a WebVTT sidecar/HLS text track and take an `AVTextStyleRule` (set on the item, `textStyleRules`)? Try with the `subs-text` fixture on the simulator; note the result in the commit body-free message and in `docs/design/ios.md`.
+- [x] **Step 2: Decide.** If it works, advertise the text formats in `IosPlaybackCapabilities.subtitleFormats`, apply `AVTextStyleRule` from the four settings in `PlayerController`, and re-run the smoke test. If it does not, the iOS Subtitles page shows its preview and controls greyed with the line "Applies to text subtitles only; iOS burns subtitles in for now" (`Strings`), and nothing else changes.
+- [x] **Step 3: Docs.** Update the design docs and tick the Phase 6 roadmap lines for Settings (quality and subtitle styling, profile page). Remove the superseded `PlaybackSettings` references.
+- [x] **Step 4: Run** `:shared:allTests`, `:androidApp:assembleDebug`, `scripts/ios-smoke.sh`.
+- [x] **Step 5: Commit** `feat: subtitle style on iOS where the player renders text` (or `task: note why iOS subtitle style is limited`), and a separate `task: document the Settings redesign`.
 
 ---
 
@@ -245,11 +247,11 @@ Design (design system `SettingsTablet`): two panes, the grouped root on the left
 - `ProfileSettings`: `val kidsProfile: Flow<Boolean?>`, `suspend fun setKidsProfile(value: Boolean)`.
 - `class PinLock(private val dao: AccountDao, private val connection: ConnectionManager, private val clock: Clock)`: `suspend fun hasPin(serverId, userId): Boolean`, `suspend fun setPin(pin: String)`, `suspend fun removePin()`, `suspend fun verify(serverId: String, userId: String, pin: String): PinResult`, `sealed interface PinResult { Ok; Wrong(attemptsLeft: Int); Locked(secondsLeft: Int) }`. Hashing is a salted SHA-256 written in `commonMain` (no new dependency; if none is available, ask before adding one).
 
-- [ ] **Step 1: Failing tests:** `` `a correct PIN verifies and a wrong one does not` ``, `` `five wrong PINs lock for 30 seconds and a correct PIN during the lock still fails` `` (inject `Clock`), `` `the PIN is never stored in the clear` `` (column bytes differ from the PIN), `` `a profile without a PIN verifies as Ok` ``, the migration tests for 9 and 10.
-- [ ] **Step 2: Run** `:shared:allTests`. Expected: FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `:shared:allTests`. Expected: PASS.
-- [ ] **Step 5: Commit** `feat: add the profile PIN lock`.
+- [x] **Step 1: Failing tests:** `` `a correct PIN verifies and a wrong one does not` ``, `` `five wrong PINs lock for 30 seconds and a correct PIN during the lock still fails` `` (inject `Clock`), `` `the PIN is never stored in the clear` `` (column bytes differ from the PIN), `` `a profile without a PIN verifies as Ok` ``, the migration tests for 9 and 10.
+- [x] **Step 2: Run** `:shared:allTests`. Expected: FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `:shared:allTests`. Expected: PASS.
+- [x] **Step 5: Commit** `feat: add the profile PIN lock`.
 
 ### Task 11: Jellyfin policy
 
@@ -262,11 +264,11 @@ Design (design system `SettingsTablet`): two panes, the grouped root on the left
 - `UserDto` gains `@SerialName("Policy") val policy: UserPolicyDto? = null`; `UserPolicyDto(MaxParentalRating: Int?, BlockedTags: List<String>?, AccessSchedules: List<AccessScheduleDto>?)`.
 - `class ProfilePolicy(connection: ConnectionManager)` with `suspend fun load(): ApiResult<PolicySummary>`; `data class PolicySummary(val maxRating: String?, val blockedTags: List<String>, val allowedHours: String?)` (`null`/empty means no limit). Consult the OpenAPI spec for the rating label mapping before writing it.
 
-- [ ] **Step 1: Failing tests** with `server.on("GET", "/Users/Me", Reply.json(...))`: `` `a user with a rating cap and blocked tags is summarised` ``, `` `a user with no limits summarises as unlimited` ``, `` `a failed load is an error, not an empty policy` ``.
-- [ ] **Step 2: Run** `:shared:allTests`. Expected: FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `:shared:allTests`. Expected: PASS.
-- [ ] **Step 5: Commit** `feat: read the user's Jellyfin policy`.
+- [x] **Step 1: Failing tests** with `server.on("GET", "/Users/Me", Reply.json(...))`: `` `a user with a rating cap and blocked tags is summarised` ``, `` `a user with no limits summarises as unlimited` ``, `` `a failed load is an error, not an empty policy` ``.
+- [x] **Step 2: Run** `:shared:allTests`. Expected: FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `:shared:allTests`. Expected: PASS.
+- [x] **Step 5: Commit** `feat: read the user's Jellyfin policy`.
 
 ### Task 12: Gates and kids rules in shared
 
@@ -278,11 +280,11 @@ Design (design system `SettingsTablet`): two panes, the grouped root on the left
 - `Profile` gains `val pinRequiredToOpen: Boolean` (merged from account settings). `StartDestination.WhoIsWatching(serverId: String, pinFor: ProfileRef?)` (a PIN to ask first). A small `PinPrompt` state in the UI states: `data class PinPrompt(val reason: PinReason, val error: String?, val lockedSeconds: Int?)`, `enum class PinReason { OpenProfile, OpenSettings, SwitchProfile, ChangePin, KidsOff }`; handlers `onSubmitPin(pin)`, `onForgotPin()`, `onSubmitPassword(password)` (Forgot PIN: a normal sign-in check through `AuthRepository`, success removes the PIN and keeps the kids flag), `onDismissPin()`.
 - Rules: open Settings, switch profile and open-this-profile ask per their switches; kids-off, change PIN and remove PIN always ask when a PIN exists; the Kids page, Advanced, Sign out and Notifications items have `visible = !kids`; with the last profile's "switch profile" on, `StartupRouter` returns `WhoIsWatching(serverId, pinFor = lastProfile)` even when "Always ask" is on.
 
-- [ ] **Step 1: Failing tests:** `` `a profile without a PIN or kids flag sees no prompt anywhere` ``, `` `opening Settings asks for the PIN when the switch is on and opens after the right one` ``, `` `turning kids mode off asks for the PIN even when every switch is off` ``, `` `the picker at launch asks for the last profile's PIN with Always ask on` ``, `` `entering a profile with open-this-profile on asks for its PIN` ``, `` `Forgot PIN with the right password removes the PIN and keeps kids mode` ``, `` `kids profiles hide Advanced, Sign out and Notifications` ``.
-- [ ] **Step 2: Run** `:shared:allTests`. Expected: FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `:shared:allTests`. Expected: PASS.
-- [ ] **Step 5: Commit** `feat: gate Settings and profile switching with the PIN`.
+- [x] **Step 1: Failing tests:** `` `a profile without a PIN or kids flag sees no prompt anywhere` ``, `` `opening Settings asks for the PIN when the switch is on and opens after the right one` ``, `` `turning kids mode off asks for the PIN even when every switch is off` ``, `` `the picker at launch asks for the last profile's PIN with Always ask on` ``, `` `entering a profile with open-this-profile on asks for its PIN` ``, `` `Forgot PIN with the right password removes the PIN and keeps kids mode` ``, `` `kids profiles hide Advanced, Sign out and Notifications` ``.
+- [x] **Step 2: Run** `:shared:allTests`. Expected: FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `:shared:allTests`. Expected: PASS.
+- [x] **Step 5: Commit** `feat: gate Settings and profile switching with the PIN`.
 
 ### Task 13: Kids and PIN page logic, Strings
 
@@ -292,11 +294,11 @@ Design (design system `SettingsTablet`): two panes, the grouped root on the left
 
 **Interfaces:** the `KidsAndPin` page: Kids profile toggle, PIN dots/Set PIN/Change PIN/Remove PIN, the three gate switches (visible once a PIN exists), "Set by your Jellyfin server" Info rows from `ProfilePolicy.load()` with the five states and the "No limits are set on your Jellyfin server" line; PIN entry is a 4-digit sheet (`PinPrompt`) with a "Set a PIN" confirm-twice flow.
 
-- [ ] **Step 1: Failing tests:** `` `setting a PIN needs the same four digits twice` ``, `` `the gate switches appear only once a PIN exists` ``, `` `the server limits show read only and a failed load says so` ``.
-- [ ] **Step 2: Run** `:shared:allTests`. Expected: FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `:shared:allTests`. Expected: PASS.
-- [ ] **Step 5: Commit** `feat: add the Kids and PIN settings page`.
+- [x] **Step 1: Failing tests:** `` `setting a PIN needs the same four digits twice` ``, `` `the gate switches appear only once a PIN exists` ``, `` `the server limits show read only and a failed load says so` ``.
+- [x] **Step 2: Run** `:shared:allTests`. Expected: FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `:shared:allTests`. Expected: PASS.
+- [x] **Step 5: Commit** `feat: add the Kids and PIN settings page`.
 
 ### Task 14: PIN UI on both platforms, kids fixtures (parallel Android / iOS halves)
 
@@ -305,11 +307,11 @@ Design (design system `SettingsTablet`): two panes, the grouped root on the left
 - Modify: both Who's watching screens (lock badge on a tile), `WhoIsWatchingScreen.kt`, `WhoIsWatchingView.swift`; `scripts/test-server/start.sh` or `seed-userdata.sh` (a kids user with `MaxParentalRating`), `make-media.sh` (rated items via `<mpaa>` in the nfo), `docs/test-server.md` (catalogue rows)
 - Test: `OnboardingFlowUITests.swift` (`step("Kids PIN")`)
 
-- [ ] **Step 1: Extend the UITest:** on the kids user, set a PIN, then fail to open Settings with a wrong PIN and succeed with the right one.
-- [ ] **Step 2: Run** `scripts/ios-smoke.sh`. Expected: FAIL at the new step.
-- [ ] **Step 3: Implement** the sheet (a numeric keypad, four dots, the lock countdown, "Forgot PIN?"), the tile lock badge, the fixtures and the catalogue.
-- [ ] **Step 4: Run** `scripts/ios-smoke.sh`, `:androidApp:assembleDebug`, and walk the flow on the emulator against the test server.
-- [ ] **Step 5: Commit** `feat: PIN prompts and locked tiles on both platforms`, `task: add the kids user and rated fixtures`.
+- [x] **Step 1: Extend the UITest:** on the kids user, set a PIN, then fail to open Settings with a wrong PIN and succeed with the right one.
+- [x] **Step 2: Run** `scripts/ios-smoke.sh`. Expected: FAIL at the new step.
+- [x] **Step 3: Implement** the sheet (a numeric keypad, four dots, the lock countdown, "Forgot PIN?"), the tile lock badge, the fixtures and the catalogue.
+- [x] **Step 4: Run** `scripts/ios-smoke.sh`, `:androidApp:assembleDebug`, and walk the flow on the emulator against the test server.
+- [x] **Step 5: Commit** `feat: PIN prompts and locked tiles on both platforms`, `task: add the kids user and rated fixtures`.
 
 ---
 
@@ -322,11 +324,11 @@ Design (design system `SettingsTablet`): two panes, the grouped root on the left
 
 **Interfaces:** `ProfileSettings.notificationsEnabled: Flow<Boolean?>`, `setNotificationsEnabled`, `notificationScope: Flow<Int?>`, `setNotificationScope`, `NOTIFICATION_SCOPE_CHOICES = listOf(0, 1)`; DAO `suspend fun wasNotified(serverId, userId, itemId): Boolean`, `suspend fun markNotified(entity)`, `suspend fun pruneNotified(serverId, userId, before: Long)`.
 
-- [ ] **Step 1: Failing tests** (defaults off, scope 0, the migrations for 10 and 11).
-- [ ] **Step 2: Run** `:shared:allTests`. Expected: FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `:shared:allTests`. Expected: PASS.
-- [ ] **Step 5: Commit** `feat: add notification settings and the notified table`.
+- [x] **Step 1: Failing tests** (defaults off, scope 0, the migrations for 10 and 11).
+- [x] **Step 2: Run** `:shared:allTests`. Expected: FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `:shared:allTests`. Expected: PASS.
+- [x] **Step 5: Commit** `feat: add notification settings and the notified table`.
 
 ### Task 16: `NewTitlesPoller`
 
@@ -334,18 +336,18 @@ Design (design system `SettingsTablet`): two panes, the grouped root on the left
 
 **Interfaces:** `class NewTitlesPoller(connection: ConnectionManager, settings..., dao: AccountDao, clock: Clock)` with `suspend fun poll(serverId: String, userId: String): List<NewTitle>`; `data class NewTitle(val itemId: String, val title: String, val seriesName: String?, val isMovie: Boolean)`. Uses `asProfile` with `JellyfinApi.nextUp(userId, limit)` (`WatchApi.kt:22`) and the raw `/Items/Latest` call (`LibraryApi.kt:99`, **not** `LibraryRepository.latest`, which groups episodes under their show); filters by scope and My List, skips already notified ids, marks the rest.
 
-- [ ] **Step 1: Failing tests:** `` `a new episode of a followed show is reported once` ``, `` `a new movie is reported and a movie already notified is not` ``, `` `everything new covers shows that are not followed` ``, `` `a 401 locks the profile and reports nothing` ``, `` `a kids or signed-out profile reports nothing` ``.
-- [ ] **Step 2: Run** `:shared:allTests`. Expected: FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `:shared:allTests`. Expected: PASS.
-- [ ] **Step 5: Commit** `feat: poll for new episodes and movies`.
+- [x] **Step 1: Failing tests:** `` `a new episode of a followed show is reported once` ``, `` `a new movie is reported and a movie already notified is not` ``, `` `everything new covers shows that are not followed` ``, `` `a 401 locks the profile and reports nothing` ``, `` `a kids or signed-out profile reports nothing` ``.
+- [x] **Step 2: Run** `:shared:allTests`. Expected: FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `:shared:allTests`. Expected: PASS.
+- [x] **Step 5: Commit** `feat: poll for new episodes and movies`.
 
 ### Task 17: Notifications page logic
 
 **Files:** `SettingsPages.kt`, `SettingsViewModel.kt`, `Strings.kt`; test `SettingsViewModelTest.kt`
 **Interfaces:** the `Notifications` page (toggle, scope choice "Shows I follow and new movies" / "Everything new in the library", footer about delay). Handlers go through `onToggle` / `onChoose`; the ViewModel exposes `val requestNotificationPermission: Boolean` (one-shot) when switched on.
 
-- [ ] **Steps 1-5:** test `` `switching notifications on asks for permission once and saves the setting` ``, `` `the scope choice is saved` ``; run `:shared:allTests`; commit `feat: add the Notifications settings page`.
+- [x] **Steps 1-5:** test `` `switching notifications on asks for permission once and saves the setting` ``, `` `the scope choice is saved` ``; run `:shared:allTests`; commit `feat: add the Notifications settings page`.
 
 ### Task 18: Android WorkManager
 
@@ -353,57 +355,62 @@ Design (design system `SettingsTablet`): two panes, the grouped root on the left
 **Interfaces:** `class NewTitlesWorker(context, params) : CoroutineWorker` runs `NewTitlesPoller.poll` for the current profile and posts one grouped notification per show plus one per movie through `NotificationPublisher.post(titles: List<NewTitle>)`; `object NewTitlesScheduler { fun apply(context, enabled: Boolean) }` enqueues unique periodic work every 4 hours (or cancels). Tapping opens the item (deep link to `Item(id)`).
 **Test:** `NewTitlesWorkerTest` (`TestListenableWorkerBuilder`).
 
-- [ ] **Step 1: Failing test** `` `the worker posts one notification per new title and none when there is nothing new` ``.
-- [ ] **Step 2: Run** `./gradlew :androidApp:testDebugUnitTest`. Expected: FAIL.
-- [ ] **Step 3: Implement** (permission asked in the Notifications page when the toggle is switched on).
-- [ ] **Step 4: Run** the test, `:androidApp:assembleDebug`, and on the emulator add an episode on the test server (fixture: a series that gains an episode, added to `make-media.sh` and `docs/test-server.md`) and trigger the work with `adb shell cmd jobscheduler`/`WorkManager` test helper. Expected: one notification that opens the episode.
-- [ ] **Step 5: Commit** `chore: add WorkManager`, `feat: notify about new titles on Android`.
+- [x] **Step 1: Failing test** `` `the worker posts one notification per new title and none when there is nothing new` ``.
+- [x] **Step 2: Run** `./gradlew :androidApp:testDebugUnitTest`. Expected: FAIL.
+- [x] **Step 3: Implement** (permission asked in the Notifications page when the toggle is switched on).
+- [x] **Step 4: Run** the test, `:androidApp:assembleDebug`, and on the emulator add an episode on the test server (fixture: a series that gains an episode, added to `make-media.sh` and `docs/test-server.md`) and trigger the work with `adb shell cmd jobscheduler`/`WorkManager` test helper. Expected: one notification that opens the episode.
+- [x] **Step 5: Commit** `chore: add WorkManager`, `feat: notify about new titles on Android`.
 
 ### Task 19: iOS background refresh
 
 **Files:** `iosApp/iosApp/Info.plist` (`UIBackgroundModes` add `fetch`, `BGTaskSchedulerPermittedIdentifiers` = `app.vibeyfin.newtitles`), create `iosApp/iosApp/Notifications/NewTitlesScheduler.swift`, modify `App/iOSApp.swift`; shared facade `shared/src/iosMain/.../ios/NewTitlesModel.kt` with `fun poll(onResult: ([NewTitle]) -> Unit)`
 **Interfaces:** `NewTitlesScheduler.register()` at launch and `schedule()` when enabled; the task handler calls `NewTitlesModel.poll`, posts `UNNotificationRequest`s (grouped by `threadIdentifier` = show) and reschedules; permission requested via `UNUserNotificationCenter` when the toggle goes on.
 
-- [ ] **Step 1: Extend the UITest:** `step("Notifications")` switches it on and the system permission alert is handled (`addUIInterruptionMonitor`).
-- [ ] **Step 2: Run** `scripts/ios-smoke.sh`. Expected: FAIL.
-- [ ] **Step 3: Implement.** Background refresh is best effort and cannot be forced in the smoke test; trigger the handler with Xcode's `e -l objc -- (void)[[BGTaskScheduler sharedScheduler] _simulateLaunchForTaskWithIdentifier:...]` and say plainly that real scheduling was not observed.
-- [ ] **Step 4: Run** `scripts/ios-smoke.sh`. Expected: PASS.
-- [ ] **Step 5: Commit** `feat: notify about new titles on iOS`.
+- [x] **Step 1: Extend the UITest:** `step("Notifications")` switches it on and the system permission alert is handled (`addUIInterruptionMonitor`).
+- [x] **Step 2: Run** `scripts/ios-smoke.sh`. Expected: FAIL.
+- [x] **Step 3: Implement.** Background refresh is best effort and cannot be forced in the smoke test; trigger the handler with Xcode's `e -l objc -- (void)[[BGTaskScheduler sharedScheduler] _simulateLaunchForTaskWithIdentifier:...]` and say plainly that real scheduling was not observed.
+- [x] **Step 4: Run** `scripts/ios-smoke.sh`. Expected: PASS.
+- [x] **Step 5: Commit** `feat: notify about new titles on iOS`.
 
 ---
 
 ## D. Carry-overs
 
-### Task 20: iOS mini player
+### Task 20: iOS mini player _(dropped: no in-app mini player; PiP steps the player aside and is a per-profile setting, see `docs/ROADMAP.md`)_
 
 **Files:** `iosApp/iosApp/App/TabShell.swift` (around line 99), `iosApp/iosApp/Player/MiniPlayerView.swift`, `PlayerController.swift`
 **Interfaces:** `.tabViewBottomAccessory { if let state = nowPlaying.state { MiniPlayerView(state:, onTogglePlay:, onOpen:) } }` behind `if #available(iOS 26, *)`; `onTogglePlay` calls a new `PlayerController.togglePlay()` (there is no shared API; play and pause live in Swift); `onOpen` restores the full player via `NowPlayingModel.requestRestore()`.
 
-- [ ] **Step 1: Extend the UITest:** with playback running on an iOS 26 simulator, the accessory appears; tapping play/pause pauses; tapping the body reopens the player.
-- [ ] **Step 2: Run** `scripts/ios-smoke.sh`. Expected: FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `scripts/ios-smoke.sh`. Expected: PASS (or say the iOS 26 simulator was missing).
-- [ ] **Step 5: Commit** `feat: mount the iOS mini player`.
+- [-] **Step 1: Extend the UITest:** with playback running on an iOS 26 simulator, the accessory appears; tapping play/pause pauses; tapping the body reopens the player.
+- [-] **Step 2: Run** `scripts/ios-smoke.sh`. Expected: FAIL.
+- [-] **Step 3: Implement.**
+- [-] **Step 4: Run** `scripts/ios-smoke.sh`. Expected: PASS (or say the iOS 26 simulator was missing).
+- [-] **Step 5: Commit** `feat: mount the iOS mini player`.
 
 ### Task 21: Macrobenchmark and the baseline profile
 
 **Files:** `gradle/libs.versions.toml` (`androidx-benchmark-macro-junit4`, `androidx-baselineprofile` plugin, latest stable, dated), create `benchmark/` module (settings include, `build.gradle.kts`), `benchmark/src/main/.../StartupBenchmark.kt`, `BaselineProfileGenerator.kt`; modify `androidApp/build.gradle.kts` (`baselineprofile` plugin, `baselineProfile` dependency, `benchmark` build type is the profile target)
 **Interfaces:** `class StartupBenchmark` (`@Test fun coldStartup()`, `@Test fun scrollHome()`), `class BaselineProfileGenerator` (`@Test fun generate()` walks Home scroll and an item open); the generated `baseline-prof.txt` is committed.
 
-- [ ] **Step 1: Write** the benchmark and the generator against the test server.
+- [x] **Step 1: Write** the benchmark and the generator against the test server.
 - [ ] **Step 2: Run** `./gradlew :benchmark:connectedBenchmarkAndroidTest` on a device/emulator. Expected: baseline numbers recorded in the commit-free note in `docs/checklists/phone-pass.md` section 8.
 - [ ] **Step 3: Generate** `./gradlew :androidApp:generateBaselineProfile`, re-run the benchmark, and record the difference honestly (a null result is a result).
-- [ ] **Step 4: Run** `:androidApp:assembleDebug` and `:androidApp:installBenchmark`. Expected: builds.
+- [x] **Step 4: Run** `:androidApp:assembleDebug` and `:androidApp:installBenchmark`. Expected: builds.
 - [ ] **Step 5: Commit** `chore: add Macrobenchmark and a baseline profile`.
+
+_Steps 2, 3 and 5 are open: they need a device or emulator signed in on the test server; the module builds, nothing was measured._
 
 ### Task 22: Wrap-up
 
-- [ ] **Step 1: Docs.** Tick Phase 6 and the carry-overs in `docs/ROADMAP.md` (mini player, baseline profile), list the owed phone pass and Xcode pass as not done by me, and note that iOS items were only run where `scripts/ios-smoke.sh` ran.
-- [ ] **Step 2: Clean the worktrees.** `git worktree list`; for each helper worktree under `.claude/worktrees` run `git worktree remove --force <path>` and `git branch -D <branch>`; then `git worktree prune`. Expected: only the main checkout remains.
-- [ ] **Step 3: History.** `git log --oneline develop..HEAD` reads as the story; fold any fixup into its commit with `git commit --fixup <sha>` and `GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash develop` (non-interactive); never force-push without asking.
+- [x] **Step 1: Docs.** Tick Phase 6 and the carry-overs in `docs/ROADMAP.md` (mini player, baseline profile), list the owed phone pass and Xcode pass as not done by me, and note that iOS items were only run where `scripts/ios-smoke.sh` ran.
+- [x] **Step 2: Clean the worktrees.** `git worktree list`; for each helper worktree under `.claude/worktrees` run `git worktree remove --force <path>` and `git branch -D <branch>`; then `git worktree prune`. Expected: only the main checkout remains.
+- [x] **Step 3: History.** `git log --oneline develop..HEAD` reads as the story; fold any fixup into its commit with `git commit --fixup <sha>` and `GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash develop` (non-interactive); never force-push without asking.
 - [ ] **Step 4: Verify** `:shared:allTests`, `:androidApp:assembleDebug`, `scripts/ios-smoke.sh`, `scripts/check-title-case.sh`; report results.
 - [ ] **Step 5: Open the PR** (draft) into `develop` with a summary and the test-server and device caveats.
 
 ## Rulings made during execution
 
 The plan above is the original argument; these rulings, made while building, bind where they differ (full text in the execution ledger): a non-`asPage` choice is always a menu (6); an `asPage` choice is inline checklist rows in its own section (7); tablet selection follows the tapped row (9); the root has no "Buffering" row, Buffer ahead lives on Skipping and autoplay (owner decision, 8c); iOS subtitle style is disabled with a note until a simulator spike (11); the tablet two-pane is a plain two-column layout at 600dp, not material3-adaptive (8).
+
+_Steps 4 and 5 are open: a clean `scripts/ios-smoke.sh` run is owed, and the draft PR is not opened yet._
+
