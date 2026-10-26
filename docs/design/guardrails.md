@@ -72,6 +72,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 
 - Server discovery on the local network first, manual URL second. Offer Quick Connect alongside username / password.
 - Multiple users on the server → profile picker on launch, remembered per device.
+- A tapped notification never signs a profile in and never bypasses a PIN: it opens its title only for the profile signed in now. For another profile the app either does nothing (iOS) or goes to "Who's watching?" (Android, only when the signed-in profile's PIN doesn't guard switching), where that profile is picked the usual way.
 
 ## Offline and errors
 

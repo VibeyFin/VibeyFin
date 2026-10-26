@@ -38,6 +38,12 @@ A Jetpack Compose app that follows Material 3. Use the `android` theme and `m3-*
 - Tonal elevation (surfaceContainer steps), not shadows.
 - Downloads with `WorkManager` + a foreground-service notification showing progress; request notification permission when the first download starts.
 - Survive rotation and process death: player position and screen state restored.
+- New-title notifications (the Notifications setting, per profile, off by default):
+  - Channel "New episodes and movies" (`Strings.addedTitlesChannel`), default importance. Small icon `ic_logo`, monochrome, and no accent colour: aqua never marks status.
+  - One notification per new movie. Episodes are grouped per show (one group per profile and show) under a summary "New episodes of {show}"; every check that posts an episode posts the show's summary again under the same tag, so later episodes join the same group and only the episodes alert. The profile's name is added only when several profiles on the device get notifications.
+  - The permission (Android 13 and up) is asked when Notifications is switched on, never earlier. A refusal switches the setting back off and the page says notifications are blocked and where to allow them.
+  - A `WorkManager` periodic check about every 4 hours with a network, best effort (Android decides when it runs). It runs while any profile has Notifications on and stops when none does, and it skips the check while notifications can't be shown. At most once per title: a title is marked before it is posted and a failed run is not retried.
+  - Tapping opens the title inside the tab on screen (Home from the player or Settings), and only for a tap the app posted (a saved profile with Notifications on, a title it was notified about). It never signs a profile in or bypasses a PIN: for another profile it goes to "Who's watching?", unless the signed-in profile's PIN guards switching, then nothing happens. Reopening the app from Recents does not open the title again.
 - Test TalkBack, font scale 200%, "Remove animations", a compact phone, a foldable / tablet.
 
 ## Don't

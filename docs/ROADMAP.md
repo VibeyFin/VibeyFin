@@ -206,6 +206,10 @@ and see the mini player on iOS 26._
   rating, tags and hours are read from the Jellyfin user's policy and shown read-only, the server enforces them_
 - [ ] New-episode notifications (Next Up / Latest polling or push). _Decided: off by default, background polling
   (WorkManager, `BGAppRefreshTask`), new episodes and new movies, a setting called Notifications_
+  - [x] Notifications page (per profile, off by default, "Which shows" scope, permission asked when switched on)
+  - [x] Polling every profile with Notifications on, at most once per title
+  - [x] Android: `WorkManager` check about every 4 h, grouped notifications, tap opens the title (checked on an emulator)
+  - [x] iOS: `BGAppRefreshTask` check and local notifications (built as Swift source only, type-checked; not run on a device or simulator)
 - [x] Settings: quality & bandwidth, subtitle styling
   - [x] Settings redesign (design system `SettingsPhone`, `SettingsTablet`): a grouped root and a sub-page per
     category (Quality, Subtitles, Skipping and autoplay), choices as menus, Quality as an inline checklist

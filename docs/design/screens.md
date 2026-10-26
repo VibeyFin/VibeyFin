@@ -271,7 +271,8 @@ the scope is clear from position and from the footers.
 - **Playback**: Quality, Subtitles, Skipping and autoplay. There is no Buffering row here: Buffer ahead lives
   on Skipping and autoplay.
 - **Home**: Featured title, Genre rows.
-- **Notifications** and **Kids and PIN**: the root rows exist, but their pages are _planned, not built yet_, so the renderers hide the links for now.
+- **Notifications**: opens its page (below).
+- **Kids and PIN**: the root row exists, but its page is _planned, not built yet_, so the renderers hide the link for now.
 - **This device**: Always ask who's watching.
 - **Advanced**: Playback stats overlay, About.
 
@@ -311,12 +312,21 @@ style to the player. iOS burns subtitles into the picture today, so its page sho
 with the note "Applies to text subtitles only; iOS burns subtitles in for now". Applying a style on iOS needs
 a spike on a simulator and is an open item.
 
-### Kids and PIN, Notifications _(planned)_
+### Notifications
 
-The root rows exist, but these pages are not built yet (the renderers hide a link to a missing page); the decided design is in the spec `docs/superpowers/specs/2026-10-24-accounts-and-polish-design.md`.
+"Notify me about new episodes and movies", off by default, per profile. While it is on, a "Which shows" menu: "Shows I
+follow and new movies" (default; shows in Continue watching or My List) or "Everything new in the library". The
+footer says Jellyfin sends no push, so the app checks in the background and there is a delay. Switching it on asks
+for notification permission; a refusal switches it back off and the footer says notifications are blocked and where
+to allow them. Hidden for a kids profile, which never notifies. What a notification looks like and what a tap does:
+`android.md`, `ios.md` and `guardrails.md`.
+
+### Kids and PIN _(planned)_
+
+The root row exists, but this page is not built yet (the renderers hide a link to a missing page); the decided design is in the spec `docs/superpowers/specs/2026-10-24-accounts-and-polish-design.md`.
 "Kids profile" is a local flag and the PIN (4 digits, a salted hash, never the Jellyfin password) a household lock,
 independent of each other. The rating cap, blocked tags and hours are read from the Jellyfin user's policy and
-shown read-only. Notifications are off by default and the app polls, so it says to expect a delay.
+shown read-only.
 
 ### Settings on tablets
 

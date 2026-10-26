@@ -50,6 +50,7 @@ Glass is the **navigation and controls layer** floating above content — never 
 - Haptics: `.sensoryFeedback` on long-press and on scrub snapping to a chapter.
 - Status-bar tap and tab re-tap scroll to top.
 - Background downloads with a background `URLSession`; exclude media from iCloud backup.
+- New-title notifications (the Notifications setting, per profile, off by default): local notifications through `UNUserNotificationCenter`, one per new movie or episode, text from `Strings`, the profile's name only when several profiles on the device get notifications. A show's episodes share a `threadIdentifier` (per server and show), so iOS stacks them; new movies share one stack per server. Permission is asked when Notifications is switched on; a refusal switches it back off. The check is a `BGAppRefreshTask`, best effort: iOS decides when, or whether, it runs, and the page says to expect a delay. At most once per title. Tapping opens the title on Home only for the profile signed in now (see guardrails: never a sign-in, never past a PIN).
 - Test VoiceOver, Dynamic Type up to AX5, Reduce Motion, Reduce Transparency, Increase Contrast; iPhone SE-size, Pro Max, iPad in Split View.
 
 ## Don't
