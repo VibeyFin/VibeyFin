@@ -119,21 +119,18 @@ _Exit: finish an episode on one device, resume on another._
   reports an HDR display (plan 07)_
 - [x] Binge UX: "are you still watching?" (auto-advance itself is Phase 2) — _per-profile setting, Off or after 2 to 5 episodes, default 3_
 - [x] Playback speed (Media3 `setPlaybackSpeed`, AVPlayer `rate`)
-- [x] Picture-in-picture (both platforms, plus a button in the player). The iOS mini player is the open item below. Leaving the player while something plays keeps it playing in
+- [x] Picture-in-picture (both platforms, plus a button in the player). Leaving the player while something plays keeps it playing in
   the system's PiP window (Android: `setAutoEnterEnabled` on 12+ with the Media3 `PlayerSurface`; iOS:
   `AVPictureInPictureController` on the `AVPlayerLayer`). Entering PiP is not backgrounding: the
   progress beacon keeps running and `Stopped` goes out only when the PiP window is closed or playback
-  ends (Phase 1 sends it on backgrounding today). iOS 26+ also shows a mini player in
-  `.tabViewBottomAccessory` while PiP or audio continues, and tapping it returns to the full player
-  (`docs/design/ios.md`); below iOS 26 it is PiP only. **Decided:** Android stops at PiP, with no in-app mini player.
+  ends (Phase 1 sends it on backgrounding today). On iOS the player steps aside when the window
+  starts, so the page it was opened from shows, and tapping the window brings it back. **Decided:** no in-app mini player on either platform (it doubled the PiP
+  window); PiP is a per-profile setting, on by default (Phase 6), and off means leaving the app pauses.
   Its `MediaSession` drives media keys, the PiP window's controls and a media notification with play and pause (posted
   in-process by Media3's `PlayerNotificationManager` only while the player screen is in front or in a PiP window; in the
   background without PiP the video pauses, the notification goes and play commands are ignored; no service, no lock-screen
   controls). iOS PiP is built but was never seen running (the simulator reports PiP as
   unsupported).
-- [ ] **The iOS mini player is built but not mounted** (`MiniPlayerView`, fed by `NowPlayingModel`): the app has
-  no tab bar yet. It is finished when the tab bar mounts it with `.tabViewBottomAccessory` and it is
-  checked on the simulator, with a play and pause command from it to the player; whoever builds the tab bar owns that.
 - [x] HDR and format badge on the detail page and in the player, from `MediaStreams`
   (`VideoRangeType`, codec, resolution)
 
@@ -147,7 +144,7 @@ _Starts after the state audit (see Cross-cutting)._
   tablet widths the same destinations sit at the top, `docs/design/screens.md` "Chrome"). Each tab keeps its
   own back stack and Settings stays under the profile avatar. Home is the Home that exists today. Library is the real Library
   browse (below); Downloads opens an empty page that says "Not available yet" (text in `Strings`) until offline lands (Phase 10).
-  The Search tab is second, with unified search below. The iOS mini player is still not mounted
+  The Search tab is second, with unified search below.
 - [x] Home rows: Latest, genres, My Media, plus Continue Watching (which holds Next Up). Recently added in each video
   library (`GET /Items/Latest`, 20 posters), every genre (biggest first), then My media as 16:9 tiles; each row loads and
   fails on its own, an empty row is not shown, a header has "See all", and there is no cap on rows. Android run on the emulator, iOS
@@ -195,8 +192,7 @@ debug build is slow. Cut: thumbs. A baseline profile for first-scroll speed move
 
 Owed after Phase 4: the phone pass (`docs/checklists/phone-pass.md`) and an iOS Xcode pass, its own task: build `iosApp` in Xcode and fix what the compiler finds (every Swift file so far is only parsed, and the `Shared` framework names such as `HeroNavPlay`, `SeeAllMyList` and `ItemFactsKt.getSeasonLabel` are read from the Kotlin source, not from a built framework).
 
-_Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a genre page from Home,
-and see the mini player on iOS 26._
+_Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a genre page from Home,_
 
 ### Phase 6 — Accounts & polish
 - [ ] Profile picker: quick-switch between users, optional PIN (Jellyfin has no sub-profiles). _Decided: a 4-digit
@@ -218,8 +214,7 @@ and see the mini player on iOS 26._
   - [x] Quality as a per-profile cap, Maximum by default, replacing the fixed 60 Mbps
   - [x] Subtitle style settings, applied on Android; iOS shows them disabled while it burns subtitles in
     (applying a style on iOS needs a spike on a simulator, open)
-- [ ] iOS mini player: mount `MiniPlayerView` with `.tabViewBottomAccessory` and check it on the simulator
-  (Phase 3's open item)
+- [x] iOS mini player: dropped. PiP steps the player aside and the system window is the only mini view; a setting turns PiP off.
 - [ ] Baseline profile for first-scroll speed (Macrobenchmark and the baseline-profile plugin are approved;
   done last, measured on the `benchmark` build)
 

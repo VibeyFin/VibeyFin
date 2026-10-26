@@ -7,7 +7,7 @@ A SwiftUI app that follows the Human Interface Guidelines and adopts Liquid Glas
 - `TabView` with `Tab`s Home, Library, Downloads and `Tab(role: .search)` for Search — iOS shows it as its own glass button. `.tabBarMinimizeBehavior(.onScrollDown)` on Home and Library.
 - iPad: `.tabViewStyle(.sidebarAdaptable)` — a top tab bar or a glass sidebar; libraries can appear as sidebar items.
 - One `NavigationStack` per tab. Tab roots (Library, Downloads) use large titles; Home draws its own header with the profile avatar; pushed screens (detail, season, See All) use inline titles over the backdrop.
-- Mini player (while something plays in PiP or audio continues): `.tabViewBottomAccessory`.
+- No in-app mini player: while PiP plays, the player steps aside and the system window is the only mini view. PiP is a per-profile setting.
 - Force dark: `.preferredColorScheme(.dark)` at the root. App tint = `accent` (AccentColor in the asset catalog).
 
 ## Liquid Glass
