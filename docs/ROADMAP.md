@@ -195,12 +195,12 @@ Owed after Phase 4: the phone pass (`docs/checklists/phone-pass.md`) and an iOS 
 _Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a genre page from Home,_
 
 ### Phase 6 — Accounts & polish
-- [ ] Profile picker: quick-switch between users, optional PIN (Jellyfin has no sub-profiles). _Decided: a 4-digit
+- [x] Profile picker: quick-switch between users, optional PIN (Jellyfin has no sub-profiles). _Decided: a 4-digit
   household lock per profile, a salted hash, independent of kids mode, not security; see the spec
   `docs/superpowers/specs/2026-10-24-accounts-and-polish-design.md`_
-- [ ] Parental controls / kids mode (per-user rating, blocked tags, access schedules). _Decided: a local kids flag;
+- [x] Parental controls / kids mode (per-user rating, blocked tags, access schedules). _Decided: a local kids flag;
   rating, tags and hours are read from the Jellyfin user's policy and shown read-only, the server enforces them_
-- [ ] New-episode notifications (Next Up / Latest polling or push). _Decided: off by default, background polling
+- [x] New-episode notifications (Next Up / Latest polling or push). _Decided: off by default, background polling
   (WorkManager, `BGAppRefreshTask`), new episodes and new movies, a setting called Notifications_
   - [x] Notifications page (per profile, off by default, "Which shows" scope, permission asked when switched on)
   - [x] Polling every profile with Notifications on, at most once per title
@@ -214,9 +214,20 @@ _Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a
   - [x] Quality as a per-profile cap, Maximum by default, replacing the fixed 60 Mbps
   - [x] Subtitle style settings, applied on Android; iOS shows them disabled while it burns subtitles in
     (applying a style on iOS needs a spike on a simulator, open)
+- [x] Picture in picture as a per-profile setting (Skipping and autoplay page, on by default): off hides the button, stops the automatic
+  window and pauses on leaving. On iOS the player steps aside while the window plays; starting another title stops the first one
+  (with its `Stopped` report). _Built and unit-tested; the window, the step-aside and the new-playout stop were not seen on a device._
+- [ ] Now Playing in Control Center and on the Android notification: plan `docs/plans/17-now-playing.md`. Built: iOS remote commands
+  (play, pause, skip, scrub), a live card and artwork; Android notification artwork. _Not seen on a device; background playback is out of scope._
 - [x] iOS mini player: dropped. PiP steps the player aside and the system window is the only mini view; a setting turns PiP off.
-- [ ] Baseline profile for first-scroll speed (Macrobenchmark and the baseline-profile plugin are approved;
-  done last, measured on the `benchmark` build)
+- [ ] Baseline profile for first-scroll speed: the `:benchmark` module, the startup and scroll benchmarks and the profile generator
+  are in and build (Macrobenchmark 1.5.0, `androidx.baselineprofile` 1.5.0). **Not run**: it needs a device or emulator signed in on the
+  test server. Next: `./gradlew :benchmark:connectedBenchmarkReleaseAndroidTest`, then `./gradlew :androidApp:generateBaselineProfile`,
+  commit `baseline-prof.txt` and record the numbers in `docs/checklists/phone-pass.md` section 8.
+
+Owed from Phase 6, not done: the phone pass (`docs/checklists/phone-pass.md`), a clean `scripts/ios-smoke.sh` run (the last runs were
+interrupted or failed before Settings, with another session's UITests on the same machine and test server), and a look at the iOS PiP
+and Control Center behaviour on a real iPhone. iOS code in this phase was compiled for the simulator and run only where the smoke test got that far.
 
 ### Phase 7 — Customisation _(later)_
 
