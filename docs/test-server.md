@@ -178,6 +178,37 @@ return to "Who's watching?" and sign in as `kids` again: the Settings tab asks f
 right one opens). Home as `kids` lists Kid Friendly but not Grown Up Only or Tagged For Adults; as `admin` it lists all
 three. Signing in as `kids` also needs the server's password prompt only once, as for any profile.
 
+## A series that gains an episode (notifications)
+
+For the Phase 6 new-title notifications. `make-media.sh` writes a series with one 3 s episode (the page fixtures' clip
+copied, `.nfo` with `lockdata`). A flag adds its second episode later, as a title the server has just added. Existing
+fixtures are unchanged.
+
+| Fixture | Where | What it is | Needed by |
+| --- | --- | --- | --- |
+| `growing-e01` | `shows/Growing Show/Season 01/Growing Show S01E01.mkv` | 3 s, "First Arrival" (`.nfo`); the series "Growing Show" (2026, Drama) | The show the notification is about |
+| `growing-e02` | `shows/Growing Show/Season 01/Growing Show S01E02.mkv` | 3 s, no `.nfo`, so the server titles it "Growing Show S01E02". Only after `make-media.sh --add-episode` (copies the file, then `POST /Library/Refresh`); `--remove-episode` deletes it and scans again | The new episode: one notification that opens it |
+
+Checking a notification (Android emulator, `admin`):
+
+1. Follow the show: add Growing Show to My List in the app (or choose "Everything new in the library" on the
+   Notifications page). Switch Notifications on and allow the permission.
+2. Run the work once before adding the episode (see below). A profile's first poll announces only what was added in the
+   last day, so on a server set up today it may announce `growing-e01`; after that it is marked as notified.
+3. `scripts/test-server/make-media.sh --add-episode`, wait for the scan (a few seconds), and run the work again: one
+   notification "New episode of Growing Show", "Growing Show S01E02". Tapping it opens the episode's page.
+4. To repeat: `--remove-episode`, then `--add-episode` again, then switch Notifications off and on. The server derives
+   the item id from the path, so the episode comes back with the same id, which the profile has already been notified
+   about; switching off forgets that, and the next poll is a first poll, which announces what was added in the last day.
+
+Running the work now: `adb shell cmd jobscheduler run -f -n androidx.work.systemjobscheduler app.vibeyfin <job id>`,
+with the id from `adb shell dumpsys jobscheduler | grep "JOB .*app.vibeyfin"` (the number after `u0a…/`). WorkManager
+skips a periodic run forced before its period is up ("being executed before schedule" in logcat): the first run happens
+when Notifications is switched on, and later ones need the clock moved past the 4 hours. On an emulator image without
+root: `adb shell settings put global auto_time 0`, then `adb shell cmd alarm set-time <epoch ms 5 h ahead>`, force the
+job, and `adb shell settings put global auto_time 1` afterwards. The work only runs while a profile has Notifications
+on and a network.
+
 ## Checking it
 
 `scripts/test-server/list-fixtures.sh` compares every fixture in the catalogue with what the running

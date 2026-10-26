@@ -16,6 +16,10 @@
 #   Page fixtures (3 s, 320x180 clips, small artwork, .nfo with lockdata): shows/Saga Show (Specials, Season 1 with
 #     8 episodes, Season 2; backdrop and logo), shows/Solo Season (one season, poster only), movies/Starlit Crown
 #     (2026) and II (2027) (artwork, cast, genres), movies/Bare Item (2026) (no artwork). User data: seed-userdata.sh
+#   shows/Growing Show/Season 01/Growing Show S01E01.mkv   3 s clip, the series that gains an episode (notifications)
+# Flags (each does only that, then exits; the server must be running):
+#   --add-episode      adds Growing Show S01E02 (titled by its file name) and asks the server to scan the library
+#   --remove-episode   removes it again and scans, so the episode can be added anew
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
@@ -27,6 +31,30 @@ mkdir -p "$EP_DIR" "$HDR_DIR" "${DATA}/work"
 ff() {
   podman run --rm -v "${DATA}:/data" --entrypoint /usr/lib/jellyfin-ffmpeg/ffmpeg "$JF_IMAGE" -hide_banner -loglevel error -y "$@"
 }
+
+# --add-episode / --remove-episode: Growing Show S01E02 appears or goes, then the server scans (docs/test-server.md).
+scan_library() {
+  local token
+  token=$(curl -sf -H "$AUTH_HDR" -H 'Content-Type: application/json' -X POST "${JF_URL}/Users/AuthenticateByName" \
+    -d "{\"Username\":\"${JF_USER}\",\"Pw\":\"${JF_PASS}\"}" | sed -E 's/.*"AccessToken":"([^"]+)".*/\1/')
+  curl -sf -X POST -H "${AUTH_HDR}, Token=\"${token}\"" "${JF_URL}/Library/Refresh"
+  echo "Library scan started on ${JF_URL}"
+}
+GROWING_E02="${MEDIA}/shows/Growing Show/Season 01/Growing Show S01E02"
+case "${1:-}" in
+  --add-episode)
+    [ -f "${MEDIA}/shows/Growing Show/Season 01/Growing Show S01E01.mkv" ] || { echo "Run make-media.sh without flags first" >&2; exit 1; }
+    # No .nfo: the server picks the new file up before a scan reads one, so its title is the file name.
+    cp "${MEDIA}/shows/Growing Show/Season 01/Growing Show S01E01.mkv" "${GROWING_E02}.mkv"
+    scan_library
+    exit 0 ;;
+  --remove-episode)
+    rm -f "${GROWING_E02}.mkv" "${GROWING_E02}.nfo"
+    scan_library
+    exit 0 ;;
+  "") ;;
+  *) echo "Unknown flag: $1 (use --add-episode or --remove-episode)" >&2; exit 2 ;;
+esac
 
 # Chapter metadata, in milliseconds.
 cat > "${DATA}/work/chapters.txt" <<'META'
@@ -271,5 +299,12 @@ crown "Starlit Crown II (2027)" "Starlit Crown II" 2027 rgbtestsrc
 BARE="${MEDIA}/movies/Bare Item (2026)"
 clip "${BARE}/Bare Item (2026).mkv"
 echo "<movie><title>Bare Item</title><lockdata>true</lockdata><year>2026</year></movie>" > "${BARE}/movie.nfo"
+
+# Growing Show: one episode now; --add-episode adds the second later, as a new title for the notifications.
+GROWING="${MEDIA}/shows/Growing Show"
+mkdir -p "$GROWING"
+echo "<tvshow><title>Growing Show</title><lockdata>true</lockdata><year>2026</year><genre>Drama</genre><plot>A show that gains an episode.</plot></tvshow>" > "${GROWING}/tvshow.nfo"
+clip "${GROWING}/Season 01/Growing Show S01E01.mkv"
+episode_nfo "${GROWING}/Season 01/Growing Show S01E01" "First Arrival" 1 1 ""
 
 echo "Media ready under ${MEDIA}"
