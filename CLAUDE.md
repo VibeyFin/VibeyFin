@@ -138,6 +138,11 @@ apps share are in `guardrails.md`; which Jellyfin field drives which UI is in `j
   are case-insensitive because iOS shows title case. Say plainly when the smoke test could not run.
   Run it with the shared scheme `iosAppUITests` (a personal `iosApp` scheme in `xcuserdata` hides the
   shared one of the same name).
+- **Mockups:** every new feature or UI change adds a mockup to the shared mockups artifact
+  (https://claude.ai/code/artifact/9a3ea814-fd54-4106-b2ab-71115ddc3c7b) before or with the
+  implementation. Read it first (`Artifact` action `read`), update it in place with the same `url`,
+  and show both platforms where they differ. If the artifact can't be read or updated, say so in
+  the phase summary.
 - Small commits. Don't commit secrets.
 - Commit message format, always: `task|fix|feat|chore: <short message>`. One line, no body. Use `feat`
   for new behaviour, `fix` for a bug fix, `chore` for upkeep (build, dependencies, config), `task`
