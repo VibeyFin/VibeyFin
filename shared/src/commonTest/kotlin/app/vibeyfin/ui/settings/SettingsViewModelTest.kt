@@ -322,7 +322,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `the root Playback group links to Quality, Audio and subtitles, Subtitles and Skipping only`() = runTest {
+    fun `the root Playback group links to Quality and Audio and subtitles and Subtitles and Skipping only`() = runTest {
         app.signedIn()
         val root = viewModel().uiState.first { it.hasProfile }.page(SettingsPageId.Root)
 
@@ -1322,7 +1322,7 @@ class SettingsViewModelTest {
 
         val state = viewModel().uiState.first { it.languagesReady() }
 
-        assertEquals("German \u00B7 English subtitles, always", state.rootLanguageSummary())
+        assertEquals("German \u00B7 English subtitles always", state.rootLanguageSummary())
         assertEquals("German", state.linkValue(SettingKey.AudioLanguage))
         assertEquals("English", state.linkValue(SettingKey.SubtitleLanguage))
         assertEquals(SubtitleModeAlways, state.value(SettingKey.SubtitleMode))
@@ -1358,6 +1358,24 @@ class SettingsViewModelTest {
         viewModel.onChoose(SettingKey.AudioLanguage, 0)
         viewModel.uiState.first { it.linkValue(SettingKey.AudioLanguage) == Strings.anyLanguage }
         assertTrue(app.jellyfin.requestsTo("POST", "/Users/Configuration").last().body.contains("\"AudioLanguagePreference\":\"\""))
+    }
+
+    @Test
+    fun `picking a language clears its search and closes its list`() = runTest {
+        signedInWithLanguages()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.languagesReady() }
+        viewModel.onSearch(SettingsPageId.SubtitleLanguage, "fre")
+        val french = viewModel.uiState.first { it.pages.getValue(SettingsPageId.SubtitleLanguage).search == "fre" }
+            .languageChoice(SettingsPageId.SubtitleLanguage).options.single()
+
+        viewModel.onChoose(SettingKey.SubtitleLanguage, french.value)
+
+        val picked = viewModel.uiState.first { it.closePage == SettingsPageId.SubtitleLanguage }
+        assertEquals("", picked.pages.getValue(SettingsPageId.SubtitleLanguage).search)
+        viewModel.onPageClosed()
+        assertNull(viewModel.uiState.first { it.closePage == null }.closePage)
+        assertEquals("French", viewModel.uiState.first { it.linkValue(SettingKey.SubtitleLanguage) == "French" }.linkValue(SettingKey.SubtitleLanguage))
     }
 
     @Test
@@ -1414,7 +1432,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `an unreachable server leaves the rows inert, and opening the page tries again`() = runTest {
+    fun `an unreachable server leaves the rows inert and opening the page tries again`() = runTest {
         val server = signedInWithLanguages()
         server.on("GET", "/Users/Me", Reply.status(HttpStatusCode.ServiceUnavailable))
         val viewModel = viewModel()
@@ -1453,6 +1471,10 @@ class SettingsViewModelTest {
         viewModel.onSearch(SettingsPageId.AudioLanguage, "zzz")
         val none = viewModel.uiState.first { it.pages.getValue(SettingsPageId.AudioLanguage).search == "zzz" }.page(SettingsPageId.AudioLanguage)
         assertEquals(listOf(SettingKey.NoLanguageMatch), none.keys())
+
+        // Opening the list again starts from the whole list.
+        viewModel.onPageOpened(SettingsPageId.AudioLanguage)
+        assertEquals(4, viewModel.uiState.first { it.pages.getValue(SettingsPageId.AudioLanguage).search == "" }.languageChoice(SettingsPageId.AudioLanguage).options.size)
     }
 
     @Test

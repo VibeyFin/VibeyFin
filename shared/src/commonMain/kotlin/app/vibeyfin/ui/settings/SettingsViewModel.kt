@@ -67,6 +67,11 @@ data class SettingsUiState(
      * [SettingsViewModel.onNotificationPermissionDenied].
      */
     val requestNotificationPermission: Boolean = false,
+    /**
+     * One-shot: the page the native screen should close, as after picking a language from its list. The screen showing that page goes
+     * back and calls [SettingsViewModel.onPageClosed]. Null otherwise.
+     */
+    val closePage: SettingsPageId? = null,
 )
 
 /** Device-wide settings from [DevicePreferences] and the signed-in profile's from the database, built into pages by [settingsPages]. */
@@ -100,6 +105,7 @@ class SettingsViewModel(
     private val languages = MutableStateFlow<List<Language>>(emptyList())
     private val languageStatus = MutableStateFlow<LanguageStatus>(LanguageStatus.Loading)
     private val searches = MutableStateFlow<Map<SettingsPageId, String>>(emptyMap())
+    private val closePage = MutableStateFlow<SettingsPageId?>(null)
     private var languageLoad: Job? = null
 
     init {
@@ -179,6 +185,7 @@ class SettingsViewModel(
         live(languages),
         live(languageStatus),
         live(searches),
+        live(closePage),
     )
 
     /** Eager, so the reads start with the ViewModel and not when the screen first draws. */
@@ -259,6 +266,7 @@ class SettingsViewModel(
             leave = v[LEAVE] as Boolean,
             disconnected = v[CONNECTION] is ConnectionState.Disconnected,
             requestNotificationPermission = v[REQUEST_PERMISSION] as Boolean,
+            closePage = v[CLOSE_PAGE] as SettingsPageId?,
         )
     }
 
@@ -315,10 +323,12 @@ class SettingsViewModel(
                 SettingKey.SubtitleBackground -> profileSettings.setSubtitleBackground(value)
                 SettingKey.NotificationScope -> profileSettings.setNotificationScope(value)
                 SettingKey.AudioLanguage -> {
+                    pickedFrom(SettingsPageId.AudioLanguage)
                     val code = languageCode(value, languageChoices(languages.value, languagePrefs.value ?: LanguagePrefs()))
                     saveLanguages({ it.copy(audioLanguage = code) }) { languagePreferences.setAudioLanguage(code) }
                 }
                 SettingKey.SubtitleLanguage -> {
+                    pickedFrom(SettingsPageId.SubtitleLanguage)
                     val code = languageCode(value, languageChoices(languages.value, languagePrefs.value ?: LanguagePrefs()))
                     saveLanguages({ it.copy(subtitleLanguage = code) }) { languagePreferences.setSubtitleLanguage(code) }
                 }
@@ -360,6 +370,8 @@ class SettingsViewModel(
     fun onPageOpened(page: SettingsPageId) {
         // The languages were read with the profile; opening their page is the retry after a failed read.
         if (page == SettingsPageId.AudioSubtitles && languageStatus.value is LanguageStatus.LoadFailed) loadLanguages()
+        // A language list opens with its whole list, not the search left from last time.
+        if (page == SettingsPageId.AudioLanguage || page == SettingsPageId.SubtitleLanguage) searches.value = searches.value - page
         if (page != SettingsPageId.KidsAndPin) return
         policyLoad?.cancel()
         policyState.value = PolicyState.Loading
@@ -369,6 +381,17 @@ class SettingsViewModel(
                 is ApiResult.Failure -> PolicyState.Failed(result.error)
             }
         }
+    }
+
+    /** The native screen closed the page [SettingsUiState.closePage] asked for: the one-shot is spent. */
+    fun onPageClosed() {
+        closePage.value = null
+    }
+
+    /** A language was picked from its list: the list is done with, so its search is cleared and the screen goes back to the page before. */
+    private fun pickedFrom(page: SettingsPageId) {
+        searches.value = searches.value - page
+        closePage.value = page
     }
 
     /** What is typed in the search field of [page]; the page comes back filtered. */
@@ -516,5 +539,6 @@ private const val LANGUAGE_PREFS = 31
 private const val LANGUAGES = 32
 private const val LANGUAGE_STATUS = 33
 private const val SEARCHES = 34
+private const val CLOSE_PAGE = 35
 
 private const val MB_PER_GB = 1_000L

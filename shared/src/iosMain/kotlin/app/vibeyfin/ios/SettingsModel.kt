@@ -27,6 +27,9 @@ class SettingsModel {
     /** What is typed in a page's search field. */
     fun onSearch(page: SettingsPageId, query: String) = host.viewModel.onSearch(page, query)
 
+    /** The page the state asked to close was closed. */
+    fun onPageClosed() = host.viewModel.onPageClosed()
+
     fun onConfirmSignOut() = host.viewModel.onConfirmSignOut()
 
     fun onDismissSignOut() = host.viewModel.onDismissSignOut()

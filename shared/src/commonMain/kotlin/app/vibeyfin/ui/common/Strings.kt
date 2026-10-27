@@ -592,7 +592,7 @@ object Strings {
     val languagesLoading = "Reading your Jellyfin account\u2026"
     val anyLanguage = "Any language"
     val anyLanguageAudioHelp = "The video\u2019s default track."
-    val anyLanguageSubtitleHelp = "Subtitles in any language, as the video marks them."
+    val anyLanguageSubtitleHelp = "Subtitles in whatever language the video has first."
     val languageListGroup = "Languages"
     val languageListFooter = "The languages your Jellyfin server knows, by the names it uses on tracks."
     val searchLanguages = "Search languages"
@@ -618,14 +618,18 @@ object Strings {
     }
 
     /**
-     * The root's one-line summary of the languages: "German \u00B7 English subtitles, always". [audio] and [subtitles] are language
+     * The root's one-line summary of the languages: "German \u00B7 English subtitles always". [audio] and [subtitles] are language
      * names, null for no preference. Nothing set reads as the server's defaults.
      */
     fun languagesSummary(audio: String?, subtitles: String?, mode: SubtitleMode): String {
         if (audio == null && subtitles == null && mode == SubtitleMode.Default) return languagesDefaultsSummary
+        val which = subtitles?.let { "$it subtitles" } ?: "subtitles"
         val subs = when (mode) {
+            SubtitleMode.Default -> "$which as marked"
+            SubtitleMode.Always -> "$which always"
+            SubtitleMode.OnlyForced -> "$which only when forced"
+            SubtitleMode.Smart -> "$which when needed"
             SubtitleMode.None -> "subtitles off"
-            else -> "${subtitles?.let { "$it subtitles" } ?: "subtitles"}, ${subtitleModeLabel(mode).lowercase()}"
         }
         return "${audio ?: anyLanguage} \u00B7 $subs"
     }

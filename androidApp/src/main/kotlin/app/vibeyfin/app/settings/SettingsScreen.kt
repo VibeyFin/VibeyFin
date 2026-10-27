@@ -70,6 +70,13 @@ fun SettingsRoute(
     LeaveWhenDisconnected(connection, onExit)
     // The PIN dismissed on open: leave Settings.
     LaunchedEffect(state.leave) { if (state.leave) onBack() }
+    // A language was picked from this list: back to the page before.
+    LaunchedEffect(state.closePage) {
+        if (state.closePage == pageId) {
+            viewModel.onPageClosed()
+            onBack()
+        }
+    }
     NotificationPermissionRequest(
         requested = state.requestNotificationPermission,
         onRequested = viewModel::onNotificationPermissionRequested,
@@ -163,17 +170,24 @@ fun SettingsPageScreen(
     hasPage: (SettingsPageId) -> Boolean = { true },
     onSearch: (SettingsPageId, String) -> Unit = { _, _ -> },
 ) {
+    val content = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().padding(horizontal = screenMargin())
+    // A page with a search keeps its title and search field in place; only the rows under them scroll.
+    val pinned = page.search != null
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
+            Column(modifier = Modifier.fillMaxSize().safeDrawingPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Spacer(Modifier.height(BackButtonSpace))
-                SettingsPageBody(
-                    page, hasPage, Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().padding(horizontal = screenMargin()),
-                    selectedLink = null, onToggle, onChoose, onAction, onOpen = { onOpen(it.target) }, onSearch = onSearch,
-                )
+                if (pinned) SettingsPageHeader(page, content.padding(bottom = VibeyFinTokens.Space.s3), onSearch)
+                Column(
+                    modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    SettingsPageBody(
+                        page, hasPage, content,
+                        selectedLink = null, onToggle, onChoose, onAction, onOpen = { onOpen(it.target) }, onSearch = onSearch,
+                        header = !pinned,
+                    )
+                }
             }
             FloatingBackButton(onBack)
         }
@@ -195,17 +209,13 @@ internal fun SettingsPageBody(
     onAction: (SettingKey) -> Unit,
     onOpen: (LinkItem) -> Unit,
     onSearch: (SettingsPageId, String) -> Unit = { _, _ -> },
+    /** False when the caller draws [SettingsPageHeader] itself, pinned above a scrolling body. */
+    header: Boolean = true,
 ) {
     val drawn = page.drawn(hasPage)
     val preview = page.subtitlePreviewStyle()
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-        Text(
-            text = drawn.title,
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(bottom = VibeyFinTokens.Space.s3),
-        )
-        drawn.search?.let { query -> SettingsSearchField(query, drawn.searchPrompt.orEmpty()) { onSearch(page.id, it) } }
+        if (header) SettingsPageHeader(drawn, Modifier, onSearch)
         drawn.sections.forEachIndexed { index, section ->
             if (index > 0) Spacer(Modifier.height(VibeyFinTokens.Space.s3))
             section.title?.let { SectionHeader(it) }
@@ -224,6 +234,20 @@ internal fun SettingsPageBody(
             section.footer?.let { SectionFooter(it) }
         }
         Spacer(Modifier.height(VibeyFinTokens.Space.s5))
+    }
+}
+
+/** A page's title, and its search field when it has one. */
+@Composable
+internal fun SettingsPageHeader(page: SettingsPage, modifier: Modifier, onSearch: (SettingsPageId, String) -> Unit) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
+        Text(
+            text = page.title,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(bottom = VibeyFinTokens.Space.s3),
+        )
+        page.search?.let { query -> SettingsSearchField(query, page.searchPrompt.orEmpty()) { onSearch(page.id, it) } }
     }
 }
 

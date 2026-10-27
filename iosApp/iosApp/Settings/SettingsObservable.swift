@@ -90,6 +90,11 @@ final class SettingsObservable: ObservableObject {
         model.onAction(key: key)
     }
 
+    /// The page the state asked to close was closed.
+    func pageClosed() {
+        model.onPageClosed()
+    }
+
     /// What is typed in a page's search field; the shared state comes back with the page filtered.
     func search(_ id: SettingsPageId, _ query: String) {
         model.onSearch(page: id, query: query)

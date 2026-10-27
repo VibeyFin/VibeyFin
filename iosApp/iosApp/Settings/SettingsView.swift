@@ -10,6 +10,7 @@ struct SettingsPageView: View {
     let onExit: (HomeExit) -> Void
     /// Set in the iPad split view: a link row selects its page here instead of pushing it, and the list shows the selection.
     var selection: Binding<SettingKey?>?
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         let page = model.page(pageId)
@@ -37,6 +38,12 @@ struct SettingsPageView: View {
         .onAppear {
             model.start()
             model.pageOpened(pageId)
+        }
+        // A language was picked from this list: back to the page before.
+        .onChange(of: model.state?.closePage) { page in
+            guard page == pageId else { return }
+            model.pageClosed()
+            dismiss()
         }
         // The page the question comes from presents it, so the sheet is never on a view covered by a pushed page: Switch profile from the
         // Profile page (its action is there, and on iPad the sidebar root has none), the rest (change, remove, set, kids mode off) from Kids and PIN. The PIN to open Settings belongs to the entry view.
@@ -137,8 +144,10 @@ private struct SettingsSearch: ViewModifier {
 
     func body(content: Content) -> some View {
         if let page = model.page(pageId), page.search != nil {
+            // Always shown, not tucked under the title until the list is pulled down, so it stays on top while the list scrolls.
             content.searchable(
                 text: Binding(get: { model.page(pageId)?.search ?? "" }, set: { model.search(pageId, $0) }),
+                placement: .navigationBarDrawer(displayMode: .always),
                 prompt: page.searchPrompt ?? ""
             )
         } else {
