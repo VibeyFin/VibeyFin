@@ -28,7 +28,6 @@ class HomeModel {
     /** The Jellyfin password entered after "Forgot PIN?". */
     fun onSubmitPassword(password: String) = host.viewModel.onSubmitPassword(password)
 
-    fun onRetryLibraries() = host.viewModel.onRetryLibraries()
 
     fun onHeroPlay() = host.viewModel.onHeroPlay()
 

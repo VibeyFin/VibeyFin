@@ -10,7 +10,6 @@ import app.vibeyfin.testing.ViewModelTracker
 import app.vibeyfin.testing.itemJson
 import app.vibeyfin.testing.itemsJson
 import app.vibeyfin.ui.common.LoadMessages
-import app.vibeyfin.ui.common.Strings
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -463,16 +462,6 @@ class HomeRowsViewModelTest {
     }
 
     @Test
-    fun myMediaIsStillEveryLibraryIncludingMusic() = runTest {
-        server()
-
-        val state = viewModel().uiState.first { it.libraries.isNotEmpty() }
-
-        assertEquals(listOf("Movies", "Shows", "Music"), state.libraries.map { it.title })
-        assertEquals("My media", Strings.libraries)
-    }
-
-    @Test
     fun aRefreshKeepsTheRowsOnScreenAndAFailingRefreshKeepsTheirItems() = runTest {
         val server = server()
         val viewModel = viewModel()
@@ -534,14 +523,4 @@ class HomeRowsViewModelTest {
         assertEquals(listOf("a", "b"), done.map { it.id })
     }
 
-    @Test
-    fun myMediaComesInLastAfterContinueWatchingAndEveryRow() = runTest {
-        server()
-        val viewModel = viewModel()
-
-        val done = viewModel.uiState.first { it.rows.size == 7 && it.rows.none { row -> row.loading } && !it.loadingMyMedia }
-
-        assertFalse(done.loadingMyMedia)
-        assertEquals(3, done.libraries.size)
-    }
 }

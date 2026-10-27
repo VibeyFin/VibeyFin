@@ -28,7 +28,7 @@ struct HomeView: View {
                     .padding(.top, sizeClass == .regular ? 0 : Space.s3)
                     .padding(.bottom, Space.s3)
                 // No side margin on the scroll content: the Continue watching row runs to the screen
-                // edge, so it and the libraries apply the margin themselves.
+                // edge, so it and the rows under it apply the margin themselves.
                 if let state = model.state, state.serverId != nil {
                     ScrollView {
                         VStack(alignment: .leading, spacing: Space.s5) {
@@ -61,7 +61,7 @@ struct HomeView: View {
                                 onDownloadAction: { model.act($0, $1) }
                             )
                             // Until the libraries are known two grey rows hold the place, so the rows that replace
-                            // them don't push My media down from under the user's eyes.
+                            // them don't push the genre rows down from under the user's eyes.
                             if state.loadingLibraries && state.rows.isEmpty {
                                 RowPlaceholder()
                                 RowPlaceholder()
@@ -85,8 +85,6 @@ struct HomeView: View {
                                 )
                                 .transition(.opacity)
                             }
-                            // The libraries close Home, as 16:9 tiles in one row.
-                            MyMediaView(state: state, onOpen: onOpen, onRetry: { model.retryLibraries() })
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.bottom, Space.s5)

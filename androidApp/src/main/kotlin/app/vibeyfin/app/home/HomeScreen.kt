@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -84,7 +83,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.R
 import app.vibeyfin.app.components.ActionSnackbar
-import app.vibeyfin.app.components.ArtworkTile
 import app.vibeyfin.app.components.ContinueCard
 import app.vibeyfin.app.components.ContinueSkeletonCards
 import app.vibeyfin.app.components.LoadError
@@ -121,9 +119,6 @@ private val LOGO_SIZE = 32.dp
 
 /** How many grey rows stand in for the rows that are still being worked out. */
 private const val PLACEHOLDER_ROWS = 2
-
-/** A library's 16:9 tile in My media. */
-private val LIBRARY_TILE_WIDTH = 200.dp
 
 @Composable
 fun HomeRoute(
@@ -173,7 +168,6 @@ fun HomeRoute(
         onDismissMessage = viewModel::onDismissMessage,
         onRefresh = viewModel::onRefresh,
         onRetryContinue = viewModel::onRetryContinue,
-        onRetryLibraries = viewModel::onRetryLibraries,
         onRetryRow = viewModel::onRetryRow,
         onSeeAll = { target ->
             when (target) {
@@ -215,7 +209,6 @@ fun HomeScreen(
     onDismissMessage: () -> Unit,
     onRefresh: () -> Unit,
     onRetryContinue: () -> Unit,
-    onRetryLibraries: () -> Unit,
     onRetryRow: (String) -> Unit,
     onSeeAll: (SeeAll) -> Unit,
     onCategory: (CategoryKind) -> Unit,
@@ -270,7 +263,7 @@ fun HomeScreen(
             }
             if (state.serverId != null) {
                 Content(
-                    state, margin, onOpen, onPlay, onDetails, onHeroMyList, onHeroPlay, { menuCard = it }, onRefresh, onRetryContinue, onRetryLibraries, onRetryRow, onSeeAll,
+                    state, margin, onOpen, onPlay, onDetails, onHeroMyList, onHeroPlay, { menuCard = it }, onRefresh, onRetryContinue, onRetryRow, onSeeAll,
                     onTap = { onCategory(it.kind) },
                 )
             }
@@ -353,7 +346,7 @@ private fun SheetAction(label: String, icon: ImageVector, onClick: () -> Unit) {
     }
 }
 
-/** Continue watching and the libraries in one scrolling grid, with a pull to refresh over it. */
+/** Continue watching and the rows under it in one scrolling grid, with a pull to refresh over it. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Content(
@@ -367,7 +360,6 @@ private fun Content(
     onLongPress: (ContinueCardState) -> Unit,
     onRefresh: () -> Unit,
     onRetryContinue: () -> Unit,
-    onRetryLibraries: () -> Unit,
     onRetryRow: (String) -> Unit,
     onSeeAll: (SeeAll) -> Unit,
     onTap: (CategoryButton) -> Unit,
@@ -421,7 +413,7 @@ private fun Content(
             }
             fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onDetails, onLongPress, onRetryContinue) }
             // Until the libraries are known two grey rows hold the place, so the rows that replace them don't push
-            // My media down from under the user's eyes.
+            // the genre rows down from under the user's eyes.
             if (state.loadingLibraries && state.rows.isEmpty()) {
                 repeat(PLACEHOLDER_ROWS) { index ->
                     fullWidth(key = "placeholder-$index") { RowPlaceholder(margin) }
@@ -431,8 +423,6 @@ private fun Content(
             state.rows.forEach { row ->
                 fullWidth(key = row.id) { MediaRowSection(row, margin, onOpen, onSeeAll, onRetry = { onRetryRow(row.id) }) }
             }
-            // The libraries close Home, as 16:9 tiles in one row.
-            fullWidth(key = "my-media") { MyMedia(state, margin, onOpen, onRetryLibraries) }
         }
     }
 }
@@ -487,40 +477,6 @@ private fun RowPlaceholder(margin: Dp) {
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         SkeletonLine(220.dp, MaterialTheme.typography.titleLarge)
         PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin))
-    }
-}
-
-/** The user's libraries as 16:9 tiles in one row; a tile opens that library. */
-@Composable
-private fun MyMedia(state: HomeUiState, margin: Dp, onOpen: (MediaItem) -> Unit, onRetry: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-        SectionTitle(Strings.libraries)
-        val phase = when {
-            // Last to come in: grey tiles until every row above has finished.
-            state.loadingMyMedia -> RowPhase.Loading
-            state.librariesMessage != null -> RowPhase.Failed
-            else -> RowPhase.Ready
-        }
-        Crossfade(targetState = phase, animationSpec = tween(ROW_FADE_MS), modifier = Modifier.animateContentSize(tween(ROW_FADE_MS))) { shown ->
-            when {
-                shown == RowPhase.Loading -> PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin), count = 3, tileWidth = LIBRARY_TILE_WIDTH, aspectRatio = 16f / 9f, captionLines = 1)
-                shown == RowPhase.Failed -> LoadError(state.librariesMessage ?: "", onRetry)
-                state.libraries.isEmpty() -> Text(
-                    text = Strings.noLibraries,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                else -> LazyRow(
-                    modifier = Modifier.bleed(margin),
-                    contentPadding = PaddingValues(horizontal = margin),
-                    horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-                ) {
-                    items(state.libraries, key = { it.id }) { library ->
-                        ArtworkTile(library, onClick = { onOpen(library) }, modifier = Modifier.width(LIBRARY_TILE_WIDTH), captionLines = 1)
-                    }
-                }
-            }
-        }
     }
 }
 

@@ -38,10 +38,6 @@ final class HomeObservable: ObservableObject {
 
     func dismissPin() { model.onDismissPin() }
 
-    func retryLibraries() {
-        model.onRetryLibraries()
-    }
-
     func markWatched(_ cardId: String) {
         model.onMarkWatched(cardId: cardId)
     }
