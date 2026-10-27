@@ -29,16 +29,9 @@ struct SearchView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: Space.s2) {
                 ForEach(state.chips, id: \.filter) { chip in
-                    Button { model.setFilter(chip.filter) } label: {
-                        Text(chip.label.titleCased())
-                            .font(.subheadline.weight(.medium))
-                            .padding(.horizontal, Space.s3)
-                            .frame(minHeight: 36)
-                            .background(Capsule().fill(chip.selected ? Color(.secondarySystemFill) : Color(.tertiarySystemBackground)))
-                            .foregroundStyle(chip.selected ? Color.primary : Color.secondary)
-                    }
-                    .buttonStyle(PressableButtonStyle())
-                    .accessibilityAddTraits(chip.selected ? .isSelected : [])
+                    // The same chip as Home and a category page; the chosen one fills with ink.
+                    FilterChipButton(label: chip.label.titleCased(), active: chip.selected) { model.setFilter(chip.filter) }
+                        .accessibilityAddTraits(chip.selected ? .isSelected : [])
                 }
             }
             .screenMargin()
@@ -129,10 +122,17 @@ struct SearchView: View {
                         .sectionTitle()
                         .padding(.top, Space.s3)
                         .accessibilityAddTraits(.isHeader)
-                    ForEach(group.results, id: \.id) { result in
-                        Button { model.resultOpened(); onOpenResult(result) } label: { row(result) }
-                            .buttonStyle(PressableButtonStyle())
-                            .accessibilityLabel(Strings.shared.searchResultDescription(title: result.title, subtitle: result.subtitle))
+                    // Posters and portraits sit in a narrow grid; episodes are rows, one per line on a phone and more on an iPad.
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: group.kind == .episode ? 300 : 110), spacing: Space.s3, alignment: .top)],
+                        alignment: .leading,
+                        spacing: Space.s4
+                    ) {
+                        ForEach(group.results, id: \.id) { result in
+                            Button { model.resultOpened(); onOpenResult(result) } label: { tile(result) }
+                                .buttonStyle(PressableButtonStyle())
+                                .accessibilityLabel(Strings.shared.searchResultDescription(title: result.title, subtitle: result.subtitle))
+                        }
                     }
                 }
             }
@@ -144,16 +144,43 @@ struct SearchView: View {
         }
     }
 
-    private func row(_ result: SearchResult) -> some View {
+    @ViewBuilder
+    private func tile(_ result: SearchResult) -> some View {
+        if result.kind == .episode {
+            episodeRow(result)
+        } else {
+            posterTile(result)
+        }
+    }
+
+    /// The show and episode number need the room a tile doesn't have, so an episode reads as a row with the still beside it.
+    private func episodeRow(_ result: SearchResult) -> some View {
         HStack(spacing: Space.s3) {
-            picture(result)
+            picture(result).frame(width: 128)
             VStack(alignment: .leading, spacing: 2) {
-                Text(result.title).font(.headline).foregroundStyle(.primary).lineLimit(2)
+                Text(result.title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary).lineLimit(2)
                 if let subtitle = result.subtitle {
-                    Text(subtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                    Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                 }
             }
-            Spacer(minLength: 0)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .contentShape(Rectangle())
+    }
+
+    private func posterTile(_ result: SearchResult) -> some View {
+        let isPerson = result.kind == .person
+        return VStack(alignment: isPerson ? .center : .leading, spacing: Space.s2) {
+            picture(result)
+            VStack(alignment: isPerson ? .center : .leading, spacing: 2) {
+                Text(result.title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary).lineLimit(2)
+                if let subtitle = result.subtitle {
+                    Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+            }
+            .multilineTextAlignment(isPerson ? .center : .leading)
+            .frame(maxWidth: .infinity, alignment: isPerson ? .center : .leading)
         }
         .contentShape(Rectangle())
     }
@@ -165,38 +192,33 @@ struct SearchView: View {
             ZStack {
                 Circle().fill(Color(.tertiarySystemBackground))
                 Text(result.title.split(separator: " ").prefix(2).compactMap { $0.first.map(String.init) }.joined().uppercased())
-                    .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                    .font(.headline).foregroundStyle(.secondary)
                 if let url = result.imageUrl.flatMap({ URL(string: $0) }) {
-                    AsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { Color.clear }.clipShape(Circle())
+                    AsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { Color.clear }
                 }
             }
-            .frame(width: 56, height: 56)
+            .aspectRatio(1, contentMode: .fit)
+            .clipShape(Circle())
         case .episode:
             Artwork(url: result.imageUrl, title: result.title, aspectRatio: 16.0 / 9.0, blurHash: nil)
                 .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
-                .frame(width: 112)
         default:
             Artwork(url: result.imageUrl, title: result.title, aspectRatio: 2.0 / 3.0, blurHash: nil)
                 .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
-                .frame(width: 56)
         }
     }
 
     private var skeleton: some View {
-        VStack(alignment: .leading, spacing: Space.s3) {
-            ForEach(0..<5, id: \.self) { _ in
-                HStack(spacing: Space.s3) {
-                    SkeletonBlock().frame(width: 56, height: 84)
-                    VStack(alignment: .leading, spacing: Space.s1) {
-                        SkeletonLine(font: .headline, width: 180)
-                        SkeletonLine(font: .subheadline, width: 80)
-                    }
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
+            ForEach(0..<6, id: \.self) { _ in
+                VStack(alignment: .leading, spacing: Space.s2) {
+                    SkeletonBlock().aspectRatio(2.0 / 3.0, contentMode: .fit)
+                    SkeletonLine(font: .subheadline, width: 80)
                 }
             }
-            Spacer()
         }
         .screenMargin()
         .padding(.top, Space.s2)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }

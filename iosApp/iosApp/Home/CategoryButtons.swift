@@ -13,24 +13,8 @@ struct CategoryButtonRow: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: Space.s2) {
                 ForEach(buttons, id: \.kind) { button in
-                    Button { onTap(button) } label: {
-                        HStack(spacing: Space.s1) {
-                            Text(button.label.titleCased())
-                            if button.opensSheet {
-                                Image(systemName: "chevron.down").font(.caption.weight(.semibold))
-                            }
-                        }
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.primary)
-                        .padding(.horizontal, Space.s4)
-                        .frame(height: 36)
-                        .background(Capsule().fill(Color(.tertiarySystemBackground)))
-                        // 44pt to touch, 36pt to look at.
-                        .frame(minHeight: 44)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(PressableButtonStyle())
-                    .accessibilityLabel(button.opensSheet ? Strings.shared.opensList(label: button.label) : button.label)
+                    FilterChipButton(label: button.label.titleCased(), opensList: button.opensSheet) { onTap(button) }
+                        .accessibilityLabel(button.opensSheet ? Strings.shared.opensList(label: button.label) : button.label)
                 }
             }
             .screenMargin()
@@ -50,23 +34,8 @@ struct ListChipRow: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: Space.s2) {
                 ForEach(chips, id: \.kind) { chip in
-                    Button { onTap(chip) } label: {
-                        HStack(spacing: Space.s1) {
-                            Text(chip.label)
-                            // Sort and Genre open a list and have a chevron; Movies and Shows switch on and off.
-                            if chip.opensList {
-                                Image(systemName: "chevron.down").font(.caption.weight(.semibold))
-                            }
-                        }
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(chip.active ? Color(.systemBackground) : Color.primary)
-                        .padding(.horizontal, Space.s4)
-                        .frame(height: 36)
-                        .background(Capsule().fill(chip.active ? Color.primary : Color(.tertiarySystemBackground)))
-                        .frame(minHeight: 44)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(PressableButtonStyle())
+                    // Sort and Genre open a list and have a chevron; Movies and Shows switch on and off.
+                    FilterChipButton(label: chip.label, active: chip.active, opensList: chip.opensList) { onTap(chip) }
                 }
             }
             .screenMargin()
