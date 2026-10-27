@@ -79,11 +79,10 @@ object Strings {
 
     // Home and browsing
     val home = "Home"
-    /** The row of the user's libraries at the end of Home. */
-    val libraries = "My media"
-
     /** The header of a library's row of what was added most recently. */
     fun recentlyAddedIn(library: String) = "Recently added in $library"
+    /** The header of the row that stands in for those when the libraries couldn't be listed. */
+    val recentlyAdded = "Recently added"
 
     /** The action in a row's header that opens the whole list, and what a screen reader says for it. */
     val seeAll = "See all"
@@ -153,7 +152,6 @@ object Strings {
     val notAvailableYet = "Not available yet"
     val switchProfile = "Switch profile"
     val switchServer = "Switch server"
-    val noLibraries = "This account has no libraries yet. Ask the server's admin to add one."
     val emptyFolder = "There's nothing in here yet."
     val nothingMatchesFilters = "Nothing matches these filters. Try taking one off, or tap Clear."
     val loadMoreFailed = "Couldn't load the rest of this list. Check your connection and try again."

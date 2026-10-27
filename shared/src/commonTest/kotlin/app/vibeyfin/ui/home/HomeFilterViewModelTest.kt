@@ -55,7 +55,7 @@ class HomeFilterViewModelTest {
     }
 
     // Home's own rows have asked for the genres by now, so a sheet opened next is read from memory, not asked for again.
-    private suspend fun HomeViewModel.loaded() = uiState.first { it.serverId != null && !it.loadingLibraries && !it.continueRow.loading && !it.loadingMyMedia }
+    private suspend fun HomeViewModel.loaded() = uiState.first { it.serverId != null && !it.loadingLibraries && !it.continueRow.loading && it.rows.none { row -> row.loading } }
 
     @Test
     fun homeShowsTheFourButtonsInOrderAndOnlyTwoOpenASheet() = runTest {
@@ -178,12 +178,13 @@ class HomeFilterViewModelTest {
     fun homeItselfIsNeverFiltered() = runTest {
         server()
         val viewModel = viewModel()
-        viewModel.loaded()
+        val before = viewModel.loaded()
 
         viewModel.onCategory(CategoryKind.Shows)
         val state = viewModel.uiState.value
 
-        // The libraries and Continue watching stay as they are: the page opens over Home.
-        assertEquals(1, state.libraries.size)
+        // The rows and Continue watching stay as they are: the page opens over Home.
+        assertEquals(before.rows, state.rows)
+        assertEquals(before.continueRow, state.continueRow)
     }
 }

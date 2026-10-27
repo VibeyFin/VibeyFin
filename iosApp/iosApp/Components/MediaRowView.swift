@@ -65,46 +65,6 @@ struct MediaRowView: View {
     }
 }
 
-/// The user's libraries as 16:9 tiles in one row at the end of Home; a tile opens that library.
-struct MyMediaView: View {
-    let state: HomeUiState
-    let onOpen: (MediaItem) -> Void
-    let onRetry: () -> Void
-
-    private let tileWidth: CGFloat = 200
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Space.s3) {
-            Text(Strings.shared.libraries.titleCased())
-                .sectionTitle()
-                .accessibilityAddTraits(.isHeader)
-                .screenMargin()
-            if state.loadingMyMedia {
-                // Last to come in: grey tiles until every row above has finished.
-                PosterSkeletonRow(count: 3, tileWidth: tileWidth, aspectRatio: 16.0 / 9.0, captionLines: 1)
-            } else if let message = state.librariesMessage {
-                LoadErrorView(message: message, onRetry: onRetry)
-                    .screenMargin()
-            } else if state.libraries.isEmpty {
-                Text(Strings.shared.noLibraries)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .screenMargin()
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: Space.s3) {
-                        ForEach(state.libraries, id: \.id) { library in
-                            Button { onOpen(library) } label: { ArtworkTile(item: library, captionLines: 1).frame(width: tileWidth) }
-                                .buttonStyle(PressableButtonStyle())
-                        }
-                    }
-                    .screenMargin()
-                }
-            }
-        }
-    }
-}
-
 /// A row's header and posters in grey, for the moment before the rows are known.
 struct RowPlaceholder: View {
     var body: some View {

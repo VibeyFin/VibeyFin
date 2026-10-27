@@ -7,9 +7,8 @@ Which server data drives which piece of UI. All of this lives in the shared Kotl
 | Row | Source | Notes |
 | --- | --- | --- |
 | Continue watching (includes Next up) | `GET /UserItems/Resume`, then `GET /Shows/NextUp` | Movies and episodes; 16:9 `ContinueCard`. In-progress items first, newest first, then one Next up episode per series, hiding any series that already has an item in progress. Progress bar on in-progress cards only; Next up cards show "S2 E5". |
-| Recently added — {library} | `GET /Items/Latest?parentId={viewId}` | One row per library from `GET /UserViews`. Posters; episodes grouped by series. |
+| Recently added — {library} | `GET /Items/Latest?parentId={viewId}` | One row per library from `GET /UserViews`. Posters; episodes grouped by series. When `/UserViews` fails, one "Recently added" row shows the error and retries it. |
 | Collections / genres | `GET /Items?genreIds=` by community rating, 20 items | Every genre the server lists, the one with the most titles first (`GET /Genres` counts), titled with the genre; "See all" opens the genre's page. A `BoxSet` parent is not used yet. |
-| My media | `GET /UserViews` | The user's libraries as 16:9 tiles; tap opens that library. |
 | My List | Items with `UserData.IsFavorite = true` | Jellyfin has no watchlist; VibeyFin uses Favorites for "My List". |
 
 ### Home category buttons and their pages
@@ -27,7 +26,7 @@ keeps its genre). The Genre picker is `GET /Genres?fields=ItemCounts` with `incl
 (Movie, Series, or both) and counts `MovieCount`, `SeriesCount` or their sum to match; a genre with none is left out.
 
 Every page is `GET /Items` across every library (movies and shows for a genre), a page of 60 at a
-time. Home's own rows (Continue watching, libraries) are not filtered, so none of the endpoints behind them change.
+time. Home's own rows (Continue watching, Recently added, genres) are not filtered, so none of the endpoints behind them change.
 
 ## Detail
 

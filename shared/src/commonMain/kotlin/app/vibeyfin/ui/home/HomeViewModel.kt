@@ -67,14 +67,11 @@ data class HomeUiState(
     val serverName: String? = null,
     /** The server's id, for routing back to "Who's watching?" on that server. */
     val serverId: String? = null,
-    /** The libraries this profile can open: Movies, Shows, ... */
-    val libraries: List<MediaItem> = emptyList(),
+    /** The libraries are being listed: until they are, grey rows hold the place of the rows they decide. */
     val loadingLibraries: Boolean = false,
-    /** Why the libraries didn't load, with what to try. */
-    val librariesMessage: String? = null,
     /** Continue watching: what the user is in the middle of, and the next episode of their shows. */
     val continueRow: ContinueRow = ContinueRow(),
-    /** A pull to refresh is running; the cards and libraries stay on screen while it does. */
+    /** A pull to refresh is running; the cards and rows stay on screen while it does. */
     val refreshing: Boolean = false,
     /** A change that couldn't be saved on the server and was taken back, with what to try. */
     val actionMessage: String? = null,
@@ -87,12 +84,11 @@ data class HomeUiState(
     /** Set when a category page should open (a button or a sheet entry was chosen); the screen calls `onListOpened`. */
     val openList: HomeFilter? = null,
     /**
-     * The rows between Continue watching and My media, in order: Recently added in each video library, then a few
-     * genres, every one the server lists. Only rows worth showing (loading, failed or with items) are here.
+     * The rows under Continue watching, in order: My List, Recently added in each video library (one failed "Recently
+     * added" row when the libraries couldn't be listed), then a row for every genre the server lists. Only rows worth
+     * showing (loading, failed or with items) are here.
      */
     val rows: List<MediaRow> = emptyList(),
-    /** My media waits for everything above it, so it comes in last: its grey tiles show until then. */
-    val loadingMyMedia: Boolean = false,
     /** The featured item above Continue watching; null until it is picked, and when nothing qualifies. */
     val hero: MediaItem? = null,
     /** The hero is switched on and being picked: a grey card holds its place, so it does not just appear. */
@@ -140,6 +136,9 @@ private const val GENRE_ROWS_AT_ONCE = 4
 
 /** The id of the My List row, the first of Home's rows. */
 private const val MY_LIST_ID = "my-list"
+
+/** The id of the row that stands in for the Recently added rows when the libraries couldn't be listed. */
+private const val LIBRARIES_FAILED_ID = "latest:failed"
 
 private data class Libraries(
     val items: List<MediaItem> = emptyList(),
@@ -202,9 +201,7 @@ class HomeViewModel(
                 userName = state.account.name,
                 serverName = state.server.name,
                 serverId = state.server.id,
-                libraries = libraries.items,
                 loadingLibraries = libraries.loading,
-                librariesMessage = libraries.message,
                 continueRow = continueRow,
                 refreshing = refreshing,
                 exit = exit,
@@ -229,7 +226,6 @@ class HomeViewModel(
             openList = categories.openList,
             heroNav = categories.heroNav,
             rows = rows,
-            loadingMyMedia = screen.loadingLibraries || screen.continueRow.loading && screen.continueRow.cards.isEmpty() || rows.any { it.loading },
         )
     }
 
@@ -299,18 +295,19 @@ class HomeViewModel(
         }
     }
 
-    fun onRetryLibraries() {
-        viewModelScope.launch {
-            loadLibraries()
-            loadLatestRows(quiet = false)
-        }
-    }
-
     /** "Try again" on one row: only it reloads. */
     fun onRetryRow(id: String) {
         if (id == MY_LIST_ID) {
             myListRow.update { it?.copy(loading = true, message = null) }
             viewModelScope.launch { loadMyList(quiet = false) }
+            return
+        }
+        if (id == LIBRARIES_FAILED_ID) {
+            latestRows.updateRow(id) { it.copy(loading = true, message = null) }
+            viewModelScope.launch {
+                loadLibraries()
+                loadLatestRows(quiet = false)
+            }
             return
         }
         val row = (latestRows.value + genreRows.value).firstOrNull { it.id == id } ?: return
@@ -471,6 +468,11 @@ class HomeViewModel(
 
     /** One "Recently added" row per library that holds video; the rows keep their order while each loads on its own. */
     private suspend fun loadLatestRows(quiet: Boolean) {
+        // Without the libraries there is nothing to ask for: one row says why, where their rows would be, and tries again.
+        libraries.value.message?.let { message ->
+            latestRows.value = listOf(MediaRow(LIBRARIES_FAILED_ID, Strings.recentlyAdded, loading = false, message = message))
+            return
+        }
         val videoLibraries = libraries.value.items.filter { it.holdsVideo }.take(MAX_LATEST_ROWS)
         latestRows.update { old ->
             videoLibraries.map { lib ->

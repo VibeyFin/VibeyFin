@@ -223,15 +223,16 @@ class HomeViewModelTest {
         ),
     )
 
+    private fun HomeUiState.latestRows() = rows.filter { it.id.startsWith("latest:") }
+
     @Test
-    fun listsTheLibrariesOnceSignedIn() = runTest {
+    fun eachLibraryGetsARecentlyAddedRowOnceSignedIn() = runTest {
         signedIn().libraries()
 
-        val state = viewModel().uiState.first { it.libraries.isNotEmpty() }
+        val state = viewModel().uiState.first { it.latestRows().isNotEmpty() }
 
-        assertEquals(listOf("Movies", "Shows"), state.libraries.map { it.title })
+        assertEquals(listOf("Recently added in Movies", "Recently added in Shows"), state.latestRows().map { it.title })
         assertFalse(state.loadingLibraries)
-        assertNull(state.librariesMessage)
         assertEquals("u1", app.jellyfin.requestsTo("GET", "/UserViews").single().query["userId"])
     }
 
@@ -239,29 +240,32 @@ class HomeViewModelTest {
     fun asksForNothingBeforeSignIn() = runTest {
         val viewModel = viewModel()
 
-        assertTrue(viewModel.uiState.value.libraries.isEmpty())
+        assertTrue(viewModel.uiState.value.rows.isEmpty())
         assertEquals(0, app.jellyfin.requestsTo("GET", "/UserViews").size)
     }
 
     @Test
-    fun librariesThatCantBeLoadedSayWhyAndCanBeRetried() = runTest {
+    fun librariesThatCantBeLoadedShowOneRecentlyAddedRowThatSaysWhyAndCanBeRetried() = runTest {
         val server = signedIn()
         server.libraries()
         server.refuseConnections()
         val viewModel = viewModel()
 
-        val failed = viewModel.uiState.first { it.librariesMessage != null }
-        assertEquals(SignInMessages.UNREACHABLE, failed.librariesMessage)
-        assertTrue(failed.libraries.isEmpty())
+        val failed = viewModel.uiState.first { it.latestRows().any { row -> row.message != null } }
+        val row = failed.latestRows().single()
+        assertEquals("Recently added", row.title)
+        assertEquals(SignInMessages.UNREACHABLE, row.message)
+        assertFalse(row.loading)
+        assertNull(row.seeAll)
         assertFalse(failed.loadingLibraries)
         // The rest of Home still works: the menu needs no server.
         assertEquals("Alex", failed.userName)
 
         server.refuseConnections(false)
-        viewModel.onRetryLibraries()
-        val loaded = viewModel.uiState.first { it.libraries.isNotEmpty() }
+        viewModel.onRetryRow(row.id)
+        val loaded = viewModel.uiState.first { it.latestRows().any { r -> r.seeAll != null } }
 
-        assertNull(loaded.librariesMessage)
+        assertEquals(listOf("Recently added in Movies", "Recently added in Shows"), loaded.latestRows().map { it.title })
     }
 
     @Test
@@ -272,17 +276,16 @@ class HomeViewModelTest {
         val state = viewModel().uiState.first { it.exit != null }
 
         assertEquals(HomeExit.WhoIsWatching("srv-1"), state.exit)
-        assertTrue(state.libraries.isEmpty())
     }
 
     @Test
-    fun neverShowsNoLibrariesWhileTheyAreOnTheirWay() = runTest {
+    fun aSignedInHomeIsLoadingUntilTheLibrariesArrive() = runTest {
         signedIn().libraries()
         val seen = mutableListOf<HomeUiState>()
 
-        viewModel().uiState.takeWhile { it.libraries.isEmpty() }.toList(seen)
+        viewModel().uiState.takeWhile { it.latestRows().isEmpty() }.toList(seen)
 
-        // Before the list arrives, a signed-in Home is loading rather than telling the user it is empty.
+        // Before the list arrives, a signed-in Home holds grey rows rather than showing nothing where its rows will be.
         assertTrue(seen.filter { it.serverId != null }.all { it.loadingLibraries }, seen.toString())
     }
 
@@ -292,8 +295,8 @@ class HomeViewModelTest {
 
         val state = viewModel().uiState.first { it.serverId != null && !it.loadingLibraries }
 
-        assertTrue(state.libraries.isEmpty())
-        assertNull(state.librariesMessage)
+        // No libraries: no Recently added rows, and no failed one either.
+        assertTrue(state.latestRows().isEmpty())
     }
 
     private fun FakeServer.watching(resume: String = itemsJson(), nextUp: String = itemsJson()) {
@@ -499,7 +502,7 @@ class HomeViewModelTest {
         viewModel.onRefresh()
         val refreshed = viewModel.uiState.first { !it.refreshing && it.continueRow.cards.map { card -> card.id } == listOf("e9") }
 
-        assertEquals(listOf("Movies", "Shows"), refreshed.libraries.map { it.title })
+        assertEquals(listOf("Recently added in Movies", "Recently added in Shows"), refreshed.latestRows().map { it.title })
         assertEquals(2, app.jellyfin.requestsTo("GET", "/UserViews").size)
         assertNull(refreshed.continueRow.message)
     }
