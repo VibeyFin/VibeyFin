@@ -70,6 +70,20 @@ struct ChildrenView: View {
             }
         }
         .onAppear { model.start() }
+        .failureBanner(
+            model.state?.downloadMessage,
+            onRetry: { model.retryDownload() },
+            onDismiss: { model.dismissDownloadMessage() }
+        )
+        .downloadPrompts(
+            prompt: model.state?.downloadPrompt,
+            removal: model.state?.removePrompt,
+            onToggleUnwatched: { model.toggleUnwatchedOnly() },
+            onConfirm: { model.confirmDownload() },
+            onDismiss: { model.dismissDownloadPrompt() },
+            onConfirmRemove: { model.confirmRemove() },
+            onDismissRemoval: { model.dismissRemoval() }
+        )
         .backMenuTitle(title)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
@@ -77,6 +91,33 @@ struct ChildrenView: View {
         .toolbarRole(.editor)
         .onChange(of: model.state?.exit != nil) { hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
+        }
+    }
+
+    private func seasonDownloadRow(_ state: ChildrenUiState) -> some View {
+        HStack(spacing: Space.s3) {
+            Button { model.downloadSeason() } label: {
+                Label(Strings.shared.downloadSeasonButton.titleCased(), systemImage: "arrow.down.to.line")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, Space.s4)
+                    .frame(minHeight: 44)
+                    .background(Capsule().fill(Color(.tertiarySystemBackground)))
+            }
+            .buttonStyle(PressableButtonStyle())
+            if !state.seasonDownloads.isEmpty {
+                Text(Strings.shared.seasonDownloadedCount(done: state.seasonDownloaded, total: Int32(state.items.count)))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                Button { model.removeSeasonDownloads() } label: {
+                    Image(systemName: "trash")
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressableButtonStyle())
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(Strings.shared.removeDownloadsOf(count: Int32(state.seasonDownloads.count)))
+            }
         }
     }
 
@@ -102,6 +143,10 @@ struct ChildrenView: View {
                 .font(.body)
                 .foregroundStyle(.secondary)
         } else {
+            // A season's list can be downloaded as a whole, and says how much of it already is.
+            if state.offersSeasonDownload {
+                seasonDownloadRow(state)
+            }
             if state.collection != nil {
                 // A collection's members under sub-headings: its movies, then its shows, then whatever else it holds.
                 ForEach(groups(state), id: \.0) { group in

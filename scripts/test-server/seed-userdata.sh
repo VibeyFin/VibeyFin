@@ -7,11 +7,12 @@
 #   Resume      Saga Show S01E02 at 1.2 s of 3 s (40 %), Neon Night at 2 s of 5 s
 #   My List     Saga Show, Neon Night, Starlit Crown, Solo Season
 #   Kids user   "kids" (password vibeyfin-kids): MaxParentalRating 10 (PG), blocked tag no-kids, schedule Everyday 0-24 h
+#   User        "nodownload" (a second user, downloading switched off), created once and kept that way
 #   Cleared     everything else among these fixtures (not played, no resume, not a favourite)
 # The expectations are the "Page fixtures" section of docs/test-server.md.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
-export JF_URL JF_USER JF_PASS AUTH_HDR
+export JF_URL JF_USER JF_PASS AUTH_HDR JF_NODL_USER JF_NODL_PASS
 export KIDS_USER="kids" KIDS_PASS="vibeyfin-kids"
 
 exec python3 -I - <<'PY'
@@ -99,5 +100,14 @@ policy.update(MaxParentalRating=10, BlockedTags=["no-kids"], IsAdministrator=Fal
               AccessSchedules=[{"UserId": kid["Id"], "DayOfWeek": "Everyday", "StartHour": 0.0, "EndHour": 24.0}])
 call(f"/Users/{kid['Id']}/Policy", token, body=policy, method="POST")
 print(f"kids user {kid['Id']} ready")
+
+# A user who may not download: created once by name, and its policy set every run.
+users = call("/Users", token)
+nodl = next((u for u in users if u["Name"] == os.environ["JF_NODL_USER"]), None)
+if nodl is None:
+    nodl = call("/Users/New", token, method="POST", body={"Name": os.environ["JF_NODL_USER"], "Password": os.environ["JF_NODL_PASS"]})
+policy = call(f"/Users/{nodl['Id']}", token)["Policy"]
+policy["EnableContentDownloading"] = False
+call(f"/Users/{nodl['Id']}/Policy", token, method="POST", body=policy)
 print(f"seeded user data for {len(touched)} items; Crown Collection {box_id}")
 PY

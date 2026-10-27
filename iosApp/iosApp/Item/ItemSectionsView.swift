@@ -16,6 +16,10 @@ struct SeasonsSectionView: View {
     let onViewEpisode: (MediaItem) -> Void
     let onRetrySeasons: () -> Void
     let onRetryEpisodes: () -> Void
+    /// The profile's downloads by item id, whether the server lets the user download, and the ways in to downloads.
+    var downloads: [String: Download] = [:]
+    var canDownload = false
+    var downloadActions = DownloadActions()
 
     /// The episode area keeps the height of the tallest list it has shown, so choosing a season swaps its content in place and
     /// nothing below it moves.
@@ -125,7 +129,10 @@ struct SeasonsSectionView: View {
                         current: episode.id == seasons.startEpisode?.id,
                         onPlay: { onPlay(episode.id) },
                         onToggleWatched: { onToggleWatched(episode.id) },
-                        onView: { onViewEpisode(episode) }
+                        onView: { onViewEpisode(episode) },
+                        download: downloads[episode.id],
+                        canDownload: canDownload,
+                        downloadActions: downloadActions
                     )
                 }
             }
@@ -141,7 +148,10 @@ struct SeasonsSectionView: View {
                                 current: episode.id == seasons.startEpisode?.id,
                                 onPlay: { onPlay(episode.id) },
                                 onToggleWatched: { onToggleWatched(episode.id) },
-                                onView: { onViewEpisode(episode) }
+                                onView: { onViewEpisode(episode) },
+                                download: downloads[episode.id],
+                                canDownload: canDownload,
+                                downloadActions: downloadActions
                             )
                             .id(episode.id)
                         }
@@ -173,6 +183,9 @@ struct EpisodeRowView: View {
     let onPlay: () -> Void
     let onToggleWatched: () -> Void
     let onView: () -> Void
+    var download: Download? = nil
+    var canDownload = false
+    var downloadActions = DownloadActions()
 
     private let aspect: CGFloat = 1.6
 
@@ -236,6 +249,15 @@ struct EpisodeRowView: View {
             }
             .buttonStyle(.plain)
             .accessibilityHint(Strings.shared.viewEpisode)
+
+            // Each episode has its own download control at the end of its row.
+            EpisodeDownloadButton(
+                title: episode.title,
+                download: download,
+                canDownload: canDownload,
+                onStart: { downloadActions.downloadEpisode(episode.id) },
+                onAction: { downloadActions.action(episode.id, $0) }
+            )
         }
         .contextMenu {
             Button(action: onView) {
@@ -247,6 +269,7 @@ struct EpisodeRowView: View {
                     systemImage: episode.played ? "xmark.circle" : "checkmark.circle"
                 )
             }
+            EpisodeDownloadMenuItems(episodeId: episode.id, download: download, canDownload: canDownload, actions: downloadActions)
         }
     }
 
@@ -289,6 +312,9 @@ struct EpisodeCardView: View {
     let onPlay: () -> Void
     let onToggleWatched: () -> Void
     let onView: () -> Void
+    var download: Download? = nil
+    var canDownload = false
+    var downloadActions = DownloadActions()
 
     private let aspect: CGFloat = 1.6
 
@@ -337,6 +363,16 @@ struct EpisodeCardView: View {
                 .buttonStyle(.plain)
                 .accessibilityHint(Strings.shared.viewEpisode)
         }
+        .overlay(alignment: .topTrailing) {
+            EpisodeDownloadButton(
+                title: episode.title,
+                download: download,
+                canDownload: canDownload,
+                onStart: { downloadActions.downloadEpisode(episode.id) },
+                onAction: { downloadActions.action(episode.id, $0) },
+                overPicture: true
+            )
+        }
         .contextMenu {
             Button(action: onView) {
                 Label(Strings.shared.viewEpisode.titleCased(), systemImage: "info.circle")
@@ -347,6 +383,7 @@ struct EpisodeCardView: View {
                     systemImage: episode.played ? "xmark.circle" : "checkmark.circle"
                 )
             }
+            EpisodeDownloadMenuItems(episodeId: episode.id, download: download, canDownload: canDownload, actions: downloadActions)
         }
     }
 

@@ -16,10 +16,15 @@ interface DevicePreferences {
     /** When on, "Who's watching?" shows on every start instead of reopening the last profile. */
     val alwaysAskWhoIsWatching: Flow<Boolean>
 
+    /** The "Offline mode" switch: when on, the app uses only its downloads even with a network. Off by default. */
+    val offlineMode: Flow<Boolean>
+
     /** Switching to a different server forgets the last profile, which belonged to the old one. */
     suspend fun setLastServer(serverId: String?)
 
     suspend fun setLastProfile(profile: ProfileRef)
 
     suspend fun setAlwaysAskWhoIsWatching(value: Boolean)
+
+    suspend fun setOfflineMode(value: Boolean)
 }

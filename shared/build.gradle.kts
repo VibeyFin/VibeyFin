@@ -67,6 +67,7 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.koin.android)
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.androidx.work.runtime)
         }
 
         iosMain.dependencies {

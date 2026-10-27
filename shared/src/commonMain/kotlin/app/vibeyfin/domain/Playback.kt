@@ -1,6 +1,7 @@
 package app.vibeyfin.domain
 
 import app.vibeyfin.data.api.ApiError
+import kotlinx.serialization.Serializable
 
 /** How the server delivers the item to this device. The names are what Jellyfin's session reports expect. */
 enum class PlayMethod(val wireName: String) {
@@ -15,6 +16,7 @@ enum class PlayMethod(val wireName: String) {
 }
 
 /** One audio or subtitle track the user can pick. */
+@Serializable
 data class PlaybackTrack(
     /** The server's index of the track in the file. */
     val index: Int,

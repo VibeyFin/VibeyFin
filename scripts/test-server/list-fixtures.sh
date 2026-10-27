@@ -40,6 +40,10 @@ FIXTURES = {
     "mkv-vp9-opus": ("failures/MKV VP9 Opus (2026)/MKV VP9 Opus (2026).mkv", dict(CLIP, video="vp9", audio=["opus"])),
     "subs-text": ("failures/Text Subtitles (2026)/Text Subtitles (2026).mkv", dict(CLIP, subtitles=["subrip", "subrip"])),
     "subs-image": ("failures/Image Subtitles (2026)/Image Subtitles (2026).mkv", dict(CLIP, subtitles=["PGSSUB"])),
+    "big-download": ("movies/Big Download (2026)/Big Download (2026).mkv",
+                     dict(CLIP, seconds=60, trickplay=True)),  # the Movies library makes trickplay
+    "download-subs": ("movies/Download Subs (2026)/Download Subs (2026).mkv",
+                      dict(CLIP, seconds=3, subtitles=["subrip", "subrip"])),  # external .srt files; too short for trickplay
     "truncated": ("failures/Truncated (2026)/Truncated (2026).mp4",
                   dict(container="mp4", video=None, audio=[], subtitles=[], seconds=0, chapters=0,
                        segments=[], trickplay=False)),  # in the library, but nothing can be read from it

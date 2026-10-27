@@ -50,6 +50,9 @@ import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.components.MediaRowSection
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
+import app.vibeyfin.app.downloads.DownloadConfirmDialog
+import app.vibeyfin.app.downloads.RemoveConfirmDialog
+import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
 import app.vibeyfin.app.navigation.sharedPoster
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
@@ -80,6 +83,7 @@ fun ItemRoute(
     LaunchedEffect(state.exit) {
         state.exit?.let(onExit)
     }
+    val ensureNotifications = rememberDownloadNotificationPermission()
     ItemScreen(
         state = state,
         onBack = onBack,
@@ -100,7 +104,28 @@ fun ItemRoute(
         onRetryEpisodes = viewModel::onRetryEpisodes,
         onRetryAction = viewModel::onRetryAction,
         onDismissMessage = viewModel::onDismissMessage,
+        downloads = DownloadCallbacks(
+            onDownload = viewModel::onDownload,
+            onDownloadEpisode = viewModel::onDownloadEpisode,
+            onAction = viewModel::onDownloadAction,
+            onDownloadSeries = viewModel::onDownloadSeries,
+            onDownloadSeason = viewModel::onDownloadSeason,
+            onRemoveSeries = viewModel::onRemoveSeriesDownloads,
+        ),
     )
+    // The questions before a season or a show is downloaded, and before downloads are deleted.
+    state.downloadPrompt?.let { prompt ->
+        DownloadConfirmDialog(
+            prompt,
+            onToggleUnwatched = viewModel::onToggleUnwatchedOnly,
+            onConfirm = {
+                ensureNotifications()
+                viewModel.onConfirmDownload()
+            },
+            onDismiss = viewModel::onDismissDownloadPrompt,
+        )
+    }
+    state.removePrompt?.let { RemoveConfirmDialog(it, onConfirm = viewModel::onConfirmRemove, onDismiss = viewModel::onDismissRemoval) }
 }
 
 @Composable
@@ -124,6 +149,7 @@ fun ItemScreen(
     onRetryEpisodes: () -> Unit,
     onRetryAction: () -> Unit,
     onDismissMessage: () -> Unit,
+    downloads: DownloadCallbacks = DownloadCallbacks.None,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
@@ -152,6 +178,7 @@ fun ItemScreen(
                         ItemPage(
                             item, state, wide = maxWidth >= WIDE_FROM, screenWidth = maxWidth, screenHeight = maxHeight,
                             onPlay, onPlayEpisode, onOpen, onOpenSeries, onToggleFavorite, onTogglePlayed, onToggleEpisodePlayed, onSelectSeason, onRetrySimilar, onRetryCollections, onRetrySeasons, onRetryEpisodes, onOpenPerson, onRetryExtras,
+                            downloads = downloads,
                         )
                     }
                 }
@@ -203,6 +230,7 @@ private fun ItemPage(
     onRetryEpisodes: () -> Unit,
     onOpenPerson: (String) -> Unit,
     onRetryExtras: () -> Unit,
+    downloads: DownloadCallbacks,
 ) {
     // Larger margins and posters on a tablet (`screens.md`).
     val margin = if (wide) VibeyFinTokens.Space.s6 else screenMargin()
@@ -212,7 +240,7 @@ private fun ItemPage(
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s5),
         ) {
             if (item.kind == ItemKind.Series) {
-                SeasonsSection(state.seasons, margin, wide, onSelectSeason, onPlayEpisode, onToggleEpisodePlayed, onOpen, onRetrySeasons, onRetryEpisodes)
+                SeasonsSection(state.seasons, margin, wide, onSelectSeason, onPlayEpisode, onToggleEpisodePlayed, onOpen, onRetrySeasons, onRetryEpisodes, state.downloads, state.canDownload, downloads)
             }
             if (item.cast.isNotEmpty()) CastSection(item.cast, margin, tile = if (wide) CAST_TILE_WIDE else CAST_TILE_NARROW, onOpenPerson = onOpenPerson)
             // The collections it is part of: a poster each, and one opens the collection's members.
@@ -241,7 +269,7 @@ private fun ItemPage(
                 // At least the picture's height; taller when the text needs more room, so nothing is cut off.
                 Box(Modifier.fillMaxWidth().heightIn(min = heroHeight)) {
                     Column(Modifier.align(Alignment.BottomCenter).padding(horizontal = margin).padding(bottom = VibeyFinTokens.Space.s4)) {
-                        HeroDetails(item, state, centered = true, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer = onPlayEpisode, onTogglePlayed = onTogglePlayed)
+                        HeroDetails(item, state, centered = true, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer = onPlayEpisode, onTogglePlayed = onTogglePlayed, downloads = downloads)
                     }
                 }
                 Box(Modifier.fillMaxWidth().background(VibeyFinTokens.Colors.bg)) { sections() }
@@ -258,7 +286,7 @@ private fun ItemPage(
             // The top of the first screen is the picture, clear; the details sit at the bottom of it.
             Spacer(Modifier.height(screenHeight * FIRST_SCREEN_CLEAR))
             Column(Modifier.fillMaxWidth(0.46f).widthIn(max = 520.dp).padding(horizontal = margin)) {
-                HeroDetails(item, state, centered = false, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer = onPlayEpisode, onTogglePlayed = onTogglePlayed)
+                HeroDetails(item, state, centered = false, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer = onPlayEpisode, onTogglePlayed = onTogglePlayed, downloads = downloads)
             }
             sections()
         }

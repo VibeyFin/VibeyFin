@@ -62,6 +62,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DecoderReuseEvaluation
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -652,7 +653,8 @@ private fun buildPlayer(context: Context, http: DefaultHttpDataSource.Factory, b
                 )
             }
         }
-        .setMediaSourceFactory(DefaultMediaSourceFactory(http))
+        // A file on the device (a download) opens through the same factory as a stream from the server: it picks the source by the address.
+        .setMediaSourceFactory(DefaultMediaSourceFactory(DefaultDataSource.Factory(context, http)))
         .setAudioAttributes(
             AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
             /* handleAudioFocus = */ true,

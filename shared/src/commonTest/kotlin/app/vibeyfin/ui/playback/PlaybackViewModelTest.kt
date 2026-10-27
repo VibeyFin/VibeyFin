@@ -99,6 +99,7 @@ class PlaybackViewModelTest {
     ) = viewModels.track(
         PlaybackViewModel(
             id, app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge,
+            app.offlineLibrary, app.offline, app.localReporter(reporterScope),
             retryDelays, startOver, autoAdvance, countdownStep,
         ),
     )
@@ -682,7 +683,7 @@ class PlaybackViewModelTest {
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =
-                    PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge) as T
+                    PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge, app.offlineLibrary, app.offline, app.localReporter(reporterScope)) as T
             },
         )[PlaybackViewModel::class]
         viewModel.uiState.first { it.stream != null }
@@ -700,7 +701,7 @@ class PlaybackViewModelTest {
         object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =
-                PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge) as T
+                PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge, app.offlineLibrary, app.offline, app.localReporter(reporterScope)) as T
         },
     )[PlaybackViewModel::class]
 

@@ -19,6 +19,28 @@ import kotlin.time.Duration.Companion.seconds
 /** How often progress is sent while playing. Pause, resume and seek are sent straight away. */
 val PROGRESS_INTERVAL: Duration = 10.seconds
 
+/** What a player's events go to: the server ([PlaybackReporter]) or, for a download, the device ([LocalPlaybackReporter]). */
+interface PlayReporter {
+    /** The stream to report on; call it before the player starts. */
+    fun begin(plan: PlaybackPlan)
+
+    /** The latest position, as often as it is known. */
+    fun position(positionMs: Long)
+
+    /** The player is playing: it started, or resumed. */
+    fun playing(positionMs: Long)
+
+    fun paused(positionMs: Long)
+
+    fun seeked(positionMs: Long)
+
+    /** Playback ended, was closed or went to the background. Does nothing if nothing was started. */
+    fun stop(positionMs: Long, failed: Boolean = false)
+
+    /** No more events. What is already queued is still handled. */
+    fun close()
+}
+
 /**
  * Tells the server what one player is doing: it started ([playing]), where it is (every
  * [interval] while playing, and at once on [paused], resume and [seeked]), and that it [stop]ped.
@@ -47,7 +69,7 @@ class PlaybackReporter(
     private val recovery: PlaybackRecovery,
     private val changes: WatchChanges,
     private val interval: Duration = PROGRESS_INTERVAL,
-) {
+) : PlayReporter {
     private sealed interface Event {
         data class Begin(val plan: PlaybackPlan) : Event
         data class Position(val ms: Long) : Event
@@ -84,23 +106,23 @@ class PlaybackReporter(
      * The stream to report on. Call it before the player starts. Called again with the same play
      * session and other tracks, it reports the change as it happens.
      */
-    fun begin(plan: PlaybackPlan) = send(Event.Begin(plan))
+    override fun begin(plan: PlaybackPlan) = send(Event.Begin(plan))
 
     /** The latest position, as often as it is known. Nothing is sent for it. */
-    fun position(positionMs: Long) = send(Event.Position(positionMs))
+    override fun position(positionMs: Long) = send(Event.Position(positionMs))
 
     /** The player is playing: it started, or resumed after a pause or a stop. */
-    fun playing(positionMs: Long) = send(Event.Playing(positionMs))
+    override fun playing(positionMs: Long) = send(Event.Playing(positionMs))
 
-    fun paused(positionMs: Long) = send(Event.Paused(positionMs))
+    override fun paused(positionMs: Long) = send(Event.Paused(positionMs))
 
-    fun seeked(positionMs: Long) = send(Event.Seeked(positionMs))
+    override fun seeked(positionMs: Long) = send(Event.Seeked(positionMs))
 
     /** Playback ended, was closed or went to the background. Does nothing if nothing was started. */
-    fun stop(positionMs: Long, failed: Boolean = false) = send(Event.Stop(positionMs, failed))
+    override fun stop(positionMs: Long, failed: Boolean) = send(Event.Stop(positionMs, failed))
 
     /** No more events. What is already queued, `Stopped` included, is still sent. */
-    fun close() {
+    override fun close() {
         events.close()
     }
 

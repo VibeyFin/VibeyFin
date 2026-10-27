@@ -1,5 +1,15 @@
 package app.vibeyfin.app.home
 
+import app.vibeyfin.app.downloads.DownloadActionMenuItem
+import app.vibeyfin.app.downloads.DownloadBadgeIcon
+import app.vibeyfin.app.downloads.RemoveConfirmDialog
+import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
+import app.vibeyfin.domain.Download
+import app.vibeyfin.ui.downloads.DownloadAction
+import app.vibeyfin.ui.downloads.DownloadBadge
+import app.vibeyfin.ui.downloads.actions
+import app.vibeyfin.ui.downloads.badge
+import app.vibeyfin.ui.downloads.label
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
@@ -155,6 +165,10 @@ fun HomeRoute(
         onHeroMyList = viewModel::onHeroMyList,
         onHeroPlay = viewModel::onHeroPlay,
         onMarkWatched = viewModel::onMarkWatched,
+        onDownload = viewModel::onDownload,
+        onDownloadAction = viewModel::onDownloadAction,
+        onConfirmRemove = viewModel::onConfirmRemove,
+        onDismissRemoval = viewModel::onDismissRemoval,
         onRetryAction = viewModel::onRetryAction,
         onDismissMessage = viewModel::onDismissMessage,
         onRefresh = viewModel::onRefresh,
@@ -193,6 +207,10 @@ fun HomeScreen(
     onHeroMyList: () -> Unit,
     onHeroPlay: () -> Unit,
     onMarkWatched: (String) -> Unit,
+    onDownload: (String) -> Unit,
+    onDownloadAction: (String, DownloadAction) -> Unit,
+    onConfirmRemove: () -> Unit,
+    onDismissRemoval: () -> Unit,
     onRetryAction: () -> Unit,
     onDismissMessage: () -> Unit,
     onRefresh: () -> Unit,
@@ -273,7 +291,49 @@ fun HomeScreen(
                 )
                 SheetAction(Strings.details, Icons.Default.Info) { menuCard = null; onDetails(card.id) }
                 SheetAction(Strings.markWatched, Icons.Default.Check) { menuCard = null; onMarkWatched(card.id) }
+                // Download without opening the page: a movie or an episode goes into the queue; once there is one, a tap opens its actions.
+                val download = state.downloads[card.id]
+                if (state.canDownload || download != null) {
+                    SheetDownloadAction(
+                        download,
+                        onStart = { menuCard = null; onDownload(card.id) },
+                        onAction = { action -> menuCard = null; onDownloadAction(card.id, action) },
+                    )
+                }
             }
+        }
+    }
+    // The question before a card's download is deleted.
+    state.removePrompt?.let { RemoveConfirmDialog(it, onConfirm = onConfirmRemove, onDismiss = onDismissRemoval) }
+}
+
+/** The Download entry of a Continue watching card's menu: its badge and words, a tap starts it, or with a download opens its actions. */
+@Composable
+private fun SheetDownloadAction(download: Download?, onStart: () -> Unit, onAction: (DownloadAction) -> Unit) {
+    var menu by remember { mutableStateOf(false) }
+    val ensureNotifications = rememberDownloadNotificationPermission()
+    val badge = download?.badge ?: DownloadBadge.None
+    Box {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    if (download == null) {
+                        ensureNotifications()
+                        onStart()
+                    } else {
+                        menu = true
+                    }
+                }
+                .padding(horizontal = screenMargin(), vertical = VibeyFinTokens.Space.s4),
+            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            DownloadBadgeIcon(badge, download?.progress, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text = badge.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+        }
+        VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
+            download?.actions?.forEach { action -> DownloadActionMenuItem(action) { menu = false; onAction(action) } }
         }
     }
 }
@@ -385,7 +445,7 @@ private fun LazyGridScope.fullWidth(key: String, animate: Boolean = true, conten
 
 /** The row of what the user is in the middle of. Its cards run past the grid's margins to the screen edge. */
 @Composable
-private fun ContinueWatching(
+internal fun ContinueWatching(
     row: ContinueRow,
     margin: Dp,
     onPlay: (String) -> Unit,

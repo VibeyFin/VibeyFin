@@ -1,5 +1,7 @@
 package app.vibeyfin.ui.tile
 
+import app.vibeyfin.data.db.DOWNLOAD_PAUSED
+import app.vibeyfin.data.db.DOWNLOAD_QUEUED
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.testing.Reply
@@ -7,6 +9,10 @@ import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.ViewModelTracker
 import app.vibeyfin.testing.itemJson
 import app.vibeyfin.testing.itemsJson
+import app.vibeyfin.testing.sagaServer
+import app.vibeyfin.ui.common.Strings
+import app.vibeyfin.ui.downloads.DownloadAction
+import app.vibeyfin.ui.downloads.actions
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.item.Trailer
 import io.ktor.http.HttpStatusCode
@@ -42,7 +48,7 @@ class TileMenuViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(TileMenuViewModel(app.library, app.watch, app.connection))
+    private fun viewModel() = viewModels.track(TileMenuViewModel(app.library, app.watch, app.connection, app.downloadRepository))
 
     /** The poster as a list gives it: no trailers on it. */
     private fun tile(favorite: Boolean = false) = MediaItem(
@@ -151,5 +157,73 @@ class TileMenuViewModelTest {
         val state = viewModel.uiState.first { !it.checkingTrailer && it.item != null }
 
         assertEquals(true, state.item?.isFavorite)
+    }
+    private fun showTile() = tile().copy(id = "s1", title = "Saga", kind = ItemKind.Series, isFolder = true)
+
+    @Test
+    fun aMovieOffersDownloadRightInTheMenuAndTheTapQueuesIt() = runTest {
+        app.sagaServer()
+        val viewModel = viewModel()
+        viewModel.onOpen(tile())
+        val offered = viewModel.uiState.first { it.item != null && it.offersDownload }
+        assertEquals(Strings.download, offered.downloadLabel)
+
+        viewModel.onDownload()
+
+        val state = viewModel.uiState.first { it.download != null }
+        assertEquals("Heat", state.download!!.item.title)
+        assertEquals(DOWNLOAD_QUEUED, app.downloads.find("srv-1", "u1", "m1")!!.state)
+    }
+
+    @Test
+    fun aShowAsksHowManyEpisodesBeforeAnythingIsQueued() = runTest {
+        app.sagaServer()
+        val viewModel = viewModel()
+        viewModel.onOpen(showTile())
+
+        viewModel.onDownload()
+        val prompt = viewModel.uiState.first { it.downloadPrompt?.plan != null }.downloadPrompt!!
+
+        assertEquals(2, prompt.count)
+        assertEquals(0, app.downloads.observeAll("srv-1", "u1").first().size)
+        viewModel.onConfirmDownload()
+        assertEquals(2, viewModel.uiState.first { it.downloads.size == 2 }.downloads.size)
+    }
+
+    @Test
+    fun aDownloadThatIsThereShowsItsStateAndTheSameActionsAsThePage() = runTest {
+        app.sagaServer()
+        val viewModel = viewModel()
+        viewModel.onOpen(tile())
+        viewModel.uiState.first { it.offersDownload }
+        viewModel.onDownload()
+        assertEquals(listOf(DownloadAction.Pause, DownloadAction.Remove), viewModel.uiState.first { it.download != null }.download!!.actions)
+
+        viewModel.onDownloadAction(DownloadAction.Pause)
+
+        viewModel.uiState.first { it.download?.actions?.firstOrNull() == DownloadAction.Resume }
+        assertEquals(DOWNLOAD_PAUSED, app.downloads.find("srv-1", "u1", "m1")!!.state)
+    }
+
+    @Test
+    fun aUserWhoMayNotDownloadHasNoDownloadInTheMenu() = runTest {
+        val server = app.sagaServer()
+        server.on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Policy":{"EnableContentDownloading":false}}"""))
+        val viewModel = viewModel()
+
+        viewModel.onOpen(tile())
+        val state = viewModel.uiState.first { it.item != null && !it.canDownload }
+
+        assertFalse(state.offersDownload)
+    }
+
+    @Test
+    fun aPersonOrCollectionTileHasNothingToDownload() = runTest {
+        app.sagaServer()
+        val viewModel = viewModel()
+
+        viewModel.onOpen(tile().copy(kind = ItemKind.Collection, isFolder = true))
+
+        assertFalse(viewModel.uiState.first { it.item != null }.offersDownload)
     }
 }

@@ -198,6 +198,23 @@ abstract class AccountDao {
 
     @Query("UPDATE account_settings SET pinSwitchProfile = :value WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun setPinSwitchProfile(serverId: String, userId: String, value: Boolean)
+    @Query("SELECT downloadOverMobile FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeDownloadOverMobile(serverId: String, userId: String): Flow<Boolean?>
+
+    @Query("UPDATE account_settings SET downloadOverMobile = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setDownloadOverMobile(serverId: String, userId: String, value: Boolean)
+
+    @Query("SELECT autoCleanWatched FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeAutoCleanWatched(serverId: String, userId: String): Flow<Boolean?>
+
+    @Query("UPDATE account_settings SET autoCleanWatched = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setAutoCleanWatched(serverId: String, userId: String, value: Boolean)
+
+    @Query("SELECT storageLimitMb FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeStorageLimitMb(serverId: String, userId: String): Flow<Long?>
+
+    @Query("UPDATE account_settings SET storageLimitMb = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setStorageLimitMb(serverId: String, userId: String, value: Long)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract suspend fun insertAccount(account: AccountEntity): Long

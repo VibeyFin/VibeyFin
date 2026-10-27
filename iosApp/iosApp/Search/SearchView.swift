@@ -15,7 +15,7 @@ struct SearchView: View {
             content
         }
         .onAppear { model.start() }
-        .searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: Strings.shared.searchHint)
+        .searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: model.state?.offline == true ? Strings.shared.offlineSearchHint : Strings.shared.searchHint)
         .onChange(of: text) { model.setQuery($0) }
         .onSubmit(of: .search) { model.submit() }
         .navigationTitle(Strings.shared.tabSearch.titleCased())
@@ -51,13 +51,17 @@ struct SearchView: View {
             if state.showsPrompt && !state.history.isEmpty {
                 history(state)
             } else if state.showsPrompt {
-                prompt(Strings.shared.searchPrompt, Strings.shared.searchPromptHelp)
+                if state.offline {
+                    prompt(Strings.shared.offlineSearchPrompt, Strings.shared.offlineBannerHelp)
+                } else {
+                    prompt(Strings.shared.searchPrompt, Strings.shared.searchPromptHelp)
+                }
             } else if state.message == nil && state.noResults == false && state.groups.isEmpty {
                 VStack(spacing: Space.s3) { chips(state); skeleton }
             } else if let message = state.message {
                 LoadErrorView(message: message, onRetry: { model.retry() }).screenMargin()
             } else if state.noResults {
-                VStack(spacing: 0) { chips(state); prompt(Strings.shared.noSearchResults(query: state.searched), Strings.shared.noSearchResultsHelp) }
+                VStack(spacing: 0) { chips(state); prompt(Strings.shared.noSearchResults(query: state.searched), state.offline ? Strings.shared.offlineSearchEmpty : Strings.shared.noSearchResultsHelp) }
             } else if state.groups.isEmpty {
                 skeleton
             } else {

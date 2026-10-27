@@ -4,6 +4,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.parameter
+import io.ktor.client.request.prepareRequest
 import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.request.url
@@ -29,9 +30,10 @@ class JellyfinApi(
     internal val token: String? = null,
     private val unauthorized: UnauthorizedEvents? = null,
     private val retries: RetryPolicy = RetryPolicy.Default,
+    private val reachability: ServerReachability? = null,
 ) {
     /** The same server, signed in with [token]. */
-    fun withToken(token: String?) = JellyfinApi(http, baseUrl, token, unauthorized, retries)
+    fun withToken(token: String?) = JellyfinApi(http, baseUrl, token, unauthorized, retries, reachability)
 
     /** `GET /Users/Public`: the users the server lists on its sign-in screen. Needs no sign-in. */
     suspend fun publicUsers(): ApiResult<List<UserDto>> = get("/Users/Public")
@@ -120,6 +122,33 @@ class JellyfinApi(
         return result
     }
 
+    /**
+     * Like [execute] for a response too big to hold in memory: [read] consumes the body as it arrives, inside the call.
+     * Never retried, since [read] has already used what it got; the caller resumes with a range. A failure of [read] itself,
+     * thrown as [SinkFailure], is not a network problem and goes on to the caller.
+     */
+    internal suspend fun <T> stream(
+        configure: HttpRequestBuilder.() -> Unit,
+        read: suspend (HttpResponse) -> T,
+    ): ApiResult<T> = try {
+        http.prepareRequest {
+            configure()
+            token?.let { attributes.put(TokenAttribute, it) }
+        }.execute { response ->
+            val status = response.status.value
+            if (token != null) reachability?.answered()
+            if (status == 401) token?.let { unauthorized?.report(it) }
+            if (status !in 200..299) ApiResult.Failure(errorFor(status)) else ApiResult.Success(read(response))
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: SinkFailure) {
+        throw e
+    } catch (_: Exception) {
+        if (token != null) reachability?.failed()
+        ApiResult.Failure(ApiError.Network)
+    }
+
     private suspend fun <T> attempt(
         decode: suspend (HttpResponse) -> T,
         configure: HttpRequestBuilder.() -> Unit,
@@ -133,8 +162,11 @@ class JellyfinApi(
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
+            if (token != null) reachability?.failed()
             return ApiResult.Failure(ApiError.Network)
         }
+        // Something answered: the server is there, whatever it said.
+        if (token != null) reachability?.answered()
         val status = response.status.value
         // The one place a rejected token is noticed: a 401 on a call that carried one.
         if (status == 401) token?.let { unauthorized?.report(it) }
@@ -166,6 +198,7 @@ class JellyfinApiFactory(
     private val http: HttpClient,
     private val unauthorized: UnauthorizedEvents? = null,
     private val retries: RetryPolicy = RetryPolicy.Default,
+    private val reachability: ServerReachability? = null,
 ) {
-    fun create(baseUrl: String, token: String? = null) = JellyfinApi(http, baseUrl, token, unauthorized, retries)
+    fun create(baseUrl: String, token: String? = null) = JellyfinApi(http, baseUrl, token, unauthorized, retries, reachability)
 }

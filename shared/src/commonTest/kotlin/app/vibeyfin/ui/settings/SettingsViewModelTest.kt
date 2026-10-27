@@ -24,6 +24,13 @@ import app.vibeyfin.testing.authJson
 import io.ktor.http.HttpStatusCode
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -33,21 +40,14 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
@@ -85,7 +85,7 @@ class SettingsViewModelTest {
         pins: PinLock = app.pins,
         appVersion: String = "",
     ) = viewModels.track(
-        SettingsViewModel(preferences, profileSettings, app.connection, app.servers, pins, app.policy, app.auth, applicationScope, appVersion),
+        SettingsViewModel(preferences, profileSettings, app.connection, app.servers, pins, app.policy, app.auth, app.downloadRepository, applicationScope, appVersion),
     )
 
     /**
@@ -305,14 +305,14 @@ class SettingsViewModelTest {
     private fun SettingsPage.keys() = sections.flatMap { section -> section.items.map { it.key } }
 
     @Test
-    fun `the root has its six groups in the designed order`() = runTest {
+    fun `the root has its seven groups in the designed order`() = runTest {
         app.signedIn()
         val root = viewModel().uiState.first { it.hasProfile }.page(SettingsPageId.Root)
 
         assertEquals(
             listOf(
                 Strings.playbackSection, Strings.settingsGroupHome, Strings.notificationsTitle,
-                Strings.settingsGroupKids, Strings.settingsGroupDevice, Strings.settingsGroupAdvanced,
+                Strings.settingsGroupKids, Strings.settingsGroupDevice, Strings.tabDownloads, Strings.settingsGroupAdvanced,
             ),
             root.sections.mapNotNull { it.title },
         )
@@ -382,13 +382,15 @@ class SettingsViewModelTest {
     fun `device settings show without a profile and profile settings do not`() = runTest {
         val signedOut = viewModel().uiState.first().page(SettingsPageId.Root)
         assertTrue(SettingKey.AlwaysAsk in signedOut.keys())
-        assertEquals(emptyList(), signedOut.keys() - setOf(SettingKey.AlwaysAsk, SettingKey.About))
+        assertEquals(emptyList(), signedOut.keys() - setOf(SettingKey.AlwaysAsk, SettingKey.OfflineMode, SettingKey.About))
 
         app.signedIn()
         val signedIn = viewModel().uiState.first { it.hasProfile }.page(SettingsPageId.Root)
         assertTrue(SettingKey.AlwaysAsk in signedIn.keys())
         assertTrue(SettingKey.ShowStats in signedIn.keys())
         assertTrue(SettingKey.ShowHero in signedIn.keys())
+        assertTrue(SettingKey.DownloadOverMobile in signedIn.keys())
+        assertTrue(SettingKey.StorageLimit in signedIn.keys())
     }
 
     private fun SettingsUiState.items(id: SettingsPageId) = page(id).sections.flatMap { it.items }
@@ -1237,5 +1239,45 @@ class SettingsViewModelTest {
         assertTrue(sam.isNotEmpty())
         assertTrue(sam.none { it.value(SettingKey.BingeThreshold) == 5 })
         assertTrue(sam.none { SettingKey.SignOut in it.items(SettingsPageId.Profile).map { i -> i.key } })
+    }
+
+    @Test
+    fun theOfflineModeSwitchIsKeptOnTheDevice() = runTest {
+        val viewModel = viewModel()
+        assertFalse(viewModel.uiState.first().checked(SettingKey.OfflineMode))
+
+        viewModel.onToggle(SettingKey.OfflineMode, true)
+
+        assertTrue(viewModel.uiState.first { it.checked(SettingKey.OfflineMode) }.checked(SettingKey.OfflineMode))
+        assertTrue(app.preferences.offlineMode.first())
+        assertTrue(app.offline.isOffline.value)
+    }
+
+    @Test
+    fun mobileDataAndTheStorageLimitBelongToTheProfile() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        assertFalse(viewModel.uiState.first { it.hasProfile }.checked(SettingKey.DownloadOverMobile))
+        assertEquals(0, viewModel.uiState.value.value(SettingKey.StorageLimit))
+
+        viewModel.onToggle(SettingKey.DownloadOverMobile, true)
+        viewModel.onChoose(SettingKey.StorageLimit, 20)
+
+        val state = viewModel.uiState.first { it.checked(SettingKey.DownloadOverMobile) && it.value(SettingKey.StorageLimit) == 20 }
+        assertEquals(20, state.value(SettingKey.StorageLimit))
+        assertEquals(20_000L, app.profileSettings.storageLimitMb.first())
+    }
+
+    @Test
+    fun changingTheMobileDataSettingTellsAWaitingRunToLookAgain() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        var wakes = 0
+        val job = launch(Dispatchers.Unconfined) { app.wake.signal.collect { wakes++ } }
+        // Only a profile with something to do asks for the work; the wake always goes out.
+        viewModel.onToggle(SettingKey.DownloadOverMobile, true)
+
+        assertEquals(1, wakes)
+        job.cancel()
     }
 }

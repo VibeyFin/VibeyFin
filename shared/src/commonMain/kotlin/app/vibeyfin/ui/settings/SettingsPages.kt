@@ -44,6 +44,12 @@ data class SettingsValues(
     val autoSkipSegments: Boolean = false,
     val bufferAheadSeconds: Int = ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
     val pictureInPicture: Boolean = true,
+    /** The app uses only its downloads, even with a network (device-wide). */
+    val offlineMode: Boolean = false,
+    /** Downloads may use mobile data; off, they wait for Wi-Fi. */
+    val downloadOverMobile: Boolean = false,
+    /** The most the profile's downloads may take, in gigabytes; 0 is no limit. */
+    val storageLimitGb: Int = 0,
     val maxStreamingBitrate: Int = 0,
     val captionsFollowSystem: Boolean = true,
     val subtitleSize: Int = ProfileSettings.DEFAULT_SUBTITLE_SIZE,
@@ -139,6 +145,21 @@ fun rootPage(v: SettingsValues): SettingsPage {
                     ToggleItem(
                         SettingKey.AlwaysAsk, Strings.alwaysAskWhoIsWatchingTitle, Strings.settingsDeviceHelp,
                         checked = v.alwaysAskWhoIsWatching,
+                    ),
+                    ToggleItem(SettingKey.OfflineMode, Strings.offlineModeTitle, Strings.offlineModeHelp, checked = v.offlineMode),
+                ),
+            ),
+            SettingsSection(
+                Strings.tabDownloads,
+                footer = null,
+                items = listOf(
+                    ToggleItem(
+                        SettingKey.DownloadOverMobile, Strings.downloadOverMobileTitle, Strings.downloadOverMobileHelp,
+                        checked = v.downloadOverMobile, visible = profile,
+                    ),
+                    ChoiceItem(
+                        SettingKey.StorageLimit, Strings.storageLimitTitle, Strings.storageLimitHelp,
+                        value = v.storageLimitGb, options = storageLimitOptions(v.storageLimitGb), visible = profile,
                     ),
                 ),
             ),
@@ -464,6 +485,11 @@ fun subtitlesPage(v: SettingsValues): SettingsPage {
 
 /** "Auto" for 0, else "20 s", as the mockup shows buffer lengths. */
 private fun bufferLabel(seconds: Int) = if (seconds == 0) Strings.bufferAheadAuto else Strings.skipSecondsShort(seconds)
+
+/** The sizes the downloads' limit is offered in, gigabytes; 0 is no limit. A size set some other way stays on the list. */
+private fun storageLimitOptions(current: Int) = (listOf(0, 5, 10, 20, 50, 100) + current).distinct().sorted().map { gigabytes ->
+    SettingOption(gigabytes, if (gigabytes == 0) Strings.storageLimitNone else Strings.storageLimitGb(gigabytes))
+}
 
 private fun genreRowOptions() = ProfileSettings.HOME_GENRE_CHOICES.map { value ->
     val label = when (value) {

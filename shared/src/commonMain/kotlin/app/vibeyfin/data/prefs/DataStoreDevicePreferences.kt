@@ -38,6 +38,8 @@ class DataStoreDevicePreferences(
 
     override val alwaysAskWhoIsWatching: Flow<Boolean> = dataStore.data.map { it[ALWAYS_ASK] ?: false }
 
+    override val offlineMode: Flow<Boolean> = dataStore.data.map { it[OFFLINE_MODE] ?: false }
+
     override suspend fun setLastServer(serverId: String?) {
         dataStore.edit { prefs ->
             if (prefs[LAST_SERVER_ID] != serverId) prefs.remove(LAST_USER_ID)
@@ -56,10 +58,15 @@ class DataStoreDevicePreferences(
         dataStore.edit { it[ALWAYS_ASK] = value }
     }
 
+    override suspend fun setOfflineMode(value: Boolean) {
+        dataStore.edit { it[OFFLINE_MODE] = value }
+    }
+
     private companion object {
         val DEVICE_ID = stringPreferencesKey("device_id")
         val LAST_SERVER_ID = stringPreferencesKey("last_server_id")
         val LAST_USER_ID = stringPreferencesKey("last_user_id")
+        val OFFLINE_MODE = booleanPreferencesKey("offline_mode")
         val ALWAYS_ASK = booleanPreferencesKey("always_ask_who_is_watching")
     }
 }

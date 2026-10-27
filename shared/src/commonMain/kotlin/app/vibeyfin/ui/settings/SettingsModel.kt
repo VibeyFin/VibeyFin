@@ -17,6 +17,7 @@ enum class SettingKey {
     RatingLimit, BlockedTags, AllowedHours,
     Notifications, NotificationScope,
     PictureInPicture,
+    OfflineMode, DownloadOverMobile, StorageLimit,
 }
 
 data class SettingsPage(val id: SettingsPageId, val title: String, val sections: List<SettingsSection>) {

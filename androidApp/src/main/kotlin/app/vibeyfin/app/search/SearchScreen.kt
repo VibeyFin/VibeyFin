@@ -133,7 +133,7 @@ fun SearchScreen(
                     value = state.query,
                     onValueChange = onQueryChange,
                     singleLine = true,
-                    placeholder = { Text(Strings.searchHint) },
+                    placeholder = { Text(if (state.offline) Strings.offlineSearchHint else Strings.searchHint) },
                     leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                     trailingIcon = {
                         if (state.query.isNotEmpty()) {
@@ -150,7 +150,7 @@ fun SearchScreen(
                         unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
                     ),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = margin, vertical = VibeyFinTokens.Space.s3).focusRequester(focus)
-                        .semantics { contentDescription = Strings.searchHint },
+                        .semantics { contentDescription = if (state.offline) Strings.offlineSearchHint else Strings.searchHint },
                 )
                 // One button per kind, once something is typed: All lists every group, the others only theirs.
                 if (!state.showsPrompt) {
@@ -177,9 +177,9 @@ fun SearchScreen(
                 }
                 when {
                     state.showsPrompt && state.history.isNotEmpty() -> History(state.history, margin, onHistoryPicked, onHistoryRemoved, onHistoryCleared)
-                    state.showsPrompt -> Prompt(Strings.searchPrompt, Strings.searchPromptHelp, margin)
+                    state.showsPrompt -> if (state.offline) Prompt(Strings.offlineSearchPrompt, Strings.offlineBannerHelp, margin) else Prompt(Strings.searchPrompt, Strings.searchPromptHelp, margin)
                     state.message != null -> LoadError(state.message!!, onRetry, modifier = Modifier.padding(horizontal = margin))
-                    state.noResults -> Prompt(Strings.noSearchResults(state.searched), Strings.noSearchResultsHelp, margin)
+                    state.noResults -> Prompt(Strings.noSearchResults(state.searched), if (state.offline) Strings.offlineSearchEmpty else Strings.noSearchResultsHelp, margin)
                     state.groups.isEmpty() -> ResultSkeleton(margin)
                     else -> Results(state, margin, onOpenResult)
                 }

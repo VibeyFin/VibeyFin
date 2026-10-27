@@ -51,3 +51,6 @@ scripts/test-server/data/
 
 # Per-developer Xcode overrides
 iosApp/Configuration/Local.xcconfig
+
+# FFmpeg for the iOS remux (built by scripts/ffmpeg/build-ios.sh)
+iosApp/Vendor/

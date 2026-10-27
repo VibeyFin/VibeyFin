@@ -1,4 +1,5 @@
 import UIKit
+import Shared
 
 /// SwiftUI has no way to say which orientations a screen allows, so the app delegate answers for
 /// the whole app from `OrientationLock.mask`. Everything allows what Info.plist lists, except the
@@ -9,6 +10,16 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         supportedInterfaceOrientationsFor window: UIWindow?
     ) -> UIInterfaceOrientationMask {
         OrientationLock.mask
+    }
+
+    /// iOS woke the app for a download that finished or needs the session's answer while it was closed: the shared downloader picks the
+    /// session back up, finishes its files, and calls `completionHandler` when done.
+    func application(
+        _ application: UIApplication,
+        handleEventsForBackgroundURLSession identifier: String,
+        completionHandler: @escaping () -> Void
+    ) {
+        IosEntryKt.handleBackgroundDownloadEvents(identifier: identifier, completion: completionHandler)
     }
 }
 

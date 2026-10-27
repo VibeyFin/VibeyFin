@@ -136,7 +136,7 @@ class PlaybackRepository(
     }
 }
 
-private class Tracks(
+internal class Tracks(
     val audio: List<PlaybackTrack>,
     val subtitles: List<PlaybackTrack>,
     val subtitleFiles: List<SubtitleFile>,
@@ -151,7 +151,7 @@ private class Tracks(
  * file for the player to load, `Encode` is burned into the video. So every file is listed, for
  * switching without asking again, and a selected subtitle that is `Encode` is a burn-in.
  */
-private fun MediaSourceDto.tracks(baseUrl: String): Tracks {
+internal fun MediaSourceDto.tracks(baseUrl: String): Tracks {
     val audio = mediaStreams.filter { it.type == "Audio" }
     val subtitles = mediaStreams.filter { it.type == "Subtitle" }
     val audioIndex = defaultAudioStreamIndex?.takeIf { it >= 0 } ?: audio.firstOrNull()?.index
@@ -165,7 +165,7 @@ private fun MediaSourceDto.tracks(baseUrl: String): Tracks {
 }
 
 /** The server's own name for the track; failing that, what the file says about it. */
-private fun MediaStreamDto.name(): String? =
+internal fun MediaStreamDto.name(): String? =
     displayTitle?.takeIf { it.isNotBlank() }
         ?: title?.takeIf { it.isNotBlank() }
         ?: listOfNotNull(language?.takeIf { it.isNotBlank() }, codec?.uppercase()).joinToString(" · ").ifEmpty { null }

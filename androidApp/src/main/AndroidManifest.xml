@@ -1,7 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Offline mode follows the network, and downloads wait for Wi-Fi. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Downloads go on with the screen off or the app closed, as a foreground service of the type "data sync" that WorkManager
+         runs, with a progress notification (Android requires one, and docs/design/android.md asks for it). The permission to
+         show the notification is asked for when the first download starts; without it the service still runs. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Server discovery broadcasts on the local network and holds a multicast lock while it
          listens for answers. While targetSdk is 36 or lower, Android grants local network access
@@ -27,6 +38,12 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.VibeyFin">
+
+        <!-- WorkManager's own service, given the type Android 14 and later require of a foreground service. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
 
         <!-- The activity handles rotation and window resizes itself, so turning the phone doesn't
              recreate it: the player would otherwise restart. Compose redraws on a configuration change. -->

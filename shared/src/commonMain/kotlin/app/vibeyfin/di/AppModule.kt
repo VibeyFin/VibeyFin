@@ -6,8 +6,11 @@ import app.vibeyfin.ui.children.ChildrenViewModel
 import app.vibeyfin.ui.person.PersonViewModel
 import app.vibeyfin.ui.search.SearchViewModel
 import app.vibeyfin.ui.tile.TileMenuViewModel
+import app.vibeyfin.ui.downloads.DownloadsViewModel
+import app.vibeyfin.ui.banner.AppBannerViewModel
 import app.vibeyfin.ui.filtered.FilteredListViewModel
 import app.vibeyfin.ui.home.HomeViewModel
+import app.vibeyfin.ui.home.OfflineHomeViewModel
 import app.vibeyfin.ui.item.ItemViewModel
 import app.vibeyfin.ui.notifications.NotificationOpenViewModel
 import app.vibeyfin.ui.playback.PlaybackViewModel
@@ -33,17 +36,20 @@ fun appModule() = module {
         WhoIsWatchingViewModel(params.get(), get(), get(), get(), get(), get(), params.getOrNull())
     }
     viewModelOf(::HomeViewModel)
-    viewModel { params -> ChildrenViewModel(params.get(), get(), get()) }
+    viewModelOf(::OfflineHomeViewModel)
+    viewModel { params -> ChildrenViewModel(params.get(), get(), get(), get()) }
     viewModel { params -> PersonViewModel(params.get(), get(), get()) }
     viewModelOf(::SearchViewModel)
     viewModelOf(::TileMenuViewModel)
     viewModel { params -> FilteredListViewModel(params.get(), get(), get()) }
-    viewModel { params -> ItemViewModel(params.get(), get(), get(), get(), get()) }
-    viewModel { params -> PlaybackViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), startOver = params.getOrNull() ?: false) }
+    viewModel { params -> ItemViewModel(params.get(), get(), get(), get(), get(), get()) }
+    viewModel { params -> PlaybackViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), startOver = params.getOrNull() ?: false) }
     viewModelOf(::StartupViewModel)
     viewModelOf(::NotificationOpenViewModel)
     viewModel {
         val device = get<DeviceInfo>()
-        SettingsViewModel(get(), get(), get(), get(), get(), get(), get(), get(ApplicationScope), device.appVersion, device.subtitleStyleApplies)
+        SettingsViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(ApplicationScope), device.appVersion, device.subtitleStyleApplies)
     }
+    viewModelOf(::AppBannerViewModel)
+    viewModelOf(::DownloadsViewModel)
 }

@@ -36,6 +36,13 @@ suspend fun JellyfinApi.items(
 suspend fun JellyfinApi.itemsById(id: String, userId: String): ApiResult<ItemsResultDto> =
     get("/Items", mapOf("ids" to id, "userId" to userId, "fields" to DETAIL_FIELDS), retry = true)
 
+/**
+ * `GET /Items?ids=`: several items with only what the list fields hold, which includes the user's own record of each
+ * (`UserData`). For checking what the user has watched of what they downloaded.
+ */
+suspend fun JellyfinApi.itemsByIds(userId: String, ids: List<String>): ApiResult<ItemsResultDto> =
+    get("/Items", mapOf("ids" to ids.joinToString(","), "userId" to userId), retry = true)
+
 /** The URL of an item's artwork on the server at [baseUrl]; [type] is `Primary` or `Backdrop`. */
 fun itemImageUrl(baseUrl: String, itemId: String, type: String, tag: String, maxWidth: Int): String =
     "$baseUrl/Items/$itemId/Images/$type?tag=$tag&maxWidth=$maxWidth"

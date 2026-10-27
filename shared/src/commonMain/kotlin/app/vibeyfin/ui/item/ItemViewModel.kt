@@ -5,6 +5,9 @@ import androidx.lifecycle.viewModelScope
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.domain.ConnectionManager
+import app.vibeyfin.domain.Download
+import app.vibeyfin.domain.DownloadRepository
+import app.vibeyfin.domain.DownloadTarget
 import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.WatchChanges
 import app.vibeyfin.domain.WatchRepository
@@ -13,6 +16,16 @@ import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
+import app.vibeyfin.ui.downloads.DownloadAction
+import app.vibeyfin.ui.downloads.DownloadBadge
+import app.vibeyfin.ui.downloads.DownloadFlow
+import app.vibeyfin.ui.downloads.DownloadPrompt
+import app.vibeyfin.ui.downloads.RemovePrompt
+import app.vibeyfin.ui.downloads.badge
+import app.vibeyfin.ui.downloads.label
+import app.vibeyfin.ui.downloads.progress
+import app.vibeyfin.ui.downloads.downloadParts
+import app.vibeyfin.ui.downloads.profileOrNull
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.home.MediaRow
 import kotlinx.coroutines.Job
@@ -73,9 +86,43 @@ data class ItemUiState(
     val extras: MediaRow? = null,
     /** A show's seasons and episodes. */
     val seasons: SeasonsState = SeasonsState(),
+    /** The profile's downloads by item id: what the buttons and the episode list show of each. */
+    val downloads: Map<String, Download> = emptyMap(),
+    /** The server lets this user download. Taken as yes until it says otherwise, so the button is not missing while that is read. */
+    val canDownload: Boolean = true,
+    /** The question before a season or a show is downloaded; null when none is asked. */
+    val downloadPrompt: DownloadPrompt? = null,
+    /** The question before downloads are deleted; null when none is asked. */
+    val removePrompt: RemovePrompt? = null,
     /** Set when the session ended and the screen must be left. */
     val exit: HomeExit? = null,
 ) {
+    /** The page's own movie or episode as a download, or null when it is not one. */
+    val download: Download? get() = item?.let { downloads[it.id] }
+
+    /** The downloads of a show's episodes, whatever their state. */
+    val seriesDownloads: List<Download> get() = item?.takeIf { isSeries }?.let { show -> downloads.values.filter { it.seriesId == show.id } }.orEmpty()
+
+    /** Whether the page offers Download: for a movie, an episode, or a show, when the server lets the user. */
+    val offersDownload: Boolean get() = canDownload && (item?.canPlay == true || isSeries)
+
+    /** What the Download button shows: the page's own download, or for a show all its episodes' together. */
+    val downloadBadge: DownloadBadge get() = if (isSeries) seriesDownloads.badge() else download?.badge ?: DownloadBadge.None
+
+    /** How far the downloads under the button are, for its ring; null when no size is known. */
+    val downloadProgress: Float? get() = if (isSeries) seriesDownloads.progress() else download?.progress
+
+    /** The word under the button's icon; for a show with episodes on the device, how many. */
+    val downloadLabel: String
+        get() = if (isSeries && downloadBadge == DownloadBadge.Done) Strings.downloadedCount(seriesDownloads.size) else downloadBadge.label
+
+    /** What a screen reader says for the button. */
+    val downloadDescription: String
+        get() {
+            val title = item?.title.orEmpty()
+            return if (downloadBadge == DownloadBadge.None) Strings.downloadDescription(title) else Strings.downloadActionDescription(title, downloadLabel)
+        }
+
     /** The one badge for the picture ("4K", "Dolby Vision"), shown beside the facts; null when there is none. */
     val badge: String? get() = item?.formatBadge()
 
@@ -132,19 +179,36 @@ data class ItemUiState(
 class ItemViewModel(
     private val itemId: String,
     private val library: LibraryRepository,
-    connection: ConnectionManager,
+    private val connection: ConnectionManager,
     private val watch: WatchRepository,
     changes: WatchChanges,
+    private val downloads: DownloadRepository,
 ) : ViewModel() {
     private val content = MutableStateFlow(ItemUiState())
     private var episodesJob: Job? = null
+    private val downloadFlow = DownloadFlow(viewModelScope, downloads) { connection.state.value.profileOrNull() }
+    private val canDownload = MutableStateFlow(true)
 
-    val uiState: StateFlow<ItemUiState> = combine(content, connection.sessionEnded()) { content, exit ->
-        content.copy(exit = exit)
+    private val downloadParts = downloadParts(connection, downloads, downloadFlow, canDownload)
+
+    val uiState: StateFlow<ItemUiState> = combine(content, connection.sessionEnded(), downloadParts) { content, exit, parts ->
+        content.copy(
+            exit = exit,
+            downloads = parts.byId,
+            canDownload = parts.canDownload,
+            downloadPrompt = parts.prompt,
+            removePrompt = parts.removal,
+            actionMessage = content.actionMessage ?: parts.message,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ItemUiState())
 
     init {
         load()
+        // Whether this user may download is read once, quietly: it only decides whether the button is there.
+        viewModelScope.launch {
+            val profile = connection.state.value.profileOrNull() ?: return@launch
+            downloads.canDownload(profile)?.let { canDownload.value = it }
+        }
         // What was watched changed (playback ended): bring the Resume button and the marks up to date, quietly.
         viewModelScope.launch { changes.events.collect { refresh() } }
     }
@@ -287,9 +351,64 @@ class ItemViewModel(
     }
 
     /** "Try again" on the failure message: the page was taken back, so doing the change again repeats it. */
-    fun onRetryAction() = if (failedFavorite) onToggleFavorite() else onTogglePlayed()
+    fun onRetryAction() = when {
+        content.value.actionMessage == null && downloadFlow.message.value != null -> downloadFlow.retry()
+        failedFavorite -> onToggleFavorite()
+        else -> onTogglePlayed()
+    }
 
-    fun onDismissMessage() = content.update { it.copy(actionMessage = null) }
+    fun onDismissMessage() {
+        content.update { it.copy(actionMessage = null) }
+        downloadFlow.dismissMessage()
+    }
+
+    /** The Download button on a movie's or an episode's page: puts it in the queue. A show's button opens a menu instead. */
+    fun onDownload() {
+        val item = content.value.item?.takeIf { it.canPlay } ?: return
+        downloadFlow.start(DownloadTarget.Item(item.id), item.title, ask = false)
+    }
+
+    /** "Download episode" in an episode's menu. */
+    fun onDownloadEpisode(episodeId: String) {
+        val episode = content.value.seasons.episodes.items.firstOrNull { it.id == episodeId } ?: return
+        downloadFlow.start(DownloadTarget.Item(episode.id), episode.title, ask = false)
+    }
+
+    /** "Download all episodes" on a show's page: asks first, with how many and how much room. */
+    fun onDownloadSeries() {
+        val show = content.value.item?.takeIf { it.kind == ItemKind.Series } ?: return
+        downloadFlow.start(DownloadTarget.Series(show.id), show.title, ask = true)
+    }
+
+    /** "Download Season 2" on a show's page: asks first. */
+    fun onDownloadSeason(seasonId: String) {
+        val show = content.value.item?.takeIf { it.kind == ItemKind.Series } ?: return
+        val season = content.value.seasons.seasons.firstOrNull { it.id == seasonId } ?: return
+        downloadFlow.start(DownloadTarget.Season(show.id, seasonId), season.seasonLabel, ask = true)
+    }
+
+    /** Pause, resume or remove (after asking) the download of [itemId], whether it is the page's own or an episode's. */
+    fun onDownloadAction(itemId: String, action: DownloadAction) {
+        val download = uiState.value.downloads[itemId] ?: return
+        downloadFlow.act(download, action)
+    }
+
+    /** Asks before removing every download of the show. */
+    fun onRemoveSeriesDownloads() {
+        val state = uiState.value
+        val show = state.item ?: return
+        downloadFlow.askRemove(state.seriesDownloads, show.title)
+    }
+
+    fun onToggleUnwatchedOnly() = downloadFlow.toggleUnwatchedOnly()
+
+    fun onConfirmDownload() = downloadFlow.confirm()
+
+    fun onDismissDownloadPrompt() = downloadFlow.dismiss()
+
+    fun onConfirmRemove() = downloadFlow.confirmRemove()
+
+    fun onDismissRemoval() = downloadFlow.dismissRemoval()
 
     private fun load() {
         episodesJob?.cancel()

@@ -68,7 +68,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
+import app.vibeyfin.R
 import app.vibeyfin.app.components.Artwork
+import app.vibeyfin.app.downloads.EpisodeDownloadButton
+import app.vibeyfin.app.downloads.DownloadActionMenuItem
+import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
+import app.vibeyfin.domain.Download
+import app.vibeyfin.ui.downloads.actions
+import app.vibeyfin.ui.downloads.badge
 import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.components.ROW_FADE_MS
 import app.vibeyfin.app.components.RowPhase
@@ -104,6 +113,9 @@ fun SeasonsSection(
     onViewEpisode: (MediaItem) -> Unit,
     onRetrySeasons: () -> Unit,
     onRetryEpisodes: () -> Unit,
+    downloads: Map<String, Download>,
+    canDownload: Boolean,
+    downloadCallbacks: DownloadCallbacks,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         val phase = if (seasons.loading) RowPhase.Loading else if (seasons.message != null) RowPhase.Failed else RowPhase.Ready
@@ -119,7 +131,7 @@ fun SeasonsSection(
             }
         }
         if (seasons.seasons.isNotEmpty() && !seasons.loading && seasons.message == null) {
-            EpisodeList(seasons, wide, margin, onPlayEpisode, onToggleEpisodePlayed, onViewEpisode, onRetryEpisodes)
+            EpisodeList(seasons, wide, margin, onPlayEpisode, onToggleEpisodePlayed, onViewEpisode, onRetryEpisodes, downloads, canDownload, downloadCallbacks)
         }
     }
 }
@@ -179,7 +191,10 @@ private class EpisodePhase(val seasonId: String?, val index: Int, val snapshot: 
 
 /** The selected season's episodes, down the page on a phone and sideways as cards on a tablet; choosing another season fades to its loading cards, then to its episodes. */
 @Composable
-private fun EpisodeList(seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay: (String) -> Unit, onToggleWatched: (String) -> Unit, onViewEpisode: (MediaItem) -> Unit, onRetry: () -> Unit) {
+private fun EpisodeList(
+    seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay: (String) -> Unit, onToggleWatched: (String) -> Unit, onViewEpisode: (MediaItem) -> Unit, onRetry: () -> Unit,
+    downloads: Map<String, Download>, canDownload: Boolean, downloadCallbacks: DownloadCallbacks,
+) {
     val episodes = seasons.episodes
     val cardWidth = if (wide) EPISODE_CARD_WIDE else EPISODE_CARD
     val currentPhase = EpisodePhase(seasons.selectedId, seasons.seasons.indexOfFirst { it.id == seasons.selectedId }, episodes)
@@ -226,7 +241,10 @@ private fun EpisodeList(seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay
                 !wide -> Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
                     list.items.distinctBy { it.id }.forEach { episode ->
                         key(episode.id) {
-                            EpisodeRow(episode, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) }, onView = { onViewEpisode(episode) })
+                            EpisodeRow(
+                                episode, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) }, onView = { onViewEpisode(episode) },
+                                download = downloads[episode.id], canDownload = canDownload, downloadCallbacks = downloadCallbacks,
+                            )
                         }
                     }
                 }
@@ -245,7 +263,10 @@ private fun EpisodeList(seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay
                         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
                     ) {
                         items(list.items.distinctBy { it.id }, key = { it.id }) { episode ->
-                            EpisodeCard(episode, cardWidth, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) }, onView = { onViewEpisode(episode) })
+                            EpisodeCard(
+                                episode, cardWidth, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) }, onView = { onViewEpisode(episode) },
+                                download = downloads[episode.id], canDownload = canDownload, downloadCallbacks = downloadCallbacks,
+                            )
                         }
                     }
                 }
@@ -296,8 +317,12 @@ private fun episodeTime(episode: MediaItem): String? = when {
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun EpisodeRow(episode: MediaItem, current: Boolean, onPlay: () -> Unit, onToggleWatched: () -> Unit, onView: () -> Unit) {
+private fun EpisodeRow(
+    episode: MediaItem, current: Boolean, onPlay: () -> Unit, onToggleWatched: () -> Unit, onView: () -> Unit,
+    download: Download?, canDownload: Boolean, downloadCallbacks: DownloadCallbacks,
+) {
     var menu by remember { mutableStateOf(false) }
+    val ensureNotifications = rememberDownloadNotificationPermission()
     val shape = RoundedCornerShape(VibeyFinTokens.Radius.artwork)
     Box {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
@@ -365,6 +390,14 @@ private fun EpisodeRow(episode: MediaItem, current: Boolean, onPlay: () -> Unit,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            // Each episode has its own download control at the end of its row.
+            EpisodeDownloadButton(
+                title = episode.title,
+                download = download,
+                canDownload = canDownload,
+                onStart = { downloadCallbacks.onDownloadEpisode(episode.id) },
+                onAction = { downloadCallbacks.onAction(episode.id, it) },
+            )
         }
         VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
             VibeyFinMenuItem(Strings.viewEpisode, Icons.Default.Info) { menu = false; onView() }
@@ -372,7 +405,20 @@ private fun EpisodeRow(episode: MediaItem, current: Boolean, onPlay: () -> Unit,
                 if (episode.played) Strings.markUnwatched else Strings.markWatched,
                 if (episode.played) Icons.Default.Clear else Icons.Default.Check,
             ) { menu = false; onToggleWatched() }
+            EpisodeDownloadItems(episode.id, download, canDownload, downloadCallbacks, ensureNotifications) { menu = false }
         }
+    }
+}
+
+/** The download entries of an episode's menu: "Download episode" when it has none, otherwise pause, resume and remove. */
+@Composable
+private fun EpisodeDownloadItems(
+    episodeId: String, download: Download?, canDownload: Boolean, callbacks: DownloadCallbacks, ensureNotifications: () -> Unit, close: () -> Unit,
+) {
+    if (download != null) {
+        download.actions.forEach { action -> DownloadActionMenuItem(action) { close(); callbacks.onAction(episodeId, action) } }
+    } else if (canDownload) {
+        VibeyFinMenuItem(Strings.downloadEpisode, ImageVector.vectorResource(R.drawable.ic_download)) { close(); ensureNotifications(); callbacks.onDownloadEpisode(episodeId) }
     }
 }
 
@@ -384,8 +430,12 @@ private fun EpisodeRow(episode: MediaItem, current: Boolean, onPlay: () -> Unit,
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun EpisodeCard(episode: MediaItem, width: Dp, current: Boolean, onPlay: () -> Unit, onToggleWatched: () -> Unit, onView: () -> Unit) {
+private fun EpisodeCard(
+    episode: MediaItem, width: Dp, current: Boolean, onPlay: () -> Unit, onToggleWatched: () -> Unit, onView: () -> Unit,
+    download: Download?, canDownload: Boolean, downloadCallbacks: DownloadCallbacks,
+) {
     var menu by remember { mutableStateOf(false) }
+    val ensureNotifications = rememberDownloadNotificationPermission()
     val shape = RoundedCornerShape(VibeyFinTokens.Radius.artwork)
     Box {
         Box(
@@ -423,6 +473,16 @@ private fun EpisodeCard(episode: MediaItem, width: Dp, current: Boolean, onPlay:
                     modifier = Modifier.align(Alignment.TopEnd).padding(VibeyFinTokens.Space.s3).size(22.dp),
                 )
             }
+            // The card's own download control, on the still: the arrow, then the state of its download.
+            EpisodeDownloadButton(
+                title = episode.title,
+                download = download,
+                canDownload = canDownload,
+                onStart = { downloadCallbacks.onDownloadEpisode(episode.id) },
+                onAction = { downloadCallbacks.onAction(episode.id, it) },
+                overPicture = true,
+                modifier = Modifier.align(Alignment.TopStart),
+            )
             Column(
                 Modifier
                     .align(Alignment.BottomStart)
@@ -473,6 +533,7 @@ private fun EpisodeCard(episode: MediaItem, width: Dp, current: Boolean, onPlay:
                 if (episode.played) Strings.markUnwatched else Strings.markWatched,
                 if (episode.played) Icons.Default.Clear else Icons.Default.Check,
             ) { menu = false; onToggleWatched() }
+            EpisodeDownloadItems(episode.id, download, canDownload, downloadCallbacks, ensureNotifications) { menu = false }
         }
     }
 }

@@ -11,6 +11,13 @@ struct ContinueCardTile: View {
     let onPlay: () -> Void
     let onDetails: () -> Void
     let onMarkWatched: () -> Void
+    /// Offline there is no page to open and nothing to send, so the card has no menu.
+    var showsMenu = true
+    /// The card's own download, if any, and whether the user may start one: the menu offers Download without opening the page.
+    var download: Download?
+    var canDownload = false
+    var onDownload: () -> Void = {}
+    var onDownloadAction: (DownloadAction) -> Void = { _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s2) {
@@ -44,30 +51,48 @@ struct ContinueCardTile: View {
                 }
                 .buttonStyle(PressableButtonStyle())
                 .accessibilityHidden(true)
-                Menu {
-                    Button(action: onDetails) {
-                        Label(Strings.shared.details.titleCased(), systemImage: "info.circle")
+                if showsMenu {
+                    Menu {
+                        Button(action: onDetails) {
+                            Label(Strings.shared.details.titleCased(), systemImage: "info.circle")
+                        }
+                        Button(action: onMarkWatched) {
+                            Label(Strings.shared.markWatched.titleCased(), systemImage: "checkmark.circle")
+                        }
+                        downloadItems
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 32, height: 24)
                     }
-                    Button(action: onMarkWatched) {
-                        Label(Strings.shared.markWatched.titleCased(), systemImage: "checkmark.circle")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 32, height: 24)
+                    .accessibilityLabel(Strings.shared.moreActions)
                 }
-                .accessibilityLabel(Strings.shared.moreActions)
             }
         }
         .frame(width: Size.thumbWidth, alignment: .leading)
         // Long press on the picture: the same actions as the "…".
         .contextMenu {
-            Button(action: onDetails) {
-                Label(Strings.shared.details.titleCased(), systemImage: "info.circle")
+            if showsMenu {
+                Button(action: onDetails) {
+                    Label(Strings.shared.details.titleCased(), systemImage: "info.circle")
+                }
+                Button(action: onMarkWatched) {
+                    Label(Strings.shared.markWatched.titleCased(), systemImage: "checkmark.circle")
+                }
+                downloadItems
             }
-            Button(action: onMarkWatched) {
-                Label(Strings.shared.markWatched.titleCased(), systemImage: "checkmark.circle")
+        }
+    }
+
+    /// Download: start it, or pause, resume or remove what is there (the same entries as an episode's menu).
+    @ViewBuilder
+    private var downloadItems: some View {
+        if let download {
+            DownloadActionButtons(actions: DownloadBridge.shared.actions(download: download), onAction: onDownloadAction)
+        } else if canDownload {
+            Button(action: onDownload) {
+                Label(Strings.shared.download.titleCased(), systemImage: "arrow.down.to.line")
             }
         }
     }
@@ -109,6 +134,11 @@ struct ContinueRowView: View {
     let onDetails: (String) -> Void
     let onMarkWatched: (String) -> Void
     let onRetry: () -> Void
+    var showsMenu = true
+    var downloads: [String: Download] = [:]
+    var canDownload = false
+    var onDownload: (String) -> Void = { _ in }
+    var onDownloadAction: (String, DownloadAction) -> Void = { _, _ in }
 
     var body: some View {
         // Nothing to show (it came back empty): no title and no gap, like any other row.
@@ -135,7 +165,12 @@ struct ContinueRowView: View {
                                 card: card,
                                 onPlay: { onPlay(card.id) },
                                 onDetails: { onDetails(card.id) },
-                                onMarkWatched: { onMarkWatched(card.id) }
+                                onMarkWatched: { onMarkWatched(card.id) },
+                                showsMenu: showsMenu,
+                                download: downloads[card.id],
+                                canDownload: canDownload,
+                                onDownload: { onDownload(card.id) },
+                                onDownloadAction: { onDownloadAction(card.id, $0) }
                             )
                         }
                     }

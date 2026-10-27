@@ -6,6 +6,9 @@ import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.ConnectionManager
+import app.vibeyfin.domain.Download
+import app.vibeyfin.domain.DownloadRepository
+import app.vibeyfin.domain.DownloadTarget
 import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.FilterOption
 import app.vibeyfin.domain.HomeFilter
@@ -19,6 +22,11 @@ import app.vibeyfin.domain.WatchRepository
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.LoadMessages
+import app.vibeyfin.ui.downloads.DownloadAction
+import app.vibeyfin.ui.downloads.DownloadFlow
+import app.vibeyfin.ui.downloads.RemovePrompt
+import app.vibeyfin.ui.downloads.downloadParts
+import app.vibeyfin.ui.downloads.profileOrNull
 import app.vibeyfin.ui.common.PinGate
 import app.vibeyfin.ui.common.PinPrompt
 import app.vibeyfin.ui.common.PinReason
@@ -95,6 +103,12 @@ data class HomeUiState(
     val kidsProfile: Boolean = false,
     /** The PIN sheet, while switching profile or server waits for the profile's PIN. */
     val pinPrompt: PinPrompt? = null,
+    /** The profile's downloads by item id: what a Continue watching card's menu shows of its own. */
+    val downloads: Map<String, Download> = emptyMap(),
+    /** The server lets this user download. Taken as yes until it says otherwise, so the menu entry is not missing while that is read. */
+    val canDownload: Boolean = true,
+    /** The question before a download is deleted; null when none is asked. */
+    val removePrompt: RemovePrompt? = null,
 )
 
 /** The hero: the item once picked, or [loading] while it is being picked. */
@@ -146,8 +160,11 @@ class HomeViewModel(
     private val searchHistory: SearchHistory,
     private val pins: PinLock,
     auth: AuthRepository,
+    private val downloads: DownloadRepository,
 ) : ViewModel() {
     private val pin = PinGate(pins, auth, viewModelScope)
+    private val downloadFlow = DownloadFlow(viewModelScope, downloads) { connection.state.value.profileOrNull() }
+    private val canDownload = MutableStateFlow(true)
     private val exit = MutableStateFlow<HomeExit?>(null)
     // Signed in, the libraries are always on their way, so the first thing to show is loading, not empty.
     private val libraries = MutableStateFlow(Libraries(loading = true))
@@ -216,8 +233,17 @@ class HomeViewModel(
         )
     }
 
-    val uiState: StateFlow<HomeUiState> = combine(content, profileSettings.kidsProfile, pin.prompt) { content, kids, prompt ->
-        content.copy(kidsProfile = kids == true, pinPrompt = prompt)
+    val uiState: StateFlow<HomeUiState> = combine(
+        content, profileSettings.kidsProfile, pin.prompt, downloadParts(connection, downloads, downloadFlow, canDownload),
+    ) { content, kids, prompt, parts ->
+        content.copy(
+            kidsProfile = kids == true,
+            pinPrompt = prompt,
+            actionMessage = content.actionMessage ?: parts.message,
+            downloads = parts.byId,
+            canDownload = parts.canDownload,
+            removePrompt = parts.removal,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     init {
@@ -247,6 +273,7 @@ class HomeViewModel(
                         launch { loadGenreRows(quiet = false) }
                         launch { loadMyList(quiet = false) }
                         launch { loadHeroIfEnabled() }
+                        launch { readDownloadPermission() }
                     }
                 }
         }
@@ -303,6 +330,12 @@ class HomeViewModel(
         }
     }
 
+    /** Whether this user may download is read once per session, quietly: it only decides whether the menu entry is there. */
+    private suspend fun readDownloadPermission() {
+        val profile = connection.state.value.profileOrNull() ?: return
+        downloads.canDownload(profile)?.let { canDownload.value = it }
+    }
+
     private val marking = mutableSetOf<String>()
     private var failedMark: String? = null
 
@@ -337,16 +370,37 @@ class HomeViewModel(
         }
     }
 
-    /** "Try again" on the failure message. */
+    /** "Try again" on the failure message: the mark that failed, or else the download that could not be asked for. */
     fun onRetryAction() {
-        val card = failedMark ?: return
+        val card = failedMark
+        if (card == null) {
+            if (downloadFlow.message.value != null) downloadFlow.retry()
+            return
+        }
         failedMark = null
         onMarkWatched(card)
     }
 
     fun onDismissMessage() {
         actionMessage.value = null
+        downloadFlow.dismissMessage()
     }
+
+    /** "Download" in a Continue watching card's menu: a movie or an episode goes straight into the queue. */
+    fun onDownload(cardId: String) {
+        val card = continueRow.value.cards.firstOrNull { it.id == cardId } ?: return
+        downloadFlow.start(DownloadTarget.Item(cardId), card.title, ask = false)
+    }
+
+    /** Pause, resume or remove (after asking) the download of a Continue watching card. */
+    fun onDownloadAction(cardId: String, action: DownloadAction) {
+        val download = uiState.value.downloads[cardId] ?: return
+        downloadFlow.act(download, action)
+    }
+
+    fun onConfirmRemove() = downloadFlow.confirmRemove()
+
+    fun onDismissRemoval() = downloadFlow.dismissRemoval()
 
     fun onRetryContinue() {
         continueReload?.cancel()

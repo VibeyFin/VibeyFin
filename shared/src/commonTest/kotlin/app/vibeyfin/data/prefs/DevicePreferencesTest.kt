@@ -47,6 +47,16 @@ class DevicePreferencesTest {
     }
 
     @Test
+    fun offlineModeIsOffByDefaultAndIsKept() = runTest {
+        assertFalse(preferences.offlineMode.first())
+
+        preferences.setOfflineMode(true)
+
+        assertTrue(preferences.offlineMode.first())
+        assertTrue(DataStoreDevicePreferences(dataStore).offlineMode.first(), "after a restart")
+    }
+
+    @Test
     fun nothingIsRememberedOnAFreshInstall() = runTest {
         assertNull(preferences.lastServerId.first())
         assertNull(preferences.lastProfile.first())

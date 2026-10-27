@@ -106,6 +106,8 @@ data class MediaSourceDto(
     @SerialName("Container") val container: String? = null,
     @SerialName("ETag") val etag: String? = null,
     @SerialName("RunTimeTicks") val runTimeTicks: Long? = null,
+    /** The file's size in bytes, when the server knows it. */
+    @SerialName("Size") val size: Long? = null,
     @SerialName("SupportsDirectPlay") val supportsDirectPlay: Boolean = false,
     @SerialName("SupportsDirectStream") val supportsDirectStream: Boolean = false,
     @SerialName("SupportsTranscoding") val supportsTranscoding: Boolean = false,
@@ -134,6 +136,8 @@ data class MediaStreamDto(
     @SerialName("DeliveryMethod") val deliveryMethod: String? = null,
     /** A path on the server for an `External` subtitle. */
     @SerialName("DeliveryUrl") val deliveryUrl: String? = null,
+    /** A subtitle that is a file next to the video rather than inside it. The item itself has no [deliveryUrl] for it. */
+    @SerialName("IsExternal") val isExternal: Boolean = false,
     /** For video: the picture size in pixels. */
     @SerialName("Width") val width: Int? = null,
     @SerialName("Height") val height: Int? = null,

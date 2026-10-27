@@ -25,6 +25,20 @@ final class TileMenuObservable: ObservableObject {
 
     func toggleFavorite() { model.onToggleFavorite() }
 
+    func download() { model.onDownload() }
+
+    func act(_ action: DownloadAction) { model.onDownloadAction(action: action) }
+
+    func toggleUnwatchedOnly() { model.onToggleUnwatchedOnly() }
+
+    func confirmDownload() { model.onConfirmDownload() }
+
+    func dismissDownloadPrompt() { model.onDismissDownloadPrompt() }
+
+    func confirmRemove() { model.onConfirmRemove() }
+
+    func dismissRemoval() { model.onDismissRemoval() }
+
     deinit {
         model.close()
     }

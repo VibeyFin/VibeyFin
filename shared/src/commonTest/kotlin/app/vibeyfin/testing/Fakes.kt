@@ -11,13 +11,21 @@ import app.vibeyfin.data.discovery.MulticastLock
 import app.vibeyfin.data.platform.DeviceInfo
 import app.vibeyfin.data.vault.TokenVault
 import app.vibeyfin.domain.DiscoveredServer
+import app.vibeyfin.domain.DownloadFiles
+import app.vibeyfin.domain.DownloadNetwork
+import app.vibeyfin.domain.DownloadOutput
+import app.vibeyfin.domain.DownloadScheduler
 import app.vibeyfin.domain.LanDiscovery
+import app.vibeyfin.domain.NetworkMonitor
+import app.vibeyfin.domain.NetworkState
 import app.vibeyfin.domain.PlaybackCapabilities
 import app.vibeyfin.domain.PlaybackCapabilitiesSource
+import app.vibeyfin.domain.ProgressSyncScheduler
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -149,3 +157,78 @@ suspend fun VibeyFinDatabase.count(table: String, where: String = "1"): Int =
             statement.getLong(0).toInt()
         }
     }
+
+/** A network the test switches: [state] starts connected on an unmetered connection. */
+class FakeNetworkMonitor(initial: NetworkState = NetworkState.Unmetered) : NetworkMonitor {
+    private val current = MutableStateFlow(initial)
+    override val state: StateFlow<NetworkState> = current
+
+    fun set(state: NetworkState) {
+        current.value = state
+    }
+}
+
+/** The downloads folder in memory: bytes are kept as text (a test writes plain ASCII), so a file can be read back as a string. */
+class FakeDownloadFiles(
+    /** What [freeBytes] answers; lower it to run out of room. */
+    var free: Long = 10_000_000_000,
+) : DownloadFiles {
+    val contents = mutableMapOf<String, StringBuilder>()
+
+    /** When set, writing throws it, as a full disk does. */
+    var failWrites: Exception? = null
+
+    /** Called after each write, for a test that lets time pass while bytes arrive. */
+    var onWrite: (() -> Unit)? = null
+
+    fun text(path: String): String? = contents[path]?.toString()
+
+    override fun length(path: String): Long = contents[path]?.length?.toLong() ?: 0
+
+    override fun exists(path: String) = path in contents
+
+    override fun open(path: String, append: Boolean): DownloadOutput {
+        if (!append || path !in contents) contents[path] = StringBuilder()
+        val target = contents.getValue(path)
+        return object : DownloadOutput {
+            override fun write(bytes: ByteArray, count: Int) {
+                failWrites?.let { throw it }
+                target.append(bytes.decodeToString(0, count))
+                onWrite?.invoke()
+            }
+
+            override fun close() = Unit
+        }
+    }
+
+    override fun move(from: String, to: String) {
+        contents[to] = contents.remove(from) ?: error("No file at $from")
+    }
+
+    override fun delete(path: String) {
+        contents.keys.filter { it == path || it.startsWith("$path/") }.forEach { contents.remove(it) }
+    }
+
+    override fun freeBytes() = free
+
+    override fun uri(path: String) = "file:///fake/$path"
+}
+
+/** Records what the platform was asked to run, and when. */
+class FakeDownloadScheduler(override val isSupported: Boolean = true) : DownloadScheduler {
+    val requests = mutableListOf<DownloadNetwork>()
+
+    override fun schedule(network: DownloadNetwork) {
+        requests += network
+    }
+}
+
+/** Counts the times the platform was asked to send the offline progress. */
+class FakeProgressSyncScheduler : ProgressSyncScheduler {
+    var scheduled = 0
+        private set
+
+    override fun schedule() {
+        scheduled++
+    }
+}

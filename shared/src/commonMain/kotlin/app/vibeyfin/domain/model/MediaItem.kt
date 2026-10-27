@@ -1,6 +1,7 @@
 package app.vibeyfin.domain.model
 
 import app.vibeyfin.domain.VideoFormat
+import kotlinx.serialization.Serializable
 
 enum class ItemKind {
     /** A library: Movies, Shows, Music. */
@@ -20,7 +21,8 @@ enum class ItemKind {
     Other,
 }
 
-/** A library, folder, series, season, movie or episode, as the screens show it. */
+/** A library, folder, series, season, movie or episode, as the screens show it. Serializable so a download can keep it. */
+@Serializable
 data class MediaItem(
     val id: String,
     val title: String,
@@ -106,6 +108,7 @@ data class MediaItem(
 }
 
 /** One person in an item's cast: [role] is the part they play; [imageUrl] is null when the server has no picture of them. */
+@Serializable
 data class CastMember(
     val id: String,
     val name: String,

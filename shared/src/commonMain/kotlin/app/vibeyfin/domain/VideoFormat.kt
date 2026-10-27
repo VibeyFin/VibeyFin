@@ -1,11 +1,13 @@
 package app.vibeyfin.domain
 
 import app.vibeyfin.data.api.MediaStreamDto
+import kotlinx.serialization.Serializable
 
 /** The kind of picture a video holds, as far as the player's badges tell. */
 enum class DynamicRange { Sdr, Hdr10, DolbyVision, Hlg }
 
 /** The video stream of a file: what it is, not how the server delivers it. */
+@Serializable
 data class VideoFormat(
     val codec: String?,
     val width: Int?,
