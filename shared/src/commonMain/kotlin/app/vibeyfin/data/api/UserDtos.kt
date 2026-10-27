@@ -2,6 +2,7 @@ package app.vibeyfin.data.api
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 /** `UserDto` from the server's OpenAPI spec, with only the fields we read. */
 @Serializable
@@ -12,6 +13,11 @@ data class UserDto(
     @SerialName("HasPassword") val hasPassword: Boolean? = null,
     /** What the server lets this user do; only sent for a signed-in user. */
     @SerialName("Policy") val policy: UserPolicyDto? = null,
+    /**
+     * The user's own `UserConfiguration`, kept whole: `POST /Users/Configuration` replaces all of it, so a change writes back
+     * every field, including the ones this app doesn't read. Only sent for a signed-in user.
+     */
+    @SerialName("Configuration") val configuration: JsonObject? = null,
 )
 
 /** `UserPolicy`, with only the fields we read: the limits an administrator can put on a user, and whether the user may download. */
@@ -62,4 +68,14 @@ data class QuickConnectRequestDto(
 data class ParentalRatingDto(
     @SerialName("Name") val name: String? = null,
     @SerialName("Value") val value: Int? = null,
+)
+
+/** `CultureDto` from `GET /Localization/Cultures`, with only the fields we read. */
+@Serializable
+data class CultureDto(
+    @SerialName("DisplayName") val displayName: String? = null,
+    /** The ISO 639-2 code the server writes on tracks, such as `deu`. */
+    @SerialName("ThreeLetterISOLanguageName") val threeLetterIsoLanguageName: String? = null,
+    /** Every ISO 639-2 code of the language, both the bibliographic (`ger`) and the terminology (`deu`) one where they differ. */
+    @SerialName("ThreeLetterISOLanguageNames") val threeLetterIsoLanguageNames: List<String>? = null,
 )

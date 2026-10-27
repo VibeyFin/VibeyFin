@@ -16,6 +16,7 @@ import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.PROGRESS_INTERVAL
 import app.vibeyfin.domain.PendingReports
 import app.vibeyfin.domain.PinLock
+import app.vibeyfin.domain.LanguagePreferences
 import app.vibeyfin.domain.ProfilePolicy
 import app.vibeyfin.domain.hashPin
 import app.vibeyfin.domain.LocalPlaybackReporter
@@ -61,6 +62,7 @@ class TestApp {
     val auth = AuthRepository(connector, accounts, connection)
     val pins = PinLock(database.accountDao(), connection, clock)
     val policy = ProfilePolicy(connection)
+    val languages = LanguagePreferences(connection)
     val router = StartupRouter(servers, accounts, preferences, connection, pins)
     val library = LibraryRepository(connection)
     val searchHistory = SearchHistory(InMemoryPreferencesDataStore(), connection)

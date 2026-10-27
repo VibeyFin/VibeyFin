@@ -9,6 +9,7 @@ import app.vibeyfin.domain.DevicePreferences
 import app.vibeyfin.domain.NewTitlesPoller
 import app.vibeyfin.domain.PendingReports
 import app.vibeyfin.domain.PinLock
+import app.vibeyfin.domain.LanguagePreferences
 import app.vibeyfin.domain.ProfilePolicy
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SearchHistory
@@ -32,6 +33,7 @@ fun dataModule() = module {
     single { ProfileSettings(get(), get()) }
     single { PinLock(get(), get(), get()) }
     single { ProfilePolicy(get()) }
+    single { LanguagePreferences(get()) }
     single { SearchHistory(get(), get()) }
     single { PendingReports(get(), get()) }
     single { NewTitlesPoller(get(), get(), get()) }
