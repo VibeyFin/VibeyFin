@@ -40,6 +40,8 @@ FIXTURES = {
     "mkv-vp9-opus": ("failures/MKV VP9 Opus (2026)/MKV VP9 Opus (2026).mkv", dict(CLIP, video="vp9", audio=["opus"])),
     "subs-text": ("failures/Text Subtitles (2026)/Text Subtitles (2026).mkv", dict(CLIP, subtitles=["subrip", "subrip"])),
     "subs-image": ("failures/Image Subtitles (2026)/Image Subtitles (2026).mkv", dict(CLIP, subtitles=["PGSSUB"])),
+    "languages": ("failures/Languages (2026)/Languages (2026).mkv",
+                  dict(CLIP, audio=["aac", "aac"], subtitles=["subrip", "subrip", "subrip"])),
     "big-download": ("movies/Big Download (2026)/Big Download (2026).mkv",
                      dict(CLIP, seconds=60, trickplay=True)),  # the Movies library makes trickplay
     "download-subs": ("movies/Download Subs (2026)/Download Subs (2026).mkv",

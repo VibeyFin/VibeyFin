@@ -25,7 +25,7 @@ so its items have no trickplay:
 | --- | --- | --- |
 | Shows | `/media/shows` | "Test Show" S01E01 to S01E04 (3 min each, 640x360 H.264; four so "Are you still watching?" can be reached with the setting at After 2 episodes: two start by themselves, and the prompt replaces the countdown in the third because a fourth follows; about 8 minutes hands-off) with chapters `Scene 1` 0:00, `Intro` 0:10-0:40, `Episode` 0:40, `Credits` 2:30-end |
 | Movies | `/media/movies` | "HDR Sample (2026)": 20 s HEVC 10-bit, bt2020 / smpte2084 with mastering metadata |
-| Failures | `/media/failures` | Six 20 s clips, each with one thing a player may refuse (see the catalogue); no chapters, so no segments; no trickplay |
+| Failures | `/media/failures` | 20 s clips, each with one thing a player may refuse (see the catalogue); no chapters, so no segments; no trickplay |
 
 `make-media.sh` creates these with the ffmpeg inside the Jellyfin image (no host ffmpeg). Jellyfin
 names the first episode "Episode 1" and the HDR movie "HDR" because there is no online metadata
@@ -49,6 +49,7 @@ this name; renaming or changing one is a reviewed change. All paths are under
 | `mkv-vp9-opus` | `failures/MKV VP9 Opus (2026)/MKV VP9 Opus (2026).mkv` | Same as `plain`, VP9 video and Opus audio in MKV | A file AVPlayer cannot open: negotiation |
 | `av1-ac3` | `failures/AV1 AC3 (2026)/AV1 AC3 (2026).mkv` | Same as `plain`, AV1 10-bit (SVT-AV1, `yuv420p10le`) video and AC-3 audio in MKV, like the web rips many libraries hold | iOS download: the remux copies AV1 into MP4 where the device has an AV1 hardware decoder, and refuses it where not |
 | `subs-text` | `failures/Text Subtitles (2026)/Text Subtitles (2026).mkv` | Same as `plain`, plus two SubRip tracks (`eng` "English subtitle", `deu` "Deutscher Untertitel"), shown 1 s to 15 s | Text subtitle tracks and the picker |
+| `languages` | `failures/Languages (2026)/Languages (2026).mkv` | Same as `plain`, but two AAC audio tracks (`eng` "English" 440 Hz, flagged default; `ger` "Deutsch" 880 Hz) and three SubRip tracks (`eng` "English subtitle", `ger` "Deutscher Untertitel", and `eng` "Forced English subtitle" flagged forced), shown 1 s to 15 s | Preferred audio and subtitle languages (issue #28): which tracks a video starts with |
 | `subs-image` | `failures/Image Subtitles (2026)/Image Subtitles (2026).mkv` | Same as `plain`, plus one PGS track (a white bar, 1 s to 15 s, hand-written because ffmpeg cannot encode PGS) | Image subtitles: burned in by a transcode |
 | `truncated` | `failures/Truncated (2026)/Truncated (2026).mp4` | An MP4 cut in half: no moov atom, so no streams and no duration. Jellyfin still lists it | A file that cannot play at all: the error path |
 
@@ -59,6 +60,8 @@ negotiation rules in plan 03 and have not all been confirmed in the app yet):
 - `dts-audio`: direct stream or transcode of the audio if the device cannot decode DTS; never silent playback.
 - `mkv-vp9-opus`: direct play where the player supports MKV, VP9 and Opus (Android); on iOS a transcode (or the device remux, plan 05).
 - `subs-text`: both tracks are in the picker with their languages; picking one shows the text.
+- `languages`: with no language preference it starts on English audio (the default flag) and no subtitles. With
+  Audio language German and Subtitle language English (Always) it starts on the 880 Hz German track with "English subtitle".
 - `subs-image`: the track is in the picker; picking it needs a transcode that burns it in.
 - `truncated`: the player error screen with "Try again", not a crash and not an endless spinner.
 
