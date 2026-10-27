@@ -32,6 +32,8 @@ struct SettingsPageView: View {
                 }
             }
         }
+        // A page with a search (the language lists) gets the system search field; the shared code filters the rows.
+        .modifier(SettingsSearch(pageId: pageId, model: model))
         .onAppear {
             model.start()
             model.pageOpened(pageId)
@@ -124,6 +126,23 @@ extension View {
                     onDismiss: { model.dismissPin() }
                 )
             }
+        }
+    }
+}
+
+/// `.searchable` for a page whose shared state has a search, bound to it; any other page is left as it is.
+private struct SettingsSearch: ViewModifier {
+    let pageId: SettingsPageId
+    @ObservedObject var model: SettingsObservable
+
+    func body(content: Content) -> some View {
+        if let page = model.page(pageId), page.search != nil {
+            content.searchable(
+                text: Binding(get: { model.page(pageId)?.search ?? "" }, set: { model.search(pageId, $0) }),
+                prompt: page.searchPrompt ?? ""
+            )
+        } else {
+            content
         }
     }
 }

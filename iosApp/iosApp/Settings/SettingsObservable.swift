@@ -90,6 +90,11 @@ final class SettingsObservable: ObservableObject {
         model.onAction(key: key)
     }
 
+    /// What is typed in a page's search field; the shared state comes back with the page filtered.
+    func search(_ id: SettingsPageId, _ query: String) {
+        model.onSearch(page: id, query: query)
+    }
+
     /// A page appeared; the Kids and PIN page reads the server's limits then.
     func pageOpened(_ id: SettingsPageId) {
         model.onPageOpened(page: id)

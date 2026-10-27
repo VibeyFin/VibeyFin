@@ -152,6 +152,20 @@ final class OnboardingFlowUITests: XCTestCase {
                 let shows1080 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Quality", "1080p")).firstMatch
                 XCTAssertTrue(shows1080.waitForExistence(timeout: 5), "Quality doesn't show 1080p")
 
+                // Audio and subtitles reads the languages from the Jellyfin account; its language rows open a searchable list.
+                // Nothing is changed here: the choice lives on the test server's account and would steer the other tests' tracks.
+                let languages = button("Audio and subtitles", contains: true)
+                XCTAssertTrue(languages.waitForExistence(timeout: 5), "Audio and subtitles link is missing")
+                languages.tap()
+                XCTAssertTrue(button("When subtitles show", contains: true).waitForExistence(timeout: 10), "When subtitles show is missing")
+                let audioLanguage = button("Audio language", contains: true)
+                XCTAssertTrue(audioLanguage.waitForExistence(timeout: 5), "Audio language link is missing")
+                audioLanguage.tap()
+                XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout: 5), "The language list has no search field")
+                XCTAssertTrue(button("Any language").waitForExistence(timeout: 5), "Any language is missing from the list")
+                goBack()
+                goBack()
+
                 let skipping = button("Skipping", contains: true)
                 XCTAssertTrue(skipping.waitForExistence(timeout: 5), "Skipping link is missing")
                 skipping.tap()
