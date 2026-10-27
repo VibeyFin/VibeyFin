@@ -17,12 +17,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.semantics.Role
-import app.vibeyfin.app.theme.ContentMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -30,6 +33,7 @@ import app.vibeyfin.ui.search.SearchFilter
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -126,9 +130,9 @@ fun SearchScreen(
     // The field takes the keyboard when the tab opens with nothing typed, so a search can start at once.
     LaunchedEffect(Unit) { if (state.query.isEmpty()) focus.requestFocus() }
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        // On a tablet the column stays a readable width, centred.
+        // The grids use the whole width, on a tablet too: more columns, not a narrow centred column.
         Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
-            Column(Modifier.widthIn(max = ContentMaxWidth).fillMaxSize()) {
+            Column(Modifier.fillMaxSize()) {
                 TextField(
                     value = state.query,
                     onValueChange = onQueryChange,
@@ -160,17 +164,27 @@ fun SearchScreen(
                         modifier = Modifier.fillMaxWidth().padding(bottom = VibeyFinTokens.Space.s2),
                     ) {
                         items(state.chips, key = { it.filter }) { chip ->
+                            // Outlined until chosen; the chosen one fills with accent-soft and gets the check, like the Home filter chips.
                             FilterChip(
                                 selected = chip.selected,
                                 onClick = { onFilter(chip.filter) },
                                 label = { Text(chip.label, maxLines = 1) },
+                                leadingIcon = if (chip.selected) {
+                                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(FilterChipDefaults.IconSize)) }
+                                } else null,
                                 colors = FilterChipDefaults.filterChipColors(
-                                    containerColor = VibeyFinTokens.Colors.surface2,
+                                    containerColor = androidx.compose.ui.graphics.Color.Transparent,
                                     labelColor = VibeyFinTokens.Colors.inkMuted,
                                     selectedContainerColor = VibeyFinTokens.Colors.accentSoft,
                                     selectedLabelColor = VibeyFinTokens.Colors.onAccentSoft,
+                                    selectedLeadingIconColor = VibeyFinTokens.Colors.onAccentSoft,
                                 ),
-                                border = null,
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = chip.selected,
+                                    borderColor = VibeyFinTokens.Colors.lineStrong,
+                                    selectedBorderWidth = 0.dp,
+                                ),
                             )
                         }
                     }
@@ -236,82 +250,111 @@ private fun History(history: List<String>, margin: androidx.compose.ui.unit.Dp, 
 
 @Composable
 private fun Results(state: SearchUiState, margin: androidx.compose.ui.unit.Dp, onOpen: (SearchResult) -> Unit) {
+    // Each group is a grid under its heading: poster tiles, round portraits for people, and rows for episodes.
     // The older answer stays while the next one is on its way, dimmed.
-    LazyColumn(
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(GRID_MIN_WIDTH),
         modifier = Modifier.fillMaxSize().alpha(if (state.loading) 0.5f else 1f),
         contentPadding = PaddingValues(horizontal = margin, vertical = VibeyFinTokens.Space.s2),
-        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
+        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
     ) {
         state.visibleGroups.forEach { group ->
-            item(key = "heading-${group.kind}") {
+            item(key = "heading-${group.kind}", span = { GridItemSpan(maxLineSpan) }) {
                 SectionTitle(group.title, modifier = Modifier.padding(top = VibeyFinTokens.Space.s3).semantics { heading() })
             }
-            items(group.results, key = { "${group.kind}-${it.id}" }) { result -> ResultRow(result) { onOpen(result) } }
+            gridItems(group.results, key = { "${group.kind}-${it.id}" }, span = { if (it.kind == SearchKind.Episode) GridItemSpan(maxLineSpan / maxOf(1, maxLineSpan / EPISODE_COLUMNS)) else GridItemSpan(1) }) { result ->
+                ResultTile(result) { onOpen(result) }
+            }
         }
-        item(key = "bottom") { Spacer(Modifier.height(VibeyFinTokens.Space.s5)) }
+        item(key = "bottom", span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(VibeyFinTokens.Space.s5)) }
     }
 }
 
-/** One match: a picture (a poster, a still, or a round portrait), the title, and a line under it. */
+/** One match: a tile with a poster or a round portrait over the title, or for an episode a row with the still beside it. */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun ResultRow(result: SearchResult, onClick: () -> Unit) {
+private fun ResultTile(result: SearchResult, onClick: () -> Unit) {
     // A long press opens the same menu as on a poster (Details, Trailer, My List); a person has none.
     val longPress = LocalTileLongPress.current
     val asItem = remember(result) { result.asMediaItem() }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
-            .combinedClickable(
-                role = Role.Button,
-                onLongClickLabel = if (longPress != null && asItem != null) Strings.showOptions else null,
-                onLongClick = if (longPress != null && asItem != null) ({ longPress(asItem) }) else null,
-                onClick = onClick,
-            )
-            .semantics(mergeDescendants = true) { contentDescription = Strings.searchResultDescription(result.title, result.subtitle) }
-            .padding(vertical = VibeyFinTokens.Space.s1),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-    ) {
+    val modifier = Modifier
+        .fillMaxWidth()
+        .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
+        .combinedClickable(
+            role = Role.Button,
+            onLongClickLabel = if (longPress != null && asItem != null) Strings.showOptions else null,
+            onLongClick = if (longPress != null && asItem != null) ({ longPress(asItem) }) else null,
+            onClick = onClick,
+        )
+        .semantics(mergeDescendants = true) { contentDescription = Strings.searchResultDescription(result.title, result.subtitle) }
+    if (result.kind == SearchKind.Episode) {
+        // The show and episode number need the room a tile doesn't have, so an episode reads as a row.
+        Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
+            Box(Modifier.width(EPISODE_STILL_WIDTH).clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
+                Artwork(url = result.imageUrl, title = result.title, aspectRatio = 16f / 9f, modifier = Modifier.fillMaxWidth())
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(result.title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                result.subtitle?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+        return
+    }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
         when (result.kind) {
-            SearchKind.Person -> Box(Modifier.size(56.dp).clip(CircleShape).background(VibeyFinTokens.Colors.surface2), contentAlignment = Alignment.Center) {
-                Text(initials(result.title), style = MaterialTheme.typography.titleSmall, color = VibeyFinTokens.Colors.inkMuted)
+            SearchKind.Person -> Box(
+                Modifier.fillMaxWidth().aspectRatio(1f).clip(CircleShape).background(VibeyFinTokens.Colors.surface2),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(initials(result.title), style = MaterialTheme.typography.titleMedium, color = VibeyFinTokens.Colors.inkMuted)
                 if (result.imageUrl != null) {
                     AsyncImage(model = result.imageUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                 }
             }
-            SearchKind.Episode -> Box(Modifier.width(112.dp).clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
-                Artwork(url = result.imageUrl, title = result.title, aspectRatio = 16f / 9f, modifier = Modifier.fillMaxWidth())
-            }
-            else -> Box(Modifier.width(56.dp).clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
+            else -> Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
                 Artwork(url = result.imageUrl, title = result.title, aspectRatio = 2f / 3f, modifier = Modifier.fillMaxWidth())
             }
         }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(result.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        val centred = if (result.kind == SearchKind.Person) TextAlign.Center else TextAlign.Start
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(result.title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = centred, modifier = Modifier.fillMaxWidth())
             result.subtitle?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = centred, modifier = Modifier.fillMaxWidth())
             }
         }
     }
 }
 
-/** Grey rows where the first answer will be. */
+/** Grey tiles where the first answer will be. */
 @Composable
 private fun ResultSkeleton(margin: androidx.compose.ui.unit.Dp) {
-    Column(Modifier.padding(horizontal = margin, vertical = VibeyFinTokens.Space.s2), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-        repeat(5) {
-            Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3), verticalAlignment = Alignment.CenterVertically) {
-                SkeletonBlock(Modifier.width(56.dp).height(84.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
-                    SkeletonLine(180.dp, MaterialTheme.typography.titleMedium)
-                    SkeletonLine(80.dp, MaterialTheme.typography.bodyMedium)
-                }
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(GRID_MIN_WIDTH),
+        userScrollEnabled = false,
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = margin, vertical = VibeyFinTokens.Space.s2),
+        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
+    ) {
+        items(6) {
+            Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
+                SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(2f / 3f))
+                SkeletonLine(80.dp, MaterialTheme.typography.titleSmall)
             }
         }
     }
 }
+
+/** The narrowest a poster tile gets; the grid fits as many columns as the width allows. */
+private val GRID_MIN_WIDTH = 110.dp
+
+/** Poster columns an episode row takes at least (about 350 dp), so a phone shows one per line and a wide tablet three. */
+private const val EPISODE_COLUMNS = 3
+
+private val EPISODE_STILL_WIDTH = 128.dp
 
 private fun initials(name: String): String =
     name.split(" ").filter { it.isNotBlank() }.take(2).joinToString("") { it.first().uppercase() }
