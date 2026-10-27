@@ -16,7 +16,7 @@ class SettingsSelectionTest {
             val quality = all.getValue(SettingsPageId.Quality)
             all + (SettingsPageId.Quality to quality.copy(sections = emptyList()))
         }
-        assertEquals(SettingsPageId.Skipping, firstSettablePage(pages))
+        assertEquals(SettingsPageId.AudioSubtitles, firstSettablePage(pages))
     }
 
     @Test

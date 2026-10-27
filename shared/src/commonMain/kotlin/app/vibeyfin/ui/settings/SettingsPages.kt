@@ -2,6 +2,9 @@ package app.vibeyfin.ui.settings
 
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.domain.AccessDays
+import app.vibeyfin.domain.Language
+import app.vibeyfin.domain.LanguagePrefs
+import app.vibeyfin.domain.SubtitleMode
 import app.vibeyfin.domain.PinGates
 import app.vibeyfin.domain.PolicySummary
 import app.vibeyfin.domain.ProfileSettings
@@ -13,6 +16,20 @@ sealed interface PolicyState {
     data object Loading : PolicyState
     data class Failed(val error: ApiError) : PolicyState
     data class Loaded(val summary: PolicySummary) : PolicyState
+}
+
+/** Where the Audio and subtitles page stands with the Jellyfin account its values live on. */
+sealed interface LanguageStatus {
+    /** Being read; the rows show the last values known, inert. */
+    data object Loading : LanguageStatus
+
+    data object Ready : LanguageStatus
+
+    /** Couldn't be read; the rows show the last values known, inert, and the footer says why. Opening the page again retries. */
+    data class LoadFailed(val error: ApiError) : LanguageStatus
+
+    /** The last change couldn't be saved and was put back; the rows still work. */
+    data class SaveFailed(val error: ApiError) : LanguageStatus
 }
 
 /**
@@ -59,6 +76,13 @@ data class SettingsValues(
     val serverName: String = "",
     /** The signed-in server's addresses, the one that worked last first. */
     val serverAddresses: List<String> = emptyList(),
+    /** The preferred languages as last read from or saved to the Jellyfin account; null before the first read. */
+    val languagePrefs: LanguagePrefs? = null,
+    /** The languages the server knows, sorted by name; empty until read, or when they can't be. */
+    val languages: List<Language> = emptyList(),
+    val languageStatus: LanguageStatus = LanguageStatus.Loading,
+    /** What is typed in each page's search field. */
+    val searches: Map<SettingsPageId, String> = emptyMap(),
 )
 
 /** Every page the shared code builds, keyed by its id. */
@@ -66,6 +90,9 @@ fun settingsPages(values: SettingsValues): Map<SettingsPageId, SettingsPage> = l
     rootPage(values),
     profilePage(values),
     qualityPage(values),
+    audioSubtitlesPage(values),
+    languagePage(values, SettingsPageId.AudioLanguage),
+    languagePage(values, SettingsPageId.SubtitleLanguage),
     skippingPage(values),
     subtitlesPage(values),
     kidsAndPinPage(values),
@@ -96,6 +123,11 @@ fun rootPage(v: SettingsValues): SettingsPage {
                     LinkItem(
                         SettingKey.Quality, Strings.qualityTitle,
                         target = SettingsPageId.Quality, value = Strings.qualityLabel(v.maxStreamingBitrate), visible = profile,
+                    ),
+                    LinkItem(
+                        SettingKey.AudioSubtitles, Strings.audioAndSubtitles,
+                        help = v.languagePrefs?.let { languagesSummary(it, v.languages) },
+                        target = SettingsPageId.AudioSubtitles, visible = profile,
                     ),
                     LinkItem(
                         SettingKey.Subtitles, Strings.subtitlesTitle,
@@ -354,6 +386,129 @@ fun qualityPage(v: SettingsValues) = SettingsPage(
             ),
         ),
     ),
+)
+
+/**
+ * The preferred audio and subtitle languages, kept on the Jellyfin account. Until they are read the rows show the defaults (or the
+ * last values known) and can't be changed; the footer says why.
+ */
+fun audioSubtitlesPage(v: SettingsValues): SettingsPage {
+    val profile = v.hasProfile
+    val prefs = v.languagePrefs ?: LanguagePrefs()
+    val enabled = v.languageStatus is LanguageStatus.Ready || v.languageStatus is LanguageStatus.SaveFailed
+    val status = when (val status = v.languageStatus) {
+        LanguageStatus.Loading -> Strings.languagesLoading
+        LanguageStatus.Ready -> null
+        is LanguageStatus.LoadFailed ->
+            if (status.error == ApiError.Network) LoadMessages.LANGUAGES_UNREACHABLE else LoadMessages.forError(status.error)
+        is LanguageStatus.SaveFailed ->
+            if (status.error == ApiError.Network) LoadMessages.LANGUAGES_SAVE_FAILED else LoadMessages.forError(status.error)
+    }
+    return SettingsPage(
+        SettingsPageId.AudioSubtitles,
+        Strings.audioAndSubtitles,
+        listOf(
+            SettingsSection(
+                Strings.audio,
+                Strings.audioLanguageFooter,
+                items = listOf(
+                    LinkItem(
+                        SettingKey.AudioLanguage, Strings.audioLanguageTitle,
+                        target = SettingsPageId.AudioLanguage, value = languageName(prefs.audioLanguage, v.languages),
+                        visible = profile, enabled = enabled,
+                    ),
+                ),
+            ),
+            SettingsSection(
+                Strings.subtitles,
+                Strings.subtitleModeFooter(prefs.subtitleMode),
+                items = listOf(
+                    LinkItem(
+                        SettingKey.SubtitleLanguage, Strings.subtitleLanguageTitle,
+                        target = SettingsPageId.SubtitleLanguage, value = languageName(prefs.subtitleLanguage, v.languages),
+                        visible = profile, enabled = enabled,
+                    ),
+                    ChoiceItem(
+                        SettingKey.SubtitleMode, Strings.subtitleModeTitle, value = prefs.subtitleMode.ordinal,
+                        options = SubtitleMode.entries.map { SettingOption(it.ordinal, Strings.subtitleModeLabel(it)) },
+                        visible = profile, enabled = enabled,
+                    ),
+                ),
+            ),
+            SettingsSection(
+                title = null,
+                footer = status ?: Strings.languagesFooter,
+                items = listOf(
+                    ToggleItem(
+                        SettingKey.RememberTracks, Strings.rememberTracksTitle, Strings.rememberTracksHelp,
+                        checked = prefs.rememberTracks, visible = profile, enabled = enabled,
+                    ),
+                ),
+            ),
+        ),
+    )
+}
+
+/**
+ * The checklist of languages for [id] ([SettingsPageId.AudioLanguage] or [SettingsPageId.SubtitleLanguage]), filtered by what is
+ * typed in its search. Each option's value is a position in [languageChoices]; [languageCode] turns it back into a code.
+ */
+fun languagePage(v: SettingsValues, id: SettingsPageId): SettingsPage {
+    val audio = id == SettingsPageId.AudioLanguage
+    val prefs = v.languagePrefs ?: LanguagePrefs()
+    val choices = languageChoices(v.languages, prefs)
+    val query = v.searches[id].orEmpty().trim()
+    val current = choiceValue(if (audio) prefs.audioLanguage else prefs.subtitleLanguage, choices)
+    val options = (listOf(SettingOption(0, Strings.anyLanguage)) + choices.mapIndexed { i, it -> SettingOption(i + 1, it.name) })
+        .filter { option ->
+            query.isEmpty() || option.label.contains(query, ignoreCase = true) ||
+                choices.getOrNull(option.value - 1)?.code?.equals(query, ignoreCase = true) == true
+        }
+    val visible = v.hasProfile
+    val key = if (audio) SettingKey.AudioLanguage else SettingKey.SubtitleLanguage
+    return SettingsPage(
+        id,
+        if (audio) Strings.audioLanguageTitle else Strings.subtitleLanguageTitle,
+        listOf(
+            SettingsSection(
+                title = null,
+                footer = if (options.isEmpty()) null else (if (audio) Strings.anyLanguageAudioHelp else Strings.anyLanguageSubtitleHelp) + " " + Strings.languageListFooter,
+                items = listOf(
+                    ChoiceItem(key, Strings.languageListGroup, value = current, options = options, asPage = true, visible = visible && options.isNotEmpty()),
+                    InfoItem(SettingKey.NoLanguageMatch, Strings.noLanguageMatches, value = "", visible = visible && options.isEmpty()),
+                ),
+            ),
+        ),
+        search = v.searches[id].orEmpty(),
+        searchPrompt = Strings.searchLanguages,
+    )
+}
+
+/**
+ * Every language a choice can name: the server's, then any code the account holds that the server doesn't list (set by another
+ * client), so it isn't lost. Position i here is option value i + 1; 0 is "Any language".
+ */
+fun languageChoices(languages: List<Language>, prefs: LanguagePrefs): List<Language> {
+    val unknown = listOfNotNull(prefs.audioLanguage, prefs.subtitleLanguage)
+        .filter { code -> languages.none { it.matches(code) } }
+        .distinct()
+        .map { Language(it, it) }
+    return languages + unknown
+}
+
+/** The code of option [value] in [choices]; null for "Any language" or a value off the list. */
+fun languageCode(value: Int, choices: List<Language>): String? = choices.getOrNull(value - 1)?.code
+
+private fun choiceValue(code: String?, choices: List<Language>): Int =
+    code?.let { c -> choices.indexOfFirst { it.matches(c) }.takeIf { it >= 0 }?.plus(1) } ?: 0
+
+private fun languageName(code: String?, languages: List<Language>): String =
+    code?.let { c -> languages.firstOrNull { it.matches(c) }?.name ?: c } ?: Strings.anyLanguage
+
+private fun languagesSummary(prefs: LanguagePrefs, languages: List<Language>) = Strings.languagesSummary(
+    prefs.audioLanguage?.let { languageName(it, languages) },
+    prefs.subtitleLanguage?.let { languageName(it, languages) },
+    prefs.subtitleMode,
 )
 
 fun skippingPage(v: SettingsValues): SettingsPage {

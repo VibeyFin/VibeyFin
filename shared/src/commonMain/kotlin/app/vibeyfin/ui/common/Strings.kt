@@ -3,6 +3,7 @@ package app.vibeyfin.ui.common
 import app.vibeyfin.domain.PlayMethod
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SegmentType
+import app.vibeyfin.domain.SubtitleMode
 import kotlin.math.roundToInt
 
 /**
@@ -578,6 +579,56 @@ object Strings {
     fun skippingSummary(back: Int, forward: Int, stillWatching: Int) =
         "${skipSecondsShort(back)} \u00B7 ${skipSecondsShort(forward)} \u00B7 " +
             if (stillWatching == 0) "Still watching off" else "Still watching after $stillWatching"
+
+    // Audio and subtitles page: the preferred languages, kept on the Jellyfin account
+    val audioLanguageTitle = "Audio language"
+    val audioLanguageFooter = "Plays the track in this language when the video has one, otherwise the video\u2019s default track."
+    val subtitleLanguageTitle = "Subtitle language"
+    val subtitleModeTitle = "When subtitles show"
+    val rememberTracksTitle = "Remember what I pick in the player"
+    val rememberTracksHelp = "The next episode starts with the tracks you chose."
+    val languagesFooter =
+        "Saved to your Jellyfin account, so your other Jellyfin apps use them too. A track you pick in the player still wins for that video."
+    val languagesLoading = "Reading your Jellyfin account\u2026"
+    val anyLanguage = "Any language"
+    val anyLanguageAudioHelp = "The video\u2019s default track."
+    val anyLanguageSubtitleHelp = "Subtitles in any language, as the video marks them."
+    val languageListGroup = "Languages"
+    val languageListFooter = "The languages your Jellyfin server knows, by the names it uses on tracks."
+    val searchLanguages = "Search languages"
+    val noLanguageMatches = "No language matches"
+    val languagesDefaultsSummary = "Server defaults"
+
+    /** The label of one subtitle mode. */
+    fun subtitleModeLabel(mode: SubtitleMode) = when (mode) {
+        SubtitleMode.Default -> "Default"
+        SubtitleMode.Always -> "Always"
+        SubtitleMode.OnlyForced -> "Only forced"
+        SubtitleMode.Smart -> "Smart"
+        SubtitleMode.None -> "Off"
+    }
+
+    /** What the mode in use does, under the Subtitles group. */
+    fun subtitleModeFooter(mode: SubtitleMode) = when (mode) {
+        SubtitleMode.Default -> "Default: subtitles the video marks as default or forced."
+        SubtitleMode.Always -> "Always: whenever there are subtitles in your language."
+        SubtitleMode.OnlyForced -> "Only forced: just the lines for foreign dialogue."
+        SubtitleMode.Smart -> "Smart: only when the audio isn\u2019t in your language."
+        SubtitleMode.None -> "Off: never, unless you turn them on in the player."
+    }
+
+    /**
+     * The root's one-line summary of the languages: "German \u00B7 English subtitles, always". [audio] and [subtitles] are language
+     * names, null for no preference. Nothing set reads as the server's defaults.
+     */
+    fun languagesSummary(audio: String?, subtitles: String?, mode: SubtitleMode): String {
+        if (audio == null && subtitles == null && mode == SubtitleMode.Default) return languagesDefaultsSummary
+        val subs = when (mode) {
+            SubtitleMode.None -> "subtitles off"
+            else -> "${subtitles?.let { "$it subtitles" } ?: "subtitles"}, ${subtitleModeLabel(mode).lowercase()}"
+        }
+        return "${audio ?: anyLanguage} \u00B7 $subs"
+    }
 
     // Subtitles page
     val subtitlesTitle = "Subtitles"

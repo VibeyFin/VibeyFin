@@ -1,7 +1,7 @@
 package app.vibeyfin.ui.settings
 
 /** The pages of the Settings tree. */
-enum class SettingsPageId { Root, Profile, Quality, Skipping, Subtitles, KidsAndPin, Notifications }
+enum class SettingsPageId { Root, Profile, Quality, AudioSubtitles, Skipping, Subtitles, KidsAndPin, Notifications, AudioLanguage, SubtitleLanguage }
 
 /** One entry per setting, so each platform can tell its rows apart. */
 enum class SettingKey {
@@ -18,9 +18,21 @@ enum class SettingKey {
     Notifications, NotificationScope,
     PictureInPicture,
     OfflineMode, DownloadOverMobile, StorageLimit,
+    AudioSubtitles, AudioLanguage, SubtitleLanguage, SubtitleMode, RememberTracks, NoLanguageMatch,
 }
 
-data class SettingsPage(val id: SettingsPageId, val title: String, val sections: List<SettingsSection>) {
+/**
+ * One page. A page with a [search] (empty when nothing is typed) draws a search field above its sections; what is typed goes to
+ * [SettingsViewModel.onSearch] and the page comes back filtered. Null is a page without one.
+ */
+data class SettingsPage(
+    val id: SettingsPageId,
+    val title: String,
+    val sections: List<SettingsSection>,
+    val search: String? = null,
+    /** The search field's placeholder, when [search] is set. */
+    val searchPrompt: String? = null,
+) {
     /** The page as it should be drawn: hidden items, and sections left empty by that, are gone. */
     fun visibleOnly(): SettingsPage = copy(
         sections = sections.mapNotNull { section ->

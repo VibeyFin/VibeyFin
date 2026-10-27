@@ -7,11 +7,15 @@ import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.DevicePreferences
 import app.vibeyfin.domain.DownloadRepository
+import app.vibeyfin.domain.Language
+import app.vibeyfin.domain.LanguagePreferences
+import app.vibeyfin.domain.LanguagePrefs
 import app.vibeyfin.domain.PinGates
 import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.ProfilePolicy
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.ServerRepository
+import app.vibeyfin.domain.SubtitleMode
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.domain.model.Server
 import app.vibeyfin.ui.common.PinGate
@@ -73,6 +77,7 @@ class SettingsViewModel(
     private val servers: ServerRepository,
     private val pins: PinLock,
     private val policy: ProfilePolicy,
+    private val languagePreferences: LanguagePreferences,
     auth: AuthRepository,
     private val downloads: DownloadRepository,
     private val applicationScope: CoroutineScope,
@@ -91,6 +96,11 @@ class SettingsViewModel(
     private val notificationsBlocked = MutableStateFlow(false)
     private val policyState = MutableStateFlow<PolicyState>(PolicyState.Loading)
     private var policyLoad: Job? = null
+    private val languagePrefs = MutableStateFlow<LanguagePrefs?>(null)
+    private val languages = MutableStateFlow<List<Language>>(emptyList())
+    private val languageStatus = MutableStateFlow<LanguageStatus>(LanguageStatus.Loading)
+    private val searches = MutableStateFlow<Map<SettingsPageId, String>>(emptyMap())
+    private var languageLoad: Job? = null
 
     init {
         // Decided per profile as the connection gets one, so Settings opened before the profile is signed in still asks.
@@ -103,6 +113,13 @@ class SettingsViewModel(
                     // Limits read for the previous profile must not show for this one.
                     policyLoad?.cancel()
                     policyState.value = PolicyState.Loading
+                    // Nor its languages: they are read afresh for each profile, so the root row can sum them up.
+                    languageLoad?.cancel()
+                    languagePrefs.value = null
+                    languages.value = emptyList()
+                    languageStatus.value = LanguageStatus.Loading
+                    searches.value = emptyMap()
+                    if (account != null) loadLanguages()
                     // A profile met again (after Disconnected) is decided again.
                     unlockedFor.value = null
                     if (account == null) return@collect
@@ -158,6 +175,10 @@ class SettingsViewModel(
         unread(preferences.offlineMode),
         perProfile(profileSettings.downloadOverMobile),
         perProfile(profileSettings.storageLimitMb),
+        live(languagePrefs),
+        live(languages),
+        live(languageStatus),
+        live(searches),
     )
 
     /** Eager, so the reads start with the ViewModel and not when the screen first draws. */
@@ -221,6 +242,10 @@ class SettingsViewModel(
             profileName = connected?.account?.name.orEmpty(),
             serverName = server?.name.orEmpty(),
             serverAddresses = server?.addresses.orEmpty(),
+            languagePrefs = v[LANGUAGE_PREFS] as LanguagePrefs?,
+            languages = v[LANGUAGES].cast(),
+            languageStatus = v[LANGUAGE_STATUS] as LanguageStatus,
+            searches = v[SEARCHES].cast(),
         )
         return SettingsUiState(
             pages = settingsPages(values),
@@ -269,6 +294,7 @@ class SettingsViewModel(
                 SettingKey.PinOpenProfile -> profileSettings.setPinOpenProfile(value)
                 SettingKey.PinOpenSettings -> profileSettings.setPinOpenSettings(value)
                 SettingKey.PinSwitchProfile -> profileSettings.setPinSwitchProfile(value)
+                SettingKey.RememberTracks -> saveLanguages({ it.copy(rememberTracks = value) }) { languagePreferences.setRememberTracks(value) }
                 else -> Unit
             }
         }
@@ -288,6 +314,18 @@ class SettingsViewModel(
                 SettingKey.SubtitleColor -> profileSettings.setSubtitleTextColor(value)
                 SettingKey.SubtitleBackground -> profileSettings.setSubtitleBackground(value)
                 SettingKey.NotificationScope -> profileSettings.setNotificationScope(value)
+                SettingKey.AudioLanguage -> {
+                    val code = languageCode(value, languageChoices(languages.value, languagePrefs.value ?: LanguagePrefs()))
+                    saveLanguages({ it.copy(audioLanguage = code) }) { languagePreferences.setAudioLanguage(code) }
+                }
+                SettingKey.SubtitleLanguage -> {
+                    val code = languageCode(value, languageChoices(languages.value, languagePrefs.value ?: LanguagePrefs()))
+                    saveLanguages({ it.copy(subtitleLanguage = code) }) { languagePreferences.setSubtitleLanguage(code) }
+                }
+                SettingKey.SubtitleMode -> {
+                    val mode = SubtitleMode.entries.getOrNull(value) ?: return@launch
+                    saveLanguages({ it.copy(subtitleMode = mode) }) { languagePreferences.setSubtitleMode(mode) }
+                }
                 // In gigabytes; 0 is no limit.
                 SettingKey.StorageLimit -> {
                     profileSettings.setStorageLimitMb(value * MB_PER_GB)
@@ -320,6 +358,8 @@ class SettingsViewModel(
      * cached; reopening it is the retry after a failed read. Other pages need nothing.
      */
     fun onPageOpened(page: SettingsPageId) {
+        // The languages were read with the profile; opening their page is the retry after a failed read.
+        if (page == SettingsPageId.AudioSubtitles && languageStatus.value is LanguageStatus.LoadFailed) loadLanguages()
         if (page != SettingsPageId.KidsAndPin) return
         policyLoad?.cancel()
         policyState.value = PolicyState.Loading
@@ -327,6 +367,49 @@ class SettingsViewModel(
             policyState.value = when (val result = policy.load()) {
                 is ApiResult.Success -> PolicyState.Loaded(result.value)
                 is ApiResult.Failure -> PolicyState.Failed(result.error)
+            }
+        }
+    }
+
+    /** What is typed in the search field of [page]; the page comes back filtered. */
+    fun onSearch(page: SettingsPageId, query: String) {
+        searches.value = searches.value + (page to query)
+    }
+
+    /** Reads the account's preferred languages, and the languages the server knows, for the profile signed in now. */
+    private fun loadLanguages() {
+        languageLoad?.cancel()
+        languageStatus.value = LanguageStatus.Loading
+        languageLoad = viewModelScope.launch {
+            val read = languagePreferences.load()
+            if (read is ApiResult.Success) {
+                // The names are a nicety: without them the rows show the codes.
+                languages.value = languagePreferences.languages()
+                languagePrefs.value = read.value
+            }
+            languageStatus.value = when (read) {
+                is ApiResult.Success -> LanguageStatus.Ready
+                is ApiResult.Failure -> LanguageStatus.LoadFailed(read.error)
+            }
+        }
+    }
+
+    /**
+     * Shows [change] at once and saves it with [save]. What the server saved replaces it; a failure puts the values from before back and
+     * says so on the page. Only while the values were read: the rows are inert otherwise.
+     */
+    private suspend fun saveLanguages(change: (LanguagePrefs) -> LanguagePrefs, save: suspend () -> ApiResult<LanguagePrefs>) {
+        val before = languagePrefs.value ?: return
+        if (languageStatus.value !is LanguageStatus.Ready && languageStatus.value !is LanguageStatus.SaveFailed) return
+        languagePrefs.value = change(before)
+        when (val saved = save()) {
+            is ApiResult.Success -> {
+                languagePrefs.value = saved.value
+                languageStatus.value = LanguageStatus.Ready
+            }
+            is ApiResult.Failure -> {
+                languagePrefs.value = before
+                languageStatus.value = LanguageStatus.SaveFailed(saved.error)
             }
         }
     }
@@ -381,6 +464,10 @@ class SettingsViewModel(
     }
 }
 
+/** A source's value as the type its flow has; [combine] hands them over as `Any?`. */
+@Suppress("UNCHECKED_CAST")
+private fun <T> Any?.cast(): T = this as T
+
 private fun <T> unread(flow: Flow<T?>): Pair<Flow<Any?>, Any?> = flow.onStart { emit(null) } to null
 
 private fun <T> live(flow: StateFlow<T>): Pair<Flow<Any?>, Any?> = flow to flow.value
@@ -425,5 +512,9 @@ private const val PICTURE_IN_PICTURE = 27
 private const val OFFLINE_MODE = 28
 private const val DOWNLOAD_OVER_MOBILE = 29
 private const val STORAGE_LIMIT = 30
+private const val LANGUAGE_PREFS = 31
+private const val LANGUAGES = 32
+private const val LANGUAGE_STATUS = 33
+private const val SEARCHES = 34
 
 private const val MB_PER_GB = 1_000L

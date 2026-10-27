@@ -16,6 +16,9 @@ import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.PinResult
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.testing.Reply
+import app.vibeyfin.testing.FakeServer
+import app.vibeyfin.domain.SubtitleMode
+import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.ViewModelTracker
 import app.vibeyfin.ui.common.PinReason
@@ -85,7 +88,7 @@ class SettingsViewModelTest {
         pins: PinLock = app.pins,
         appVersion: String = "",
     ) = viewModels.track(
-        SettingsViewModel(preferences, profileSettings, app.connection, app.servers, pins, app.policy, app.auth, app.downloadRepository, applicationScope, appVersion),
+        SettingsViewModel(preferences, profileSettings, app.connection, app.servers, pins, app.policy, app.languages, app.auth, app.downloadRepository, applicationScope, appVersion),
     )
 
     /**
@@ -319,13 +322,16 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `the root Playback group links to Quality and Subtitles and Skipping only`() = runTest {
+    fun `the root Playback group links to Quality, Audio and subtitles, Subtitles and Skipping only`() = runTest {
         app.signedIn()
         val root = viewModel().uiState.first { it.hasProfile }.page(SettingsPageId.Root)
 
         val playback = root.sections.single { it.title == Strings.playbackSection }
         assertTrue(playback.items.all { it is LinkItem })
-        assertEquals(listOf(SettingKey.Quality, SettingKey.Subtitles, SettingKey.Skipping), playback.items.map { it.key })
+        assertEquals(
+            listOf(SettingKey.Quality, SettingKey.AudioSubtitles, SettingKey.Subtitles, SettingKey.Skipping),
+            playback.items.map { it.key },
+        )
         assertFalse(root.keys().contains(SettingKey.BufferAhead))
     }
 
@@ -1280,4 +1286,188 @@ class SettingsViewModelTest {
         assertEquals(1, wakes)
         job.cancel()
     }
+
+    // Audio and subtitles: the preferred languages, kept on the Jellyfin account
+
+    private val cultures = """[{"DisplayName":"German","ThreeLetterISOLanguageName":"ger","ThreeLetterISOLanguageNames":["ger","deu"]},
+        |{"DisplayName":"English","ThreeLetterISOLanguageName":"eng"},{"DisplayName":"French","ThreeLetterISOLanguageName":"fre"}]""".trimMargin()
+
+    /** Signs in with [configJson] as the account's configuration; writes are accepted and become the account's. */
+    private suspend fun signedInWithLanguages(configJson: String = "{}"): FakeServer {
+        val server = app.signedIn()
+        fun me(json: String) = server.on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex","Configuration":$json}"""))
+        me(configJson)
+        server.on("GET", "/Localization/Cultures", Reply.json(cultures))
+        server.on("POST", "/Users/Configuration") { request ->
+            me(request.body)
+            Reply.noContent()
+        }
+        return server
+    }
+
+    private fun SettingsUiState.languagesReady() = pages.getValue(SettingsPageId.AudioSubtitles).sections.last().footer == Strings.languagesFooter
+
+    private fun SettingsUiState.rootLanguageSummary() =
+        pages.getValue(SettingsPageId.Root).sections.flatMap { it.items }.first { it.key == SettingKey.AudioSubtitles }.help
+
+    private fun SettingsUiState.languageChoice(page: SettingsPageId) =
+        pages.getValue(page).sections.flatMap { it.items }.first { it is ChoiceItem } as ChoiceItem
+
+    private fun SettingsUiState.linkValue(key: SettingKey) =
+        (pages.getValue(SettingsPageId.AudioSubtitles).sections.flatMap { it.items }.first { it.key == key } as LinkItem).value
+
+    @Test
+    fun `the languages are read with the profile and summed up on the root`() = runTest {
+        signedInWithLanguages("""{"AudioLanguagePreference":"ger","SubtitleLanguagePreference":"eng","SubtitleMode":"Always"}""")
+
+        val state = viewModel().uiState.first { it.languagesReady() }
+
+        assertEquals("German \u00B7 English subtitles, always", state.rootLanguageSummary())
+        assertEquals("German", state.linkValue(SettingKey.AudioLanguage))
+        assertEquals("English", state.linkValue(SettingKey.SubtitleLanguage))
+        assertEquals(SubtitleModeAlways, state.value(SettingKey.SubtitleMode))
+        assertTrue(state.pages.getValue(SettingsPageId.AudioSubtitles).sections.flatMap { it.items }.all { it.enabled })
+    }
+
+    @Test
+    fun `nothing set reads as the server defaults`() = runTest {
+        signedInWithLanguages()
+
+        val state = viewModel().uiState.first { it.languagesReady() }
+
+        assertEquals(Strings.languagesDefaultsSummary, state.rootLanguageSummary())
+        assertEquals(Strings.anyLanguage, state.linkValue(SettingKey.AudioLanguage))
+        assertEquals(0, state.languageChoice(SettingsPageId.AudioLanguage).value)
+        assertTrue(state.checked(SettingKey.RememberTracks))
+    }
+
+    @Test
+    fun `picking a language saves its code to the account and checks it`() = runTest {
+        signedInWithLanguages()
+        val viewModel = viewModel()
+        val ready = viewModel.uiState.first { it.languagesReady() }
+        val german = ready.languageChoice(SettingsPageId.AudioLanguage).options.first { it.label == "German" }
+
+        viewModel.onChoose(SettingKey.AudioLanguage, german.value)
+
+        val saved = viewModel.uiState.first { it.linkValue(SettingKey.AudioLanguage) == "German" && it.languagesReady() }
+        assertEquals(german.value, saved.languageChoice(SettingsPageId.AudioLanguage).value)
+        assertTrue(app.jellyfin.requestsTo("POST", "/Users/Configuration").last().body.contains("\"AudioLanguagePreference\":\"ger\""))
+
+        // "Any language" clears it.
+        viewModel.onChoose(SettingKey.AudioLanguage, 0)
+        viewModel.uiState.first { it.linkValue(SettingKey.AudioLanguage) == Strings.anyLanguage }
+        assertTrue(app.jellyfin.requestsTo("POST", "/Users/Configuration").last().body.contains("\"AudioLanguagePreference\":\"\""))
+    }
+
+    @Test
+    fun `a code the server knows by its other name shows as that language`() = runTest {
+        signedInWithLanguages("""{"SubtitleLanguagePreference":"deu"}""")
+
+        val state = viewModel().uiState.first { it.languagesReady() }
+
+        assertEquals("German", state.linkValue(SettingKey.SubtitleLanguage))
+        assertEquals("German", state.languageChoice(SettingsPageId.SubtitleLanguage).let { c -> c.options.first { it.value == c.value }.label })
+    }
+
+    @Test
+    fun `a code the server doesn't list is kept and shown as its code`() = runTest {
+        signedInWithLanguages("""{"AudioLanguagePreference":"tlh"}""")
+
+        val state = viewModel().uiState.first { it.languagesReady() }
+
+        assertEquals("tlh", state.linkValue(SettingKey.AudioLanguage))
+        val choice = state.languageChoice(SettingsPageId.AudioLanguage)
+        assertEquals("tlh", choice.options.first { it.value == choice.value }.label)
+    }
+
+    @Test
+    fun `the mode and remember toggle are saved to the account`() = runTest {
+        signedInWithLanguages()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.languagesReady() }
+
+        viewModel.onChoose(SettingKey.SubtitleMode, SubtitleModeSmart)
+        viewModel.uiState.first { it.value(SettingKey.SubtitleMode) == SubtitleModeSmart && it.languagesReady() }
+        viewModel.onToggle(SettingKey.RememberTracks, false)
+        val state = viewModel.uiState.first { !it.checked(SettingKey.RememberTracks) && it.languagesReady() }
+
+        assertEquals(Strings.subtitleModeFooter(SubtitleMode.Smart), state.pages.getValue(SettingsPageId.AudioSubtitles).sections[1].footer)
+        val body = app.jellyfin.requestsTo("POST", "/Users/Configuration").last().body
+        assertTrue(body.contains("\"SubtitleMode\":\"Smart\""))
+        assertTrue(body.contains("\"RememberSubtitleSelections\":false"))
+    }
+
+    @Test
+    fun `a failed save puts the old value back and says so`() = runTest {
+        val server = signedInWithLanguages("""{"AudioLanguagePreference":"eng"}""")
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.languagesReady() }
+        server.on("POST", "/Users/Configuration", Reply.status(HttpStatusCode.Forbidden))
+
+        viewModel.onChoose(SettingKey.AudioLanguage, 0)
+
+        val failed = viewModel.uiState.first { it.pages.getValue(SettingsPageId.AudioSubtitles).sections.last().footer == LoadMessages.FORBIDDEN }
+        assertEquals("English", failed.linkValue(SettingKey.AudioLanguage))
+        // The rows still work after a failed save.
+        assertTrue(failed.pages.getValue(SettingsPageId.AudioSubtitles).sections.flatMap { it.items }.all { it.enabled })
+    }
+
+    @Test
+    fun `an unreachable server leaves the rows inert, and opening the page tries again`() = runTest {
+        val server = signedInWithLanguages()
+        server.on("GET", "/Users/Me", Reply.status(HttpStatusCode.ServiceUnavailable))
+        val viewModel = viewModel()
+
+        val failed = viewModel.uiState.first { it.pages.getValue(SettingsPageId.AudioSubtitles).sections.last().footer?.startsWith("The server answered") == true }
+        assertTrue(failed.pages.getValue(SettingsPageId.AudioSubtitles).sections.flatMap { it.items }.none { it.enabled })
+        assertNull(failed.rootLanguageSummary())
+        // A change can't be made while the values are unknown.
+        viewModel.onChoose(SettingKey.SubtitleMode, SubtitleModeSmart)
+        assertTrue(app.jellyfin.requestsTo("POST", "/Users/Configuration").isEmpty())
+
+        server.on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex","Configuration":{"SubtitleMode":"OnlyForced"}}"""))
+        viewModel.onPageOpened(SettingsPageId.AudioSubtitles)
+
+        assertEquals(SubtitleModeOnlyForced, viewModel.uiState.first { it.languagesReady() }.value(SettingKey.SubtitleMode))
+    }
+
+    @Test
+    fun `the language search filters by name or code and says when nothing matches`() = runTest {
+        signedInWithLanguages()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.languagesReady() }
+
+        viewModel.onSearch(SettingsPageId.AudioLanguage, "ger")
+        val byName = viewModel.uiState.first { it.pages.getValue(SettingsPageId.AudioLanguage).search == "ger" }
+        assertEquals(listOf("German"), byName.languageChoice(SettingsPageId.AudioLanguage).options.map { it.label })
+        // The other page keeps its own search.
+        assertEquals(4, byName.languageChoice(SettingsPageId.SubtitleLanguage).options.size)
+
+        viewModel.onSearch(SettingsPageId.AudioLanguage, "FRE")
+        assertEquals(
+            listOf("French"),
+            viewModel.uiState.first { it.pages.getValue(SettingsPageId.AudioLanguage).search == "FRE" }.languageChoice(SettingsPageId.AudioLanguage).options.map { it.label },
+        )
+
+        viewModel.onSearch(SettingsPageId.AudioLanguage, "zzz")
+        val none = viewModel.uiState.first { it.pages.getValue(SettingsPageId.AudioLanguage).search == "zzz" }.page(SettingsPageId.AudioLanguage)
+        assertEquals(listOf(SettingKey.NoLanguageMatch), none.keys())
+    }
+
+    @Test
+    fun `another profile's languages never show under this one`() = runTest {
+        signedInWithLanguages("""{"AudioLanguagePreference":"ger"}""")
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.languagesReady() }
+
+        app.connection.switchProfile()
+
+        val state = viewModel.uiState.first { !it.hasProfile }
+        assertEquals(Strings.anyLanguage, state.linkValue(SettingKey.AudioLanguage))
+    }
 }
+
+private val SubtitleModeAlways = SubtitleMode.Always.ordinal
+private val SubtitleModeSmart = SubtitleMode.Smart.ordinal
+private val SubtitleModeOnlyForced = SubtitleMode.OnlyForced.ordinal

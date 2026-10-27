@@ -24,6 +24,9 @@ class SettingsModel {
     /** A page was opened; the Kids and PIN page reads the server's limits then. */
     fun onPageOpened(page: SettingsPageId) = host.viewModel.onPageOpened(page)
 
+    /** What is typed in a page's search field. */
+    fun onSearch(page: SettingsPageId, query: String) = host.viewModel.onSearch(page, query)
+
     fun onConfirmSignOut() = host.viewModel.onConfirmSignOut()
 
     fun onDismissSignOut() = host.viewModel.onDismissSignOut()
