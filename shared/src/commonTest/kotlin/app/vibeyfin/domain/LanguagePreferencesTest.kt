@@ -87,7 +87,7 @@ class LanguagePreferencesTest {
     }
 
     @Test
-    fun `an audio language stops the server preferring the default track, and any language lets it again`() = runTest {
+    fun `an audio language stops the server preferring the default track and any language lets it again`() = runTest {
         val server = app.signedIn()
         server.me()
         server.acceptWrites()
@@ -118,7 +118,7 @@ class LanguagePreferencesTest {
     }
 
     @Test
-    fun `a change reads the configuration again first, so another client's change made meanwhile survives`() = runTest {
+    fun `a change reads the configuration again first so another client's change made meanwhile survives`() = runTest {
         val server = app.signedIn()
         server.me()
         languages.load()
@@ -156,7 +156,7 @@ class LanguagePreferencesTest {
     }
 
     @Test
-    fun `the server's languages are named, sorted and listed once each`() = runTest {
+    fun `the server's languages are named and sorted and listed once each`() = runTest {
         app.signedIn().on(
             "GET", "/Localization/Cultures",
             Reply.json(
