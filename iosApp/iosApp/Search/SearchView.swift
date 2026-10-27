@@ -29,16 +29,9 @@ struct SearchView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: Space.s2) {
                 ForEach(state.chips, id: \.filter) { chip in
-                    Button { model.setFilter(chip.filter) } label: {
-                        Text(chip.label.titleCased())
-                            .font(.subheadline.weight(.medium))
-                            .padding(.horizontal, Space.s3)
-                            .frame(minHeight: 36)
-                            .background(Capsule().fill(chip.selected ? Color(.secondarySystemFill) : Color(.tertiarySystemBackground)))
-                            .foregroundStyle(chip.selected ? Color.primary : Color.secondary)
-                    }
-                    .buttonStyle(PressableButtonStyle())
-                    .accessibilityAddTraits(chip.selected ? .isSelected : [])
+                    // The same chip as Home and a category page; the chosen one fills with ink.
+                    FilterChipButton(label: chip.label.titleCased(), active: chip.selected) { model.setFilter(chip.filter) }
+                        .accessibilityAddTraits(chip.selected ? .isSelected : [])
                 }
             }
             .screenMargin()

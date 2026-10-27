@@ -3,27 +3,20 @@ package app.vibeyfin.app.filtered
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.children.ChildrenScreen
 import app.vibeyfin.app.components.OptionRow
 import app.vibeyfin.app.components.PickerSearch
 import app.vibeyfin.app.components.PickerSheet
 import app.vibeyfin.ui.common.Strings
+import app.vibeyfin.app.components.FilterChipButton
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.model.MediaItem
@@ -79,31 +72,8 @@ private fun ListChips(chips: List<ListChip>, onTap: (ListChip) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
     ) {
         items(chips, key = { it.kind }) { chip ->
-            AssistChip(
-                onClick = { onTap(chip) },
-                label = { Text(chip.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                // Sort and Genre open a list and have an arrow; Movies and Shows switch on and off.
-                trailingIcon = if (chip.opensList) {
-                    { Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize)) }
-                } else {
-                    null
-                },
-                colors = if (chip.active) {
-                    AssistChipDefaults.assistChipColors(
-                        containerColor = VibeyFinTokens.Colors.accentSoft,
-                        labelColor = VibeyFinTokens.Colors.onAccentSoft,
-                        trailingIconContentColor = VibeyFinTokens.Colors.onAccentSoft,
-                    )
-                } else {
-                    AssistChipDefaults.assistChipColors(
-                        containerColor = VibeyFinTokens.Colors.surface2,
-                        labelColor = VibeyFinTokens.Colors.inkMuted,
-                        trailingIconContentColor = VibeyFinTokens.Colors.inkMuted,
-                    )
-                },
-                // No outline: filled buttons, as on the Search tab.
-                border = null,
-            )
+            // Sort and Genre open a list and have an arrow; Movies and Shows switch on and off.
+            FilterChipButton(chip.label, onClick = { onTap(chip) }, active = chip.active, opensList = chip.opensList)
         }
     }
 }

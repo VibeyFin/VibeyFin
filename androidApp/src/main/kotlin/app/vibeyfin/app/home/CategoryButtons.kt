@@ -5,30 +5,23 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.components.PickerSheet
 import app.vibeyfin.app.components.OptionRow
 import app.vibeyfin.app.components.SkeletonLine
+import app.vibeyfin.app.components.FilterChipButton
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.CategoryButton
@@ -53,21 +46,10 @@ fun CategoryButtonRow(
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
     ) {
         items(buttons, key = { it.kind }) { button ->
-            AssistChip(
+            FilterChipButton(
+                button.label,
                 onClick = { onTap(button) },
-                label = { Text(button.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                trailingIcon = if (button.opensSheet) {
-                    { Icon(Icons.Filled.ArrowDropDown, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize)) }
-                } else {
-                    null
-                },
-                // No outline: a filled button, as on the Search tab.
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = VibeyFinTokens.Colors.surface2,
-                    labelColor = VibeyFinTokens.Colors.inkMuted,
-                    trailingIconContentColor = VibeyFinTokens.Colors.inkMuted,
-                ),
-                border = null,
+                opensList = button.opensSheet,
                 modifier = if (button.opensSheet) {
                     Modifier.semantics { contentDescription = Strings.opensList(button.label) }
                 } else {

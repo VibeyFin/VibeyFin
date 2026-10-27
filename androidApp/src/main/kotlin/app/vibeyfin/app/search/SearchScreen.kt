@@ -27,13 +27,10 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import app.vibeyfin.ui.search.SearchFilter
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -60,6 +57,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -70,6 +68,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.components.Artwork
+import app.vibeyfin.app.components.FilterChipButton
 import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.components.SectionTitle
 import app.vibeyfin.app.components.SkeletonBlock
@@ -164,27 +163,12 @@ fun SearchScreen(
                         modifier = Modifier.fillMaxWidth().padding(bottom = VibeyFinTokens.Space.s2),
                     ) {
                         items(state.chips, key = { it.filter }) { chip ->
-                            // Outlined until chosen; the chosen one fills with accent-soft and gets the check, like the Home filter chips.
-                            FilterChip(
-                                selected = chip.selected,
+                            // The same chip as Home and a category page; the chosen one fills with accent-soft.
+                            FilterChipButton(
+                                chip.label,
                                 onClick = { onFilter(chip.filter) },
-                                label = { Text(chip.label, maxLines = 1) },
-                                leadingIcon = if (chip.selected) {
-                                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(FilterChipDefaults.IconSize)) }
-                                } else null,
-                                colors = FilterChipDefaults.filterChipColors(
-                                    containerColor = androidx.compose.ui.graphics.Color.Transparent,
-                                    labelColor = VibeyFinTokens.Colors.inkMuted,
-                                    selectedContainerColor = VibeyFinTokens.Colors.accentSoft,
-                                    selectedLabelColor = VibeyFinTokens.Colors.onAccentSoft,
-                                    selectedLeadingIconColor = VibeyFinTokens.Colors.onAccentSoft,
-                                ),
-                                border = FilterChipDefaults.filterChipBorder(
-                                    enabled = true,
-                                    selected = chip.selected,
-                                    borderColor = VibeyFinTokens.Colors.lineStrong,
-                                    selectedBorderWidth = 0.dp,
-                                ),
+                                active = chip.selected,
+                                modifier = Modifier.semantics { selected = chip.selected },
                             )
                         }
                     }
