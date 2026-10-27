@@ -97,6 +97,8 @@ fun SettingsRoute(
             onAction = viewModel::onAction,
             onBack = onBack,
             onPageOpened = viewModel::onPageOpened,
+            onOpen = onOpen,
+            onSearch = viewModel::onSearch,
         )
     } else if (page == null) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { Box(Modifier.fillMaxSize()) { FloatingBackButton(onBack) } }
@@ -109,6 +111,7 @@ fun SettingsRoute(
             onAction = viewModel::onAction,
             onOpen = onOpen,
             onBack = onBack,
+            onSearch = viewModel::onSearch,
         )
     }
     state.pinPrompt?.let { prompt ->
@@ -158,6 +161,7 @@ fun SettingsPageScreen(
     onOpen: (SettingsPageId) -> Unit,
     onBack: () -> Unit,
     hasPage: (SettingsPageId) -> Boolean = { true },
+    onSearch: (SettingsPageId, String) -> Unit = { _, _ -> },
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
@@ -168,7 +172,7 @@ fun SettingsPageScreen(
                 Spacer(Modifier.height(BackButtonSpace))
                 SettingsPageBody(
                     page, hasPage, Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().padding(horizontal = screenMargin()),
-                    selectedLink = null, onToggle, onChoose, onAction, onOpen = { onOpen(it.target) },
+                    selectedLink = null, onToggle, onChoose, onAction, onOpen = { onOpen(it.target) }, onSearch = onSearch,
                 )
             }
             FloatingBackButton(onBack)
@@ -190,6 +194,7 @@ internal fun SettingsPageBody(
     onChoose: (SettingKey, Int) -> Unit,
     onAction: (SettingKey) -> Unit,
     onOpen: (LinkItem) -> Unit,
+    onSearch: (SettingsPageId, String) -> Unit = { _, _ -> },
 ) {
     val drawn = page.drawn(hasPage)
     val preview = page.subtitlePreviewStyle()
@@ -200,6 +205,7 @@ internal fun SettingsPageBody(
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(bottom = VibeyFinTokens.Space.s3),
         )
+        drawn.search?.let { query -> SettingsSearchField(query, drawn.searchPrompt.orEmpty()) { onSearch(page.id, it) } }
         drawn.sections.forEachIndexed { index, section ->
             if (index > 0) Spacer(Modifier.height(VibeyFinTokens.Space.s3))
             section.title?.let { SectionHeader(it) }

@@ -52,6 +52,8 @@ fun SettingsTabletScreen(
     onAction: (SettingKey) -> Unit,
     onBack: () -> Unit,
     onPageOpened: (SettingsPageId) -> Unit = {},
+    onOpen: (SettingsPageId) -> Unit = {},
+    onSearch: (SettingsPageId, String) -> Unit = { _, _ -> },
 ) {
     // The open row is kept, not its page: two root rows can lead to the same page.
     var saved by rememberSaveable { mutableStateOf<SettingKey?>(null) }
@@ -86,8 +88,8 @@ fun SettingsTabletScreen(
                         key(detail.id) {
                             SettingsPageBody(
                                 detail, hasPage, Modifier.widthIn(max = DetailMaxWidth).fillMaxWidth().padding(horizontal = margin),
-                                // A link on a non-root page would need handling here if one is ever added.
-                                selectedLink = null, onToggle, onChoose, onAction, onOpen = {},
+                                // A link inside the page (a language list) opens its page full screen, over both panes.
+                                selectedLink = null, onToggle, onChoose, onAction, onOpen = { onOpen(it.target) }, onSearch = onSearch,
                             )
                         }
                     }

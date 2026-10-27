@@ -19,6 +19,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -26,14 +28,18 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +54,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -60,6 +68,7 @@ import app.vibeyfin.app.player.SUBTITLE_SHADOW
 import app.vibeyfin.app.player.SUBTITLE_WHITE
 import app.vibeyfin.app.player.SubtitleViewStyle
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.settings.ActionItem
 import app.vibeyfin.ui.settings.ChoiceItem
 import app.vibeyfin.ui.settings.InfoItem
@@ -133,9 +142,12 @@ private fun IconCircle(icon: ImageVector) {
     }
 }
 
-private fun iconFor(key: SettingKey): ImageVector = when (key) {
+/** Null for a link inside a page, which has no icon (the root's rows have one each). */
+private fun iconFor(key: SettingKey): ImageVector? = when (key) {
     SettingKey.ProfileCard -> Icons.Filled.Person
     SettingKey.Quality -> Icons.Filled.Star
+    SettingKey.AudioSubtitles -> Icons.Filled.Face
+    SettingKey.AudioLanguage, SettingKey.SubtitleLanguage -> null
     SettingKey.Subtitles -> Icons.Filled.Build
     SettingKey.Skipping -> Icons.Filled.PlayArrow
     SettingKey.BufferAhead -> Icons.Filled.Settings
@@ -211,12 +223,37 @@ fun ChecklistRow(option: SettingOption, selected: Boolean, onClick: () -> Unit) 
     }
 }
 
+/** The search field above a searchable page's rows, styled like Search's. What is typed filters the page in the shared code. */
+@Composable
+fun SettingsSearchField(query: String, prompt: String, onQueryChange: (String) -> Unit) {
+    TextField(
+        value = query,
+        onValueChange = onQueryChange,
+        singleLine = true,
+        placeholder = { Text(prompt) },
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onQueryChange("") }) { Icon(Icons.Filled.Clear, contentDescription = Strings.clearSearch) }
+            }
+        },
+        shape = RoundedCornerShape(50),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = VibeyFinTokens.Colors.surface2,
+            unfocusedContainerColor = VibeyFinTokens.Colors.surface2,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+        ),
+        modifier = Modifier.fillMaxWidth().semantics { contentDescription = prompt },
+    )
+}
+
 /** [selected] is for the tablet's list pane: the open page is an `accent-soft` pill. Null (the phone) draws no pill. */
 @Composable
 fun LinkRow(item: LinkItem, selected: Boolean? = null, onOpen: () -> Unit) {
     val content: @Composable (Modifier) -> Unit = { modifier ->
         RowFrame(modifier = modifier) {
-            IconCircle(iconFor(item.key))
+            iconFor(item.key)?.let { IconCircle(it) }
             RowText(
                 item.title, item.help, Modifier.weight(1f),
                 titleColor = if (selected == true) VibeyFinTokens.Colors.onAccentSoft else MaterialTheme.colorScheme.onSurface,
@@ -226,7 +263,7 @@ fun LinkRow(item: LinkItem, selected: Boolean? = null, onOpen: () -> Unit) {
         }
     }
     if (selected == null) {
-        content(Modifier.clickable(role = Role.Button, onClick = onOpen))
+        content(Modifier.dimmedUnless(item.enabled).clickable(enabled = item.enabled, role = Role.Button, onClick = onOpen))
     } else {
         Box(Modifier.padding(horizontal = VibeyFinTokens.Space.s2, vertical = VibeyFinTokens.Space.s1)) {
             content(
