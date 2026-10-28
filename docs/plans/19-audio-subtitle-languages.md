@@ -46,8 +46,13 @@ can't-reach-server state, and the new root row) and `SettingsTablet` (split view
   that isn't in the list still shows (its code as its label) so a value set by another client isn't lost.
 - Root row help sums it up, e.g. "German · English subtitles, always", or "Server defaults" when nothing is set.
 - Changes apply from the next video; the player asks PlaybackInfo afresh each time.
-- Downloads: PlaybackInfo at download time already returns the preferred tracks as selected, so the offline
-  snapshot inherits them. Verify; no extra code is expected.
+- Downloads follow the preferences too, including ones changed after the download. The device keeps a copy of the
+  preferences with the profile (`account_settings.languagePrefs`, database version 14), refreshed whenever they are read
+  or saved and whenever a download is planned. A download saves each track's language and its default and forced flags,
+  and offline playback picks the tracks from the copy with the server's own rules (`chooseTracks`, after Jellyfin's
+  `MediaStreamSelector`). Only subtitle files come along with a download, so only they can be picked. A download saved
+  before this, or a profile whose preferences were never read, keeps the tracks the server picked at download time.
+  Checked with the `download-languages` fixture.
 - To verify on the test server: what the server does with an empty `SubtitleLanguagePreference` (the ticket's
   "Same as audio"). If it falls back to the audio language, label the empty option "Same as audio" instead of "Any language".
   Also check that forced subtitles in the audio's language show in Off mode, as the ticket says. Update the mockup to match what the server does.
