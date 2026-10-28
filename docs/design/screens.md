@@ -69,7 +69,7 @@ An optional card between the category buttons and Continue watching: one title, 
   Nothing qualifies, or the setting is Off: no hero, no gap.
 - **Carousel (2 or more):** the cards page sideways, full width, no peek. Page dots sit centred under the card, outside the artwork
   (iOS `UIPageControl`, Android a row of dots, current `ink`, others `ink-subtle`). Every 8 seconds it moves to the next item and rests
-  on the last; a swipe stops that for the visit, a touch pauses it, and it never moves under Reduce Motion / Remove animations or with
+  on the last; a swipe goes round (past the last comes the first) and stops that for the visit, a touch pauses it, and it never moves under Reduce Motion / Remove animations or with
   VoiceOver / TalkBack on. Each page reads "Featured, 2 of 3: <title>, opens its page".
 - **Card:** a rounded card (`radius-artwork`), 4:3 on a phone and 2.6:1 from 600dp. The `Backdrop` fills it under a `scrim` that rises
   from the bottom; over it, centred: the `Logo`, a line of what it is (a movie or a show) and its genres.

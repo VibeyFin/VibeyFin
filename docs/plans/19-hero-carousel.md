@@ -1,6 +1,6 @@
 # Plan 19: Home hero carousel, 1 to 5 items or off
 
-> **Status:** in progress. Work it in the phases below, stopping for review after each.
+> **Status:** Phase 1 done; Phase 2 built (Android run on the test server, iOS only parsed). Work it in the phases below, stopping for review after each.
 
 **Goal:** The Home hero can feature up to five titles in a swipeable carousel, the number set per profile. One item, the
 default, is the hero as it is today; Off replaces the "Featured title on Home" switch.
@@ -19,7 +19,8 @@ Mockups: the `HeroCarousel` card and the updated Home section of `SettingsPhone`
   without repeats, at most the setting's number. Fewer qualify: only those show. One qualifies: a single card, no dots. None: no
   hero, no gap.
 - **Auto-advance: yes, slowly, once through.** Every 8 seconds the carousel moves to the next item and rests on the last one; it
-  never loops back to the first. It stops for the rest of the visit once the user swipes it themselves, pauses while a finger is
+  never loops back to the first on its own. A swipe goes round: past the last comes the first, before the first the last (asked
+  for in review; Android pages through many copies of the items, iOS keeps a copy at each end and swaps to the real item). It stops for the rest of the visit once the user swipes it themselves, pauses while a finger is
   on it, and only runs while Home is on screen with the app in front. It never moves under Reduce Motion (iOS) / Remove
   animations (Android) or while VoiceOver / TalkBack is on. Rationale: slow enough to read the title and reach Play, and once
   through means it never keeps moving under someone who is just reading the rows below.
