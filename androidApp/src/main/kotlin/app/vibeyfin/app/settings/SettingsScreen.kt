@@ -132,7 +132,7 @@ fun SettingsRoute(
             onBack = onBack,
         )
     }
-    sheet?.let { id -> state.pages[id]?.let { page -> SettingsPickerSheet(page, viewModel::onChoose, viewModel::onSearch) { sheet = null } } }
+    sheet?.let { id -> state.pages[id]?.let { page -> SettingsPickerSheet(page, viewModel::onChooseLanguage, viewModel::onSearch) { sheet = null } } }
     state.pinPrompt?.let { prompt ->
         PinSheet(
             prompt = prompt,
@@ -250,14 +250,14 @@ internal fun SettingsPageBody(
 @Composable
 private fun SettingsPickerSheet(
     page: SettingsPage,
-    onChoose: (SettingKey, Int) -> Unit,
+    onChooseLanguage: (SettingKey, String) -> Unit,
     onSearch: (SettingsPageId, String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val items = page.visibleOnly().sections.flatMap { it.items }
     val choice = items.filterIsInstance<ChoiceItem>().firstOrNull()
     val rows = remember(choice) {
-        choice?.options.orEmpty().map { OptionRow(key = it.value.toString(), label = it.label, selected = it.value == choice?.value) }
+        choice?.options.orEmpty().map { OptionRow(key = it.code.orEmpty(), label = it.label, selected = it.value == choice?.value) }
     }
     PickerSheet(
         title = page.title,
@@ -266,7 +266,7 @@ private fun SettingsPickerSheet(
         message = null,
         // Nothing matches what was typed: the page's own row says so.
         emptyText = if (rows.isEmpty()) items.filterIsInstance<InfoItem>().firstOrNull()?.title else null,
-        onPick = { value -> choice?.let { onChoose(it.key, value.toInt()) } },
+        onPick = { code -> choice?.let { onChooseLanguage(it.key, code) } },
         onDismiss = onDismiss,
         onRetry = {},
         search = page.search?.let { query -> PickerSearch(query, page.searchPrompt.orEmpty()) { onSearch(page.id, it) } },

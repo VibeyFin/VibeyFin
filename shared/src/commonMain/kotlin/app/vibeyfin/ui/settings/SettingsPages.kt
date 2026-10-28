@@ -445,7 +445,7 @@ fun audioSubtitlesPage(v: SettingsValues): SettingsPage {
 
 /**
  * The checklist of languages for [id] ([SettingsPageId.AudioLanguage] or [SettingsPageId.SubtitleLanguage]), filtered by what is
- * typed in its search. Each option's value is a position in [languageChoices]; [languageCode] turns it back into a code.
+ * typed in its search. Each option carries its language's code, which is what a pick sends back.
  */
 fun languagePage(v: SettingsValues, id: SettingsPageId): SettingsPage {
     val audio = id == SettingsPageId.AudioLanguage
@@ -453,10 +453,10 @@ fun languagePage(v: SettingsValues, id: SettingsPageId): SettingsPage {
     val choices = languageChoices(v.languages, prefs)
     val query = v.searches[id].orEmpty().trim()
     val current = choiceValue(if (audio) prefs.audioLanguage else prefs.subtitleLanguage, choices)
-    val options = (listOf(SettingOption(0, Strings.anyLanguage)) + choices.mapIndexed { i, it -> SettingOption(i + 1, it.name) })
+    val options = (listOf(SettingOption(0, Strings.anyLanguage, code = "")) + choices.mapIndexed { i, it -> SettingOption(i + 1, it.name, it.code) })
         .filter { option ->
             query.isEmpty() || option.label.contains(query, ignoreCase = true) ||
-                choices.getOrNull(option.value - 1)?.code?.equals(query, ignoreCase = true) == true
+                option.code.equals(query, ignoreCase = true)
         }
     val visible = v.hasProfile
     val key = if (audio) SettingKey.AudioLanguage else SettingKey.SubtitleLanguage
@@ -481,7 +481,7 @@ fun languagePage(v: SettingsValues, id: SettingsPageId): SettingsPage {
 
 /**
  * Every language a choice can name: the server's, then any code the account holds that the server doesn't list (set by another
- * client), so it isn't lost. Position i here is option value i + 1; 0 is "Any language".
+ * client), so it isn't lost. Position i here is option value i + 1, only to tell the chosen row; 0 is "Any language".
  */
 fun languageChoices(languages: List<Language>, prefs: LanguagePrefs): List<Language> {
     val unknown = listOfNotNull(prefs.audioLanguage, prefs.subtitleLanguage)
@@ -490,9 +490,6 @@ fun languageChoices(languages: List<Language>, prefs: LanguagePrefs): List<Langu
         .map { Language(it, it) }
     return languages + unknown
 }
-
-/** The code of option [value] in [choices]; null for "Any language" or a value off the list. */
-fun languageCode(value: Int, choices: List<Language>): String? = choices.getOrNull(value - 1)?.code
 
 private fun choiceValue(code: String?, choices: List<Language>): Int =
     code?.let { c -> choices.indexOfFirst { it.matches(c) }.takeIf { it >= 0 }?.plus(1) } ?: 0

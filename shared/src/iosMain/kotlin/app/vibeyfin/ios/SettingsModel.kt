@@ -16,6 +16,8 @@ class SettingsModel {
 
     fun onChoose(key: SettingKey, value: Int) = host.viewModel.onChoose(key, value)
 
+    fun onChooseLanguage(key: SettingKey, code: String) = host.viewModel.onChooseLanguage(key, code)
+
     fun onAction(key: SettingKey) = host.viewModel.onAction(key)
 
     /** The page the iPad's split view opens on; null when nothing has anything to set. */

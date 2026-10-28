@@ -86,6 +86,10 @@ final class SettingsObservable: ObservableObject {
         model.onChoose(key: key, value: value)
     }
 
+    func chooseLanguage(_ key: SettingKey, _ code: String) {
+        model.onChooseLanguage(key: key, code: code)
+    }
+
     func perform(_ key: SettingKey) {
         model.onAction(key: key)
     }

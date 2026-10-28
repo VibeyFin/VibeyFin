@@ -48,7 +48,8 @@ data class SettingsPage(
 
 data class SettingsSection(val title: String?, val footer: String?, val items: List<SettingItem>)
 
-data class SettingOption(val value: Int, val label: String)
+/** [code] keys an option of a language list by the language itself, not its place in the list; "" is no preference. */
+data class SettingOption(val value: Int, val label: String, val code: String? = null)
 
 /** What a row is called for custom views the platforms draw themselves. */
 enum class CustomKind { SubtitlePreview, PinDots, ProfileHeader }

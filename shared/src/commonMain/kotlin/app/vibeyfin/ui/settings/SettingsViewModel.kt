@@ -308,6 +308,24 @@ class SettingsViewModel(
         }
     }
 
+    /** A language was picked from [key]'s list by its [code]; "" is no preference. Other keys are ignored. */
+    fun onChooseLanguage(key: SettingKey, code: String) {
+        viewModelScope.launch {
+            val language = code.ifBlank { null }
+            when (key) {
+                SettingKey.AudioLanguage -> {
+                    pickedFrom(SettingsPageId.AudioLanguage)
+                    saveLanguages({ it.copy(audioLanguage = language) }) { languagePreferences.setAudioLanguage(language) }
+                }
+                SettingKey.SubtitleLanguage -> {
+                    pickedFrom(SettingsPageId.SubtitleLanguage)
+                    saveLanguages({ it.copy(subtitleLanguage = language) }) { languagePreferences.setSubtitleLanguage(language) }
+                }
+                else -> Unit
+            }
+        }
+    }
+
     /** A [ChoiceItem] option was picked. Keys that are not choices are ignored; the setters ignore values off their lists. */
     fun onChoose(key: SettingKey, value: Int) {
         viewModelScope.launch {
@@ -322,16 +340,6 @@ class SettingsViewModel(
                 SettingKey.SubtitleColor -> profileSettings.setSubtitleTextColor(value)
                 SettingKey.SubtitleBackground -> profileSettings.setSubtitleBackground(value)
                 SettingKey.NotificationScope -> profileSettings.setNotificationScope(value)
-                SettingKey.AudioLanguage -> {
-                    pickedFrom(SettingsPageId.AudioLanguage)
-                    val code = languageCode(value, languageChoices(languages.value, languagePrefs.value ?: LanguagePrefs()))
-                    saveLanguages({ it.copy(audioLanguage = code) }) { languagePreferences.setAudioLanguage(code) }
-                }
-                SettingKey.SubtitleLanguage -> {
-                    pickedFrom(SettingsPageId.SubtitleLanguage)
-                    val code = languageCode(value, languageChoices(languages.value, languagePrefs.value ?: LanguagePrefs()))
-                    saveLanguages({ it.copy(subtitleLanguage = code) }) { languagePreferences.setSubtitleLanguage(code) }
-                }
                 SettingKey.SubtitleMode -> {
                     val mode = SubtitleMode.entries.getOrNull(value) ?: return@launch
                     saveLanguages({ it.copy(subtitleMode = mode) }) { languagePreferences.setSubtitleMode(mode) }

@@ -155,7 +155,7 @@ private struct SettingsPickerSheet: View {
         let items = page.visibleOnly().sections.flatMap { $0.items }
         let choice = items.compactMap { $0 as? ChoiceItem }.first
         let rows = (choice?.options ?? []).map { option in
-            PickerRow(id: String(option.value), label: option.label, selected: option.value == choice?.value)
+            PickerRow(id: option.code ?? "", label: option.label, selected: option.value == choice?.value)
         }
         PickerSheetView(
             title: page.title,
@@ -165,7 +165,7 @@ private struct SettingsPickerSheet: View {
             // Nothing matches what was typed: the page's own row says so.
             emptyText: rows.isEmpty ? items.compactMap { $0 as? InfoItem }.first?.title : nil,
             onPick: { id in
-                if let choice, let value = Int32(id) { model.choose(choice.key, value) }
+                if let choice { model.chooseLanguage(choice.key, id) }
             },
             onRetry: {},
             search: page.search.map { _ in Binding(get: { model.page(page.id)?.search ?? "" }, set: { model.search(page.id, $0) }) },

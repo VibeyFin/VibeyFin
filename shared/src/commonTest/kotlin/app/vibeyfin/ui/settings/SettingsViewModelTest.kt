@@ -1307,7 +1307,11 @@ class SettingsViewModelTest {
         return server
     }
 
-    private fun SettingsUiState.languagesReady() = pages.getValue(SettingsPageId.AudioSubtitles).sections.last().footer == Strings.languagesFooter
+    /** The footer under the languages' last row, which says whether they are ready; the subtitle style sections come after it. */
+    private fun SettingsUiState.languageFooter() =
+        pages.getValue(SettingsPageId.AudioSubtitles).sections.first { s -> s.items.any { it.key == SettingKey.RememberTracks } }.footer
+
+    private fun SettingsUiState.languagesReady() = languageFooter() == Strings.languagesFooter
 
     private fun SettingsUiState.rootLanguageSummary() =
         pages.getValue(SettingsPageId.Root).sections.flatMap { it.items }.first { it.key == SettingKey.AudioSubtitles }.help
@@ -1361,14 +1365,14 @@ class SettingsViewModelTest {
         val ready = viewModel.uiState.first { it.languagesReady() }
         val german = ready.languageChoice(SettingsPageId.AudioLanguage).options.first { it.label == "German" }
 
-        viewModel.onChoose(SettingKey.AudioLanguage, german.value)
+        viewModel.onChooseLanguage(SettingKey.AudioLanguage, german.code.orEmpty())
 
         val saved = viewModel.uiState.first { it.linkValue(SettingKey.AudioLanguage) == "German" && it.languagesReady() }
         assertEquals(german.value, saved.languageChoice(SettingsPageId.AudioLanguage).value)
         assertTrue(app.jellyfin.requestsTo("POST", "/Users/Configuration").last().body.contains("\"AudioLanguagePreference\":\"ger\""))
 
         // "Any language" clears it.
-        viewModel.onChoose(SettingKey.AudioLanguage, 0)
+        viewModel.onChooseLanguage(SettingKey.AudioLanguage, "")
         viewModel.uiState.first { it.linkValue(SettingKey.AudioLanguage) == Strings.anyLanguage }
         assertTrue(app.jellyfin.requestsTo("POST", "/Users/Configuration").last().body.contains("\"AudioLanguagePreference\":\"\""))
     }
@@ -1382,7 +1386,7 @@ class SettingsViewModelTest {
         val french = viewModel.uiState.first { it.pages.getValue(SettingsPageId.SubtitleLanguage).search == "fre" }
             .languageChoice(SettingsPageId.SubtitleLanguage).options.single()
 
-        viewModel.onChoose(SettingKey.SubtitleLanguage, french.value)
+        viewModel.onChooseLanguage(SettingKey.SubtitleLanguage, french.code.orEmpty())
 
         val picked = viewModel.uiState.first { it.closePage == SettingsPageId.SubtitleLanguage }
         assertEquals("", picked.pages.getValue(SettingsPageId.SubtitleLanguage).search)
@@ -1436,9 +1440,9 @@ class SettingsViewModelTest {
         viewModel.uiState.first { it.languagesReady() }
         server.on("POST", "/Users/Configuration", Reply.status(HttpStatusCode.Forbidden))
 
-        viewModel.onChoose(SettingKey.AudioLanguage, 0)
+        viewModel.onChooseLanguage(SettingKey.AudioLanguage, "")
 
-        val failed = viewModel.uiState.first { it.pages.getValue(SettingsPageId.AudioSubtitles).sections.last().footer == LoadMessages.FORBIDDEN }
+        val failed = viewModel.uiState.first { it.languageFooter() == LoadMessages.FORBIDDEN }
         assertEquals("English", failed.linkValue(SettingKey.AudioLanguage))
         // The rows still work after a failed save.
         assertTrue(failed.pages.getValue(SettingsPageId.AudioSubtitles).sections.flatMap { it.items }.all { it.enabled })
@@ -1450,8 +1454,9 @@ class SettingsViewModelTest {
         server.on("GET", "/Users/Me", Reply.status(HttpStatusCode.ServiceUnavailable))
         val viewModel = viewModel()
 
-        val failed = viewModel.uiState.first { it.pages.getValue(SettingsPageId.AudioSubtitles).sections.last().footer?.startsWith("The server answered") == true }
-        assertTrue(failed.pages.getValue(SettingsPageId.AudioSubtitles).sections.flatMap { it.items }.none { it.enabled })
+        val failed = viewModel.uiState.first { it.languageFooter()?.startsWith("The server answered") == true }
+        val languageKeys = setOf(SettingKey.AudioLanguage, SettingKey.SubtitleLanguage, SettingKey.SubtitleMode, SettingKey.RememberTracks)
+        assertTrue(failed.pages.getValue(SettingsPageId.AudioSubtitles).sections.flatMap { it.items }.filter { it.key in languageKeys }.none { it.enabled })
         assertNull(failed.rootLanguageSummary())
         // A change can't be made while the values are unknown.
         viewModel.onChoose(SettingKey.SubtitleMode, SubtitleModeSmart)
