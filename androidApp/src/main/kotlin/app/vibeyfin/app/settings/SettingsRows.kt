@@ -106,6 +106,22 @@ fun SectionFooter(text: String) {
     )
 }
 
+/**
+ * One row's slice of a group's card, for a long list drawn lazily (a row at a time, as it scrolls into view): stacked, the
+ * slices look like one [SectionCard], the first and last carrying its rounded corners.
+ */
+@Composable
+fun SectionCardSlice(first: Boolean, last: Boolean, content: @Composable () -> Unit) {
+    val radius = VibeyFinTokens.Radius.m3Md
+    val shape = RoundedCornerShape(
+        topStart = if (first) radius else 0.dp, topEnd = if (first) radius else 0.dp,
+        bottomStart = if (last) radius else 0.dp, bottomEnd = if (last) radius else 0.dp,
+    )
+    Surface(modifier = Modifier.fillMaxWidth(), shape = shape, color = MaterialTheme.colorScheme.surfaceContainerLow) {
+        Column(content = { content() })
+    }
+}
+
 /** A group's rounded tonal card. */
 @Composable
 fun SectionCard(content: @Composable () -> Unit) {

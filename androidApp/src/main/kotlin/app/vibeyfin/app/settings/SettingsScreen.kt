@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -171,22 +173,28 @@ fun SettingsPageScreen(
     onSearch: (SettingsPageId, String) -> Unit = { _, _ -> },
 ) {
     val content = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().padding(horizontal = screenMargin())
-    // A page with a search keeps its title and search field in place; only the rows under them scroll.
+    // A page with a search keeps its title and search field in place; only the rows under them scroll. Its list is long (every
+    // language), so the rows are drawn lazily: built all at once, they would hold up the first frame and stall the page's opening.
     val pinned = page.search != null
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize().safeDrawingPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Spacer(Modifier.height(BackButtonSpace))
-                if (pinned) SettingsPageHeader(page, content.padding(bottom = VibeyFinTokens.Space.s3), onSearch)
-                Column(
-                    modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    SettingsPageBody(
-                        page, hasPage, content,
-                        selectedLink = null, onToggle, onChoose, onAction, onOpen = { onOpen(it.target) }, onSearch = onSearch,
-                        header = !pinned,
-                    )
+                if (pinned) {
+                    SettingsPageHeader(page, content.padding(bottom = VibeyFinTokens.Space.s3), onSearch)
+                    LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        lazyPageBody(page.drawn(hasPage), content, onToggle, onChoose, onAction) { onOpen(it.target) }
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        SettingsPageBody(
+                            page, hasPage, content,
+                            selectedLink = null, onToggle, onChoose, onAction, onOpen = { onOpen(it.target) }, onSearch = onSearch,
+                        )
+                    }
                 }
             }
             FloatingBackButton(onBack)
@@ -209,13 +217,11 @@ internal fun SettingsPageBody(
     onAction: (SettingKey) -> Unit,
     onOpen: (LinkItem) -> Unit,
     onSearch: (SettingsPageId, String) -> Unit = { _, _ -> },
-    /** False when the caller draws [SettingsPageHeader] itself, pinned above a scrolling body. */
-    header: Boolean = true,
 ) {
     val drawn = page.drawn(hasPage)
     val preview = page.subtitlePreviewStyle()
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-        if (header) SettingsPageHeader(drawn, Modifier, onSearch)
+        SettingsPageHeader(drawn, Modifier, onSearch)
         drawn.sections.forEachIndexed { index, section ->
             if (index > 0) Spacer(Modifier.height(VibeyFinTokens.Space.s3))
             section.title?.let { SectionHeader(it) }
@@ -235,6 +241,39 @@ internal fun SettingsPageBody(
         }
         Spacer(Modifier.height(VibeyFinTokens.Space.s5))
     }
+}
+
+/**
+ * The sections of an already [drawn] page as lazy list items, below a pinned [SettingsPageHeader]: each row is a slice of its
+ * section's card, and a checklist choice gives one item per option.
+ */
+private fun LazyListScope.lazyPageBody(
+    drawn: SettingsPage,
+    modifier: Modifier,
+    onToggle: (SettingKey, Boolean) -> Unit,
+    onChoose: (SettingKey, Int) -> Unit,
+    onAction: (SettingKey) -> Unit,
+    onOpen: (LinkItem) -> Unit,
+) {
+    drawn.sections.forEachIndexed { index, section ->
+        if (index > 0) item { Spacer(Modifier.height(VibeyFinTokens.Space.s3)) }
+        section.title?.let { title -> item { Box(modifier.padding(bottom = VibeyFinTokens.Space.s2)) { SectionHeader(title) } } }
+        val rows: List<Pair<String, @Composable () -> Unit>> = section.items.flatMap { item ->
+            val id = rowId(drawn.id, item)
+            if (item is ChoiceItem && item.asPage) {
+                item.checklist().map { (option, selected) ->
+                    "$id/${option.value}" to @Composable { ChecklistRow(option, selected) { onChoose(item.key, option.value) } }
+                }
+            } else {
+                listOf(id to @Composable { ItemRow(item, null, onToggle, onChoose, onAction, onOpen) })
+            }
+        }
+        items(rows.size, key = { rows[it].first }) { i ->
+            Box(modifier) { SectionCardSlice(first = i == 0, last = i == rows.lastIndex) { rows[i].second() } }
+        }
+        section.footer?.let { footer -> item { Box(modifier.padding(top = VibeyFinTokens.Space.s2)) { SectionFooter(footer) } } }
+    }
+    item { Spacer(Modifier.height(VibeyFinTokens.Space.s5)) }
 }
 
 /** A page's title, and its search field when it has one. */
