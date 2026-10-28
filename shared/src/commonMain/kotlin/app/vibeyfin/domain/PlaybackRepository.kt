@@ -157,12 +157,14 @@ internal fun MediaSourceDto.tracks(baseUrl: String): Tracks {
     val audioIndex = defaultAudioStreamIndex?.takeIf { it >= 0 } ?: audio.firstOrNull()?.index
     val subtitleIndex = defaultSubtitleStreamIndex?.takeIf { it >= 0 }
     return Tracks(
-        audio = audio.map { PlaybackTrack(it.index, it.name(), it.index == audioIndex, it.codec) },
-        subtitles = subtitles.map { PlaybackTrack(it.index, it.name(), it.index == subtitleIndex) },
+        audio = audio.map { PlaybackTrack(it.index, it.name(), it.index == audioIndex, it.codec, it.trackLanguage(), it.isDefault) },
+        subtitles = subtitles.map { PlaybackTrack(it.index, it.name(), it.index == subtitleIndex, language = it.trackLanguage(), default = it.isDefault, forced = it.isForced) },
         subtitleFiles = subtitles.filter { it.deliveryMethod == "External" }.mapNotNull { it.toSubtitleFile(baseUrl) },
         subtitleBurnedIn = subtitles.firstOrNull { it.index == subtitleIndex }?.deliveryMethod == "Encode",
     )
 }
+
+private fun MediaStreamDto.trackLanguage() = language?.takeIf { it.isNotBlank() && !it.equals("und", ignoreCase = true) }
 
 /** The server's own name for the track; failing that, what the file says about it. */
 internal fun MediaStreamDto.name(): String? =

@@ -2,6 +2,9 @@ package app.vibeyfin.ui.settings
 
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.domain.AccessDays
+import app.vibeyfin.domain.Language
+import app.vibeyfin.domain.LanguagePrefs
+import app.vibeyfin.domain.SubtitleMode
 import app.vibeyfin.domain.PinGates
 import app.vibeyfin.domain.PolicySummary
 import app.vibeyfin.domain.ProfileSettings
@@ -13,6 +16,20 @@ sealed interface PolicyState {
     data object Loading : PolicyState
     data class Failed(val error: ApiError) : PolicyState
     data class Loaded(val summary: PolicySummary) : PolicyState
+}
+
+/** Where the Audio and subtitles page stands with the Jellyfin account its values live on. */
+sealed interface LanguageStatus {
+    /** Being read; the rows show the last values known, inert. */
+    data object Loading : LanguageStatus
+
+    data object Ready : LanguageStatus
+
+    /** Couldn't be read; the rows show the last values known, inert, and the footer says why. Opening the page again retries. */
+    data class LoadFailed(val error: ApiError) : LanguageStatus
+
+    /** The last change couldn't be saved and was put back; the rows still work. */
+    data class SaveFailed(val error: ApiError) : LanguageStatus
 }
 
 /**
@@ -59,6 +76,13 @@ data class SettingsValues(
     val serverName: String = "",
     /** The signed-in server's addresses, the one that worked last first. */
     val serverAddresses: List<String> = emptyList(),
+    /** The preferred languages as last read from or saved to the Jellyfin account; null before the first read. */
+    val languagePrefs: LanguagePrefs? = null,
+    /** The languages the server knows, sorted by name; empty until read, or when they can't be. */
+    val languages: List<Language> = emptyList(),
+    val languageStatus: LanguageStatus = LanguageStatus.Loading,
+    /** What is typed in each page's search field. */
+    val searches: Map<SettingsPageId, String> = emptyMap(),
 )
 
 /** Every page the shared code builds, keyed by its id. */
@@ -66,8 +90,10 @@ fun settingsPages(values: SettingsValues): Map<SettingsPageId, SettingsPage> = l
     rootPage(values),
     profilePage(values),
     qualityPage(values),
+    audioSubtitlesPage(values),
+    languagePage(values, SettingsPageId.AudioLanguage),
+    languagePage(values, SettingsPageId.SubtitleLanguage),
     skippingPage(values),
-    subtitlesPage(values),
     kidsAndPinPage(values),
     notificationsPage(values),
 ).associateBy { it.id }
@@ -98,10 +124,9 @@ fun rootPage(v: SettingsValues): SettingsPage {
                         target = SettingsPageId.Quality, value = Strings.qualityLabel(v.maxStreamingBitrate), visible = profile,
                     ),
                     LinkItem(
-                        SettingKey.Subtitles, Strings.subtitlesTitle,
-                        target = SettingsPageId.Subtitles,
-                        value = if (v.captionsFollowSystem) Strings.subtitlesSystemValue else Strings.subtitlesCustomValue,
-                        visible = profile,
+                        SettingKey.AudioSubtitles, Strings.audioAndSubtitles,
+                        help = v.languagePrefs?.let { languagesSummary(it, v.languages) },
+                        target = SettingsPageId.AudioSubtitles, visible = profile,
                     ),
                     LinkItem(
                         SettingKey.Skipping, Strings.skippingTitle,
@@ -356,6 +381,128 @@ fun qualityPage(v: SettingsValues) = SettingsPage(
     ),
 )
 
+/**
+ * The preferred audio and subtitle languages, kept on the Jellyfin account, then how subtitles look. Until the languages are read
+ * their rows show the defaults (or the last values known) and can't be changed; the footer says why. The style is the profile's
+ * own, so it works either way.
+ */
+fun audioSubtitlesPage(v: SettingsValues): SettingsPage {
+    val profile = v.hasProfile
+    val prefs = v.languagePrefs ?: LanguagePrefs()
+    val enabled = v.languageStatus is LanguageStatus.Ready || v.languageStatus is LanguageStatus.SaveFailed
+    val status = when (val status = v.languageStatus) {
+        LanguageStatus.Loading -> Strings.languagesLoading
+        LanguageStatus.Ready -> null
+        is LanguageStatus.LoadFailed ->
+            if (status.error == ApiError.Network) LoadMessages.LANGUAGES_UNREACHABLE else LoadMessages.forError(status.error)
+        is LanguageStatus.SaveFailed ->
+            if (status.error == ApiError.Network) LoadMessages.LANGUAGES_SAVE_FAILED else LoadMessages.forError(status.error)
+    }
+    return SettingsPage(
+        SettingsPageId.AudioSubtitles,
+        Strings.audioAndSubtitles,
+        listOf(
+            SettingsSection(
+                Strings.audio,
+                Strings.audioLanguageFooter,
+                items = listOf(
+                    LinkItem(
+                        SettingKey.AudioLanguage, Strings.audioLanguageTitle,
+                        target = SettingsPageId.AudioLanguage, value = languageName(prefs.audioLanguage, v.languages),
+                        visible = profile, enabled = enabled,
+                    ),
+                ),
+            ),
+            SettingsSection(
+                Strings.subtitles,
+                Strings.subtitleModeFooter(prefs.subtitleMode),
+                items = listOf(
+                    LinkItem(
+                        SettingKey.SubtitleLanguage, Strings.subtitleLanguageTitle,
+                        target = SettingsPageId.SubtitleLanguage, value = languageName(prefs.subtitleLanguage, v.languages),
+                        visible = profile, enabled = enabled,
+                    ),
+                    ChoiceItem(
+                        SettingKey.SubtitleMode, Strings.subtitleModeTitle, value = prefs.subtitleMode.ordinal,
+                        options = SubtitleMode.entries.map { SettingOption(it.ordinal, Strings.subtitleModeLabel(it)) },
+                        visible = profile, enabled = enabled,
+                    ),
+                ),
+            ),
+            SettingsSection(
+                title = null,
+                footer = status ?: Strings.languagesFooter,
+                items = listOf(
+                    ToggleItem(
+                        SettingKey.RememberTracks, Strings.rememberTracksTitle, Strings.rememberTracksHelp,
+                        checked = prefs.rememberTracks, visible = profile, enabled = enabled,
+                    ),
+                ),
+            ),
+        ) + subtitleStyleSections(v),
+    )
+}
+
+/**
+ * The checklist of languages for [id] ([SettingsPageId.AudioLanguage] or [SettingsPageId.SubtitleLanguage]), filtered by what is
+ * typed in its search. Each option carries its language's code, which is what a pick sends back.
+ */
+fun languagePage(v: SettingsValues, id: SettingsPageId): SettingsPage {
+    val audio = id == SettingsPageId.AudioLanguage
+    val prefs = v.languagePrefs ?: LanguagePrefs()
+    val choices = languageChoices(v.languages, prefs)
+    val query = v.searches[id].orEmpty().trim()
+    val current = choiceValue(if (audio) prefs.audioLanguage else prefs.subtitleLanguage, choices)
+    val options = (listOf(SettingOption(0, Strings.anyLanguage, code = "")) + choices.mapIndexed { i, it -> SettingOption(i + 1, it.name, it.code) })
+        .filter { option ->
+            query.isEmpty() || option.label.contains(query, ignoreCase = true) ||
+                option.code.equals(query, ignoreCase = true)
+        }
+    val visible = v.hasProfile
+    val key = if (audio) SettingKey.AudioLanguage else SettingKey.SubtitleLanguage
+    return SettingsPage(
+        id,
+        if (audio) Strings.audioLanguageTitle else Strings.subtitleLanguageTitle,
+        listOf(
+            SettingsSection(
+                title = null,
+                footer = if (options.isEmpty()) null else (if (audio) Strings.anyLanguageAudioHelp else Strings.anyLanguageSubtitleHelp) + " " + Strings.languageListFooter,
+                items = listOf(
+                    ChoiceItem(key, Strings.languageListGroup, value = current, options = options, asPage = true, visible = visible && options.isNotEmpty()),
+                    InfoItem(SettingKey.NoLanguageMatch, Strings.noLanguageMatches, value = "", visible = visible && options.isEmpty()),
+                ),
+            ),
+        ),
+        search = v.searches[id].orEmpty(),
+        searchPrompt = Strings.searchLanguages,
+        sheet = true,
+    )
+}
+
+/**
+ * Every language a choice can name: the server's, then any code the account holds that the server doesn't list (set by another
+ * client), so it isn't lost. Position i here is option value i + 1, only to tell the chosen row; 0 is "Any language".
+ */
+fun languageChoices(languages: List<Language>, prefs: LanguagePrefs): List<Language> {
+    val unknown = listOfNotNull(prefs.audioLanguage, prefs.subtitleLanguage)
+        .filter { code -> languages.none { it.matches(code) } }
+        .distinct()
+        .map { Language(it, it) }
+    return languages + unknown
+}
+
+private fun choiceValue(code: String?, choices: List<Language>): Int =
+    code?.let { c -> choices.indexOfFirst { it.matches(c) }.takeIf { it >= 0 }?.plus(1) } ?: 0
+
+private fun languageName(code: String?, languages: List<Language>): String =
+    code?.let { c -> languages.firstOrNull { it.matches(c) }?.name ?: c } ?: Strings.anyLanguage
+
+private fun languagesSummary(prefs: LanguagePrefs, languages: List<Language>) = Strings.languagesSummary(
+    prefs.audioLanguage?.let { languageName(it, languages) },
+    prefs.subtitleLanguage?.let { languageName(it, languages) },
+    prefs.subtitleMode,
+)
+
 fun skippingPage(v: SettingsValues): SettingsPage {
     val profile = v.hasProfile
     return SettingsPage(
@@ -417,68 +564,65 @@ fun skippingPage(v: SettingsValues): SettingsPage {
     )
 }
 
-fun subtitlesPage(v: SettingsValues): SettingsPage {
+/** How subtitles look, at the end of the Audio and subtitles page. */
+private fun subtitleStyleSections(v: SettingsValues): List<SettingsSection> {
     val profile = v.hasProfile
     val applies = v.subtitleStyleApplies
     // Where the style cannot apply the rows stay visible, dimmed, so the page says why instead of hiding it.
     val custom = profile && (!v.captionsFollowSystem || !applies)
-    return SettingsPage(
-        SettingsPageId.Subtitles,
-        Strings.subtitlesTitle,
-        listOf(
-            // The preview is a card of its own above the groups, not a row of the toggle's card.
-            SettingsSection(
-                title = null,
-                footer = null,
-                items = listOf(
-                    CustomItem(SettingKey.SubtitlePreview, Strings.subtitlePreviewSample, kind = CustomKind.SubtitlePreview, visible = profile),
+    return listOf(
+        // The preview is a card of its own under the group's title, not a row of the toggle's card.
+        SettingsSection(
+            Strings.subtitleStyleGroup,
+            footer = null,
+            items = listOf(
+                CustomItem(SettingKey.SubtitlePreview, Strings.subtitlePreviewSample, kind = CustomKind.SubtitlePreview, visible = profile),
+            ),
+        ),
+        SettingsSection(
+            title = null,
+            footer = Strings.captionsFollowSystemFooter,
+            items = listOf(
+                ToggleItem(
+                    SettingKey.CaptionsFollowSystem, Strings.captionsFollowSystemTitle, Strings.captionsFollowSystemHelp,
+                    checked = v.captionsFollowSystem, visible = profile, enabled = applies,
                 ),
             ),
-            SettingsSection(
-                title = null,
-                footer = Strings.captionsFollowSystemFooter,
-                items = listOf(
-                    ToggleItem(
-                        SettingKey.CaptionsFollowSystem, Strings.captionsFollowSystemTitle, Strings.captionsFollowSystemHelp,
-                        checked = v.captionsFollowSystem, visible = profile, enabled = applies,
+        ),
+        SettingsSection(
+            title = null,
+            footer = if (applies) null else Strings.subtitleStyleIosNote,
+            items = listOf(
+                ChoiceItem(
+                    SettingKey.SubtitleSize, Strings.subtitleSizeTitle, value = v.subtitleSize,
+                    options = options(
+                        ProfileSettings.SUBTITLE_SIZE_CHOICES,
+                        Strings.subtitleSizeSmall, Strings.subtitleSizeMedium, Strings.subtitleSizeLarge, Strings.subtitleSizeExtraLarge,
                     ),
+                    visible = custom, enabled = applies,
+                ),
+                ChoiceItem(
+                    SettingKey.SubtitleColor, Strings.subtitleColorTitle, value = v.subtitleTextColor,
+                    options = options(
+                        ProfileSettings.SUBTITLE_COLOR_CHOICES,
+                        Strings.subtitleColorWhite, Strings.subtitleColorYellow, Strings.subtitleColorLightBlue,
+                    ),
+                    visible = custom, enabled = applies,
+                ),
+                ChoiceItem(
+                    SettingKey.SubtitleBackground, Strings.subtitleBackgroundTitle, value = v.subtitleBackground,
+                    options = options(
+                        ProfileSettings.SUBTITLE_BACKGROUND_CHOICES,
+                        Strings.subtitleBackgroundNone, Strings.subtitleBackgroundShadow, Strings.subtitleBackgroundBox,
+                    ),
+                    visible = custom, enabled = applies,
                 ),
             ),
-            SettingsSection(
-                Strings.subtitleStyleGroup,
-                footer = if (applies) null else Strings.subtitleStyleIosNote,
-                items = listOf(
-                    ChoiceItem(
-                        SettingKey.SubtitleSize, Strings.subtitleSizeTitle, value = v.subtitleSize,
-                        options = options(
-                            ProfileSettings.SUBTITLE_SIZE_CHOICES,
-                            Strings.subtitleSizeSmall, Strings.subtitleSizeMedium, Strings.subtitleSizeLarge, Strings.subtitleSizeExtraLarge,
-                        ),
-                        visible = custom, enabled = applies,
-                    ),
-                    ChoiceItem(
-                        SettingKey.SubtitleColor, Strings.subtitleColorTitle, value = v.subtitleTextColor,
-                        options = options(
-                            ProfileSettings.SUBTITLE_COLOR_CHOICES,
-                            Strings.subtitleColorWhite, Strings.subtitleColorYellow, Strings.subtitleColorLightBlue,
-                        ),
-                        visible = custom, enabled = applies,
-                    ),
-                    ChoiceItem(
-                        SettingKey.SubtitleBackground, Strings.subtitleBackgroundTitle, value = v.subtitleBackground,
-                        options = options(
-                            ProfileSettings.SUBTITLE_BACKGROUND_CHOICES,
-                            Strings.subtitleBackgroundNone, Strings.subtitleBackgroundShadow, Strings.subtitleBackgroundBox,
-                        ),
-                        visible = custom, enabled = applies,
-                    ),
-                ),
-            ),
-            SettingsSection(
-                title = null,
-                footer = null,
-                items = listOf(ActionItem(SettingKey.ResetSubtitles, Strings.subtitleReset, visible = custom, enabled = applies)),
-            ),
+        ),
+        SettingsSection(
+            title = null,
+            footer = null,
+            items = listOf(ActionItem(SettingKey.ResetSubtitles, Strings.subtitleReset, visible = custom, enabled = applies)),
         ),
     )
 }

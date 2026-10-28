@@ -47,6 +47,43 @@ class OfflineLibraryTest {
     }
 
     @Test
+    fun aDownloadStartsWithTheTracksTheLanguagePreferencesPick() = runTest {
+        account()
+        app.database.accountDao().setLanguagePrefs("srv-1", "u1", """{"audioLanguage":"deu","subtitleMode":"None"}""")
+        app.downloaded("m1", subtitle = true, described = true)
+
+        val plan = assertNotNull(library.playable(alex, "m1")).plan
+
+        assertEquals(2, plan.audioStreamIndex, "German, by its other code")
+        assertNull(plan.subtitleStreamIndex)
+        assertEquals(listOf(false, true), plan.audioTracks.map { it.selected })
+        assertEquals(listOf(false), plan.subtitleTracks.map { it.selected })
+    }
+
+    @Test
+    fun aDownloadSavedBeforeTracksHadLanguagesKeepsTheServersPick() = runTest {
+        account()
+        app.database.accountDao().setLanguagePrefs("srv-1", "u1", """{"audioLanguage":"ger","subtitleMode":"None"}""")
+        app.downloaded("m1", subtitle = true)
+
+        val plan = assertNotNull(library.playable(alex, "m1")).plan
+
+        assertEquals(1, plan.audioStreamIndex)
+        assertEquals(3, plan.subtitleStreamIndex)
+    }
+
+    @Test
+    fun withoutSavedPreferencesADownloadKeepsTheServersPick() = runTest {
+        account()
+        app.downloaded("m1", subtitle = true, described = true)
+
+        val plan = assertNotNull(library.playable(alex, "m1")).plan
+
+        assertEquals(1, plan.audioStreamIndex)
+        assertEquals(3, plan.subtitleStreamIndex)
+    }
+
+    @Test
     fun aSubtitleThatIsNotAFileIsNotOffered() = runTest {
         account()
         app.downloaded("m1")

@@ -48,7 +48,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 ## Settings
 
 - **Where:** under the profile avatar on Home, never a tab. Per-profile groups come first, the one device-wide group ("This device") after them. Settings are stored per profile; only "Always ask who's watching" is device-wide.
-- **Playback group:** Quality, Subtitles, Skipping and autoplay. No root Buffering row; Buffer ahead is on Skipping and autoplay in its own group.
+- **Playback group:** Quality, Audio and subtitles (languages and subtitle style on one page), Skipping and autoplay. No root Buffering row; Buffer ahead is on Skipping and autoplay in its own group.
 - **Choices:** a choice is a menu in its row (iOS `Picker(.menu)`, Android dropdown) and never opens a sub-page. Only Quality is a checklist, shown inline in its own section.
 - **Quality:** a per-profile cap, Maximum by default (the original, direct play when possible), then 4K 40, 1080p 10, 720p 4, 480p 1.5 Mbps. It applies to the next stream. No quality menu in the player and no per-network cap.
 - **Subtitle style** follows the OS caption style unless the user turned "Use system caption style" off and chose one. iOS burns subtitles in today, so its style controls are disabled with a note until that is solved.

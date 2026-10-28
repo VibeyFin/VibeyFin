@@ -32,7 +32,7 @@ class SettingsMappingTest {
             root.sections.map { it.title },
         )
         assertTrue(links(root).all { it in pages })
-        assertTrue(SettingsPageId.Subtitles in links(root))
+        assertTrue(SettingsPageId.AudioSubtitles in links(root))
         assertEquals(1, links(root).count { it == SettingsPageId.Skipping })
     }
 
@@ -68,7 +68,7 @@ class SettingsMappingTest {
 
     @Test
     fun `the subtitle preview follows the page's own rows`() {
-        val page = settingsPages(SettingsValues(hasProfile = true, captionsFollowSystem = false, subtitleSize = 3, subtitleBackground = 2)).getValue(SettingsPageId.Subtitles)
+        val page = settingsPages(SettingsValues(hasProfile = true, captionsFollowSystem = false, subtitleSize = 3, subtitleBackground = 2)).getValue(SettingsPageId.AudioSubtitles)
         val style = page.subtitlePreviewStyle()
         assertEquals(false, style.followSystem)
         assertEquals(0.09f, style.sizeFraction)
@@ -96,9 +96,10 @@ class SettingsMappingTest {
 
     @Test
     fun `the subtitle preview is a section of its own above the toggle`() {
-        val page = pages.getValue(SettingsPageId.Subtitles).visibleOnly()
-        assertEquals(listOf(SettingKey.SubtitlePreview), page.sections[0].items.map { it.key })
-        assertEquals(SettingKey.CaptionsFollowSystem, page.sections[1].items.first().key)
+        val page = pages.getValue(SettingsPageId.AudioSubtitles).visibleOnly()
+        val preview = page.sections.indexOfFirst { s -> s.items.any { it.key == SettingKey.SubtitlePreview } }
+        assertEquals(listOf(SettingKey.SubtitlePreview), page.sections[preview].items.map { it.key })
+        assertEquals(SettingKey.CaptionsFollowSystem, page.sections[preview + 1].items.first().key)
     }
 
     @Test

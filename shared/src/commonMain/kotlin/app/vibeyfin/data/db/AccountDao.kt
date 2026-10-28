@@ -210,6 +210,12 @@ abstract class AccountDao {
     @Query("UPDATE account_settings SET autoCleanWatched = :value WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun setAutoCleanWatched(serverId: String, userId: String, value: Boolean)
 
+    @Query("SELECT languagePrefs FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun getLanguagePrefs(serverId: String, userId: String): String?
+
+    @Query("UPDATE account_settings SET languagePrefs = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setLanguagePrefs(serverId: String, userId: String, value: String?)
+
     @Query("SELECT storageLimitMb FROM account_settings WHERE serverId = :serverId AND userId = :userId")
     abstract fun observeStorageLimitMb(serverId: String, userId: String): Flow<Long?>
 

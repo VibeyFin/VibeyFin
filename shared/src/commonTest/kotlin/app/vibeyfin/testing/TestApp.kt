@@ -16,6 +16,7 @@ import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.PROGRESS_INTERVAL
 import app.vibeyfin.domain.PendingReports
 import app.vibeyfin.domain.PinLock
+import app.vibeyfin.domain.LanguagePreferences
 import app.vibeyfin.domain.ProfilePolicy
 import app.vibeyfin.domain.hashPin
 import app.vibeyfin.domain.LocalPlaybackReporter
@@ -61,6 +62,7 @@ class TestApp {
     val auth = AuthRepository(connector, accounts, connection)
     val pins = PinLock(database.accountDao(), connection, clock)
     val policy = ProfilePolicy(connection)
+    val languages = LanguagePreferences(connection, database.accountDao())
     val router = StartupRouter(servers, accounts, preferences, connection, pins)
     val library = LibraryRepository(connection)
     val searchHistory = SearchHistory(InMemoryPreferencesDataStore(), connection)
@@ -78,11 +80,11 @@ class TestApp {
     val scheduler = FakeDownloadScheduler()
     val wake = DownloadWake()
     val speeds = DownloadSpeeds()
-    val downloadRepository = DownloadRepository(downloads, connection, files, scheduler, wake, clock, speeds)
+    val downloadRepository = DownloadRepository(downloads, connection, files, scheduler, wake, languages, clock, speeds)
     val runner = DownloadRunner(downloads, database.accountDao(), connection, files, network, wake, clock, speeds = speeds)
 
     val pending = PendingReports(database.pendingReportDao(), clock)
-    val offlineLibrary = OfflineLibrary(downloads, files)
+    val offlineLibrary = OfflineLibrary(downloads, files, languages)
     val offlineProgress = OfflineProgress(downloads, pending, clock)
     val offlineSync = OfflineSync(pending, downloads, connection, watchChanges)
     val progressScheduler = FakeProgressSyncScheduler()

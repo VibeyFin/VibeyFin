@@ -18,7 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -133,10 +133,12 @@ private fun IconCircle(icon: ImageVector) {
     }
 }
 
-private fun iconFor(key: SettingKey): ImageVector = when (key) {
+/** Null for a link inside a page, which has no icon (the root's rows have one each). */
+private fun iconFor(key: SettingKey): ImageVector? = when (key) {
     SettingKey.ProfileCard -> Icons.Filled.Person
     SettingKey.Quality -> Icons.Filled.Star
-    SettingKey.Subtitles -> Icons.Filled.Build
+    SettingKey.AudioSubtitles -> Icons.Filled.Face
+    SettingKey.AudioLanguage, SettingKey.SubtitleLanguage -> null
     SettingKey.Skipping -> Icons.Filled.PlayArrow
     SettingKey.BufferAhead -> Icons.Filled.Settings
     SettingKey.HomeGenreRows, SettingKey.ShowHero -> Icons.Filled.Home
@@ -216,7 +218,7 @@ fun ChecklistRow(option: SettingOption, selected: Boolean, onClick: () -> Unit) 
 fun LinkRow(item: LinkItem, selected: Boolean? = null, onOpen: () -> Unit) {
     val content: @Composable (Modifier) -> Unit = { modifier ->
         RowFrame(modifier = modifier) {
-            IconCircle(iconFor(item.key))
+            iconFor(item.key)?.let { IconCircle(it) }
             RowText(
                 item.title, item.help, Modifier.weight(1f),
                 titleColor = if (selected == true) VibeyFinTokens.Colors.onAccentSoft else MaterialTheme.colorScheme.onSurface,
@@ -226,7 +228,7 @@ fun LinkRow(item: LinkItem, selected: Boolean? = null, onOpen: () -> Unit) {
         }
     }
     if (selected == null) {
-        content(Modifier.clickable(role = Role.Button, onClick = onOpen))
+        content(Modifier.dimmedUnless(item.enabled).clickable(enabled = item.enabled, role = Role.Button, onClick = onOpen))
     } else {
         Box(Modifier.padding(horizontal = VibeyFinTokens.Space.s2, vertical = VibeyFinTokens.Space.s1)) {
             content(

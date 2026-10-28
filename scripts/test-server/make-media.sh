@@ -11,7 +11,8 @@
 #   movies/Filler 01 (2003) ... Filler 24 (2026)   copies of one clip, genres in turn, to fill a category page
 #   movies/Kid Friendly (G), Grown Up Only (R), Tagged For Adults (G, tag no-kids) (2026)   rated clips for the kids user
 #   failures/<Name> (2026)/<Name> (2026).mkv         20 s clips with one thing a player may refuse: Plain Clip (the
-#                                                    baseline), DTS Audio, MKV VP9 Opus, Text Subtitles, Image Subtitles
+#                                                    baseline), DTS Audio, MKV VP9 Opus, Text Subtitles, Image Subtitles,
+#                                                    Languages (English and German audio, three text subtitles)
 #   failures/Truncated (2026)/Truncated (2026).mp4   an MP4 cut in half: no moov atom, nothing can be read from it
 #   Page fixtures (3 s, 320x180 clips, small artwork, .nfo with lockdata): shows/Saga Show (Specials, Season 1 with
 #     8 episodes, Season 2; backdrop and logo), shows/Solo Season (one season, poster only), movies/Starlit Crown
@@ -21,7 +22,8 @@
 #   --add-episode      adds Growing Show S01E02 (titled by its file name) and asks the server to scan the library
 #   --remove-episode   removes it again and scans, so the episode can be added anew
 #   Download fixtures: movies/Big Download (2026) (about 280 MB, 60 s of noise: long enough to pause, kill and resume a
-#     download), movies/Download Subs (2026) (artwork, cast, and two external .srt files next to the clip)
+#     download), movies/Download Subs (2026) (artwork, cast, and two external .srt files next to the clip),
+#     movies/Download Languages (2026) (English and German audio, English, German and forced English .srt files)
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
@@ -195,6 +197,16 @@ failure "Text Subtitles" mkv -i /data/work/english.srt -i /data/work/german.srt 
   -metadata:s:s:0 language=eng -metadata:s:s:1 language=deu
 failure "Image Subtitles" mkv -i /data/work/image.sup \
   -map 0:v -map 1:a -map 2 "${H264[@]}" -c:a aac -b:a 64k -c:s copy
+# Languages: two audio tracks told apart by pitch (English 440 Hz, the default; German 880 Hz) and three text
+# subtitles (English, German, and a forced English one), for the preferred audio and subtitle language settings.
+printf '1\n00:00:01,000 --> 00:00:15,000\nForced English subtitle\n' > "${DATA}/work/forced.srt"
+failure "Languages" mkv -f lavfi -i "sine=frequency=880:duration=20" \
+  -i /data/work/english.srt -i /data/work/german.srt -i /data/work/forced.srt \
+  -map 0:v -map 1:a -map 2:a -map 3 -map 4 -map 5 "${H264[@]}" -c:a aac -b:a 64k -c:s srt \
+  -metadata:s:a:0 language=eng -metadata:s:a:0 title=English -metadata:s:a:1 language=ger -metadata:s:a:1 title=Deutsch \
+  -disposition:a:0 default -disposition:a:1 0 \
+  -metadata:s:s:0 language=eng -metadata:s:s:1 language=ger -metadata:s:s:2 language=eng -metadata:s:s:2 title=Forced \
+  -disposition:s:0 0 -disposition:s:1 0 -disposition:s:2 forced
 
 # An MP4 written normally (moov atom at the end) and cut in half: nothing can be read from it.
 TRUNCATED="${MEDIA}/failures/Truncated (2026)/Truncated (2026).mp4"
@@ -335,5 +347,21 @@ cat > "${SUBS}/movie.nfo" <<'NFO'
 <plot>A short movie with artwork, cast and two external subtitle files, to check what a download keeps.</plot>
 <actor><name>Ada Vance</name><role>Narrator</role><type>Actor</type><order>0</order></actor></movie>
 NFO
+
+# Download Languages: English and German audio told apart by pitch (English 440 Hz, the default; German 880 Hz) and three
+# external subtitle files (English, German, and a forced English one). Only subtitle files come along with a download, so
+# this is what checks that a download plays offline with the tracks the preferred languages pick.
+LANGS="${MEDIA}/movies/Download Languages (2026)"
+mkdir -p "$LANGS"
+if [ ! -f "${LANGS}/Download Languages (2026).mkv" ]; then
+  ff -f lavfi -i "testsrc2=size=320x180:rate=24:duration=10" -f lavfi -i "sine=frequency=440:duration=10" \
+     -f lavfi -i "sine=frequency=880:duration=10" -map 0:v -map 1:a -map 2:a "${H264[@]}" -c:a aac -b:a 64k \
+     -metadata:s:a:0 language=eng -metadata:s:a:0 title=English -metadata:s:a:1 language=ger -metadata:s:a:1 title=Deutsch \
+     -disposition:a:0 default -disposition:a:1 0 -t 10 "/data/media/movies/Download Languages (2026)/Download Languages (2026).mkv"
+fi
+printf '1\n00:00:00,500 --> 00:00:09,500\nEnglish subtitle\n' > "${LANGS}/Download Languages (2026).en.srt"
+printf '1\n00:00:00,500 --> 00:00:09,500\nDeutscher Untertitel\n' > "${LANGS}/Download Languages (2026).de.srt"
+printf '1\n00:00:00,500 --> 00:00:09,500\nForced English subtitle\n' > "${LANGS}/Download Languages (2026).en.forced.srt"
+echo "<movie><title>Download Languages</title><lockdata>true</lockdata><year>2026</year></movie>" > "${LANGS}/movie.nfo"
 
 echo "Media ready under ${MEDIA}"

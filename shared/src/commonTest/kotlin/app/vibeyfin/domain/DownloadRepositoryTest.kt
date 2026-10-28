@@ -240,7 +240,7 @@ class DownloadRepositoryTest {
     fun aPlatformWithoutDownloadsQueuesNothingToRun() = runTest {
         saga()
         val noScheduler = FakeDownloadScheduler(isSupported = false)
-        val repository = DownloadRepository(app.downloads, app.connection, app.files, noScheduler, app.wake, app.clock)
+        val repository = DownloadRepository(app.downloads, app.connection, app.files, noScheduler, app.wake, app.languages, app.clock)
 
         repository.enqueue(alex, repository.plan(alex, DownloadTarget.Item("m1")).let { (it as DownloadAttempt.Success).value })
 

@@ -26,6 +26,9 @@ internal object LoadMessages {
     const val DOWNLOAD_UNPLAYABLE = "This video is in a format this device can't play, so it can't be downloaded here."
     const val DOWNLOAD_NO_FILE = "This has no file to download."
     const val NOT_DOWNLOADED = "This isn't downloaded, so it can't open without a connection."
+    const val LANGUAGES_UNREACHABLE =
+        "Can\u2019t reach your server, so these can\u2019t change right now. They\u2019re saved on your Jellyfin account; try again when you\u2019re back online."
+    const val LANGUAGES_SAVE_FAILED = "Couldn\u2019t save that to your Jellyfin account. Check your connection and try again."
     const val PLAYBACK_NETWORK = "Lost the connection to the server. Check your network and try again."
 
     fun forError(error: ApiError): String = when (error) {

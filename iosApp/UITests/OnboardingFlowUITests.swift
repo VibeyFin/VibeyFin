@@ -127,11 +127,11 @@ final class OnboardingFlowUITests: XCTestCase {
                     let cell = self.app.cells.matching(NSPredicate(format: "label BEGINSWITH[c] %@", name)).firstMatch
                     return cell.exists ? cell : self.app.buttons.matching(NSPredicate(format: "label BEGINSWITH[c] %@", name)).firstMatch
                 }
-                let subtitles = sidebarRow("Subtitles")
-                XCTAssertTrue(subtitles.waitForExistence(timeout: 5), "Subtitles is missing from the sidebar")
+                let subtitles = sidebarRow("Audio and subtitles")
+                XCTAssertTrue(subtitles.waitForExistence(timeout: 5), "Audio and subtitles is missing from the sidebar")
                 subtitles.tap()
-                XCTAssertTrue(title("Subtitles").waitForExistence(timeout: 5), "Subtitles did not open in the detail column")
-                XCTAssertFalse(title("Quality").exists, "Quality is still showing next to Subtitles")
+                XCTAssertTrue(title("Audio and subtitles").waitForExistence(timeout: 5), "Audio and subtitles did not open in the detail column")
+                XCTAssertFalse(title("Quality").exists, "Quality is still showing next to Audio and subtitles")
                 // The sidebar's back button leaves Settings for Home.
                 let back = app.buttons["settings.back"]
                 XCTAssertTrue(back.waitForExistence(timeout: 5), "Back button is missing from the sidebar")
@@ -151,6 +151,28 @@ final class OnboardingFlowUITests: XCTestCase {
                 // The root shows the new choice as the link's value.
                 let shows1080 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Quality", "1080p")).firstMatch
                 XCTAssertTrue(shows1080.waitForExistence(timeout: 5), "Quality doesn't show 1080p")
+
+                // Audio and subtitles reads the languages from the Jellyfin account; its language rows open a searchable picker sheet.
+                // Nothing is changed here: the choice lives on the test server's account and would steer the other tests' tracks.
+                let languages = button("Audio and subtitles", contains: true)
+                XCTAssertTrue(languages.waitForExistence(timeout: 5), "Audio and subtitles link is missing")
+                languages.tap()
+                XCTAssertTrue(button("When subtitles show", contains: true).waitForExistence(timeout: 10), "When subtitles show is missing")
+                let audioLanguage = button("Audio language", contains: true)
+                XCTAssertTrue(audioLanguage.waitForExistence(timeout: 5), "Audio language link is missing")
+                audioLanguage.tap()
+                let languageSearch = app.textFields.firstMatch
+                XCTAssertTrue(languageSearch.waitForExistence(timeout: 5), "The language sheet has no search field")
+                XCTAssertTrue(button("Any language").waitForExistence(timeout: 5), "Any language is missing from the sheet")
+                // Closed with a drag down from its title, so nothing is picked.
+                languageSearch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: -1.5))
+                    .press(forDuration: 0.05, thenDragTo: app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
+                XCTAssertTrue(languageSearch.waitForNonExistence(timeout: 5), "The language sheet did not close")
+                // The subtitle style sits on the same page, under the languages.
+                let captionStyle = app.switches.matching(NSPredicate(format: "label CONTAINS[c] %@", "system caption style")).firstMatch
+                if !captionStyle.waitForExistence(timeout: 2) { app.swipeUp() }
+                XCTAssertTrue(captionStyle.waitForExistence(timeout: 5), "The subtitle style is missing from Audio and subtitles")
+                goBack()
 
                 let skipping = button("Skipping", contains: true)
                 XCTAssertTrue(skipping.waitForExistence(timeout: 5), "Skipping link is missing")

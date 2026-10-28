@@ -16,6 +16,8 @@ class SettingsModel {
 
     fun onChoose(key: SettingKey, value: Int) = host.viewModel.onChoose(key, value)
 
+    fun onChooseLanguage(key: SettingKey, code: String) = host.viewModel.onChooseLanguage(key, code)
+
     fun onAction(key: SettingKey) = host.viewModel.onAction(key)
 
     /** The page the iPad's split view opens on; null when nothing has anything to set. */
@@ -23,6 +25,12 @@ class SettingsModel {
 
     /** A page was opened; the Kids and PIN page reads the server's limits then. */
     fun onPageOpened(page: SettingsPageId) = host.viewModel.onPageOpened(page)
+
+    /** What is typed in a page's search field. */
+    fun onSearch(page: SettingsPageId, query: String) = host.viewModel.onSearch(page, query)
+
+    /** The page the state asked to close was closed. */
+    fun onPageClosed() = host.viewModel.onPageClosed()
 
     fun onConfirmSignOut() = host.viewModel.onConfirmSignOut()
 

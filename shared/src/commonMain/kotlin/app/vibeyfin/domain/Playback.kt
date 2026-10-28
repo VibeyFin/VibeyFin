@@ -25,6 +25,12 @@ data class PlaybackTrack(
     val selected: Boolean,
     /** The file's codec for this track (`eac3`); null for a subtitle or when the server doesn't say. */
     val codec: String? = null,
+    /** The track's language as the file names it, usually an ISO 639-2 code (`ger`, `deu`); null when it doesn't say. */
+    val language: String? = null,
+    /** The file marks it as the default track. */
+    val default: Boolean = false,
+    /** A subtitle the file marks as forced. */
+    val forced: Boolean = false,
 )
 
 /** A text subtitle the server sends as a file, for the player to load next to the video. */

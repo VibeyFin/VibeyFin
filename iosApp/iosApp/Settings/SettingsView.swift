@@ -10,6 +10,8 @@ struct SettingsPageView: View {
     let onExit: (HomeExit) -> Void
     /// Set in the iPad split view: a link row selects its page here instead of pushing it, and the list shows the selection.
     var selection: Binding<SettingKey?>?
+    /// The page open as a picker sheet over this one (a language list), if any.
+    @State private var sheetPage: SettingsPageId?
 
     var body: some View {
         let page = model.page(pageId)
@@ -35,6 +37,17 @@ struct SettingsPageView: View {
         .onAppear {
             model.start()
             model.pageOpened(pageId)
+        }
+        // A language was picked from the sheet: it closes.
+        .onChange(of: model.state?.closePage) { page in
+            guard let page, page == sheetPage else { return }
+            model.pageClosed()
+            sheetPage = nil
+        }
+        .sheet(isPresented: Binding(get: { sheetPage != nil }, set: { if !$0 { sheetPage = nil } })) {
+            if let id = sheetPage, let sheet = model.page(id) {
+                SettingsPickerSheet(page: sheet, model: model)
+            }
         }
         // The page the question comes from presents it, so the sheet is never on a view covered by a pushed page: Switch profile from the
         // Profile page (its action is there, and on iPad the sidebar root has none), the rest (change, remove, set, kids mode off) from Kids and PIN. The PIN to open Settings belongs to the entry view.
@@ -90,7 +103,11 @@ struct SettingsPageView: View {
             Section {
                 // Keyed by page and setting, so a setting that ever sits on two pages stays distinct.
                 ForEach(items, id: \.key) { item in
-                    SettingsItemRow(item: item, page: page, model: model, selection: selection, onAction: perform)
+                    SettingsItemRow(item: item, page: page, model: model, selection: selection, onAction: perform) { id in
+                        // The list starts whole each time it opens.
+                        model.pageOpened(id)
+                        sheetPage = id
+                    }
                 }
             } header: {
                 if let title = section.title { Text(title.titleCased()) }
@@ -125,5 +142,34 @@ extension View {
                 )
             }
         }
+    }
+}
+
+/// A page marked as a sheet (a language list), drawn as the picker sheet the filters use: its search field on top, one row per option.
+/// Picking saves it; the shared model then asks for the sheet to close.
+private struct SettingsPickerSheet: View {
+    let page: SettingsPage
+    @ObservedObject var model: SettingsObservable
+
+    var body: some View {
+        let items = page.visibleOnly().sections.flatMap { $0.items }
+        let choice = items.compactMap { $0 as? ChoiceItem }.first
+        let rows = (choice?.options ?? []).map { option in
+            PickerRow(id: option.code ?? "", label: option.label, selected: option.value == choice?.value)
+        }
+        PickerSheetView(
+            title: page.title,
+            rows: rows,
+            loading: false,
+            message: nil,
+            // Nothing matches what was typed: the page's own row says so.
+            emptyText: rows.isEmpty ? items.compactMap { $0 as? InfoItem }.first?.title : nil,
+            onPick: { id in
+                if let choice { model.chooseLanguage(choice.key, id) }
+            },
+            onRetry: {},
+            search: page.search.map { _ in Binding(get: { model.page(page.id)?.search ?? "" }, set: { model.search(page.id, $0) }) },
+            searchHint: page.searchPrompt ?? ""
+        )
     }
 }

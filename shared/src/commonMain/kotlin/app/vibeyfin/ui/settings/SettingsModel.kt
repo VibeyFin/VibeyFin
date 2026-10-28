@@ -1,7 +1,7 @@
 package app.vibeyfin.ui.settings
 
 /** The pages of the Settings tree. */
-enum class SettingsPageId { Root, Profile, Quality, Skipping, Subtitles, KidsAndPin, Notifications }
+enum class SettingsPageId { Root, Profile, Quality, AudioSubtitles, Skipping, KidsAndPin, Notifications, AudioLanguage, SubtitleLanguage }
 
 /** One entry per setting, so each platform can tell its rows apart. */
 enum class SettingKey {
@@ -9,7 +9,7 @@ enum class SettingKey {
     AlwaysAsk, ShowStats, About,
     BingeThreshold, HomeGenreRows, ShowHero,
     SkipBack, SkipForward, AutoSkip, BufferAhead,
-    Quality, Subtitles, Skipping,
+    Quality, Skipping,
     CaptionsFollowSystem, SubtitleSize, SubtitleColor, SubtitleBackground, SubtitlePreview, ResetSubtitles,
     SwitchProfile, SignOut, ServerName, ServerAddress, ServerAlsoAt,
     KidsProfile, Pin, ChangePin, RemovePin, PinOpenProfile, PinOpenSettings, PinSwitchProfile,
@@ -18,9 +18,26 @@ enum class SettingKey {
     Notifications, NotificationScope,
     PictureInPicture,
     OfflineMode, DownloadOverMobile, StorageLimit,
+    AudioSubtitles, AudioLanguage, SubtitleLanguage, SubtitleMode, RememberTracks, NoLanguageMatch,
 }
 
-data class SettingsPage(val id: SettingsPageId, val title: String, val sections: List<SettingsSection>) {
+/**
+ * One page. A page with a [search] (empty when nothing is typed) draws a search field above its sections; what is typed goes to
+ * [SettingsViewModel.onSearch] and the page comes back filtered. Null is a page without one.
+ */
+data class SettingsPage(
+    val id: SettingsPageId,
+    val title: String,
+    val sections: List<SettingsSection>,
+    val search: String? = null,
+    /** The search field's placeholder, when [search] is set. */
+    val searchPrompt: String? = null,
+    /**
+     * The page opens as a picker sheet over the page that links to it, like a filter's list, rather than as a page of its own:
+     * its first [ChoiceItem] is the list, and picking from it closes the sheet.
+     */
+    val sheet: Boolean = false,
+) {
     /** The page as it should be drawn: hidden items, and sections left empty by that, are gone. */
     fun visibleOnly(): SettingsPage = copy(
         sections = sections.mapNotNull { section ->
@@ -31,7 +48,8 @@ data class SettingsPage(val id: SettingsPageId, val title: String, val sections:
 
 data class SettingsSection(val title: String?, val footer: String?, val items: List<SettingItem>)
 
-data class SettingOption(val value: Int, val label: String)
+/** [code] keys an option of a language list by the language itself, not its place in the list; "" is no preference. */
+data class SettingOption(val value: Int, val label: String, val code: String? = null)
 
 /** What a row is called for custom views the platforms draw themselves. */
 enum class CustomKind { SubtitlePreview, PinDots, ProfileHeader }

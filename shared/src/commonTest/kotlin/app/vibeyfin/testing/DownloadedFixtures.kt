@@ -30,6 +30,8 @@ suspend fun TestApp.downloaded(
     state: String = DOWNLOAD_DONE,
     withFile: Boolean = true,
     userDataAt: Long = 1_000,
+    /** The tracks carry their languages and flags, as a download saved by this build does. */
+    described: Boolean = false,
 ): String {
     val folder = "srv-1/u1/$id"
     val kind = if (type == "Movie") ItemKind.Movie else ItemKind.Episode
@@ -43,10 +45,11 @@ suspend fun TestApp.downloaded(
     val snapshot = OfflineSnapshot(
         item = item,
         images = mapOf(OfflineSnapshot.POSTER to "$folder/images/poster.img", OfflineSnapshot.LANDSCAPE to "$folder/images/landscape.img"),
-        audioTracks = listOf(PlaybackTrack(1, "English", true, "aac"), PlaybackTrack(2, "German", false, "aac")),
-        subtitleTracks = if (subtitle) listOf(PlaybackTrack(3, "English", true)) else emptyList(),
+        audioTracks = listOf(PlaybackTrack(1, "English", true, "aac", "eng".takeIf { described }, default = described), PlaybackTrack(2, "German", false, "aac", "ger".takeIf { described })),
+        subtitleTracks = if (subtitle) listOf(PlaybackTrack(3, "English", true, language = "eng".takeIf { described })) else emptyList(),
         subtitles = if (subtitle) listOf(OfflineSubtitle(3, "$folder/subs/3.srt", "application/x-subrip", "eng", "English")) else emptyList(),
         assetsDone = true,
+        tracksDescribed = described,
     )
     if (withFile) {
         files.contents["$folder/video.mkv"] = StringBuilder("video")

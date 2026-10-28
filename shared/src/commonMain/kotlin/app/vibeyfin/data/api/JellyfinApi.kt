@@ -14,6 +14,7 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.serialization.json.JsonObject
 
 /**
  * The calls we make to one Jellyfin server at [baseUrl]. With a [token] they are signed in.
@@ -61,6 +62,16 @@ class JellyfinApi(
 
     /** `GET /Localization/ParentalRatings`: the rating names the server knows, each with its numeric level. */
     suspend fun parentalRatings(): ApiResult<List<ParentalRatingDto>> = get("/Localization/ParentalRatings")
+
+    /** `GET /Localization/Cultures`: the languages the server knows, as it names them on tracks. */
+    suspend fun cultures(): ApiResult<List<CultureDto>> = get("/Localization/Cultures", retry = true)
+
+    /**
+     * `POST /Users/Configuration`: replaces the whole configuration of user [userId], so [configuration] must be all of it.
+     * A user may change their own; another user's needs an administrator ([ApiError.Forbidden] otherwise).
+     */
+    suspend fun updateUserConfiguration(userId: String, configuration: JsonObject): ApiResult<Unit> =
+        post<JsonObject, Unit>("/Users/Configuration", configuration, mapOf("userId" to userId))
 
     /** `POST /Sessions/Logout`: revokes this session's token on the server. */
     suspend fun logout(): ApiResult<Unit> = execute({ }) {

@@ -153,6 +153,11 @@ class AccountSettingsEntity(
     /** The most the profile's downloads may take, in megabytes; 0 is no limit. */
     @ColumnInfo(defaultValue = "0")
     val storageLimitMb: Long = 0,
+    /**
+     * The profile's preferred audio and subtitle languages as last read from the Jellyfin account, as JSON, so a download picks
+     * its tracks the same way without the server. Null until they have been read once.
+     */
+    val languagePrefs: String? = null,
 )
 
 /** A profile's stored PIN: both null when it has none. */

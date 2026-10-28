@@ -26,6 +26,7 @@ class LocalPlayable(val item: MediaItem, val plan: PlaybackPlan)
 class OfflineLibrary(
     private val dao: DownloadDao,
     private val files: DownloadFiles,
+    private val languages: LanguagePreferences,
 ) {
     /** The downloaded [itemId] ready to play, or null when it is not (fully) on the device. */
     suspend fun playable(profile: ProfileRef, itemId: String): LocalPlayable? {
@@ -36,6 +37,10 @@ class OfflineLibrary(
         // Only the subtitle tracks that came as files can be shown from the device; an image or embedded one cannot.
         val withFiles = snapshot.subtitles.map { it.index }.toSet()
         val subtitleTracks = snapshot.subtitleTracks.filter { it.index in withFiles }
+        // The profile's language preferences pick the tracks, as the server would; without them, the ones it picked when downloading.
+        val prefs = languages.saved(profile)?.takeIf { snapshot.tracksDescribed }
+        val choice = prefs?.let { chooseTracks(snapshot.audioTracks, subtitleTracks, it) }
+            ?: TrackChoice(snapshot.audioTracks.firstOrNull { it.selected }?.index, subtitleTracks.firstOrNull { it.selected }?.index)
         val plan = PlaybackPlan(
             itemId = itemId,
             mediaSourceId = row.mediaSourceId.orEmpty(),
@@ -44,12 +49,12 @@ class OfflineLibrary(
             url = files.uri(row.filePath!!),
             headers = emptyMap(),
             runtimeMs = item.runtimeMs,
-            audioTracks = snapshot.audioTracks,
-            subtitleTracks = subtitleTracks,
+            audioTracks = snapshot.audioTracks.map { it.copy(selected = it.index == choice.audioIndex) },
+            subtitleTracks = subtitleTracks.map { it.copy(selected = it.index == choice.subtitleIndex) },
             subtitleFiles = snapshot.subtitles.map { SubtitleFile(it.index, files.uri(it.file), it.mimeType, it.language, it.label) },
             subtitleBurnedIn = false,
-            audioStreamIndex = snapshot.audioTracks.firstOrNull { it.selected }?.index,
-            subtitleStreamIndex = subtitleTracks.firstOrNull { it.selected }?.index,
+            audioStreamIndex = choice.audioIndex,
+            subtitleStreamIndex = choice.subtitleIndex,
             videoFormat = item.videoFormat,
         )
         return LocalPlayable(item, plan)

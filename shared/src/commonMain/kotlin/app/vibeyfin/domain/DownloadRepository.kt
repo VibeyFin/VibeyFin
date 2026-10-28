@@ -109,6 +109,7 @@ class DownloadRepository(
     private val files: DownloadFiles,
     private val scheduler: DownloadScheduler,
     private val wake: DownloadWake,
+    private val languages: LanguagePreferences,
     private val clock: Clock,
     private val speeds: DownloadSpeeds = DownloadSpeeds(),
 ) {
@@ -159,6 +160,8 @@ class DownloadRepository(
             is DownloadAttempt.Failure -> return answer
             is DownloadAttempt.Success -> answer.value
         }
+        // The downloads play from the device with the language preferences as they are now, as the server would pick.
+        languages.refresh(profile)
         val candidates = items
             .filter { (it.type == "Movie" || it.type == "Episode") && it.mediaSources.isNotEmpty() }
             .map { dto ->
@@ -393,5 +396,6 @@ internal fun BaseItemDto.toSnapshot(baseUrl: String): OfflineSnapshot {
         // Nothing to fetch for an item with no pictures and no subtitle files.
         assetsDone = sources.isEmpty() && subtitleSources.isEmpty(),
         videoCodec = source?.mediaStreams.orEmpty().firstOrNull { it.type == "Video" }?.codec?.lowercase(),
+        tracksDescribed = true,
     )
 }
