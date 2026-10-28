@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
@@ -28,18 +27,14 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,8 +49,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -68,7 +61,6 @@ import app.vibeyfin.app.player.SUBTITLE_SHADOW
 import app.vibeyfin.app.player.SUBTITLE_WHITE
 import app.vibeyfin.app.player.SubtitleViewStyle
 import app.vibeyfin.app.theme.VibeyFinTokens
-import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.settings.ActionItem
 import app.vibeyfin.ui.settings.ChoiceItem
 import app.vibeyfin.ui.settings.InfoItem
@@ -104,22 +96,6 @@ fun SectionFooter(text: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s4),
     )
-}
-
-/**
- * One row's slice of a group's card, for a long list drawn lazily (a row at a time, as it scrolls into view): stacked, the
- * slices look like one [SectionCard], the first and last carrying its rounded corners.
- */
-@Composable
-fun SectionCardSlice(first: Boolean, last: Boolean, content: @Composable () -> Unit) {
-    val radius = VibeyFinTokens.Radius.m3Md
-    val shape = RoundedCornerShape(
-        topStart = if (first) radius else 0.dp, topEnd = if (first) radius else 0.dp,
-        bottomStart = if (last) radius else 0.dp, bottomEnd = if (last) radius else 0.dp,
-    )
-    Surface(modifier = Modifier.fillMaxWidth(), shape = shape, color = MaterialTheme.colorScheme.surfaceContainerLow) {
-        Column(content = { content() })
-    }
 }
 
 /** A group's rounded tonal card. */
@@ -237,31 +213,6 @@ fun ChecklistRow(option: SettingOption, selected: Boolean, onClick: () -> Unit) 
                 .padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s3),
         )
     }
-}
-
-/** The search field above a searchable page's rows, styled like Search's. What is typed filters the page in the shared code. */
-@Composable
-fun SettingsSearchField(query: String, prompt: String, onQueryChange: (String) -> Unit) {
-    TextField(
-        value = query,
-        onValueChange = onQueryChange,
-        singleLine = true,
-        placeholder = { Text(prompt) },
-        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                IconButton(onClick = { onQueryChange("") }) { Icon(Icons.Filled.Clear, contentDescription = Strings.clearSearch) }
-            }
-        },
-        shape = RoundedCornerShape(50),
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = VibeyFinTokens.Colors.surface2,
-            unfocusedContainerColor = VibeyFinTokens.Colors.surface2,
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-        ),
-        modifier = Modifier.fillMaxWidth().semantics { contentDescription = prompt },
-    )
 }
 
 /** [selected] is for the tablet's list pane: the open page is an `accent-soft` pill. Null (the phone) draws no pill. */

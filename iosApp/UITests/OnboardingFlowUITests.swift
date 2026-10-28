@@ -152,7 +152,7 @@ final class OnboardingFlowUITests: XCTestCase {
                 let shows1080 = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@", "Quality", "1080p")).firstMatch
                 XCTAssertTrue(shows1080.waitForExistence(timeout: 5), "Quality doesn't show 1080p")
 
-                // Audio and subtitles reads the languages from the Jellyfin account; its language rows open a searchable list.
+                // Audio and subtitles reads the languages from the Jellyfin account; its language rows open a searchable picker sheet.
                 // Nothing is changed here: the choice lives on the test server's account and would steer the other tests' tracks.
                 let languages = button("Audio and subtitles", contains: true)
                 XCTAssertTrue(languages.waitForExistence(timeout: 5), "Audio and subtitles link is missing")
@@ -161,9 +161,13 @@ final class OnboardingFlowUITests: XCTestCase {
                 let audioLanguage = button("Audio language", contains: true)
                 XCTAssertTrue(audioLanguage.waitForExistence(timeout: 5), "Audio language link is missing")
                 audioLanguage.tap()
-                XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout: 5), "The language list has no search field")
-                XCTAssertTrue(button("Any language").waitForExistence(timeout: 5), "Any language is missing from the list")
-                goBack()
+                let languageSearch = app.textFields.firstMatch
+                XCTAssertTrue(languageSearch.waitForExistence(timeout: 5), "The language sheet has no search field")
+                XCTAssertTrue(button("Any language").waitForExistence(timeout: 5), "Any language is missing from the sheet")
+                // Closed with a drag down from its title, so nothing is picked.
+                languageSearch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: -1.5))
+                    .press(forDuration: 0.05, thenDragTo: app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
+                XCTAssertTrue(languageSearch.waitForNonExistence(timeout: 5), "The language sheet did not close")
                 goBack()
 
                 let skipping = button("Skipping", contains: true)

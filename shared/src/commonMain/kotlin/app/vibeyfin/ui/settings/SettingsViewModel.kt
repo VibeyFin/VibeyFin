@@ -388,7 +388,7 @@ class SettingsViewModel(
         closePage.value = null
     }
 
-    /** A language was picked from its list: the list is done with, so its search is cleared and the screen goes back to the page before. */
+    /** A language was picked from its list: the list is done with, so its search is cleared and the screen closes it. */
     private fun pickedFrom(page: SettingsPageId) {
         searches.value = searches.value - page
         closePage.value = page

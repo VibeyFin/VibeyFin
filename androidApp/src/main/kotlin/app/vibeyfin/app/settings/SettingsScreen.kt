@@ -10,8 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -27,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +34,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FloatingBackButton
+import app.vibeyfin.app.components.OptionRow
+import app.vibeyfin.app.components.PickerSearch
+import app.vibeyfin.app.components.PickerSheet
 import app.vibeyfin.app.theme.ContentMaxWidth
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
@@ -72,12 +74,21 @@ fun SettingsRoute(
     LeaveWhenDisconnected(connection, onExit)
     // The PIN dismissed on open: leave Settings.
     LaunchedEffect(state.leave) { if (state.leave) onBack() }
-    // A language was picked from this list: back to the page before.
-    LaunchedEffect(state.closePage) {
-        if (state.closePage == pageId) {
-            viewModel.onPageClosed()
-            onBack()
+    // A page marked as a sheet (a language list) opens over this one, as a filter's list does, instead of as a page of its own.
+    var sheet by rememberSaveable { mutableStateOf<SettingsPageId?>(null) }
+    val open: (SettingsPageId) -> Unit = { id ->
+        if (state.pages[id]?.sheet == true) {
+            viewModel.onPageOpened(id)
+            sheet = id
+        } else {
+            onOpen(id)
         }
+    }
+    // A language was picked from the sheet: it closes.
+    LaunchedEffect(state.closePage) {
+        val closing = state.closePage ?: return@LaunchedEffect
+        viewModel.onPageClosed()
+        if (closing == sheet) sheet = null
     }
     NotificationPermissionRequest(
         requested = state.requestNotificationPermission,
@@ -106,8 +117,7 @@ fun SettingsRoute(
             onAction = viewModel::onAction,
             onBack = onBack,
             onPageOpened = viewModel::onPageOpened,
-            onOpen = onOpen,
-            onSearch = viewModel::onSearch,
+            onOpen = open,
         )
     } else if (page == null) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { Box(Modifier.fillMaxSize()) { FloatingBackButton(onBack) } }
@@ -118,11 +128,11 @@ fun SettingsRoute(
             onToggle = viewModel::onToggle,
             onChoose = viewModel::onChoose,
             onAction = viewModel::onAction,
-            onOpen = onOpen,
+            onOpen = open,
             onBack = onBack,
-            onSearch = viewModel::onSearch,
         )
     }
+    sheet?.let { id -> state.pages[id]?.let { page -> SettingsPickerSheet(page, viewModel::onChoose, viewModel::onSearch) { sheet = null } } }
     state.pinPrompt?.let { prompt ->
         PinSheet(
             prompt = prompt,
@@ -170,31 +180,17 @@ fun SettingsPageScreen(
     onOpen: (SettingsPageId) -> Unit,
     onBack: () -> Unit,
     hasPage: (SettingsPageId) -> Boolean = { true },
-    onSearch: (SettingsPageId, String) -> Unit = { _, _ -> },
 ) {
     val content = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().padding(horizontal = screenMargin())
-    // A page with a search keeps its title and search field in place; only the rows under them scroll. Its list is long (every
-    // language), so the rows are drawn lazily: built all at once, they would hold up the first frame and stall the page's opening.
-    val pinned = page.search != null
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize().safeDrawingPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Spacer(Modifier.height(BackButtonSpace))
-                if (pinned) {
-                    SettingsPageHeader(page, content.padding(bottom = VibeyFinTokens.Space.s3), onSearch)
-                    LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                        lazyPageBody(page.drawn(hasPage), content, onToggle, onChoose, onAction) { onOpen(it.target) }
-                    }
-                } else {
-                    Column(
-                        modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        SettingsPageBody(
-                            page, hasPage, content,
-                            selectedLink = null, onToggle, onChoose, onAction, onOpen = { onOpen(it.target) }, onSearch = onSearch,
-                        )
-                    }
+                Column(
+                    modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    SettingsPageBody(page, hasPage, content, selectedLink = null, onToggle, onChoose, onAction, onOpen = { onOpen(it.target) })
                 }
             }
             FloatingBackButton(onBack)
@@ -216,12 +212,16 @@ internal fun SettingsPageBody(
     onChoose: (SettingKey, Int) -> Unit,
     onAction: (SettingKey) -> Unit,
     onOpen: (LinkItem) -> Unit,
-    onSearch: (SettingsPageId, String) -> Unit = { _, _ -> },
 ) {
     val drawn = page.drawn(hasPage)
     val preview = page.subtitlePreviewStyle()
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-        SettingsPageHeader(drawn, Modifier, onSearch)
+        Text(
+            text = page.title,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(bottom = VibeyFinTokens.Space.s3),
+        )
         drawn.sections.forEachIndexed { index, section ->
             if (index > 0) Spacer(Modifier.height(VibeyFinTokens.Space.s3))
             section.title?.let { SectionHeader(it) }
@@ -244,50 +244,33 @@ internal fun SettingsPageBody(
 }
 
 /**
- * The sections of an already [drawn] page as lazy list items, below a pinned [SettingsPageHeader]: each row is a slice of its
- * section's card, and a checklist choice gives one item per option.
+ * A page marked [SettingsPage.sheet] (a language list), drawn as the picker sheet the filters and the player's tracks use: its
+ * search field on top, one row per option. Picking saves it; the ViewModel then asks for the sheet to close.
  */
-private fun LazyListScope.lazyPageBody(
-    drawn: SettingsPage,
-    modifier: Modifier,
-    onToggle: (SettingKey, Boolean) -> Unit,
-    onChoose: (SettingKey, Int) -> Unit,
-    onAction: (SettingKey) -> Unit,
-    onOpen: (LinkItem) -> Unit,
-) {
-    drawn.sections.forEachIndexed { index, section ->
-        if (index > 0) item { Spacer(Modifier.height(VibeyFinTokens.Space.s3)) }
-        section.title?.let { title -> item { Box(modifier.padding(bottom = VibeyFinTokens.Space.s2)) { SectionHeader(title) } } }
-        val rows: List<Pair<String, @Composable () -> Unit>> = section.items.flatMap { item ->
-            val id = rowId(drawn.id, item)
-            if (item is ChoiceItem && item.asPage) {
-                item.checklist().map { (option, selected) ->
-                    "$id/${option.value}" to @Composable { ChecklistRow(option, selected) { onChoose(item.key, option.value) } }
-                }
-            } else {
-                listOf(id to @Composable { ItemRow(item, null, onToggle, onChoose, onAction, onOpen) })
-            }
-        }
-        items(rows.size, key = { rows[it].first }) { i ->
-            Box(modifier) { SectionCardSlice(first = i == 0, last = i == rows.lastIndex) { rows[i].second() } }
-        }
-        section.footer?.let { footer -> item { Box(modifier.padding(top = VibeyFinTokens.Space.s2)) { SectionFooter(footer) } } }
-    }
-    item { Spacer(Modifier.height(VibeyFinTokens.Space.s5)) }
-}
-
-/** A page's title, and its search field when it has one. */
 @Composable
-internal fun SettingsPageHeader(page: SettingsPage, modifier: Modifier, onSearch: (SettingsPageId, String) -> Unit) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-        Text(
-            text = page.title,
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(bottom = VibeyFinTokens.Space.s3),
-        )
-        page.search?.let { query -> SettingsSearchField(query, page.searchPrompt.orEmpty()) { onSearch(page.id, it) } }
+private fun SettingsPickerSheet(
+    page: SettingsPage,
+    onChoose: (SettingKey, Int) -> Unit,
+    onSearch: (SettingsPageId, String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val items = page.visibleOnly().sections.flatMap { it.items }
+    val choice = items.filterIsInstance<ChoiceItem>().firstOrNull()
+    val rows = remember(choice) {
+        choice?.options.orEmpty().map { OptionRow(key = it.value.toString(), label = it.label, selected = it.value == choice?.value) }
     }
+    PickerSheet(
+        title = page.title,
+        rows = rows,
+        loading = false,
+        message = null,
+        // Nothing matches what was typed: the page's own row says so.
+        emptyText = if (rows.isEmpty()) items.filterIsInstance<InfoItem>().firstOrNull()?.title else null,
+        onPick = { value -> choice?.let { onChoose(it.key, value.toInt()) } },
+        onDismiss = onDismiss,
+        onRetry = {},
+        search = page.search?.let { query -> PickerSearch(query, page.searchPrompt.orEmpty()) { onSearch(page.id, it) } },
+    )
 }
 
 @Composable

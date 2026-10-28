@@ -481,6 +481,7 @@ fun languagePage(v: SettingsValues, id: SettingsPageId): SettingsPage {
         ),
         search = v.searches[id].orEmpty(),
         searchPrompt = Strings.searchLanguages,
+        sheet = true,
     )
 }
 

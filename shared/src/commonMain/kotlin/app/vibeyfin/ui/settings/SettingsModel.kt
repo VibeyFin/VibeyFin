@@ -32,6 +32,11 @@ data class SettingsPage(
     val search: String? = null,
     /** The search field's placeholder, when [search] is set. */
     val searchPrompt: String? = null,
+    /**
+     * The page opens as a picker sheet over the page that links to it, like a filter's list, rather than as a page of its own:
+     * its first [ChoiceItem] is the list, and picking from it closes the sheet.
+     */
+    val sheet: Boolean = false,
 ) {
     /** The page as it should be drawn: hidden items, and sections left empty by that, are gone. */
     fun visibleOnly(): SettingsPage = copy(

@@ -42,7 +42,8 @@ can't-reach-server state, and the new root row) and `SettingsTablet` (split view
 | Remember what I pick in the player | toggle | both `RememberAudioSelections` and `RememberSubtitleSelections` |
 
 - The languages come from `GET /Localization/Cultures` (`ThreeLetterISOLanguageName`, `DisplayName`), sorted by
-  name, de-duplicated by code. Their checklist page has a search field and "Any language" first. A stored code
+  name, de-duplicated by code. Their list opens as the picker sheet the filters and the player's tracks use, with a
+  search field and "Any language" first; a pick saves it and closes the sheet. A stored code
   that isn't in the list still shows (its code as its label) so a value set by another client isn't lost.
 - Root row help sums it up, e.g. "German · English subtitles, always", or "Server defaults" when nothing is set.
 - Changes apply from the next video; the player asks PlaybackInfo afresh each time.
@@ -83,8 +84,9 @@ can't-reach-server state, and the new root row) and `SettingsTablet` (split view
   `AudioLanguage`, `SubtitleLanguage`, `SubtitleMode`, `RememberTracks`.
 - Languages are strings, `ChoiceItem` is `Int`-valued: the builder indexes the sorted culture list (0 = Any) and
   the ViewModel maps the index back to a code. No new item type.
-- The language pages are checklist pages with a `searchable` flag on `SettingsPage` (a new field, default
-  false), filtered by the ViewModel (`onSettingsSearch(query)`), so both platforms get search from one place.
+- The language pages are pages of the tree with a `search` and a `sheet` flag on `SettingsPage`, filtered by the
+  ViewModel (`onSearch(page, query)`), so both platforms get search from one place. `sheet` makes a link open the page
+  as a picker sheet over the linking page instead of pushing it; a pick sets the one-shot `closePage`, which closes it.
 - `LanguageState` (Loading / Failed(error) / Loaded) like `PolicyState`; loaded when the page opens. While not
   Loaded, the rows show the last values and `enabled = false`, and the footer says why (`LoadMessages`).
 - Optimistic update with rollback on failure, plus a one-shot error message.
@@ -96,12 +98,12 @@ All titles, option labels, footers, the root summary builder, search placeholder
 `Strings` (sentence case), with the mode explanations from the mockup.
 
 ### 5. Android (`androidApp/.../settings`)
-- Existing renderers draw the new rows. Add search to the checklist-page renderer (a search field at the
-  top of the list when `searchable`). The `SubtitleMode` row is the existing `ChoiceRow` menu.
+- Existing renderers draw the new rows. A link to a `sheet` page opens `PickerSheet` (the filters' sheet, with
+  `PickerSearch`) built from the page's choice. The `SubtitleMode` row is the existing `ChoiceRow` menu.
 
 ### 6. iOS (`iosApp/iosApp/Settings`)
-- Same: the checklist page gets `.searchable` when `searchable`; the mode is the existing menu `Picker`. Facade
-  gets `onSettingsSearch`. Labels through `titleCased()`.
+- Same: a link to a `sheet` page opens `PickerSheetView` with its search field; the mode is the existing menu
+  `Picker`. Facade gets `search` and `pageClosed`. Labels through `titleCased()`.
 
 ### 7. Test server fixture and verification
 - `make-media.sh`: a **"Languages"** movie, MKV, two audio tracks (`eng` default-flagged, `deu`) and three

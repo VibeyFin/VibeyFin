@@ -1342,6 +1342,17 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `the language lists open as picker sheets and the page that links them does not`() = runTest {
+        signedInWithLanguages()
+
+        val state = viewModel().uiState.first { it.languagesReady() }
+
+        assertTrue(state.pages.getValue(SettingsPageId.AudioLanguage).sheet)
+        assertTrue(state.pages.getValue(SettingsPageId.SubtitleLanguage).sheet)
+        assertFalse(state.pages.getValue(SettingsPageId.AudioSubtitles).sheet)
+    }
+
+    @Test
     fun `picking a language saves its code to the account and checks it`() = runTest {
         signedInWithLanguages()
         val viewModel = viewModel()

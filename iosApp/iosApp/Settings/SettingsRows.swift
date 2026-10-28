@@ -24,6 +24,8 @@ struct SettingsItemRow: View {
     /// Set in the iPad sidebar: a link is a selectable row, picked by its own key (two rows can open the same page), and not a push.
     var selection: Binding<SettingKey?>?
     let onAction: (ActionItem) -> Void
+    /// Opens a page marked as a sheet (a language list) over this one, instead of pushing it.
+    var onOpenSheet: (SettingsPageId) -> Void = { _ in }
 
     var body: some View {
         // A disabled item keeps its value on show, dimmed and inert.
@@ -92,6 +94,18 @@ struct SettingsItemRow: View {
             linkLabel(item)
                 .tag(Optional(item.key))
                 .listRowBackground(selection.wrappedValue == item.key ? Brand.accentSoft : nil)
+        } else if model.page(item.target)?.sheet == true {
+            // Its list opens as the picker sheet the filters use, over this page.
+            Button { onOpenSheet(item.target) } label: {
+                HStack {
+                    linkLabel(item)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         } else {
             NavigationLink(value: TabRoute.settingsPage(item.target)) { linkLabel(item) }
         }
