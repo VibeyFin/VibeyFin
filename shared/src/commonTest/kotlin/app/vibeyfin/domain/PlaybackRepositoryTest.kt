@@ -368,13 +368,13 @@ class PlaybackRepositoryTest {
 
         assertEquals(
             listOf(
-                PlaybackTrack(1, "English - AAC - Stereo - Default", selected = false, codec = "aac"),
-                PlaybackTrack(2, "Spanish - AAC - Stereo", selected = true, codec = "aac"),
+                PlaybackTrack(1, "English - AAC - Stereo - Default", selected = false, codec = "aac", language = "eng"),
+                PlaybackTrack(2, "Spanish - AAC - Stereo", selected = true, codec = "aac", language = "spa"),
             ),
             plan.audioTracks,
         )
         assertEquals(
-            listOf(PlaybackTrack(3, "English - SubRip", selected = true), PlaybackTrack(4, "Spanish - SubRip", selected = false)),
+            listOf(PlaybackTrack(3, "English - SubRip", selected = true, language = "eng"), PlaybackTrack(4, "Spanish - SubRip", selected = false, language = "spa")),
             plan.subtitleTracks,
         )
         assertEquals(2, plan.audioStreamIndex)

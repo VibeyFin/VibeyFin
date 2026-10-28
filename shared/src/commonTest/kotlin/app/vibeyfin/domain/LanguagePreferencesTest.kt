@@ -2,6 +2,7 @@ package app.vibeyfin.domain
 
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
+import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.testing.FakeServer
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
@@ -18,11 +19,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class LanguagePreferencesTest {
     private val app = TestApp()
-    private val languages = LanguagePreferences(app.connection)
+    private val languages = app.languages
 
     @AfterTest
     fun tearDown() = runTest { app.close() }
@@ -181,6 +183,41 @@ class LanguagePreferencesTest {
         app.signedIn().on("GET", "/Localization/Cultures", Reply.status(HttpStatusCode.InternalServerError))
 
         assertEquals(emptyList(), languages.languages())
+    }
+
+    @Test
+    fun `what is read and saved is kept on the device for downloads`() = runTest {
+        val server = app.signedIn()
+        val alex = ProfileRef("srv-1", "u1")
+        server.me()
+        server.acceptWrites()
+
+        languages.load()
+        assertEquals(LanguagePrefs(subtitleLanguage = "eng", subtitleMode = SubtitleMode.Always, rememberTracks = false), languages.saved(alex))
+
+        languages.setAudioLanguage("ger")
+        assertEquals("ger", languages.saved(alex)?.audioLanguage)
+    }
+
+    @Test
+    fun `a refresh reads the profile's preferences into the device copy and a failed one keeps it`() = runTest {
+        val server = app.signedIn()
+        val alex = ProfileRef("srv-1", "u1")
+        server.me("""{"AudioLanguagePreference":"fre","SubtitleMode":"None"}""")
+
+        languages.refresh(alex)
+        assertEquals(LanguagePrefs(audioLanguage = "fre", subtitleMode = SubtitleMode.None), languages.saved(alex))
+
+        server.on("GET", "/Users/Me", Reply.status(HttpStatusCode.InternalServerError))
+        languages.refresh(alex)
+        assertEquals("fre", languages.saved(alex)?.audioLanguage)
+    }
+
+    @Test
+    fun `a profile whose preferences were never read has no device copy`() = runTest {
+        app.signedIn()
+
+        assertNull(languages.saved(ProfileRef("srv-1", "u1")))
     }
 
     @Test

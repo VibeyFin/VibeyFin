@@ -138,6 +138,10 @@ data class MediaStreamDto(
     @SerialName("DeliveryUrl") val deliveryUrl: String? = null,
     /** A subtitle that is a file next to the video rather than inside it. The item itself has no [deliveryUrl] for it. */
     @SerialName("IsExternal") val isExternal: Boolean = false,
+    /** The file marks the track as the one to play (or show) by default. */
+    @SerialName("IsDefault") val isDefault: Boolean = false,
+    /** A subtitle the file marks as forced: only the foreign dialogue, for viewers who understand the rest. */
+    @SerialName("IsForced") val isForced: Boolean = false,
     /** For video: the picture size in pixels. */
     @SerialName("Width") val width: Int? = null,
     @SerialName("Height") val height: Int? = null,

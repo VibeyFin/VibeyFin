@@ -33,7 +33,7 @@ fun dataModule() = module {
     single { ProfileSettings(get(), get()) }
     single { PinLock(get(), get(), get()) }
     single { ProfilePolicy(get()) }
-    single { LanguagePreferences(get()) }
+    single { LanguagePreferences(get(), get()) }
     single { SearchHistory(get(), get()) }
     single { PendingReports(get(), get()) }
     single { NewTitlesPoller(get(), get(), get()) }

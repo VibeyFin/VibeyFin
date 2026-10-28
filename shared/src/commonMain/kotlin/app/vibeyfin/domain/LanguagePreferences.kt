@@ -4,6 +4,10 @@ import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.data.api.CultureDto
 import app.vibeyfin.data.api.valueOrNull
+import app.vibeyfin.data.db.AccountDao
+import app.vibeyfin.domain.model.ProfileRef
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -46,6 +50,7 @@ data class Language(val code: String, val name: String, val otherCodes: List<Str
  * Which tracks a video starts with, from the Jellyfin user's configuration. A null language is no preference: the video's
  * default track. [rememberTracks] is the server remembering the tracks picked in a player for the next video of a series.
  */
+@Serializable
 data class LanguagePrefs(
     val audioLanguage: String? = null,
     val subtitleLanguage: String? = null,
@@ -55,14 +60,29 @@ data class LanguagePrefs(
 
 /**
  * The signed-in user's preferred audio and subtitle languages. They live on the Jellyfin account, not the device, so the
- * server picks a video's default tracks from them and every Jellyfin app shares them. Nothing is cached: each change reads
- * the configuration again and writes it back whole, with only these keys changed, so no other client's setting is lost.
+ * server picks a video's default tracks from them and every Jellyfin app shares them. Each change reads the configuration
+ * again and writes it back whole, with only these keys changed, so no other client's setting is lost. A copy of what was
+ * last read is kept with the profile on the device, only so downloads can pick the same tracks without the server.
  */
-class LanguagePreferences(private val connection: ConnectionManager) {
+class LanguagePreferences(
+    private val connection: ConnectionManager,
+    private val dao: AccountDao,
+) {
     /** The preferences as the server has them now. */
     suspend fun load(): ApiResult<LanguagePrefs> = when (val config = configuration()) {
-        is ApiResult.Success -> ApiResult.Success(config.value.second.toPrefs())
+        is ApiResult.Success -> ApiResult.Success(config.value.second.toPrefs().also { keep(it) })
         is ApiResult.Failure -> config
+    }
+
+    /** The copy on the device of [profile]'s preferences; null when they have never been read. */
+    suspend fun saved(profile: ProfileRef): LanguagePrefs? =
+        dao.getLanguagePrefs(profile.serverId, profile.userId)?.let { runCatching { JSON.decodeFromString(LanguagePrefs.serializer(), it) }.getOrNull() }
+
+    /** Reads [profile]'s preferences from the server into the copy on the device; leaves the copy as it was when that fails. */
+    suspend fun refresh(profile: ProfileRef) {
+        val call = connection.asProfile(profile.serverId, profile.userId) { it.me() }
+        val config = ((call as? ProfileCall.Answered)?.result as? ApiResult.Success)?.value?.configuration ?: return
+        keep(profile, config.toPrefs())
     }
 
     /**
@@ -93,10 +113,19 @@ class LanguagePreferences(private val connection: ConnectionManager) {
         }
         val prefs = change(config.toPrefs())
         return when (val written = connected.api.updateUserConfiguration(userId, config.with(prefs))) {
-            is ApiResult.Success -> ApiResult.Success(prefs)
+            is ApiResult.Success -> ApiResult.Success(prefs.also { keep(it) })
             is ApiResult.Failure -> written
         }
     }
+
+    /** Keeps [prefs] as the signed-in profile's copy on the device. */
+    private suspend fun keep(prefs: LanguagePrefs) {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        keep(ProfileRef(account.serverId, account.userId), prefs)
+    }
+
+    private suspend fun keep(profile: ProfileRef, prefs: LanguagePrefs) =
+        dao.setLanguagePrefs(profile.serverId, profile.userId, JSON.encodeToString(LanguagePrefs.serializer(), prefs))
 
     /** The signed-in user's id and whole configuration. */
     private suspend fun configuration(): ApiResult<Pair<String, JsonObject>> {
@@ -115,6 +144,8 @@ class LanguagePreferences(private val connection: ConnectionManager) {
         const val PLAY_DEFAULT_AUDIO = "PlayDefaultAudioTrack"
         const val REMEMBER_AUDIO = "RememberAudioSelections"
         const val REMEMBER_SUBTITLES = "RememberSubtitleSelections"
+
+        private val JSON = Json { ignoreUnknownKeys = true }
 
         fun JsonObject.toPrefs(): LanguagePrefs {
             fun string(key: String) = (this[key] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
