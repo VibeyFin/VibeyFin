@@ -25,7 +25,7 @@ can't-reach-server state, and the new root row) and `SettingsTablet` (split view
 
 - **`POST /Users/Configuration` replaces the whole configuration.** Read-modify-write, keeping every field we
   don't model (ordered views, grouped folders, `DisplayMissingEpisodes`, and so on). A write must never reset
-  another client's settings. Round-trip the configuration as a `JsonObject` and only set our keys.
+  another client's settings. Round-trip the configuration as a `JsonObject` and only set our keys, and of those only the ones the change touches: a write compares with what was read and leaves the rest as the server has them (a remember toggle never rewrites the audio keys).
 - A non-admin user may write their own configuration (test server: the Kids user). If the server refuses (403),
   the page says so and keeps the old values.
 - Offline or unreachable server: the rows show the last values read, dimmed and inert, with a footer. Nothing
@@ -83,8 +83,10 @@ can't-reach-server state, and the new root row) and `SettingsTablet` (split view
 ### 3. Settings tree and ViewModel (`shared/ui/settings`)
 - `SettingsPageId.AudioSubtitles`, `AudioLanguage`, `SubtitleLanguage`; `SettingKey.AudioSubtitles`,
   `AudioLanguage`, `SubtitleLanguage`, `SubtitleMode`, `RememberTracks`.
-- Languages are strings, `ChoiceItem` is `Int`-valued: the builder indexes the sorted culture list (0 = Any) and
-  the ViewModel maps the index back to a code. No new item type.
+- Languages are strings, `ChoiceItem` is `Int`-valued: the builder numbers the sorted culture list (0 = Any), only so the
+  chosen row can be marked. Each `SettingOption` also carries its language `code` ("" = Any). A pick goes back by that
+  code through `onChooseLanguage(key, code)`, never by position, so a list that changes under the sheet can't pick the
+  wrong language. No new item type.
 - The language pages are pages of the tree with a `search` and a `sheet` flag on `SettingsPage`, filtered by the
   ViewModel (`onSearch(page, query)`), so both platforms get search from one place. `sheet` makes a link open the page
   as a picker sheet over the linking page instead of pushing it; a pick sets the one-shot `closePage`, which closes it.
@@ -92,7 +94,7 @@ can't-reach-server state, and the new root row) and `SettingsTablet` (split view
   Loaded, the rows show the last values and `enabled = false`, and the footer says why (`LoadMessages`).
 - Optimistic update with rollback on failure, plus a one-shot error message.
 - Tests in `SettingsViewModelTest` / `SettingsPagesTest`: the root summary, visibility (hidden with no profile),
-  disabled state offline, search filtering, the index-to-code mapping, rollback.
+  disabled state offline, search filtering, a pick by code (including "" for Any), rollback.
 
 ### 4. Strings
 All titles, option labels, footers, the root summary builder, search placeholder and error text go in
