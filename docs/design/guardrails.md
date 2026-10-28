@@ -4,13 +4,13 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 
 ## Home
 
-- **Must** order rows: hero (optional, max one) → Continue watching (Next up is part of it, not a row of its own) → Recently added (one row per library) → collections / genres.
+- **Must** order rows: hero (optional, up to five items in one carousel) → Continue watching (Next up is part of it, not a row of its own) → Recently added (one row per library) → collections / genres.
 - **Must** show the category buttons under the header, above the hero, as one scrolling row in this order: Shows, Movies, New, Categories. Home is never filtered. Shows, Movies and New open a category page titled with their name; Categories carries a chevron and opens a sheet of genres (the player's picker component, no search), and the genre picked opens a page titled with its name. Aqua is never used on the buttons.
 - **Must** show Continue watching above the fold on a 6.1" phone, even with the hero present.
 - **Must** hide empty rows. Never show a row that says "No items" on Home.
 - Each row holds at most 20 items, then a "See all" action in its header.
 - Home has no fixed cap on rows: every genre the server lists gets one (biggest first), unless the profile limits them in Settings ("Genre rows on Home": all, top 20, 10, 5 or 3, or none). A new profile starts at the top 5; a profile from before the setting existed keeps all. Rows load a few at a time and show from top to bottom.
-- Hero: one item per app session, picked at random from recently added and My List, that has both a Backdrop and a Logo image and has **not** been watched. A rounded card (4:3 on a phone, 2.6:1 from 600dp) with Play beside My List; a profile setting turns it off. **Never** an auto-rotating carousel. Its skeleton is in the first frame, and Home waits for the setting before drawing, so nothing slides in.
+- Hero: as many items as the profile's setting ("Featured titles on Home": Off, 1 to 5; 1 by default), picked once per app session at random from recently added and My List, each with both a Backdrop and a Logo image and **not** watched, never one twice. Fewer qualify: only those show. A rounded card (4:3 on a phone, 2.6:1 from 600dp) with Play beside My List, acting on the item showing. Two or more are a swipeable carousel with page dots under the card (never aqua). It advances by itself every 8 seconds, once through, resting on the last item; it stops for good once the user swipes, pauses while touched, runs only while Home is on screen, and **never** moves under Reduce Motion / Remove animations or with a screen reader on. **Never** loops back to the first item on its own. Its skeleton is in the first frame, and Home waits for the setting before drawing, so nothing slides in.
 - Pull to refresh reloads Continue watching first.
 
 ## Cards

@@ -12,7 +12,7 @@ Tick a box when it works. If something doesn't, see **What to send** at the end.
 - [ ] The hero is a rounded card with the title's logo, a line of what it is and its genres, **Play** (aqua) beside **My List**. It never shows something you have already watched.
 - [ ] Tap the hero picture: the title's page opens. **Play** on a movie starts it; on a show it starts the next episode **(changes watch state)**.
 - [ ] My List on the hero changes only its icon (heart outline to filled heart): the picture, logo and Play button do not flicker or fade **(changes My List)**.
-- [ ] Settings → "Featured title on Home" off: the hero and its grey card are gone, with no gap. On again: it comes back.
+- [ ] Settings → "Featured titles on Home" to Off: the hero and its grey card are gone, with no gap. Back to 1 title: it comes back.
 - [ ] Home with many genres: one row per genre, biggest first, rows appear a few at a time and nothing jumps. Settings → "Genre rows on Home" at Top 5 / 10 / 20 / All / None changes the rows to match.
 - [ ] Shows, Movies, New and Categories open their pages; Categories opens a sheet of genres with counts, and a pick opens that genre's page.
 
