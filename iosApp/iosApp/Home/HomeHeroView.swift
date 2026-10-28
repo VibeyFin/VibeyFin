@@ -9,6 +9,8 @@ struct HomeHeroView: View {
     let onPlay: () -> Void
     let onOpen: (String) -> Void
     let onMyList: () -> Void
+    /// What VoiceOver reads for the card; a carousel page says which of how many it is.
+    var label: String? = nil
 
     @Environment(\.horizontalSizeClass) private var sizeClass
     private var wide: Bool { sizeClass == .regular }
@@ -30,7 +32,7 @@ struct HomeHeroView: View {
             .contentShape(Rectangle())
             .onTapGesture { onOpen(item.id) }
             .accessibilityElement(children: .contain)
-            .accessibilityLabel(Strings.shared.featured(title: item.title))
+            .accessibilityLabel(label ?? Strings.shared.featured(title: item.title))
     }
 
     private var details: some View {
@@ -75,12 +77,21 @@ struct HomeHeroView: View {
 }
 
 /// The hero's place while it is being picked: the same rounded card at the same height, with grey stand-ins for the logo, the line
-/// and the two buttons, so the hero does not just appear.
+/// and the two buttons, so the hero does not just appear. With `dots`, the page dots' row under it is kept empty.
 struct HomeHeroSkeleton: View {
+    var dots = false
+
     @Environment(\.horizontalSizeClass) private var sizeClass
     private var wide: Bool { sizeClass == .regular }
 
     var body: some View {
+        VStack(spacing: 0) {
+            card
+            if dots { Color.clear.frame(height: HomeHeroCarousel.dotsHeight) }
+        }
+    }
+
+    private var card: some View {
         Color(.tertiarySystemBackground)
             .aspectRatio(wide ? 2.6 : 4.0 / 3.0, contentMode: .fit)
             .overlay(alignment: wide ? .bottomLeading : .bottom) {

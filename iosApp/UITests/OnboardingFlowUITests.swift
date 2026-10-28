@@ -543,6 +543,38 @@ final class OnboardingFlowUITests: XCTestCase {
         }
     }
 
+    /// "Featured titles on Home" at 3 turns the hero into a carousel; the test server has three titles that qualify. Back at 1 after.
+    func testZSettingsHeroCarousel() throws {
+        try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "The iPad shows Settings as a sidebar; its rows are checked on the phone")
+        func setHeroItems(_ choice: String) {
+            let profile = button(username)
+            XCTAssertTrue(profile.waitForExistence(timeout: 20), "Profile menu is missing")
+            profile.tap()
+            let settings = button("Settings")
+            if !settings.waitForExistence(timeout: 5) { profile.tap() }
+            XCTAssertTrue(settings.waitForExistence(timeout: 5), "Settings menu item is missing")
+            settings.tap()
+            let row = button("Featured titles on Home", contains: true)
+            for _ in 0..<8 where !row.exists { app.swipeUp() }
+            XCTAssertTrue(row.waitForExistence(timeout: 10), "Featured titles on Home is missing. On screen: \(visibleTexts())")
+            row.tap()
+            let option = button(choice)
+            XCTAssertTrue(option.waitForExistence(timeout: 5), "\(choice) is not offered. On screen: \(visibleTexts())")
+            option.tap()
+            goBack()
+        }
+        let featured = NSPredicate(format: "label BEGINSWITH[c] %@", "Featured, 1 of 3")
+        step("hero carousel of three") {
+            setHeroItems("3 titles")
+            XCTAssertTrue(
+                app.descendants(matching: .any).matching(featured).firstMatch.waitForExistence(timeout: 20),
+                "Home does not show the carousel's first page. On screen: \(visibleTexts())"
+            )
+        }
+        setHeroItems("1 title")
+        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH[c] %@", "Featured:")).firstMatch.waitForExistence(timeout: 20), "The single hero did not come back")
+    }
+
     private func switchOrButton(_ label: String) -> XCUIElement {
         let match = NSPredicate(format: "label CONTAINS[c] %@", label)
         let toggle = app.switches.matching(match).firstMatch
