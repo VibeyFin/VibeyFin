@@ -103,6 +103,21 @@ class LanguagePreferencesTest {
     }
 
     @Test
+    fun `a change leaves the audio keys another client set as they were`() = runTest {
+        val server = app.signedIn()
+        server.me("""{"AudioLanguagePreference":"ger","PlayDefaultAudioTrack":true,"SubtitleMode":"Default"}""")
+        server.acceptWrites()
+
+        languages.setSubtitleMode(SubtitleMode.Smart)
+
+        val sent = written()
+        assertEquals("Smart", sent.getValue("SubtitleMode").jsonPrimitive.content)
+        assertEquals("ger", sent.getValue("AudioLanguagePreference").jsonPrimitive.content)
+        assertTrue(sent.getValue("PlayDefaultAudioTrack").jsonPrimitive.boolean)
+        assertFalse("RememberAudioSelections" in sent)
+    }
+
+    @Test
     fun `each change writes its own key and returns what was saved`() = runTest {
         val server = app.signedIn()
         server.me()

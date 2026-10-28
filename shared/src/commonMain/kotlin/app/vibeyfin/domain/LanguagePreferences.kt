@@ -111,8 +111,9 @@ class LanguagePreferences(
             is ApiResult.Success -> read.value
             is ApiResult.Failure -> return read
         }
-        val prefs = change(config.toPrefs())
-        return when (val written = connected.api.updateUserConfiguration(userId, config.with(prefs))) {
+        val before = config.toPrefs()
+        val prefs = change(before)
+        return when (val written = connected.api.updateUserConfiguration(userId, config.with(prefs, before))) {
             is ApiResult.Success -> ApiResult.Success(prefs.also { keep(it) })
             is ApiResult.Failure -> written
         }
@@ -159,19 +160,25 @@ class LanguagePreferences(
         }
 
         /**
-         * This configuration with [prefs] written in. With an audio language set, the server must not prefer the file's default
-         * track over it, so `PlayDefaultAudioTrack` goes off; with none it goes back on, the server's default.
+         * This configuration with [prefs] written in, touching only the keys that differ from [before], what it was read as, so
+         * another client's setting we didn't change stays as it was. With an audio language set, the server must not prefer the
+         * file's default track over it, so `PlayDefaultAudioTrack` goes off; with none it goes back on, the server's default.
          */
-        fun JsonObject.with(prefs: LanguagePrefs): JsonObject = JsonObject(
-            this + mapOf(
-                AUDIO_LANGUAGE to JsonPrimitive(prefs.audioLanguage.orEmpty()),
-                SUBTITLE_LANGUAGE to JsonPrimitive(prefs.subtitleLanguage.orEmpty()),
-                SUBTITLE_MODE to JsonPrimitive(prefs.subtitleMode.server),
-                PLAY_DEFAULT_AUDIO to JsonPrimitive(prefs.audioLanguage == null),
-                REMEMBER_AUDIO to JsonPrimitive(prefs.rememberTracks),
-                REMEMBER_SUBTITLES to JsonPrimitive(prefs.rememberTracks),
-            ),
-        )
+        fun JsonObject.with(prefs: LanguagePrefs, before: LanguagePrefs): JsonObject {
+            val changed = buildMap {
+                if (prefs.audioLanguage != before.audioLanguage) {
+                    put(AUDIO_LANGUAGE, JsonPrimitive(prefs.audioLanguage.orEmpty()))
+                    put(PLAY_DEFAULT_AUDIO, JsonPrimitive(prefs.audioLanguage == null))
+                }
+                if (prefs.subtitleLanguage != before.subtitleLanguage) put(SUBTITLE_LANGUAGE, JsonPrimitive(prefs.subtitleLanguage.orEmpty()))
+                if (prefs.subtitleMode != before.subtitleMode) put(SUBTITLE_MODE, JsonPrimitive(prefs.subtitleMode.server))
+                if (prefs.rememberTracks != before.rememberTracks) {
+                    put(REMEMBER_AUDIO, JsonPrimitive(prefs.rememberTracks))
+                    put(REMEMBER_SUBTITLES, JsonPrimitive(prefs.rememberTracks))
+                }
+            }
+            return JsonObject(this + changed)
+        }
 
         /** Named, coded, sorted by name, and one entry per code (the server lists some languages under several cultures). */
         fun List<CultureDto>.toLanguages(): List<Language> = mapNotNull { culture ->
