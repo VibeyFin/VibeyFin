@@ -77,7 +77,7 @@ class MigrationTest {
             assertEquals(
                 1,
                 database.count("account_settings", "userId = 'u1' AND showPlaybackStats = 0 AND bingeThreshold = 3 AND homeGenreRows = 0 AND showHomeHero = 1 AND skipBackSeconds = 10 AND skipForwardSeconds = 10 AND autoSkipSegments = 0 AND bufferAheadSeconds = 20 AND maxStreamingBitrate = 0 AND captionsFollowSystem = 1 AND subtitleSize = 1 AND subtitleTextColor = 0 AND subtitleBackground = 1 AND kidsProfile = 0 AND pinHash IS NULL AND pinSalt IS NULL AND pinOpenProfile = 1 AND pinOpenSettings = 1 AND pinSwitchProfile = 1 AND notificationsEnabled = 0 AND notificationScope = 0 AND pictureInPicture = 1 " +
-                    "AND downloadOverMobile = 0 AND autoCleanWatched = 0 AND storageLimitMb = 0"),
+                    "AND downloadOverMobile = 0 AND autoCleanWatched = 0 AND storageLimitMb = 0 AND homeHeroItems = 1"),
                 "settings defaults, from v$version",
             )
             if (version >= 3) {
@@ -115,5 +115,9 @@ class MigrationTest {
 
     @Test fun version12MigratesToTheCurrentSchema() = assertMigratesFrom(12)
 
-    @Test fun theCurrentVersionOpensAsItIs() = assertMigratesFrom(13)
+    @Test fun version13MigratesToTheCurrentSchema() = assertMigratesFrom(13)
+
+    @Test fun version14MigratesToTheCurrentSchema() = assertMigratesFrom(14)
+
+    @Test fun theCurrentVersionOpensAsItIs() = assertMigratesFrom(15)
 }

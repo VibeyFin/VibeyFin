@@ -154,7 +154,7 @@ class SettingsViewModel(
         perProfile(profileSettings.showPlaybackStats),
         perProfile(profileSettings.bingeThreshold),
         perProfile(profileSettings.homeGenreRows),
-        perProfile(profileSettings.showHomeHero),
+        perProfile(profileSettings.homeHeroItems),
         perProfile(profileSettings.skipBackSeconds),
         perProfile(profileSettings.skipForwardSeconds),
         perProfile(profileSettings.autoSkipSegments),
@@ -232,7 +232,7 @@ class SettingsViewModel(
             showPlaybackStats = read(SHOW_STATS) ?: defaults.showPlaybackStats,
             bingeThreshold = read(BINGE) ?: defaults.bingeThreshold,
             homeGenreRows = read(GENRE_ROWS) ?: defaults.homeGenreRows,
-            showHomeHero = read(HERO) ?: defaults.showHomeHero,
+            homeHeroItems = read(HERO) ?: defaults.homeHeroItems,
             skipBackSeconds = read(SKIP_BACK) ?: defaults.skipBackSeconds,
             skipForwardSeconds = read(SKIP_FORWARD) ?: defaults.skipForwardSeconds,
             autoSkipSegments = read(AUTO_SKIP) ?: defaults.autoSkipSegments,
@@ -276,7 +276,6 @@ class SettingsViewModel(
             when (key) {
                 SettingKey.AlwaysAsk -> preferences.setAlwaysAskWhoIsWatching(value)
                 SettingKey.ShowStats -> profileSettings.setShowPlaybackStats(value)
-                SettingKey.ShowHero -> profileSettings.setShowHomeHero(value)
                 SettingKey.AutoSkip -> profileSettings.setAutoSkipSegments(value)
                 SettingKey.PictureInPicture -> profileSettings.setPictureInPicture(value)
                 SettingKey.OfflineMode -> preferences.setOfflineMode(value)
@@ -332,6 +331,7 @@ class SettingsViewModel(
             when (key) {
                 SettingKey.BingeThreshold -> profileSettings.setBingeThreshold(value)
                 SettingKey.HomeGenreRows -> profileSettings.setHomeGenreRows(value)
+                SettingKey.HomeHeroItems -> profileSettings.setHomeHeroItems(value)
                 SettingKey.SkipBack -> profileSettings.setSkipBackSeconds(value)
                 SettingKey.SkipForward -> profileSettings.setSkipForwardSeconds(value)
                 SettingKey.BufferAhead -> profileSettings.setBufferAheadSeconds(value)

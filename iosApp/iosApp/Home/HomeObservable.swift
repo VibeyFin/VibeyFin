@@ -58,11 +58,11 @@ final class HomeObservable: ObservableObject {
         model.onDismissMessage()
     }
 
-    func heroPlay() { model.onHeroPlay() }
+    func heroPlay(_ itemId: String) { model.onHeroPlay(itemId: itemId) }
 
     func heroNavHandled() { model.onHeroNavHandled() }
 
-    func heroMyList() { model.onHeroMyList() }
+    func heroMyList(_ itemId: String) { model.onHeroMyList(itemId: itemId) }
 
     func retryContinue() {
         model.onRetryContinue()

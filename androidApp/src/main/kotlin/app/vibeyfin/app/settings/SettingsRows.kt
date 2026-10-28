@@ -141,7 +141,7 @@ private fun iconFor(key: SettingKey): ImageVector? = when (key) {
     SettingKey.AudioLanguage, SettingKey.SubtitleLanguage -> null
     SettingKey.Skipping -> Icons.Filled.PlayArrow
     SettingKey.BufferAhead -> Icons.Filled.Settings
-    SettingKey.HomeGenreRows, SettingKey.ShowHero -> Icons.Filled.Home
+    SettingKey.HomeGenreRows, SettingKey.HomeHeroItems -> Icons.Filled.Home
     SettingKey.Notifications -> Icons.Filled.Notifications
     SettingKey.KidsProfile, SettingKey.Pin -> Icons.Filled.Lock
     else -> Icons.Filled.Info

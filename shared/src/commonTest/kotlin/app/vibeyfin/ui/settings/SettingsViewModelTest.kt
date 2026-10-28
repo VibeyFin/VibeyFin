@@ -212,15 +212,37 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `the home hero is on until the profile turns it off`() = runTest {
+    fun `the home hero features one title until the profile picks another number`() = runTest {
         app.signedIn()
         val viewModel = viewModel()
-        assertTrue(viewModel.uiState.first { it.hasProfile }.checked(SettingKey.ShowHero))
+        assertEquals(1, viewModel.uiState.first { it.hasProfile }.value(SettingKey.HomeHeroItems))
 
-        viewModel.onToggle(SettingKey.ShowHero, false)
-        assertFalse(viewModel.uiState.first { !it.checked(SettingKey.ShowHero) }.checked(SettingKey.ShowHero))
-        viewModel.onToggle(SettingKey.ShowHero, true)
-        assertTrue(viewModel.uiState.first { it.checked(SettingKey.ShowHero) }.checked(SettingKey.ShowHero))
+        viewModel.onChoose(SettingKey.HomeHeroItems, 3)
+        assertEquals(3, viewModel.uiState.first { it.value(SettingKey.HomeHeroItems) == 3 }.value(SettingKey.HomeHeroItems))
+        viewModel.onChoose(SettingKey.HomeHeroItems, 0)
+        assertEquals(0, viewModel.uiState.first { it.value(SettingKey.HomeHeroItems) == 0 }.value(SettingKey.HomeHeroItems))
+    }
+
+    @Test
+    fun `switching the hero off and on again keeps its number`() = runTest {
+        app.signedIn()
+        app.profileSettings.setHomeHeroItems(4)
+        app.profileSettings.setHomeHeroItems(0)
+        assertEquals(0, app.profileSettings.homeHeroItems.first())
+        // On again through the old switch's column, as a profile that had the switch off would be.
+        app.profileSettings.setHomeHeroItems(4)
+        assertEquals(4, app.profileSettings.homeHeroItems.first())
+    }
+
+    @Test
+    fun `a hero count that is not one of the choices is ignored`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hasProfile }
+        for (invalid in listOf(-1, 6, 10)) {
+            viewModel.onChoose(SettingKey.HomeHeroItems, invalid)
+            assertEquals(1, app.profileSettings.homeHeroItems.first())
+        }
     }
 
     @Test
@@ -394,7 +416,7 @@ class SettingsViewModelTest {
         val signedIn = viewModel().uiState.first { it.hasProfile }.page(SettingsPageId.Root)
         assertTrue(SettingKey.AlwaysAsk in signedIn.keys())
         assertTrue(SettingKey.ShowStats in signedIn.keys())
-        assertTrue(SettingKey.ShowHero in signedIn.keys())
+        assertTrue(SettingKey.HomeHeroItems in signedIn.keys())
         assertTrue(SettingKey.DownloadOverMobile in signedIn.keys())
         assertTrue(SettingKey.StorageLimit in signedIn.keys())
     }
@@ -1093,7 +1115,7 @@ class SettingsViewModelTest {
         assertTrue(open.hasProfile)
         assertEquals(3, open.value(SettingKey.BingeThreshold))
         assertEquals(10, open.value(SettingKey.SkipBack))
-        assertTrue(SettingKey.ShowHero in open.rootKeys())
+        assertTrue(SettingKey.HomeHeroItems in open.rootKeys())
     }
 
     @Test

@@ -133,7 +133,7 @@ class SettingsMappingTest {
 
     @Test
     fun `a saved key that is no longer drawn falls back to the default`() {
-        assertEquals(SettingKey.Quality, selectedLink(SettingKey.ShowHero, pages)?.key)
+        assertEquals(SettingKey.Quality, selectedLink(SettingKey.HomeHeroItems, pages)?.key)
         assertEquals(SettingKey.Quality, selectedLink(SettingKey.AlwaysAsk, pages)?.key)
     }
 }

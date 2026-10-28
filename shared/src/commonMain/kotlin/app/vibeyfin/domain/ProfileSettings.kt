@@ -27,8 +27,10 @@ class ProfileSettings(
     /** How many genre rows Home shows: [HOME_GENRES_ALL], [HOME_GENRES_NONE], or the biggest this many. Null when nobody is signed in. */
     val homeGenreRows: Flow<Int?> = forAccount { dao, a -> dao.observeHomeGenreRows(a.serverId, a.userId).map { it ?: HOME_GENRES_ALL } }
 
-    /** Whether Home features one item above Continue watching. On by default. Null when nobody is signed in. */
-    val showHomeHero: Flow<Boolean?> = forAccount { dao, a -> dao.observeShowHomeHero(a.serverId, a.userId).map { it ?: true } }
+    /** How many items Home features above Continue watching, one of [HOME_HERO_CHOICES]; 0 is off. One by default. Null when nobody is signed in. */
+    val homeHeroItems: Flow<Int?> = forAccount { dao, a ->
+        dao.observeHomeHeroItems(a.serverId, a.userId).map { if (it in HOME_HERO_CHOICES) it else DEFAULT_HOME_HERO_ITEMS }
+    }
 
     /** Seconds the skip-back button jumps; one of [SKIP_BACK_CHOICES]. Null when nobody is signed in. */
     val skipBackSeconds: Flow<Int?> = forAccount { dao, a ->
@@ -235,10 +237,11 @@ class ProfileSettings(
         dao.setStorageLimitMb(account.serverId, account.userId, value)
     }
 
-    /** Does nothing when nobody is signed in. */
-    suspend fun setShowHomeHero(value: Boolean) {
+    /** Accepts one of [HOME_HERO_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setHomeHeroItems(value: Int) {
+        if (value !in HOME_HERO_CHOICES) return
         val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setShowHomeHero(account.serverId, account.userId, value)
+        dao.setHomeHeroItems(account.serverId, account.userId, value)
     }
 
     /** Does nothing when nobody is signed in. */
@@ -323,6 +326,12 @@ class ProfileSettings(
 
         /** Home shows no genre rows. */
         const val HOME_GENRES_NONE = -1
+
+        /** The Home hero features one item, as before it could feature more. */
+        const val DEFAULT_HOME_HERO_ITEMS = 1
+
+        /** How many items the Home hero features, in the order the setting lists them; 0 is off, 2 and up a carousel. */
+        val HOME_HERO_CHOICES = listOf(0, 1, 2, 3, 4, 5)
 
         /** The choices, in the order the setting lists them. */
         val HOME_GENRE_CHOICES = listOf(HOME_GENRES_ALL, 20, 10, 5, 3, HOME_GENRES_NONE)
