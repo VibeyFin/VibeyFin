@@ -18,12 +18,15 @@ Mockups: the `HeroCarousel` card and the updated Home section of `SettingsPhone`
 - **Picking:** today's rules per item (a `Backdrop` and a `Logo`, not watched, from recently added and My List), drawn at random
   without repeats, at most the setting's number. Fewer qualify: only those show. One qualifies: a single card, no dots. None: no
   hero, no gap.
-- **Auto-advance: yes, slowly, once through.** Every 8 seconds the carousel moves to the next item and rests on the last one; it
-  never loops back to the first on its own. A swipe goes round: past the last comes the first, before the first the last (asked
-  for in review; Android pages through many copies of the items, iOS keeps a copy at each end and swaps to the real item). It stops for the rest of the visit once the user swipes it themselves, pauses while a finger is
+- **Auto-advance: yes, slowly, round and round.** Every 8 seconds the carousel moves to the next item, and after the last comes
+  the first. Swipes go round the same way: past the last comes the first, before the first the last (both asked for in review,
+  replacing "once through, resting on the last"; Android pages through many copies of the items, iOS keeps a copy at each end and
+  swaps to the real item). It stops for the rest of the visit once the user swipes it or long-presses it, pauses while a finger is
   on it, and only runs while Home is on screen with the app in front. It never moves under Reduce Motion (iOS) / Remove
-  animations (Android) or while VoiceOver / TalkBack is on. Rationale: slow enough to read the title and reach Play, and once
-  through means it never keeps moving under someone who is just reading the rows below.
+  animations (Android) or while VoiceOver / TalkBack is on. Rationale: slow enough to read the title and reach Play.
+- **Long press** on a featured card opens the poster menu (Details, Trailer, My List), the same sheet as a poster's (asked for in
+  review). A heart changed there, or anywhere else, shows on the hero: Home reads My List again after any change and brings the
+  featured items' hearts in line.
 - **Page dots** sit centred under the card, outside the artwork, so they never meet the buttons or the logo. iOS uses
   `UIPageControl` (wrapped), the system's own control, which VoiceOver can adjust; Android draws a small row of dots (M3 has no
   pager indicator): the current dot is `ink`, the others `ink-subtle`. Never aqua: aqua is Play and progress only.

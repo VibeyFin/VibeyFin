@@ -20,6 +20,7 @@ import app.vibeyfin.domain.SearchHistory
 import app.vibeyfin.domain.WatchChanges
 import app.vibeyfin.domain.WatchRepository
 import app.vibeyfin.domain.model.ItemKind
+import app.vibeyfin.domain.model.ItemPage
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.downloads.DownloadAction
@@ -187,6 +188,8 @@ class HomeViewModel(
     private val myListRow = MutableStateFlow<MediaRow?>(null)
     // Picked once per session (a new profile or address picks again).
     private val hero = MutableStateFlow(HeroState())
+    // The featured items whose My List write is in flight; a second tap on one waits for it.
+    private val heroWriting = mutableSetOf<String>()
     // False from a new session until Continue watching has answered once; the rows below wait for it (a later retry of it
     // does not hide them again).
     private val continueAnswered = MutableStateFlow(false)
@@ -565,9 +568,6 @@ class HomeViewModel(
     /** The screen has opened what the hero's Play asked for. */
     fun onHeroNavHandled() = categoryUi.update { it.copy(heroNav = null) }
 
-    // The featured items whose My List write is in flight; a second tap on one waits for it.
-    private val heroWriting = mutableSetOf<String>()
-
     /** "My List" on a featured item: shown at once, taken back with a message if the server can't save it. */
     fun onHeroMyList(itemId: String) {
         val before = hero.value.items.firstOrNull { it.id == itemId } ?: return
@@ -618,6 +618,29 @@ class HomeViewModel(
                 is ApiResult.Success -> base.copy(items = result.value.items, loading = false, message = null)
                 is ApiResult.Failure -> failed(base, result.error, quiet)
             }
+        }
+        if (result is ApiResult.Success) syncHeroFavourites(result.value)
+    }
+
+    /**
+     * Brings the featured items' hearts in line with My List, which may have changed elsewhere (a poster's menu, a long press on
+     * the hero, an item's page). On the list is certain; off it only when the row holds the whole list. One whose own write is
+     * still in flight keeps what was tapped.
+     */
+    private fun syncHeroFavourites(myList: ItemPage) {
+        val onList = myList.items.mapTo(mutableSetOf()) { it.id }
+        val complete = myList.total <= myList.items.size
+        hero.update { state ->
+            state.copy(
+                items = state.items.map { item ->
+                    when {
+                        item.id in heroWriting -> item
+                        item.id in onList -> item.copy(isFavorite = true)
+                        complete -> item.copy(isFavorite = false)
+                        else -> item
+                    }
+                },
+            )
         }
     }
 

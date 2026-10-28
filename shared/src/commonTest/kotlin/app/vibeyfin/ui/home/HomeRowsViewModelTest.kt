@@ -222,6 +222,27 @@ class HomeRowsViewModelTest {
         assertEquals(LoadMessages.ADD_TO_MY_LIST_FAILED, failed.actionMessage)
     }
 
+    @Test
+    fun myListChangedElsewhereFillsOrEmptiesTheHerosHeart() = runTest {
+        val server = heroServer()
+        val viewModel = viewModel()
+        assertEquals(false, viewModel.uiState.first { it.heroes.isNotEmpty() }.heroes.single().isFavorite)
+
+        // Put on My List from the poster menu (a long press on the hero opens it): Home reads My List again.
+        server.on("GET", "/Items") { request ->
+            if (request.query["filters"] == "IsFavorite") Reply.json(itemsJson(itemJson("star", "Star", backdropTag = "b", logoTag = "l"))) else Reply.json(itemsJson(itemJson("x", "X")))
+        }
+        app.watchChanges.changed()
+        assertTrue(viewModel.uiState.first { it.heroes.single().isFavorite }.heroes.single().isFavorite)
+
+        // Taken off again; the row holds the whole (now empty) list, so the heart empties.
+        server.on("GET", "/Items") { request ->
+            if (request.query["filters"] == "IsFavorite") Reply.json(itemsJson()) else Reply.json(itemsJson(itemJson("x", "X")))
+        }
+        app.watchChanges.changed()
+        assertFalse(viewModel.uiState.first { !it.heroes.single().isFavorite }.heroes.single().isFavorite)
+    }
+
     private suspend fun showHeroServer(): app.vibeyfin.testing.FakeServer = server(
         genreItems = { genre ->
             if (genre == null) {
@@ -345,7 +366,8 @@ class HomeRowsViewModelTest {
         assertEquals("star", viewModel.uiState.first { it.heroes.isNotEmpty() }.heroes.firstOrNull()?.id)
     }
 
-    private suspend fun threeHeroServer(): app.vibeyfin.testing.FakeServer = server(
+    private suspend fun threeHeroServer(myList: Reply = Reply.json(itemsJson())): app.vibeyfin.testing.FakeServer = server(
+        myList = myList,
         genreItems = { genre ->
             if (genre == null) {
                 Reply.json(
@@ -402,7 +424,8 @@ class HomeRowsViewModelTest {
 
     @Test
     fun playAndMyListActOnTheFeaturedItemTheyAreGiven() = runTest {
-        val server = threeHeroServer()
+        // My List as the server has it once "b" is put on it, read again after the write.
+        val server = threeHeroServer(myList = Reply.json(itemsJson(itemJson("b", "B", backdropTag = "b", logoTag = "l"))))
         server.on("POST", "/UserFavoriteItems/b", Reply.json("{}"))
         app.profileSettings.setHomeHeroItems(3)
         val viewModel = viewModel()

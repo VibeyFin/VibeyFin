@@ -22,11 +22,12 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
+import app.vibeyfin.app.navigation.LocalTileLongPress
 import app.vibeyfin.app.theme.animationsEnabled
 import app.vibeyfin.ui.home.HERO_ADVANCE_MILLIS
 import kotlinx.coroutines.delay
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -93,7 +94,10 @@ fun HomeHeroSection(
     onOpen: (String) -> Unit,
     onMyList: () -> Unit,
     description: String = Strings.featured(item.title),
+    onLongPressed: () -> Unit = {},
 ) {
+    // A long press opens the same menu as a poster's (Details, Trailer, My List).
+    val longPress = LocalTileLongPress.current
     val shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md)
     Box(
         Modifier
@@ -101,7 +105,11 @@ fun HomeHeroSection(
             .fillMaxWidth()
             .clip(shape)
             .border(1.dp, VibeyFinTokens.Colors.surface3, shape)
-            .clickable { onOpen(item.id) }
+            .combinedClickable(
+                onLongClickLabel = if (longPress != null) Strings.showOptions else null,
+                onLongClick = longPress?.let { press -> { onLongPressed(); press(item) } },
+                onClick = { onOpen(item.id) },
+            )
             .semantics { contentDescription = description },
     ) {
         Artwork(
@@ -166,7 +174,7 @@ fun HomeHeroSection(
 
 /**
  * The featured items: one card, or from two a pager of them with page dots under it. The pager moves on by itself every
- * [HERO_ADVANCE_MILLIS], once through, resting on the last; a swipe stops that until Home is left, a finger on it pauses it, and it
+ * [HERO_ADVANCE_MILLIS], round and round; a swipe or a long press stops that until Home is left, a finger on it pauses it, and it
  * never moves with animations removed, with TalkBack on, or while Home is not the screen in front. Play and My List act on their page.
  */
 @Composable
@@ -185,22 +193,21 @@ fun HomeHeroCarousel(
     // The pages run round: a swipe past the last item comes to the first, and back from the first to the last. The pager has
     // many copies of the items and starts on a first item in the middle, so either way has room.
     val pager = rememberPagerState(initialPage = HERO_LOOP_START - HERO_LOOP_START % items.size) { HERO_LOOP_PAGES }
-    val shown = pager.settledPage % items.size
     val context = LocalContext.current
     val animations = animationsEnabled()
     val screenReaderOn = remember(context) {
         context.getSystemService(AccessibilityManager::class.java)?.isTouchExplorationEnabled == true
     }
     val resumed = LocalLifecycleOwner.current.lifecycle.currentStateAsState().value.isAtLeast(Lifecycle.State.RESUMED)
-    // A swipe stops the carousel for this visit; a new pick starts it again.
+    // A swipe, or a long press that opens the menu, stops the carousel for this visit; a new pick starts it again.
     var swiped by remember(items.map { it.id }) { mutableStateOf(false) }
     var held by remember { mutableStateOf(false) }
     val dragged by pager.interactionSource.collectIsDraggedAsState()
     LaunchedEffect(dragged) { if (dragged) swiped = true }
     // Keyed on the settled page, not the current one: the current page changes halfway through the move, and restarting here then
-    // would cancel the move and leave the card half way. On its own it never goes round: it rests on the last item.
+    // would cancel the move and leave the card half way. After the last item comes the first, as with a swipe.
     LaunchedEffect(pager.settledPage, swiped, held, resumed) {
-        if (!animations || screenReaderOn || swiped || held || !resumed || shown >= items.lastIndex) return@LaunchedEffect
+        if (!animations || screenReaderOn || swiped || held || !resumed) return@LaunchedEffect
         delay(HERO_ADVANCE_MILLIS)
         pager.animateScrollToPage(pager.settledPage + 1)
     }
@@ -223,6 +230,7 @@ fun HomeHeroCarousel(
             HomeHeroSection(
                 item, wide, { onPlay(item.id) }, onOpen, { onMyList(item.id) },
                 description = Strings.featuredPage(item.title, index + 1, items.size),
+                onLongPressed = { swiped = true },
             )
         }
         HeroPageDots(count = items.size, current = pager.currentPage % items.size)

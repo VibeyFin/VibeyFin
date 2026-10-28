@@ -3,9 +3,10 @@ import UIKit
 import Shared
 
 /// The featured items: one card, or from two a paged `TabView` of them with the system's page dots under it. It moves on by itself
-/// every `HERO_ADVANCE_MILLIS`, once through, resting on the last; a swipe (or a tap on the dots) stops that until Home is left, a
-/// finger on it pauses it, and it never moves under Reduce Motion, with VoiceOver on, or while Home is not on screen and in front.
-/// A swipe runs round: past the last item comes the first, and before the first the last. Play and My List act on their own page.
+/// every `HERO_ADVANCE_MILLIS`, round and round; a swipe, a tap on the dots or a long press (which opens the poster menu) stops that
+/// until Home is left, a finger on it pauses it, and it never moves under Reduce Motion, with VoiceOver on, or while Home is not on
+/// screen and in front. Swipes run round too: past the last item comes the first, and before the first the last. Play and My List act
+/// on their own page.
 struct HomeHeroCarousel: View {
     let items: [MediaItem]
     let onPlay: (String) -> Void
@@ -43,7 +44,8 @@ struct HomeHeroCarousel: View {
                             onPlay: { onPlay(item.id) },
                             onOpen: onOpen,
                             onMyList: { onMyList(item.id) },
-                            label: Strings.shared.featuredPage(title: item.title, index: Int32(index + 1), count: Int32(items.count))
+                            label: Strings.shared.featuredPage(title: item.title, index: Int32(index + 1), count: Int32(items.count)),
+                            onLongPressed: { swiped = true }
                         )
                         .tag(slot)
                         // The copies at the ends are only passed through; VoiceOver reads the real pages.
@@ -92,10 +94,11 @@ struct HomeHeroCarousel: View {
                 swiped = false
             }
             .task(id: AdvanceKey(page: page, running: running)) {
-                guard running, page < items.count - 1 else { return }
+                guard running else { return }
                 try? await Task.sleep(nanoseconds: UInt64(HomeHeroKt.HERO_ADVANCE_MILLIS) * 1_000_000)
                 guard !Task.isCancelled else { return }
-                autoPage = page + 1
+                // From the last item this lands on the copy of the first after it, which then becomes the real first.
+                autoPage = (page + 1) % items.count
                 withAnimation(.easeInOut(duration: 0.4)) { slot = page + 2 }
             }
         }

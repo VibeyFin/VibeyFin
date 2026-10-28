@@ -20,8 +20,8 @@ internal fun pickHeroes(candidates: List<MediaItem>, count: Int, random: Random)
         .take(count)
 
 /**
- * How long a page of the hero's carousel shows before it moves on by itself, in milliseconds. It goes through once and rests on the
- * last item; both apps stop it on a swipe and never run it under Reduce Motion or with a screen reader on (`guardrails.md`).
+ * How long a page of the hero's carousel shows before it moves on by itself, in milliseconds. After the last item it comes back to
+ * the first; both apps stop it on a swipe and never run it under Reduce Motion or with a screen reader on (`guardrails.md`).
  */
 const val HERO_ADVANCE_MILLIS = 8_000L
 
