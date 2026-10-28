@@ -1,6 +1,30 @@
 package app.vibeyfin.app.home
 
+import android.view.accessibility.AccessibilityManager
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.currentStateAsState
+import app.vibeyfin.app.theme.animationsEnabled
+import app.vibeyfin.ui.home.HERO_ADVANCE_MILLIS
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -68,6 +92,7 @@ fun HomeHeroSection(
     onPlay: () -> Unit,
     onOpen: (String) -> Unit,
     onMyList: () -> Unit,
+    description: String = Strings.featured(item.title),
 ) {
     val shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md)
     Box(
@@ -77,7 +102,7 @@ fun HomeHeroSection(
             .clip(shape)
             .border(1.dp, VibeyFinTokens.Colors.surface3, shape)
             .clickable { onOpen(item.id) }
-            .semantics { contentDescription = Strings.featured(item.title) },
+            .semantics { contentDescription = description },
     ) {
         Artwork(
             url = item.backdropUrl,
@@ -139,9 +164,111 @@ fun HomeHeroSection(
     }
 }
 
-/** The hero's place while it is being picked: the same card, rounded and the same height, with grey stand-ins for the logo, the line and the two buttons. */
+/**
+ * The featured items: one card, or from two a pager of them with page dots under it. The pager moves on by itself every
+ * [HERO_ADVANCE_MILLIS], once through, resting on the last; a swipe stops that until Home is left, a finger on it pauses it, and it
+ * never moves with animations removed, with TalkBack on, or while Home is not the screen in front. Play and My List act on their page.
+ */
 @Composable
-fun HomeHeroSkeleton(wide: Boolean) {
+fun HomeHeroCarousel(
+    items: List<MediaItem>,
+    wide: Boolean,
+    onPlay: (String) -> Unit,
+    onOpen: (String) -> Unit,
+    onMyList: (String) -> Unit,
+) {
+    if (items.size == 1) {
+        val item = items.single()
+        HomeHeroSection(item, wide, { onPlay(item.id) }, onOpen, { onMyList(item.id) })
+        return
+    }
+    // The pages run round: a swipe past the last item comes to the first, and back from the first to the last. The pager has
+    // many copies of the items and starts on a first item in the middle, so either way has room.
+    val pager = rememberPagerState(initialPage = HERO_LOOP_START - HERO_LOOP_START % items.size) { HERO_LOOP_PAGES }
+    val shown = pager.settledPage % items.size
+    val context = LocalContext.current
+    val animations = animationsEnabled()
+    val screenReaderOn = remember(context) {
+        context.getSystemService(AccessibilityManager::class.java)?.isTouchExplorationEnabled == true
+    }
+    val resumed = LocalLifecycleOwner.current.lifecycle.currentStateAsState().value.isAtLeast(Lifecycle.State.RESUMED)
+    // A swipe stops the carousel for this visit; a new pick starts it again.
+    var swiped by remember(items.map { it.id }) { mutableStateOf(false) }
+    var held by remember { mutableStateOf(false) }
+    val dragged by pager.interactionSource.collectIsDraggedAsState()
+    LaunchedEffect(dragged) { if (dragged) swiped = true }
+    // Keyed on the settled page, not the current one: the current page changes halfway through the move, and restarting here then
+    // would cancel the move and leave the card half way. On its own it never goes round: it rests on the last item.
+    LaunchedEffect(pager.settledPage, swiped, held, resumed) {
+        if (!animations || screenReaderOn || swiped || held || !resumed || shown >= items.lastIndex) return@LaunchedEffect
+        delay(HERO_ADVANCE_MILLIS)
+        pager.animateScrollToPage(pager.settledPage + 1)
+    }
+    Column {
+        HorizontalPager(
+            state = pager,
+            pageSpacing = VibeyFinTokens.Space.s2,
+            modifier = Modifier.pointerInput(Unit) {
+                // Seen before the pager takes the gesture, so a finger resting on the card pauses it without a swipe.
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    held = true
+                    waitForUpOrCancellation(PointerEventPass.Initial)
+                    held = false
+                }
+            },
+        ) { page ->
+            val index = page % items.size
+            val item = items[index]
+            HomeHeroSection(
+                item, wide, { onPlay(item.id) }, onOpen, { onMyList(item.id) },
+                description = Strings.featuredPage(item.title, index + 1, items.size),
+            )
+        }
+        HeroPageDots(count = items.size, current = pager.currentPage % items.size)
+    }
+}
+
+/** The carousel's page dots, under the card: the current one in [VibeyFinTokens.Colors.ink], never aqua. TalkBack reads the pages instead. */
+@Composable
+private fun HeroPageDots(count: Int, current: Int) {
+    Row(
+        Modifier.fillMaxWidth().height(HERO_DOTS_HEIGHT).clearAndSetSemantics {},
+        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        repeat(count) { index ->
+            Box(
+                Modifier.size(8.dp).clip(CircleShape)
+                    .background(if (index == current) VibeyFinTokens.Colors.ink else VibeyFinTokens.Colors.inkSubtle),
+            )
+        }
+    }
+}
+
+/** Pages of the looping pager: the items again and again, far more than anyone swipes. */
+private const val HERO_LOOP_PAGES = 10_000
+
+/** Where the looping pager starts, rounded down to a first item. */
+private const val HERO_LOOP_START = HERO_LOOP_PAGES / 2
+
+/** The row the page dots sit in; the skeleton keeps it too when several items are coming, so the card does not move. */
+private val HERO_DOTS_HEIGHT = 24.dp
+
+/**
+ * The hero's place while it is being picked: the same card, rounded and the same height, with grey stand-ins for the logo, the line and
+ * the two buttons; with [dots], the dots' row under it is kept empty.
+ */
+@Composable
+fun HomeHeroSkeleton(wide: Boolean, dots: Boolean = false) {
+    Column {
+        HeroSkeletonCard(wide)
+        if (dots) Spacer(Modifier.height(HERO_DOTS_HEIGHT))
+    }
+}
+
+@Composable
+private fun HeroSkeletonCard(wide: Boolean) {
     val shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md)
     Box(
         Modifier

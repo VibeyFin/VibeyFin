@@ -403,11 +403,15 @@ private fun Content(
             if (state.heroes.isNotEmpty() || state.heroLoading) {
                 fullWidth(key = "hero", animate = false) {
                     val wideHero = LocalConfiguration.current.screenWidthDp >= 600
-                    // Keyed on which title it is, not on the title's data: a tap on My List changes the data, and only the heart
+                    // Keyed on which titles they are, not on their data: a tap on My List changes the data, and only the heart
                     // should redraw, not the whole card fading into a copy of itself.
-                    Crossfade(targetState = state.heroes.firstOrNull()?.id, animationSpec = tween(ROW_FADE_MS), label = "hero") { heroId ->
-                        val hero = state.heroes.firstOrNull()
-                        if (heroId == null || hero == null) HomeHeroSkeleton(wideHero) else HomeHeroSection(hero, wideHero, { onHeroPlay(hero.id) }, onDetails, { onHeroMyList(hero.id) })
+                    Crossfade(targetState = state.heroes.map { it.id }, animationSpec = tween(ROW_FADE_MS), label = "hero") { ids ->
+                        val heroes = state.heroes
+                        if (ids.isEmpty() || heroes.isEmpty()) {
+                            HomeHeroSkeleton(wideHero, dots = state.heroSlots >= 2)
+                        } else {
+                            HomeHeroCarousel(heroes, wideHero, onHeroPlay, onDetails, onHeroMyList)
+                        }
                     }
                 }
             }
