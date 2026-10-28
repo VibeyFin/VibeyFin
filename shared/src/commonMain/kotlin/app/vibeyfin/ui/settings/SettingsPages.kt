@@ -94,7 +94,6 @@ fun settingsPages(values: SettingsValues): Map<SettingsPageId, SettingsPage> = l
     languagePage(values, SettingsPageId.AudioLanguage),
     languagePage(values, SettingsPageId.SubtitleLanguage),
     skippingPage(values),
-    subtitlesPage(values),
     kidsAndPinPage(values),
     notificationsPage(values),
 ).associateBy { it.id }
@@ -128,12 +127,6 @@ fun rootPage(v: SettingsValues): SettingsPage {
                         SettingKey.AudioSubtitles, Strings.audioAndSubtitles,
                         help = v.languagePrefs?.let { languagesSummary(it, v.languages) },
                         target = SettingsPageId.AudioSubtitles, visible = profile,
-                    ),
-                    LinkItem(
-                        SettingKey.Subtitles, Strings.subtitlesTitle,
-                        target = SettingsPageId.Subtitles,
-                        value = if (v.captionsFollowSystem) Strings.subtitlesSystemValue else Strings.subtitlesCustomValue,
-                        visible = profile,
                     ),
                     LinkItem(
                         SettingKey.Skipping, Strings.skippingTitle,
@@ -389,8 +382,9 @@ fun qualityPage(v: SettingsValues) = SettingsPage(
 )
 
 /**
- * The preferred audio and subtitle languages, kept on the Jellyfin account. Until they are read the rows show the defaults (or the
- * last values known) and can't be changed; the footer says why.
+ * The preferred audio and subtitle languages, kept on the Jellyfin account, then how subtitles look. Until the languages are read
+ * their rows show the defaults (or the last values known) and can't be changed; the footer says why. The style is the profile's
+ * own, so it works either way.
  */
 fun audioSubtitlesPage(v: SettingsValues): SettingsPage {
     val profile = v.hasProfile
@@ -445,7 +439,7 @@ fun audioSubtitlesPage(v: SettingsValues): SettingsPage {
                     ),
                 ),
             ),
-        ),
+        ) + subtitleStyleSections(v),
     )
 }
 
@@ -573,68 +567,65 @@ fun skippingPage(v: SettingsValues): SettingsPage {
     )
 }
 
-fun subtitlesPage(v: SettingsValues): SettingsPage {
+/** How subtitles look, at the end of the Audio and subtitles page. */
+private fun subtitleStyleSections(v: SettingsValues): List<SettingsSection> {
     val profile = v.hasProfile
     val applies = v.subtitleStyleApplies
     // Where the style cannot apply the rows stay visible, dimmed, so the page says why instead of hiding it.
     val custom = profile && (!v.captionsFollowSystem || !applies)
-    return SettingsPage(
-        SettingsPageId.Subtitles,
-        Strings.subtitlesTitle,
-        listOf(
-            // The preview is a card of its own above the groups, not a row of the toggle's card.
-            SettingsSection(
-                title = null,
-                footer = null,
-                items = listOf(
-                    CustomItem(SettingKey.SubtitlePreview, Strings.subtitlePreviewSample, kind = CustomKind.SubtitlePreview, visible = profile),
+    return listOf(
+        // The preview is a card of its own under the group's title, not a row of the toggle's card.
+        SettingsSection(
+            Strings.subtitleStyleGroup,
+            footer = null,
+            items = listOf(
+                CustomItem(SettingKey.SubtitlePreview, Strings.subtitlePreviewSample, kind = CustomKind.SubtitlePreview, visible = profile),
+            ),
+        ),
+        SettingsSection(
+            title = null,
+            footer = Strings.captionsFollowSystemFooter,
+            items = listOf(
+                ToggleItem(
+                    SettingKey.CaptionsFollowSystem, Strings.captionsFollowSystemTitle, Strings.captionsFollowSystemHelp,
+                    checked = v.captionsFollowSystem, visible = profile, enabled = applies,
                 ),
             ),
-            SettingsSection(
-                title = null,
-                footer = Strings.captionsFollowSystemFooter,
-                items = listOf(
-                    ToggleItem(
-                        SettingKey.CaptionsFollowSystem, Strings.captionsFollowSystemTitle, Strings.captionsFollowSystemHelp,
-                        checked = v.captionsFollowSystem, visible = profile, enabled = applies,
+        ),
+        SettingsSection(
+            title = null,
+            footer = if (applies) null else Strings.subtitleStyleIosNote,
+            items = listOf(
+                ChoiceItem(
+                    SettingKey.SubtitleSize, Strings.subtitleSizeTitle, value = v.subtitleSize,
+                    options = options(
+                        ProfileSettings.SUBTITLE_SIZE_CHOICES,
+                        Strings.subtitleSizeSmall, Strings.subtitleSizeMedium, Strings.subtitleSizeLarge, Strings.subtitleSizeExtraLarge,
                     ),
+                    visible = custom, enabled = applies,
+                ),
+                ChoiceItem(
+                    SettingKey.SubtitleColor, Strings.subtitleColorTitle, value = v.subtitleTextColor,
+                    options = options(
+                        ProfileSettings.SUBTITLE_COLOR_CHOICES,
+                        Strings.subtitleColorWhite, Strings.subtitleColorYellow, Strings.subtitleColorLightBlue,
+                    ),
+                    visible = custom, enabled = applies,
+                ),
+                ChoiceItem(
+                    SettingKey.SubtitleBackground, Strings.subtitleBackgroundTitle, value = v.subtitleBackground,
+                    options = options(
+                        ProfileSettings.SUBTITLE_BACKGROUND_CHOICES,
+                        Strings.subtitleBackgroundNone, Strings.subtitleBackgroundShadow, Strings.subtitleBackgroundBox,
+                    ),
+                    visible = custom, enabled = applies,
                 ),
             ),
-            SettingsSection(
-                Strings.subtitleStyleGroup,
-                footer = if (applies) null else Strings.subtitleStyleIosNote,
-                items = listOf(
-                    ChoiceItem(
-                        SettingKey.SubtitleSize, Strings.subtitleSizeTitle, value = v.subtitleSize,
-                        options = options(
-                            ProfileSettings.SUBTITLE_SIZE_CHOICES,
-                            Strings.subtitleSizeSmall, Strings.subtitleSizeMedium, Strings.subtitleSizeLarge, Strings.subtitleSizeExtraLarge,
-                        ),
-                        visible = custom, enabled = applies,
-                    ),
-                    ChoiceItem(
-                        SettingKey.SubtitleColor, Strings.subtitleColorTitle, value = v.subtitleTextColor,
-                        options = options(
-                            ProfileSettings.SUBTITLE_COLOR_CHOICES,
-                            Strings.subtitleColorWhite, Strings.subtitleColorYellow, Strings.subtitleColorLightBlue,
-                        ),
-                        visible = custom, enabled = applies,
-                    ),
-                    ChoiceItem(
-                        SettingKey.SubtitleBackground, Strings.subtitleBackgroundTitle, value = v.subtitleBackground,
-                        options = options(
-                            ProfileSettings.SUBTITLE_BACKGROUND_CHOICES,
-                            Strings.subtitleBackgroundNone, Strings.subtitleBackgroundShadow, Strings.subtitleBackgroundBox,
-                        ),
-                        visible = custom, enabled = applies,
-                    ),
-                ),
-            ),
-            SettingsSection(
-                title = null,
-                footer = null,
-                items = listOf(ActionItem(SettingKey.ResetSubtitles, Strings.subtitleReset, visible = custom, enabled = applies)),
-            ),
+        ),
+        SettingsSection(
+            title = null,
+            footer = null,
+            items = listOf(ActionItem(SettingKey.ResetSubtitles, Strings.subtitleReset, visible = custom, enabled = applies)),
         ),
     )
 }

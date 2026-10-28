@@ -300,7 +300,7 @@ A profile card, then groups. Per-profile groups come first and the one device-wi
 the scope is clear from position and from the footers.
 
 - **Profile card** (tappable, chevron): opens the Profile page.
-- **Playback**: Quality, Subtitles, Skipping and autoplay. There is no Buffering row here: Buffer ahead lives
+- **Playback**: Quality, Audio and subtitles, Skipping and autoplay. There is no Buffering row here: Buffer ahead lives
   on Skipping and autoplay.
 - **Home**: Featured title, Genre rows.
 - **Notifications**: opens its page (below).
@@ -336,9 +336,10 @@ their own section, the section title once, the footer (help text) below, and the
 
 Each is a menu row.
 
-### Subtitles
+### Subtitle style
 
-A live preview over artwork, then "Use system caption style" on by default; turning it off enables size, text
+At the end of the Audio and subtitles page, under the languages, headed "Subtitle style" (there is no separate
+Subtitles page). A live preview over artwork, then "Use system caption style" on by default; turning it off enables size, text
 colour and background (none, shadow, box), and "Reset to defaults" sits at the bottom. Android applies the
 style to the player. iOS burns subtitles into the picture today, so its page shows the controls disabled
 with the note "Applies to text subtitles only; iOS burns subtitles in for now". Applying a style on iOS needs

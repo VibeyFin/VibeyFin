@@ -1,7 +1,7 @@
 package app.vibeyfin.ui.settings
 
 /** The pages of the Settings tree. */
-enum class SettingsPageId { Root, Profile, Quality, AudioSubtitles, Skipping, Subtitles, KidsAndPin, Notifications, AudioLanguage, SubtitleLanguage }
+enum class SettingsPageId { Root, Profile, Quality, AudioSubtitles, Skipping, KidsAndPin, Notifications, AudioLanguage, SubtitleLanguage }
 
 /** One entry per setting, so each platform can tell its rows apart. */
 enum class SettingKey {
@@ -9,7 +9,7 @@ enum class SettingKey {
     AlwaysAsk, ShowStats, About,
     BingeThreshold, HomeGenreRows, ShowHero,
     SkipBack, SkipForward, AutoSkip, BufferAhead,
-    Quality, Subtitles, Skipping,
+    Quality, Skipping,
     CaptionsFollowSystem, SubtitleSize, SubtitleColor, SubtitleBackground, SubtitlePreview, ResetSubtitles,
     SwitchProfile, SignOut, ServerName, ServerAddress, ServerAlsoAt,
     KidsProfile, Pin, ChangePin, RemovePin, PinOpenProfile, PinOpenSettings, PinSwitchProfile,

@@ -51,7 +51,7 @@ class SettingsModelTest {
             Strings.qualityTitle, Strings.qualityGroup, Strings.qualityMaximumHelp, Strings.qualityFooter,
             Strings.skippingTitle, Strings.skippingGroup, Strings.skippingFooter, Strings.autoSkipHelp, Strings.autoplayGroup,
             Strings.stillWatchingAfterTitle, Strings.stillWatchingAfterHelp, Strings.bufferingGroup,
-            Strings.subtitlesTitle, Strings.captionsFollowSystemTitle, Strings.captionsFollowSystemHelp,
+            Strings.captionsFollowSystemTitle, Strings.captionsFollowSystemHelp,
             Strings.captionsFollowSystemFooter, Strings.subtitleStyleGroup, Strings.subtitleStyleIosNote, Strings.subtitleColorLightBlue,
             Strings.subtitleReset, Strings.subtitlePreviewSample, Strings.kidsPinTitle, Strings.kidsProfileTitle,
             Strings.kidsProfileHelp, Strings.pinGroup, Strings.pinHelp, Strings.pinFooter, Strings.pinSet, Strings.pinChange,
@@ -79,7 +79,7 @@ class SettingsModelTest {
 
     @Test
     fun `where the style cannot apply the subtitle controls show disabled with a note`() {
-        val page = subtitlesPage(SettingsValues(hasProfile = true, subtitleStyleApplies = false)).visibleOnly()
+        val page = audioSubtitlesPage(SettingsValues(hasProfile = true, subtitleStyleApplies = false)).visibleOnly()
         val items = page.sections.flatMap { it.items }
         assertEquals(styleKeys, items.filter { it.key in styleKeys }.map { it.key }.toSet())
         assertTrue(items.filter { it.key in styleKeys }.none { it.enabled })
@@ -88,9 +88,9 @@ class SettingsModelTest {
     }
 
     @Test
-    fun `where the style applies nothing on the subtitles page is disabled and there is no note`() {
-        val page = subtitlesPage(SettingsValues(hasProfile = true, captionsFollowSystem = false)).visibleOnly()
-        assertTrue(page.sections.flatMap { it.items }.all { it.enabled })
+    fun `where the style applies none of its rows is disabled and there is no note`() {
+        val page = audioSubtitlesPage(SettingsValues(hasProfile = true, captionsFollowSystem = false)).visibleOnly()
+        assertTrue(page.sections.flatMap { it.items }.filter { it.key in styleKeys || it.key == SettingKey.SubtitlePreview }.all { it.enabled })
         assertTrue(page.sections.none { it.footer == Strings.subtitleStyleIosNote })
     }
 }

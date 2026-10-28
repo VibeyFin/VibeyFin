@@ -31,4 +31,4 @@ When re-syncing, keep these; the artifact does not have them yet.
   dropped), only Quality is a checklist, inline in its own section with a soft pill and no tick; there is no
   root Buffering row (Buffer ahead is on Skipping and
   autoplay); the Android tablet layout is a plain two-column layout at 600dp, not `ListDetailPaneScaffold`; the
-  iOS Subtitles page shows its controls disabled while subtitles are burned in.
+  iOS subtitle style rows show disabled while subtitles are burned in.

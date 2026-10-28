@@ -11,7 +11,8 @@ player's track menu.
   `POST /Users/Configuration`. The server then picks `DefaultAudioStreamIndex` / `DefaultSubtitleStreamIndex`
   itself, which `MediaSourceDto.tracks()` already honours, so the player needs **no track-matching logic** and
   every Jellyfin client shares the choice. No Room column, no migration.
-- **A new "Audio and subtitles" page** under Playback; the existing Subtitles (caption style) page stays.
+- **A new "Audio and subtitles" page** under Playback. The caption style, once its own Subtitles page, sits at the end of it
+  under "Subtitle style", so subtitles are set in one place.
 
 **Mockups:** `SettingsPhone` (pages `Audio and subtitles`, `Audio language`, `When subtitles show`, the
 can't-reach-server state, and the new root row) and `SettingsTablet` (split view) in the shared mockups artifact

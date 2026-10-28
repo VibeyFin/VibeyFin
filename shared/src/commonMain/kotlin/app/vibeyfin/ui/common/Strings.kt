@@ -634,14 +634,11 @@ object Strings {
         return "${audio ?: anyLanguage} \u00B7 $subs"
     }
 
-    // Subtitles page
-    val subtitlesTitle = "Subtitles"
-    val subtitlesSystemValue = "System"
-    val subtitlesCustomValue = "Custom"
+    // Subtitle style, on the Audio and subtitles page
     val captionsFollowSystemTitle = "Use system caption style"
     val captionsFollowSystemHelp = "Follows the OS caption settings."
     val captionsFollowSystemFooter = "Turn off to set your own below."
-    val subtitleStyleGroup = "Style"
+    val subtitleStyleGroup = "Subtitle style"
     val subtitleStyleIosNote = "Applies to text subtitles only; iOS burns subtitles in for now"
     val subtitleSizeTitle = "Size"
     val subtitleSizeSmall = "S"

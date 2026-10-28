@@ -322,14 +322,14 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `the root Playback group links to Quality and Audio and subtitles and Subtitles and Skipping only`() = runTest {
+    fun `the root Playback group links to Quality and Audio and subtitles and Skipping only`() = runTest {
         app.signedIn()
         val root = viewModel().uiState.first { it.hasProfile }.page(SettingsPageId.Root)
 
         val playback = root.sections.single { it.title == Strings.playbackSection }
         assertTrue(playback.items.all { it is LinkItem })
         assertEquals(
-            listOf(SettingKey.Quality, SettingKey.AudioSubtitles, SettingKey.Subtitles, SettingKey.Skipping),
+            listOf(SettingKey.Quality, SettingKey.AudioSubtitles, SettingKey.Skipping),
             playback.items.map { it.key },
         )
         assertFalse(root.keys().contains(SettingKey.BufferAhead))
@@ -541,24 +541,26 @@ class SettingsViewModelTest {
         val viewModel = viewModel()
         val styleKeys = setOf(SettingKey.SubtitleSize, SettingKey.SubtitleColor, SettingKey.SubtitleBackground, SettingKey.ResetSubtitles)
 
-        val system = viewModel.uiState.first { it.hasProfile }.page(SettingsPageId.Subtitles).keys()
+        val system = viewModel.uiState.first { it.hasProfile }.page(SettingsPageId.AudioSubtitles).keys()
         assertTrue(SettingKey.CaptionsFollowSystem in system)
         assertTrue(SettingKey.SubtitlePreview in system)
         assertTrue(system.none { it in styleKeys })
 
         viewModel.onToggle(SettingKey.CaptionsFollowSystem, false)
-        val custom = viewModel.uiState.first { !it.page(SettingsPageId.Subtitles).keys().none { k -> k in styleKeys } }
-            .page(SettingsPageId.Subtitles).keys()
+        val custom = viewModel.uiState.first { !it.page(SettingsPageId.AudioSubtitles).keys().none { k -> k in styleKeys } }
+            .page(SettingsPageId.AudioSubtitles).keys()
         assertTrue(custom.containsAll(styleKeys))
     }
 
     @Test
-    fun `the subtitle preview is a section of its own before the toggle`() = runTest {
+    fun `the subtitle style follows the languages with its preview as a titled section of its own before the toggle`() = runTest {
         app.signedIn()
-        val page = viewModel().uiState.first { it.hasProfile }.page(SettingsPageId.Subtitles).visibleOnly()
-        assertEquals(listOf(SettingKey.SubtitlePreview), page.sections[0].items.map { it.key })
-        assertEquals(null, page.sections[0].title)
-        assertEquals(SettingKey.CaptionsFollowSystem, page.sections[1].items.first().key)
+        val page = viewModel().uiState.first { it.hasProfile }.page(SettingsPageId.AudioSubtitles).visibleOnly()
+        val preview = page.sections.indexOfFirst { s -> s.items.any { it.key == SettingKey.SubtitlePreview } }
+        assertTrue(preview > page.sections.indexOfFirst { s -> s.items.any { it.key == SettingKey.RememberTracks } })
+        assertEquals(listOf(SettingKey.SubtitlePreview), page.sections[preview].items.map { it.key })
+        assertEquals(Strings.subtitleStyleGroup, page.sections[preview].title)
+        assertEquals(SettingKey.CaptionsFollowSystem, page.sections[preview + 1].items.first().key)
     }
 
     @Test

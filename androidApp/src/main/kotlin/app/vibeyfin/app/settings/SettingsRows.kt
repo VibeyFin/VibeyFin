@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
@@ -140,7 +139,6 @@ private fun iconFor(key: SettingKey): ImageVector? = when (key) {
     SettingKey.Quality -> Icons.Filled.Star
     SettingKey.AudioSubtitles -> Icons.Filled.Face
     SettingKey.AudioLanguage, SettingKey.SubtitleLanguage -> null
-    SettingKey.Subtitles -> Icons.Filled.Build
     SettingKey.Skipping -> Icons.Filled.PlayArrow
     SettingKey.BufferAhead -> Icons.Filled.Settings
     SettingKey.HomeGenreRows, SettingKey.ShowHero -> Icons.Filled.Home
