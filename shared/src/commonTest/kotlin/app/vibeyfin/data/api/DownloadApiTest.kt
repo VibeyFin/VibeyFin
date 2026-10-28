@@ -122,7 +122,7 @@ class DownloadApiTest {
     @Test
     fun aSinkThatCannotWriteEndsTheDownloadWithItsOwnError() = runTest {
         server.on("GET", "/Items/m1/Download", Reply.file("hello"))
-        val diskFull = java.io.IOException("No space left on device")
+        val diskFull = IllegalStateException("No space left on device")
 
         val thrown = assertFailsWith<Exception> { api.download("m1", offset = 0, sink = Collector(failOnWrite = diskFull)) }
 
