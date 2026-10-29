@@ -23,7 +23,7 @@ A Jetpack Compose app that follows Material 3. Use the `android` theme and `m3-*
 | Season buttons (series detail) | `LazyRow` of `FilterChip`s, selected = `accent-soft`; `rememberLazyListState` scrolled to the next-up season on open |
 | Home hero (optional) | One rounded card, or a `HorizontalPager` of them (2 to 5) with a row of dots under it: current `ink`, others `ink-subtle` (M3 has no pager indicator). Auto-advance as `guardrails.md` says (see `screens.md` **Home hero**) |
 | Messages | `Snackbar` with an action ("Try again" for a failed write); the action is plain text, not aqua |
-| Casting | Google Cast button + MediaRouter |
+| Casting (planned) | Google Cast button + MediaRouter, shown only when a device is found, pressed while connected; the device list is an M3 dialog on `surface-2` with "Stop casting"; the player shows a "Casting to <device>" status pill (`player.md`) |
 | Player skip buttons | clickable 48 dp buttons with a generic arrow glyph and the seconds as text over it (seconds from the profile's skip settings; 10 back, 10 forward by default), play / pause between them. A press turns the arrow about 30° its way and springs it back |
 | Skip feedback | `SeekRipple`: Android's double-tap seek look, a half circle on the side the video moved with a ripple per tap, three running chevrons and the total skipped so far ("30s"); shown for buttons and double-taps alike |
 | Settings rows | Toggle: a `Switch` row. Choice: a `ChoiceRow`, a menu (`DropdownMenu`) with the value at the right, never a sub-page. Link: a row with a chevron to a sub-page. Rows sit in rounded `surfaceContainerLow` cards with a leading tonal icon circle and group titles in aqua text |
