@@ -258,7 +258,8 @@ download's progress is not playback progress.
   remove all of it). A row's status line is "Downloaded · 850 MB", "Downloading · 120 MB of 850 MB" with a thin ink progress bar,
   "Waiting for Wi-Fi", "Waiting for a connection", "Waiting for the server", "Paused · …", or "Download failed" with the reason under it. A running download adds the time left ("· 8m left"); the notification says the same ("20 MB of 283 MB · 8m left").
   A row's menu is pause or resume, and remove; a tap opens the item's page. Empty: "Nothing downloaded yet".
-- **Settings:** "Offline mode" (device), "Download over mobile data" and "Storage limit for downloads" (profile).
+- **Settings:** "Offline mode" (device), "Download over mobile data" and "Storage limit for downloads" (profile), and **Delete downloaded files** in `danger` text (profile). It asks first (iOS confirmation dialog, Android `AlertDialog`) and deletes the profile's whole folder, leftover metadata of unfinished downloads and files no download lists included. Other profiles keep theirs.
+- **Where the files are:** per server and per profile (`<server>/<profile>/<item>`). iOS: the app's Documents folder, shown in the Files app under On My iPad, VibeyFin, out of iCloud and backups. Android: the app's own folder on shared storage (`Android/data/<app>/files/Downloads`), which a file manager can open. They go with their owner: signing out deletes the profile's, removing a server deletes the server's, uninstalling deletes all (so Android does not use the shared Movies folder, which outlives the app).
 
 ## Offline
 
@@ -331,8 +332,8 @@ A link row opens a sub-page.
 ### Profile
 
 Avatar, name and server; **Switch profile** (to "Who's watching?"); a read-only Server group (name and
-addresses); **Sign out** in `danger` text with a confirmation. Sign out clears the token and keeps the
-profile's tile in "Who's watching?", locked (the explicit sign-out the session rules allow). Name and avatar
+addresses); **Sign out** in `danger` text with a confirmation. Sign out clears the token, deletes the profile's
+downloads from the device and keeps the profile's tile in "Who's watching?", locked (the explicit sign-out the session rules allow). Name and avatar
 are edited in Jellyfin, not here. A kids profile has no Sign out _(planned with kids mode)_.
 
 ### Quality
