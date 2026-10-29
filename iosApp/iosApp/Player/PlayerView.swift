@@ -47,7 +47,6 @@ struct PlayerView: View {
     private var state: PlaybackUiState? { model.state }
     private var hasStream: Bool { state?.stream != nil }
     private var isWaiting: Bool { state?.message == nil && (state?.loading ?? true || controller.isBuffering) }
-    private var shownPosition: TimeInterval { scrubPosition ?? controller.position }
 
     var body: some View {
         ZStack {
@@ -205,6 +204,8 @@ struct PlayerView: View {
             } else if phase == .active {
                 pendingBackground?.cancel()
                 pendingBackground = nil
+                // A picker that closed while the app was away may never have said so.
+                menuOpen = false
                 showControls()
             }
         }
@@ -332,7 +333,13 @@ struct PlayerView: View {
                         }
                     )
                 }
-                AirPlayButton()
+                AirPlayButton(
+                    onTouch: {
+                        model.userInteraction()
+                        hideTask?.cancel()
+                    },
+                    onOpenChange: menuOpenChanged
+                )
             }
         }
     }
@@ -353,37 +360,22 @@ struct PlayerView: View {
     }
 
     private var bottomBar: some View {
-        VStack(spacing: 0) {
-            PlayerScrubber(
-                position: shownPosition,
-                duration: controller.duration,
-                bufferedPosition: controller.bufferedPosition,
-                onScrub: { seconds in
-                    model.userInteraction()
-                    scrubPosition = seconds
-                    hideTask?.cancel()
-                },
-                onCommit: { seconds in
-                    scrubPosition = nil
-                    controller.seek(to: seconds)
-                    scheduleHide()
-                },
-                trickplay: trickplayTiles
-            )
-            HStack {
-                Text(Strings.shared.clock(milliseconds: PlayerTime.milliseconds(shownPosition)))
-                Spacer()
-                if controller.duration > 0 {
-                    Text(Strings.shared.timeLeft(
-                        positionMs: PlayerTime.milliseconds(shownPosition),
-                        durationMs: PlayerTime.milliseconds(controller.duration)
-                    ))
-                }
-            }
-            .font(.footnote)
-            .monospacedDigit()
-            .foregroundStyle(.secondary)
-        }
+        PlayerProgressBar(
+            clock: controller.clock,
+            duration: controller.duration,
+            scrubPosition: scrubPosition,
+            onScrub: { seconds in
+                model.userInteraction()
+                scrubPosition = seconds
+                hideTask?.cancel()
+            },
+            onCommit: { seconds in
+                scrubPosition = nil
+                controller.seek(to: seconds)
+                scheduleHide()
+            },
+            trickplay: trickplayTiles
+        )
     }
 
     /// Top leading, under the close button and title row.
@@ -565,6 +557,8 @@ struct PlayerView: View {
 
     private func toggleControls() {
         model.userInteraction()
+        // A touch on the video means no menu or picker is open, whatever it last reported.
+        menuOpen = false
         if controlsVisible {
             hideTask?.cancel()
             setControlsVisible(false)

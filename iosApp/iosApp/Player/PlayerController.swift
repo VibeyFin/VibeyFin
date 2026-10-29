@@ -47,12 +47,22 @@ final class PlayerController: ObservableObject {
     private static let timing = Logger(subsystem: "app.vibeyfin", category: "timing")
     private var openedAt: CFTimeInterval = 0
 
+    /// The position and buffered position, which tick twice a second. They live in their own object so only the
+    /// views that draw them re-evaluate on a tick, not the whole player.
+    let clock = PlayerClock()
+
     /// Seconds. Follows the player about twice a second.
-    @Published private(set) var position: TimeInterval = 0
+    private(set) var position: TimeInterval {
+        get { clock.position }
+        set { clock.position = newValue }
+    }
     /// Seconds; 0 until the item knows its length.
     @Published private(set) var duration: TimeInterval = 0
     /// Seconds. The end of the loaded range holding the position; the position itself when none does.
-    @Published private(set) var bufferedPosition: TimeInterval = 0
+    private(set) var bufferedPosition: TimeInterval {
+        get { clock.bufferedPosition }
+        set { clock.bufferedPosition = newValue }
+    }
     /// The player means to play: it is playing, or waiting for data to. A stall is not a pause.
     @Published private(set) var isPlaying = false
     /// Waiting for data, on a first load or after a stall or a seek.
