@@ -36,6 +36,10 @@ class SettingsModel {
 
     fun onDismissSignOut() = host.viewModel.onDismissSignOut()
 
+    fun onConfirmPurgeDownloads() = host.viewModel.onConfirmPurgeDownloads()
+
+    fun onDismissPurgeDownloads() = host.viewModel.onDismissPurgeDownloads()
+
     /** A PIN was entered in the open PIN sheet. */
     fun onSubmitPin(pin: String) = host.viewModel.onSubmitPin(pin)
 

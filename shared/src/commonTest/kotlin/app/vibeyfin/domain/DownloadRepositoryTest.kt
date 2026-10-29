@@ -259,6 +259,19 @@ class DownloadRepositoryTest {
     private suspend fun settle() = kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.delay(300) }
 
     @Test
+    fun purgingDeletesTheProfilesWholeFolderEvenFilesNoRowKnows() = runTest {
+        saga()
+        repository.enqueue(alex, plan(DownloadTarget.Item("m1")))
+        listOf("srv-1/u1/stray/images/poster.img", "srv-1/u2/m9/video.mkv").forEach { app.files.open(it, append = false).also { out -> out.write("x".encodeToByteArray(), 1) }.close() }
+
+        repository.purge(alex)
+
+        assertNull(app.downloads.find("srv-1", "u1", "m1"))
+        assertTrue(app.files.contents.keys.none { it.startsWith("srv-1/u1/") }, "nothing of the profile is left")
+        assertTrue("srv-1/u2/m9/video.mkv" in app.files.contents, "another profile keeps its files")
+    }
+
+    @Test
     fun aPlatformWithoutDownloadsQueuesNothingToRun() = runTest {
         saga()
         val noScheduler = FakeDownloadScheduler(isSupported = false)

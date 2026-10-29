@@ -189,6 +189,7 @@ fun rootPage(v: SettingsValues): SettingsPage {
                         SettingKey.StorageLimit, Strings.storageLimitTitle, Strings.storageLimitHelp,
                         value = v.storageLimitGb, options = storageLimitOptions(v.storageLimitGb), visible = profile,
                     ),
+                    ActionItem(SettingKey.PurgeDownloads, Strings.purgeDownloadsTitle, Strings.purgeDownloadsHelp, destructive = true, visible = profile),
                 ),
             ),
             SettingsSection(

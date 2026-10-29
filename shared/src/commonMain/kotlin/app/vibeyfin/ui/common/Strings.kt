@@ -846,6 +846,11 @@ object Strings {
     val storageLimitTitle = "Storage limit for downloads"
     val storageLimitHelp = "New downloads wait when the limit is reached. Applies to this profile."
     val storageLimitNone = "No limit"
+    val purgeDownloadsTitle = "Delete downloaded files"
+    val purgeDownloadsHelp = "Removes every download of this profile and any leftover files, also those shown in the Files app."
+    val purgeDownloadsConfirmTitle = "Delete all downloaded files?"
+    val purgeDownloadsConfirmMessage = "The downloads of this profile are deleted from this device. Other profiles keep theirs. You can download again at any time."
+    val deleteFiles = "Delete"
 
     /** The notification that shows while downloads run in the background. */
     val downloadsChannelName = "Downloads"

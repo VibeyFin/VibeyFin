@@ -478,6 +478,22 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `purging downloads asks to confirm and then deletes the profile's files`() = runTest {
+        app.signedIn()
+        app.files.open("srv-1/u1/stray/images/poster.img", append = false).also { it.write("x".encodeToByteArray(), 1) }.close()
+        val viewModel = viewModel()
+        assertTrue(viewModel.uiState.first { it.hasProfile }.pages.values.flatMap { it.sections }.flatMap { it.items }.any { it.key == SettingKey.PurgeDownloads })
+
+        viewModel.onAction(SettingKey.PurgeDownloads)
+        assertTrue(viewModel.uiState.first { it.confirmPurgeDownloads }.confirmPurgeDownloads)
+        assertTrue(app.files.contents.isNotEmpty(), "nothing is deleted before the confirmation")
+
+        viewModel.onConfirmPurgeDownloads()
+        assertFalse(viewModel.uiState.first { !it.confirmPurgeDownloads }.confirmPurgeDownloads)
+        withContext(Dispatchers.Default) { withTimeout(5_000) { while (app.files.contents.isNotEmpty()) delay(10) } }
+    }
+
+    @Test
     fun `sign-out finishes even when the view model is cleared right away`() = runTest {
         val server = app.signedIn()
         val logout = server.hold("POST", "/Sessions/Logout")

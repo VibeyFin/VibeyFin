@@ -17,7 +17,7 @@ enum class SettingKey {
     RatingLimit, BlockedTags, AllowedHours,
     Notifications, NotificationScope,
     PictureInPicture,
-    OfflineMode, DownloadOverMobile, StorageLimit,
+    OfflineMode, DownloadOverMobile, StorageLimit, PurgeDownloads,
     AudioSubtitles, AudioLanguage, SubtitleLanguage, SubtitleMode, RememberTracks, NoLanguageMatch,
 }
 

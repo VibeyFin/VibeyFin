@@ -273,6 +273,15 @@ class DownloadRepository(
         dao.observeAll(profile.serverId, profile.userId).first().forEach { remove(profile, it.itemId) }
     }
 
+    /**
+     * Deletes everything of the profile on the device: every download, and the whole of its folder, so the metadata of downloads that
+     * never finished and any file that no row knows about go too. On a platform that shows the folder to the user, that is the clean-up.
+     */
+    suspend fun purge(profile: ProfileRef) {
+        removeAll(profile)
+        files.delete("${profile.serverId}/${profile.userId}")
+    }
+
     /** Starts the background work again after the app starts, for downloads an earlier run left unfinished. */
     suspend fun resumePending() = schedule()
 

@@ -17,6 +17,7 @@ import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.SubtitleMode
 import app.vibeyfin.data.api.ApiResult
+import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.domain.model.Server
 import app.vibeyfin.ui.common.PinGate
 import app.vibeyfin.ui.common.PinPrompt
@@ -46,6 +47,8 @@ data class SettingsUiState(
     val hasProfile: Boolean = false,
     /** Sign out was tapped and waits for the confirmation. */
     val confirmSignOut: Boolean = false,
+    /** "Delete downloaded files" was tapped and waits for the confirmation. */
+    val confirmPurgeDownloads: Boolean = false,
     /** The connected server's id, for the native app to open "Who's watching?" there after Switch profile or Sign out. Empty when disconnected. */
     val serverId: String = "",
     /** A kids profile is signed in; its pages leave out Advanced, Sign out and Notifications. */
@@ -90,6 +93,7 @@ class SettingsViewModel(
     private val subtitleStyleApplies: Boolean = true,
 ) : ViewModel() {
     private val confirmSignOut = MutableStateFlow(false)
+    private val confirmPurgeDownloads = MutableStateFlow(false)
     private val pin = PinGate(pins, auth, viewModelScope)
     /**
      * The profile whose PIN to open Settings is known not to be needed or has been entered. Only the gate collector below and a passed
@@ -141,7 +145,12 @@ class SettingsViewModel(
         }
         // A dialog left open while the connection drops (a revoked token, say) would otherwise wait for a session that is gone.
         viewModelScope.launch {
-            connection.state.collect { if (it !is ConnectionState.Connected) confirmSignOut.value = false }
+            connection.state.collect {
+                if (it !is ConnectionState.Connected) {
+                    confirmSignOut.value = false
+                    confirmPurgeDownloads.value = false
+                }
+            }
         }
     }
 
@@ -186,6 +195,7 @@ class SettingsViewModel(
         live(languageStatus),
         live(searches),
         live(closePage),
+        live(confirmPurgeDownloads),
     )
 
     /** Eager, so the reads start with the ViewModel and not when the screen first draws. */
@@ -258,6 +268,7 @@ class SettingsViewModel(
             pages = settingsPages(values),
             hasProfile = values.hasProfile,
             confirmSignOut = v[CONFIRM_SIGN_OUT] as Boolean,
+            confirmPurgeDownloads = v[CONFIRM_PURGE_DOWNLOADS] as Boolean,
             serverId = connected?.server?.id.orEmpty(),
             kidsProfile = kids == true,
             pinPrompt = v[PIN_PROMPT] as PinPrompt?,
@@ -362,6 +373,7 @@ class SettingsViewModel(
                 SettingKey.SwitchProfile -> guarded(PinReason.SwitchProfile, { it.switchProfile }) { connection.switchProfile() }
                 // A kids profile has no Sign out row; this keeps a stale tap from reaching it.
                 SettingKey.SignOut -> if (profileSettings.kidsProfile.first() != true) confirmSignOut.value = true
+                SettingKey.PurgeDownloads -> confirmPurgeDownloads.value = true
                 SettingKey.RemovePin -> guarded(PinReason.RemovePin, { it.hasPin }) { pins.removePin() }
                 SettingKey.SetPin -> choosePin()
                 // The current PIN first, then a new one typed twice.
@@ -473,6 +485,18 @@ class SettingsViewModel(
         confirmSignOut.value = false
     }
 
+    /** The user confirmed deleting the profile's downloaded files. */
+    fun onConfirmPurgeDownloads() {
+        confirmPurgeDownloads.value = false
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        // Deleting gigabytes must not stop because the screen was left.
+        applicationScope.launch { downloads.purge(ProfileRef(account.serverId, account.userId)) }
+    }
+
+    fun onDismissPurgeDownloads() {
+        confirmPurgeDownloads.value = false
+    }
+
     /** A PIN was entered in the open PIN sheet. */
     fun onSubmitPin(pin: String) = this.pin.submitPin(pin)
 
@@ -548,5 +572,6 @@ private const val LANGUAGES = 32
 private const val LANGUAGE_STATUS = 33
 private const val SEARCHES = 34
 private const val CLOSE_PAGE = 35
+private const val CONFIRM_PURGE_DOWNLOADS = 36
 
 private const val MB_PER_GB = 1_000L

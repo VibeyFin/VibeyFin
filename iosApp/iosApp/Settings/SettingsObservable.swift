@@ -125,6 +125,14 @@ final class SettingsObservable: ObservableObject {
         model.onDismissSignOut()
     }
 
+    func confirmPurgeDownloads() {
+        model.onConfirmPurgeDownloads()
+    }
+
+    func dismissPurgeDownloads() {
+        model.onDismissPurgeDownloads()
+    }
+
     deinit {
         model.close()
     }

@@ -79,6 +79,7 @@ struct SettingsPageView: View {
         } message: {
             Text(Strings.shared.signOutConfirmMessage)
         }
+        .purgeDownloadsDialog(model, isHeld: holdsPurgeDownloads)
     }
 
     @ViewBuilder
@@ -86,6 +87,13 @@ struct SettingsPageView: View {
         // A section has no id of its own: page and position are stable for a page that never reorders.
         ForEach(page.sections.enumerated().map { (id: "\(page.id.name)-\($0.offset)", section: $0.element) }, id: \.id) { entry in
             sectionView(entry.section, in: page)
+        }
+    }
+
+    private var holdsPurgeDownloads: Bool {
+        guard let page = model.page(pageId) else { return false }
+        return page.sections.contains { section in
+            section.items.contains { $0.key == SettingKey.purgedownloads }
         }
     }
 
@@ -125,6 +133,24 @@ struct SettingsPageView: View {
 }
 
 extension View {
+    /// "Delete downloaded files" asks first. Like Sign out's confirmation it belongs to the page that holds the row.
+    func purgeDownloadsDialog(_ model: SettingsObservable, isHeld: Bool) -> some View {
+        confirmationDialog(
+            Strings.shared.purgeDownloadsConfirmTitle,
+            isPresented: Binding(
+                get: { isHeld && model.state?.confirmPurgeDownloads == true },
+                set: { if !$0 { model.dismissPurgeDownloads() } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button(Strings.shared.deleteFiles.titleCased(), role: .destructive) {
+                model.confirmPurgeDownloads()
+            }
+        } message: {
+            Text(Strings.shared.purgeDownloadsConfirmMessage)
+        }
+    }
+
     /// The PIN sheet for the prompts of the reasons `presents` accepts. Each reason is accepted by exactly one view, so two pages of the
     /// stack never bind the same sheet.
     func settingsPinSheet(_ model: SettingsObservable, _ presents: @escaping (PinReason) -> Bool) -> some View {
