@@ -1,6 +1,7 @@
 package app.vibeyfin.app.navigation
 
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -108,7 +109,8 @@ fun FloatingNavigationBar(selected: Tab, tabs: List<Tab>, onSelect: (Tab) -> Uni
                     highlighted,
                     onMove = { dragged = it },
                     onRelease = {
-                        dragged?.let { if (it != selected) onSelect(it) }
+                        // Only a tab the bar still shows: offline there is no Library to go to.
+                        dragged?.let { if (it != selected && it in tabs) onSelect(it) }
                         dragged = null
                     },
                     onCancel = { dragged = null },
@@ -118,6 +120,9 @@ fun FloatingNavigationBar(selected: Tab, tabs: List<Tab>, onSelect: (Tab) -> Uni
             horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
         ) {
             tabs.forEach { tab ->
+                // A tab that leaves the bar (Library going offline) takes its place with it, so a drag over where it was finds
+                // the tab there now, not the one that is gone.
+                DisposableEffect(tab) { onDispose { spans.remove(tab) } }
                 BarItem(
                     tab,
                     active = tab == highlighted,
