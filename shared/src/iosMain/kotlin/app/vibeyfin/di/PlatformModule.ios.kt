@@ -31,6 +31,7 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import platform.Foundation.NSApplicationSupportDirectory
+import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSUserDomainMask
 
@@ -48,8 +49,10 @@ actual fun platformModule(): Module = module {
     single<LanDiscovery> { NoLanDiscovery }
     // Until the downloads phase for iOS lands an NWPathMonitor, iOS never goes offline by itself.
     single<NetworkMonitor> { IosNetworkMonitor() }
-    // Downloads: the files in Application Support (out of backups), and videos through a background URLSession.
-    single { IosDownloadFiles("${appSupportDirectory()}/downloads") }
+    // Downloads: the files in Documents, so they show in the Files app under "On My iPhone / VibeyFin" (out of backups), and videos
+    // through a background URLSession. They used to be in Application Support: whatever is still there is moved over.
+    // TODO: remove `legacyRoot` with the migration in IosDownloadFiles (beta only, developers' devices).
+    single { IosDownloadFiles("${documentsDirectory()}/Downloads", legacyRoot = "${appSupportDirectory()}/downloads") }
     single<DownloadFiles> { get<IosDownloadFiles>() }
     single { IosBackgroundTransfer(get(), get()) }
     single<ExternalVideoTransfer> { get<IosBackgroundTransfer>() }
@@ -57,6 +60,19 @@ actual fun platformModule(): Module = module {
     single<VideoConverter> { IosVideoConverter(get()) }
     single<DownloadScheduler> { IosDownloadScheduler(get(ApplicationScope), get()) { get<DownloadRunner>() } }
     single<ProgressSyncScheduler> { NoProgressSyncScheduler }
+}
+
+/** Documents is what the Files app shows of the app (with `UIFileSharingEnabled`); only the downloads go there. */
+@OptIn(ExperimentalForeignApi::class)
+private fun documentsDirectory(): String {
+    val url = NSFileManager.defaultManager.URLForDirectory(
+        directory = NSDocumentDirectory,
+        inDomain = NSUserDomainMask,
+        appropriateForURL = null,
+        create = true,
+        error = null,
+    )
+    return checkNotNull(url?.path) { "Documents directory is unavailable." }
 }
 
 /** Application Support is private to the app and, unlike Documents, not shown in the Files app. */
