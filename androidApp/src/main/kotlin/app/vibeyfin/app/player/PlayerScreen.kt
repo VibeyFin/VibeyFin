@@ -680,7 +680,7 @@ private fun open(player: ExoPlayer, http: DefaultHttpDataSource.Factory, stream:
 /**
  * Full screen while the player is up: system bars hidden (a swipe from the edge brings them back for
  * a moment), the screen kept on (no touches arrive while watching, so it would dim and sleep otherwise;
- * Media3's PlayerView leaves that to the app) and, on a phone, landscape. [restore] puts all three back as
+ * Media3's PlayerView leaves that to the app) and landscape. [restore] puts all three back as
  * they were, which also leaves the user's rotation lock alone. It is called as the player starts to leave,
  * so the screen underneath is turning upright while the app's slide transition shows it, and again
  * (harmlessly) on the way out.
@@ -700,9 +700,7 @@ private class PlayerWindow(private val activity: Activity) {
         activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         // Turning the phone as the player opens or closes cross-fades instead of spinning a snapshot.
         setRotationAnimation(WindowManager.LayoutParams.ROTATION_ANIMATION_CROSSFADE)
-        if (activity.resources.configuration.smallestScreenWidthDp < TABLET_WIDTH_DP) {
-            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        }
+        activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         // The picture runs into the camera cut-out too (landscape on a phone, and on a foldable's cover screen): left alone the
         // window keeps a bar of its own colour beside it.
         activity.window.attributes = activity.window.attributes.apply {
@@ -765,9 +763,6 @@ private fun videoRect(bounds: Rect, ratio: Float): Rect {
     val top = bounds.top + (height - fitHeight) / 2
     return Rect(left, top, left + fitWidth, top + fitHeight)
 }
-
-/** Tablets keep the orientation they are held in. */
-private const val TABLET_WIDTH_DP = 600
 
 internal tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this

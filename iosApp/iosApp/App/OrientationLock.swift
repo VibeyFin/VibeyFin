@@ -39,9 +39,9 @@ enum OrientationLock {
         return scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
     }
 
-    /// Phones turn to landscape for the player and stay there. Tablets keep the orientation they have.
+    /// Phones and tablets turn to landscape for the player and stay there. (An iPad refuses it while the app is windowed, in Split View or in Slide Over: "The current windowing mode does not allow for programmatic changes to interface orientation". The request is kept for when the system allows it.)
     static func lockLandscape() {
-        guard UIDevice.current.userInterfaceIdiom == .phone, orientationToRestore == nil else { return }
+        guard orientationToRestore == nil else { return }
         orientationToRestore = scene.map { maskFor($0.interfaceOrientation) } ?? .portrait
         apply(.landscape)
     }
