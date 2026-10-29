@@ -545,7 +545,7 @@ object Strings {
     val signOutFooter =
         "Asks to confirm. Your tile stays in \u201CWho\u2019s watching?\u201D and asks for the password next time. Not shown on a kids profile."
     val signOutConfirmTitle = "Sign out of this profile?"
-    val signOutConfirmMessage = "Your tile stays in \u201CWho\u2019s watching?\u201D and asks for the password next time."
+    val signOutConfirmMessage = "The downloads of this profile are deleted from this device. Your tile stays in \u201CWho\u2019s watching?\u201D and asks for the password next time."
 
     // Quality page
     val qualityTitle = "Quality"

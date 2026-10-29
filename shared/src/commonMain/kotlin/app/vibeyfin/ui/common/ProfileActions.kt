@@ -3,9 +3,11 @@ package app.vibeyfin.ui.common
 import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.ConnectionState
+import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SearchHistory
+import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.ui.home.HomeExit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +26,7 @@ class ProfileActions(
     private val searchHistory: SearchHistory,
     private val pins: PinLock,
     auth: AuthRepository,
+    private val downloads: DownloadRepository,
     private val scope: CoroutineScope,
 ) {
     private val pin = PinGate(pins, auth, scope)
@@ -50,8 +53,8 @@ class ProfileActions(
     }
 
     /**
-     * Revokes the token on the server, locks the profile here, forgets what it searched for, and goes back to "Who's watching?".
-     * (An expired session keeps the history: that profile is coming back.)
+     * Revokes the token on the server, locks the profile here, forgets what it searched for and deletes its downloads, and goes back
+     * to "Who's watching?". (An expired session keeps both: that profile is coming back.)
      */
     fun signOut() {
         val serverId = currentServerId() ?: return
@@ -60,6 +63,7 @@ class ProfileActions(
             if (profileSettings.kidsProfile.first() == true) return@launch
             // While still signed in: the history is the signed-in profile's.
             searchHistory.clear()
+            (connection.state.value as? ConnectionState.Connected)?.account?.let { downloads.purge(ProfileRef(it.serverId, it.userId)) }
             connection.signOut()
             _exit.value = HomeExit.WhoIsWatching(serverId)
         }

@@ -37,7 +37,7 @@ class ProfileMenuViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(ProfileMenuViewModel(app.connection, app.profileSettings, app.searchHistory, app.pins, app.auth))
+    private fun viewModel() = viewModels.track(ProfileMenuViewModel(app.connection, app.profileSettings, app.searchHistory, app.pins, app.auth, app.downloadRepository))
 
     private suspend fun signedIn() {
         val server = app.serverAt("http://nas:8096")
@@ -115,8 +115,10 @@ class ProfileMenuViewModelTest {
     }
 
     @Test
-    fun `signing out revokes the token`() = runTest {
+    fun `signing out revokes the token and deletes the profile's downloads`() = runTest {
         signedIn()
+        app.files.open("srv-1/u1/m1/video.mkv", append = false).also { it.write("x".encodeToByteArray(), 1) }.close()
+        app.files.open("srv-1/u2/m9/video.mkv", append = false).also { it.write("x".encodeToByteArray(), 1) }.close()
         val viewModel = viewModel()
         viewModel.uiState.first { it.userName != null }
 
@@ -124,6 +126,7 @@ class ProfileMenuViewModelTest {
 
         assertEquals(HomeExit.WhoIsWatching("srv-1"), viewModel.uiState.first { it.exit != null }.exit)
         assertNull(app.accounts.sessionToken("srv-1", "u1"))
+        assertEquals(setOf("srv-1/u2/m9/video.mkv"), app.files.contents.keys, "only the signed-out profile's files go")
     }
 
     @Test

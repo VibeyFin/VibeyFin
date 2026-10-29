@@ -460,8 +460,9 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `signing out asks to confirm and then clears the session`() = runTest {
+    fun `signing out asks to confirm and then clears the session and the profile's downloads`() = runTest {
         val server = app.signedIn()
+        app.files.open("srv-1/u1/m1/video.mkv", append = false).also { it.write("x".encodeToByteArray(), 1) }.close()
         server.on("POST", "/Sessions/Logout", Reply.noContent())
         val viewModel = viewModel()
         viewModel.uiState.first { it.hasProfile }
@@ -475,6 +476,7 @@ class SettingsViewModelTest {
         assertEquals(ConnectionState.Disconnected, app.connection.state.value)
         assertEquals(1, app.jellyfin.requestsTo("POST", "/Sessions/Logout").size)
         assertFalse(app.accounts.account("srv-1", "u1")!!.hasSession)
+        withContext(Dispatchers.Default) { withTimeout(5_000) { while (app.files.contents.isNotEmpty()) delay(10) } }
     }
 
     @Test

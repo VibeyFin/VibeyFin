@@ -477,8 +477,12 @@ class SettingsViewModel(
     /** The user confirmed signing out: revokes the token and returns to "Who's watching?". */
     fun onConfirmSignOut() {
         confirmSignOut.value = false
-        // The screen leaves right away and clears this view model, so the revoke and the lock must not depend on viewModelScope.
-        applicationScope.launch { connection.signOut() }
+        val account = (connection.state.value as? ConnectionState.Connected)?.account
+        // The screen leaves right away and clears this view model, so the revoke, the lock and the clean-up must not depend on viewModelScope.
+        applicationScope.launch {
+            account?.let { downloads.purge(ProfileRef(it.serverId, it.userId)) }
+            connection.signOut()
+        }
     }
 
     fun onDismissSignOut() {

@@ -28,7 +28,7 @@ fun dataModule() = module {
     single { get<VibeyFinDatabase>().downloadDao() }
 
     single<DevicePreferences> { DataStoreDevicePreferences(get()) }
-    single { ServerRepository(get(), get(), get(), get()) }
+    single { ServerRepository(get(), get(), get(), get(), get()) }
     single { AccountRepository(get(), get(), get()) }
     single { ProfileSettings(get(), get()) }
     single { PinLock(get(), get(), get()) }

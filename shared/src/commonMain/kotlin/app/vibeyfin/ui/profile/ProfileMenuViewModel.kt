@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.ConnectionState
+import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SearchHistory
@@ -34,8 +35,9 @@ class ProfileMenuViewModel(
     searchHistory: SearchHistory,
     pins: PinLock,
     auth: AuthRepository,
+    downloads: DownloadRepository,
 ) : ViewModel() {
-    private val profile = ProfileActions(connection, profileSettings, searchHistory, pins, auth, viewModelScope)
+    private val profile = ProfileActions(connection, profileSettings, searchHistory, pins, auth, downloads, viewModelScope)
 
     val uiState: StateFlow<ProfileMenuUiState> = combine(
         connection.state, profileSettings.kidsProfile, profile.pinPrompt, profile.exit,
