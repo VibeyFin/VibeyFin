@@ -1,5 +1,7 @@
 package app.vibeyfin.app.item
 
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.layout.Layout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -217,12 +219,13 @@ fun HeroDetails(
  * The actions under Play, each an icon over a label: My List (the server's favourites), Trailer (only when there is one),
  * Watched, and Download (only when the server lets the user). A trailer the server holds plays in the app; one on the web opens in the system's viewer.
  * Download starts a movie or an episode at once; once it exists, and for a show, the button opens a menu.
+ * They sit in four places of one width (the widest label's), the first at Play's left edge and the fourth ending at its right,
+ * evenly spread. With fewer (an episode has no trailer) they keep those places and the last ones stay empty.
  */
 @Composable
 private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorite: () -> Unit, onPlayTrailer: (String) -> Unit, onTogglePlayed: () -> Unit, downloads: DownloadCallbacks) {
     val openTrailerUrl = app.vibeyfin.app.navigation.LocalOpenTrailerUrl.current
-    // Only the actions that exist are drawn, so three share the width as evenly as four. The first starts at the left edge of Play and the last ends at its right edge, with the rest spread evenly between.
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    ActionRow(Modifier.fillMaxWidth()) {
         ActionButton(
             centered = centered,
             label = Strings.myList,
@@ -242,7 +245,7 @@ private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorit
         }
         if (state.canMark) {
             ActionButton(
-                centered = centered,
+                    centered = centered,
                 label = Strings.watchedAction,
                 description = state.markLabel,
                 icon = { modifier -> Icon(rememberVectorPainter(if (state.watched) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle), contentDescription = null, tint = VibeyFinTokens.Colors.ink, modifier = modifier) },
@@ -260,7 +263,7 @@ private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorit
  * season or all of it.
  */
 @Composable
-private fun RowScope.DownloadButton(state: ItemUiState, centered: Boolean, downloads: DownloadCallbacks) {
+private fun DownloadButton(state: ItemUiState, centered: Boolean, downloads: DownloadCallbacks) {
     var menu by remember { mutableStateOf(false) }
     val ensureNotifications = rememberDownloadNotificationPermission()
     val item = state.item ?: return
@@ -302,9 +305,32 @@ private fun RowScope.DownloadButton(state: ItemUiState, centered: Boolean, downl
 @Composable
 private fun painterVector(id: Int) = ImageVector.vectorResource(id)
 
-/** One action: the icon over its label, in a quarter of the row. */
+/** The places in the action row: My List, Trailer, Watched, Download. */
+private const val ACTION_PLACES = 4
+
+/**
+ * The action row's places: [ACTION_PLACES] of one width, the widest action's, the first at the row's left edge and the last ending
+ * at its right, evenly spread. Fewer actions keep the same places from the left; the rest stay empty. Too narrow for that, the
+ * places share the width.
+ */
 @Composable
-private fun RowScope.ActionButton(label: String, description: String, icon: @Composable (Modifier) -> Unit, centered: Boolean, popKey: Boolean? = null, menu: @Composable () -> Unit = {}, onClick: () -> Unit) {
+private fun ActionRow(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Layout(content, modifier) { measurables, constraints ->
+        val total = constraints.maxWidth
+        val widest = measurables.maxOfOrNull { it.maxIntrinsicWidth(constraints.maxHeight) } ?: 0
+        val place = minOf(widest, total / ACTION_PLACES)
+        val gap = (total - place * ACTION_PLACES) / (ACTION_PLACES - 1)
+        val placeables = measurables.map { it.measure(Constraints.fixedWidth(place)) }
+        val height = placeables.maxOfOrNull { it.height } ?: 0
+        layout(total, height) {
+            placeables.forEachIndexed { i, placeable -> placeable.placeRelative(i * (place + gap), 0) }
+        }
+    }
+}
+
+/** One action: the icon over its label, filling the place [ActionRow] gives it. */
+@Composable
+private fun ActionButton(label: String, description: String, icon: @Composable (Modifier) -> Unit, centered: Boolean, popKey: Boolean? = null, menu: @Composable () -> Unit = {}, onClick: () -> Unit) {
     // A toggle springs when it flips: it swells, then settles with a little bounce.
     val pop = remember { Animatable(1f) }
     var first by remember { mutableStateOf(true) }
@@ -319,8 +345,9 @@ private fun RowScope.ActionButton(label: String, description: String, icon: @Com
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1, Alignment.CenterVertically),
             modifier = Modifier
-                // A generous target: at least 64 wide and 72 tall, well over the 48 dp minimum.
+                // A generous target: at least 64 wide and 72 tall, well over the 48 dp minimum; as wide as its place.
                 .defaultMinSize(minWidth = 64.dp, minHeight = 72.dp)
+                .fillMaxWidth()
                 .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
                 .clickable(role = Role.Button, onClick = onClick)
                 .semantics { contentDescription = description }
