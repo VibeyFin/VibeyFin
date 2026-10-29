@@ -28,9 +28,8 @@ import app.vibeyfin.ui.downloads.DownloadFlow
 import app.vibeyfin.ui.downloads.RemovePrompt
 import app.vibeyfin.ui.downloads.downloadParts
 import app.vibeyfin.ui.downloads.profileOrNull
-import app.vibeyfin.ui.common.PinGate
+import app.vibeyfin.ui.common.ProfileActions
 import app.vibeyfin.ui.common.PinPrompt
-import app.vibeyfin.ui.common.PinReason
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.item.seasonIndex
 import kotlin.random.Random
@@ -162,15 +161,15 @@ class HomeViewModel(
     private val changes: WatchChanges,
     private val clock: Clock,
     private val profileSettings: ProfileSettings,
-    private val searchHistory: SearchHistory,
-    private val pins: PinLock,
+    searchHistory: SearchHistory,
+    pins: PinLock,
     auth: AuthRepository,
     private val downloads: DownloadRepository,
 ) : ViewModel() {
-    private val pin = PinGate(pins, auth, viewModelScope)
+    private val profile = ProfileActions(connection, profileSettings, searchHistory, pins, auth, viewModelScope)
     private val downloadFlow = DownloadFlow(viewModelScope, downloads) { connection.state.value.profileOrNull() }
     private val canDownload = MutableStateFlow(true)
-    private val exit = MutableStateFlow<HomeExit?>(null)
+    private val exit = profile.exit
     // Signed in, the libraries are always on their way, so the first thing to show is loading, not empty.
     private val libraries = MutableStateFlow(Libraries(loading = true))
     private val continueRow = MutableStateFlow(ContinueRow(loading = true))
@@ -239,7 +238,7 @@ class HomeViewModel(
     }
 
     val uiState: StateFlow<HomeUiState> = combine(
-        content, profileSettings.kidsProfile, pin.prompt, downloadParts(connection, downloads, downloadFlow, canDownload),
+        content, profileSettings.kidsProfile, profile.pinPrompt, downloadParts(connection, downloads, downloadFlow, canDownload),
     ) { content, kids, prompt, parts ->
         content.copy(
             kidsProfile = kids == true,
@@ -725,62 +724,22 @@ class HomeViewModel(
     }
 
     /** Leaves this profile signed in and goes back to "Who's watching?" on the same server, after its PIN if it asks. */
-    fun onSwitchProfile() {
-        val serverId = currentServerId() ?: return
-        leaveProfile(HomeExit.WhoIsWatching(serverId))
-    }
+    fun onSwitchProfile() = profile.switchProfile()
 
     /** Leaving for the servers list is leaving the profile too, so it asks for the PIN the same way. */
-    fun onSwitchServer() {
-        if (currentServerId() == null) {
-            connection.switchProfile()
-            exit.value = HomeExit.Servers
-            return
-        }
-        leaveProfile(HomeExit.Servers)
-    }
+    fun onSwitchServer() = profile.switchServer()
 
     /** A PIN was entered in the open PIN sheet. */
-    fun onSubmitPin(pin: String) = this.pin.submitPin(pin)
+    fun onSubmitPin(pin: String) = profile.submitPin(pin)
 
     /** "Forgot PIN?": the PIN sheet asks for the profile's Jellyfin password instead. */
-    fun onForgotPin() = pin.forgotPin()
+    fun onForgotPin() = profile.forgotPin()
 
     /** The Jellyfin password entered after "Forgot PIN?". */
-    fun onSubmitPassword(password: String) = pin.submitPassword(password)
+    fun onSubmitPassword(password: String) = profile.submitPassword(password)
 
-    fun onDismissPin() = pin.dismiss()
+    fun onDismissPin() = profile.dismissPin()
 
-    private fun leaveProfile(to: HomeExit) {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        viewModelScope.launch {
-            val leave: suspend () -> Unit = {
-                connection.switchProfile()
-                exit.value = to
-            }
-            if (pins.gates(account.serverId, account.userId).switchProfile) {
-                pin.ask(PinReason.SwitchProfile, account.serverId, account.userId, account.name, onPass = leave)
-            } else {
-                leave()
-            }
-        }
-    }
-
-    /**
-     * Revokes the token on the server, locks the profile here, forgets what it searched for, and goes back to "Who's watching?".
-     * (An expired session keeps the history: that profile is coming back.)
-     */
-    fun onSignOut() {
-        val serverId = currentServerId() ?: return
-        viewModelScope.launch {
-            // A kids profile has no Sign out; its menu hides it, and this keeps it that way.
-            if (profileSettings.kidsProfile.first() == true) return@launch
-            // While still signed in: the history is the signed-in profile's.
-            searchHistory.clear()
-            connection.signOut()
-            exit.value = HomeExit.WhoIsWatching(serverId)
-        }
-    }
-
-    private fun currentServerId() = (connection.state.value as? ConnectionState.Connected)?.server?.id
+    /** Revokes the token, locks the profile here and goes back to "Who's watching?"; a kids profile can't. */
+    fun onSignOut() = profile.signOut()
 }
