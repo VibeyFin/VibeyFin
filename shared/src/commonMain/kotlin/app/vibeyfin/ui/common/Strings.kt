@@ -815,6 +815,8 @@ object Strings {
         if (total == null || total <= 0) fileSize(done) else "${fileSize(done)} of ${fileSize(total)}"
 
     fun downloadStorageUsed(bytes: Long) = "${fileSize(bytes)} used"
+    /** Above how much the downloads take, in the storage card at the top of Downloads (Android). */
+    val downloadsStorageHeading = "On this device"
     fun downloadConfirmTitle(episodes: Int) = if (episodes == 1) "Download 1 episode?" else "Download $episodes episodes?"
     fun downloadConfirmSize(bytes: Long) = "They take about ${fileSize(bytes)}."
 
@@ -823,6 +825,10 @@ object Strings {
 
     val offlineBannerTitle = "You're offline"
     val offlineBannerHelp = "Showing what you've downloaded."
+    /** The toast when the app goes offline for want of a network. */
+    val offlineToast = "You're offline. Showing what you've downloaded."
+    /** The toast when Offline mode is switched on. */
+    val offlineModeToast = "Offline mode is on. Showing what you've downloaded."
     val offlineByChoiceHelp = "Offline mode is on. Showing what you've downloaded."
     val goOnline = "Go online"
     val serverUnreachableBannerTitle = "Can't reach the server"

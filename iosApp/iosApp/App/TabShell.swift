@@ -64,7 +64,7 @@ struct TabShell: View {
     /// One shared Settings ViewModel for the whole page tree, made again each time Settings opens so the PIN to open it is asked every time.
     @State private var settings = SettingsSession()
     @StateObject private var player = PlayerSession()
-    // Offline (no network, or the switch in Settings): three tabs, from what is on the device. The banner says so, and how to leave it.
+    // Offline (no network, or the switch in Settings): three tabs, from what is on the device. A toast says so as it starts.
     @StateObject private var offlineMode = OfflineModeObservable()
     @StateObject private var banner = AppBannerObservable()
     @Environment(\.openURL) private var openURL
@@ -81,6 +81,8 @@ struct TabShell: View {
             OfflineBannerView(model: banner)
             tabs
         }
+        // Going offline is said once, in a toast over the bottom, not a strip across the top.
+        .offlineToast(banner)
         .onAppear {
             offlineMode.start()
             banner.start()
