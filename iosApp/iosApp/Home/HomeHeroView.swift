@@ -9,7 +9,13 @@ struct HomeHeroView: View {
     let onPlay: () -> Void
     let onOpen: (String) -> Void
     let onMyList: () -> Void
+    /// What VoiceOver reads for the card; a carousel page says which of how many it is.
+    var label: String? = nil
+    /// Called when a long press opens the poster menu, so a carousel stops moving under it.
+    var onLongPressed: () -> Void = {}
 
+    // A long press opens the same menu as a poster's (Details, Trailer, My List).
+    @Environment(\.tileMenu) private var tileMenu
     @Environment(\.horizontalSizeClass) private var sizeClass
     private var wide: Bool { sizeClass == .regular }
 
@@ -29,14 +35,19 @@ struct HomeHeroView: View {
             .overlay(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous).stroke(Color(.tertiarySystemBackground), lineWidth: 1))
             .contentShape(Rectangle())
             .onTapGesture { onOpen(item.id) }
+            .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in
+                guard let tileMenu else { return }
+                onLongPressed()
+                tileMenu.open(item)
+            })
             .accessibilityElement(children: .contain)
-            .accessibilityLabel(Strings.shared.featured(title: item.title))
+            .accessibilityLabel(label ?? Strings.shared.featured(title: item.title))
     }
 
     private var details: some View {
         VStack(alignment: wide ? .leading : .center, spacing: Space.s2) {
             if let logo = item.logoUrl, let url = URL(string: logo) {
-                AsyncImage(url: url) { image in
+                CachedImage(url: url) { image in
                     image.resizable().scaledToFit()
                 } placeholder: {
                     Color.clear
@@ -75,12 +86,21 @@ struct HomeHeroView: View {
 }
 
 /// The hero's place while it is being picked: the same rounded card at the same height, with grey stand-ins for the logo, the line
-/// and the two buttons, so the hero does not just appear.
+/// and the two buttons, so the hero does not just appear. With `dots`, the page dots' row under it is kept empty.
 struct HomeHeroSkeleton: View {
+    var dots = false
+
     @Environment(\.horizontalSizeClass) private var sizeClass
     private var wide: Bool { sizeClass == .regular }
 
     var body: some View {
+        VStack(spacing: 0) {
+            card
+            if dots { Color.clear.frame(height: HomeHeroCarousel.dotsHeight) }
+        }
+    }
+
+    private var card: some View {
         Color(.tertiarySystemBackground)
             .aspectRatio(wide ? 2.6 : 4.0 / 3.0, contentMode: .fit)
             .overlay(alignment: wide ? .bottomLeading : .bottom) {

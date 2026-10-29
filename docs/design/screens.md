@@ -62,16 +62,22 @@ The page a button or the sheet opens.
 
 ## Home hero
 
-An optional card between the category buttons and Continue watching. One title per app session, never a carousel.
+An optional card between the category buttons and Continue watching: one title, or a carousel of up to five, picked once per app session.
 
 - **Which:** picked at random from recently added and My List, only titles with both a `Backdrop` and a `Logo` image, and never one the
-  user has watched. Nothing qualifies, or the profile turned it off ("Featured title on Home" in Settings): no hero, no gap.
+  user has watched, never one twice; as many as "Featured titles on Home" says (Off, 1 to 5; 1 by default). Fewer qualify: only those.
+  Nothing qualifies, or the setting is Off: no hero, no gap.
+- **Carousel (2 or more):** the cards page sideways, full width, no peek. Page dots sit centred under the card, outside the artwork
+  (iOS `UIPageControl`, Android a row of dots, current `ink`, others `ink-subtle`). Every 8 seconds it moves to the next item, and after
+  the last comes the first; swipes go round the same way. A swipe or a long press stops it for the visit, a touch pauses it, and it never moves under Reduce Motion / Remove animations or with
+  VoiceOver / TalkBack on. Each page reads "Featured, 2 of 3: <title>, opens its page".
 - **Card:** a rounded card (`radius-artwork`), 4:3 on a phone and 2.6:1 from 600dp. The `Backdrop` fills it under a `scrim` that rises
   from the bottom; over it, centred: the `Logo`, a line of what it is (a movie or a show) and its genres.
-- **Buttons:** Play (the one aqua button) beside My List (a heart), 40dp tall. Play on a movie starts it; on a show it starts the next
-  episode, else the first episode of the first season that is not Specials, else opens the page. Tapping the picture opens the page.
+- **Buttons:** Play (the one aqua button) beside My List (a heart), 40dp tall, acting on the item showing. Play on a movie starts it; on a show it starts the next
+  episode, else the first episode of the first season that is not Specials, else opens the page. Tapping the picture opens the page; a long press opens
+  the poster menu (Details, Trailer, My List), the same sheet as a poster's.
 - **Loading:** Home waits until it has read the profile's hero setting, so the skeleton is in the first frame and never slides in; it
-  is the card's exact shape. The hero's own slot does not animate its placement when the rows below load.
+  is the card's exact shape, with the dots row's height under it when the setting is 2 or more. The hero's own slot does not animate its placement when the rows below load.
 
 ## Library
 

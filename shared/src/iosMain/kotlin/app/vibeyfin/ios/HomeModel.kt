@@ -29,11 +29,11 @@ class HomeModel {
     fun onSubmitPassword(password: String) = host.viewModel.onSubmitPassword(password)
 
 
-    fun onHeroPlay() = host.viewModel.onHeroPlay()
+    fun onHeroPlay(itemId: String) = host.viewModel.onHeroPlay(itemId)
 
     fun onHeroNavHandled() = host.viewModel.onHeroNavHandled()
 
-    fun onHeroMyList() = host.viewModel.onHeroMyList()
+    fun onHeroMyList(itemId: String) = host.viewModel.onHeroMyList(itemId)
 
     fun onRetryContinue() = host.viewModel.onRetryContinue()
 

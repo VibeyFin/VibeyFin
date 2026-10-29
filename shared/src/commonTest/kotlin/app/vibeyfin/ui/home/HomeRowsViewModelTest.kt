@@ -184,7 +184,7 @@ class HomeRowsViewModelTest {
             },
         )
 
-        val hero = viewModel().uiState.first { it.hero != null }.hero
+        val hero = viewModel().uiState.first { it.heroes.isNotEmpty() }.heroes.firstOrNull()
 
         assertEquals("star", hero?.id)
     }
@@ -199,7 +199,7 @@ class HomeRowsViewModelTest {
     fun theHeroCandidatesAreAskedForWithTheirGenres() = runTest {
         heroServer()
 
-        viewModel().uiState.first { it.hero != null }
+        viewModel().uiState.first { it.heroes.isNotEmpty() }
 
         assertTrue(app.jellyfin.requestsTo("GET", "/Items").any { it.query["fields"] == "Genres" })
     }
@@ -210,16 +210,37 @@ class HomeRowsViewModelTest {
         server.on("POST", "/UserFavoriteItems/star", Reply.status(HttpStatusCode.ServiceUnavailable))
         val inFlight = server.hold("POST", "/UserFavoriteItems/star")
         val viewModel = viewModel()
-        viewModel.uiState.first { it.hero != null }
+        viewModel.uiState.first { it.heroes.isNotEmpty() }
 
-        viewModel.onHeroMyList()
+        viewModel.onHeroMyList("star")
         // The write has not been answered: the heart is already filled.
-        assertTrue(viewModel.uiState.value.hero?.isFavorite == true)
+        assertTrue(viewModel.uiState.value.heroes.single().isFavorite == true)
         inFlight.open()
         val failed = viewModel.uiState.first { it.actionMessage != null }
 
-        assertEquals(false, failed.hero?.isFavorite)
+        assertEquals(false, failed.heroes.single().isFavorite)
         assertEquals(LoadMessages.ADD_TO_MY_LIST_FAILED, failed.actionMessage)
+    }
+
+    @Test
+    fun myListChangedElsewhereFillsOrEmptiesTheHerosHeart() = runTest {
+        val server = heroServer()
+        val viewModel = viewModel()
+        assertEquals(false, viewModel.uiState.first { it.heroes.isNotEmpty() }.heroes.single().isFavorite)
+
+        // Put on My List from the poster menu (a long press on the hero opens it): Home reads My List again.
+        server.on("GET", "/Items") { request ->
+            if (request.query["filters"] == "IsFavorite") Reply.json(itemsJson(itemJson("star", "Star", backdropTag = "b", logoTag = "l"))) else Reply.json(itemsJson(itemJson("x", "X")))
+        }
+        app.watchChanges.changed()
+        assertTrue(viewModel.uiState.first { it.heroes.single().isFavorite }.heroes.single().isFavorite)
+
+        // Taken off again; the row holds the whole (now empty) list, so the heart empties.
+        server.on("GET", "/Items") { request ->
+            if (request.query["filters"] == "IsFavorite") Reply.json(itemsJson()) else Reply.json(itemsJson(itemJson("x", "X")))
+        }
+        app.watchChanges.changed()
+        assertFalse(viewModel.uiState.first { !it.heroes.single().isFavorite }.heroes.single().isFavorite)
     }
 
     private suspend fun showHeroServer(): app.vibeyfin.testing.FakeServer = server(
@@ -236,9 +257,9 @@ class HomeRowsViewModelTest {
     fun playOnAMovieHeroPlaysIt() = runTest {
         heroServer()
         val viewModel = viewModel()
-        viewModel.uiState.first { it.hero != null }
+        viewModel.uiState.first { it.heroes.isNotEmpty() }
 
-        viewModel.onHeroPlay()
+        viewModel.onHeroPlay("star")
 
         assertEquals(HeroNav.Play("star"), viewModel.uiState.first { it.heroNav != null }.heroNav)
         viewModel.onHeroNavHandled()
@@ -250,9 +271,9 @@ class HomeRowsViewModelTest {
         val server = showHeroServer()
         server.on("GET", "/Shows/NextUp", Reply.json(itemsJson(itemJson("e7", "Seven", type = "Episode", seasonNumber = 2, episodeNumber = 3))))
         val viewModel = viewModel()
-        viewModel.uiState.first { it.hero != null }
+        viewModel.uiState.first { it.heroes.isNotEmpty() }
 
-        viewModel.onHeroPlay()
+        viewModel.onHeroPlay("show")
 
         assertEquals(HeroNav.Play("e7"), viewModel.uiState.first { it.heroNav != null }.heroNav)
     }
@@ -265,9 +286,9 @@ class HomeRowsViewModelTest {
             if (request.query["seasonId"] == "s1") Reply.json(itemsJson(itemJson("e11", "One", type = "Episode"), itemJson("e12", "Two", type = "Episode"))) else Reply.json(itemsJson(itemJson("sp", "Special", type = "Episode")))
         }
         val viewModel = viewModel()
-        viewModel.uiState.first { it.hero != null }
+        viewModel.uiState.first { it.heroes.isNotEmpty() }
 
-        viewModel.onHeroPlay()
+        viewModel.onHeroPlay("show")
 
         assertEquals(HeroNav.Play("e11"), viewModel.uiState.first { it.heroNav != null }.heroNav)
     }
@@ -277,9 +298,9 @@ class HomeRowsViewModelTest {
         val server = showHeroServer()
         server.on("GET", "/Shows/show/Seasons", Reply.json(itemsJson()))
         val viewModel = viewModel()
-        viewModel.uiState.first { it.hero != null }
+        viewModel.uiState.first { it.heroes.isNotEmpty() }
 
-        viewModel.onHeroPlay()
+        viewModel.onHeroPlay("show")
 
         assertEquals(HeroNav.Details("show"), viewModel.uiState.first { it.heroNav != null }.heroNav)
     }
@@ -290,7 +311,7 @@ class HomeRowsViewModelTest {
         val viewModel = viewModel()
 
         // Once picked there is a hero and no grey card left (before that the grey card held its place).
-        val picked = viewModel.uiState.first { it.hero != null }
+        val picked = viewModel.uiState.first { it.heroes.isNotEmpty() }
 
         assertFalse(picked.heroLoading)
     }
@@ -303,13 +324,13 @@ class HomeRowsViewModelTest {
         viewModel.rowsLoaded(7)
         val decided = viewModel.uiState.first { !it.heroLoading }
 
-        assertNull(decided.hero)
+        assertTrue(decided.heroes.isEmpty())
     }
 
     @Test
     fun aProfileWithTheHeroOffNeverShowsAGreyCard() = runTest {
         heroServer()
-        app.profileSettings.setShowHomeHero(false)
+        app.profileSettings.setHomeHeroItems(0)
         val viewModel = viewModel()
         val states = mutableListOf<HomeUiState>()
         backgroundScope.launch { viewModel.uiState.collect { states += it } }
@@ -322,12 +343,12 @@ class HomeRowsViewModelTest {
     @Test
     fun aProfileWithTheHeroTurnedOffGetsNoneAndAsksForNoCandidates() = runTest {
         heroServer()
-        app.profileSettings.setShowHomeHero(false)
+        app.profileSettings.setHomeHeroItems(0)
         val viewModel = viewModel()
 
         viewModel.rowsLoaded(7)
 
-        assertNull(viewModel.uiState.value.hero)
+        assertTrue(viewModel.uiState.value.heroes.isEmpty())
         // Only the genre rows and My List asked for /Items: nobody asked for the hero's recently added candidates.
         assertTrue(app.jellyfin.requestsTo("GET", "/Items").none { it.query["sortBy"] == "DateCreated" && it.query["filters"] == null })
     }
@@ -336,13 +357,101 @@ class HomeRowsViewModelTest {
     fun turningTheHeroOnOrOffWhileHomeIsOpenShowsOrRemovesIt() = runTest {
         heroServer()
         val viewModel = viewModel()
-        viewModel.uiState.first { it.hero != null }
+        viewModel.uiState.first { it.heroes.isNotEmpty() }
 
-        app.profileSettings.setShowHomeHero(false)
-        assertNull(viewModel.uiState.first { it.hero == null }.hero)
+        app.profileSettings.setHomeHeroItems(0)
+        assertNull(viewModel.uiState.first { it.heroes.isEmpty() }.heroes.firstOrNull())
 
-        app.profileSettings.setShowHomeHero(true)
-        assertEquals("star", viewModel.uiState.first { it.hero != null }.hero?.id)
+        app.profileSettings.setHomeHeroItems(1)
+        assertEquals("star", viewModel.uiState.first { it.heroes.isNotEmpty() }.heroes.firstOrNull()?.id)
+    }
+
+    private suspend fun threeHeroServer(myList: Reply = Reply.json(itemsJson())): app.vibeyfin.testing.FakeServer = server(
+        myList = myList,
+        genreItems = { genre ->
+            if (genre == null) {
+                Reply.json(
+                    itemsJson(
+                        itemJson("a", "A", backdropTag = "b", logoTag = "l"),
+                        itemJson("b", "B", backdropTag = "b", logoTag = "l"),
+                        itemJson("c", "C", backdropTag = "b", logoTag = "l"),
+                        itemJson("plain", "Plain"),
+                    ),
+                )
+            } else {
+                Reply.json(itemsJson(itemJson("top-$genre", "Top $genre")))
+            }
+        },
+    )
+
+    @Test
+    fun aProfileThatFeaturesSeveralGetsThatManyDifferentOnes() = runTest {
+        threeHeroServer()
+        app.profileSettings.setHomeHeroItems(2)
+        val viewModel = viewModel()
+
+        val state = viewModel.uiState.first { it.heroes.isNotEmpty() }
+
+        assertEquals(2, state.heroSlots)
+        assertEquals(2, state.heroes.map { it.id }.toSet().size)
+        assertTrue(state.heroes.all { it.id in setOf("a", "b", "c") })
+    }
+
+    @Test
+    fun askingForMoreThanQualifyShowsOnlyThoseThatDo() = runTest {
+        threeHeroServer()
+        app.profileSettings.setHomeHeroItems(5)
+        val viewModel = viewModel()
+
+        val state = viewModel.uiState.first { it.heroes.isNotEmpty() }
+
+        assertEquals(5, state.heroSlots)
+        assertEquals(setOf("a", "b", "c"), state.heroes.map { it.id }.toSet())
+    }
+
+    @Test
+    fun theGreyCardKnowsHowManyAreComingFromTheFirstState() = runTest {
+        threeHeroServer()
+        app.profileSettings.setHomeHeroItems(3)
+        val viewModel = viewModel()
+        val states = mutableListOf<HomeUiState>()
+        backgroundScope.launch { viewModel.uiState.collect { states += it } }
+
+        viewModel.uiState.first { it.heroes.isNotEmpty() }
+
+        assertTrue(states.filter { it.heroLoading }.all { it.heroSlots == 3 })
+    }
+
+    @Test
+    fun playAndMyListActOnTheFeaturedItemTheyAreGiven() = runTest {
+        // My List as the server has it once "b" is put on it, read again after the write.
+        val server = threeHeroServer(myList = Reply.json(itemsJson(itemJson("b", "B", backdropTag = "b", logoTag = "l"))))
+        server.on("POST", "/UserFavoriteItems/b", Reply.json("{}"))
+        app.profileSettings.setHomeHeroItems(3)
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.heroes.size == 3 }
+
+        viewModel.onHeroPlay("b")
+        assertEquals(HeroNav.Play("b"), viewModel.uiState.first { it.heroNav != null }.heroNav)
+        viewModel.onHeroMyList("b")
+        val after = viewModel.uiState.first { state -> state.heroes.any { it.isFavorite } }
+
+        assertEquals(listOf("b"), after.heroes.filter { it.isFavorite }.map { it.id })
+        // Something no longer featured does nothing.
+        viewModel.onHeroPlay("gone")
+        viewModel.onHeroNavHandled()
+        assertNull(viewModel.uiState.first { it.heroNav == null }.heroNav)
+    }
+
+    @Test
+    fun aNewNumberInSettingsPicksAgainForIt() = runTest {
+        threeHeroServer()
+        val viewModel = viewModel()
+        assertEquals(1, viewModel.uiState.first { it.heroes.isNotEmpty() }.heroes.size)
+
+        app.profileSettings.setHomeHeroItems(3)
+
+        assertEquals(3, viewModel.uiState.first { it.heroes.size == 3 }.heroSlots)
     }
 
     @Test
@@ -352,7 +461,7 @@ class HomeRowsViewModelTest {
 
         viewModel.rowsLoaded(7)
 
-        assertNull(viewModel.uiState.value.hero)
+        assertTrue(viewModel.uiState.value.heroes.isEmpty())
     }
 
     @Test

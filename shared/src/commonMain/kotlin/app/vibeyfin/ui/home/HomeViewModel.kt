@@ -20,6 +20,7 @@ import app.vibeyfin.domain.SearchHistory
 import app.vibeyfin.domain.WatchChanges
 import app.vibeyfin.domain.WatchRepository
 import app.vibeyfin.domain.model.ItemKind
+import app.vibeyfin.domain.model.ItemPage
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.downloads.DownloadAction
@@ -89,10 +90,12 @@ data class HomeUiState(
      * showing (loading, failed or with items) are here.
      */
     val rows: List<MediaRow> = emptyList(),
-    /** The featured item above Continue watching; null until it is picked, and when nothing qualifies. */
-    val hero: MediaItem? = null,
+    /** The featured items above Continue watching, in the order they page; empty until they are picked, and when nothing qualifies. */
+    val heroes: List<MediaItem> = emptyList(),
     /** The hero is switched on and being picked: a grey card holds its place, so it does not just appear. */
     val heroLoading: Boolean = false,
+    /** How many items the profile's hero features, 0 when it is off. From 2 the grey card keeps room for the page dots. */
+    val heroSlots: Int = 0,
     /** Set when the hero's Play was tapped and the target is known; the screen opens it and calls `onHeroNavHandled`. */
     val heroNav: HeroNav? = null,
     /** A kids profile: the menu has no Sign out. */
@@ -107,9 +110,12 @@ data class HomeUiState(
     val removePrompt: RemovePrompt? = null,
 )
 
-/** The hero: the item once picked, or [loading] while it is being picked. */
+/** The hero: the items once picked, or [loading] while they are being picked; [slots] is the profile's setting. */
 /** [ready] is false until the profile's hero setting has been read: Home waits for it, so the grey card is in its very first frame, not slid in later. */
-private data class HeroState(val item: MediaItem? = null, val loading: Boolean = false, val ready: Boolean = false)
+private data class HeroState(val items: List<MediaItem> = emptyList(), val loading: Boolean = false, val ready: Boolean = false, val slots: Int = 0) {
+    /** [items] with the one with [id] changed; the same when it is no longer featured. */
+    fun withItem(id: String, change: (MediaItem) -> MediaItem) = copy(items = items.map { if (it.id == id) change(it) else it })
+}
 
 /** The sheet and the page to open, which change together. */
 private data class CategoryUi(
@@ -182,6 +188,8 @@ class HomeViewModel(
     private val myListRow = MutableStateFlow<MediaRow?>(null)
     // Picked once per session (a new profile or address picks again).
     private val hero = MutableStateFlow(HeroState())
+    // The featured items whose My List write is in flight; a second tap on one waits for it.
+    private val heroWriting = mutableSetOf<String>()
     // False from a new session until Continue watching has answered once; the rows below wait for it (a later retry of it
     // does not hide them again).
     private val continueAnswered = MutableStateFlow(false)
@@ -219,8 +227,9 @@ class HomeViewModel(
         // A signed-in Home waits for the hero setting to be read, so everything appears in the same first frame.
         if (screen.userName != null && !hero.ready) return@combine HomeUiState()
         screen.copy(
-            hero = hero.item,
+            heroes = hero.items,
             heroLoading = hero.loading,
+            heroSlots = hero.slots,
             actionMessage = message,
             sheet = categories.sheet,
             openList = categories.openList,
@@ -258,7 +267,8 @@ class HomeViewModel(
                     genreRows.value = emptyList()
                     myListRow.value = MediaRow(MY_LIST_ID, Strings.myList, seeAll = SeeAll.MyList)
                     // The grey card is up from the first state when the profile has the hero on, so it is there, not slid in later.
-                    hero.value = HeroState(loading = profileSettings.showHomeHero.first() != false, ready = true)
+                    val slots = profileSettings.homeHeroItems.first() ?: ProfileSettings.DEFAULT_HOME_HERO_ITEMS
+                    hero.value = HeroState(loading = slots > 0, ready = true, slots = slots)
                     continueAnswered.value = false
                     coroutineScope {
                         launch {
@@ -279,10 +289,10 @@ class HomeViewModel(
                 if (connection.state.value is ConnectionState.Connected) loadGenreRows(quiet = true)
             }
         }
-        // The hero was switched on or off in Settings: it appears (picked then) or goes.
+        // The hero's number changed in Settings: it is picked again for the new number, or goes when switched off.
         viewModelScope.launch {
-            profileSettings.showHomeHero.filterNotNull().distinctUntilChanged().drop(1).collect { on ->
-                if (!on) hero.value = HeroState(ready = true) else if (connection.state.value is ConnectionState.Connected) loadHeroIfEnabled()
+            profileSettings.homeHeroItems.filterNotNull().distinctUntilChanged().drop(1).collect { slots ->
+                if (slots == 0) hero.value = HeroState(ready = true) else if (connection.state.value is ConnectionState.Connected) loadHeroIfEnabled()
             }
         }
         // What was watched changed (a play session ended, something was marked): bring the row up to date.
@@ -536,8 +546,8 @@ class HomeViewModel(
      * Play on the hero. A movie plays at once. A show plays the episode it is up to (the next up, a half-watched one included), or
      * its first episode when it was never started or is finished; if that cannot be found the show's page opens instead.
      */
-    fun onHeroPlay() {
-        val item = hero.value.item ?: return
+    fun onHeroPlay(itemId: String) {
+        val item = hero.value.items.firstOrNull { it.id == itemId } ?: return
         if (item.kind != ItemKind.Series) {
             categoryUi.update { it.copy(heroNav = HeroNav.Play(item.id)) }
             return
@@ -558,21 +568,18 @@ class HomeViewModel(
     /** The screen has opened what the hero's Play asked for. */
     fun onHeroNavHandled() = categoryUi.update { it.copy(heroNav = null) }
 
-    private var heroWriting = false
-
-    /** "My List" on the hero: shown at once, taken back with a message if the server can't save it. */
-    fun onHeroMyList() {
-        val before = hero.value.item ?: return
-        if (heroWriting) return
-        heroWriting = true
+    /** "My List" on a featured item: shown at once, taken back with a message if the server can't save it. */
+    fun onHeroMyList(itemId: String) {
+        val before = hero.value.items.firstOrNull { it.id == itemId } ?: return
+        if (!heroWriting.add(itemId)) return
         val target = !before.isFavorite
         actionMessage.value = null
-        hero.update { it.copy(item = before.copy(isFavorite = target)) }
+        hero.update { it.withItem(itemId) { item -> item.copy(isFavorite = target) } }
         viewModelScope.launch {
-            val result = watch.setFavorite(before.id, target)
-            heroWriting = false
+            val result = watch.setFavorite(itemId, target)
+            heroWriting.remove(itemId)
             if (result is ApiResult.Failure) {
-                hero.update { current -> current.item?.takeIf { it.id == before.id }?.let { current.copy(item = it.copy(isFavorite = before.isFavorite)) } ?: current }
+                hero.update { it.withItem(itemId) { item -> item.copy(isFavorite = before.isFavorite) } }
                 if (result.error != ApiError.Unauthorized) {
                     actionMessage.value = if (target) LoadMessages.ADD_TO_MY_LIST_FAILED else LoadMessages.REMOVE_FROM_MY_LIST_FAILED
                 }
@@ -582,23 +589,24 @@ class HomeViewModel(
 
     /** Picks the hero when the profile has it on; a grey card stands in until it is known, and goes if nothing qualifies. */
     private suspend fun loadHeroIfEnabled() {
-        if (profileSettings.showHomeHero.first() == false) {
+        val slots = profileSettings.homeHeroItems.first() ?: ProfileSettings.DEFAULT_HOME_HERO_ITEMS
+        if (slots == 0) {
             hero.value = HeroState(ready = true)
             return
         }
-        hero.update { it.copy(loading = it.item == null) }
-        loadHero()
+        hero.update { it.copy(loading = it.items.isEmpty(), slots = slots) }
+        loadHero(slots)
     }
 
-    /** Picks the featured item from what was added lately and from My List. A failure shows no hero: it is optional. */
-    private suspend fun loadHero() {
+    /** Picks up to [count] featured items from what was added lately and from My List. A failure shows no hero: it is optional. */
+    private suspend fun loadHero(count: Int) {
         val (added, favourites) = coroutineScope {
             val added = async { library.filteredPage(HomeFilter.New, PageSort.Added, limit = HERO_CANDIDATES, fields = "Genres") }
             val favourites = async { library.filteredPage(HomeFilter.MyList, PageSort.Added, limit = HERO_CANDIDATES, fields = "Genres") }
             added.await() to favourites.await()
         }
         val candidates = listOf(added, favourites).flatMap { (it as? ApiResult.Success)?.value?.items.orEmpty() }
-        hero.value = HeroState(item = pickHero(candidates, Random.Default), loading = false, ready = true)
+        hero.value = HeroState(items = pickHeroes(candidates, count, Random.Default), loading = false, ready = true, slots = count)
     }
 
     /** What is on My List, newest additions first; the row is hidden while it is empty. */
@@ -610,6 +618,29 @@ class HomeViewModel(
                 is ApiResult.Success -> base.copy(items = result.value.items, loading = false, message = null)
                 is ApiResult.Failure -> failed(base, result.error, quiet)
             }
+        }
+        if (result is ApiResult.Success) syncHeroFavourites(result.value)
+    }
+
+    /**
+     * Brings the featured items' hearts in line with My List, which may have changed elsewhere (a poster's menu, a long press on
+     * the hero, an item's page). On the list is certain; off it only when the row holds the whole list. One whose own write is
+     * still in flight keeps what was tapped.
+     */
+    private fun syncHeroFavourites(myList: ItemPage) {
+        val onList = myList.items.mapTo(mutableSetOf()) { it.id }
+        val complete = myList.total <= myList.items.size
+        hero.update { state ->
+            state.copy(
+                items = state.items.map { item ->
+                    when {
+                        item.id in heroWriting -> item
+                        item.id in onList -> item.copy(isFavorite = true)
+                        complete -> item.copy(isFavorite = false)
+                        else -> item
+                    }
+                },
+            )
         }
     }
 

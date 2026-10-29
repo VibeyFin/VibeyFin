@@ -90,9 +90,12 @@ class AccountSettingsEntity(
      */
     @ColumnInfo(defaultValue = "0")
     val homeGenreRows: Int = NEW_PROFILE_HOME_GENRE_ROWS,
-    /** Whether Home features one item above Continue watching. */
+    /** Whether Home features anything above Continue watching; off, [homeHeroItems] is kept for when it is switched on again. */
     @ColumnInfo(defaultValue = "1")
     val showHomeHero: Boolean = true,
+    /** How many items the hero features while [showHomeHero] is on: 1 to 5, a carousel from 2. */
+    @ColumnInfo(defaultValue = "1")
+    val homeHeroItems: Int = 1,
     /** Seconds the player's skip-back button jumps. */
     @ColumnInfo(defaultValue = "10")
     val skipBackSeconds: Int = 10,

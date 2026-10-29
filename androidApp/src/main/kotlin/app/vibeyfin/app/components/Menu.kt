@@ -5,9 +5,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -53,9 +51,8 @@ fun VibeyFinMenuItem(label: String, icon: ImageVector?, selected: Boolean = fals
         colors = androidx.compose.material3.MenuDefaults.itemColors(
             textColor = if (selected) VibeyFinTokens.Colors.onAccentSoft else androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
         ),
-        leadingIcon = {
-            if (icon != null) Icon(icon, contentDescription = null) else Spacer(Modifier.size(24.dp))
-        },
+        // No icon, no empty slot: a choice's options (a setting's menu) start at the edge like the value they replace.
+        leadingIcon = icon?.let { { Icon(it, contentDescription = null) } },
         onClick = onClick,
         contentPadding = PaddingValues(horizontal = 16.dp),
         modifier = Modifier

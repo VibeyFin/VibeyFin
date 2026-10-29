@@ -36,16 +36,16 @@ struct HomeView: View {
                             // never filtered: a button opens a page of its own.
                             CategoryButtonRow(buttons: state.buttons) { model.category($0.kind) }
                             // While it is being picked a grey card of the same size stands in, so the hero does not just appear.
-                            if state.hero == nil && state.heroLoading {
-                                HomeHeroSkeleton().screenMargin().transition(.opacity)
+                            if state.heroes.isEmpty && state.heroLoading {
+                                HomeHeroSkeleton(dots: state.heroSlots >= 2).screenMargin().transition(.opacity)
                             }
-                            // The featured item, when there is one: full width, under the buttons and above what is being watched.
-                            if let hero = state.hero {
-                                HomeHeroView(
-                                    item: hero,
-                                    onPlay: { model.heroPlay() },
+                            // The featured items, when there are any: full width, under the buttons and above what is being watched.
+                            if !state.heroes.isEmpty {
+                                HomeHeroCarousel(
+                                    items: state.heroes,
+                                    onPlay: { model.heroPlay($0) },
                                     onOpen: onDetails,
-                                    onMyList: { model.heroMyList() }
+                                    onMyList: { model.heroMyList($0) }
                                 )
                                 .screenMargin()
                             }
@@ -94,7 +94,7 @@ struct HomeView: View {
                         // The grey stand-ins for the hero and the rows leave the same way, so when nothing replaces one the
                         // page closes up smoothly instead of jumping.
                         .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: state.heroLoading)
-                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: state.hero?.id)
+                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: state.heroes.map { $0.id })
                         .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: state.continueRow.loading)
                         .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: state.loadingLibraries)
                     }

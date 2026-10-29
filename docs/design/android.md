@@ -20,7 +20,7 @@ A Jetpack Compose app that follows Material 3. Use the `android` theme and `m3-*
 | Home category buttons (Shows, Movies, New, Categories) | `LazyRow` of M3 `AssistChip`s (filled, no outline) under the top app bar, never selected. Categories carries a trailing dropdown arrow and opens a `ModalBottomSheet` with the player's `OptionList`, no search; the others open their page |
 | Audio / subtitles | `ModalBottomSheet` |
 | Season buttons (series detail) | `LazyRow` of `FilterChip`s, selected = `accent-soft`; `rememberLazyListState` scrolled to the next-up season on open |
-| Home hero (optional) | A single rounded card, never a carousel or auto-advancing (see `screens.md` **Home hero**) |
+| Home hero (optional) | One rounded card, or a `HorizontalPager` of them (2 to 5) with a row of dots under it: current `ink`, others `ink-subtle` (M3 has no pager indicator). Auto-advance as `guardrails.md` says (see `screens.md` **Home hero**) |
 | Messages | `Snackbar` with an action ("Try again" for a failed write); the action is plain text, not aqua |
 | Casting | Google Cast button + MediaRouter |
 | Player skip buttons | clickable 48 dp buttons with a generic arrow glyph and the seconds as text over it (seconds from the profile's skip settings; 10 back, 10 forward by default), play / pause between them. A press turns the arrow about 30° its way and springs it back |

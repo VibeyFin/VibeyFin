@@ -31,6 +31,7 @@ Glass is the **navigation and controls layer** floating above content — never 
 | Episode card actions | `.contextMenu` on the card (View episode, the watched mark); no swipe actions |
 | Audio / subtitles | `Menu` / `Picker` in a toolbar or a sheet with `.presentationDetents([.medium, .large])` |
 | Season buttons (series detail) | Horizontal `ScrollView` of capsule buttons, selected filled `ink`; `ScrollViewReader` scrolls to the next-up season on open |
+| Home hero (optional) | One rounded card, or a paged `TabView` (`.page(indexDisplayMode: .never)`) of them (2 to 5) with a wrapped `UIPageControl` under it, the system's own dots, which VoiceOver adjusts. Not glass. Auto-advance as `guardrails.md` says (see `screens.md` **Home hero**) |
 | Home category buttons (Shows, Movies, New, Categories) | Horizontal `ScrollView` of capsule buttons under the Home header: `surface-2` fill with `ink`, never selected; 36pt tall with a 44pt hit area. Not glass. Categories adds a trailing `chevron.down` and opens a `.sheet` with a plain list (medium and large detents), no search; the others open their page. A sheet rather than the player's `Menu`, because the list loads on demand and needs loading, empty and error states. A category page's Sort and Genre are capsules that open the same sheet |
 | Share | `ShareLink` |
 | Casting | `AVRoutePickerView` (AirPlay) |

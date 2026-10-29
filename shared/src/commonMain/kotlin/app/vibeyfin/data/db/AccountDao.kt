@@ -43,11 +43,16 @@ abstract class AccountDao {
     @Query("UPDATE account_settings SET homeGenreRows = :value WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun setHomeGenreRows(serverId: String, userId: String, value: Int)
 
-    @Query("SELECT showHomeHero FROM account_settings WHERE serverId = :serverId AND userId = :userId")
-    abstract fun observeShowHomeHero(serverId: String, userId: String): Flow<Boolean?>
+    /** The hero's items: 0 while it is switched off, else how many. */
+    @Query("SELECT CASE WHEN showHomeHero THEN homeHeroItems ELSE 0 END FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeHomeHeroItems(serverId: String, userId: String): Flow<Int?>
 
-    @Query("UPDATE account_settings SET showHomeHero = :value WHERE serverId = :serverId AND userId = :userId")
-    abstract suspend fun setShowHomeHero(serverId: String, userId: String, value: Boolean)
+    /** 0 switches the hero off and keeps the count it had; anything else switches it on with that count. */
+    @Query(
+        "UPDATE account_settings SET showHomeHero = (:value > 0), homeHeroItems = CASE WHEN :value > 0 THEN :value ELSE homeHeroItems END " +
+            "WHERE serverId = :serverId AND userId = :userId",
+    )
+    abstract suspend fun setHomeHeroItems(serverId: String, userId: String, value: Int)
 
     @Query("SELECT skipBackSeconds FROM account_settings WHERE serverId = :serverId AND userId = :userId")
     abstract fun observeSkipBackSeconds(serverId: String, userId: String): Flow<Int?>

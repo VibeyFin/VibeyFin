@@ -15,7 +15,7 @@ class SettingsModelTest {
                 SettingsSection(
                     "Playback", null,
                     listOf(
-                        ToggleItem(SettingKey.ShowHero, "Hero", checked = true),
+                        ToggleItem(SettingKey.AutoSkip, "Auto skip", checked = true),
                         ToggleItem(SettingKey.ShowStats, "Stats", checked = false, visible = false),
                     ),
                 ),
@@ -29,7 +29,7 @@ class SettingsModelTest {
         val visible = page.visibleOnly()
 
         assertEquals(1, visible.sections.size)
-        assertEquals(listOf(SettingKey.ShowHero), visible.sections.single().items.map { it.key })
+        assertEquals(listOf(SettingKey.AutoSkip), visible.sections.single().items.map { it.key })
     }
 
     @Test

@@ -55,7 +55,7 @@ data class SettingsValues(
     val showPlaybackStats: Boolean = false,
     val bingeThreshold: Int = ProfileSettings.DEFAULT_BINGE_THRESHOLD,
     val homeGenreRows: Int = ProfileSettings.HOME_GENRES_ALL,
-    val showHomeHero: Boolean = true,
+    val homeHeroItems: Int = ProfileSettings.DEFAULT_HOME_HERO_ITEMS,
     val skipBackSeconds: Int = ProfileSettings.DEFAULT_SKIP_BACK_SECONDS,
     val skipForwardSeconds: Int = ProfileSettings.DEFAULT_SKIP_FORWARD_SECONDS,
     val autoSkipSegments: Boolean = false,
@@ -139,7 +139,10 @@ fun rootPage(v: SettingsValues): SettingsPage {
                 Strings.settingsGroupHome,
                 footer = null,
                 items = listOf(
-                    ToggleItem(SettingKey.ShowHero, Strings.homeHeroTitle, checked = v.showHomeHero, visible = profile),
+                    ChoiceItem(
+                        SettingKey.HomeHeroItems, Strings.homeHeroItemsTitle,
+                        value = v.homeHeroItems, options = heroItemOptions(), visible = profile,
+                    ),
                     ChoiceItem(
                         SettingKey.HomeGenreRows, Strings.homeGenreRowsTitle,
                         value = v.homeGenreRows, options = genreRowOptions(), visible = profile,
@@ -633,6 +636,10 @@ private fun bufferLabel(seconds: Int) = if (seconds == 0) Strings.bufferAheadAut
 /** The sizes the downloads' limit is offered in, gigabytes; 0 is no limit. A size set some other way stays on the list. */
 private fun storageLimitOptions(current: Int) = (listOf(0, 5, 10, 20, 50, 100) + current).distinct().sorted().map { gigabytes ->
     SettingOption(gigabytes, if (gigabytes == 0) Strings.storageLimitNone else Strings.storageLimitGb(gigabytes))
+}
+
+private fun heroItemOptions() = ProfileSettings.HOME_HERO_CHOICES.map { value ->
+    SettingOption(value, if (value == 0) Strings.homeHeroItemsOff else Strings.homeHeroItemsCount(value))
 }
 
 private fun genreRowOptions() = ProfileSettings.HOME_GENRE_CHOICES.map { value ->

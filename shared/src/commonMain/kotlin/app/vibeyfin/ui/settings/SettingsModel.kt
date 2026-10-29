@@ -7,7 +7,7 @@ enum class SettingsPageId { Root, Profile, Quality, AudioSubtitles, Skipping, Ki
 enum class SettingKey {
     ProfileCard,
     AlwaysAsk, ShowStats, About,
-    BingeThreshold, HomeGenreRows, ShowHero,
+    BingeThreshold, HomeGenreRows, HomeHeroItems,
     SkipBack, SkipForward, AutoSkip, BufferAhead,
     Quality, Skipping,
     CaptionsFollowSystem, SubtitleSize, SubtitleColor, SubtitleBackground, SubtitlePreview, ResetSubtitles,
