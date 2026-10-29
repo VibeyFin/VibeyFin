@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 import Shared
 
-/// The featured items: one card, or from two a paged `TabView` of them with the system's page dots under it. It moves on by itself
+/// The featured items: one card, or from two a paged `HeroPager` of them with the system's page dots under it. It moves on by itself
 /// every `HERO_ADVANCE_MILLIS`, round and round; a swipe, a tap on the dots or a long press (which opens the poster menu) stops that
 /// until Home is left, a finger on it pauses it, and it never moves under Reduce Motion, with VoiceOver on, or while Home is not on
 /// screen and in front. Swipes run round too: past the last item comes the first, and before the first the last. Play and My List act
@@ -17,6 +17,7 @@ struct HomeHeroCarousel: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.tileMenu) private var tileMenu
     /// The item showing, from 0.
     @State private var page = 0
     /// The `TabView`'s page: the items sit at 1...count, with a copy of the last at 0 and of the first at count + 1, so a swipe past
@@ -35,25 +36,28 @@ struct HomeHeroCarousel: View {
             HomeHeroView(item: item, onPlay: { onPlay(item.id) }, onOpen: onOpen, onMyList: { onMyList(item.id) })
         } else {
             VStack(spacing: 0) {
-                TabView(selection: $slot) {
-                    ForEach(0..<(items.count + 2), id: \.self) { slot in
-                        let index = (slot + items.count - 1) % items.count
-                        let item = items[index]
-                        HomeHeroView(
-                            item: item,
-                            onPlay: { onPlay(item.id) },
-                            onOpen: onOpen,
-                            onMyList: { onMyList(item.id) },
-                            label: Strings.shared.featuredPage(title: item.title, index: Int32(index + 1), count: Int32(items.count)),
-                            onLongPressed: { swiped = true }
-                        )
-                        .tag(slot)
-                        // The copies at the ends are only passed through; VoiceOver reads the real pages.
-                        .accessibilityHidden(slot == 0 || slot == items.count + 1)
+                // The card's own size; the pager under it is a gap wider, half on each side, so the neighbouring card stays out of sight.
+                Color.clear
+                    .aspectRatio(wide ? 2.6 : 4.0 / 3.0, contentMode: .fit)
+                    .overlay {
+                        HeroPager(pages: items.count + 2, slot: $slot, gap: Space.s2) { slot in
+                            let index = (slot + items.count - 1) % items.count
+                            let item = items[index]
+                            HomeHeroView(
+                                item: item,
+                                onPlay: { onPlay(item.id) },
+                                onOpen: onOpen,
+                                onMyList: { onMyList(item.id) },
+                                label: Strings.shared.featuredPage(title: item.title, index: Int32(index + 1), count: Int32(items.count)),
+                                onLongPressed: { swiped = true }
+                            )
+                            // The pager's cells are hosted apart from this view, so the poster menu is handed on.
+                            .environment(\.tileMenu, tileMenu)
+                            // The copies at the ends are only passed through; VoiceOver reads the real pages.
+                            .accessibilityHidden(slot == 0 || slot == items.count + 1)
+                        }
+                        .padding(.horizontal, -Space.s2 / 2)
                     }
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .aspectRatio(wide ? 2.6 : 4.0 / 3.0, contentMode: .fit)
                 // Seen alongside the paging and the buttons: a finger resting on the card pauses it. Moving it cancels the
                 // press, and the swipe that follows stops the carousel anyway.
                 .simultaneousGesture(
