@@ -541,6 +541,28 @@ class DownloadRunnerTest {
     }
 
     @Test
+    fun aFinishedVideoIsPublishedUnderTheTitleOfTheItem() = runTest {
+        movieOnServer()
+        queue()
+
+        app.runner.run()
+
+        val name = assertNotNull(app.files.published["$folder/video.mkv"])
+        assertTrue(name.startsWith("Heat") && name.endsWith(".mkv"), name)
+    }
+
+    @Test
+    fun aVideoThatIsNotFinishedIsNotPublished() = runTest {
+        movieOnServer(download = { Reply.rangedThenDrop(body, it, dropAfter = 4) })
+        queue()
+        app.network.set(NetworkState.None)
+
+        app.runner.run()
+
+        assertTrue(app.files.published.isEmpty())
+    }
+
+    @Test
     fun whenThePatienceRunsOutTheRunEndsAndSaysWhenToCome() = runTest {
         movieOnServer()
         queue()

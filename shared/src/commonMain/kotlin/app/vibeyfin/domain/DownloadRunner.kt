@@ -15,6 +15,7 @@ import app.vibeyfin.data.db.DOWNLOAD_RUNNING
 import app.vibeyfin.data.db.DOWNLOAD_WAITING_FOR_NETWORK
 import app.vibeyfin.data.db.DownloadDao
 import app.vibeyfin.data.db.DownloadEntity
+import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.model.ProfileRef
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
@@ -205,9 +206,13 @@ class DownloadRunner(
         private val part = "$base/video.part"
         private var title = ""
 
+        /** What the user sees the video called in a file manager, without its extension. */
+        private var fileName = ""
+
         suspend fun run(): Outcome {
             val snapshot = dao.findItem(row.serverId, row.userId, row.itemId)?.let { OfflineSnapshot.decode(it.snapshotJson) }
             title = snapshot?.item?.title.orEmpty()
+            fileName = snapshot?.item?.let(::videoFileName).orEmpty().ifBlank { row.itemId }
             checkStorageRules()?.let { return fail(it) }
             // No point fetching gigabytes the player will not open.
             if (converter != null && snapshot?.videoCodec?.let { !converter.canPlayVideo(it) } == true) return fail(DownloadFailure.Unplayable)
@@ -396,6 +401,7 @@ class DownloadRunner(
             } else {
                 files.move(part, finalPath)
             }
+            files.publish(finalPath, "$fileName.$extension")
             dao.complete(row.serverId, row.userId, row.itemId, files.length(finalPath), finalPath, clock.now().toEpochMilliseconds())
             return Outcome.Finished
         }
@@ -573,6 +579,18 @@ class DownloadRunner(
         accounts.observeDownloadOverMobile(row.serverId, row.userId).first() == true
 
     private companion object {
+        /** "Heat (1995)", or "Saga Show S01E03 Chapter 3" for an episode; with no characters a file name cannot hold. */
+        fun videoFileName(item: MediaItem): String {
+            val name = when {
+                item.seriesName != null && item.seasonNumber != null && item.episodeNumber != null ->
+                    "${item.seriesName} S${item.seasonNumber.toString().padStart(2, '0')}E${item.episodeNumber.toString().padStart(2, '0')} ${item.title}"
+                item.year != null -> "${item.title} (${item.year})"
+                else -> item.title
+            }
+            return name.filterNot { it.isISOControl() || it in "/\\:*?\"<>|" }.trim().take(MAX_FILE_NAME)
+        }
+
+        const val MAX_FILE_NAME = 120
         const val BYTES_PER_MB = 1_000_000L
         const val FREE_SPACE_MARGIN = 50L * BYTES_PER_MB
         const val PROGRESS_STEP_BYTES = 2L * BYTES_PER_MB

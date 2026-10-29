@@ -2,7 +2,8 @@ package app.vibeyfin.domain
 
 /**
  * Where downloaded files live, and the file work a download needs. Each platform keeps them where the user can find them
- * (iOS: Documents, shown in the Files app and left out of backups; Android: the app's files folder for now). Paths are relative to the
+ * (iOS: Documents, shown in the Files app and left out of backups; Android: the app's files folder while a video comes in, then
+ * `Movies/VibeyFin` once it is [publish]ed). Paths are relative to the
  * downloads folder and use `/`: `{serverId}/{userId}/{itemId}/video.mkv`.
  */
 interface DownloadFiles {
@@ -20,10 +21,17 @@ interface DownloadFiles {
     /** Deletes the file, or the folder with everything in it. Nothing happens when it isn't there. */
     fun delete(path: String)
 
+    /**
+     * Makes the finished video at [path] visible to the user under [displayName] (with its extension), where the platform keeps its
+     * downloads out of sight until then. [path] stays the way to reach it: [length], [exists], [uri] and [delete] work on it as before.
+     * Where the files are visible already, or when the platform cannot publish it, nothing happens and the video stays where it is.
+     */
+    fun publish(path: String, displayName: String) = Unit
+
     /** The bytes free on the storage the downloads are on. */
     fun freeBytes(): Long
 
-    /** The `file://` address a player or an image loader opens [path] by. */
+    /** The address a player or an image loader opens [path] by: `file://`, or a `content://` one for a [publish]ed video. */
     fun uri(path: String): String
 }
 

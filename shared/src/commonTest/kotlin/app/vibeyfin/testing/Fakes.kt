@@ -181,7 +181,14 @@ class FakeDownloadFiles(
     /** Called after each write, for a test that lets time pass while bytes arrive. */
     var onWrite: (() -> Unit)? = null
 
+    /** The display name each file was published under, by path. */
+    val published = mutableMapOf<String, String>()
+
     fun text(path: String): String? = contents[path]?.toString()
+
+    override fun publish(path: String, displayName: String) {
+        published[path] = displayName
+    }
 
     override fun length(path: String): Long = contents[path]?.length?.toLong() ?: 0
 
