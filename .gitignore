@@ -1,56 +1,45 @@
-# Gradle files
+# Gradle / Kotlin
 .gradle/
 build/
 .kotlin/
-
-# Local configuration file (sdk path, etc)
 local.properties
 
-# Log/OS Files
-*.log
-
-# Android Studio generated files and folders
+# Android
 captures/
 .externalNativeBuild/
 .cxx/
 *.aab
 *.apk
 output-metadata.json
+*.hprof
+google-services.json
 
-# IntelliJ
-*.iml
+# IntelliJ / Android Studio
 .idea/
-misc.xml
-deploymentTargetDropDown.xml
-render.experimental.xml
+*.iml
 
 # Xcode / macOS
 xcuserdata/
 *.xcuserstate
 .DS_Store
+iosApp/Configuration/Local.xcconfig
 
-# Keystore files
+# Signing
 *.jks
 *.keystore
 
-# Google Services (e.g. APIs or Firebase)
-google-services.json
-
-# Android Profiling
-*.hprof
-
-# JVM crash reports
+# Logs and crash reports
+*.log
 hs_err_pid*.log
-
-# Release signing
-*.jks
-*.keystore
 
 # Local test server state and generated media
 scripts/test-server/data/
 
-# Per-developer Xcode overrides
-iosApp/Configuration/Local.xcconfig
-
 # FFmpeg for the iOS remux (built by scripts/ffmpeg/build-ios.sh)
 iosApp/Vendor/
+
+# Claude plans, specs and checklists stay local
+.superpowers/
+docs/plans/
+docs/superpowers/
+docs/checklists/

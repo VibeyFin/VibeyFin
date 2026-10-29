@@ -364,7 +364,7 @@ to allow them. Hidden for a kids profile, which never notifies. What a notificat
 
 ### Kids and PIN
 
-Opened from the **Kids profile** row in the root's Kids and PIN group; the design is in the spec `docs/superpowers/specs/2026-10-24-accounts-and-polish-design.md`.
+Opened from the **Kids profile** row in the root's Kids and PIN group.
 "Kids profile" is a local flag and the PIN (4 digits, a salted hash, never the Jellyfin password) a household lock,
 independent of each other. The rating cap, blocked tags and hours are read from the Jellyfin user's policy and
 shown read-only.

@@ -189,19 +189,17 @@ _Starts after the state audit (see Cross-cutting)._
 - ~~Thumbs (`UserData.likes`)~~ — _cut:_ Jellyfin's like flag is barely used by its own clients and My List already covers "I want this". Revisit only if Phase 7's recommendations need a signal
 - [x] Tile trailers (Android built and run; iOS written and only parsed): a long press on any poster opens a menu with Details, Trailer (only when the title has one, found when the menu opens because lists do not carry trailers: one the server holds plays in the app, one on the web opens in the system's viewer) and My List. The detail page has the same Trailer button
 
-Also built in this phase, not on the original list: Home shows a row for every genre with a per-profile setting to limit them
-(`docs/plans/10-home-rows.md`), collections open on their own page with a tablet view, the player uses the whole screen
+Also built in this phase, not on the original list: Home shows a row for every genre with a per-profile setting to limit them, collections open on their own page with a tablet view, the player uses the whole screen
 including the camera cut-out, and a `benchmark` build type (`./gradlew :androidApp:installBenchmark`) for judging smoothness, as the
 debug build is slow. Cut: thumbs. A baseline profile for first-scroll speed moves to Phase 6 (it needs Macrobenchmark, which is not in the stack yet: ask first).
 
-Owed after Phase 4: the phone pass (`docs/checklists/phone-pass.md`) and an iOS Xcode pass, its own task: build `iosApp` in Xcode and fix what the compiler finds (every Swift file so far is only parsed, and the `Shared` framework names such as `HeroNavPlay`, `SeeAllMyList` and `ItemFactsKt.getSeasonLabel` are read from the Kotlin source, not from a built framework).
+Owed after Phase 4: the phone pass and an iOS Xcode pass, its own task: build `iosApp` in Xcode and fix what the compiler finds (every Swift file so far is only parsed, and the `Shared` framework names such as `HeroNavPlay`, `SeeAllMyList` and `ItemFactsKt.getSeasonLabel` are read from the Kotlin source, not from a built framework).
 
 _Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a genre page from Home,_
 
 ### Phase 6 — Accounts & polish
 - [x] Profile picker: quick-switch between users, optional PIN (Jellyfin has no sub-profiles). _Decided: a 4-digit
-  household lock per profile, a salted hash, independent of kids mode, not security; see the spec
-  `docs/superpowers/specs/2026-10-24-accounts-and-polish-design.md`_
+  household lock per profile, a salted hash, independent of kids mode, not security_
 - [x] Parental controls / kids mode (per-user rating, blocked tags, access schedules). _Decided: a local kids flag;
   rating, tags and hours are read from the Jellyfin user's policy and shown read-only, the server enforces them_
 - [x] New-episode notifications (Next Up / Latest polling or push). _Decided: off by default, background polling
@@ -221,15 +219,15 @@ _Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a
 - [x] Picture in picture as a per-profile setting (Skipping and autoplay page, on by default): off hides the button, stops the automatic
   window and pauses on leaving. On iOS the player steps aside while the window plays; starting another title stops the first one
   (with its `Stopped` report). _Built and unit-tested; the window, the step-aside and the new-playout stop were not seen on a device._
-- [ ] Now Playing in Control Center and on the Android notification: plan `docs/plans/17-now-playing.md`. Built: iOS remote commands
+- [ ] Now Playing in Control Center and on the Android notification. Built: iOS remote commands
   (play, pause, skip, scrub), a live card and artwork; Android notification artwork. _Not seen on a device; background playback is out of scope._
 - [x] iOS mini player: dropped. PiP steps the player aside and the system window is the only mini view; a setting turns PiP off.
 - [ ] Baseline profile for first-scroll speed: the `:benchmark` module, the startup and scroll benchmarks and the profile generator
   are in and build (Macrobenchmark 1.5.0, `androidx.baselineprofile` 1.5.0). **Not run**: it needs a device or emulator signed in on the
   test server. Next: `./gradlew :benchmark:connectedBenchmarkReleaseAndroidTest`, then `./gradlew :androidApp:generateBaselineProfile`,
-  commit `baseline-prof.txt` and record the numbers in `docs/checklists/phone-pass.md` section 8.
+  commit `baseline-prof.txt` and record the numbers.
 
-Owed from Phase 6, not done: the phone pass (`docs/checklists/phone-pass.md`), a look at the iOS PiP and Control Center behaviour on a real iPhone (the simulator has no PiP). `scripts/ios-smoke.sh` passes
+Owed from Phase 6, not done: the phone pass, a look at the iOS PiP and Control Center behaviour on a real iPhone (the simulator has no PiP). `scripts/ios-smoke.sh` passes
 (3 of 3 UITests on an iPhone 16 simulator, iOS 27.0, after the Kids profile row and first-user tile lookups in the UITest were corrected);
 it does not exercise playback, PiP or Control Center.
 
@@ -319,8 +317,8 @@ promised by accident.
 ### Phase 8 — Seerr integration _(later)_
 
 Search, discover and request titles that are not in the library yet, from inside the app.
-_Depends on Phase 4 (search and detail page)._ First part planned in `docs/plans/18-seerr.md` (connect,
-search, request, all in native screens; it settles the sign-in question below).
+_Depends on Phase 4 (search and detail page)._ First part: connect,
+search, request, all in native screens; it settles the sign-in question below.
 
 - [ ] Connect a Seerr instance (base URL, optional, saved per profile): check it with `GET /status`
 - [ ] Sign in to Seerr as the Jellyfin user: `POST /auth/jellyfin` sets a `connect.sid` session

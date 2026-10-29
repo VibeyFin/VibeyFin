@@ -14,7 +14,7 @@ version `1792521935-239c`). `design/tokens.json` is the token source of truth.
 - `review.md`: living design review of the built UI against these docs, with each finding's status
 
 The artifact's own architecture notes (SKIE, KMP-NativeCoroutines, generated token files) are not
-followed here: see `docs/plans/04-design-system.md` for what this project does instead.
+followed here.
 
 ## Where this copy differs from the artifact
 

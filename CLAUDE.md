@@ -120,7 +120,7 @@ apps share are in `guardrails.md`; which Jellyfin field drives which UI is in `j
 
 ## Working agreement
 
-- Work in the phases of the current plan in `docs/plans/`. Finish one phase, make sure it builds
+- Work in the phases of the roadmap in `docs/ROADMAP.md`. Finish one phase, make sure it builds
   and its tests pass, summarise what changed, then stop for review before the next phase.
 - Run `./gradlew :shared:allTests` (or the equivalent) and `./gradlew :androidApp:assembleDebug`
   before calling a phase done. A feature that touches the Jellyfin API or the player is also

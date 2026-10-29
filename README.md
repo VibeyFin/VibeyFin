@@ -12,7 +12,7 @@ SwiftUI on iOS). Android ships first.
 The roadmap's Phases 0 to 4 and Phase 6 are done (Phase 5, a recommendation backend, is deferred): connect
 to a server, sign in, browse, search, play, pick up where you left off on any device, and tune playback and
 profiles in Settings. Phase 6 still owes Now Playing on the lock screen and a baseline profile. Next are
-customisation (Phase 7) and offline (Phase 10); Seerr is planned in [`docs/plans/18-seerr.md`](docs/plans/18-seerr.md)
+customisation (Phase 7) and offline (Phase 10); Seerr is on the roadmap
 but not started. See the [roadmap](docs/ROADMAP.md).
 
 What works today:
@@ -50,7 +50,7 @@ What works today:
 
 Not built yet: downloads and offline, customisation of Home rows and tabs, Seerr, translations (issue #27),
 TV apps. Android has been run on an emulator against a local test server (see
-[`docs/test-server.md`](docs/test-server.md)); there has been no real-device pass yet (`docs/checklists/phone-pass.md`),
+[`docs/test-server.md`](docs/test-server.md)); there has been no real-device pass yet,
 so real HDR output is unverified. **The iOS app builds and passes `scripts/ios-smoke.sh` on the simulator
 (onboarding, series episodes, player controls), but most screens have not been walked through by hand**,
 and picture-in-picture, Control Center and notifications have not been seen running on iOS. Expect fixes
@@ -63,7 +63,7 @@ when they are.
 | `shared/` | The Kotlin Multiplatform library: API client, storage, repositories, connection and session handling, and the ViewModels with their UI state. Logic only, no UI toolkit. |
 | `androidApp/` | The Android app: Compose screens, navigation, theme, Activity and manifest. |
 | `iosApp/` | The iOS app: SwiftUI screens, reading shared state through the Kotlin facades in `shared/src/iosMain`. |
-| `docs/` | The [roadmap](docs/ROADMAP.md), the phase [plans](docs/plans), the [design system](docs/design/brand.md) and the [test server](docs/test-server.md). |
+| `docs/` | The [roadmap](docs/ROADMAP.md), the [design system](docs/design/brand.md) and the [test server](docs/test-server.md). |
 | `scripts/` | Design drift and title-case checks, and a disposable local Jellyfin for testing (`scripts/test-server/`). |
 
 Targets are `androidTarget`, `iosArm64` and `iosSimulatorArm64`. The Android application ID and iOS bundle ID are `app.vibeyfin`. Android needs API 26 or newer
@@ -138,7 +138,5 @@ through a thin Ktor client.
 
 - [`docs/ROADMAP.md`](docs/ROADMAP.md): what is done and what comes next, including Seerr
   requests and recommendations (Phases 8 and 9).
-- [`docs/plans/`](docs/plans): how each stage was planned and what was verified, and the plans not
-  started yet (Now Playing, Seerr).
 - [`docs/design/`](docs/design/brand.md): the design system, per platform.
 - [`CLAUDE.md`](CLAUDE.md): the project's conventions, product decisions and architecture rules.
