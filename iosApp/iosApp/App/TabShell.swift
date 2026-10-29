@@ -67,6 +67,8 @@ struct TabShell: View {
     // Offline (no network, or the switch in Settings): three tabs, from what is on the device. A toast says so as it starts.
     @StateObject private var offlineMode = OfflineModeObservable()
     @StateObject private var banner = AppBannerObservable()
+    /// The profile button in every tab's header: one model for all four, so its PIN sheet and its exit are handled here once.
+    @StateObject private var profileMenu = ProfileMenuObservable()
     @Environment(\.openURL) private var openURL
     @State private var homePath: [TabRoute] = []
     @State private var searchPath: [TabRoute] = []
@@ -86,6 +88,25 @@ struct TabShell: View {
         .onAppear {
             offlineMode.start()
             banner.start()
+            profileMenu.start()
+        }
+        .onChange(of: profileMenu.state?.exit != nil) { hasExit in
+            if hasExit, let exit = profileMenu.state?.exit { onExit(exit) }
+        }
+        // The PIN for Switch profile and Switch server.
+        .sheet(isPresented: Binding(
+            get: { profileMenu.state?.pinPrompt != nil },
+            set: { if !$0 { profileMenu.dismissPin() } }
+        )) {
+            if let prompt = profileMenu.state?.pinPrompt {
+                PinSheet(
+                    prompt: prompt,
+                    onSubmitPin: { profileMenu.submitPin($0) },
+                    onForgotPin: { profileMenu.forgotPin() },
+                    onSubmitPassword: { profileMenu.submitPassword($0) },
+                    onDismiss: { profileMenu.dismissPin() }
+                )
+            }
         }
         // Library needs the server: going offline while on it moves to Home, which the bar still offers.
         .onChange(of: offline) { isOffline in
@@ -97,11 +118,7 @@ struct TabShell: View {
         TabView(selection: tappedSelection) {
             stack($homePath) {
                 if offline {
-                    OfflineHomeView(
-                        onOpenDownloads: { selection = .downloads },
-                        onSettings: { settings.current = SettingsObservable(); homePath.append(.settings) },
-                        onExit: onExit
-                    )
+                    OfflineHomeView(onOpenDownloads: { selection = .downloads }, onExit: onExit)
                     .navigationBarBackButtonHidden(true)
                     .toolbar(.hidden, for: .navigationBar)
                 } else {
@@ -109,7 +126,6 @@ struct TabShell: View {
                         onExit: onExit,
                         onOpen: { open($0, in: $homePath) },
                         onDetails: { homePath.append(.item(itemId: $0)) },
-                        onSettings: { settings.current = SettingsObservable(); homePath.append(.settings) },
                         onOpenList: { homePath.append(TabRoute.opening($0)) }
                     )
                     .navigationBarBackButtonHidden(true)
@@ -158,6 +174,8 @@ struct TabShell: View {
                 .tag(MainTab.downloads)
         }
         .environment(\.zoomNamespace, zoomNamespace)
+        .environmentObject(profileMenu)
+        .environment(\.profileButtonContext, ProfileButtonContext(offline: offline, onSettings: openSettings))
         .environment(\.tileMenu, tileMenu)
         .onAppear { tileMenu.start() }
         .onReceive(taps.$pending) { tap in
@@ -238,6 +256,17 @@ struct TabShell: View {
         guard NewTitlesModel().isSignedIn(serverId: tap.serverId, userId: tap.userId) else { return }
         selection = .home
         homePath.append(.item(itemId: tap.itemId))
+    }
+
+    /// Settings from the profile button: opens in the tab on screen, with a new model so its PIN is asked each time.
+    private func openSettings() {
+        settings.current = SettingsObservable()
+        switch selection {
+        case .home: homePath.append(.settings)
+        case .search: searchPath.append(.settings)
+        case .library: libraryPath.append(.settings)
+        case .downloads: downloadsPath.append(.settings)
+        }
     }
 
     /// Details from a poster's menu: opens in the tab on screen.

@@ -10,7 +10,7 @@ struct FilteredListView: View {
     /// Called when the session ended and the screen must be left.
     let onExit: (HomeExit) -> Void
 
-    /// The Library tab's root page: a larger title with how many titles it holds, and no back button.
+    /// The Library tab's root page: the tabs' header with the profile, and no back button.
     var isRoot = false
     @State private var peopleQuery = ""
 
@@ -25,20 +25,16 @@ struct FilteredListView: View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
             VStack(alignment: .leading, spacing: Space.s3) {
-                // The title and the buttons stay put while the list scrolls.
-                VStack(alignment: .leading, spacing: 2) {
+                // The title and the buttons stay put while the list scrolls. The tab's root has the same header as the other tabs.
+                if isRoot {
+                    TabHeader(title: model.title)
+                } else {
                     Text(model.title)
                         .screenTitle()
                         .accessibilityAddTraits(.isHeader)
-                    if isRoot {
-                        // The count keeps its line (and its last value) while a filter reloads, so the page below never moves.
-                        Text(model.state?.list.total.map { Strings.shared.libraryCount(count: $0.int32Value) } ?? " ")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
+                        .screenMargin()
+                        .padding(.top, Space.s5)
                 }
-                .screenMargin()
-                .padding(.top, Space.s5)
                 if let state = model.state {
                     ListChipRow(chips: state.chips) { model.chip($0.kind) }
                 } else {

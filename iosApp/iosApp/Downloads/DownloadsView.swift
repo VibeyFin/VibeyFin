@@ -1,7 +1,7 @@
 import SwiftUI
 import Shared
 
-/// The Downloads tab: how much room the downloads take, the movies, and the shows with their episodes. A finished row plays from the
+/// The Downloads tab: a card with how much room the downloads take and the bin, the movies, and the shows with their episodes. A finished row plays from the
 /// device; one that is not finished opens its page (when there is a server to ask).
 struct DownloadsView: View {
     @StateObject private var model = DownloadsObservable()
@@ -16,24 +16,22 @@ struct DownloadsView: View {
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
-            if let state = model.state, !state.loading {
-                if state.isEmpty {
-                    empty
+            VStack(spacing: 0) {
+                TabHeader(title: Strings.shared.tabDownloads)
+                if let state = model.state, !state.loading {
+                    if state.isEmpty {
+                        empty.frame(maxHeight: .infinity)
+                    } else {
+                        list(state)
+                    }
                 } else {
-                    list(state)
+                    Spacer(minLength: 0)
                 }
             }
         }
-        .navigationTitle(Strings.shared.tabDownloads.titleCased())
-        .toolbar {
-            if let state = model.state, !state.isEmpty {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    // An icon, not words: the bin; the label is read by VoiceOver.
-                    Button { model.removeAll() } label: { Image(systemName: "trash") }
-                        .accessibilityLabel(Strings.shared.removeAllDownloads)
-                }
-            }
-        }
+        .backMenuTitle(Strings.shared.tabDownloads.titleCased())
+        // The tab draws its own header; the system bar above it would only be empty space.
+        .toolbar(.hidden, for: .navigationBar)
         .onAppear { model.start() }
         .confirmationDialog(
             model.state?.removal.map { Strings.shared.removeConfirmTitle(count: $0.count, title: $0.title) } ?? "",
@@ -61,8 +59,8 @@ struct DownloadsView: View {
 
     private func list(_ state: DownloadsUiState) -> some View {
         List {
-            if let line = state.storageLine {
-                Text(line).font(.subheadline).foregroundStyle(.secondary).listRowBackground(Color.clear)
+            if let storage = state.storageLine {
+                Section { storageCard(storage) }
             }
             if !state.movies.isEmpty {
                 Section(Strings.shared.filterMovies.titleCased()) {
@@ -86,6 +84,25 @@ struct DownloadsView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
+    }
+
+    /// How much the downloads take on the device, and the bin: an icon, which VoiceOver names.
+    private func storageCard(_ storage: String) -> some View {
+        HStack(spacing: Space.s3) {
+            Image(systemName: "arrow.down.circle").foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Strings.shared.downloadsStorageHeading).font(.footnote).foregroundStyle(.secondary)
+                Text(storage).font(.headline).foregroundStyle(.primary)
+            }
+            .accessibilityElement(children: .combine)
+            Spacer(minLength: 0)
+            Button { model.removeAll() } label: {
+                Image(systemName: "trash").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+            .accessibilityLabel(Strings.shared.removeAllDownloads)
+        }
     }
 
     /// A movie or an episode: its picture, its title, where its download is, and a menu for what can be done to it.

@@ -106,6 +106,14 @@ final class OnboardingFlowUITests: XCTestCase {
             }
         }
 
+        step("Every tab has the profile in its header") {
+            // Ends on Home, where the next step opens Settings.
+            for tab in ["Search", "Library", "Downloads", "Home"] {
+                tabButton(tab).tap()
+                XCTAssertTrue(button(username).waitForExistence(timeout: 10), "The profile is missing from the \(tab) tab")
+            }
+        }
+
         step("Settings pages") {
             // Settings is in the profile menu on Home; its button is labelled with the user's name.
             let profile = button(username)

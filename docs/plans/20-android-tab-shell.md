@@ -5,7 +5,7 @@
 **Goal:** The four tabs on Android look like one app. Each has the same header (the page name, the same size and place, and the
 profile at the right), and one floating bar at the bottom replaces the phone's `NavigationBar` and the tablet's tabs at the top.
 
-**Related:** issue #42. Android only: iOS keeps its tab bar, and its profile menu stays on Home.
+**Related:** issue #42. Android first; in review iOS took the same headers, profile button and storage card, and keeps the system tab bar.
 Mockups: the `AndroidTabShell` card in the shared mockups artifact.
 
 ## Decisions
@@ -40,10 +40,14 @@ Mockups: the `AndroidTabShell` card in the shared mockups artifact.
   icons alone. A finger dragged along it moves the highlight, and the page changes when it lifts.
 - Going offline is a toast on both platforms (Android's `Toast`, an iOS capsule); "Can't reach the server" stays a banner.
 - The detail page's actions sit in four places of one width, edge to edge under Play; fewer keep the same places (both platforms).
+- **iOS follows the headers** (asked in review): the four tabs share one `TabHeader` with the profile (Home without its logo, Search
+  with its title over a `UISearchBar`, Library without its count), the profile model is one `ProfileMenuViewModel` for the shell
+  (`ProfileMenuModel` facade) with a tap for its options and a double tap to Switch profile, and Downloads has the storage card.
+  The tab bar stays the system's, which floats on iOS 26.
 
 ## Not in this plan
 
-iOS changes, a new tab, a redesign of the player or of the detail pages, light theme or dynamic colour.
+A custom iOS tab bar, a new tab, a redesign of the player or of the detail pages, light theme or dynamic colour.
 
 ## Phases
 
