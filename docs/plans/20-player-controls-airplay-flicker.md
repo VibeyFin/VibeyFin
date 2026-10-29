@@ -1,6 +1,6 @@
 # Plan 20: iOS player controls, AirPlay hold-open and flicker
 
-> **Status:** Planned. Work it in the phases below, stopping for review after each.
+> **Status:** Phase 1 done (checked on an iPhone and an iPad; the smoke test has one unrelated failure, `testZZDownloadFromTileMenu`).
 
 **Goal:** On iOS and iPadOS the player's controls stay up while the AirPlay picker is open (then hide after the usual 3 s), and
 they no longer flicker while shown.
