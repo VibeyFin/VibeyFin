@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import Shared
 
 /// Lets SwiftUI watch the profile button's state and send it events. `ProfileMenuModel` calls back on the main thread.
@@ -81,49 +82,61 @@ private struct OptionalScreenMargin: ViewModifier {
     }
 }
 
-/// The profile's letter at the top right of every tab. A tap opens its options; a double tap goes straight to "Who's watching?", after
-/// the PIN when the profile has one. VoiceOver's own double tap activates, so it gets Switch profile as an action instead. Offline
-/// there is no server to sign in to: the options are Settings only and a double tap does nothing.
+/// The profile's letter at the top right of every tab. Offline there is no server to sign in to, so the menu has Settings only.
 struct ProfileButton: View {
     @EnvironmentObject private var model: ProfileMenuObservable
     @Environment(\.profileButtonContext) private var context
-    @State private var open = false
 
     var body: some View {
-        ZStack {
-            Circle().fill(Color(.systemGray4))
-            Text(String((model.state?.userName ?? "").prefix(1)).uppercased())
-                .font(.headline)
-                .foregroundStyle(.primary)
-        }
+        ProfileMenuButton(
+            letter: String((model.state?.userName ?? "").prefix(1)).uppercased(),
+            name: model.state?.userName ?? "",
+            items: items
+        )
         .frame(width: 44, height: 44)
-        .contentShape(Circle())
-        // The double tap is checked first, so a single tap waits a moment to be sure it is one.
-        .onTapGesture(count: 2) { if !context.offline { model.switchProfile() } }
-        .onTapGesture { open = true }
-        .accessibilityElement(children: .ignore)
-        .accessibilityAddTraits(.isButton)
-        // Named for the person; the letter on it would only be read as "A".
-        .accessibilityLabel(model.state?.userName ?? "")
-        .accessibilityHint(Strings.shared.showOptions)
-        .accessibilityAction { open = true }
-        .accessibilityActions {
-            if !context.offline {
-                Button(Strings.shared.switchProfile.titleCased()) { model.switchProfile() }
-            }
+    }
+
+    private var items: [(String, () -> Void)] {
+        var items: [(String, () -> Void)] = []
+        if !context.offline {
+            items.append((Strings.shared.switchProfile.titleCased(), { model.switchProfile() }))
+            items.append((Strings.shared.switchServer.titleCased(), { model.switchServer() }))
         }
-        // The system's own list of options: a sheet from the bottom on iPhone, a popover from the button on iPad.
-        .confirmationDialog(model.state?.userName ?? "", isPresented: $open, titleVisibility: .hidden) {
-            if !context.offline {
-                Button(Strings.shared.switchProfile.titleCased()) { model.switchProfile() }
-                Button(Strings.shared.switchServer.titleCased()) { model.switchServer() }
-            }
-            Button(Strings.shared.settings.titleCased()) { context.onSettings() }
-            // A kids profile cannot sign out; the view model ignores it too.
-            if !context.offline && model.state?.kidsProfile != true {
-                Button(Strings.shared.signOut.titleCased(), role: .destructive) { model.signOut() }
-            }
-            Button(Strings.shared.cancel.titleCased(), role: .cancel) {}
+        items.append((Strings.shared.settings.titleCased(), context.onSettings))
+        // A kids profile cannot sign out; the view model ignores it too.
+        if !context.offline && model.state?.kidsProfile != true {
+            items.append((Strings.shared.signOut.titleCased(), { model.signOut() }))
         }
+        return items
+    }
+}
+
+/// UIKit's button with its menu as the primary action: the menu opens as the finger touches down. SwiftUI's `Menu` with a custom
+/// label waits for the finger to lift and then animates in, which felt slow on a button pressed this often.
+private struct ProfileMenuButton: UIViewRepresentable {
+    let letter: String
+    /// Read by VoiceOver: the letter alone would only be read as "A".
+    let name: String
+    let items: [(String, () -> Void)]
+
+    func makeUIView(context: Context) -> UIButton {
+        var configuration = UIButton.Configuration.filled()
+        configuration.baseBackgroundColor = .systemGray4
+        configuration.baseForegroundColor = .label
+        configuration.cornerStyle = .capsule
+        configuration.contentInsets = .zero
+        let button = UIButton(configuration: configuration)
+        button.showsMenuAsPrimaryAction = true
+        button.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        button.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        return button
+    }
+
+    func updateUIView(_ button: UIButton, context: Context) {
+        var title = AttributedString(letter)
+        title.font = UIFont.preferredFont(forTextStyle: .headline)
+        button.configuration?.attributedTitle = title
+        button.accessibilityLabel = name
+        button.menu = UIMenu(children: items.map { item in UIAction(title: item.0) { _ in item.1() } })
     }
 }

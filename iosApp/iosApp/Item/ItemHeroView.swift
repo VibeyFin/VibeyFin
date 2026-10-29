@@ -368,7 +368,9 @@ private struct ActionRowLayout: Layout {
     }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width = proposal.width ?? 0
+        // Measured without a width (an ideal-size pass), the row is four of its widest button, never zero wide.
+        let widest = subviews.map { $0.sizeThatFits(.unspecified).width }.max() ?? 0
+        let width = proposal.width.flatMap { $0.isFinite ? $0 : nil } ?? widest * CGFloat(places)
         let place = placeWidth(width, subviews)
         let height = subviews.map { $0.sizeThatFits(ProposedViewSize(width: place, height: nil)).height }.max() ?? 0
         return CGSize(width: width, height: height)

@@ -42,7 +42,7 @@ Mockups: the `AndroidTabShell` card in the shared mockups artifact.
 - The detail page's actions sit in four places of one width, edge to edge under Play; fewer keep the same places (both platforms).
 - **iOS follows the headers** (asked in review): the four tabs share one `TabHeader` with the profile (Home without its logo, Search
   with its title over a `UISearchBar`, Library without its count), the profile model is one `ProfileMenuViewModel` for the shell
-  (`ProfileMenuModel` facade) with a tap for its options and a double tap to Switch profile, and Downloads has the storage card.
+  (`ProfileMenuModel` facade) opening the same `Menu` Home had, with no double tap (it slowed every tap), and Downloads has the storage card.
   The tab bar stays the system's, which floats on iOS 26.
 
 ## Not in this plan
