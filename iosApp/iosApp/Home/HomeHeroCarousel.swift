@@ -4,9 +4,8 @@ import Shared
 
 /// The featured items: one card, or from two a paged `HeroPager` of them with the system's page dots under it. It moves on by itself
 /// every `HERO_ADVANCE_MILLIS`, round and round; a swipe, a tap on the dots or a long press (which opens the poster menu) stops that
-/// until Home is left, a finger on it pauses it, and it never moves under Reduce Motion, with VoiceOver on, or while Home is not on
-/// screen and in front. Swipes run round too: past the last item comes the first, and before the first the last. Play and My List act
-/// on their own page.
+/// until Home is left, and it never moves under Reduce Motion, with VoiceOver on, or while Home is not on screen and in front. Swipes
+/// run round too: past the last item comes the first, and before the first the last. Play and My List act on their own page.
 struct HomeHeroCarousel: View {
     let items: [MediaItem]
     let onPlay: (String) -> Void
@@ -27,7 +26,6 @@ struct HomeHeroCarousel: View {
     @State private var autoPage: Int?
     @State private var swiped = false
     @State private var onScreen = false
-    @GestureState private var pressing = false
 
     private var wide: Bool { sizeClass == .regular }
 
@@ -58,11 +56,6 @@ struct HomeHeroCarousel: View {
                         }
                         .padding(.horizontal, -Space.s2 / 2)
                     }
-                // Seen alongside the paging and the buttons: a finger resting on the card pauses it. Moving it cancels the
-                // press, and the swipe that follows stops the carousel anyway.
-                .simultaneousGesture(
-                    LongPressGesture(minimumDuration: .infinity, maximumDistance: 10).updating($pressing) { value, state, _ in state = value }
-                )
                 HeroPageControl(count: items.count, current: $page)
                     .frame(height: HomeHeroCarousel.dotsHeight)
             }
@@ -109,7 +102,7 @@ struct HomeHeroCarousel: View {
     }
 
     private var running: Bool {
-        !swiped && !pressing && !reduceMotion && !voiceOver && scenePhase == .active && onScreen
+        !swiped && !reduceMotion && !voiceOver && scenePhase == .active && onScreen
     }
 
     /// The row the page dots sit in; the skeleton keeps it too when several items are coming, so the card does not move.
