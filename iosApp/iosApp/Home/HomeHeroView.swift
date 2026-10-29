@@ -47,7 +47,7 @@ struct HomeHeroView: View {
     private var details: some View {
         VStack(alignment: wide ? .leading : .center, spacing: Space.s2) {
             if let logo = item.logoUrl, let url = URL(string: logo) {
-                AsyncImage(url: url) { image in
+                CachedImage(url: url) { image in
                     image.resizable().scaledToFit()
                 } placeholder: {
                     Color.clear

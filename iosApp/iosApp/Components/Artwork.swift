@@ -22,19 +22,16 @@ struct Artwork: View {
             .aspectRatio(aspectRatio, contentMode: .fit)
             .overlay {
                 if let url = url.flatMap(URL.init(string:)) {
-                    ZStack {
+                    CachedImage(url: url, fade: fade) { image in
+                        image.resizable().scaledToFill()
+                    } placeholder: {
                         if let blurHash, let blurred = BlurHashCache.image(for: blurHash, aspectRatio: aspectRatio) {
                             Image(uiImage: blurred)
                                 .resizable()
                                 .interpolation(.medium)
                                 .scaledToFill()
-                        }
-                        AsyncImage(url: url, transaction: Transaction(animation: fade)) { phase in
-                            if let image = phase.image {
-                                image.resizable().scaledToFill().transition(.opacity)
-                            } else {
-                                Color.clear
-                            }
+                        } else {
+                            Color.clear
                         }
                     }
                 } else {
@@ -47,6 +44,53 @@ struct Artwork: View {
                 }
             }
             .clipped()
+    }
+}
+
+/// Decoded pictures kept in memory. `AsyncImage` keeps none of its own and leans on `URLCache`, whose memory part is too small
+/// for backdrops, so a page that scrolls away and back (the hero carousel) would fetch and show its BlurHash all over again.
+enum ImageMemoryCache {
+    private static let images: NSCache<NSURL, UIImage> = {
+        let cache = NSCache<NSURL, UIImage>()
+        cache.totalCostLimit = 150 * 1024 * 1024
+        return cache
+    }()
+
+    static func image(for url: URL) -> UIImage? { images.object(forKey: url as NSURL) }
+
+    static func load(_ url: URL) async -> UIImage? {
+        if let cached = image(for: url) { return cached }
+        guard let (data, response) = try? await URLSession.shared.data(from: url),
+              (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? true,
+              let image = UIImage(data: data) else { return nil }
+        let cost = Int(image.size.width * image.scale * image.size.height * image.scale * 4)
+        images.setObject(image, forKey: url as NSURL, cost: cost)
+        return image
+    }
+}
+
+/// Like `AsyncImage`, but a picture already loaded shows at once, with no placeholder and no fade.
+struct CachedImage<Content: View, Placeholder: View>: View {
+    let url: URL
+    var fade: Animation? = nil
+    @ViewBuilder let content: (Image) -> Content
+    @ViewBuilder let placeholder: () -> Placeholder
+
+    @State private var loaded: UIImage?
+
+    var body: some View {
+        let shown = loaded ?? ImageMemoryCache.image(for: url)
+        ZStack {
+            placeholder()
+            if let shown {
+                content(Image(uiImage: shown)).transition(.opacity)
+            }
+        }
+        .task(id: url) {
+            guard ImageMemoryCache.image(for: url) == nil else { return }
+            let image = await ImageMemoryCache.load(url)
+            withAnimation(fade) { loaded = image }
+        }
     }
 }
 
