@@ -44,6 +44,13 @@ Mockups: the `AndroidTabShell` card in the shared mockups artifact.
   with its title over a `UISearchBar`, Library without its count), the profile model is one `ProfileMenuViewModel` for the shell
   (`ProfileMenuModel` facade) opening the same `Menu` Home had, with no double tap (it slowed every tap), and Downloads has the storage card.
   The tab bar stays the system's, which floats on iOS 26.
+- **iPad** (asked in review): the top tab bar sits in the navigation bar's row, so there is no second header row. The four roots keep
+  the navigation bar (empty, compact, no background, no scroll-edge effect) and the profile takes its trailing slot, without the
+  system's glass capsule behind it. An iPad in a narrow window keeps `TabHeader`.
+- **Home's category buttons stay pinned** under the header while the page scrolls, as the Library's chips do, on both platforms.
+- **Hero carousel on iOS:** a paging `UICollectionView` (`HeroPager`) with `space-2` between the cards, sliding for a swipe, the dots
+  and the timer; the picture and its BlurHash are sized to the card exactly (a strip of the blur showed at the left edge). Play and
+  My List are the same 40pt capsule.
 
 ## Not in this plan
 

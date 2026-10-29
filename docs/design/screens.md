@@ -10,10 +10,10 @@ rows, `PosterCard`s, category buttons, category pages). Colours, type and contro
 The Home tab: the same content, rows and rules on both platforms, with native chrome on each.
 
 - iOS: the tab header every tab shares (`TabHeader`: "Home" in `.title2` bold at the left, the avatar at the right, no logo), the category
-  buttons under it; the backdrop and rows scroll under the system tab bar (the safe area provides the bottom inset).
+  buttons under it, pinned there while the page scrolls (as the Library's chips are); the backdrop and rows scroll under the system tab bar (the safe area provides the bottom inset).
 - Android: the tab header every tab shares (`TabHeader`: "Home" in `headlineSmall` at the left, the avatar at the right, no logo), the
-  category buttons under it, rows scrolling behind the floating bar (their bottom padding leaves its space free).
-- Same on both: the page name ("Home") at the left, the profile at the right, as on every tab; category buttons → hero (optional, see **Home hero**) → Continue watching → Recently added in each video library → a row for every genre, biggest first (a profile can limit them or turn them off). There is no row of the libraries: the Library tab is where they are browsed. If the libraries can't be listed, one "Recently added" row stands in for theirs with the error and Try again. A row with nothing in it is not shown, with no gap; each row loads and fails on its own; a header says "See all" and opens the library or the genre. Aqua only on Play and
+  category buttons under it, pinned there while the page scrolls, rows scrolling behind the floating bar (their bottom padding leaves its space free).
+- Same on both: the page name ("Home") at the left, the profile at the right, as on every tab; category buttons (pinned) → hero (optional, see **Home hero**) → Continue watching → Recently added in each video library → a row for every genre, biggest first (a profile can limit them or turn them off). There is no row of the libraries: the Library tab is where they are browsed. If the libraries can't be listed, one "Recently added" row stands in for theirs with the error and Try again. A row with nothing in it is not shown, with no gap; each row loads and fails on its own; a header says "See all" and opens the library or the genre. Aqua only on Play and
   progress (plus native tinting on iOS). The button row scrolls with the content.
 
 ### Category buttons
@@ -282,7 +282,7 @@ backdrop with the details in a left column over it, then the same rows as on the
 ### Chrome
 
 - iPad keeps the main navigation at the top; Android tablets use the same floating bar at the bottom as phones, centred and as wide as its tabs.
-- iPad: the floating glass tab bar stays at the top center (system-rendered with `.sidebarAdaptable`);
+- iPad: the floating glass tab bar stays at the top center (system-rendered with `.sidebarAdaptable`), with the profile avatar in the same row at the right and no second header row;
   glass back button left, Share and `…` right.
 - Android: the four destinations sit in the top app bar, centered (icon + label, the active one in an
   `accent-soft` pill), over the backdrop with back on the left. No navigation
