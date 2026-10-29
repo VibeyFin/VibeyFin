@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -115,7 +116,8 @@ class TileMenuViewModel(
     private var toggled = false
 
     val uiState: StateFlow<TileMenuUiState> = combine(
-        content, connection.sessionEnded(), downloadParts(connection, downloads, downloadFlow, canDownload),
+        // Progress is only drawn while a menu is open; closed, the menu must not rebuild whatever shows it for every byte that arrives.
+        content, connection.sessionEnded(), downloadParts(connection, downloads, downloadFlow, canDownload, live = content.map { it.item != null }),
     ) { content, exit, parts ->
         content.copy(
             exit = exit,

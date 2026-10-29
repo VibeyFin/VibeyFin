@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -177,15 +178,23 @@ internal class DownloadParts(
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
-/** The [DownloadParts] of whoever is signed in; [canDownload] is whether the server lets them download. */
+/**
+ * The [DownloadParts] of whoever is signed in; [canDownload] is whether the server lets them download. While [live] is false the downloads
+ * only change with their state (see [DownloadRepository.observeStates]), so a screen that shows no progress is not rebuilt by one.
+ */
 internal fun downloadParts(
     connection: ConnectionManager,
     downloads: DownloadRepository,
     flow: DownloadFlow,
     canDownload: Flow<Boolean>,
+    live: Flow<Boolean> = flowOf(false),
 ): Flow<DownloadParts> = combine(
-    connection.profile.flatMapLatest { profile ->
-        if (profile == null) flowOf(emptyMap()) else downloads.observeAll(profile).map { list -> list.associateBy { it.itemId } }
+    combine(connection.profile, live.distinctUntilChanged(), ::Pair).flatMapLatest { (profile, live) ->
+        when {
+            profile == null -> flowOf(emptyList<Download>())
+            live -> downloads.observeAll(profile)
+            else -> downloads.observeStates(profile)
+        }.map { list -> list.associateBy { it.itemId } }
     },
     canDownload,
     flow.prompt,

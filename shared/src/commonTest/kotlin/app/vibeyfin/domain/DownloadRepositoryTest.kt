@@ -4,6 +4,7 @@ import app.vibeyfin.data.db.DOWNLOAD_DONE
 import app.vibeyfin.data.db.DOWNLOAD_FAILED
 import app.vibeyfin.data.db.DOWNLOAD_PAUSED
 import app.vibeyfin.data.db.DOWNLOAD_QUEUED
+import app.vibeyfin.data.db.DOWNLOAD_RUNNING
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.testing.FakeDownloadScheduler
@@ -235,6 +236,27 @@ class DownloadRepositoryTest {
         assertEquals(alex, download.profile)
         assertEquals(50L, repository.observeBytesUsed(alex).first())
     }
+
+    @Test
+    fun theStatesChangeWhenADownloadDoesButNotForItsByteCount() = runTest {
+        saga()
+        repository.enqueue(alex, plan(DownloadTarget.Item("m1")))
+        app.downloads.setState("srv-1", "u1", "m1", DOWNLOAD_RUNNING, null, 1)
+        val seen = java.util.Collections.synchronizedList(mutableListOf<List<Download>>())
+        backgroundScope.launch(Dispatchers.Default) { repository.observeStates(alex).collect { seen += it } }
+        settle()
+
+        repeat(50) { app.downloads.setProgress("srv-1", "u1", "m1", it * 1_000L, 100_000, 2) }
+        settle()
+        assertEquals(listOf(DownloadState.Running), seen.map { it.single().state }, "progress alone does not emit")
+
+        app.downloads.setState("srv-1", "u1", "m1", DOWNLOAD_PAUSED, null, 3)
+        settle()
+        assertEquals(listOf(DownloadState.Running, DownloadState.Paused), seen.map { it.single().state })
+    }
+
+    /** Lets the database's flows, which run off the test's clock, deliver what they have. */
+    private suspend fun settle() = kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.delay(300) }
 
     @Test
     fun aPlatformWithoutDownloadsQueuesNothingToRun() = runTest {

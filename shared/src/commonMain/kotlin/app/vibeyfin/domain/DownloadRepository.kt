@@ -120,6 +120,16 @@ class DownloadRepository(
             downloads.mapNotNull { row -> byId[row.itemId]?.let { row.toDownload(it, speed[folder(profile, row.itemId)], converting[folder(profile, row.itemId)]) } }
         }.distinctUntilChanged()
 
+    /**
+     * [observeAll], but it only emits when a download comes, goes or changes state, not for its byte count, speed or conversion. For screens
+     * that show what a download is doing but not how far it is: a running download would otherwise rebuild them several times a second.
+     * The numbers in what it emits are those of the moment it last changed.
+     */
+    fun observeStates(profile: ProfileRef): Flow<List<Download>> =
+        observeAll(profile).distinctUntilChanged { old, new ->
+            old.size == new.size && old.indices.all { old[it].itemId == new[it].itemId && old[it].state == new[it].state && old[it].failure == new[it].failure }
+        }
+
     /** The shows and seasons the profile's downloaded episodes belong to, by id, as they were saved: the name and picture of a show. */
     fun observeParents(profile: ProfileRef): Flow<Map<String, MediaItem>> =
         dao.observeItems(profile.serverId, profile.userId).map { rows ->
