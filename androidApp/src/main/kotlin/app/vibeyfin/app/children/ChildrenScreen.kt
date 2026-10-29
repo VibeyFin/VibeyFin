@@ -1,5 +1,10 @@
 package app.vibeyfin.app.children
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.PaddingValues
+import app.vibeyfin.app.components.TabHeader
+import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Box
@@ -39,7 +44,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.draw.alpha
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.contentDescription
@@ -49,7 +53,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -217,13 +220,14 @@ fun ChildrenScreen(
 
 @Composable
 private fun Title(title: String, subtitle: String?, isRoot: Boolean) {
+    // The Library tab has the header every tab has; the screen already has the side margin.
+    if (isRoot) return TabHeader(title, horizontalPadding = 0.dp)
     // A Column: as a lazy grid item, several loose children would be drawn on top of each other.
     Column {
-        // A tab's page has no back button above it.
-        Spacer(Modifier.height(if (isRoot) VibeyFinTokens.Space.s4 else BackButtonSpace))
+        Spacer(Modifier.height(BackButtonSpace))
         Text(
             text = title,
-            style = if (isRoot) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground,
         )
         // How many titles it holds, softly, under the name.
@@ -303,6 +307,7 @@ private fun ItemGrid(
         columns = GridCells.Adaptive(if (isRoot) (if (wide) 140.dp else 104.dp) else if (wide) 168.dp else 130.dp),
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+        contentPadding = PaddingValues(bottom = LocalBottomBarPadding.current),
     ) {
         // A collection opens on its own header, under the status bar, in place of the plain title.
         if (collectionPage) {

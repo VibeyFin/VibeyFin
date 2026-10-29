@@ -11,6 +11,7 @@ import app.vibeyfin.ui.banner.AppBannerViewModel
 import app.vibeyfin.ui.filtered.FilteredListViewModel
 import app.vibeyfin.ui.home.HomeViewModel
 import app.vibeyfin.ui.home.OfflineHomeViewModel
+import app.vibeyfin.ui.profile.ProfileMenuViewModel
 import app.vibeyfin.ui.item.ItemViewModel
 import app.vibeyfin.ui.notifications.NotificationOpenViewModel
 import app.vibeyfin.ui.playback.PlaybackViewModel
@@ -37,6 +38,7 @@ fun appModule() = module {
     }
     viewModelOf(::HomeViewModel)
     viewModelOf(::OfflineHomeViewModel)
+    viewModelOf(::ProfileMenuViewModel)
     viewModel { params -> ChildrenViewModel(params.get(), get(), get(), get()) }
     viewModel { params -> PersonViewModel(params.get(), get(), get()) }
     viewModelOf(::SearchViewModel)

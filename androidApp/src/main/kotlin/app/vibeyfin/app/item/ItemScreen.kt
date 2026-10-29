@@ -1,5 +1,6 @@
 package app.vibeyfin.app.item
 
+import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Arrangement
@@ -272,7 +273,7 @@ private fun ItemPage(
                         HeroDetails(item, state, centered = true, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer = onPlayEpisode, onTogglePlayed = onTogglePlayed, downloads = downloads)
                     }
                 }
-                Box(Modifier.fillMaxWidth().background(VibeyFinTokens.Colors.bg)) { sections() }
+                Box(Modifier.fillMaxWidth().background(VibeyFinTokens.Colors.bg).padding(bottom = LocalBottomBarPadding.current)) { sections() }
             }
         }
         return
@@ -289,6 +290,7 @@ private fun ItemPage(
                 HeroDetails(item, state, centered = false, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer = onPlayEpisode, onTogglePlayed = onTogglePlayed, downloads = downloads)
             }
             sections()
+            Spacer(Modifier.height(LocalBottomBarPadding.current))
         }
     }
 }

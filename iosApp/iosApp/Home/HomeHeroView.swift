@@ -63,11 +63,16 @@ struct HomeHeroView: View {
                     .lineLimit(1)
             }
             HStack(spacing: Space.s2) {
-                PrimaryButton(action: onPlay) {
+                // Built like My list so the two are the same size (the system's prominent button is shorter than 40pt): aqua is the one
+                // primary action, a capsule on the picture.
+                Button(action: onPlay) {
                     Label(Strings.shared.play.titleCased(), systemImage: "play.fill")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Brand.onAccent)
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                        .background(Capsule().fill(Brand.accent))
                 }
-                // A size smaller than the page's large buttons: they sit on a picture.
-                .controlSize(.regular)
+                .buttonStyle(PressableButtonStyle())
                 // Not aqua: aqua is the one primary action. A soft, see-through button over the picture.
                 Button(action: onMyList) {
                     Label(Strings.shared.myList.titleCased(), systemImage: item.isFavorite ? "heart.fill" : "heart")

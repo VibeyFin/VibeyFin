@@ -49,8 +49,6 @@ fun FilteredListRoute(
         title = viewModel.title,
         state = state.list,
         isRoot = isRoot,
-        // The count keeps its line (and its last value) while a filter reloads, so the page below never moves.
-        subtitle = if (isRoot) state.list.total?.let(Strings::libraryCount) ?: " " else null,
         onBack = onBack,
         onOpen = onOpen,
         onLoadMore = viewModel::onLoadMore,

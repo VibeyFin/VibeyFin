@@ -1,5 +1,6 @@
 package app.vibeyfin.app.person
 
+import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -82,7 +83,7 @@ fun PersonScreen(state: PersonUiState, onBack: () -> Unit, onOpen: (MediaItem) -
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
             Column(
-                modifier = Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()),
+                modifier = Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(bottom = LocalBottomBarPadding.current),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Spacer(Modifier.height(BackButtonSpace))

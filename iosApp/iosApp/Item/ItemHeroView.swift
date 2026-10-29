@@ -257,9 +257,10 @@ struct HeroDetailsView: View {
 
     /// The actions under Play, each an icon over a label: My List (the server's favourites), Trailer (only when there is one) and
     /// Watched (a tick). Download joins them with offline playback. A trailer the server holds plays in the app; one on the web
-    /// opens in the system's viewer.
+    /// opens in the system's viewer. They sit in four places of one width (the widest label's), the first at Play's left edge and
+    /// the fourth ending at its right, evenly spread; with fewer (an episode has no trailer) the last places stay empty.
     private var actions: some View {
-        HStack(spacing: 0) {
+        ActionRowLayout {
             actionButton(
                 label: Strings.shared.myList,
                 description: Strings.shared.myListAction(onList: state.isFavorite),
@@ -275,8 +276,6 @@ struct HeroDetailsView: View {
                         openURL(url)
                     }
                 }
-            } else {
-                Color.clear.frame(height: 1).frame(maxWidth: .infinity)
             }
             if state.canMark {
                 actionButton(
@@ -286,13 +285,9 @@ struct HeroDetailsView: View {
                     pop: state.watched,
                     action: onTogglePlayed
                 )
-            } else {
-                Color.clear.frame(height: 1).frame(maxWidth: .infinity)
             }
             if state.offersDownload {
                 downloadButton
-            } else {
-                Color.clear.frame(height: 1).frame(maxWidth: .infinity)
             }
         }
         .frame(maxWidth: .infinity)
@@ -310,7 +305,7 @@ struct HeroDetailsView: View {
             Text(state.downloadLabel.titleCased()).font(.caption.weight(.medium))
         }
         .foregroundStyle(.primary)
-        .frame(maxWidth: .infinity, minHeight: 72)
+        .frame(minWidth: 64, maxWidth: .infinity, minHeight: 72)
         .contentShape(Rectangle())
         if !isSeries && state.download == nil {
             Button(action: downloads.download) { face }
@@ -353,10 +348,43 @@ struct HeroDetailsView: View {
                 Text(label.titleCased()).font(.caption.weight(.medium))
             }
             .foregroundStyle(.primary)
-            .frame(maxWidth: .infinity, minHeight: 72)
+            .frame(minWidth: 64, maxWidth: .infinity, minHeight: 72)
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableButtonStyle())
         .accessibilityLabel(description)
+    }
+}
+
+/// The action row's places: four of one width, the widest action's, the first at the row's leading edge and the last ending at
+/// its trailing edge, evenly spread. Fewer actions keep the same places from the leading edge; the rest stay empty. Too narrow for
+/// that, the places share the width.
+private struct ActionRowLayout: Layout {
+    private let places = 4
+
+    private func placeWidth(_ width: CGFloat, _ subviews: Subviews) -> CGFloat {
+        let widest = subviews.map { $0.sizeThatFits(.unspecified).width }.max() ?? 0
+        return min(widest, width / CGFloat(places))
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        // Measured without a width (an ideal-size pass), the row is four of its widest button, never zero wide.
+        let widest = subviews.map { $0.sizeThatFits(.unspecified).width }.max() ?? 0
+        let width = proposal.width.flatMap { $0.isFinite ? $0 : nil } ?? widest * CGFloat(places)
+        let place = placeWidth(width, subviews)
+        let height = subviews.map { $0.sizeThatFits(ProposedViewSize(width: place, height: nil)).height }.max() ?? 0
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let place = placeWidth(bounds.width, subviews)
+        let gap = (bounds.width - place * CGFloat(places)) / CGFloat(places - 1)
+        for (index, subview) in subviews.enumerated() {
+            subview.place(
+                at: CGPoint(x: bounds.minX + CGFloat(index) * (place + gap), y: bounds.minY),
+                anchor: .topLeading,
+                proposal: ProposedViewSize(width: place, height: bounds.height)
+            )
+        }
     }
 }

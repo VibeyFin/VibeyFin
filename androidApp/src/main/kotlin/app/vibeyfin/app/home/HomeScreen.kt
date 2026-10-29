@@ -1,5 +1,8 @@
 package app.vibeyfin.app.home
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.downloads.DownloadActionMenuItem
 import app.vibeyfin.app.downloads.DownloadBadgeIcon
 import app.vibeyfin.app.downloads.RemoveConfirmDialog
@@ -23,10 +26,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -36,14 +37,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -53,27 +49,14 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.invisibleToUser
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -81,28 +64,24 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.theme.screenMargin
-import app.vibeyfin.R
 import app.vibeyfin.app.components.ActionSnackbar
 import app.vibeyfin.app.components.ContinueCard
 import app.vibeyfin.app.components.ContinueSkeletonCards
 import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.components.bleed
-import app.vibeyfin.app.components.POSTER_CAPTION_LINES
 import app.vibeyfin.app.components.SectionTitle
+import app.vibeyfin.app.components.TabHeader
 import app.vibeyfin.app.components.ROW_FADE_MS
 import app.vibeyfin.app.components.RowPhase
 import app.vibeyfin.app.components.MediaRowSection
 import app.vibeyfin.app.components.PosterSkeletonRow
 import app.vibeyfin.app.components.SkeletonLine
-import app.vibeyfin.app.components.skeletonTiles
 import app.vibeyfin.app.components.VibeyFinMenu
-import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.ui.home.CategoryButton
-import app.vibeyfin.ui.home.MediaRow
 import app.vibeyfin.ui.home.SeeAll
 import app.vibeyfin.ui.home.CategoryKind
 import app.vibeyfin.ui.home.ContinueCard as ContinueCardState
@@ -110,12 +89,8 @@ import app.vibeyfin.ui.home.ContinueRow
 import app.vibeyfin.ui.home.HeroNav
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.home.HomeUiState
-import app.vibeyfin.app.settings.PinSheet
 import app.vibeyfin.ui.home.HomeViewModel
 import org.koin.androidx.compose.koinViewModel
-
-/** The app logo at the top of Home. */
-private val LOGO_SIZE = 32.dp
 
 /** How many grey rows stand in for the rows that are still being worked out. */
 private const val PLACEHOLDER_ROWS = 2
@@ -126,7 +101,6 @@ fun HomeRoute(
     onOpen: (MediaItem) -> Unit,
     onPlay: (String) -> Unit,
     onDetails: (String) -> Unit,
-    onSettings: () -> Unit,
     onOpenList: (HomeFilter) -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
@@ -180,14 +154,6 @@ fun HomeRoute(
         onPickOption = viewModel::onPickOption,
         onDismissSheet = viewModel::onDismissSheet,
         onRetrySheet = viewModel::onRetrySheet,
-        onSwitchProfile = viewModel::onSwitchProfile,
-        onSwitchServer = viewModel::onSwitchServer,
-        onSettings = onSettings,
-        onSignOut = viewModel::onSignOut,
-        onSubmitPin = viewModel::onSubmitPin,
-        onForgotPin = viewModel::onForgotPin,
-        onSubmitPassword = viewModel::onSubmitPassword,
-        onDismissPin = viewModel::onDismissPin,
     )
 }
 
@@ -215,18 +181,7 @@ fun HomeScreen(
     onPickOption: (String) -> Unit,
     onDismissSheet: () -> Unit,
     onRetrySheet: () -> Unit,
-    onSwitchProfile: () -> Unit,
-    onSwitchServer: () -> Unit,
-    onSettings: () -> Unit,
-    onSignOut: () -> Unit,
-    onSubmitPin: (String) -> Unit,
-    onForgotPin: () -> Unit,
-    onSubmitPassword: (String) -> Unit,
-    onDismissPin: () -> Unit,
 ) {
-    state.pinPrompt?.let { prompt ->
-        PinSheet(prompt, onSubmitPin, onForgotPin, onSubmitPassword, onDismissPin)
-    }
     val margin = screenMargin()
     // The card whose actions are showing, after a long press.
     var menuCard by remember { mutableStateOf<ContinueCardState?>(null) }
@@ -234,37 +189,18 @@ fun HomeScreen(
         // No side margin on the column: the Continue watching row runs to the screen edge, so the
         // header and the grid each apply the margin themselves.
         Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
-            Row(
-                // The logo, the page name and the profile are centred in the header, with the same space above and below.
-                modifier = Modifier.fillMaxWidth().padding(horizontal = margin, vertical = VibeyFinTokens.Space.s3),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // The app's logo with the name of the page next to it, as in Netflix; the profile is at the right.
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
-                    modifier = Modifier.weight(1f).heightIn(min = VibeyFinTokens.Size.touch),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_logo),
-                        contentDescription = Strings.appName,
-                        tint = VibeyFinTokens.Colors.ink,
-                        modifier = Modifier.size(LOGO_SIZE),
-                    )
-                    Text(
-                        text = Strings.home,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.semantics { heading() },
-                    )
-                }
-                ProfileMenu(state.userName, state.kidsProfile, onSwitchProfile, onSwitchServer, onSettings, onSignOut)
-            }
+            // The page name at the left and the profile at the right, as on every tab.
+            TabHeader(Strings.home)
             if (state.serverId != null) {
+                // The category buttons stay put under the header while the page scrolls, as the Library's chips do. Home itself is
+                // never filtered: a button opens a page of its own.
+                CategoryButtonRow(
+                    buttons = state.buttons,
+                    contentPadding = PaddingValues(start = margin, end = margin, bottom = VibeyFinTokens.Space.s3),
+                    onTap = { onCategory(it.kind) },
+                )
                 Content(
                     state, margin, onOpen, onPlay, onDetails, onHeroMyList, onHeroPlay, { menuCard = it }, onRefresh, onRetryContinue, onRetryRow, onSeeAll,
-                    onTap = { onCategory(it.kind) },
                 )
             }
         }
@@ -362,7 +298,6 @@ private fun Content(
     onRetryContinue: () -> Unit,
     onRetryRow: (String) -> Unit,
     onSeeAll: (SeeAll) -> Unit,
-    onTap: (CategoryButton) -> Unit,
 ) {
     val refreshState = rememberPullToRefreshState()
     PullToRefreshBox(
@@ -383,21 +318,11 @@ private fun Content(
     ) {
         LazyVerticalGrid(
             columns = GridCells.Adaptive(150.dp),
-            contentPadding = PaddingValues(start = margin, top = 0.dp, end = margin, bottom = margin),
+            contentPadding = PaddingValues(start = margin, top = 0.dp, end = margin, bottom = margin + LocalBottomBarPadding.current),
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
             horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
             modifier = Modifier.fillMaxSize(),
         ) {
-            // The category buttons scroll with the content and run to the screen edge. Home itself is never
-            // filtered: a button opens a page of its own.
-            fullWidth(key = "categories") {
-                CategoryButtonRow(
-                    buttons = state.buttons,
-                    contentPadding = PaddingValues(horizontal = margin),
-                    onTap = onTap,
-                    modifier = Modifier.bleed(margin),
-                )
-            }
             // The featured item, when there is one: full width, under the buttons and above what is being watched.
             // While it is being picked a grey card of the same size stands in and fades into the hero, so it does not just appear.
             if (state.heroes.isNotEmpty() || state.heroLoading) {
@@ -484,41 +409,3 @@ private fun RowPlaceholder(margin: Dp) {
     }
 }
 
-/** The profile button at the top right and the menu it opens. */
-@Composable
-private fun ProfileMenu(
-    userName: String?,
-    kidsProfile: Boolean,
-    onSwitchProfile: () -> Unit,
-    onSwitchServer: () -> Unit,
-    onSettings: () -> Unit,
-    onSignOut: () -> Unit,
-) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        Box(
-            modifier = Modifier
-                .size(VibeyFinTokens.Size.touch)
-                .clip(CircleShape)
-                .background(VibeyFinTokens.Colors.surface3)
-                .clickable(role = Role.Button) { open = true }
-                // Named for the person, as on iOS; the letter on it would only be read as "A".
-                .semantics { contentDescription = userName.orEmpty() },
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = userName?.take(1)?.uppercase().orEmpty(),
-                style = MaterialTheme.typography.titleMedium,
-                color = VibeyFinTokens.Colors.ink,
-                modifier = Modifier.clearAndSetSemantics { },
-            )
-        }
-        VibeyFinMenu(expanded = open, onDismiss = { open = false }) {
-            VibeyFinMenuItem(Strings.switchProfile, Icons.Filled.Person) { open = false; onSwitchProfile() }
-            VibeyFinMenuItem(Strings.switchServer, Icons.Filled.Refresh) { open = false; onSwitchServer() }
-            VibeyFinMenuItem(Strings.settings, Icons.Filled.Settings) { open = false; onSettings() }
-            // A kids profile cannot sign out; the view model ignores it too.
-            if (!kidsProfile) VibeyFinMenuItem(Strings.signOut, Icons.AutoMirrored.Filled.ExitToApp) { open = false; onSignOut() }
-        }
-    }
-}

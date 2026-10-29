@@ -1,5 +1,13 @@
 package app.vibeyfin.app.downloads
 
+import app.vibeyfin.R
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import app.vibeyfin.app.components.TabHeader
+import androidx.compose.foundation.layout.PaddingValues
+import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,14 +37,11 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,7 +68,6 @@ import app.vibeyfin.ui.downloads.DownloadedShow
 import app.vibeyfin.ui.downloads.DownloadsUiState
 import app.vibeyfin.ui.downloads.DownloadsViewModel
 import app.vibeyfin.ui.downloads.actions
-import app.vibeyfin.ui.downloads.badge
 import app.vibeyfin.ui.downloads.failureMessage
 import app.vibeyfin.ui.downloads.isDone
 import app.vibeyfin.ui.downloads.statusLine
@@ -119,30 +123,35 @@ fun DownloadsScreen(
     }
 }
 
+/** The header every tab has, and once there are downloads, the card that says how much they take with the bin to remove them all. */
 @Composable
 private fun Header(state: DownloadsUiState, onRemoveAll: () -> Unit) {
-    Column {
-        Spacer(Modifier.height(VibeyFinTokens.Space.s4))
-        Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = Strings.tabDownloads,
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.semantics { heading() },
-                )
-                state.storageLine?.let {
-                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+    Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
+        // The screen already has the side margin.
+        TabHeader(Strings.tabDownloads, horizontalPadding = 0.dp)
+        val storage = state.storageLine
+        if (!state.isEmpty && !state.loading && storage != null) StorageCard(storage, onRemoveAll)
+    }
+}
+
+/** How much the downloads take on the device, and the bin: an icon, which the screen reader and a long press name. */
+@Composable
+private fun StorageCard(storage: String, onRemoveAll: () -> Unit) {
+    Surface(color = VibeyFinTokens.Colors.surface1, shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md), modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.padding(start = VibeyFinTokens.Space.s4, end = VibeyFinTokens.Space.s1, top = VibeyFinTokens.Space.s2, bottom = VibeyFinTokens.Space.s2),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+        ) {
+            Icon(ImageVector.vectorResource(R.drawable.ic_download), contentDescription = null, tint = VibeyFinTokens.Colors.inkMuted)
+            Column(Modifier.weight(1f).semantics(mergeDescendants = true) { }) {
+                Text(Strings.downloadsStorageHeading, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(storage, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
             }
-            if (!state.isEmpty && !state.loading) {
-                // An icon, not words: the bin; the screen reader and a long press say what it does.
-                IconButton(onClick = onRemoveAll) {
-                    Icon(Icons.Filled.Delete, contentDescription = Strings.removeAllDownloads, tint = VibeyFinTokens.Colors.inkMuted)
-                }
+            IconButton(onClick = onRemoveAll) {
+                Icon(Icons.Filled.Delete, contentDescription = Strings.removeAllDownloads, tint = VibeyFinTokens.Colors.inkMuted)
             }
         }
-        Spacer(Modifier.height(VibeyFinTokens.Space.s4))
     }
 }
 
@@ -169,7 +178,7 @@ private fun Content(
 ) {
     // Which shows are open: kept with the screen, so coming back from an episode's page finds them as they were.
     var open by rememberSaveable { mutableStateOf(listOf<String>()) }
-    LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = LocalBottomBarPadding.current), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         item(key = "header") { Header(state, onRemoveAll) }
         if (state.movies.isNotEmpty()) {
             item(key = "movies") { SectionTitle(Strings.filterMovies, modifier = Modifier.semantics { heading() }) }

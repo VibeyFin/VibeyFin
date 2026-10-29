@@ -22,17 +22,24 @@ struct Artwork: View {
             .aspectRatio(aspectRatio, contentMode: .fit)
             .overlay {
                 if let url = url.flatMap(URL.init(string:)) {
-                    CachedImage(url: url, fade: fade) { image in
-                        image.resizable().scaledToFill()
-                    } placeholder: {
-                        if let blurHash, let blurred = BlurHashCache.image(for: blurHash, aspectRatio: aspectRatio) {
-                            Image(uiImage: blurred)
-                                .resizable()
-                                .interpolation(.medium)
-                                .scaledToFill()
-                        } else {
-                            Color.clear
+                    // Each picture gets the tile's exact size and is cropped to it. Left to size itself, a picture and its BlurHash
+                    // (both larger than the tile) end up offset from each other, and a strip of the blur shows at one edge.
+                    GeometryReader { geo in
+                        CachedImage(url: url, fade: fade) { image in
+                            image.resizable().scaledToFill().frame(width: geo.size.width, height: geo.size.height).clipped()
+                        } placeholder: {
+                            if let blurHash, let blurred = BlurHashCache.image(for: blurHash, aspectRatio: aspectRatio) {
+                                Image(uiImage: blurred)
+                                    .resizable()
+                                    .interpolation(.medium)
+                                    .scaledToFill()
+                                    .frame(width: geo.size.width, height: geo.size.height)
+                                    .clipped()
+                            } else {
+                                Color.clear
+                            }
                         }
+                        .frame(width: geo.size.width, height: geo.size.height)
                     }
                 } else {
                     Text(title)

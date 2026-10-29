@@ -9,11 +9,11 @@ rows, `PosterCard`s, category buttons, category pages). Colours, type and contro
 
 The Home tab: the same content, rows and rules on both platforms, with native chrome on each.
 
-- iOS: the app logo with the large title "Home" next to it and the profile avatar at the right, the category buttons under them; the backdrop and rows
-  scroll under the floating tab bar (the safe area provides the bottom inset).
-- Android: top app bar with the app logo and "Home" next to it and the avatar at the right, the category buttons under it, rows scrolling above the
-  `NavigationBar` (`Scaffold`'s inner padding).
-- Same on both: the logo and the page name ("Home") at the left, the profile at the right; category buttons → hero (optional, see **Home hero**) → Continue watching → Recently added in each video library → a row for every genre, biggest first (a profile can limit them or turn them off). There is no row of the libraries: the Library tab is where they are browsed. If the libraries can't be listed, one "Recently added" row stands in for theirs with the error and Try again. A row with nothing in it is not shown, with no gap; each row loads and fails on its own; a header says "See all" and opens the library or the genre. Aqua only on Play and
+- iOS: the tab header every tab shares (`TabHeader`: "Home" in `.title2` bold at the left, the avatar at the right, no logo), the category
+  buttons under it, pinned there while the page scrolls (as the Library's chips are); the backdrop and rows scroll under the system tab bar (the safe area provides the bottom inset).
+- Android: the tab header every tab shares (`TabHeader`: "Home" in `headlineSmall` at the left, the avatar at the right, no logo), the
+  category buttons under it, pinned there while the page scrolls, rows scrolling behind the floating bar (their bottom padding leaves its space free).
+- Same on both: the page name ("Home") at the left, the profile at the right, as on every tab; category buttons (pinned) → hero (optional, see **Home hero**) → Continue watching → Recently added in each video library → a row for every genre, biggest first (a profile can limit them or turn them off). There is no row of the libraries: the Library tab is where they are browsed. If the libraries can't be listed, one "Recently added" row stands in for theirs with the error and Try again. A row with nothing in it is not shown, with no gap; each row loads and fails on its own; a header says "See all" and opens the library or the genre. Aqua only on Play and
   progress (plus native tinting on iOS). The button row scrolls with the content.
 
 ### Category buttons
@@ -81,8 +81,8 @@ An optional card between the category buttons and Continue watching: one title, 
 
 ## Library
 
-The Library tab: every movie and show in the library as a poster grid (three across on a phone), under a title with the count of what
-is listed. The count stays in place while a change loads, so nothing jumps.
+The Library tab: every movie and show in the library as a poster grid (three across on a phone), under the tab header
+("Library" and the profile; no count, so the header is the same height as on the other tabs).
 
 - **Buttons** under the title, one scrolling row of filled capsules: Movies, Shows, Collections, Sort, Genre, Year, People and Clear
   (Clear only when something is applied). Movies and Shows narrow the type; Collections lists the boxsets instead. A button that
@@ -94,7 +94,7 @@ is listed. The count stays in place while a change loads, so nothing jumps.
 
 ## Search
 
-The Search tab: a field at the top, then results from `/Search/Hints` after a 300 ms debounce.
+The Search tab: the tab header ("Search" and the profile), the field under it, then results from `/Search/Hints` after a 300 ms debounce.
 
 - **Empty field:** the profile's recent searches (ten at most, kept on this device), each tapping to search again, and a way to clear them.
 - **Filters:** a row of filled capsules under the field: All, Movies, Shows, Episodes, People, Collections. Results are grouped under
@@ -244,7 +244,8 @@ download's progress is not playback progress.
 - **Season and show confirm first:** "Download 13 episodes?" with "They take about 965 KB." and, when some are watched, "Only episodes
   I haven't watched". A season's own list page has a **Download season** button with "3 of 8 downloaded".
 - **Removing always asks:** "Remove Heat?" with "This frees 283 MB. You can download it again later." (what is on the device now).
-- **Downloads tab:** a large title with "1.4 GB used" and a trash icon (**Remove all downloads**, asks first); **Movies** (poster, title, status line) and **Shows**
+- **Downloads tab:** the tab header, then a card: "On this device" over "1.4 GB used", and a bin icon with no words
+  (**Remove all downloads**, asks first; the screen reader names it); **Movies** (poster, title, status line) and **Shows**
   (a card with the show's poster, "13 episodes · 965 KB" and a chevron that opens its episodes in place, a menu with go to the show and
   remove all of it). A row's status line is "Downloaded · 850 MB", "Downloading · 120 MB of 850 MB" with a thin ink progress bar,
   "Waiting for Wi-Fi", "Waiting for a connection", "Waiting for the server", "Paused · …", or "Download failed" with the reason under it. A running download adds the time left ("· 8m left"); the notification says the same ("20 MB of 283 MB · 8m left").
@@ -253,7 +254,8 @@ download's progress is not playback progress.
 
 ## Offline
 
-- **Banner:** a strip under the status bar, `surface-3`, title and one line, a plain text button when there is a way out: "You're offline" (no network, no button), "Offline mode · Showing what you've downloaded." with **Go online**, or "Can't reach the server" with **Use offline**.
+- **Going offline:** said once, as a toast: "You're offline. Showing what you've downloaded." (no network) or "Offline mode is on. Showing what you've downloaded." (the switch in Settings). Android: the system `Toast`. iOS has none: a capsule on `.regularMaterial` above the tab bar for about 3.5 s, announced to VoiceOver, taking no taps. No strip across the page; Settings switches Offline mode off.
+- **Banner:** only "Can't reach the server" with **Use offline**: a strip under the status bar, `surface-3`, title and one line. It stays until the server answers or Use offline is pressed.
 - **Tabs:** Home, Search, Downloads. **Home** has Continue watching, then Movies and Shows rows from the device; a movie or a card plays at once and a show opens Downloads. **Search** searches downloads (All, Movies, Episodes) and a result plays. **Downloads** plays a finished row.
 - Offline nothing opens a page that needs the server; Library is not there.
 
@@ -279,8 +281,8 @@ backdrop with the details in a left column over it, then the same rows as on the
 
 ### Chrome
 
-- Both platforms keep the main navigation at the top on tablets.
-- iPad: the floating glass tab bar stays at the top center (system-rendered with `.sidebarAdaptable`);
+- iPad keeps the main navigation at the top; Android tablets use the same floating bar at the bottom as phones, centred and as wide as its tabs.
+- iPad: the floating glass tab bar stays at the top center (system-rendered with `.sidebarAdaptable`), with the profile avatar in the same row at the right and no second header row;
   glass back button left, Share and `…` right.
 - Android: the four destinations sit in the top app bar, centered (icon + label, the active one in an
   `accent-soft` pill), over the backdrop with back on the left. No navigation

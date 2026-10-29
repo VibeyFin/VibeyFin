@@ -1,5 +1,8 @@
 package app.vibeyfin.app.search
 
+import androidx.compose.runtime.getValue
+import app.vibeyfin.app.components.TabHeader
+import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import app.vibeyfin.domain.model.asMediaItem
@@ -42,11 +45,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -132,6 +131,7 @@ fun SearchScreen(
         // The grids use the whole width, on a tablet too: more columns, not a narrow centred column.
         Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
             Column(Modifier.fillMaxSize()) {
+                TabHeader(Strings.tabSearch)
                 TextField(
                     value = state.query,
                     onValueChange = onQueryChange,
@@ -152,7 +152,7 @@ fun SearchScreen(
                         focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
                         unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
                     ),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = margin, vertical = VibeyFinTokens.Space.s3).focusRequester(focus)
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = margin).padding(bottom = VibeyFinTokens.Space.s3).focusRequester(focus)
                         .semantics { contentDescription = if (state.offline) Strings.offlineSearchHint else Strings.searchHint },
                 )
                 // One button per kind, once something is typed: All lists every group, the others only theirs.
@@ -207,7 +207,7 @@ private fun Prompt(title: String, help: String, margin: androidx.compose.ui.unit
 private fun History(history: List<String>, margin: androidx.compose.ui.unit.Dp, onPick: (String) -> Unit, onRemove: (String) -> Unit, onClearAll: () -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = margin, vertical = VibeyFinTokens.Space.s2),
+        contentPadding = PaddingValues(start = margin, top = VibeyFinTokens.Space.s2, end = margin, bottom = VibeyFinTokens.Space.s2 + LocalBottomBarPadding.current),
     ) {
         item(key = "header") {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -239,7 +239,7 @@ private fun Results(state: SearchUiState, margin: androidx.compose.ui.unit.Dp, o
     LazyVerticalGrid(
         columns = GridCells.Adaptive(GRID_MIN_WIDTH),
         modifier = Modifier.fillMaxSize().alpha(if (state.loading) 0.5f else 1f),
-        contentPadding = PaddingValues(horizontal = margin, vertical = VibeyFinTokens.Space.s2),
+        contentPadding = PaddingValues(start = margin, top = VibeyFinTokens.Space.s2, end = margin, bottom = VibeyFinTokens.Space.s2 + LocalBottomBarPadding.current),
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
     ) {
@@ -319,7 +319,7 @@ private fun ResultSkeleton(margin: androidx.compose.ui.unit.Dp) {
         columns = GridCells.Adaptive(GRID_MIN_WIDTH),
         userScrollEnabled = false,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = margin, vertical = VibeyFinTokens.Space.s2),
+        contentPadding = PaddingValues(start = margin, top = VibeyFinTokens.Space.s2, end = margin, bottom = VibeyFinTokens.Space.s2 + LocalBottomBarPadding.current),
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
     ) {

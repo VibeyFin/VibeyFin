@@ -44,31 +44,40 @@ class AppBannerViewModelTest {
     }
 
     @Test
-    fun noNetworkSaysSoWithNothingToPress() = runTest {
+    fun noNetworkIsAToastNotABanner() = runTest {
         val viewModel = viewModel()
         viewModel.banner.first()
 
         app.network.set(NetworkState.None)
 
-        val banner = viewModel.banner.first { it != null }!!
-        assertEquals(Strings.offlineBannerTitle, banner.title)
-        assertNull(banner.action)
-        assertNull(banner.actionLabel)
+        assertEquals(Strings.offlineToast, viewModel.toast.first { it != null })
+        assertNull(viewModel.banner.value)
     }
 
     @Test
-    fun theSwitchInSettingsSaysSoAndGoOnlineTurnsItOff() = runTest {
+    fun theSwitchInSettingsIsToldOnceAsAToast() = runTest {
         val viewModel = viewModel()
+        viewModel.banner.first()
         app.offline.setManual(true)
 
-        val banner = viewModel.banner.first { it != null }!!
-        assertEquals(Strings.offlineModeTitle, banner.title)
-        assertEquals(Strings.goOnline, banner.actionLabel)
+        assertEquals(Strings.offlineModeToast, viewModel.toast.first { it != null })
+        assertNull(viewModel.banner.value)
 
-        viewModel.onAction()
+        viewModel.onToastShown()
 
-        assertNull(viewModel.banner.first { it == null })
-        assertEquals(false, app.offline.isOffline.value)
+        assertNull(viewModel.toast.value)
+    }
+
+    @Test
+    fun goingOnlineAgainSaysNothing() = runTest {
+        val viewModel = viewModel()
+        app.offline.setManual(true)
+        viewModel.toast.first { it != null }
+        viewModel.onToastShown()
+
+        app.offline.setManual(false)
+
+        assertNull(viewModel.toast.value)
     }
 
     @Test
@@ -90,7 +99,8 @@ class AppBannerViewModelTest {
         viewModel.onAction()
 
         assertEquals(true, app.offline.isOffline.value)
-        assertEquals(Strings.offlineModeTitle, viewModel.banner.first { it?.action == BannerAction.GoOnline }!!.title)
+        assertNull(viewModel.banner.first { it == null }, "offline now: the banner goes and the toast says so")
+        assertEquals(Strings.offlineModeToast, viewModel.toast.first { it != null })
     }
 
     @Test

@@ -4,7 +4,6 @@ import Shared
 struct HomeView: View {
     @StateObject private var model = HomeObservable()
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.playerSession) private var player
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -13,7 +12,6 @@ struct HomeView: View {
     let onOpen: (MediaItem) -> Void
     /// Opens an item's page, from a Continue watching card's menu.
     let onDetails: (String) -> Void
-    let onSettings: () -> Void
     /// A category button or a genre in the Categories list was chosen: its page opens over Home.
     let onOpenList: (HomeFilter) -> Void
 
@@ -21,20 +19,17 @@ struct HomeView: View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
             VStack(alignment: .leading, spacing: 0) {
-                // The logo, the page name and the profile are centred in the header, with the same space above and below.
-                header
-                    .screenMargin()
-                    // On iPad the tab pill above already gives the space, so only the bottom gets padding.
-                    .padding(.top, sizeClass == .regular ? 0 : Space.s3)
-                    .padding(.bottom, Space.s3)
+                // The same header as the other tabs: the page name and the profile, no logo.
+                TabHeader(title: Strings.shared.home)
                 // No side margin on the scroll content: the Continue watching row runs to the screen
                 // edge, so it and the rows under it apply the margin themselves.
                 if let state = model.state, state.serverId != nil {
+                    // The category buttons stay put under the header while the page scrolls, as the Library's do. Home itself is
+                    // never filtered: a button opens a page of its own.
+                    CategoryButtonRow(buttons: state.buttons) { model.category($0.kind) }
+                        .padding(.bottom, Space.s3)
                     ScrollView {
                         VStack(alignment: .leading, spacing: Space.s5) {
-                            // The category buttons scroll with the content and run to the screen edge. Home itself is
-                            // never filtered: a button opens a page of its own.
-                            CategoryButtonRow(buttons: state.buttons) { model.category($0.kind) }
                             // While it is being picked a grey card of the same size stands in, so the hero does not just appear.
                             if state.heroes.isEmpty && state.heroLoading {
                                 HomeHeroSkeleton(dots: state.heroSlots >= 2).screenMargin().transition(.opacity)
@@ -139,23 +134,6 @@ struct HomeView: View {
                 model.listOpened()
             }
         }
-        // The PIN for Switch profile and Switch server. On a clear background view so it doesn't share a modifier slot with the picker sheet.
-        .background {
-            Color.clear.sheet(isPresented: Binding(
-                get: { model.state?.pinPrompt != nil },
-                set: { if !$0 { model.dismissPin() } }
-            )) {
-                if let prompt = model.state?.pinPrompt {
-                    PinSheet(
-                        prompt: prompt,
-                        onSubmitPin: { model.submitPin($0) },
-                        onForgotPin: { model.forgotPin() },
-                        onSubmitPassword: { model.submitPassword($0) },
-                        onDismiss: { model.dismissPin() }
-                    )
-                }
-            }
-        }
         .sheet(isPresented: Binding(
             get: { model.state?.sheet != nil },
             set: { if !$0 { model.dismissSheet() } }
@@ -178,39 +156,6 @@ struct HomeView: View {
                     onRetry: { model.retrySheet() }
                 )
             }
-        }
-    }
-
-    private var header: some View {
-        // The app's logo with the name of the page next to it, as in Netflix; the profile is at the right.
-        HStack(alignment: .center, spacing: Space.s3) {
-            AppLogo()
-            Text(Strings.shared.home.titleCased())
-                .screenTitle()
-                .accessibilityAddTraits(.isHeader)
-            Spacer()
-            profileMenu
-        }
-    }
-
-    private var profileMenu: some View {
-        Menu {
-            Button(Strings.shared.switchProfile.titleCased()) { model.switchProfile() }
-            Button(Strings.shared.switchServer.titleCased()) { model.switchServer() }
-            Button(Strings.shared.settings.titleCased()) { onSettings() }
-            // A kids profile can't sign out.
-            if model.state?.kidsProfile != true {
-                Button(Strings.shared.signOut.titleCased()) { model.signOut() }
-            }
-        } label: {
-            ZStack {
-                Circle().fill(Color(.systemGray4))
-                Text(String((model.state?.userName ?? "").prefix(1)).uppercased())
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-            }
-            .frame(width: 44, height: 44)
-            .accessibilityLabel(model.state?.userName ?? "")
         }
     }
 }

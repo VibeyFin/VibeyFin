@@ -12,13 +12,25 @@ struct SearchView: View {
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
-            content
+            VStack(spacing: 0) {
+                // The same header as the other tabs, then the field.
+                TabHeader(title: Strings.shared.tabSearch)
+                SearchBar(
+                    text: $text,
+                    prompt: model.state?.offline == true ? Strings.shared.offlineSearchHint : Strings.shared.searchHint,
+                    onSubmit: { model.submit() }
+                )
+                .screenMargin()
+                // The bar's own inset, taken back so the field lines up with the title above it.
+                .padding(.horizontal, -Space.s2)
+                content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            }
         }
         .onAppear { model.start() }
-        .searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: model.state?.offline == true ? Strings.shared.offlineSearchHint : Strings.shared.searchHint)
         .onChange(of: text) { model.setQuery($0) }
-        .onSubmit(of: .search) { model.submit() }
-        .navigationTitle(Strings.shared.tabSearch.titleCased())
+        .backMenuTitle(Strings.shared.tabSearch.titleCased())
+        // The tab draws its own header; the system bar above it would only be empty space.
+        .tabRootBar()
         .onChange(of: model.state?.exit != nil) { hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
         }

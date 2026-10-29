@@ -28,17 +28,14 @@ struct OfflineHomeView: View {
     @Environment(\.playerSession) private var player
 
     let onOpenDownloads: () -> Void
-    let onSettings: () -> Void
     let onExit: (HomeExit) -> Void
 
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
             VStack(alignment: .leading, spacing: 0) {
-                header
-                    .screenMargin()
-                    .padding(.top, Space.s3)
-                    .padding(.bottom, Space.s3)
+                // The profile's options offline are Settings only, to switch Offline mode off.
+                TabHeader(title: Strings.shared.home)
                 if let state = model.state, !state.loading {
                     if state.isEmpty {
                         empty
@@ -82,28 +79,6 @@ struct OfflineHomeView: View {
         .onAppear { model.start() }
         .onChange(of: model.state?.exit != nil) { hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
-        }
-    }
-
-    private var header: some View {
-        HStack(alignment: .center, spacing: Space.s3) {
-            AppLogo()
-            Text(Strings.shared.home.titleCased())
-                .screenTitle()
-                .accessibilityAddTraits(.isHeader)
-            Spacer()
-            // With no server the profile has only Settings to go to, to switch Offline mode off.
-            Button(action: onSettings) {
-                ZStack {
-                    Circle().fill(Color(.systemGray4))
-                    Text(String((model.state?.userName ?? "").prefix(1)).uppercased())
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                }
-                .frame(width: 44, height: 44)
-            }
-            .buttonStyle(PressableButtonStyle())
-            .accessibilityLabel(Strings.shared.settings.titleCased())
         }
     }
 
