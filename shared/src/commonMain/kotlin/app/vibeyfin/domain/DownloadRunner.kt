@@ -332,26 +332,19 @@ class DownloadRunner(
                 is Attempt.Ok -> found.value
                 else -> return end(found)
             }
-            var speed: Double? = null
-            var last = clock.now()
-            var lastDone = files.length(part)
+            // The platform reports on every chunk it receives, which on a fast link is many times a second.
+            val throttle = ProgressThrottle()
+            var done = files.length(part)
+            var total = known
             val result = transfer.transfer(
                 ExternalTransferRequest(base, address.first, address.second, row.itemId, part, allowsMobile(row)),
                 stop,
-            ) { done, total ->
-                val now = clock.now()
-                val seconds = (now - last).toDouble(DurationUnit.SECONDS)
-                if (seconds > 0 && done > lastDone) {
-                    val instant = (done - lastDone) / seconds
-                    speed = speed?.let { it * (1 - SPEED_WEIGHT) + instant * SPEED_WEIGHT } ?: instant
-                    last = now
-                    lastDone = done
-                }
-                dao.setProgress(row.serverId, row.userId, row.itemId, done, total ?: known ?: -1, now.toEpochMilliseconds())
-                val bytesPerSecond = speed?.toLong()?.takeIf { it > 0 }
-                if (bytesPerSecond != null) speeds.set(base, bytesPerSecond)
-                onProgress(Progress(row.itemId, title, done, total ?: known, remaining, bytesPerSecond = bytesPerSecond))
+            ) { reached, size ->
+                total = size ?: known
+                throttle.advance(reached, total, count = reached - done)
+                done = maxOf(done, reached)
             }
+            throttle.flush(done, total)
             speeds.clear(base)
             return when (result) {
                 ExternalTransferResult.Finished -> complete(files.length(part))
@@ -459,9 +452,7 @@ class DownloadRunner(
             var total: Long? = row.bytesTotal.takeIf { it > 0 }
                 private set
             private var validator: String? = row.etag
-            private var lastReport = clock.now()
-            private var unreported = 0L
-            private var speed: Double? = null
+            private val throttle = ProgressThrottle()
 
             override suspend fun begin(start: DownloadStart) {
                 output?.close()
@@ -484,8 +475,7 @@ class DownloadRunner(
                 if (stop.value) throw StopTransfer()
                 output!!.write(bytes, count)
                 done += count
-                unreported += count
-                if (unreported >= PROGRESS_STEP_BYTES || clock.now() - lastReport >= PROGRESS_STEP_TIME) report()
+                throttle.advance(done, total, count.toLong())
             }
 
             suspend fun close() {
@@ -495,7 +485,32 @@ class DownloadRunner(
                 speeds.clear(base)
             }
 
-            private suspend fun report() {
+            private suspend fun report() = throttle.report(done, total)
+        }
+
+        /**
+         * Saves the download's progress to the database, the speed readout and [onProgress], but only once per
+         * [PROGRESS_STEP_BYTES] or [PROGRESS_STEP_TIME]. Every write wakes everything that watches the downloads,
+         * so a fast link must not cause one per chunk.
+         */
+        inner class ProgressThrottle {
+            private var lastReport = clock.now()
+            private var unreported = 0L
+            private var reported = -1L
+            private var speed: Double? = null
+
+            /** [count] more bytes have arrived, [done] in all. */
+            suspend fun advance(done: Long, total: Long?, count: Long) {
+                if (count > 0) unreported += count
+                if (unreported >= PROGRESS_STEP_BYTES || clock.now() - lastReport >= PROGRESS_STEP_TIME) report(done, total)
+            }
+
+            /** Reports [done] unless it is what the last report said, so the end of a transfer is never lost between two steps. */
+            suspend fun flush(done: Long, total: Long?) {
+                if (done != reported) report(done, total)
+            }
+
+            suspend fun report(done: Long, total: Long?) {
                 val now = clock.now()
                 val seconds = (now - lastReport).toDouble(DurationUnit.SECONDS)
                 // A smoothed speed, so the time left does not jump with every burst: new measures count for a third.
@@ -505,6 +520,7 @@ class DownloadRunner(
                 }
                 unreported = 0
                 lastReport = now
+                reported = done
                 dao.setProgress(row.serverId, row.userId, row.itemId, done, total ?: -1, now.toEpochMilliseconds())
                 val bytesPerSecond = speed?.toLong()?.takeIf { it > 0 }
                 if (bytesPerSecond != null) speeds.set(base, bytesPerSecond) else speeds.clear(base)

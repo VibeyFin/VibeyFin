@@ -29,6 +29,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -475,6 +476,68 @@ class DownloadRunnerTest {
 
         assertEquals(DownloadFailure.Unplayable.name, row().error)
         assertTrue(app.jellyfin.requestsTo("GET", "/Items/m1/Download").isEmpty(), "the video was never asked for")
+    }
+
+    /** A platform transfer that reports [steps] chunks of [step] bytes, moving [clockStep] on the test clock before each, and leaves a small file at the part path. */
+    private inner class FakeExternalTransfer(
+        val steps: Int,
+        val step: Long,
+        val clockStep: kotlin.time.Duration = kotlin.time.Duration.ZERO,
+        val total: Long? = steps * step,
+    ) : ExternalVideoTransfer {
+        override suspend fun transfer(
+            request: ExternalTransferRequest,
+            stop: kotlinx.coroutines.flow.StateFlow<Boolean>,
+            onProgress: suspend (done: Long, total: Long?) -> Unit,
+        ): ExternalTransferResult {
+            app.files.open(request.partPath, append = false).also { it.write("x".encodeToByteArray(), 1) }.close()
+            for (i in 1..steps) {
+                app.clock.advance(clockStep)
+                onProgress(i * step, total)
+            }
+            return ExternalTransferResult.Finished
+        }
+    }
+
+    private fun externalRunner(transfer: ExternalVideoTransfer) =
+        DownloadRunner(app.downloads, app.database.accountDao(), app.connection, app.files, app.network, app.wake, app.clock, speeds = app.speeds, external = transfer)
+
+    @Test
+    fun aPlatformTransferReportsOncePerStepOfBytesNotOncePerChunk() = runTest {
+        movieOnServer()
+        queue()
+        val seen = mutableListOf<DownloadRunner.Progress>()
+
+        // 1,000 chunks of 10 KB: 10 MB, which is five 2 MB steps.
+        externalRunner(FakeExternalTransfer(steps = 1_000, step = 10_000)).run { seen += it }
+
+        val transferring = seen.filter { !it.converting && it.bytesDone > 0 }
+        assertTrue(transferring.size < 20, "reported ${transferring.size} times")
+        assertEquals(10_000_000L, transferring.last().bytesDone, "the last report is the full count")
+    }
+
+    @Test
+    fun aPlatformTransferAlsoReportsWhenHalfASecondHasPassed() = runTest {
+        movieOnServer()
+        queue()
+        val seen = mutableListOf<DownloadRunner.Progress>()
+
+        // 20 chunks of 1 KB, 600 ms apart: far below the byte step, so only time makes them report.
+        externalRunner(FakeExternalTransfer(steps = 20, step = 1_000, clockStep = 600.milliseconds)).run { seen += it }
+
+        assertEquals(20, seen.count { it.bytesDone > 0 && !it.converting })
+    }
+
+    @Test
+    fun theLastBytesOfAPlatformTransferAreReportedEvenBetweenSteps() = runTest {
+        movieOnServer()
+        queue()
+        val seen = mutableListOf<DownloadRunner.Progress>()
+
+        // 30 KB in 3 chunks, with no total known: nothing crosses a step, yet the end must be saved.
+        externalRunner(FakeExternalTransfer(steps = 3, step = 10_000, total = null)).run { seen += it }
+
+        assertEquals(30_000L, seen.last { !it.converting && it.bytesDone > 0 }.bytesDone)
     }
 
     @Test
