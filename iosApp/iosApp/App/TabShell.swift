@@ -120,7 +120,7 @@ struct TabShell: View {
                 if offline {
                     OfflineHomeView(onOpenDownloads: { selection = .downloads }, onExit: onExit)
                     .navigationBarBackButtonHidden(true)
-                    .toolbar(.hidden, for: .navigationBar)
+                    .tabRootBar()
                 } else {
                     HomeView(
                         onExit: onExit,
@@ -131,7 +131,7 @@ struct TabShell: View {
                     .navigationBarBackButtonHidden(true)
                     .backMenuTitle(Strings.shared.tabHome.titleCased())
                     // Home draws its own title, so the system bar above it would only be empty space.
-                    .toolbar(.hidden, for: .navigationBar)
+                    .tabRootBar()
                 }
             }
             .tabItem { Label(Strings.shared.tabHome.titleCased(), systemImage: "house") }

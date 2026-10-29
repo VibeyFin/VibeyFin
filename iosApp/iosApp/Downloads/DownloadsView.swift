@@ -31,7 +31,7 @@ struct DownloadsView: View {
         }
         .backMenuTitle(Strings.shared.tabDownloads.titleCased())
         // The tab draws its own header; the system bar above it would only be empty space.
-        .toolbar(.hidden, for: .navigationBar)
+        .tabRootBar()
         .onAppear { model.start() }
         .confirmationDialog(
             model.state?.removal.map { Strings.shared.removeConfirmTitle(count: $0.count, title: $0.title) } ?? "",

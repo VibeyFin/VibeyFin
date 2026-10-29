@@ -53,13 +53,24 @@ extension EnvironmentValues {
     }
 }
 
-/// The header of the four tabs: the page name at the left and the profile at the right, one line, the same size and in the same
+/// The header of the four tabs on a phone, or an iPad in a narrow window: the page name at the left and the profile at the right, one line, the same size and in the same
 /// place on every tab, so it stays still when the tab changes. `horizontalMargin` is false inside a screen that already has the margin.
 struct TabHeader: View {
     let title: String
     var horizontalMargin = true
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
+        // On an iPad with the tab bar at the top, the page is named by the selected tab and the profile sits in that row (TabShell).
+        if UIDevice.current.userInterfaceIdiom == .pad && sizeClass == .regular {
+            // The profile is in the navigation bar next to the tab bar (`tabRootBar`), so there is no row of ours.
+            EmptyView()
+        } else {
+            row
+        }
+    }
+
+    private var row: some View {
         HStack(alignment: .center, spacing: Space.s2) {
             Text(title.titleCased())
                 .font(.title2.bold())
@@ -138,5 +149,56 @@ private struct ProfileMenuButton: UIViewRepresentable {
         button.configuration?.attributedTitle = title
         button.accessibilityLabel = name
         button.menu = UIMenu(children: items.map { item in UIAction(title: item.0) { _ in item.1() } })
+    }
+}
+
+/// An iPad with the tab bar at the top (regular width): the system puts that bar in the navigation bar's own row, so the four tab
+/// roots keep the navigation bar, empty, and the profile takes its trailing slot: one row, and the system keeps the content clear of
+/// it. (Hiding the bar and laying a row of our own over it left the content under the tab bar after a page had been opened and closed.)
+/// Everywhere else the bar is hidden and `TabHeader` draws the row. `enabled` is false for a screen that is only sometimes a root.
+extension View {
+    func tabRootBar(enabled: Bool = true) -> some View { modifier(TabRootBar(enabled: enabled)) }
+}
+
+private struct TabRootBar: ViewModifier {
+    let enabled: Bool
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    /// The avatar is already a circle: on iOS 26 the system's glass capsule behind a bar button would be a second, different shape.
+    @ToolbarContentBuilder private var profileItem: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarItem(placement: .topBarTrailing) { ProfileButton() }
+                .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: .topBarTrailing) { ProfileButton() }
+        }
+    }
+
+    func body(content: Content) -> some View {
+        if !enabled {
+            content.toolbar(.automatic, for: .navigationBar)
+        } else if UIDevice.current.userInterfaceIdiom == .pad && sizeClass == .regular {
+            content
+                .navigationBarTitleDisplayMode(.inline)
+                // The editor role keeps the bar to its compact height; the default one reserved a band above the content.
+                .toolbarRole(.editor)
+                .toolbarBackground(.hidden, for: .navigationBar)
+                .topEdgeEffectHidden()
+                .toolbar { profileItem }
+        } else {
+            content.toolbar(.hidden, for: .navigationBar)
+        }
+    }
+}
+
+extension View {
+    /// No scroll-edge effect behind the top bar. A screen with a scroll view at its top (Home's and Library's chips) got a grey band
+    /// there on iOS 26 while Search and Downloads did not; the tab roots are drawn on black with no bar background.
+    @ViewBuilder func topEdgeEffectHidden() -> some View {
+        if #available(iOS 26.0, *) {
+            scrollEdgeEffectHidden(true, for: .top)
+        } else {
+            self
+        }
     }
 }

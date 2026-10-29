@@ -30,7 +30,7 @@ struct SearchView: View {
         .onChange(of: text) { model.setQuery($0) }
         .backMenuTitle(Strings.shared.tabSearch.titleCased())
         // The tab draws its own header; the system bar above it would only be empty space.
-        .toolbar(.hidden, for: .navigationBar)
+        .tabRootBar()
         .onChange(of: model.state?.exit != nil) { hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
         }
