@@ -11,9 +11,9 @@ The Home tab: the same content, rows and rules on both platforms, with native ch
 
 - iOS: the app logo with the large title "Home" next to it and the profile avatar at the right, the category buttons under them; the backdrop and rows
   scroll under the floating tab bar (the safe area provides the bottom inset).
-- Android: top app bar with the app logo and "Home" next to it and the avatar at the right, the category buttons under it, rows scrolling above the
-  `NavigationBar` (`Scaffold`'s inner padding).
-- Same on both: the logo and the page name ("Home") at the left, the profile at the right; category buttons → hero (optional, see **Home hero**) → Continue watching → Recently added in each video library → a row for every genre, biggest first (a profile can limit them or turn them off). There is no row of the libraries: the Library tab is where they are browsed. If the libraries can't be listed, one "Recently added" row stands in for theirs with the error and Try again. A row with nothing in it is not shown, with no gap; each row loads and fails on its own; a header says "See all" and opens the library or the genre. Aqua only on Play and
+- Android: the tab header every tab shares (`TabHeader`: "Home" in `headlineSmall` at the left, the avatar at the right, no logo), the
+  category buttons under it, rows scrolling behind the floating bar (their bottom padding leaves its space free).
+- Same on both: the page name ("Home") at the left (iOS with the app logo before it), the profile at the right; category buttons → hero (optional, see **Home hero**) → Continue watching → Recently added in each video library → a row for every genre, biggest first (a profile can limit them or turn them off). There is no row of the libraries: the Library tab is where they are browsed. If the libraries can't be listed, one "Recently added" row stands in for theirs with the error and Try again. A row with nothing in it is not shown, with no gap; each row loads and fails on its own; a header says "See all" and opens the library or the genre. Aqua only on Play and
   progress (plus native tinting on iOS). The button row scrolls with the content.
 
 ### Category buttons
@@ -253,7 +253,8 @@ download's progress is not playback progress.
 
 ## Offline
 
-- **Banner:** a strip under the status bar, `surface-3`, title and one line, a plain text button when there is a way out: "You're offline" (no network, no button), "Offline mode · Showing what you've downloaded." with **Go online**, or "Can't reach the server" with **Use offline**.
+- **Going offline:** said once, as a toast: "You're offline. Showing what you've downloaded." (no network) or "Offline mode is on. Showing what you've downloaded." (the switch in Settings). Android: the system `Toast`. iOS has none: a capsule on `.regularMaterial` above the tab bar for about 3.5 s, announced to VoiceOver, taking no taps. No strip across the page; Settings switches Offline mode off.
+- **Banner:** only "Can't reach the server" with **Use offline**: a strip under the status bar, `surface-3`, title and one line. It stays until the server answers or Use offline is pressed.
 - **Tabs:** Home, Search, Downloads. **Home** has Continue watching, then Movies and Shows rows from the device; a movie or a card plays at once and a show opens Downloads. **Search** searches downloads (All, Movies, Episodes) and a result plays. **Downloads** plays a finished row.
 - Offline nothing opens a page that needs the server; Library is not there.
 
@@ -279,7 +280,7 @@ backdrop with the details in a left column over it, then the same rows as on the
 
 ### Chrome
 
-- Both platforms keep the main navigation at the top on tablets.
+- iPad keeps the main navigation at the top; Android tablets use the same floating bar at the bottom as phones, centred and as wide as its tabs.
 - iPad: the floating glass tab bar stays at the top center (system-rendered with `.sidebarAdaptable`);
   glass back button left, Share and `…` right.
 - Android: the four destinations sit in the top app bar, centered (icon + label, the active one in an

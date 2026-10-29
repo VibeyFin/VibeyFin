@@ -1,6 +1,6 @@
 # Plan 20: Android tab shell: one header, a floating bar, the profile everywhere
 
-> **Status:** Phase 1 done (Android tests and build pass; iOS only compiled to klibs, Xcode not installed on this machine). Work it in the phases below, stopping for review after each.
+> **Status:** Phases 1 and 2 done, reviewed on a phone against the test server (iOS only compiled to klibs and parsed: Xcode not installed). Phase 3 not started.
 
 **Goal:** The four tabs on Android look like one app. Each has the same header (the page name, the same size and place, and the
 profile at the right), and one floating bar at the bottom replaces the phone's `NavigationBar` and the tablet's tabs at the top.
@@ -31,6 +31,15 @@ Mockups: the `AndroidTabShell` card in the shared mockups artifact.
 - **No more tablet tabs at the top.** `TabletTabs`, `TABLET_TABS_HEIGHT` and the top offset go. `android.md` and `screens.md`
   change with it; iPad keeps its top bar.
 - **No hide-on-scroll** for now: a bar that moves under the thumb is easy to miss, and the ticket has it as optional.
+
+## Changed in review (phase 2)
+
+- Headers are one line, `headlineSmall`, `Space.s2` above and below; no title count on Library, no storage line on Downloads.
+- Downloads shows its storage in a card on the page ("On this device" over "2.4 GB used") with the bin as an icon.
+- The bar is only as wide as its tabs; the tab showing has its label beside its icon in `ink` on a faint tint, the others are
+  icons alone. A finger dragged along it moves the highlight, and the page changes when it lifts.
+- Going offline is a toast on both platforms (Android's `Toast`, an iOS capsule); "Can't reach the server" stays a banner.
+- The detail page's actions sit in four places of one width, edge to edge under Play; fewer keep the same places (both platforms).
 
 ## Not in this plan
 

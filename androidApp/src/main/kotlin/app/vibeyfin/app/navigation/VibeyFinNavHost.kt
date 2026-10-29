@@ -2,6 +2,9 @@
 
 package app.vibeyfin.app.navigation
 
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
+import androidx.compose.runtime.getValue
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
@@ -20,9 +23,7 @@ import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
@@ -45,7 +46,6 @@ import app.vibeyfin.domain.OfflineMode
 import app.vibeyfin.app.home.OfflineHomeRoute
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Box
@@ -145,6 +145,14 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
     val offline by appOffline.isOffline.collectAsStateWithLifecycle()
     val bannerModel: AppBannerViewModel = koinViewModel()
     val banner by bannerModel.banner.collectAsStateWithLifecycle()
+    // Going offline is said once, in the system's own toast, not a strip over the page.
+    val toast by bannerModel.toast.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    LaunchedEffect(toast) {
+        val message = toast ?: return@LaunchedEffect
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        bannerModel.onToastShown()
+    }
     val backStackEntry by navController.currentBackStackEntryAsState()
     // The bar belongs to the three tabs and what opens from them; sign-in, settings and the player are without it.
     val currentTab = backStackEntry?.destination?.hierarchy?.let { path ->
@@ -188,20 +196,10 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
     // The player is the whole screen: no inset of its own for the camera cut-out, so no bar of the page's colour beside the picture
     // (a foldable's cover screen, a phone turned sideways), and a black window behind it.
     val onPlayer = backStackEntry?.opensPlayer() == true
-    // From 600 dp (a tablet, an unfolded foldable) the tabs sit at the top, centered, and a swipe sideways on the bar changes tab.
-    val tablet = LocalConfiguration.current.screenWidthDp >= 600
-    val atTabRoot = currentTab != null && backStackEntry?.destination?.hasRoute(currentTab.root::class) == true
     val tabs = Tab.entries.filter { !offline || it != Tab.Library }
-    val swipeTo: (Int) -> Unit = { step ->
-        val at = tabs.indexOf(currentTab)
-        tabs.getOrNull(at + step)?.takeIf { at >= 0 }?.let(select)
-    }
     Scaffold(
         containerColor = if (onPlayer) androidx.compose.ui.graphics.Color.Black else MaterialTheme.colorScheme.background,
         contentWindowInsets = if (onPlayer) WindowInsets(0, 0, 0, 0) else ScaffoldDefaults.contentWindowInsets,
-        bottomBar = {
-            if (currentTab != null && !tablet) MainNavigationBar(currentTab, select, offline)
-        },
     ) { padding ->
         // The long-press menu of a poster, wherever the poster is: Details, Trailer (when the title has one) and My List.
         val tileMenu: TileMenuViewModel = koinViewModel()
@@ -241,14 +239,12 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
         Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
         Column(Modifier.fillMaxSize()) {
         if (!onPlayer) banner?.let { AppBanner(it, onAction = bannerModel::onAction) }
-        SharedTransitionLayout(
-            Modifier
-                .weight(1f)
-                // Search, Library and Downloads start below the tabs; Home and the pages opened from a tab run under them, over the artwork.
-                .padding(top = if (tablet && atTabRoot && currentTab != Tab.Home) TABLET_TABS_HEIGHT else 0.dp),
-        ) {
+        SharedTransitionLayout(Modifier.weight(1f)) {
         CompositionLocalProvider(
             LocalSharedTransitionScope provides this,
+            // The tabs' pages scroll under the floating bar and leave its space free at the bottom of their lists.
+            LocalBottomBarPadding provides if (currentTab != null) FLOATING_BAR_SPACE else 0.dp,
+            LocalProfileButton provides { ProfileButton(offline, onSettings = { navController.navigate(Settings) }, onExit = leave) },
             LocalTileLongPress provides { item -> tileMenu.onOpen(item) },
             LocalOpenTrailerUrl provides openTrailerUrl,
         ) {
@@ -307,7 +303,6 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
                         OfflineHomeRoute(
                             onPlay = { itemId -> navController.navigate(Player(itemId)) },
                             onOpenDownloads = { select(Tab.Downloads) },
-                            onSettings = { navController.navigate(Settings) },
                             onExit = leave,
                         )
                     } else HomeRoute(
@@ -316,7 +311,6 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
                         // A Continue watching card plays at once; it never goes through the detail page.
                         onPlay = { itemId -> navController.navigate(Player(itemId)) },
                         onDetails = { itemId -> navController.navigate(Item(itemId)) },
-                        onSettings = { navController.navigate(Settings) },
                         onOpenList = { navController.navigate(it.toRoute()) },
                     )
                 }
@@ -401,13 +395,13 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
         }
         }
         }
-        if (tablet && currentTab != null) {
-            TabletTabs(
+        // Over the content on phones and tablets alike, so the pages scroll behind it.
+        if (currentTab != null) {
+            FloatingNavigationBar(
                 selected = currentTab,
                 tabs = tabs,
                 onSelect = select,
-                onSwipe = swipeTo,
-                modifier = Modifier.align(Alignment.TopCenter),
+                modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
         }
