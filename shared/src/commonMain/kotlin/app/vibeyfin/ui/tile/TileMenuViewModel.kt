@@ -83,6 +83,17 @@ data class TileMenuUiState(
         }
 }
 
+/** The line under the title in the poster menu: its year, then what it is ("1995 · Movie"). Only a movie or a show says what it is. */
+val MediaItem.menuFacts: String
+    get() = listOfNotNull(
+        year?.toString(),
+        when (kind) {
+            ItemKind.Movie -> Strings.heroMovie
+            ItemKind.Series -> Strings.heroShow
+            else -> null
+        },
+    ).joinToString("  ·  ")
+
 /**
  * The long-press menu of a poster, anywhere in the app: Details, Trailer (only when the title has one) and My List. A poster in a list
  * does not carry its trailers (the server leaves them out of lists), so they are looked up when the menu opens.

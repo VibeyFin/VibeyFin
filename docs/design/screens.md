@@ -117,12 +117,19 @@ Movies and Shows rows. On a tablet the header is wide (21:9) with the details in
 
 ## Poster menu
 
-A long press on any poster, in a row, a grid or search results, opens a short bottom sheet on both platforms:
+A long press on any poster, in a row, a grid or search results, or on a Home hero card, opens a short bottom sheet on both platforms:
 
 - **Details** opens the title's page, **Trailer** (only a movie or a show can have one, and only when it does: the server's own plays in the app, one on the web opens in
-  YouTube) and **My List** (a heart, filled when it is on the list; adds or removes, and says which).
-- The rows are there when the sheet opens. Lists do not carry trailers, so the sheet looks the title up; a title with no trailer never
-  shows a Trailer row that then goes away, and the lookup never undoes a My List change made in the meantime.
+  YouTube), **Download** (when the server lets the user: a tap starts one, a show asks first; with one the row says where it is and opens Pause or Resume and Remove) and
+  **My List** (a heart, filled when it is on the list; adds or removes, and says which).
+- The rows are there when the sheet opens. Lists do not carry trailers, so the sheet looks the title up; a grey line the height of a row holds the Trailer row's place while the
+  server answers, and a title with no trailer never shows a Trailer row that then goes away. The lookup never undoes a My List change made in the meantime.
+- A held row lights up `accent-soft` and does not shrink. A change that could not be saved is taken back and the sheet says so in `danger`.
+- **iOS:** a native `.sheet` with the drag indicator and one detent as tall as its content (measured, so Dynamic Type never clips it), keeping the system's own sheet background
+  (Liquid Glass on iOS 26), never an opaque `systemBackground` on the content. A header with a small poster, the title (`.headline`, two lines) and "2025 · Movie"
+  (`.subheadline`, secondary) sits over a hairline, then 52 pt rows with an SF Symbol and the text; a held row is an inset pill. Download opens a native `Menu`. The reference
+  screen is `PosterMenu` in the mockups.
+- **Android:** a `ModalBottomSheet` on `surface-container-low`, opened to its full height; the title alone in `titleMedium`, 56 dp rows, the Download menu an M3 dropdown.
 
 ## Detail
 

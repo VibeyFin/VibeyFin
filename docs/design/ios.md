@@ -29,7 +29,7 @@ Glass is the **navigation and controls layer** floating above content — never 
 | --- | --- |
 | Play / Resume | `Button` + `.buttonStyle(.borderedProminent)`, `.buttonBorderShape(.capsule)`, `.controlSize(.large)` |
 | Secondary action | `.bordered`; tertiary `.borderless` (tinted) |
-| Quick actions on a card | `.contextMenu { … } preview: { … }` |
+| Quick actions on a poster or the hero | A native `.sheet`, not `.contextMenu`: the Trailer row arrives after the server answers and the Download row shows live state, and a menu is static once open (see **Poster menu** in `screens.md`) |
 | Episode card actions | `.contextMenu` on the card (View episode, the watched mark); no swipe actions |
 | Audio / subtitles | `Menu` / `Picker` in a toolbar or a sheet with `.presentationDetents([.medium, .large])` |
 | Season buttons (series detail) | Horizontal `ScrollView` of capsule buttons, selected filled `ink`; `ScrollViewReader` scrolls to the next-up season on open |

@@ -57,6 +57,16 @@ class TileMenuViewModelTest {
         posterAspectRatio = 2f / 3f, posterUrl = null, backdropUrl = null, isFavorite = favorite,
     )
 
+    @Test
+    fun `the line under the menu title is the year and what it is for a movie or a show`() {
+        val movie = tile()
+        assertEquals("1995  ·  Movie", movie.menuFacts)
+        assertEquals("1995  ·  Show", movie.copy(kind = ItemKind.Series).menuFacts)
+        assertEquals("Movie", movie.copy(year = null).menuFacts)
+        assertEquals("1995", movie.copy(kind = ItemKind.Episode).menuFacts)
+        assertEquals("", movie.copy(kind = ItemKind.Collection, year = null).menuFacts)
+    }
+
     private suspend fun server(detail: String) = app.signedIn().also { it.on("GET", "/Items", Reply.json(itemsJson(detail))) }
 
     @Test
