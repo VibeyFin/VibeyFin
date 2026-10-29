@@ -24,11 +24,12 @@ struct HomeView: View {
                 // No side margin on the scroll content: the Continue watching row runs to the screen
                 // edge, so it and the rows under it apply the margin themselves.
                 if let state = model.state, state.serverId != nil {
+                    // The category buttons stay put under the header while the page scrolls, as the Library's do. Home itself is
+                    // never filtered: a button opens a page of its own.
+                    CategoryButtonRow(buttons: state.buttons) { model.category($0.kind) }
+                        .padding(.bottom, Space.s3)
                     ScrollView {
                         VStack(alignment: .leading, spacing: Space.s5) {
-                            // The category buttons scroll with the content and run to the screen edge. Home itself is
-                            // never filtered: a button opens a page of its own.
-                            CategoryButtonRow(buttons: state.buttons) { model.category($0.kind) }
                             // While it is being picked a grey card of the same size stands in, so the hero does not just appear.
                             if state.heroes.isEmpty && state.heroLoading {
                                 HomeHeroSkeleton(dots: state.heroSlots >= 2).screenMargin().transition(.opacity)

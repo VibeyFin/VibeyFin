@@ -192,9 +192,15 @@ fun HomeScreen(
             // The page name at the left and the profile at the right, as on every tab.
             TabHeader(Strings.home)
             if (state.serverId != null) {
+                // The category buttons stay put under the header while the page scrolls, as the Library's chips do. Home itself is
+                // never filtered: a button opens a page of its own.
+                CategoryButtonRow(
+                    buttons = state.buttons,
+                    contentPadding = PaddingValues(start = margin, end = margin, bottom = VibeyFinTokens.Space.s3),
+                    onTap = { onCategory(it.kind) },
+                )
                 Content(
                     state, margin, onOpen, onPlay, onDetails, onHeroMyList, onHeroPlay, { menuCard = it }, onRefresh, onRetryContinue, onRetryRow, onSeeAll,
-                    onTap = { onCategory(it.kind) },
                 )
             }
         }
@@ -292,7 +298,6 @@ private fun Content(
     onRetryContinue: () -> Unit,
     onRetryRow: (String) -> Unit,
     onSeeAll: (SeeAll) -> Unit,
-    onTap: (CategoryButton) -> Unit,
 ) {
     val refreshState = rememberPullToRefreshState()
     PullToRefreshBox(
@@ -318,16 +323,6 @@ private fun Content(
             horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
             modifier = Modifier.fillMaxSize(),
         ) {
-            // The category buttons scroll with the content and run to the screen edge. Home itself is never
-            // filtered: a button opens a page of its own.
-            fullWidth(key = "categories") {
-                CategoryButtonRow(
-                    buttons = state.buttons,
-                    contentPadding = PaddingValues(horizontal = margin),
-                    onTap = onTap,
-                    modifier = Modifier.bleed(margin),
-                )
-            }
             // The featured item, when there is one: full width, under the buttons and above what is being watched.
             // While it is being picked a grey card of the same size stands in and fades into the hero, so it does not just appear.
             if (state.heroes.isNotEmpty() || state.heroLoading) {
