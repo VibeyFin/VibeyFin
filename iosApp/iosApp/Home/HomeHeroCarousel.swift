@@ -59,7 +59,10 @@ struct HomeHeroCarousel: View {
                 HeroPageControl(count: items.count, current: $page)
                     .frame(height: HomeHeroCarousel.dotsHeight)
             }
-            .onAppear { onScreen = true }
+            .onAppear {
+                onScreen = true
+                swiped = false
+            }
             .onDisappear { onScreen = false }
             .onChange(of: slot) { newSlot in
                 let landed = (newSlot + items.count - 1) % items.count

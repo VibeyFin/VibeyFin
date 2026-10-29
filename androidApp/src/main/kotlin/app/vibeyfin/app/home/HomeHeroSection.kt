@@ -204,6 +204,8 @@ fun HomeHeroCarousel(
     var held by remember { mutableStateOf(false) }
     val dragged by pager.interactionSource.collectIsDraggedAsState()
     LaunchedEffect(dragged) { if (dragged) swiped = true }
+    // Coming back to Home starts the carousel again.
+    LaunchedEffect(resumed) { if (resumed) swiped = false }
     // Keyed on the settled page, not the current one: the current page changes halfway through the move, and restarting here then
     // would cancel the move and leave the card half way. After the last item comes the first, as with a swipe.
     LaunchedEffect(pager.settledPage, swiped, held, resumed) {
