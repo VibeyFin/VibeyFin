@@ -130,6 +130,8 @@ private struct ProfileMenuButton: UIViewRepresentable {
     let name: String
     let items: [(String, () -> Void)]
 
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
     func makeUIView(context: Context) -> UIButton {
         var configuration = UIButton.Configuration.filled()
         configuration.baseBackgroundColor = .systemGray4
@@ -148,7 +150,21 @@ private struct ProfileMenuButton: UIViewRepresentable {
         title.font = UIFont.preferredFont(forTextStyle: .headline)
         button.configuration?.attributedTitle = title
         button.accessibilityLabel = name
-        button.menu = UIMenu(children: items.map { item in UIAction(title: item.0) { _ in item.1() } })
+        let coordinator = context.coordinator
+        // The actions always run the latest closures, but the menu itself is only rebuilt when its rows change: Home refreshes often
+        // (the hero moves on, the lists load), and a new menu put in while this one is open blinks it and loses the finger's selection.
+        coordinator.actions = items.map { $0.1 }
+        let titles = items.map { $0.0 }
+        guard titles != coordinator.titles else { return }
+        coordinator.titles = titles
+        button.menu = UIMenu(children: titles.enumerated().map { index, title in
+            UIAction(title: title) { [weak coordinator] _ in coordinator?.actions[index]() }
+        })
+    }
+
+    final class Coordinator {
+        var titles: [String] = []
+        var actions: [() -> Void] = []
     }
 }
 
