@@ -308,5 +308,17 @@ struct TabShell: View {
                     }
                 }
         }
+        // Settings has no tab bar. Decided here from the path, not by the pushed page, so the bar is back as soon as the way back
+        // starts instead of after the page has left.
+        .toolbar(path.wrappedValue.contains(where: \.isSettings) ? .hidden : .automatic, for: .tabBar)
+    }
+}
+
+private extension TabRoute {
+    var isSettings: Bool {
+        switch self {
+        case .settings, .settingsPage: return true
+        default: return false
+        }
     }
 }

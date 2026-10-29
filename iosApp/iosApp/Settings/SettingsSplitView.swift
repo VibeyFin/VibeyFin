@@ -25,6 +25,9 @@ struct SettingsEntryView: View {
                 SettingsPageView(pageId: SettingsPageId.root, model: model, onExit: onExit)
             }
         }
+        // On a regular width the split view has its own bars and its own way back (the chevron in its sidebar), so the stack's bar is hidden
+        // from the start: it would be an empty header with a second back button.
+        .toolbar(sizeClass == .regular ? .hidden : .automatic, for: .navigationBar)
         .onAppear { model.start() }
         // The session ended (Switch profile once its PIN was right, a confirmed Sign out): "Who's watching?" on the server we were on, the
         // same way back as Home's. One observer here, not on every page of the stack, and only for Disconnected: an expired token takes
