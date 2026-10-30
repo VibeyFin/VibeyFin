@@ -179,7 +179,7 @@ data class PlaybackUiState(
     val showDiagnostics: Boolean = false,
     /** The player offers picture-in-picture and starts it when the app is left; off, leaving the app pauses. */
     val pictureInPicture: Boolean = true,
-    /** A vertical swipe on the player changes the volume (right half) and the brightness (left half); Android. */
+    /** A vertical swipe on the player changes the volume (right half) and the brightness (left half). */
     val swipeGestures: Boolean = true,
     /** Seconds of video the player should load ahead; 0 is Auto, the platform player's own choice. */
     val bufferAheadSeconds: Int = ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,

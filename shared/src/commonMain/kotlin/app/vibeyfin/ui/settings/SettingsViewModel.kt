@@ -91,7 +91,6 @@ class SettingsViewModel(
     private val applicationScope: CoroutineScope,
     private val appVersion: String = "",
     private val subtitleStyleApplies: Boolean = true,
-    private val swipeGesturesApply: Boolean = true,
 ) : ViewModel() {
     private val confirmSignOut = MutableStateFlow(false)
     private val confirmPurgeDownloads = MutableStateFlow(false)
@@ -233,7 +232,6 @@ class SettingsViewModel(
             alwaysAskWhoIsWatching = v[ALWAYS_ASK] as Boolean? ?: defaults.alwaysAskWhoIsWatching,
             appVersion = appVersion,
             subtitleStyleApplies = subtitleStyleApplies,
-            swipeGesturesApply = swipeGesturesApply,
             hasProfile = connected != null,
             // Until the flag is read a signed-in profile counts as a kids one, so rows a kids profile must not see never flash by.
             kidsProfile = kids ?: (connected != null),

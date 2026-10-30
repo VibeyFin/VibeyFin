@@ -48,7 +48,7 @@ class ProfileSettings(
     /** Whether the player offers picture-in-picture and starts it when the app is left. On by default. Null when nobody is signed in. */
     val pictureInPicture: Flow<Boolean?> = forAccount { dao, a -> dao.observePictureInPicture(a.serverId, a.userId).map { it ?: true } }
 
-    /** Whether a vertical swipe on the player changes the volume and the brightness (Android). On by default. Null when nobody is signed in. */
+    /** Whether a vertical swipe on the player changes the volume and the brightness. On by default. Null when nobody is signed in. */
     val swipeGestures: Flow<Boolean?> = forAccount { dao, a -> dao.observeSwipeGestures(a.serverId, a.userId).map { it ?: true } }
 
     /** Accepts one of [SKIP_BACK_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */

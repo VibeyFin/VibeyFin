@@ -42,8 +42,6 @@ data class SettingsValues(
     val appVersion: String = "",
     /** False where subtitles are burned into the picture (iOS), so the style cannot apply. */
     val subtitleStyleApplies: Boolean = true,
-    /** False where the player has no swipe for volume and brightness (iOS), so its row is hidden. */
-    val swipeGesturesApply: Boolean = true,
     val hasProfile: Boolean = false,
     /** A kids profile: no Advanced settings, no Sign out, no Notifications. */
     val kidsProfile: Boolean = false,
@@ -560,10 +558,7 @@ fun skippingPage(v: SettingsValues): SettingsPage {
                 Strings.swipeGesturesGroup,
                 Strings.swipeGesturesHelp,
                 items = listOf(
-                    ToggleItem(
-                        SettingKey.SwipeGestures, Strings.swipeGestures, checked = v.swipeGestures,
-                        visible = profile && v.swipeGesturesApply,
-                    ),
+                    ToggleItem(SettingKey.SwipeGestures, Strings.swipeGestures, checked = v.swipeGestures, visible = profile),
                 ),
             ),
             SettingsSection(

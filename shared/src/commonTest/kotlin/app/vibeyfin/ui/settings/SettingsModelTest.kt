@@ -3,7 +3,6 @@ package app.vibeyfin.ui.settings
 import app.vibeyfin.ui.common.Strings
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SettingsModelTest {
@@ -86,14 +85,6 @@ class SettingsModelTest {
         assertTrue(items.filter { it.key in styleKeys }.none { it.enabled })
         assertTrue(items.first { it.key == SettingKey.SubtitlePreview }.enabled)
         assertEquals(Strings.subtitleStyleIosNote, page.sections.first { s -> s.items.any { it.key == SettingKey.SubtitleSize } }.footer)
-    }
-
-    @Test
-    fun `the swipe gestures row shows only where the player has the swipe`() {
-        fun shown(applies: Boolean) = skippingPage(SettingsValues(hasProfile = true, swipeGesturesApply = applies)).visibleOnly()
-            .sections.flatMap { it.items }.any { it.key == SettingKey.SwipeGestures }
-        assertTrue(shown(applies = true))
-        assertFalse(shown(applies = false))
     }
 
     @Test

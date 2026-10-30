@@ -147,7 +147,7 @@ class AccountSettingsEntity(
     /** Whether the player offers picture-in-picture and starts it when the app is left. Off pauses on leaving. */
     @ColumnInfo(defaultValue = "1")
     val pictureInPicture: Boolean = true,
-    /** Whether a vertical swipe on the player changes the volume (right half) and the brightness (left half). Android only. */
+    /** Whether a vertical swipe on the player changes the volume (right half) and the brightness (left half). */
     @ColumnInfo(defaultValue = "1")
     val swipeGestures: Boolean = true,
     /** Whether downloads may use mobile data (or any metered network). Off: they wait for Wi-Fi. */
