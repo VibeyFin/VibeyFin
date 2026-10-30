@@ -22,8 +22,13 @@ final class PlayerSwipe: ObservableObject {
     @Published private(set) var visible = false
 
     fileprivate weak var host: UIView?
+    /// Found once: looking it up walks the hidden view's subviews, and a swipe asks for it on every move.
+    private weak var cachedVolumeSlider: UISlider?
     private var volumeSlider: UISlider? {
-        host?.subviews.compactMap { $0 as? MPVolumeView }.first?.subviews.compactMap { $0 as? UISlider }.first
+        if let cachedVolumeSlider { return cachedVolumeSlider }
+        let slider = host?.subviews.compactMap { $0 as? MPVolumeView }.first?.subviews.compactMap { $0 as? UISlider }.first
+        cachedVolumeSlider = slider
+        return slider
     }
     private var screen: UIScreen? { host?.window?.windowScene?.screen }
     private var startLevel: Double = 0
@@ -32,6 +37,9 @@ final class PlayerSwipe: ObservableObject {
     private var volumeObservation: NSKeyValueObservation?
     /// The volume this swipe last set, so its own change doesn't come back through the observer as a button press.
     private var lastSetVolume: Float?
+    /// A finger is changing the level. The system reports each volume it was given back a little late, by which time
+    /// the finger has moved on, so those reports are not taken for a hardware button while this is set.
+    private var swiping = false
 
     init() {
         // A hardware button changes the volume: the capsule shows it, as the system HUD would have.
@@ -43,6 +51,7 @@ final class PlayerSwipe: ObservableObject {
 
     func begin(_ kind: SwipeLevel) {
         hideTask?.cancel()
+        swiping = true
         self.kind = kind
         switch kind {
         case .volume: level = Double(AVAudioSession.sharedInstance().outputVolume)
@@ -60,8 +69,11 @@ final class PlayerSwipe: ObservableObject {
         level = min(1, max(0, startLevel + by))
         switch kind {
         case .volume:
-            lastSetVolume = Float(level)
-            volumeSlider?.setValue(Float(level), animated: false)
+            // Each write is a call to the system, so one that changes nothing (held at 0 or 1) is skipped.
+            let volume = Float(level)
+            guard volume != lastSetVolume else { return }
+            lastSetVolume = volume
+            volumeSlider?.setValue(volume, animated: false)
             volumeSlider?.sendActions(for: .valueChanged)
         case .brightness:
             screen?.brightness = CGFloat(level)
@@ -69,6 +81,7 @@ final class PlayerSwipe: ObservableObject {
     }
 
     func end() {
+        swiping = false
         if let kind {
             let percent = Int32((level * 100).rounded())
             let text = kind == .volume ? Strings.shared.volumeLevel(percent: percent) : Strings.shared.brightnessLevel(percent: percent)
@@ -85,6 +98,7 @@ final class PlayerSwipe: ObservableObject {
     }
 
     private func volumeChangedOutside(_ volume: Float) {
+        if swiping { return }
         if let mine = lastSetVolume, abs(mine - volume) < 0.01 { return }
         lastSetVolume = nil
         hideTask?.cancel()
@@ -124,7 +138,8 @@ struct PlayerVolumeHost: UIViewRepresentable {
 }
 
 extension View {
-    /// A vertical swipe changes the brightness on the left half and the volume on the right; up raises it. A drag that starts
+    /// A vertical swipe changes the brightness in the left quarter and the volume in the right quarter; the middle half is left
+    /// alone, and up raises. A drag that starts
     /// near the screen's edges, where the system's own gestures live (Notification Centre, Control Centre, the home
     /// indicator), or that goes sideways first, is left alone. `onStart` runs when a swipe takes hold.
     func swipeForLevels(_ swipe: PlayerSwipe, enabled: Bool, size: CGSize, onStart: @escaping () -> Void) -> some View {
@@ -174,11 +189,15 @@ private struct SwipeForLevels: ViewModifier {
         let at = drag.startLocation
         let edge = at.x < sideInset || at.x > size.width - sideInset || at.y < topBottomInset || at.y > size.height - topBottomInset
         guard !edge, abs(drag.translation.height) > abs(drag.translation.width) else { return nil }
-        return at.x < size.width / 2 ? .brightness : .volume
+        if at.x < size.width * sideShare { return .brightness }
+        if at.x > size.width * (1 - sideShare) { return .volume }
+        return nil
     }
 
     /// The share of the player's height a swipe covers to go from nothing to full.
     private let fullSweep = 0.6
+    /// The share of the width, from each side, that listens: the outer quarters.
+    private let sideShare: CGFloat = 0.25
     private let sideInset: CGFloat = 24
     private let topBottomInset: CGFloat = 40
 }
