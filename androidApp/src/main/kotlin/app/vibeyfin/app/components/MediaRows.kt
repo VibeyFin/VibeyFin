@@ -3,6 +3,7 @@ package app.vibeyfin.app.components
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,8 +12,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListPrefetchStrategy
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -53,7 +56,11 @@ enum class RowPhase { Loading, Failed, Ready }
 /** The fade from a row's gray posters to its content. */
 const val ROW_FADE_MS = 140
 
+// When the page above builds this row ahead of time, it builds this many posters with it: about what a phone shows at once
+private const val POSTERS_BUILT_AHEAD = 4
+
 /** A row of posters under a header with "See all": loading is gray posters, a failure says why with Try again. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MediaRowSection(
     row: MediaRow,
@@ -99,6 +106,7 @@ fun MediaRowSection(
                 RowPhase.Failed -> LoadError(row.message ?: "", onRetry)
 
                 RowPhase.Ready -> LazyRow(
+                    state = rememberLazyListState(prefetchStrategy = LazyListPrefetchStrategy(nestedPrefetchItemCount = POSTERS_BUILT_AHEAD)),
                     modifier = Modifier.bleed(margin),
                     contentPadding = PaddingValues(horizontal = margin),
                     horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
