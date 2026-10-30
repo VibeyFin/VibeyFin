@@ -24,10 +24,17 @@ class SettingsMappingTest {
     @Test
     fun `the root page keeps its groups and links to pages that exist`() {
         val root = pages.getValue(SettingsPageId.Root).drawn { it in pages }
+
         assertEquals(
             listOf(
-                null, Strings.playbackSection, Strings.settingsGroupHome, Strings.notificationsTitle,
-                Strings.settingsGroupKids, Strings.settingsGroupDevice, Strings.tabDownloads, Strings.settingsGroupAdvanced,
+                null,
+                Strings.playbackSection,
+                Strings.settingsGroupHome,
+                Strings.notificationsTitle,
+                Strings.settingsGroupKids,
+                Strings.settingsGroupDevice,
+                Strings.tabDownloads,
+                Strings.settingsGroupAdvanced,
             ),
             root.sections.map { it.title },
         )
@@ -40,6 +47,7 @@ class SettingsMappingTest {
     fun `a link to a missing page is hidden and an emptied group goes with it`() {
         val root = pages.getValue(SettingsPageId.Root)
         val drawn = root.drawn { false }
+
         assertTrue(links(drawn).isEmpty())
         assertTrue(drawn.sections.all { it.items.isNotEmpty() })
     }
@@ -47,6 +55,7 @@ class SettingsMappingTest {
     @Test
     fun `without a profile the profile links are hidden`() {
         val root = settingsPages(SettingsValues(hasProfile = false)).getValue(SettingsPageId.Root).drawn { true }
+
         assertTrue(links(root).isEmpty())
     }
 
@@ -56,12 +65,14 @@ class SettingsMappingTest {
         val quality = pages.getValue(SettingsPageId.Quality).sections.flatMap { it.items }
         val a = root.first { it.key == SettingKey.Quality }
         val b = quality.first { it.key == SettingKey.Quality }
+
         assertNotEquals(rowId(SettingsPageId.Root, a), rowId(SettingsPageId.Quality, b))
     }
 
     @Test
     fun `a choice names the option in use`() {
         val item = ChoiceItem(SettingKey.Quality, "Quality", value = 2, options = listOf(SettingOption(1, "One"), SettingOption(2, "Two")))
+
         assertEquals("Two", item.valueLabel())
         assertEquals(null, item.copy(value = 9).valueLabel())
     }
@@ -70,6 +81,7 @@ class SettingsMappingTest {
     fun `the subtitle preview follows the page's own rows`() {
         val page = settingsPages(SettingsValues(hasProfile = true, captionsFollowSystem = false, subtitleSize = 3, subtitleBackground = 2)).getValue(SettingsPageId.AudioSubtitles)
         val style = page.subtitlePreviewStyle()
+
         assertEquals(false, style.followSystem)
         assertEquals(0.09f, style.sizeFraction)
     }
@@ -78,10 +90,13 @@ class SettingsMappingTest {
     fun `the Quality page is one titled section with its options inline and the footer`() {
         val page = pages.getValue(SettingsPageId.Quality).visibleOnly()
         val section = page.sections.single()
+
         assertEquals(Strings.qualityGroup, section.title)
         assertEquals(Strings.qualityFooter, section.footer)
+
         val choice = section.items.single() as ChoiceItem
         val checklist = choice.checklist()
+
         assertEquals(choice.options, checklist.map { it.first })
         assertEquals(1, checklist.count { it.second })
         assertEquals(choice.value, checklist.single { it.second }.first.value)
@@ -91,6 +106,7 @@ class SettingsMappingTest {
     fun `the checked option follows the chosen value`() {
         val page = settingsPages(SettingsValues(hasProfile = true, maxStreamingBitrate = ProfileSettings.QUALITY_CHOICES.last())).getValue(SettingsPageId.Quality)
         val checked = (page.sections.single().items.single() as ChoiceItem).checklist().single { it.second }
+
         assertEquals(ProfileSettings.QUALITY_CHOICES.last(), checked.first.value)
     }
 
@@ -98,6 +114,7 @@ class SettingsMappingTest {
     fun `the subtitle preview is a section of its own above the toggle`() {
         val page = pages.getValue(SettingsPageId.AudioSubtitles).visibleOnly()
         val preview = page.sections.indexOfFirst { s -> s.items.any { it.key == SettingKey.SubtitlePreview } }
+
         assertEquals(listOf(SettingKey.SubtitlePreview), page.sections[preview].items.map { it.key })
         assertEquals(SettingKey.CaptionsFollowSystem, page.sections[preview + 1].items.first().key)
     }
@@ -111,14 +128,17 @@ class SettingsMappingTest {
     @Test
     fun `when two link rows target one page only the tapped one is selected`() {
         fun link(key: SettingKey) = LinkItem(key, key.name, target = SettingsPageId.Skipping)
+
         val custom = mapOf(
             SettingsPageId.Root to SettingsPage(
-                SettingsPageId.Root, "Settings",
+                SettingsPageId.Root,
+                "Settings",
                 listOf(SettingsSection(null, null, listOf(link(SettingKey.Skipping), link(SettingKey.Quality)))),
             ),
             SettingsPageId.Skipping to pages.getValue(SettingsPageId.Skipping),
         )
         val tapped = selectedLink(SettingKey.Quality, custom)
+
         assertEquals(SettingKey.Quality, tapped?.key)
         assertEquals(SettingsPageId.Skipping, tapped?.target)
         assertEquals(SettingKey.Skipping, selectedLink(SettingKey.Skipping, custom)?.key)
@@ -127,6 +147,7 @@ class SettingsMappingTest {
     @Test
     fun `the default selects the first link row that targets the first settable page`() {
         val link = selectedLink(null, pages)
+
         assertEquals(SettingKey.Quality, link?.key)
         assertEquals(SettingsPageId.Quality, link?.target)
     }

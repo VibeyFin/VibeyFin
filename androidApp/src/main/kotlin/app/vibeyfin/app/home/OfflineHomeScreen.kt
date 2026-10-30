@@ -1,13 +1,10 @@
 package app.vibeyfin.app.home
 
-import androidx.compose.runtime.getValue
-import app.vibeyfin.app.components.TabHeader
-import androidx.compose.foundation.layout.PaddingValues
-import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -19,11 +16,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.components.MediaRowSection
+import app.vibeyfin.app.components.TabHeader
+import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.ItemKind
@@ -46,6 +46,7 @@ fun OfflineHomeRoute(
     viewModel: OfflineHomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
     LaunchedEffect(state.exit) { state.exit?.let(onExit) }
     OfflineHomeScreen(state, onPlay, onOpenDownloads)
 }
@@ -53,12 +54,14 @@ fun OfflineHomeRoute(
 @Composable
 fun OfflineHomeScreen(state: OfflineHomeUiState, onPlay: (String) -> Unit, onOpenDownloads: () -> Unit) {
     val margin = screenMargin()
+
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-            // The page name at the left and the profile (Settings only, offline) at the right, as on every tab.
             TabHeader(Strings.home)
+
             when {
                 state.loading -> Box(Modifier.fillMaxSize())
+
                 state.isEmpty -> Column(
                     Modifier.fillMaxSize().padding(horizontal = margin).padding(bottom = VibeyFinTokens.Space.s7),
                     verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2, Alignment.CenterVertically),
@@ -67,12 +70,14 @@ fun OfflineHomeScreen(state: OfflineHomeUiState, onPlay: (String) -> Unit, onOpe
                     Text(Strings.downloadsEmptyTitle, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground, textAlign = TextAlign.Center)
                     Text(Strings.downloadsEmptyHelp, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                 }
+
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = LocalBottomBarPadding.current), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
                     item(key = "continue") {
                         Box(Modifier.padding(horizontal = margin)) {
                             ContinueWatching(state.continueRow, margin, onPlay, onDetails = onPlay, onLongPress = {}, onRetry = {})
                         }
                     }
+
                     items(state.rows, key = { it.id }) { row ->
                         Box(Modifier.padding(horizontal = margin)) {
                             MediaRowSection(row, margin, { item: MediaItem -> if (item.kind == ItemKind.Movie) onPlay(item.id) else onOpenDownloads() }, onSeeAll = null, onRetry = {})

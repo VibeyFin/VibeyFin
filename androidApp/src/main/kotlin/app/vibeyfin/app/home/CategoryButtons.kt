@@ -1,27 +1,17 @@
 package app.vibeyfin.app.home
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
-import app.vibeyfin.app.components.LoadError
-import app.vibeyfin.app.components.PickerSheet
-import app.vibeyfin.app.components.OptionRow
-import app.vibeyfin.app.components.SkeletonLine
 import app.vibeyfin.app.components.FilterChipButton
+import app.vibeyfin.app.components.OptionRow
+import app.vibeyfin.app.components.PickerSheet
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.CategoryButton
@@ -76,6 +66,7 @@ fun CategorySheet(sheet: FilterSheet, onPick: (String) -> Unit, onDismiss: () ->
             )
         }
     }
+
     PickerSheet(
         title = sheet.title,
         rows = rows,

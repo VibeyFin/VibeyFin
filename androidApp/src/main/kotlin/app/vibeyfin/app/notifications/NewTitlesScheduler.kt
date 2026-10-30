@@ -50,6 +50,7 @@ object NewTitlesScheduler {
      */
     fun follow(context: Context, notifyingProfiles: Flow<Int>, scope: CoroutineScope) {
         val appContext = context.applicationContext
+
         scope.launch { changes(notifyingProfiles).collect { apply(appContext, it) } }
     }
 

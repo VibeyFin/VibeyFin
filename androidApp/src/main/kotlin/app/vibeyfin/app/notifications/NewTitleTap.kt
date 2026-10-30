@@ -11,9 +11,9 @@ import java.net.URLEncoder
 /** What a tapped new-title notification opens, carried as extras of the intent that starts [MainActivity]. */
 data class NewTitleTap(val serverId: String, val userId: String, val itemId: String) {
     fun intent(context: Context): Intent = Intent(context, MainActivity::class.java)
-        // Brings the running app forward (onNewIntent) instead of starting a second copy of it.
+        // Brings the running app forward (onNewIntent) instead of starting a second copy of it
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        // A data URI of its own makes each notification's PendingIntent distinct, so one never takes another's extras.
+        // A data URI of its own makes each notification's PendingIntent distinct, so one never takes another's extras
         .setData(Uri.parse(uri(serverId, userId, itemId)))
         .putExtra(EXTRA_SERVER, serverId)
         .putExtra(EXTRA_USER, userId)
@@ -25,8 +25,7 @@ data class NewTitleTap(val serverId: String, val userId: String, val itemId: Str
         private const val EXTRA_ITEM = "app.vibeyfin.extra.ITEM_ID"
 
         /** The identity of a notification's tap intent: one per profile and title. */
-        fun uri(serverId: String, userId: String, itemId: String) =
-            "vibeyfin://new-title/${encode(serverId)}/${encode(userId)}/${encode(itemId)}"
+        fun uri(serverId: String, userId: String, itemId: String) = "vibeyfin://new-title/${encode(serverId)}/${encode(userId)}/${encode(itemId)}"
 
         private fun encode(part: String) = URLEncoder.encode(part, "UTF-8")
 
@@ -36,10 +35,13 @@ data class NewTitleTap(val serverId: String, val userId: String, val itemId: Str
         /** The tap an intent carries, or null. The values are untrusted: [NewTitleTapGate] checks them before use. */
         fun from(intent: Intent?): NewTitleTap? {
             intent ?: return null
+
             if (isReplay(intent.flags)) return null
+
             val serverId = intent.getStringExtra(EXTRA_SERVER) ?: return null
             val userId = intent.getStringExtra(EXTRA_USER) ?: return null
             val itemId = intent.getStringExtra(EXTRA_ITEM) ?: return null
+
             return NewTitleTap(serverId, userId, itemId)
         }
 
@@ -67,7 +69,7 @@ class NewTitleTapGate(
     }
 
     companion object {
-        /** 32 hex digits, or the same as a dashed GUID: what Jellyfin uses for servers, users and items. */
+        // 32 hex digits, or the same as a dashed GUID
         private val JELLYFIN_ID = Regex("[0-9a-fA-F]{32}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 
         fun isJellyfinId(value: String) = JELLYFIN_ID.matches(value)

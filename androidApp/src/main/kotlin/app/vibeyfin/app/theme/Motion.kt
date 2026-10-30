@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 @Composable
 fun animationsEnabled(): Boolean {
     val resolver = LocalContext.current.contentResolver
+
     return remember(resolver) {
         Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f
     }

@@ -21,9 +21,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -63,7 +63,7 @@ import kotlinx.coroutines.launch
 /**
  * The overlay above the video: back and title at the top, play or pause in the middle, the scrubber
  * and the times at the bottom. Everything sits on the scrim, because the video behind can be any
- * colour. It draws what it is given and reports what the user does; the player is not known here.
+ * color. It draws what it is given and reports what the user does; the player is not known here.
  */
 @Composable
 fun PlayerControls(
@@ -108,6 +108,7 @@ fun PlayerControls(
             title, subtitle, hasTrackChoices, badge, speedLabel, nextEpisode, onClose, onNextEpisode, onTracks, onSpeed, onPip,
             Modifier.align(Alignment.TopStart),
         )
+
         if (showTransport) {
             Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s6)) {
                 TransportSkipButton(R.drawable.ic_replay, skipBackSeconds, Strings.skipBackLabel(skipBackSeconds), forward = false, onSkipBack)
@@ -115,6 +116,7 @@ fun PlayerControls(
                 TransportSkipButton(R.drawable.ic_forward, skipForwardSeconds, Strings.skipForwardLabel(skipForwardSeconds), forward = true, onSkipForward)
             }
         }
+
         Scrubber(
             positionMs,
             bufferedMs,
@@ -122,14 +124,14 @@ fun PlayerControls(
             trickplay,
             onScrubbing,
             onSeek,
-            Modifier.align(Alignment.BottomCenter)
+            Modifier.align(Alignment.BottomCenter),
         )
     }
 }
 
-/** Solid scrim behind the content, fading out at the edge nearest the video, so text over bright video keeps its contrast. */
 private fun scrimBand(atTop: Boolean): Brush {
     val scrim = VibeyFinTokens.Colors.scrim
+
     return if (atTop) {
         Brush.verticalGradient(0f to scrim, 0.7f to scrim, 1f to Color.Transparent)
     } else {
@@ -162,7 +164,7 @@ private fun TopBar(
                 start = screenMargin() - ChipInset,
                 end = screenMargin(),
                 top = VibeyFinTokens.Space.s2,
-                bottom = VibeyFinTokens.Space.s5
+                bottom = VibeyFinTokens.Space.s5,
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -178,7 +180,7 @@ private fun TopBar(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            // One meta line: the subtitle, then the format badge as plain text.
+
             Strings.metaLine(subtitle, badge)?.let {
                 Text(
                     text = it,
@@ -193,24 +195,26 @@ private fun TopBar(
             Spacer(Modifier.width(VibeyFinTokens.Space.s3))
             ChipButton(R.drawable.ic_skip_next, Strings.labelled(Strings.nextEpisode, nextEpisode), onNextEpisode)
         }
+
         Spacer(Modifier.width(VibeyFinTokens.Space.s3))
         TextChipButton(speedLabel, Strings.speed, onSpeed)
+
         if (onPip != null) {
             Spacer(Modifier.width(VibeyFinTokens.Space.s3))
             ChipButton(R.drawable.ic_pip, Strings.pictureInPicture, onPip)
         }
+
         if (hasTrackChoices) {
             Spacer(Modifier.width(VibeyFinTokens.Space.s3))
             ChipButton(
                 painterResource(R.drawable.ic_subtitles),
                 Strings.audioAndSubtitles,
-                onTracks
+                onTracks,
             )
         }
     }
 }
 
-/** [ChipButton] with a word in place of a glyph: 48 dp to touch, 40 dp to look at, wider for longer text. */
 @Composable
 private fun TextChipButton(text: String, description: String, onClick: () -> Unit) {
     Box(
@@ -240,7 +244,6 @@ private fun TextChipButton(text: String, description: String, onClick: () -> Uni
     }
 }
 
-/** The back button's twin: a glyph on a round chip over the scrim, 48 dp to touch and 40 dp to look at. */
 @Composable
 private fun ChipButton(icon: Int, description: String, onClick: () -> Unit) {
     Box(
@@ -267,15 +270,13 @@ private fun ChipButton(icon: Int, description: String, onClick: () -> Unit) {
     }
 }
 
-/**
- * A skip button: the arrow circle in `ink` on the scrim with the seconds over it, 48 dp to touch. The
- * number is text rather than one drawable per value, so every setting (15, 45, 60 too) has a glyph.
- */
+// The seconds are text over the arrow, so any skip setting (15, 45, 60) has a glyph
 @Composable
 private fun TransportSkipButton(icon: Int, seconds: Int, description: String, forward: Boolean, onClick: () -> Unit) {
-    // Each press turns the arrow a little the way it points and springs it back, as Android's own players do.
+    // Each press turns the arrow a little the way it points and springs it back, as Android's own players do
     val turn = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
+
     Box(
         modifier = Modifier
             .size(48.dp)
@@ -304,10 +305,8 @@ private fun TransportSkipButton(icon: Int, seconds: Int, description: String, fo
     }
 }
 
-/** How far a skip arrow turns on a press. */
 private const val SKIP_TURN_DEGREES = 30f
 
-/** A round chip on the scrim, like the back button: 72 dp to touch, a 36 dp glyph. */
 @Composable
 private fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
@@ -338,22 +337,25 @@ private fun Scrubber(
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // While the thumb is held, show where it is, not where the video is.
     var dragged by remember { mutableStateOf<Float?>(null) }
     val known = durationMs > 0
     val shown =
         (dragged ?: positionMs.toFloat()).coerceIn(0f, if (known) durationMs.toFloat() else 1f)
     val shownMs = shown.toLong()
-    // The thumbnail for where the thumb is; null until its tile arrives, and when there is none.
+
     var thumbnail by remember(trickplay) { mutableStateOf<ImageBitmap?>(null) }
     var thumbnailTile by remember(trickplay) { mutableStateOf<Int?>(null) }
+
     LaunchedEffect(trickplay, dragged != null, shownMs / 1000) {
-        // A frame from another tile must never sit under a new timestamp while that tile loads.
+        // A frame from another tile must never sit under a new timestamp while that tile loads
         val tile = trickplay?.tileAt(shownMs)
+
         if (tile != thumbnailTile) thumbnail = null
+
         thumbnailTile = tile
         thumbnail = if (trickplay != null && dragged != null) trickplay.thumbnail(shownMs) else null
     }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -398,53 +400,58 @@ private fun Scrubber(
                         stateDescription = Strings.positionDescription(shownMs, durationMs)
                     },
             )
+
             val preview = thumbnail
+
             if (dragged != null && preview != null && known) {
                 ScrubPreview(
                     preview,
                     Strings.clock(shownMs),
                     shown / durationMs,
-                    Modifier.align(Alignment.TopStart)
+                    Modifier.align(Alignment.TopStart),
                 )
             }
         }
+
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(Strings.clock(shownMs), style = TimeStyle, color = VibeyFinTokens.Colors.ink)
-            if (known) Text(
-                Strings.timeLeft(shownMs, durationMs),
-                style = TimeStyle,
-                color = VibeyFinTokens.Colors.ink
-            )
+
+            if (known) {
+                Text(
+                    Strings.timeLeft(shownMs, durationMs),
+                    style = TimeStyle,
+                    color = VibeyFinTokens.Colors.ink,
+                )
+            }
         }
     }
 }
 
-/** Tabular numerals, so the times don't jitter as the digits change. */
 private val TimeStyle
     @Composable get() = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum")
 
-/**
- * The scrubber's bar: the track, then a lighter segment up to what is buffered, then the played part in aqua up to the
- * thumb. The buffered segment never ends before the thumb, so it is never seen behind the played part.
- */
+// The buffered segment never ends before the thumb, so it is never seen behind the played part
 @Composable
 private fun BufferedTrack(played: Float, buffered: Float, enabled: Boolean) {
     val track = VibeyFinTokens.Colors.progressTrack
     val bufferedColor = if (enabled) Color.White.copy(alpha = BUFFERED_ALPHA) else track
     val playedColor = if (enabled) VibeyFinTokens.Colors.accent else track
+
     Canvas(Modifier.fillMaxWidth().height(4.dp)) {
         val corner = CornerRadius(size.height / 2)
+
         fun bar(fraction: Float, color: Color) {
             val width = size.width * fraction.coerceIn(0f, 1f)
+
             if (width > 0f) drawRoundRect(color, size = Size(width, size.height), cornerRadius = corner)
         }
+
         bar(1f, track)
         bar(buffered.coerceAtLeast(played), bufferedColor)
         bar(played, playedColor)
     }
 }
 
-private fun fraction(value: Float, range: ClosedFloatingPointRange<Float>): Float =
-    if (range.endInclusive > range.start) (value - range.start) / (range.endInclusive - range.start) else 0f
+private fun fraction(value: Float, range: ClosedFloatingPointRange<Float>): Float = if (range.endInclusive > range.start) (value - range.start) / (range.endInclusive - range.start) else 0f
 
 private const val BUFFERED_ALPHA = 0.35f

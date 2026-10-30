@@ -35,15 +35,15 @@ class PlayerPip internal constructor(
     fun enter() = enterAction()
 }
 
-/** The widest and narrowest windows Android accepts. */
 private const val MIN_RATIO = 0.42f
 private const val MAX_RATIO = 2.39f
 
 private fun pipParams(aspectRatio: Float, autoEnter: Boolean, sourceRect: Rect?): PictureInPictureParams {
     val ratio = aspectRatio.coerceIn(MIN_RATIO, MAX_RATIO)
+
     return PictureInPictureParams.Builder()
         .setAspectRatio(Rational((ratio * 1000).toInt(), 1000))
-        // Where the video is on screen, so the window grows out of it and shrinks back into it.
+        // Where the video is on screen, so the window grows out of it and shrinks back into it
         .apply { if (sourceRect != null) setSourceRectHint(sourceRect) }
         .apply { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) setAutoEnterEnabled(autoEnter) }
         .build()
@@ -80,31 +80,53 @@ fun rememberPlayerPip(
     LaunchedEffect(canEnter, aspectRatio, sourceRect) {
         if (available) activity?.setPictureInPictureParams(pipParams(aspectRatio, autoEnter = canEnter, sourceRect))
     }
+
     DisposableEffect(activity, available) {
         if (activity == null || !available) return@DisposableEffect onDispose {}
+
         val modeChanged = Consumer<PictureInPictureModeChangedInfo> { info ->
             pip.active = info.isInPictureInPictureMode
+
             if (info.isInPictureInPictureMode) {
                 entered()
             } else {
-                // A dismissed window leaves the activity stopped; an expanded one brings it back to the screen.
+                // A dismissed window leaves the activity stopped; an expanded one brings it back to the screen
                 left(!activity.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
             }
         }
-        // Before Android 12 there is no automatic entry.
+
+        // Before Android 12 there is no automatic entry
         val userLeaves = Runnable {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S && currentEnabled) {
                 activity.enterPictureInPictureMode(pipParams(currentRatio, autoEnter = false, currentRect))
             }
         }
+
         activity.addOnPictureInPictureModeChangedListener(modeChanged)
         activity.addOnUserLeaveHintListener(userLeaves)
         onDispose {
             activity.removeOnPictureInPictureModeChangedListener(modeChanged)
             activity.removeOnUserLeaveHintListener(userLeaves)
-            // Other screens must not turn into a window.
+
+            // Other screens must not turn into a window
             activity.setPictureInPictureParams(pipParams(currentRatio, autoEnter = false, currentRect))
         }
     }
+
     return pip
+}
+
+/** Where a video of [ratio] sits, letterboxed and centered, in [bounds]. */
+internal fun videoRect(bounds: Rect, ratio: Float): Rect {
+    val width = bounds.width()
+    val height = bounds.height()
+
+    if (width <= 0 || height <= 0) return bounds
+
+    val fitWidth = if (width.toFloat() / height > ratio) (height * ratio).toInt() else width
+    val fitHeight = if (width.toFloat() / height > ratio) height else (width / ratio).toInt()
+    val left = bounds.left + (width - fitWidth) / 2
+    val top = bounds.top + (height - fitHeight) / 2
+
+    return Rect(left, top, left + fitWidth, top + fitHeight)
 }

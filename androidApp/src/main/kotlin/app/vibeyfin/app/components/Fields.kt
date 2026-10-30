@@ -6,13 +6,14 @@ import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 
 /**
- * Text fields focus in the text colour. Material's default is the primary colour, and aqua is
+ * Text fields focus in the text color. Material's default is the primary color, and aqua is
  * reserved for the single primary action on a screen. The resting border is `outline` (line-strong):
  * a field's edge has to be seen, which the decorative `outlineVariant` is not for.
  */
 @Composable
 fun vibeyFinTextFieldColors(): TextFieldColors {
     val scheme = MaterialTheme.colorScheme
+
     return OutlinedTextFieldDefaults.colors(
         focusedBorderColor = scheme.onSurface,
         unfocusedBorderColor = scheme.outline,

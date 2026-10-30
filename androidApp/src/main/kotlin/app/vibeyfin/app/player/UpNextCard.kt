@@ -58,7 +58,7 @@ fun UpNextCard(upNext: UpNext, onPlayNow: () -> Unit, onWatchCredits: () -> Unit
                     color = VibeyFinTokens.Colors.inkMuted,
                 )
                 Text(
-                    text = listOfNotNull(upNext.label, upNext.title).joinToString(" · "),
+                    text = Strings.taggedTitle(upNext.label, upNext.title),
                     style = MaterialTheme.typography.titleSmall,
                     color = VibeyFinTokens.Colors.ink,
                     maxLines = 2,
@@ -71,12 +71,14 @@ fun UpNextCard(upNext: UpNext, onPlayNow: () -> Unit, onWatchCredits: () -> Unit
                 )
             }
         }
+
         Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2), modifier = Modifier.fillMaxWidth()) {
             Button(onClick = onPlayNow, modifier = Modifier.weight(1f)) {
                 Icon(painter = painterResource(R.drawable.ic_play), contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(Strings.playNow, maxLines = 1)
             }
+
             FilledTonalButton(onClick = onWatchCredits, modifier = Modifier.weight(1f)) {
                 Text(Strings.watchCredits, maxLines = 1)
             }

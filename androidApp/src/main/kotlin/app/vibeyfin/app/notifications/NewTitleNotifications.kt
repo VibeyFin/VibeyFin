@@ -25,20 +25,23 @@ data class PlannedNotification(
 fun planNotifications(found: List<ProfileNewTitles>, nameProfiles: Boolean): List<PlannedNotification> = found.flatMap { profile ->
     val who = profile.profileName.takeIf { nameProfiles }
     val prefix = "${profile.serverId}/${profile.userId}"
-    fun planned(tag: String, title: String, body: String, group: String?, summary: Boolean, itemId: String) =
-        PlannedNotification(tag, title, body, group, summary, profile.serverId, profile.userId, itemId)
+
+    fun planned(tag: String, title: String, body: String, group: String?, summary: Boolean, itemId: String) = PlannedNotification(tag, title, body, group, summary, profile.serverId, profile.userId, itemId)
 
     val movies = profile.titles.filter { it.isMovie }.map {
         planned("$prefix/${it.itemId}", Strings.addedMovieNotificationTitle, Strings.addedTitleNotificationBody(it.title, who), null, false, it.itemId)
     }
+
     val shows = profile.titles.filterNot { it.isMovie }.groupBy { it.seriesName }.flatMap { (series, episodes) ->
         val group = "$prefix/show/${series.orEmpty()}"
         val each = episodes.map {
             planned("$prefix/${it.itemId}", Strings.addedEpisodeNotificationTitle(series), Strings.addedTitleNotificationBody(it.title, who), group, false, it.itemId)
         }
+
         // Every check that posts to a show's group posts its summary too, under one tag per show, so it replaces the last one
         // and the group holds together across checks (Android shows group children without a summary one by one).
         each + planned(group, Strings.addedEpisodesSummary(series), Strings.addedEpisodesSummaryBody(episodes.map { it.title }, who), group, true, episodes.first().itemId)
     }
+
     movies + shows
 }

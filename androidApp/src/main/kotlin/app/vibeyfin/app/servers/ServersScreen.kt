@@ -15,8 +15,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -26,9 +26,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.app.theme.BrandDisplay
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.DiscoveredServer
 import app.vibeyfin.domain.model.Server
 import app.vibeyfin.ui.common.Strings
@@ -44,6 +44,7 @@ fun ServersRoute(
     viewModel: ServersViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
     ServersScreen(
         state = state,
         onOpenServer = onOpenServer,
@@ -86,8 +87,10 @@ private fun EmptyServers(state: ServersUiState, onAddServer: () -> Unit, onSearc
         Button(onClick = onAddServer, modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge)) {
             Text(Strings.addServer)
         }
+
         if (state.canSearch) {
             Spacer(Modifier.height(VibeyFinTokens.Space.s4))
+
             if (state.searching) {
                 SearchingLabel()
             } else {
@@ -125,9 +128,11 @@ private fun ServerList(
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         ) {
             items(state.servers, key = { "saved-${it.id}" }) { server -> ServerRow(server) { onOpenServer(server) } }
+
             if (state.canSearch) {
                 item(key = "nearby-header") { NearbyHeader(state.searching, onSearchAgain) }
                 items(state.discovered, key = { "found-${it.id}" }) { DiscoveredRow(it) { onDiscoveredServer(it) } }
+
                 if (state.discovered.isEmpty() && !state.searching) {
                     item(key = "nearby-empty") {
                         Text(
@@ -139,6 +144,7 @@ private fun ServerList(
                 }
             }
         }
+
         FilledTonalButton(
             onClick = onAddServer,
             modifier = Modifier.fillMaxWidth().padding(vertical = VibeyFinTokens.Space.s4).height(VibeyFinTokens.Size.touch),
@@ -160,6 +166,7 @@ private fun NearbyHeader(searching: Boolean, onSearchAgain: () -> Unit) {
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+
         if (searching) {
             SearchingLabel()
         } else {
@@ -242,6 +249,7 @@ private fun DiscoveredRow(server: DiscoveredServer, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+
             Spacer(Modifier.size(VibeyFinTokens.Space.s4))
             Text(
                 text = Strings.addToServers,

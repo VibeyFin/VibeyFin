@@ -71,7 +71,7 @@ object VibeyFinTokens {
     }
 
     object Motion {
-        const val baseMs = 140
-        const val heroMs = 600
+        const val BASE_MS = 140
+        const val HERO_MS = 600
     }
 }

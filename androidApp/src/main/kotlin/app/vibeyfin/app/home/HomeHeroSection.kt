@@ -2,44 +2,27 @@ package app.vibeyfin.app.home
 
 import android.view.accessibility.AccessibilityManager
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.currentStateAsState
-import app.vibeyfin.app.navigation.LocalTileLongPress
-import app.vibeyfin.app.theme.animationsEnabled
-import app.vibeyfin.ui.home.HERO_ADVANCE_MILLIS
-import kotlinx.coroutines.delay
-import androidx.compose.foundation.border
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import app.vibeyfin.app.components.SkeletonBlock
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -50,35 +33,50 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.currentStateAsState
 import app.vibeyfin.R
 import app.vibeyfin.app.components.Artwork
+import app.vibeyfin.app.components.SkeletonBlock
+import app.vibeyfin.app.navigation.LocalTileLongPress
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.animationsEnabled
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
+import app.vibeyfin.ui.home.HERO_ADVANCE_MILLIS
 import app.vibeyfin.ui.home.heroFacts
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.delay
 
-/** The card is 4:3 on a phone and wider on a tablet, a banner rather than a full poster, so Continue watching stays close to the top. */
+// A banner rather than a full poster, so Continue watching stays near the top
 private const val HERO_ASPECT = 4f / 3f
 private const val HERO_ASPECT_WIDE = 2.6f
 
-/** From this screen width the hero is the tablet's: wider, with its text at the start. */
 private const val HERO_WIDE_FROM_DP = 600
 
-/** Pills, like the other buttons, but a size smaller than the page's large ones: they sit on a picture. */
+// A size smaller than the page's large pills: they sit on a picture
 private val HERO_BUTTON_HEIGHT = 40.dp
 
 /**
@@ -96,18 +94,23 @@ fun HomeHeroSection(
     description: String = Strings.featured(item.title),
     onLongPressed: () -> Unit = {},
 ) {
-    // A long press opens the same menu as a poster's (Details, Trailer, My List).
     val longPress = LocalTileLongPress.current
     val shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md)
+
     Box(
         Modifier
-            // The grid around it already has the page margin, so the card runs from margin to margin.
+            // The grid around it already has the page margin, so the card runs from margin to margin
             .fillMaxWidth()
             .clip(shape)
             .border(1.dp, VibeyFinTokens.Colors.surface3, shape)
             .combinedClickable(
                 onLongClickLabel = if (longPress != null) Strings.showOptions else null,
-                onLongClick = longPress?.let { press -> { onLongPressed(); press(item) } },
+                onLongClick = longPress?.let { press ->
+                    {
+                        onLongPressed()
+                        press(item)
+                    }
+                },
                 onClick = { onOpen(item.id) },
             )
             .semantics { contentDescription = description },
@@ -124,7 +127,9 @@ fun HomeHeroSection(
                 Brush.verticalGradient(0f to Color.Transparent, 0.4f to Color.Transparent, 0.75f to VibeyFinTokens.Colors.scrim, 1f to VibeyFinTokens.Colors.scrimStrong),
             ),
         )
+
         val align = if (wide) Alignment.Start else Alignment.CenterHorizontally
+
         Column(
             Modifier.align(if (wide) Alignment.BottomStart else Alignment.BottomCenter).fillMaxWidth().padding(horizontal = VibeyFinTokens.Space.s3).padding(bottom = VibeyFinTokens.Space.s3),
             horizontalAlignment = align,
@@ -137,17 +142,20 @@ fun HomeHeroSection(
                 alignment = if (wide) Alignment.CenterStart else Alignment.Center,
                 modifier = Modifier.fillMaxWidth(if (wide) 0.3f else 0.6f).heightIn(max = if (wide) 72.dp else 52.dp),
             )
+
             val facts = item.heroFacts
+
             if (facts.isNotEmpty()) {
-                // "Show · Offbeat · Heartfelt · Comedy": what it is, then its genres.
+                // "Show · Offbeat · Heartfelt · Comedy": what it is, then its genres
                 Text(
-                    facts.joinToString("  ·  "),
+                    Strings.factsLine(facts),
                     style = MaterialTheme.typography.labelLarge,
                     color = VibeyFinTokens.Colors.ink,
                     textAlign = if (wide) TextAlign.Start else TextAlign.Center,
                     maxLines = 1,
                 )
             }
+
             Row(Modifier.then(if (wide) Modifier.width(360.dp) else Modifier.fillMaxWidth()), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
                 Button(
                     onClick = onPlay,
@@ -157,6 +165,7 @@ fun HomeHeroSection(
                     Spacer(Modifier.width(VibeyFinTokens.Space.s2))
                     Text(Strings.play, style = MaterialTheme.typography.labelLarge, maxLines = 1)
                 }
+
                 // Not aqua: aqua is the one primary action. A soft, see-through button over the picture.
                 Button(
                     onClick = onMyList,
@@ -187,9 +196,12 @@ fun HomeHeroCarousel(
 ) {
     if (items.size == 1) {
         val item = items.single()
+
         HomeHeroSection(item, wide, { onPlay(item.id) }, onOpen, { onMyList(item.id) })
+
         return
     }
+
     // The pages run round: a swipe past the last item comes to the first, and back from the first to the last. The pager has
     // many copies of the items and starts on a first item in the middle, so either way has room.
     val pager = rememberPagerState(initialPage = HERO_LOOP_START - HERO_LOOP_START % items.size) { HERO_LOOP_PAGES }
@@ -198,27 +210,35 @@ fun HomeHeroCarousel(
     val screenReaderOn = remember(context) {
         context.getSystemService(AccessibilityManager::class.java)?.isTouchExplorationEnabled == true
     }
+
     val resumed = LocalLifecycleOwner.current.lifecycle.currentStateAsState().value.isAtLeast(Lifecycle.State.RESUMED)
-    // A swipe, or a long press that opens the menu, stops the carousel for this visit; a new pick starts it again.
+
+    // A swipe, or a long press that opens the menu, stops the carousel for this visit; a new pick starts it again
     var swiped by remember(items.map { it.id }) { mutableStateOf(false) }
     var held by remember { mutableStateOf(false) }
     val dragged by pager.interactionSource.collectIsDraggedAsState()
+
     LaunchedEffect(dragged) { if (dragged) swiped = true }
-    // Coming back to Home starts the carousel again.
+
     LaunchedEffect(resumed) { if (resumed) swiped = false }
+
     // Keyed on the settled page, not the current one: the current page changes halfway through the move, and restarting here then
     // would cancel the move and leave the card half way. After the last item comes the first, as with a swipe.
     LaunchedEffect(pager.settledPage, swiped, held, resumed) {
-        if (!animations || screenReaderOn || swiped || held || !resumed) return@LaunchedEffect
+        val advanceBlocked = !animations || screenReaderOn || swiped || held || !resumed
+
+        if (advanceBlocked) return@LaunchedEffect
+
         delay(HERO_ADVANCE_MILLIS)
         pager.animateScrollToPage(pager.settledPage + 1)
     }
+
     Column {
         HorizontalPager(
             state = pager,
             pageSpacing = VibeyFinTokens.Space.s2,
             modifier = Modifier.pointerInput(Unit) {
-                // Seen before the pager takes the gesture, so a finger resting on the card pauses it without a swipe.
+                // Seen before the pager takes the gesture, so a finger resting on the card pauses it without a swipe
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                     held = true
@@ -229,17 +249,22 @@ fun HomeHeroCarousel(
         ) { page ->
             val index = page % items.size
             val item = items[index]
+
             HomeHeroSection(
-                item, wide, { onPlay(item.id) }, onOpen, { onMyList(item.id) },
+                item,
+                wide,
+                { onPlay(item.id) },
+                onOpen,
+                { onMyList(item.id) },
                 description = Strings.featuredPage(item.title, index + 1, items.size),
                 onLongPressed = { swiped = true },
             )
         }
+
         HeroPageDots(count = items.size, current = pager.currentPage % items.size)
     }
 }
 
-/** The carousel's page dots, under the card: the current one in [VibeyFinTokens.Colors.ink], never aqua. TalkBack reads the pages instead. */
 @Composable
 private fun HeroPageDots(count: Int, current: Int) {
     Row(
@@ -256,23 +281,22 @@ private fun HeroPageDots(count: Int, current: Int) {
     }
 }
 
-/** Pages of the looping pager: the items again and again, far more than anyone swipes. */
 private const val HERO_LOOP_PAGES = 10_000
 
-/** Where the looping pager starts, rounded down to a first item. */
 private const val HERO_LOOP_START = HERO_LOOP_PAGES / 2
 
-/** The row the page dots sit in; the skeleton keeps it too when several items are coming, so the card does not move. */
+// The skeleton keeps it too, so the card does not move
 private val HERO_DOTS_HEIGHT = 24.dp
 
 /**
- * The hero's place while it is being picked: the same card, rounded and the same height, with grey stand-ins for the logo, the line and
+ * The hero's place while it is being picked: the same card, rounded and the same height, with gray stand-ins for the logo, the line and
  * the two buttons; with [dots], the dots' row under it is kept empty.
  */
 @Composable
 fun HomeHeroSkeleton(wide: Boolean, dots: Boolean = false) {
     Column {
         HeroSkeletonCard(wide)
+
         if (dots) Spacer(Modifier.height(HERO_DOTS_HEIGHT))
     }
 }
@@ -280,6 +304,7 @@ fun HomeHeroSkeleton(wide: Boolean, dots: Boolean = false) {
 @Composable
 private fun HeroSkeletonCard(wide: Boolean) {
     val shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md)
+
     Box(
         Modifier
             .fillMaxWidth()

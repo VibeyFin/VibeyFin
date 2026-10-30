@@ -25,18 +25,21 @@ import app.vibeyfin.ui.common.Strings
 @Composable
 fun BoxScope.ActionSnackbar(message: String?, onRetry: () -> Unit, onDismiss: () -> Unit) {
     val host = remember { SnackbarHostState() }
+
     LaunchedEffect(message) {
         val text = message ?: return@LaunchedEffect
+
         when (host.showSnackbar(text, actionLabel = Strings.tryAgain, duration = SnackbarDuration.Long)) {
             SnackbarResult.ActionPerformed -> onRetry()
             SnackbarResult.Dismissed -> onDismiss()
         }
     }
+
     SnackbarHost(
         hostState = host,
         modifier = Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(VibeyFinTokens.Space.s2),
     ) { data ->
-        // Aqua is for the primary action and progress, so the action is plain text.
+        // Aqua is for the primary action and progress, so the action is plain text
         Snackbar(data, actionColor = MaterialTheme.colorScheme.inverseOnSurface)
     }
 }

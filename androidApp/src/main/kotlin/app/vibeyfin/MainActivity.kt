@@ -21,15 +21,17 @@ class MainActivity : ComponentActivity() {
     private val notificationOpen: NotificationOpenViewModel by viewModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // VibeyFin is dark-only: light system-bar icons over transparent bars.
+        // VibeyFin is dark-only: light system-bar icons over transparent bars
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+
         // A recreated activity (rotation is handled without one, but process death is not) has handled its intent already;
         // the extras are also taken off once read, and a Recents relaunch is never read as a tap (NewTitleTap.from).
         if (savedInstanceState == null) openFrom(intent)
+
         setContent { VibeyFinApp(notificationOpen) }
     }
 
@@ -40,11 +42,14 @@ class MainActivity : ComponentActivity() {
         openFrom(intent)
     }
 
-    /** The extras come from outside the app: only a tap that [NewTitleTapGate] accepts is acted on, once. */
+    // Extras come from outside the app, so only a tap that [NewTitleTapGate] accepts is acted on, once
     private fun openFrom(intent: Intent?) {
         val tap = NewTitleTap.from(intent) ?: return
+
         intent?.let(NewTitleTap::consume)
+
         val gate = NewTitleTapGate.from(get<AccountDao>())
+
         lifecycleScope.launch {
             if (gate.accept(tap)) notificationOpen.onNotificationTapped(tap.serverId, tap.userId, tap.itemId)
         }

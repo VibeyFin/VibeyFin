@@ -36,7 +36,6 @@ import app.vibeyfin.ui.settings.SettingsUiState
 
 private val ListPaneWidth = 380.dp
 
-/** The detail column is capped at a readable width and centred, never stretched across the tablet. */
 private val DetailMaxWidth = 640.dp
 
 /**
@@ -54,14 +53,14 @@ fun SettingsTabletScreen(
     onPageOpened: (SettingsPageId) -> Unit = {},
     onOpen: (SettingsPageId) -> Unit = {},
 ) {
-    // The open row is kept, not its page: two root rows can lead to the same page.
+    // The open row is kept, not its page: two root rows can lead to the same page
     var saved by rememberSaveable { mutableStateOf<SettingKey?>(null) }
     val selected = selectedLink(saved, state.pages)
     val root = state.pages[SettingsPageId.Root]
     val detail = selected?.let { state.pages[it.target] }
     val hasPage: (SettingsPageId) -> Boolean = { it in state.pages }
     val margin = screenMargin()
-    // The page beside the list is the one shown, so it is the one opened.
+
     LaunchedEffect(detail?.id) { detail?.id?.let(onPageOpened) }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -69,31 +68,47 @@ fun SettingsTabletScreen(
             Row(Modifier.fillMaxSize().safeDrawingPadding()) {
                 Column(Modifier.width(ListPaneWidth).fillMaxHeight().verticalScroll(rememberScrollState())) {
                     Spacer(Modifier.height(BackButtonSpace))
+
                     if (root != null) {
                         SettingsPageBody(
-                            root, hasPage, Modifier.fillMaxWidth().padding(horizontal = margin),
-                            selectedLink = selected?.key, onToggle, onChoose, onAction, onOpen = { saved = it.key },
+                            root,
+                            hasPage,
+                            Modifier.fillMaxWidth().padding(horizontal = margin),
+                            selectedLink = selected?.key,
+                            onToggle,
+                            onChoose,
+                            onAction,
+                            onOpen = { saved = it.key },
                         )
                     }
                 }
+
                 VerticalDivider(Modifier.fillMaxHeight(), color = MaterialTheme.colorScheme.outlineVariant)
                 Column(
                     Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Spacer(Modifier.height(BackButtonSpace))
+
                     if (detail != null) {
-                        // Keyed by page so scroll and menus do not carry over from the page before.
+                        // Keyed by page so scroll and menus do not carry over from the page before
                         key(detail.id) {
                             SettingsPageBody(
-                                detail, hasPage, Modifier.widthIn(max = DetailMaxWidth).fillMaxWidth().padding(horizontal = margin),
-                                // A link inside the page (a language list) opens its picker sheet over both panes.
-                                selectedLink = null, onToggle, onChoose, onAction, onOpen = { onOpen(it.target) },
+                                detail,
+                                hasPage,
+                                Modifier.widthIn(max = DetailMaxWidth).fillMaxWidth().padding(horizontal = margin),
+                                // A link inside the page (a language list) opens its picker sheet over both panes
+                                selectedLink = null,
+                                onToggle,
+                                onChoose,
+                                onAction,
+                                onOpen = { onOpen(it.target) },
                             )
                         }
                     }
                 }
             }
+
             FloatingBackButton(onBack)
         }
     }

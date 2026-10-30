@@ -8,13 +8,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -25,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -35,11 +34,11 @@ import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.ContinueCard
 
+private val CARD_PROGRESS_HEIGHT = 3.dp
+
 private const val CARD_ASPECT = 16f / 9f
-private val PROGRESS_HEIGHT = 3.dp
 private val PLAY_DISC = 44.dp
 
-/** Between the title and the line under it: close, so they read as one. */
 private val CARD_LINE_GAP = 2.dp
 
 /**
@@ -61,10 +60,10 @@ fun ContinueCard(
         Box(
             Modifier
                 .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
-                .combinedClickable(role = androidx.compose.ui.semantics.Role.Button, onLongClickLabel = Strings.showOptions, onClick = onPlay, onLongClick = onLongClick)
+                .combinedClickable(role = Role.Button, onLongClickLabel = Strings.showOptions, onClick = onPlay, onLongClick = onLongClick)
                 .semantics(mergeDescendants = true) { contentDescription = card.accessibilityLabel },
         ) {
-            // Rounded again inside the outer clip: a pressed card shrinks, and its corners shrink with it.
+            // Rounded again inside the outer clip: a pressed card shrinks, and its corners shrink with it
             Box(Modifier.clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
                 Artwork(
                     url = card.imageUrl,
@@ -74,16 +73,17 @@ fun ContinueCard(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 PlayDisc(Modifier.align(Alignment.Center))
-                card.progress?.let { ProgressBar(it, Modifier.align(Alignment.BottomStart)) }
+                card.progress?.let { PlaybackProgressBar(it, Modifier.align(Alignment.BottomStart), CARD_PROGRESS_HEIGHT) }
             }
         }
+
         Row(verticalAlignment = Alignment.Top) {
             // The words open the detail page. A screen reader reaches it through the "…" menu, so they stay out of its way.
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .padding(top = VibeyFinTokens.Space.s2)
-                    .combinedClickable(role = androidx.compose.ui.semantics.Role.Button, onLongClickLabel = Strings.showOptions, onClick = onDetails, onLongClick = onLongClick)
+                    .combinedClickable(role = Role.Button, onLongClickLabel = Strings.showOptions, onClick = onDetails, onLongClick = onLongClick)
                     .clearAndSetSemantics { },
                 verticalArrangement = Arrangement.spacedBy(CARD_LINE_GAP),
             ) {
@@ -94,7 +94,8 @@ fun ContinueCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                // Always one line, empty for a movie nobody started, so every card is as tall as the skeleton.
+
+                // Always one line, empty for a movie nobody started, so every card is as tall as the skeleton
                 Text(
                     text = card.subtitle.orEmpty(),
                     style = MaterialTheme.typography.bodySmall,
@@ -104,6 +105,7 @@ fun ContinueCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+
             IconButton(onClick = onLongClick, modifier = Modifier.size(32.dp)) {
                 Icon(
                     painter = painterResource(R.drawable.ic_more_horiz),
@@ -115,7 +117,6 @@ fun ContinueCard(
     }
 }
 
-/** A round outline with a play triangle, over the picture. It says "tap to play"; the picture does the playing. */
 @Composable
 private fun PlayDisc(modifier: Modifier = Modifier) {
     Box(
@@ -135,16 +136,8 @@ private fun PlayDisc(modifier: Modifier = Modifier) {
     }
 }
 
-/** Aqua is playback progress, here and in the player. The unfilled part is the `progress-track` token. */
-@Composable
-private fun ProgressBar(progress: Float, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxWidth().height(PROGRESS_HEIGHT).background(VibeyFinTokens.Colors.progressTrack)) {
-        Box(Modifier.fillMaxHeight().fillMaxWidth(progress.coerceIn(0f, 1f)).background(VibeyFinTokens.Colors.accent))
-    }
-}
-
 /**
- * Stands in for the row while it loads: the same cards, grey, so nothing moves when they arrive. Not
+ * Stands in for the row while it loads: the same cards, gray, so nothing moves when they arrive. Not
  * animated; looping motion is an opt-in setting (`brand.md`).
  */
 @Composable

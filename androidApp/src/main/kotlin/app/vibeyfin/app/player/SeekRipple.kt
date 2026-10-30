@@ -44,9 +44,11 @@ import app.vibeyfin.ui.playback.SkipRun
  */
 @Composable
 fun BoxScope.SeekRipple(run: SkipRun?) {
-    // The last run stays drawn while the ripple fades out.
+    // The last run stays drawn while the ripple fades out
     val shown = remember { arrayOfNulls<SkipRun>(1) }
+
     if (run != null) shown[0] = run
+
     AnimatedVisibility(
         visible = run != null,
         enter = fadeIn(tween(RIPPLE_FADE_MS)),
@@ -64,23 +66,27 @@ fun BoxScope.SeekRipple(run: SkipRun?) {
 private fun SeekRippleContent(run: SkipRun) {
     val wash = VibeyFinTokens.Colors.ink.copy(alpha = 0.12f)
     val tap = remember { Animatable(1f) }
+
     LaunchedEffect(run.taps) {
         tap.snapTo(0f)
         tap.animateTo(1f, tween(TAP_RIPPLE_MS))
     }
+
     Box(Modifier.fillMaxSize().clipToBounds().clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
-            // A circle much taller than the screen, centred off its edge, so only a gentle curve shows.
+            // A circle much taller than the screen, centered off its edge, so only a gentle curve shows
             val radius = size.height
             val center = Offset(if (run.forward) radius else size.width - radius, size.height / 2)
+
             drawCircle(wash, radius, center)
-            // Each tap sends a ripple out from the middle of the half circle.
+
             drawCircle(
                 VibeyFinTokens.Colors.ink.copy(alpha = 0.16f * (1f - tap.value)),
                 radius = size.width * (0.2f + 0.8f * tap.value),
                 center = Offset(size.width / 2, size.height / 2),
             )
         }
+
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
             Chevrons(run.forward)
             Text(
@@ -92,7 +98,6 @@ private fun SeekRippleContent(run: SkipRun) {
     }
 }
 
-/** Three triangles lighting up one after another in the direction of the skip. */
 @Composable
 private fun Chevrons(forward: Boolean) {
     val phase by rememberInfiniteTransition(label = "chevrons").animateFloat(
@@ -101,27 +106,34 @@ private fun Chevrons(forward: Boolean) {
         animationSpec = infiniteRepeatable(tween(CHEVRON_CYCLE_MS, easing = LinearEasing), RepeatMode.Restart),
         label = "phase",
     )
+
     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         repeat(3) { slot ->
-            // Back runs right to left, so its first lit triangle is the one on the right.
+            // Back runs right to left, so its first lit triangle is the one on the right
             val order = if (forward) slot else 2 - slot
             val lit = (1f - kotlin.math.abs(phase - order - 0.5f)).coerceIn(0.25f, 1f)
+
             Canvas(Modifier.size(12.dp)) {
                 val path = Path().apply {
                     if (forward) {
-                        moveTo(0f, 0f); lineTo(size.width, size.height / 2); lineTo(0f, size.height)
+                        moveTo(0f, 0f)
+                        lineTo(size.width, size.height / 2)
+                        lineTo(0f, size.height)
                     } else {
-                        moveTo(size.width, 0f); lineTo(0f, size.height / 2); lineTo(size.width, size.height)
+                        moveTo(size.width, 0f)
+                        lineTo(0f, size.height / 2)
+                        lineTo(size.width, size.height)
                     }
+
                     close()
                 }
+
                 drawPath(path, VibeyFinTokens.Colors.ink.copy(alpha = lit))
             }
         }
     }
 }
 
-/** The share of the screen width the half circle covers. */
 private const val RIPPLE_WIDTH = 0.38f
 private const val RIPPLE_FADE_MS = 150
 private const val TAP_RIPPLE_MS = 450

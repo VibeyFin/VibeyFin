@@ -1,18 +1,11 @@
 package app.vibeyfin.app.downloads
 
-import app.vibeyfin.R
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
-import app.vibeyfin.app.components.TabHeader
-import androidx.compose.foundation.layout.PaddingValues
-import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,12 +32,16 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -53,10 +50,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.vibeyfin.R
 import app.vibeyfin.app.components.Artwork
 import app.vibeyfin.app.components.SectionTitle
+import app.vibeyfin.app.components.TabHeader
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
+import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.Download
@@ -70,8 +70,8 @@ import app.vibeyfin.ui.downloads.DownloadsViewModel
 import app.vibeyfin.ui.downloads.actions
 import app.vibeyfin.ui.downloads.failureMessage
 import app.vibeyfin.ui.downloads.isDone
-import app.vibeyfin.ui.downloads.statusLine
 import app.vibeyfin.ui.downloads.stateWord
+import app.vibeyfin.ui.downloads.statusLine
 import app.vibeyfin.ui.home.HomeExit
 import org.koin.androidx.compose.koinViewModel
 
@@ -87,10 +87,17 @@ fun DownloadsRoute(
     viewModel: DownloadsViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
     LaunchedEffect(state.exit) { state.exit?.let(onExit) }
     DownloadsScreen(
         state = state,
-        onOpen = { download -> if (download.isDone) onPlay(download.itemId) else if (!offline) onOpen(download.itemId) },
+        onOpen = { download ->
+            if (download.isDone) {
+                onPlay(download.itemId)
+            } else if (!offline) {
+                onOpen(download.itemId)
+            }
+        },
         onOpenShow = { seriesId -> if (!offline) onOpen(seriesId) },
         onAction = viewModel::onAction,
         onRemoveShow = viewModel::onRemoveShow,
@@ -113,28 +120,29 @@ fun DownloadsScreen(
         Box(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = screenMargin())) {
             when {
                 state.loading -> Header(state, onRemoveAll)
+
                 state.isEmpty -> Column(Modifier.fillMaxSize()) {
                     Header(state, onRemoveAll)
                     Empty()
                 }
+
                 else -> Content(state, onOpen, onOpenShow, onAction, onRemoveShow, onRemoveAll)
             }
         }
     }
 }
 
-/** The header every tab has, and once there are downloads, the card that says how much they take with the bin to remove them all. */
 @Composable
 private fun Header(state: DownloadsUiState, onRemoveAll: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-        // The screen already has the side margin.
         TabHeader(Strings.tabDownloads, horizontalPadding = 0.dp)
+
         val storage = state.storageLine
+
         if (!state.isEmpty && !state.loading && storage != null) StorageCard(storage, onRemoveAll)
     }
 }
 
-/** How much the downloads take on the device, and the bin: an icon, which the screen reader and a long press name. */
 @Composable
 private fun StorageCard(storage: String, onRemoveAll: () -> Unit) {
     Surface(color = VibeyFinTokens.Colors.surface1, shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md), modifier = Modifier.fillMaxWidth()) {
@@ -148,6 +156,7 @@ private fun StorageCard(storage: String, onRemoveAll: () -> Unit) {
                 Text(Strings.downloadsStorageHeading, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(storage, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
             }
+
             IconButton(onClick = onRemoveAll) {
                 Icon(Icons.Filled.Delete, contentDescription = Strings.removeAllDownloads, tint = VibeyFinTokens.Colors.inkMuted)
             }
@@ -176,20 +185,24 @@ private fun Content(
     onRemoveShow: (DownloadedShow) -> Unit,
     onRemoveAll: () -> Unit,
 ) {
-    // Which shows are open: kept with the screen, so coming back from an episode's page finds them as they were.
+    // Which shows are open: kept with the screen, so coming back from an episode's page finds them as they were
     var open by rememberSaveable { mutableStateOf(listOf<String>()) }
+
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = LocalBottomBarPadding.current), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         item(key = "header") { Header(state, onRemoveAll) }
+
         if (state.movies.isNotEmpty()) {
             item(key = "movies") { SectionTitle(Strings.filterMovies, modifier = Modifier.semantics { heading() }) }
             items(state.movies, key = { "movie-" + it.itemId }) { download ->
                 DownloadRow(download, state.waiting, poster = true, onOpen = { onOpen(download) }, onAction = { onAction(download, it) })
             }
         }
+
         if (state.shows.isNotEmpty()) {
             item(key = "shows") { SectionTitle(Strings.filterShows, modifier = Modifier.semantics { heading() }) }
             state.shows.forEach { show ->
                 val expanded = show.seriesId in open
+
                 item(key = "show-" + show.seriesId) {
                     ShowRow(
                         show = show,
@@ -199,6 +212,7 @@ private fun Content(
                         onRemove = { onRemoveShow(show) },
                     )
                 }
+
                 if (expanded) {
                     items(show.episodes, key = { "episode-" + it.itemId }) { episode ->
                         Box(Modifier.padding(start = VibeyFinTokens.Space.s4)) {
@@ -208,6 +222,7 @@ private fun Content(
                 }
             }
         }
+
         item(key = "end") { Spacer(Modifier.height(VibeyFinTokens.Space.s6)) }
     }
 }
@@ -215,13 +230,13 @@ private fun Content(
 private val POSTER_WIDTH = 56.dp
 private val STILL_WIDTH = 112.dp
 
-/** A movie or an episode: its picture, its title, where its download is, and a menu for what can be done to it. */
 @Composable
 private fun DownloadRow(download: Download, waiting: DownloadRunner.Waiting, poster: Boolean, onOpen: () -> Unit, onAction: (DownloadAction) -> Unit) {
     val item = download.item
     val shape = RoundedCornerShape(VibeyFinTokens.Radius.artwork)
     var menu by remember { mutableStateOf(false) }
-    val title = if (poster) item.title else listOfNotNull(Strings.episodeTag(item.seasonNumber, item.episodeNumber), item.title).joinToString(" · ")
+    val title = if (poster) item.title else Strings.taggedTitle(Strings.episodeTag(item.seasonNumber, item.episodeNumber), item.title)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -232,6 +247,7 @@ private fun DownloadRow(download: Download, waiting: DownloadRunner.Waiting, pos
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
     ) {
         val aspect = if (poster) 2f / 3f else 16f / 9f
+
         Box(Modifier.width(if (poster) POSTER_WIDTH else STILL_WIDTH).clip(shape)) {
             Artwork(
                 url = if (poster) item.posterUrl else item.landscapeUrl ?: item.posterUrl,
@@ -241,6 +257,7 @@ private fun DownloadRow(download: Download, waiting: DownloadRunner.Waiting, pos
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = VibeyFinTokens.Colors.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(
@@ -253,9 +270,10 @@ private fun DownloadRow(download: Download, waiting: DownloadRunner.Waiting, pos
             download.failureMessage?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = VibeyFinTokens.Colors.danger, maxLines = 3, overflow = TextOverflow.Ellipsis)
             }
+
             if (download.state == DownloadState.Running || download.state == DownloadState.Paused) {
                 download.progress?.let { progress ->
-                    // Ink on a quiet track: aqua is for playback progress, not for downloads.
+                    // Ink on a quiet track: aqua is for playback progress, not for downloads
                     LinearProgressIndicator(
                         progress = { progress },
                         color = VibeyFinTokens.Colors.ink,
@@ -265,22 +283,30 @@ private fun DownloadRow(download: Download, waiting: DownloadRunner.Waiting, pos
                 }
             }
         }
+
         Box {
             IconButton(onClick = { menu = true }) {
                 Icon(Icons.Filled.MoreVert, contentDescription = Strings.showOptions, tint = VibeyFinTokens.Colors.inkMuted)
             }
+
             VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
-                download.actions.forEach { action -> DownloadActionMenuItem(action) { menu = false; onAction(action) } }
+                download.actions.forEach { action ->
+                    DownloadActionMenuItem(action) {
+                        menu = false
+
+                        onAction(action)
+                    }
+                }
             }
         }
     }
 }
 
-/** A show: its picture, its name, how many episodes and how much room, a chevron that opens its episodes, and a menu to remove them all. */
 @Composable
 private fun ShowRow(show: DownloadedShow, expanded: Boolean, onToggle: () -> Unit, onOpen: () -> Unit, onRemove: () -> Unit) {
     val shape = RoundedCornerShape(VibeyFinTokens.Radius.artwork)
     var menu by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -295,10 +321,12 @@ private fun ShowRow(show: DownloadedShow, expanded: Boolean, onToggle: () -> Uni
         Box(Modifier.width(POSTER_WIDTH).clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
             Artwork(url = show.posterUrl, title = show.title, aspectRatio = 2f / 3f, blurHash = show.posterBlurHash, modifier = Modifier.fillMaxWidth())
         }
+
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
             Text(show.title, style = MaterialTheme.typography.titleMedium, color = VibeyFinTokens.Colors.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(show.line, style = MaterialTheme.typography.bodyMedium, color = VibeyFinTokens.Colors.inkMuted, maxLines = 1)
         }
+
         Icon(
             if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
             contentDescription = null,
@@ -309,9 +337,19 @@ private fun ShowRow(show: DownloadedShow, expanded: Boolean, onToggle: () -> Uni
             IconButton(onClick = { menu = true }) {
                 Icon(Icons.Filled.MoreVert, contentDescription = Strings.showOptions, tint = VibeyFinTokens.Colors.inkMuted)
             }
+
             VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
-                VibeyFinMenuItem(Strings.goToSeries(show.title), Icons.Filled.Info) { menu = false; onOpen() }
-                VibeyFinMenuItem(Strings.removeDownloadsOf(show.episodes.size), Icons.Filled.Delete) { menu = false; onRemove() }
+                VibeyFinMenuItem(Strings.goToSeries(show.title), Icons.Filled.Info) {
+                    menu = false
+
+                    onOpen()
+                }
+
+                VibeyFinMenuItem(Strings.removeDownloadsOf(show.episodes.size), Icons.Filled.Delete) {
+                    menu = false
+
+                    onRemove()
+                }
             }
         }
     }

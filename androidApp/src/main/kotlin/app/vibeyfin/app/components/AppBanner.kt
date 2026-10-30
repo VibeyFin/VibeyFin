@@ -21,7 +21,7 @@ import app.vibeyfin.ui.banner.Banner
 
 /**
  * The line under the status bar that says the app is offline, or that the server cannot be reached, with the button that ends it
- * (when one does). A quiet strip in the page's own surface colours: it is not an error and nothing here is aqua. Announced to a
+ * (when one does). A quiet strip in the page's own surface colors: it is not an error and nothing here is aqua. Announced to a
  * screen reader when it appears.
  */
 @Composable
@@ -39,6 +39,7 @@ fun AppBanner(banner: Banner, onAction: () -> Unit, modifier: Modifier = Modifie
             Text(banner.title, style = MaterialTheme.typography.labelLarge, color = VibeyFinTokens.Colors.ink)
             Text(banner.help, style = MaterialTheme.typography.bodySmall, color = VibeyFinTokens.Colors.inkMuted)
         }
+
         banner.actionLabel?.let { label ->
             TextButton(onClick = onAction) { Text(label, color = VibeyFinTokens.Colors.ink) }
         }

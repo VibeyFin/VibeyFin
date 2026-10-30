@@ -18,6 +18,7 @@ import app.vibeyfin.ui.settings.firstSettablePage
  */
 internal fun SettingsPage.drawn(hasPage: (SettingsPageId) -> Boolean): SettingsPage {
     val shown = visibleOnly()
+
     return shown.copy(
         sections = shown.sections.mapNotNull { section ->
             section.copy(items = section.items.filterNot { it is LinkItem && !hasPage(it.target) }).takeIf { it.items.isNotEmpty() }
@@ -40,14 +41,15 @@ internal fun ChoiceItem.valueLabel(): String? = options.firstOrNull { it.value =
 /** What the preview draws, from the page's own rows (the unfiltered page: they are hidden while the system style is on). */
 internal fun SettingsPage.subtitlePreviewStyle(): SubtitleViewStyle {
     val items = sections.flatMap { it.items }
+
     fun choice(key: SettingKey) = (items.firstOrNull { it.key == key } as? ChoiceItem)?.value ?: 0
+
     val follow = (items.firstOrNull { it.key == SettingKey.CaptionsFollowSystem } as? ToggleItem)?.checked ?: true
+
     return subtitleStyle(follow, choice(SettingKey.SubtitleSize), choice(SettingKey.SubtitleColor), choice(SettingKey.SubtitleBackground))
 }
 
-/** The root's visible links, in order, to pages the tree has. */
-private fun rootLinks(pages: Map<SettingsPageId, SettingsPage>): List<LinkItem> =
-    pages[SettingsPageId.Root]?.drawn { it in pages }?.sections.orEmpty().flatMap { it.items }.filterIsInstance<LinkItem>()
+private fun rootLinks(pages: Map<SettingsPageId, SettingsPage>): List<LinkItem> = pages[SettingsPageId.Root]?.drawn { it in pages }?.sections.orEmpty().flatMap { it.items }.filterIsInstance<LinkItem>()
 
 /**
  * The root row that is open on a tablet: the saved one while it is still a drawn link, otherwise the first
@@ -56,6 +58,7 @@ private fun rootLinks(pages: Map<SettingsPageId, SettingsPage>): List<LinkItem> 
  */
 internal fun selectedLink(saved: SettingKey?, pages: Map<SettingsPageId, SettingsPage>): LinkItem? {
     val links = rootLinks(pages)
+
     return links.firstOrNull { it.key == saved }
         ?: firstSettablePage(pages)?.let { first -> links.firstOrNull { it.target == first } }
 }

@@ -2,21 +2,18 @@ package app.vibeyfin.app.filtered
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.children.ChildrenScreen
+import app.vibeyfin.app.components.FilterChipButton
 import app.vibeyfin.app.components.OptionRow
 import app.vibeyfin.app.components.PickerSearch
 import app.vibeyfin.app.components.PickerSheet
-import app.vibeyfin.ui.common.Strings
-import app.vibeyfin.app.components.FilterChipButton
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.model.MediaItem
@@ -42,9 +39,11 @@ fun FilteredListRoute(
     viewModel: FilteredListViewModel = koinViewModel(parameters = { parametersOf(filter) }),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
     LaunchedEffect(state.list.exit) {
         state.list.exit?.let(onExit)
     }
+
     ChildrenScreen(
         title = viewModel.title,
         state = state.list,
@@ -62,7 +61,6 @@ fun FilteredListRoute(
     }
 }
 
-/** Sort and Genre. One that changes the page shows filled; each has an arrow, as it opens a list. */
 @Composable
 private fun ListChips(chips: List<ListChip>, onTap: (ListChip) -> Unit) {
     LazyRow(
@@ -70,7 +68,6 @@ private fun ListChips(chips: List<ListChip>, onTap: (ListChip) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
     ) {
         items(chips, key = { it.kind }) { chip ->
-            // Sort and Genre open a list and have an arrow; Movies and Shows switch on and off.
             FilterChipButton(chip.label, onClick = { onTap(chip) }, active = chip.active, opensList = chip.opensList)
         }
     }
@@ -83,13 +80,16 @@ private fun ListPicker(sheet: ListSheet, onPick: (String) -> Unit, onDismiss: ()
             OptionRow(key = option.id, label = option.name, selected = option.id == sheet.selectedId, detail = option.count?.toString())
         }
     }
+
+    val searchFoundNothing = sheet.options.isEmpty() && !sheet.loading && sheet.message == null
+
     PickerSheet(
         title = sheet.title,
         rows = rows,
         loading = sheet.loading,
         message = sheet.message,
-        // A search (People) says what to do or that nobody was found while it has no rows.
-        emptyText = if (sheet.searchable && sheet.options.isEmpty() && !sheet.loading && sheet.message == null) sheet.emptyText else null,
+        // A search (People) says what to do or that nobody was found while it has no rows
+        emptyText = if (sheet.searchable && searchFoundNothing) sheet.emptyText else null,
         onPick = onPick,
         onDismiss = onDismiss,
         onRetry = onRetry,

@@ -1,44 +1,36 @@
 package app.vibeyfin.app.item
 
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.layout.Layout
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.layout.layout
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.Animatable
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -46,6 +38,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,37 +48,43 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.vibeyfin.R
 import app.vibeyfin.app.components.Artwork
+import app.vibeyfin.app.components.SkeletonBlock
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.downloads.DownloadActionMenuItem
 import app.vibeyfin.app.downloads.DownloadBadgeIcon
 import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
-import app.vibeyfin.domain.model.ItemKind
-import app.vibeyfin.ui.downloads.actions
-import app.vibeyfin.ui.item.seasonLabel
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.vectorResource
-import app.vibeyfin.app.components.SkeletonBlock
+import app.vibeyfin.app.navigation.LocalOpenTrailerUrl
 import app.vibeyfin.app.theme.BrandDisplay
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
+import app.vibeyfin.ui.downloads.actions
 import app.vibeyfin.ui.item.ItemUiState
 import app.vibeyfin.ui.item.Trailer
+import app.vibeyfin.ui.item.seasonLabel
 import coil3.compose.AsyncImage
 
 /**
@@ -97,6 +96,7 @@ import coil3.compose.AsyncImage
 fun ItemBackdrop(item: MediaItem, screenWidth: Dp, screenHeight: Dp, progress: Float, modifier: Modifier = Modifier) {
     Box(modifier) {
         val picture = item.backdropUrl ?: item.posterUrl
+
         if (picture != null) {
             Artwork(
                 url = picture,
@@ -108,10 +108,13 @@ fun ItemBackdrop(item: MediaItem, screenWidth: Dp, screenHeight: Dp, progress: F
         } else {
             Box(Modifier.fillMaxSize().background(VibeyFinTokens.Colors.surface2))
         }
+
         val scrim = VibeyFinTokens.Colors.scrim
+
         Box(Modifier.matchParentSize().background(Brush.horizontalGradient(0f to VibeyFinTokens.Colors.scrimStrong, 0.3f to scrim, 0.65f to Color.Transparent)))
         Box(Modifier.matchParentSize().background(Brush.verticalGradient(0f to scrim, 0.16f to Color.Transparent, 0.6f to Color.Transparent, 1f to scrim)))
-        // The darkening: from the picture as it is to nearly the page's own colour, as the page scrolls up over it.
+
+        // The darkening: from the picture as it is to nearly the page's own color, as the page scrolls up over it
         Box(Modifier.matchParentSize().background(VibeyFinTokens.Colors.bg.copy(alpha = MAX_DARKEN * progress.coerceIn(0f, 1f))))
     }
 }
@@ -121,11 +124,13 @@ fun ItemBackdrop(item: MediaItem, screenWidth: Dp, screenHeight: Dp, progress: F
  * darkens ([scroll] against [height]) so what scrolls over it reads. A scrim under the text fades it into the page.
  */
 @Composable
-fun PinnedBackdrop(item: MediaItem, height: Dp, scroll: androidx.compose.foundation.ScrollState, modifier: Modifier = Modifier) {
-    // Fully dark after about half the picture has scrolled by, so the page reads well before the picture is gone.
-    val darkenOverPx = with(androidx.compose.ui.platform.LocalDensity.current) { height.toPx() } * DARKEN_OVER
+fun PinnedBackdrop(item: MediaItem, height: Dp, scroll: ScrollState, modifier: Modifier = Modifier) {
+    // Fully dark after about half the picture has scrolled by, so the page reads well before the picture is gone
+    val darkenOverPx = with(LocalDensity.current) { height.toPx() } * DARKEN_OVER
+
     Box(modifier.fillMaxWidth().height(height)) {
         val picture = item.backdropUrl ?: item.posterUrl
+
         if (picture != null) {
             Artwork(
                 url = picture,
@@ -137,24 +142,26 @@ fun PinnedBackdrop(item: MediaItem, height: Dp, scroll: androidx.compose.foundat
         } else {
             Box(Modifier.fillMaxSize().background(VibeyFinTokens.Colors.surface2))
         }
+
         val scrim = VibeyFinTokens.Colors.scrim
         val scrimStrong = VibeyFinTokens.Colors.scrimStrong
+
         Box(
             Modifier.matchParentSize().background(
                 Brush.verticalGradient(0f to scrim, 0.18f to Color.Transparent, 0.40f to Color.Transparent, 0.60f to scrim, 0.82f to scrimStrong, 1f to VibeyFinTokens.Colors.bg),
             ),
         )
-        // The darkening as the page scrolls; read in the draw step, so scrolling redraws this layer and nothing else.
+
+        // The darkening as the page scrolls; read in the draw step, so scrolling redraws this layer and nothing else
         Box(
             Modifier.matchParentSize().graphicsLayer { alpha = (scroll.value / darkenOverPx).coerceIn(0f, 1f) * MAX_DARKEN }.background(VibeyFinTokens.Colors.bg),
         )
     }
 }
 
-/** The share of the picture that has to scroll by for a phone's backdrop to be fully dark. */
 private const val DARKEN_OVER = 0.55f
 
-/** How dark the backdrop gets once the page has scrolled a screen: nearly the page's own colour, with a hint of the picture left. */
+// Nearly the page's own color, with a hint of the picture left
 private const val MAX_DARKEN = 0.94f
 
 /** The hero's content: the show it belongs to, the title, the facts, the overview, Play and the actions. Centred on a phone, at the start on a tablet. */
@@ -175,9 +182,9 @@ fun HeroDetails(
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        // An episode or a season leads back to its show.
         item.seriesName?.let { name ->
             val seriesId = item.seriesId
+
             if (seriesId != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -194,58 +201,59 @@ fun HeroDetails(
                 Text(name, style = MaterialTheme.typography.labelLarge, color = VibeyFinTokens.Colors.inkMuted)
             }
         }
+
         TitleArt(item, centered = centered)
         FactsLine(state, centered = centered)
+
         if (item.genres.isNotEmpty()) {
             Text(
-                text = item.genres.joinToString("  ·  "),
+                text = Strings.factsLine(item.genres),
                 style = MaterialTheme.typography.bodyMedium,
                 color = VibeyFinTokens.Colors.inkMuted,
                 textAlign = if (centered) TextAlign.Center else TextAlign.Start,
             )
         }
+
         item.overview?.let { Overview(it) }
-        // A show's Play waits for its next episode: a grey button of the same size holds its place, so it does not pop in.
+
+        // A show's Play waits for its next episode: a gray button of the same size holds its place, so it does not pop in
         if (state.canPlay) {
             PlayButtons(state.playLabel, state.canStartOver, onPlay, fullWidth = true)
         } else if (state.playLoading) {
             SkeletonBlock(Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge), shape = RoundedCornerShape(50))
         }
-        ActionButtons(state, centered = centered, onToggleFavorite, onPlayTrailer, onTogglePlayed, downloads)
+
+        ActionButtons(state, onToggleFavorite, onPlayTrailer, onTogglePlayed, downloads)
     }
 }
 
-/**
- * The actions under Play, each an icon over a label: My List (the server's favourites), Trailer (only when there is one),
- * Watched, and Download (only when the server lets the user). A trailer the server holds plays in the app; one on the web opens in the system's viewer.
- * Download starts a movie or an episode at once; once it exists, and for a show, the button opens a menu.
- * They sit in four places of one width (the widest label's), the first at Play's left edge and the fourth ending at its right,
- * evenly spread. With fewer (an episode has no trailer) they keep those places and the last ones stay empty.
- */
+// Four places of one width, so fewer actions (an episode has no trailer) keep their place and the last ones stay empty
 @Composable
-private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorite: () -> Unit, onPlayTrailer: (String) -> Unit, onTogglePlayed: () -> Unit, downloads: DownloadCallbacks) {
-    val openTrailerUrl = app.vibeyfin.app.navigation.LocalOpenTrailerUrl.current
+private fun ActionButtons(state: ItemUiState, onToggleFavorite: () -> Unit, onPlayTrailer: (String) -> Unit, onTogglePlayed: () -> Unit, downloads: DownloadCallbacks) {
+    val openTrailerUrl = LocalOpenTrailerUrl.current
+
     ActionRow(Modifier.fillMaxWidth()) {
         ActionButton(
-            centered = centered,
             label = Strings.myList,
             description = Strings.myListAction(state.isFavorite),
             icon = { modifier -> Icon(rememberVectorPainter(if (state.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder), contentDescription = null, tint = VibeyFinTokens.Colors.ink, modifier = modifier) },
             popKey = state.isFavorite,
             onClick = onToggleFavorite,
         )
+
         val trailer = state.trailer
+
         if (trailer != null) {
-            ActionButton(label = Strings.trailer, description = Strings.trailer, icon = { modifier -> Icon(painterResource(R.drawable.ic_trailer), contentDescription = null, tint = VibeyFinTokens.Colors.ink, modifier = modifier) }, centered = centered) {
+            ActionButton(label = Strings.trailer, description = Strings.trailer, icon = { modifier -> Icon(painterResource(R.drawable.ic_trailer), contentDescription = null, tint = VibeyFinTokens.Colors.ink, modifier = modifier) }) {
                 when (trailer) {
                     is Trailer.Local -> onPlayTrailer(trailer.itemId)
                     is Trailer.Remote -> openTrailerUrl(trailer.url)
                 }
             }
         }
+
         if (state.canMark) {
             ActionButton(
-                    centered = centered,
                 label = Strings.watchedAction,
                 description = state.markLabel,
                 icon = { modifier -> Icon(rememberVectorPainter(if (state.watched) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle), contentDescription = null, tint = VibeyFinTokens.Colors.ink, modifier = modifier) },
@@ -253,23 +261,20 @@ private fun ActionButtons(state: ItemUiState, centered: Boolean, onToggleFavorit
                 onClick = onTogglePlayed,
             )
         }
-        if (state.offersDownload) DownloadButton(state, centered, downloads)
+
+        if (state.offersDownload) DownloadButton(state, downloads)
     }
 }
 
-/**
- * Download: the arrow when there is nothing, the ring while it comes in, the check once it is here. Tapping starts a movie or an
- * episode with none; otherwise (and for a show) it opens a menu of what can be done: pause, resume, remove, or for a show which
- * season or all of it.
- */
+// Tapping starts a movie or an episode with no download; otherwise, and for a show, it opens a menu
 @Composable
-private fun DownloadButton(state: ItemUiState, centered: Boolean, downloads: DownloadCallbacks) {
+private fun DownloadButton(state: ItemUiState, downloads: DownloadCallbacks) {
     var menu by remember { mutableStateOf(false) }
     val ensureNotifications = rememberDownloadNotificationPermission()
     val item = state.item ?: return
     val isSeries = item.kind == ItemKind.Series
+
     ActionButton(
-        centered = centered,
         label = state.downloadLabel,
         description = state.downloadDescription,
         icon = { modifier -> DownloadBadgeIcon(state.downloadBadge, state.downloadProgress, modifier) },
@@ -282,22 +287,34 @@ private fun DownloadButton(state: ItemUiState, centered: Boolean, downloads: Dow
             }
         },
         menu = {
-        VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
-            if (isSeries) {
-                val season = state.seasons.seasons.firstOrNull { it.id == state.seasons.selectedId }
-                if (season != null) {
-                    VibeyFinMenuItem(Strings.downloadSeasonNamed(season.seasonLabel), painterVector(R.drawable.ic_download)) { menu = false; downloads.onDownloadSeason(season.id) }
-                }
-                VibeyFinMenuItem(Strings.downloadAllEpisodes, painterVector(R.drawable.ic_download)) { menu = false; downloads.onDownloadSeries() }
-                if (state.seriesDownloads.isNotEmpty()) {
-                    VibeyFinMenuItem(Strings.removeDownloadsOf(state.seriesDownloads.size), Icons.Default.Delete) { menu = false; downloads.onRemoveSeries() }
-                }
-            } else {
-                state.download?.actions?.forEach { action ->
-                    DownloadActionMenuItem(action) { menu = false; downloads.onAction(item.id, action) }
+            VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
+                if (isSeries) {
+                    val season = state.seasons.seasons.firstOrNull { it.id == state.seasons.selectedId }
+                    if (season != null) {
+                        VibeyFinMenuItem(Strings.downloadSeasonNamed(season.seasonLabel), painterVector(R.drawable.ic_download)) {
+                            menu = false
+                            downloads.onDownloadSeason(season.id)
+                        }
+                    }
+                    VibeyFinMenuItem(Strings.downloadAllEpisodes, painterVector(R.drawable.ic_download)) {
+                        menu = false
+                        downloads.onDownloadSeries()
+                    }
+                    if (state.seriesDownloads.isNotEmpty()) {
+                        VibeyFinMenuItem(Strings.removeDownloadsOf(state.seriesDownloads.size), Icons.Default.Delete) {
+                            menu = false
+                            downloads.onRemoveSeries()
+                        }
+                    }
+                } else {
+                    state.download?.actions?.forEach { action ->
+                        DownloadActionMenuItem(action) {
+                            menu = false
+                            downloads.onAction(item.id, action)
+                        }
+                    }
                 }
             }
-        }
         },
     )
 }
@@ -305,14 +322,8 @@ private fun DownloadButton(state: ItemUiState, centered: Boolean, downloads: Dow
 @Composable
 private fun painterVector(id: Int) = ImageVector.vectorResource(id)
 
-/** The places in the action row: My List, Trailer, Watched, Download. */
 private const val ACTION_PLACES = 4
 
-/**
- * The action row's places: [ACTION_PLACES] of one width, the widest action's, the first at the row's left edge and the last ending
- * at its right, evenly spread. Fewer actions keep the same places from the left; the rest stay empty. Too narrow for that, the
- * places share the width.
- */
 @Composable
 private fun ActionRow(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Layout(content, modifier) { measurables, constraints ->
@@ -322,30 +333,37 @@ private fun ActionRow(modifier: Modifier = Modifier, content: @Composable () -> 
         val gap = (total - place * ACTION_PLACES) / (ACTION_PLACES - 1)
         val placeables = measurables.map { it.measure(Constraints.fixedWidth(place)) }
         val height = placeables.maxOfOrNull { it.height } ?: 0
+
         layout(total, height) {
             placeables.forEachIndexed { i, placeable -> placeable.placeRelative(i * (place + gap), 0) }
         }
     }
 }
 
-/** One action: the icon over its label, filling the place [ActionRow] gives it. */
 @Composable
-private fun ActionButton(label: String, description: String, icon: @Composable (Modifier) -> Unit, centered: Boolean, popKey: Boolean? = null, menu: @Composable () -> Unit = {}, onClick: () -> Unit) {
-    // A toggle springs when it flips: it swells, then settles with a little bounce.
+private fun ActionButton(label: String, description: String, icon: @Composable (Modifier) -> Unit, popKey: Boolean? = null, menu: @Composable () -> Unit = {}, onClick: () -> Unit) {
     val pop = remember { Animatable(1f) }
     var first by remember { mutableStateOf(true) }
+
     LaunchedEffect(popKey) {
-        if (first) { first = false; return@LaunchedEffect }
+        if (first) {
+            first = false
+
+            return@LaunchedEffect
+        }
+
         if (popKey == null) return@LaunchedEffect
+
         pop.snapTo(0.6f)
         pop.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
     }
+
     Box {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1, Alignment.CenterVertically),
             modifier = Modifier
-                // A generous target: at least 64 wide and 72 tall, well over the 48 dp minimum; as wide as its place.
+                // A generous target: at least 64 wide and 72 tall, well over the 48 dp minimum; as wide as its place
                 .defaultMinSize(minWidth = 64.dp, minHeight = 72.dp)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
@@ -353,15 +371,21 @@ private fun ActionButton(label: String, description: String, icon: @Composable (
                 .semantics { contentDescription = description }
                 .padding(vertical = VibeyFinTokens.Space.s2),
         ) {
-            icon(Modifier.size(30.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value })
-            // Medium weight in the full ink: the labels read against the picture.
-            Text(label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Medium), color = VibeyFinTokens.Colors.ink, maxLines = 1)
+            icon(
+                Modifier.size(30.dp).graphicsLayer {
+                    scaleX = pop.value
+                    scaleY = pop.value
+                },
+            )
+
+            // Medium weight in the full ink: the labels read against the picture
+            Text(label, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium), color = VibeyFinTokens.Colors.ink, maxLines = 1)
         }
+
         menu()
     }
 }
 
-/** The title as its `Logo` image, centred and large; the `brand-display` title when the item has none. */
 @Composable
 private fun TitleArt(item: MediaItem, centered: Boolean) {
     if (item.logoUrl != null) {
@@ -384,17 +408,17 @@ private fun TitleArt(item: MediaItem, centered: Boolean) {
     }
 }
 
-/** Year, rating, runtime (or seasons): centred under the title, with the picture badge and a check once it is watched. */
 @Composable
 private fun FactsLine(state: ItemUiState, centered: Boolean) {
     if (state.facts.isEmpty() && !state.watched && state.badge == null) return
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3, if (centered) Alignment.CenterHorizontally else Alignment.Start),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(
-            text = state.facts.joinToString("  ·  "),
+            text = Strings.factsLine(state.facts),
             style = MaterialTheme.typography.bodyMedium,
             color = VibeyFinTokens.Colors.inkMuted,
         )
@@ -409,7 +433,8 @@ private fun FactsLine(state: ItemUiState, centered: Boolean) {
                     .padding(horizontal = VibeyFinTokens.Space.s2, vertical = VibeyFinTokens.Space.s1),
             )
         }
-        // Watched is an icon, in ink: aqua never signals status.
+
+        // Watched is an icon, in ink: aqua never signals status
         if (state.watched) {
             Icon(
                 imageVector = Icons.Default.CheckCircle,
@@ -421,11 +446,11 @@ private fun FactsLine(state: ItemUiState, centered: Boolean) {
     }
 }
 
-/** Three lines of the overview and "More" when there is more; "Less" folds it back. */
 @Composable
 private fun Overview(text: String) {
     var expanded by remember { mutableStateOf(false) }
     var overflows by remember { mutableStateOf(false) }
+
     Column(Modifier.fillMaxWidth()) {
         Text(
             text = text,
@@ -435,6 +460,7 @@ private fun Overview(text: String) {
             overflow = TextOverflow.Ellipsis,
             onTextLayout = { if (!expanded) overflows = it.hasVisualOverflow },
         )
+
         if (overflows || expanded) {
             TextButton(onClick = { expanded = !expanded }) {
                 Text(if (expanded) Strings.less else Strings.more, color = VibeyFinTokens.Colors.inkMuted)
@@ -443,10 +469,6 @@ private fun Overview(text: String) {
     }
 }
 
-/**
- * The one filled action on the page: aqua, 56 dp tall, reading "Play", "Resume · 38m left" or for a show "Play S2 E4". "Start
- * over" sits beside it as a round icon-only secondary button (a circular arrow), only when there is something to resume.
- */
 @Composable
 private fun PlayButtons(label: String, canStartOver: Boolean, onPlay: (startOver: Boolean) -> Unit, fullWidth: Boolean) {
     Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3), modifier = if (fullWidth) Modifier.fillMaxWidth() else Modifier) {
@@ -455,6 +477,7 @@ private fun PlayButtons(label: String, canStartOver: Boolean, onPlay: (startOver
             Spacer(Modifier.width(VibeyFinTokens.Space.s2))
             Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
+
         if (canStartOver) {
             FilledTonalIconButton(onClick = { onPlay(true) }, modifier = Modifier.size(VibeyFinTokens.Size.buttonLarge)) {
                 Icon(imageVector = Icons.Default.Refresh, contentDescription = Strings.startOver)

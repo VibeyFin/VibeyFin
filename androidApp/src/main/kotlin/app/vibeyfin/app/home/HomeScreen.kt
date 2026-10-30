@@ -1,18 +1,5 @@
 package app.vibeyfin.app.home
 
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
-import app.vibeyfin.app.navigation.LocalBottomBarPadding
-import app.vibeyfin.app.downloads.DownloadActionMenuItem
-import app.vibeyfin.app.downloads.DownloadBadgeIcon
-import app.vibeyfin.app.downloads.RemoveConfirmDialog
-import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
-import app.vibeyfin.domain.Download
-import app.vibeyfin.ui.downloads.DownloadAction
-import app.vibeyfin.ui.downloads.DownloadBadge
-import app.vibeyfin.ui.downloads.actions
-import app.vibeyfin.ui.downloads.badge
-import app.vibeyfin.ui.downloads.label
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
@@ -21,12 +8,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -44,55 +31,66 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.app.components.ActionSnackbar
 import app.vibeyfin.app.components.ContinueCard
 import app.vibeyfin.app.components.ContinueSkeletonCards
 import app.vibeyfin.app.components.LoadError
-import app.vibeyfin.app.components.bleed
-import app.vibeyfin.app.components.SectionTitle
-import app.vibeyfin.app.components.TabHeader
-import app.vibeyfin.app.components.ROW_FADE_MS
-import app.vibeyfin.app.components.RowPhase
 import app.vibeyfin.app.components.MediaRowSection
 import app.vibeyfin.app.components.PosterSkeletonRow
+import app.vibeyfin.app.components.ROW_FADE_MS
+import app.vibeyfin.app.components.RowPhase
+import app.vibeyfin.app.components.SectionTitle
 import app.vibeyfin.app.components.SkeletonLine
+import app.vibeyfin.app.components.TabHeader
 import app.vibeyfin.app.components.VibeyFinMenu
+import app.vibeyfin.app.components.bleed
+import app.vibeyfin.app.downloads.DownloadActionMenuItem
+import app.vibeyfin.app.downloads.DownloadBadgeIcon
+import app.vibeyfin.app.downloads.RemoveConfirmDialog
+import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
+import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.domain.Download
+import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
-import app.vibeyfin.domain.HomeFilter
-import app.vibeyfin.ui.home.CategoryButton
-import app.vibeyfin.ui.home.SeeAll
+import app.vibeyfin.ui.downloads.DownloadAction
+import app.vibeyfin.ui.downloads.DownloadBadge
+import app.vibeyfin.ui.downloads.actions
+import app.vibeyfin.ui.downloads.badge
+import app.vibeyfin.ui.downloads.label
 import app.vibeyfin.ui.home.CategoryKind
-import app.vibeyfin.ui.home.ContinueCard as ContinueCardState
 import app.vibeyfin.ui.home.ContinueRow
 import app.vibeyfin.ui.home.HeroNav
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.home.HomeUiState
 import app.vibeyfin.ui.home.HomeViewModel
+import app.vibeyfin.ui.home.SeeAll
 import org.koin.androidx.compose.koinViewModel
+import app.vibeyfin.ui.home.ContinueCard as ContinueCardState
 
-/** How many grey rows stand in for the rows that are still being worked out. */
 private const val PLACEHOLDER_ROWS = 2
 
 @Composable
@@ -105,27 +103,31 @@ fun HomeRoute(
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
     LaunchedEffect(state.exit) {
         state.exit?.let(onExit)
     }
-    // Back from another screen, or from the background: something may have been watched elsewhere.
+
+    // Back from another screen, or from the background: something may have been watched elsewhere
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onForeground() }
-    // A category button or a genre in the sheet was chosen: its page opens over Home.
+
     LaunchedEffect(state.openList) {
         state.openList?.let {
             onOpenList(it)
             viewModel.onListOpened()
         }
     }
-    // The hero's Play found what to play (an episode for a show): the player opens on it, or the page when none was found.
+
     LaunchedEffect(state.heroNav) {
         when (val nav = state.heroNav) {
             is HeroNav.Play -> onPlay(nav.itemId)
             is HeroNav.Details -> onDetails(nav.itemId)
             null -> return@LaunchedEffect
         }
+
         viewModel.onHeroNavHandled()
     }
+
     HomeScreen(
         state = state,
         onOpen = onOpen,
@@ -183,17 +185,16 @@ fun HomeScreen(
     onRetrySheet: () -> Unit,
 ) {
     val margin = screenMargin()
-    // The card whose actions are showing, after a long press.
+
     var menuCard by remember { mutableStateOf<ContinueCardState?>(null) }
+
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         // No side margin on the column: the Continue watching row runs to the screen edge, so the
         // header and the grid each apply the margin themselves.
         Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
-            // The page name at the left and the profile at the right, as on every tab.
             TabHeader(Strings.home)
+
             if (state.serverId != null) {
-                // The category buttons stay put under the header while the page scrolls, as the Library's chips do. Home itself is
-                // never filtered: a button opens a page of its own.
                 CategoryButtonRow(
                     buttons = state.buttons,
                     contentPadding = PaddingValues(start = margin, end = margin, bottom = VibeyFinTokens.Space.s3),
@@ -204,10 +205,12 @@ fun HomeScreen(
                 )
             }
         }
+
         Box(Modifier.fillMaxSize()) {
             ActionSnackbar(state.actionMessage, onRetry = onRetryAction, onDismiss = onDismissMessage)
         }
     }
+
     state.sheet?.let { sheet -> CategorySheet(sheet, onPickOption, onDismissSheet, onRetrySheet) }
     menuCard?.let { card ->
         ModalBottomSheet(onDismissRequest = { menuCard = null }) {
@@ -218,30 +221,47 @@ fun HomeScreen(
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(horizontal = margin, vertical = VibeyFinTokens.Space.s2),
                 )
-                SheetAction(Strings.details, Icons.Default.Info) { menuCard = null; onDetails(card.id) }
-                SheetAction(Strings.markWatched, Icons.Default.Check) { menuCard = null; onMarkWatched(card.id) }
-                // Download without opening the page: a movie or an episode goes into the queue; once there is one, a tap opens its actions.
+                SheetAction(Strings.details, Icons.Default.Info) {
+                    menuCard = null
+
+                    onDetails(card.id)
+                }
+
+                SheetAction(Strings.markWatched, Icons.Default.Check) {
+                    menuCard = null
+
+                    onMarkWatched(card.id)
+                }
+
+                // Download without opening the page: a movie or an episode goes into the queue; once there is one, a tap opens its actions
                 val download = state.downloads[card.id]
+
                 if (state.canDownload || download != null) {
                     SheetDownloadAction(
                         download,
-                        onStart = { menuCard = null; onDownload(card.id) },
-                        onAction = { action -> menuCard = null; onDownloadAction(card.id, action) },
+                        onStart = {
+                            menuCard = null
+                            onDownload(card.id)
+                        },
+                        onAction = { action ->
+                            menuCard = null
+                            onDownloadAction(card.id, action)
+                        },
                     )
                 }
             }
         }
     }
-    // The question before a card's download is deleted.
+
     state.removePrompt?.let { RemoveConfirmDialog(it, onConfirm = onConfirmRemove, onDismiss = onDismissRemoval) }
 }
 
-/** The Download entry of a Continue watching card's menu: its badge and words, a tap starts it, or with a download opens its actions. */
 @Composable
 private fun SheetDownloadAction(download: Download?, onStart: () -> Unit, onAction: (DownloadAction) -> Unit) {
     var menu by remember { mutableStateOf(false) }
     val ensureNotifications = rememberDownloadNotificationPermission()
     val badge = download?.badge ?: DownloadBadge.None
+
     Box {
         Row(
             modifier = Modifier
@@ -261,8 +281,15 @@ private fun SheetDownloadAction(download: Download?, onStart: () -> Unit, onActi
             DownloadBadgeIcon(badge, download?.progress, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(text = badge.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
         }
+
         VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
-            download?.actions?.forEach { action -> DownloadActionMenuItem(action) { menu = false; onAction(action) } }
+            download?.actions?.forEach { action ->
+                DownloadActionMenuItem(action) {
+                    menu = false
+
+                    onAction(action)
+                }
+            }
         }
     }
 }
@@ -282,7 +309,6 @@ private fun SheetAction(label: String, icon: ImageVector, onClick: () -> Unit) {
     }
 }
 
-/** Continue watching and the rows under it in one scrolling grid, with a pull to refresh over it. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Content(
@@ -300,12 +326,13 @@ private fun Content(
     onSeeAll: (SeeAll) -> Unit,
 ) {
     val refreshState = rememberPullToRefreshState()
+
     PullToRefreshBox(
         isRefreshing = state.refreshing,
         onRefresh = onRefresh,
         state = refreshState,
         modifier = Modifier.fillMaxSize(),
-        // Aqua is for the primary action and playback progress, so the spinner is neutral.
+        // Aqua is for the primary action and playback progress, so the spinner is neutral
         indicator = {
             PullToRefreshDefaults.Indicator(
                 state = refreshState,
@@ -323,15 +350,15 @@ private fun Content(
             horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
             modifier = Modifier.fillMaxSize(),
         ) {
-            // The featured item, when there is one: full width, under the buttons and above what is being watched.
-            // While it is being picked a grey card of the same size stands in and fades into the hero, so it does not just appear.
             if (state.heroes.isNotEmpty() || state.heroLoading) {
                 fullWidth(key = "hero", animate = false) {
                     val wideHero = LocalConfiguration.current.screenWidthDp >= 600
+
                     // Keyed on which titles they are, not on their data: a tap on My List changes the data, and only the heart
                     // should redraw, not the whole card fading into a copy of itself.
                     Crossfade(targetState = state.heroes.map { it.id }, animationSpec = tween(ROW_FADE_MS), label = "hero") { ids ->
                         val heroes = state.heroes
+
                         if (ids.isEmpty() || heroes.isEmpty()) {
                             HomeHeroSkeleton(wideHero, dots = state.heroSlots >= 2)
                         } else {
@@ -340,15 +367,15 @@ private fun Content(
                     }
                 }
             }
+
             fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onDetails, onLongPress, onRetryContinue) }
-            // Until the libraries are known two grey rows hold the place, so the rows that replace them don't push
-            // the genre rows down from under the user's eyes.
+
             if (state.loadingLibraries && state.rows.isEmpty()) {
                 repeat(PLACEHOLDER_ROWS) { index ->
                     fullWidth(key = "placeholder-$index") { RowPlaceholder(margin) }
                 }
             }
-            // Recently added in each library, then a few genres: each loads and fails on its own, and an empty one is not here.
+
             state.rows.forEach { row ->
                 fullWidth(key = row.id) { MediaRowSection(row, margin, onOpen, onSeeAll, onRetry = { onRetryRow(row.id) }) }
             }
@@ -358,7 +385,7 @@ private fun Content(
 
 private fun LazyGridScope.fullWidth(key: String, animate: Boolean = true, content: @Composable () -> Unit) {
     // Rows that arrive, leave or change height slide and fade into place instead of snapping, so nothing jumps. The hero does not:
-    // its grey card is simply there, and the hero fades into it in place.
+    // its gray card is simply there, and the hero fades into it in place.
     item(key = key, span = { GridItemSpan(maxLineSpan) }, contentType = "row") { Box(if (animate) Modifier.animateItem() else Modifier) { content() } }
 }
 
@@ -372,19 +399,31 @@ internal fun ContinueWatching(
     onLongPress: (ContinueCardState) -> Unit,
     onRetry: () -> Unit,
 ) {
-    // Nothing to show (it came back empty): no title and no gap, like any other row.
+    // Nothing to show (it came back empty): no title and no gap, like any other row
     if (!row.isVisible) return
+
     Column(Modifier.padding(bottom = VibeyFinTokens.Space.s2), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         SectionTitle(Strings.continueWatching)
-        val phase = if (row.loading) RowPhase.Loading else if (row.message != null) RowPhase.Failed else RowPhase.Ready
+
+        val phase = if (row.loading) {
+            RowPhase.Loading
+        } else if (row.message != null) {
+            RowPhase.Failed
+        } else {
+            RowPhase.Ready
+        }
+
         Crossfade(targetState = phase, animationSpec = tween(ROW_FADE_MS), modifier = Modifier.animateContentSize(tween(ROW_FADE_MS))) { shown ->
             when (shown) {
                 RowPhase.Loading -> ContinueSkeletonCards(Modifier.bleed(margin).padding(horizontal = margin))
+
                 RowPhase.Failed -> LoadError(row.message ?: "", onRetry)
+
                 RowPhase.Ready -> {
                     // A card that goes (marked watched) or comes back (the save failed) at the front would
                     // leave the list anchored on the card after it; start from the front again instead.
                     val listState = rememberLazyListState()
+
                     LaunchedEffect(row.cards.firstOrNull()?.id) { listState.scrollToItem(0) }
                     LazyRow(
                         state = listState,
@@ -400,7 +439,6 @@ internal fun ContinueWatching(
     }
 }
 
-/** A row's header and posters in grey, for the moment before the rows are known. */
 @Composable
 private fun RowPlaceholder(margin: Dp) {
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
@@ -408,4 +446,3 @@ private fun RowPlaceholder(margin: Dp) {
         PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin))
     }
 }
-

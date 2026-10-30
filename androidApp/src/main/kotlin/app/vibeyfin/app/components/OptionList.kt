@@ -8,9 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +27,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import app.vibeyfin.app.theme.MenuPressIndication
@@ -63,6 +62,7 @@ fun OptionList(title: String, options: List<OptionRow>, onSelect: (String) -> Un
                     modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s2),
                 )
             }
+
             items(options, key = { it.key }) { option ->
                 ListItem(
                     headlineContent = {
@@ -70,7 +70,7 @@ fun OptionList(title: String, options: List<OptionRow>, onSelect: (String) -> Un
                             option.label,
                             maxLines = 3,
                             overflow = TextOverflow.Ellipsis,
-                            fontWeight = if (option.selected) androidx.compose.ui.text.font.FontWeight.SemiBold else null,
+                            fontWeight = if (option.selected) FontWeight.SemiBold else null,
                         )
                     },
                     trailingContent = if (option.detail != null) {
@@ -84,14 +84,14 @@ fun OptionList(title: String, options: List<OptionRow>, onSelect: (String) -> Un
                     } else {
                         null
                     },
-                    // The chosen row is lit as a soft rounded pill in the accent tint, with its label in that tint: no tick.
+                    // The chosen row is lit as a soft rounded pill in the accent tint, with its label in that tint: no tick
                     colors = ListItemDefaults.colors(
                         containerColor = if (option.selected) VibeyFinTokens.Colors.accentSoft else Color.Transparent,
                         headlineColor = if (option.selected) VibeyFinTokens.Colors.onAccentSoft else MaterialTheme.colorScheme.onSurface,
                     ),
                     modifier = Modifier
                         .padding(horizontal = VibeyFinTokens.Space.s2)
-                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
+                        .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
                         .selectable(selected = option.selected, role = Role.RadioButton, onClick = { onSelect(option.key) })
                         .semantics { option.description?.let { contentDescription = it } },
                 )
@@ -100,14 +100,9 @@ fun OptionList(title: String, options: List<OptionRow>, onSelect: (String) -> Un
     }
 }
 
-/**
- * Scrolling past the end of a list must not pass on to the sheet, which would move with it. Leftovers
- * towards the end stop here; pulling down at the top still reaches the sheet, so a swipe down closes it.
- */
+// Scrolling past the list's end must not move the sheet; pulling down at the top still reaches it, so a swipe down closes it
 private val KeepAtListEnd = object : NestedScrollConnection {
-    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource) =
-        if (available.y < 0f) available else Offset.Zero
+    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource) = if (available.y < 0f) available else Offset.Zero
 
-    override suspend fun onPostFling(consumed: Velocity, available: Velocity) =
-        if (available.y < 0f) available else Velocity.Zero
+    override suspend fun onPostFling(consumed: Velocity, available: Velocity) = if (available.y < 0f) available else Velocity.Zero
 }

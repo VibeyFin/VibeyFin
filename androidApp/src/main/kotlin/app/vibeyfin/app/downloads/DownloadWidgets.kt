@@ -56,16 +56,16 @@ import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.Download
 import app.vibeyfin.ui.common.Strings
-import app.vibeyfin.ui.downloads.actions
-import app.vibeyfin.ui.downloads.badge
-import app.vibeyfin.ui.downloads.stateWord
 import app.vibeyfin.ui.downloads.DownloadAction
 import app.vibeyfin.ui.downloads.DownloadBadge
 import app.vibeyfin.ui.downloads.DownloadPrompt
 import app.vibeyfin.ui.downloads.RemovePrompt
+import app.vibeyfin.ui.downloads.actions
+import app.vibeyfin.ui.downloads.badge
+import app.vibeyfin.ui.downloads.stateWord
 
 /**
- * What a download looks like, in one picture: the download arrow when there is none, a ring that fills while it comes in (grey
+ * What a download looks like, in one picture: the download arrow when there is none, a ring that fills while it comes in (gray
  * and still while it waits), a pause bars, a warning, and a filled check once it is on the device. All in ink: aqua is for the
  * one primary action and playback progress, and never signals status. Drawn by hand, not with M3's spinner, which is for the
  * player only.
@@ -74,9 +74,13 @@ import app.vibeyfin.ui.downloads.RemovePrompt
 fun DownloadBadgeIcon(badge: DownloadBadge, progress: Float?, modifier: Modifier = Modifier, tint: Color = VibeyFinTokens.Colors.ink) {
     when (badge) {
         DownloadBadge.None -> Icon(painterResource(R.drawable.ic_download), contentDescription = null, tint = tint, modifier = modifier)
+
         DownloadBadge.Done -> Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = tint, modifier = modifier)
+
         DownloadBadge.Failed -> Icon(Icons.Filled.Warning, contentDescription = null, tint = tint, modifier = modifier)
+
         DownloadBadge.Paused -> Icon(painterResource(R.drawable.ic_pause), contentDescription = null, tint = tint, modifier = modifier)
+
         DownloadBadge.Waiting, DownloadBadge.Running -> ProgressRing(
             progress = if (badge == DownloadBadge.Running) progress ?: 0f else 0f,
             dimmed = badge == DownloadBadge.Waiting,
@@ -86,20 +90,23 @@ fun DownloadBadgeIcon(badge: DownloadBadge, progress: Float?, modifier: Modifier
     }
 }
 
-/** A ring that fills clockwise from the top, with the download arrow inside it. */
 @Composable
 private fun ProgressRing(progress: Float, dimmed: Boolean, tint: Color, modifier: Modifier) {
     Box(modifier, contentAlignment = Alignment.Center) {
         val track = VibeyFinTokens.Colors.progressTrack
+
         Canvas(Modifier.matchParentSize()) {
             val stroke = size.minDimension / RING_STROKE_DIVISOR
             val inset = stroke / 2
             val box = Size(size.width - stroke, size.height - stroke)
+
             drawArc(track, 0f, 360f, useCenter = false, topLeft = Offset(inset, inset), size = box, style = Stroke(stroke))
+
             if (progress > 0f) {
                 drawArc(tint, -90f, 360f * progress.coerceIn(0f, 1f), useCenter = false, topLeft = Offset(inset, inset), size = box, style = Stroke(stroke, cap = StrokeCap.Round))
             }
         }
+
         Icon(
             painterResource(R.drawable.ic_download),
             contentDescription = null,
@@ -122,6 +129,7 @@ fun DownloadAction.icon(): DownloadActionIcon = when (this) {
 
 sealed interface DownloadActionIcon {
     data class Vector(val icon: ImageVector) : DownloadActionIcon
+
     data class Resource(val id: Int) : DownloadActionIcon
 }
 
@@ -162,7 +170,9 @@ fun DownloadConfirmDialog(prompt: DownloadPrompt, onToggleUnwatched: () -> Unit,
             Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
                 when {
                     prompt.loading -> Text(Strings.searching, color = VibeyFinTokens.Colors.inkMuted)
+
                     prompt.nothingToDownload -> Text(Strings.downloadNothingNew, color = VibeyFinTokens.Colors.inkMuted)
+
                     else -> {
                         prompt.size?.let { Text(it, color = VibeyFinTokens.Colors.inkMuted) }
                         if (prompt.canChooseUnwatched) {
@@ -219,6 +229,7 @@ fun RemoveConfirmDialog(prompt: RemovePrompt, onConfirm: () -> Unit, onDismiss: 
 fun rememberDownloadNotificationPermission(): () -> Unit {
     val context = LocalContext.current
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
     return remember(launcher, context) {
         {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -268,10 +279,12 @@ fun EpisodeDownloadButton(
     overPicture: Boolean = false,
 ) {
     if (download == null && !canDownload) return
+
     var menu by remember { mutableStateOf(false) }
     val ensureNotifications = rememberDownloadNotificationPermission()
     val badge = download?.badge ?: DownloadBadge.None
     val description = if (download == null) Strings.downloadDescription(title) else Strings.downloadActionDescription(title, download.stateWord)
+
     Box(modifier) {
         IconButton(
             onClick = {
@@ -290,8 +303,15 @@ fun EpisodeDownloadButton(
                 DownloadBadgeIcon(badge, download?.progress, Modifier.size(26.dp), tint = if (badge == DownloadBadge.None) VibeyFinTokens.Colors.inkMuted else VibeyFinTokens.Colors.ink)
             }
         }
+
         VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
-            download?.actions?.forEach { action -> DownloadActionMenuItem(action) { menu = false; onAction(action) } }
+            download?.actions?.forEach { action ->
+                DownloadActionMenuItem(action) {
+                    menu = false
+
+                    onAction(action)
+                }
+            }
         }
     }
 }

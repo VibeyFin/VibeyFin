@@ -21,9 +21,12 @@ fun NotificationPermissionRequest(requested: Boolean, onRequested: () -> Unit, o
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (!granted) onDenied()
     }
+
     LaunchedEffect(requested) {
         if (!requested) return@LaunchedEffect
+
         onRequested()
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {

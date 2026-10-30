@@ -12,10 +12,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.PictureInPictureModeChangedInfo
-import coil3.SingletonImageLoader
-import coil3.request.ImageRequest
-import coil3.request.target
-import coil3.toBitmap
 import androidx.core.util.Consumer
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -25,6 +21,10 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
 import androidx.media3.ui.PlayerNotificationManager
 import app.vibeyfin.ui.common.Strings
+import coil3.SingletonImageLoader
+import coil3.request.ImageRequest
+import coil3.request.target
+import coil3.toBitmap
 
 private var nextSessionId = 0
 private var nextNotificationId = 1
@@ -50,11 +50,12 @@ private const val CHANNEL_ID = "playback"
 fun rememberPlayerSession(player: Player) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() as? ComponentActivity }
+
     DisposableEffect(player, activity) {
         fun inFront(): Boolean = activity == null ||
             activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) ||
             activity.isInPictureInPictureMode
-        // What the session and the notification control: the player, except that play does nothing in the background.
+        // What the session and the notification control: the player, except that play does nothing in the background
         val guarded = object : ForwardingPlayer(player) {
             override fun play() {
                 if (inFront()) super.play()
@@ -64,28 +65,35 @@ fun rememberPlayerSession(player: Player) {
                 if (!playWhenReady || inFront()) super.setPlayWhenReady(playWhenReady)
             }
         }
+
         val session = MediaSession.Builder(context, guarded).setId("vibeyfin-player-${nextSessionId++}").build()
+
         NotificationManagerCompat.from(context).createNotificationChannel(
             NotificationChannelCompat.Builder(CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_LOW)
                 .setName(Strings.playbackNotificationChannel)
                 .build(),
         )
-        // Its own id, so a closing screen taking its notification down can't take a newer screen's with it.
+
+        // Its own id, so a closing screen taking its notification down can't take a newer screen's with it
         val notification = PlayerNotificationManager.Builder(context, nextNotificationId++, CHANNEL_ID)
             .setMediaDescriptionAdapter(Description(context))
             .build()
             .apply {
                 setMediaSessionToken(session.platformToken)
-                // Play and pause only: the player has no queue to step through from the shade.
+
+                // Play and pause only: the player has no queue to step through from the shade
                 setUseNextAction(false)
                 setUsePreviousAction(false)
                 setUseFastForwardAction(false)
                 setUseRewindAction(false)
             }
+
         fun follow() = notification.setPlayer(if (inFront()) guarded else null)
         follow()
+
         val lifecycleChanged = LifecycleEventObserver { _, _ -> follow() }
         val modeChanged = Consumer<PictureInPictureModeChangedInfo> { follow() }
+
         activity?.lifecycle?.addObserver(lifecycleChanged)
         activity?.addOnPictureInPictureModeChangedListener(modeChanged)
         onDispose {
@@ -104,10 +112,9 @@ private class Description(private val context: Context) : PlayerNotificationMana
 
     override fun getCurrentContentText(player: Player): CharSequence? = player.mediaMetadata.subtitle
 
-    override fun createCurrentContentIntent(player: Player): PendingIntent? =
-        context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
-            PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        }
+    override fun createCurrentContentIntent(player: Player): PendingIntent? = context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
+        PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    }
 
     /** The item's picture, fetched with the app's image loader; the notification shows without one until it arrives. */
     override fun getCurrentLargeIcon(player: Player, callback: PlayerNotificationManager.BitmapCallback): Bitmap? {
@@ -117,6 +124,7 @@ private class Description(private val context: Context) : PlayerNotificationMana
             .target(onSuccess = { callback.onBitmap(it.toBitmap()) })
             .build()
         SingletonImageLoader.get(context).enqueue(request)
+
         return null
     }
 }

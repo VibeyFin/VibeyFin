@@ -4,12 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -24,15 +24,13 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -50,6 +48,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.vibeyfin.app.components.VibeyFinSheet
 import app.vibeyfin.app.components.vibeyFinTextFieldColors
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.ui.common.PinPrompt
@@ -71,22 +70,26 @@ fun PinSheet(
     onSubmitPassword: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-    ) {
+    VibeyFinSheet(onDismiss) {
         Column(
             modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s2),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
         ) {
             val choosing = prompt.reason == PinReason.ChoosePin && !prompt.forgot
+
             Text(
-                text = if (prompt.forgot) Strings.pinForgot else if (choosing) prompt.message else Strings.pinPromptEnter,
+                text = if (prompt.forgot) {
+                    Strings.pinForgot
+                } else if (choosing) {
+                    prompt.message
+                } else {
+                    Strings.pinPromptEnter
+                },
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
+
             if (!choosing) {
                 Text(
                     text = prompt.message,
@@ -95,14 +98,17 @@ fun PinSheet(
                     textAlign = TextAlign.Center,
                 )
             }
+
             if (prompt.forgot) {
                 ForgotContent(prompt, onSubmitPassword)
             } else {
                 KeypadContent(prompt, onSubmitPin, onForgotPin, offerForgot = !choosing)
             }
+
             TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.touch)) {
                 Text(Strings.cancel, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+
             Spacer(Modifier.height(VibeyFinTokens.Space.s2))
         }
     }
@@ -110,26 +116,32 @@ fun PinSheet(
 
 @Composable
 private fun KeypadContent(prompt: PinPrompt, onSubmitPin: (String) -> Unit, onForgotPin: () -> Unit, offerForgot: Boolean) {
-    // The digits typed so far; reset after each full entry, and when the sheet moves to the second entry of a new PIN.
     var digits by remember(prompt.reason, prompt.confirming) { mutableStateOf("") }
     val locked = prompt.lockedSeconds != null
     val busy = locked || prompt.checking
-    // The lock is announced once when it starts; the countdown text below changes silently every second.
+
+    // The lock is announced once when it starts; the countdown text below changes silently every second
     val view = LocalView.current
+
     LaunchedEffect(locked) { if (locked) prompt.error?.let { view.announceForAccessibility(it) } }
+
     val press = { digit: Char ->
         if (!busy && digits.length < PIN_LENGTH) {
             val next = digits + digit
+
             if (next.length == PIN_LENGTH) {
                 digits = ""
+
                 onSubmitPin(next)
             } else {
                 digits = next
             }
         }
     }
+
     PinDotsRow(filled = digits.length)
-    // A wrong PIN or the lock countdown is announced as it appears.
+
+    // A wrong PIN or the lock countdown is announced as it appears
     Text(
         text = prompt.error.orEmpty(),
         style = MaterialTheme.typography.bodyMedium,
@@ -143,6 +155,7 @@ private fun KeypadContent(prompt: PinPrompt, onSubmitPin: (String) -> Unit, onFo
                 row.forEach { KeyButton(it.toString(), enabled = !busy) { press(it) } }
             }
         }
+
         Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
             Spacer(Modifier.size(KEY_SIZE))
             KeyButton("0", enabled = !busy) { press('0') }
@@ -155,6 +168,7 @@ private fun KeypadContent(prompt: PinPrompt, onSubmitPin: (String) -> Unit, onFo
             }
         }
     }
+
     if (offerForgot) {
         TextButton(onClick = onForgotPin, modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.touch)) {
             Text(Strings.pinForgot, color = MaterialTheme.colorScheme.onSurface)
@@ -192,6 +206,7 @@ fun PinDotsRow(filled: Int, description: String = Strings.pinDigitsEntered(fille
 private fun ForgotContent(prompt: PinPrompt, onSubmitPassword: (String) -> Unit) {
     var password by remember { mutableStateOf("") }
     val submit = { if (!prompt.checking) onSubmitPassword(password) }
+
     OutlinedTextField(
         value = password,
         onValueChange = { password = it },
