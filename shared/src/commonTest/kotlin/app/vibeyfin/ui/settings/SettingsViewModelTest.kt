@@ -4,36 +4,45 @@ import androidx.lifecycle.viewModelScope
 import androidx.room3.Room
 import app.vibeyfin.data.db.VibeyFinDatabase
 import app.vibeyfin.data.db.buildVibeyFinDatabase
-import app.vibeyfin.domain.ConnectionState
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.yield
-import kotlinx.coroutines.launch
-import app.vibeyfin.domain.hashPin
-import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.AccountRepository
+import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.DevicePreferences
 import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.PinResult
 import app.vibeyfin.domain.ProfileSettings
-import app.vibeyfin.testing.Reply
-import app.vibeyfin.testing.FakeServer
+import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.SubtitleMode
-import app.vibeyfin.ui.common.LoadMessages
+import app.vibeyfin.domain.hashPin
+import app.vibeyfin.testing.FakeServer
+import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.ViewModelTracker
+import app.vibeyfin.testing.authJson
+import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.PinReason
 import app.vibeyfin.ui.common.Strings
-import app.vibeyfin.testing.authJson
 import io.ktor.http.HttpStatusCode
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -41,18 +50,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestCoroutineScheduler
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
@@ -347,8 +347,13 @@ class SettingsViewModelTest {
 
         assertEquals(
             listOf(
-                Strings.playbackSection, Strings.settingsGroupHome, Strings.notificationsTitle,
-                Strings.settingsGroupKids, Strings.settingsGroupDevice, Strings.tabDownloads, Strings.settingsGroupAdvanced,
+                Strings.playbackSection,
+                Strings.settingsGroupHome,
+                Strings.notificationsTitle,
+                Strings.settingsGroupKids,
+                Strings.settingsGroupDevice,
+                Strings.tabDownloads,
+                Strings.settingsGroupAdvanced,
             ),
             root.sections.mapNotNull { it.title },
         )
@@ -644,12 +649,10 @@ class SettingsViewModelTest {
         assertEquals(0, app.profileSettings.maxStreamingBitrate.first())
     }
 
-    /** The root page links to Notifications with the same key, so the toggle is read from its own page. */
-    private fun SettingsUiState.notificationsOn() =
-        (pages.getValue(SettingsPageId.Notifications).sections.flatMap { it.items }.first { it.key == SettingKey.Notifications } as ToggleItem).checked
+    // The root page links to Notifications with the same key, so the toggle is read from its own page.
+    private fun SettingsUiState.notificationsOn() = (pages.getValue(SettingsPageId.Notifications).sections.flatMap { it.items }.first { it.key == SettingKey.Notifications } as ToggleItem).checked
 
-    private fun SettingsUiState.scopeRowShown() =
-        pages.getValue(SettingsPageId.Notifications).visibleOnly().sections.flatMap { it.items }.any { it.key == SettingKey.NotificationScope }
+    private fun SettingsUiState.scopeRowShown() = pages.getValue(SettingsPageId.Notifications).visibleOnly().sections.flatMap { it.items }.any { it.key == SettingKey.NotificationScope }
 
     @Test
     fun `switching notifications on asks for permission once and saves the setting`() = runTest {
@@ -722,7 +725,7 @@ class SettingsViewModelTest {
         assertEquals(Strings.notificationsBlocked, state.pages.getValue(SettingsPageId.Notifications).sections.first().footer)
     }
 
-    /** Signed in as Alex, with "1234" as the PIN when [pin] is true; the switches are on unless turned off. */
+    // Signed in as Alex, with "1234" as the PIN when [pin] is true; the switches are on unless turned off.
     private suspend fun signedInWithPin(pin: Boolean = true) = app.signedIn().also {
         if (pin) app.setPin("u1", "1234")
         // "right" is Alex's Jellyfin password.
@@ -1019,11 +1022,13 @@ class SettingsViewModelTest {
     fun `the server limits show read only and a failed load says so`() = runTest {
         val server = signedInWithPin(pin = false)
         server.on(
-            "GET", "/Users/Me",
+            "GET",
+            "/Users/Me",
             Reply.json(
                 """{"Id":"u1","Name":"Alex","Policy":{"MaxParentalRating":10,"BlockedTags":["horror","gore"],
                 |"AccessSchedules":[{"DayOfWeek":"Weekday","StartHour":8.0,"EndHour":20.5},
-                |{"DayOfWeek":"Saturday","StartHour":22.0,"EndHour":6.0}]}}""".trimMargin(),
+                |{"DayOfWeek":"Saturday","StartHour":22.0,"EndHour":6.0}]}}
+                """.trimMargin(),
             ),
         )
         server.on("GET", "/Localization/ParentalRatings", Reply.json("""[{"Name":"PG","Value":10}]"""))
@@ -1193,7 +1198,7 @@ class SettingsViewModelTest {
         assertTrue(SettingKey.About in viewModel(appVersion = "1.0").uiState.first { !it.locked }.rootKeys())
     }
 
-    /** Runs [block] against a [SlowDatabase], letting its reads through until the block is done. */
+    // Runs [block] against a [SlowDatabase], letting its reads through until the block is done.
     private suspend fun SlowDatabase.now(block: suspend () -> Unit) {
         // Outside the test's scheduler: a read on the slow database's own scheduler from inside it is refused.
         val job = CoroutineScope(Dispatchers.Unconfined).launch { block() }
@@ -1203,14 +1208,14 @@ class SettingsViewModelTest {
         }
     }
 
-    /** Saves [userId] in the slow database too, with a PIN when [pin] is given (every gate on, the default). */
+    // Saves [userId] in the slow database too, with a PIN when [pin] is given (every gate on, the default).
     private suspend fun SlowDatabase.saveProfile(userId: String, name: String, pin: String? = null) = now {
         ServerRepository(database.serverDao(), database.accountDao(), app.vault, app.clock).save("srv-1", "Home", "10.10.7", "http://nas:8096")
         AccountRepository(database.accountDao(), app.vault, app.clock).saveSession("srv-1", userId, name, null, "token-$userId")
         if (pin != null) database.accountDao().setPin("srv-1", userId, hashPin(ByteArray(16) { it.toByte() }, pin), ByteArray(16) { it.toByte() })
     }
 
-    /** Lets the slow database's reads through a few rounds, for work that reads more than once. */
+    // Lets the slow database's reads through a few rounds, for work that reads more than once.
     private suspend fun SlowDatabase.settle() = repeat(5) {
         release()
         yield()
@@ -1343,11 +1348,13 @@ class SettingsViewModelTest {
     // Audio and subtitles: the preferred languages, kept on the Jellyfin account
 
     private val cultures = """[{"DisplayName":"German","ThreeLetterISOLanguageName":"ger","ThreeLetterISOLanguageNames":["ger","deu"]},
-        |{"DisplayName":"English","ThreeLetterISOLanguageName":"eng"},{"DisplayName":"French","ThreeLetterISOLanguageName":"fre"}]""".trimMargin()
+        |{"DisplayName":"English","ThreeLetterISOLanguageName":"eng"},{"DisplayName":"French","ThreeLetterISOLanguageName":"fre"}]
+    """.trimMargin()
 
-    /** Signs in with [configJson] as the account's configuration; writes are accepted and become the account's. */
+    // Signs in with [configJson] as the account's configuration; writes are accepted and become the account's.
     private suspend fun signedInWithLanguages(configJson: String = "{}"): FakeServer {
         val server = app.signedIn()
+
         fun me(json: String) = server.on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex","Configuration":$json}"""))
         me(configJson)
         server.on("GET", "/Localization/Cultures", Reply.json(cultures))
@@ -1358,20 +1365,16 @@ class SettingsViewModelTest {
         return server
     }
 
-    /** The footer under the languages' last row, which says whether they are ready; the subtitle style sections come after it. */
-    private fun SettingsUiState.languageFooter() =
-        pages.getValue(SettingsPageId.AudioSubtitles).sections.first { s -> s.items.any { it.key == SettingKey.RememberTracks } }.footer
+    // The footer under the languages' last row, which says whether they are ready; the subtitle style sections come after it.
+    private fun SettingsUiState.languageFooter() = pages.getValue(SettingsPageId.AudioSubtitles).sections.first { s -> s.items.any { it.key == SettingKey.RememberTracks } }.footer
 
     private fun SettingsUiState.languagesReady() = languageFooter() == Strings.languagesFooter
 
-    private fun SettingsUiState.rootLanguageSummary() =
-        pages.getValue(SettingsPageId.Root).sections.flatMap { it.items }.first { it.key == SettingKey.AudioSubtitles }.help
+    private fun SettingsUiState.rootLanguageSummary() = pages.getValue(SettingsPageId.Root).sections.flatMap { it.items }.first { it.key == SettingKey.AudioSubtitles }.help
 
-    private fun SettingsUiState.languageChoice(page: SettingsPageId) =
-        pages.getValue(page).sections.flatMap { it.items }.first { it is ChoiceItem } as ChoiceItem
+    private fun SettingsUiState.languageChoice(page: SettingsPageId) = pages.getValue(page).sections.flatMap { it.items }.first { it is ChoiceItem } as ChoiceItem
 
-    private fun SettingsUiState.linkValue(key: SettingKey) =
-        (pages.getValue(SettingsPageId.AudioSubtitles).sections.flatMap { it.items }.first { it.key == key } as LinkItem).value
+    private fun SettingsUiState.linkValue(key: SettingKey) = (pages.getValue(SettingsPageId.AudioSubtitles).sections.flatMap { it.items }.first { it.key == key } as LinkItem).value
 
     @Test
     fun `the languages are read with the profile and summed up on the root`() = runTest {

@@ -52,12 +52,11 @@ suspend fun JellyfinApi.nextUpOf(userId: String, seriesId: String): ApiResult<It
  * server also forgets where they stopped). Setting a state twice changes nothing, so, unlike other
  * writes, this one is retried like a read. The answer's body is not read.
  */
-suspend fun JellyfinApi.setPlayed(itemId: String, userId: String, played: Boolean): ApiResult<Unit> =
-    execute({ }, retry = true) {
-        method = if (played) HttpMethod.Post else HttpMethod.Delete
-        url("$baseUrl/UserPlayedItems/$itemId")
-        parameter("userId", userId)
-    }
+suspend fun JellyfinApi.setPlayed(itemId: String, userId: String, played: Boolean): ApiResult<Unit> = execute({ }, retry = true) {
+    method = if (played) HttpMethod.Post else HttpMethod.Delete
+    url("$baseUrl/UserPlayedItems/$itemId")
+    parameter("userId", userId)
+}
 
 /**
  * `GET /Shows/{seriesId}/Episodes?startItemId=`: the show's episodes in order, starting at [startItemId]
@@ -75,9 +74,8 @@ suspend fun JellyfinApi.episodesFrom(seriesId: String, startItemId: String, user
  * `POST /UserFavoriteItems/{id}` puts [itemId] on [userId]'s "My List" (the server's favourites); `DELETE` takes it off. Doing
  * either twice changes nothing, so, like the watched mark, it is retried like a read.
  */
-suspend fun JellyfinApi.setFavorite(itemId: String, userId: String, favorite: Boolean): ApiResult<Unit> =
-    execute({ }, retry = true) {
-        method = if (favorite) HttpMethod.Post else HttpMethod.Delete
-        url("$baseUrl/UserFavoriteItems/$itemId")
-        parameter("userId", userId)
-    }
+suspend fun JellyfinApi.setFavorite(itemId: String, userId: String, favorite: Boolean): ApiResult<Unit> = execute({ }, retry = true) {
+    method = if (favorite) HttpMethod.Post else HttpMethod.Delete
+    url("$baseUrl/UserFavoriteItems/$itemId")
+    parameter("userId", userId)
+}

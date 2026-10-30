@@ -20,7 +20,7 @@ struct UpNextCard: View {
                     Text(Strings.shared.upNext.titleCased())
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    Text([upNext.label, upNext.title].compactMap { $0 }.joined(separator: " · "))
+                    Text(Strings.shared.taggedTitle(tag: upNext.label, title: upNext.title))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(2)

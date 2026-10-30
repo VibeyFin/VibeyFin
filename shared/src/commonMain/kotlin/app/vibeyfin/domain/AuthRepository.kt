@@ -66,6 +66,7 @@ class AuthRepository(
                         quickConnectEnabled = api.quickConnectEnabled().valueOrNull() == true,
                     ),
                 )
+
                 is ApiResult.Failure -> users
             }
         } ?: return null
@@ -73,8 +74,7 @@ class AuthRepository(
     }
 
     /** Signs in with a username and password. An empty [password] is valid for a user without one. */
-    suspend fun signIn(serverId: String, username: String, password: String): SignInResult =
-        authenticate(serverId, fallbackName = username) { it.authenticateByName(username, password) }
+    suspend fun signIn(serverId: String, username: String, password: String): SignInResult = authenticate(serverId, fallbackName = username) { it.authenticateByName(username, password) }
 
     /**
      * Quick Connect: asks the server for a code, then polls every few seconds until another device
@@ -90,6 +90,7 @@ class AuthRepository(
         }
         val code = when (val result = started.result) {
             is ApiResult.Success -> result.value
+
             is ApiResult.Failure -> {
                 // Servers with Quick Connect off answer the request with 401.
                 emit(if (result.error == ApiError.Unauthorized) QuickConnectState.Unavailable else QuickConnectState.Failed(result.error))
@@ -108,13 +109,16 @@ class AuthRepository(
                     emit(signInWithQuickConnect(serverId, code.secret))
                     return@flow
                 }
+
                 is ApiResult.Failure -> when (status.error) {
                     // A dropped connection is worth another try; anything else ends the attempt.
                     ApiError.Network -> Unit
+
                     ApiError.NotFound, ApiError.Unauthorized -> {
                         emit(QuickConnectState.TimedOut)
                         return@flow
                     }
+
                     else -> {
                         emit(QuickConnectState.Failed(status.error))
                         return@flow
@@ -125,13 +129,12 @@ class AuthRepository(
         emit(QuickConnectState.TimedOut)
     }
 
-    private suspend fun signInWithQuickConnect(serverId: String, secret: String): QuickConnectState =
-        when (val result = authenticate(serverId, fallbackName = "") { it.authenticateWithQuickConnect(secret) }) {
-            SignInResult.SignedIn -> QuickConnectState.SignedIn
-            SignInResult.ServerUnreachable -> QuickConnectState.Unreachable
-            SignInResult.InvalidCredentials -> QuickConnectState.TimedOut
-            is SignInResult.Failed -> QuickConnectState.Failed(result.error)
-        }
+    private suspend fun signInWithQuickConnect(serverId: String, secret: String): QuickConnectState = when (val result = authenticate(serverId, fallbackName = "") { it.authenticateWithQuickConnect(secret) }) {
+        SignInResult.SignedIn -> QuickConnectState.SignedIn
+        SignInResult.ServerUnreachable -> QuickConnectState.Unreachable
+        SignInResult.InvalidCredentials -> QuickConnectState.TimedOut
+        is SignInResult.Failed -> QuickConnectState.Failed(result.error)
+    }
 
     /** Saves the session from a successful [result] and makes it the current connection. */
     internal suspend fun authenticate(

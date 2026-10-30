@@ -40,8 +40,7 @@ class JellyfinApi(
     suspend fun publicUsers(): ApiResult<List<UserDto>> = get("/Users/Public")
 
     /** `POST /Users/AuthenticateByName`. A wrong name or password is [ApiError.Unauthorized]. */
-    suspend fun authenticateByName(username: String, password: String): ApiResult<AuthenticationResultDto> =
-        post("/Users/AuthenticateByName", AuthenticateByNameDto(username, password))
+    suspend fun authenticateByName(username: String, password: String): ApiResult<AuthenticationResultDto> = post("/Users/AuthenticateByName", AuthenticateByNameDto(username, password))
 
     /** `GET /QuickConnect/Enabled`. */
     suspend fun quickConnectEnabled(): ApiResult<Boolean> = get("/QuickConnect/Enabled")
@@ -50,12 +49,10 @@ class JellyfinApi(
     suspend fun quickConnectInitiate(): ApiResult<QuickConnectResultDto> = send(HttpMethod.Post, "/QuickConnect/Initiate")
 
     /** `GET /QuickConnect/Connect`: whether the code has been approved yet. */
-    suspend fun quickConnectStatus(secret: String): ApiResult<QuickConnectResultDto> =
-        get("/QuickConnect/Connect", mapOf("secret" to secret))
+    suspend fun quickConnectStatus(secret: String): ApiResult<QuickConnectResultDto> = get("/QuickConnect/Connect", mapOf("secret" to secret))
 
     /** `POST /Users/AuthenticateWithQuickConnect`, once the code has been approved. */
-    suspend fun authenticateWithQuickConnect(secret: String): ApiResult<AuthenticationResultDto> =
-        post("/Users/AuthenticateWithQuickConnect", QuickConnectRequestDto(secret))
+    suspend fun authenticateWithQuickConnect(secret: String): ApiResult<AuthenticationResultDto> = post("/Users/AuthenticateWithQuickConnect", QuickConnectRequestDto(secret))
 
     /** `GET /Users/Me`: the signed-in user. A rejected token is [ApiError.Unauthorized]. */
     suspend fun me(): ApiResult<UserDto> = get("/Users/Me")
@@ -70,8 +67,7 @@ class JellyfinApi(
      * `POST /Users/Configuration`: replaces the whole configuration of user [userId], so [configuration] must be all of it.
      * A user may change their own; another user's needs an administrator ([ApiError.Forbidden] otherwise).
      */
-    suspend fun updateUserConfiguration(userId: String, configuration: JsonObject): ApiResult<Unit> =
-        post<JsonObject, Unit>("/Users/Configuration", configuration, mapOf("userId" to userId))
+    suspend fun updateUserConfiguration(userId: String, configuration: JsonObject): ApiResult<Unit> = post<JsonObject, Unit>("/Users/Configuration", configuration, mapOf("userId" to userId))
 
     /** `POST /Sessions/Logout`: revokes this session's token on the server. */
     suspend fun logout(): ApiResult<Unit> = execute({ }) {
@@ -80,8 +76,7 @@ class JellyfinApi(
     }
 
     /** The URL of a user's avatar, for an image loader. */
-    fun userImageUrl(userId: String, imageTag: String, maxWidth: Int = 256): String =
-        userImageUrl(baseUrl, userId, imageTag, maxWidth)
+    fun userImageUrl(userId: String, imageTag: String, maxWidth: Int = 256): String = userImageUrl(baseUrl, userId, imageTag, maxWidth)
 
     internal suspend inline fun <reified T> get(
         path: String,
@@ -201,8 +196,7 @@ class JellyfinApi(
 }
 
 /** The URL of a user's avatar on the server at [baseUrl], for an image loader. */
-fun userImageUrl(baseUrl: String, userId: String, imageTag: String, maxWidth: Int = 256): String =
-    "$baseUrl/Users/$userId/Images/Primary?tag=$imageTag&maxWidth=$maxWidth"
+fun userImageUrl(baseUrl: String, userId: String, imageTag: String, maxWidth: Int = 256): String = "$baseUrl/Users/$userId/Images/Primary?tag=$imageTag&maxWidth=$maxWidth"
 
 /** Builds [JellyfinApi] instances that share one HTTP client (and so its connections). */
 class JellyfinApiFactory(

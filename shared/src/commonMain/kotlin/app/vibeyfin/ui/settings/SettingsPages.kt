@@ -4,17 +4,19 @@ import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.domain.AccessDays
 import app.vibeyfin.domain.Language
 import app.vibeyfin.domain.LanguagePrefs
-import app.vibeyfin.domain.SubtitleMode
 import app.vibeyfin.domain.PinGates
 import app.vibeyfin.domain.PolicySummary
 import app.vibeyfin.domain.ProfileSettings
+import app.vibeyfin.domain.SubtitleMode
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 
 /** What the Kids and PIN page knows of the Jellyfin user's limits; they are read when the page opens. */
 sealed interface PolicyState {
     data object Loading : PolicyState
+
     data class Failed(val error: ApiError) : PolicyState
+
     data class Loaded(val summary: PolicySummary) : PolicyState
 }
 
@@ -99,112 +101,6 @@ fun settingsPages(values: SettingsValues): Map<SettingsPageId, SettingsPage> = l
     notificationsPage(values),
 ).associateBy { it.id }
 
-fun rootPage(v: SettingsValues): SettingsPage {
-    val profile = v.hasProfile
-    val grownUp = !v.kidsProfile
-    return SettingsPage(
-        SettingsPageId.Root,
-        Strings.settingsRootTitle,
-        listOf(
-            SettingsSection(
-                title = null,
-                footer = null,
-                items = listOf(
-                    LinkItem(
-                        SettingKey.ProfileCard, Strings.profilePageTitle, Strings.settingsProfileCardHelp,
-                        target = SettingsPageId.Profile, visible = profile,
-                    ),
-                ),
-            ),
-            SettingsSection(
-                Strings.playbackSection,
-                footer = null,
-                items = listOf(
-                    LinkItem(
-                        SettingKey.Quality, Strings.qualityTitle,
-                        target = SettingsPageId.Quality, value = Strings.qualityLabel(v.maxStreamingBitrate), visible = profile,
-                    ),
-                    LinkItem(
-                        SettingKey.AudioSubtitles, Strings.audioAndSubtitles,
-                        help = v.languagePrefs?.let { languagesSummary(it, v.languages) },
-                        target = SettingsPageId.AudioSubtitles, visible = profile,
-                    ),
-                    LinkItem(
-                        SettingKey.Skipping, Strings.skippingTitle,
-                        help = Strings.skippingSummary(v.skipBackSeconds, v.skipForwardSeconds, v.bingeThreshold),
-                        target = SettingsPageId.Skipping, visible = profile,
-                    ),
-                ),
-            ),
-            SettingsSection(
-                Strings.settingsGroupHome,
-                footer = null,
-                items = listOf(
-                    ChoiceItem(
-                        SettingKey.HomeHeroItems, Strings.homeHeroItemsTitle,
-                        value = v.homeHeroItems, options = heroItemOptions(), visible = profile,
-                    ),
-                    ChoiceItem(
-                        SettingKey.HomeGenreRows, Strings.homeGenreRowsTitle,
-                        value = v.homeGenreRows, options = genreRowOptions(), visible = profile,
-                    ),
-                ),
-            ),
-            SettingsSection(
-                Strings.notificationsTitle,
-                footer = null,
-                items = listOf(
-                    LinkItem(
-                        SettingKey.Notifications, Strings.notificationsTitle,
-                        target = SettingsPageId.Notifications, visible = profile && grownUp,
-                    ),
-                ),
-            ),
-            SettingsSection(
-                Strings.settingsGroupKids,
-                Strings.settingsKidsFooter,
-                items = listOf(
-                    LinkItem(SettingKey.KidsProfile, Strings.kidsProfileTitle, target = SettingsPageId.KidsAndPin, visible = profile),
-                ),
-            ),
-            SettingsSection(
-                Strings.settingsGroupDevice,
-                footer = null,
-                items = listOf(
-                    ToggleItem(
-                        SettingKey.AlwaysAsk, Strings.alwaysAskWhoIsWatchingTitle, Strings.settingsDeviceHelp,
-                        checked = v.alwaysAskWhoIsWatching,
-                    ),
-                    ToggleItem(SettingKey.OfflineMode, Strings.offlineModeTitle, Strings.offlineModeHelp, checked = v.offlineMode),
-                ),
-            ),
-            SettingsSection(
-                Strings.tabDownloads,
-                footer = null,
-                items = listOf(
-                    ToggleItem(
-                        SettingKey.DownloadOverMobile, Strings.downloadOverMobileTitle, Strings.downloadOverMobileHelp,
-                        checked = v.downloadOverMobile, visible = profile,
-                    ),
-                    ChoiceItem(
-                        SettingKey.StorageLimit, Strings.storageLimitTitle, Strings.storageLimitHelp,
-                        value = v.storageLimitGb, options = storageLimitOptions(v.storageLimitGb), visible = profile,
-                    ),
-                    ActionItem(SettingKey.PurgeDownloads, Strings.purgeDownloadsTitle, Strings.purgeDownloadsHelp, destructive = true, visible = profile),
-                ),
-            ),
-            SettingsSection(
-                Strings.settingsGroupAdvanced,
-                footer = null,
-                items = listOf(
-                    ToggleItem(SettingKey.ShowStats, Strings.playbackStatsTitle, checked = v.showPlaybackStats, visible = profile && grownUp),
-                    InfoItem(SettingKey.About, Strings.settingsAbout, value = v.appVersion, visible = grownUp && v.appVersion.isNotEmpty()),
-                ),
-            ),
-        ),
-    )
-}
-
 /** A kids profile has no Sign out: only the password, which a child should not know, gets past its PIN. */
 fun profilePage(v: SettingsValues): SettingsPage {
     val profile = v.hasProfile
@@ -217,8 +113,11 @@ fun profilePage(v: SettingsValues): SettingsPage {
                 footer = null,
                 items = listOf(
                     CustomItem(
-                        SettingKey.ProfileCard, v.profileName, v.serverAddresses.firstOrNull(),
-                        kind = CustomKind.ProfileHeader, visible = profile,
+                        SettingKey.ProfileCard,
+                        v.profileName,
+                        v.serverAddresses.firstOrNull(),
+                        kind = CustomKind.ProfileHeader,
+                        visible = profile,
                     ),
                 ),
             ),
@@ -233,12 +132,16 @@ fun profilePage(v: SettingsValues): SettingsPage {
                 items = listOf(
                     InfoItem(SettingKey.ServerName, Strings.profileServerName, value = v.serverName, visible = profile),
                     InfoItem(
-                        SettingKey.ServerAddress, Strings.profileServerAddress,
-                        value = v.serverAddresses.firstOrNull().orEmpty(), visible = profile && v.serverAddresses.isNotEmpty(),
+                        SettingKey.ServerAddress,
+                        Strings.profileServerAddress,
+                        value = v.serverAddresses.firstOrNull().orEmpty(),
+                        visible = profile && v.serverAddresses.isNotEmpty(),
                     ),
                     InfoItem(
-                        SettingKey.ServerAlsoAt, Strings.profileServerAlsoAt,
-                        value = v.serverAddresses.drop(1).joinToString(", "), visible = profile && v.serverAddresses.size > 1,
+                        SettingKey.ServerAlsoAt,
+                        Strings.profileServerAlsoAt,
+                        value = v.serverAddresses.drop(1).joinToString(", "),
+                        visible = profile && v.serverAddresses.size > 1,
                     ),
                 ),
             ),
@@ -270,7 +173,9 @@ fun notificationsPage(v: SettingsValues): SettingsPage {
                 footer = null,
                 items = listOf(
                     ChoiceItem(
-                        SettingKey.NotificationScope, Strings.notificationsWhichGroup, value = v.notificationScope,
+                        SettingKey.NotificationScope,
+                        Strings.notificationsWhichGroup,
+                        value = v.notificationScope,
                         options = ProfileSettings.NOTIFICATION_SCOPE_CHOICES.map { SettingOption(it, Strings.notificationsScopeLabel(it)) },
                         visible = visible && v.notificationsEnabled,
                     ),
@@ -318,13 +223,14 @@ fun kidsAndPinPage(v: SettingsValues): SettingsPage {
     )
 }
 
-/** The limits Jellyfin enforces, read only, in one of: loading, failed, no limits, or the three rows. */
+// The limits Jellyfin enforces, read only, in one of: loading, failed, no limits, or the three rows.
 private fun policySection(policy: PolicyState, profile: Boolean): SettingsSection {
-    fun status(title: String, help: String? = null) =
-        listOf(InfoItem(SettingKey.PolicyStatus, title, help, value = "", visible = profile))
+    fun status(title: String, help: String? = null) = listOf(InfoItem(SettingKey.PolicyStatus, title, help, value = "", visible = profile))
     val items = when (policy) {
         PolicyState.Loading -> status(Strings.serverPolicyLoading)
+
         is PolicyState.Failed -> status(Strings.serverPolicyFailed, LoadMessages.forError(policy.error))
+
         is PolicyState.Loaded -> {
             val p = policy.summary
             if (p.maxRatingLevel == null && p.blockedTags.isEmpty() && p.schedules.isEmpty()) {
@@ -332,16 +238,20 @@ private fun policySection(policy: PolicyState, profile: Boolean): SettingsSectio
             } else {
                 listOf(
                     InfoItem(
-                        SettingKey.RatingLimit, Strings.serverPolicyRating,
+                        SettingKey.RatingLimit,
+                        Strings.serverPolicyRating,
                         value = p.maxRatingLevel?.let { p.ratingName ?: Strings.serverPolicyLevel(it) } ?: Strings.serverPolicyNoRating,
                         visible = profile,
                     ),
                     InfoItem(
-                        SettingKey.BlockedTags, Strings.serverPolicyBlockedTags,
-                        value = p.blockedTags.joinToString(", ").ifEmpty { Strings.serverPolicyNoTags }, visible = profile,
+                        SettingKey.BlockedTags,
+                        Strings.serverPolicyBlockedTags,
+                        value = p.blockedTags.joinToString(", ").ifEmpty { Strings.serverPolicyNoTags },
+                        visible = profile,
                     ),
                     InfoItem(
-                        SettingKey.AllowedHours, Strings.serverPolicyHours,
+                        SettingKey.AllowedHours,
+                        Strings.serverPolicyHours,
                         value = p.schedules.joinToString(", ") { Strings.serverPolicyWindow(daysLabel(it.days), it.startMinutes, it.endMinutes) }
                             .ifEmpty { Strings.serverPolicyAnyTime },
                         visible = profile,
@@ -375,7 +285,8 @@ fun qualityPage(v: SettingsValues) = SettingsPage(
             Strings.qualityFooter,
             items = listOf(
                 ChoiceItem(
-                    SettingKey.Quality, Strings.qualityGroup,
+                    SettingKey.Quality,
+                    Strings.qualityGroup,
                     value = v.maxStreamingBitrate,
                     options = ProfileSettings.QUALITY_CHOICES.map { SettingOption(it, Strings.qualityLabel(it)) },
                     asPage = true,
@@ -397,9 +308,12 @@ fun audioSubtitlesPage(v: SettingsValues): SettingsPage {
     val enabled = v.languageStatus is LanguageStatus.Ready || v.languageStatus is LanguageStatus.SaveFailed
     val status = when (val status = v.languageStatus) {
         LanguageStatus.Loading -> Strings.languagesLoading
+
         LanguageStatus.Ready -> null
+
         is LanguageStatus.LoadFailed ->
             if (status.error == ApiError.Network) LoadMessages.LANGUAGES_UNREACHABLE else LoadMessages.forError(status.error)
+
         is LanguageStatus.SaveFailed ->
             if (status.error == ApiError.Network) LoadMessages.LANGUAGES_SAVE_FAILED else LoadMessages.forError(status.error)
     }
@@ -412,9 +326,12 @@ fun audioSubtitlesPage(v: SettingsValues): SettingsPage {
                 Strings.audioLanguageFooter,
                 items = listOf(
                     LinkItem(
-                        SettingKey.AudioLanguage, Strings.audioLanguageTitle,
-                        target = SettingsPageId.AudioLanguage, value = languageName(prefs.audioLanguage, v.languages),
-                        visible = profile, enabled = enabled,
+                        SettingKey.AudioLanguage,
+                        Strings.audioLanguageTitle,
+                        target = SettingsPageId.AudioLanguage,
+                        value = languageName(prefs.audioLanguage, v.languages),
+                        visible = profile,
+                        enabled = enabled,
                     ),
                 ),
             ),
@@ -423,14 +340,20 @@ fun audioSubtitlesPage(v: SettingsValues): SettingsPage {
                 Strings.subtitleModeFooter(prefs.subtitleMode),
                 items = listOf(
                     LinkItem(
-                        SettingKey.SubtitleLanguage, Strings.subtitleLanguageTitle,
-                        target = SettingsPageId.SubtitleLanguage, value = languageName(prefs.subtitleLanguage, v.languages),
-                        visible = profile, enabled = enabled,
+                        SettingKey.SubtitleLanguage,
+                        Strings.subtitleLanguageTitle,
+                        target = SettingsPageId.SubtitleLanguage,
+                        value = languageName(prefs.subtitleLanguage, v.languages),
+                        visible = profile,
+                        enabled = enabled,
                     ),
                     ChoiceItem(
-                        SettingKey.SubtitleMode, Strings.subtitleModeTitle, value = prefs.subtitleMode.ordinal,
+                        SettingKey.SubtitleMode,
+                        Strings.subtitleModeTitle,
+                        value = prefs.subtitleMode.ordinal,
                         options = SubtitleMode.entries.map { SettingOption(it.ordinal, Strings.subtitleModeLabel(it)) },
-                        visible = profile, enabled = enabled,
+                        visible = profile,
+                        enabled = enabled,
                     ),
                 ),
             ),
@@ -439,8 +362,12 @@ fun audioSubtitlesPage(v: SettingsValues): SettingsPage {
                 footer = status ?: Strings.languagesFooter,
                 items = listOf(
                     ToggleItem(
-                        SettingKey.RememberTracks, Strings.rememberTracksTitle, Strings.rememberTracksHelp,
-                        checked = prefs.rememberTracks, visible = profile, enabled = enabled,
+                        SettingKey.RememberTracks,
+                        Strings.rememberTracksTitle,
+                        Strings.rememberTracksHelp,
+                        checked = prefs.rememberTracks,
+                        visible = profile,
+                        enabled = enabled,
                     ),
                 ),
             ),
@@ -458,7 +385,7 @@ fun languagePage(v: SettingsValues, id: SettingsPageId): SettingsPage {
     val choices = languageChoices(v.languages, prefs)
     val query = v.searches[id].orEmpty().trim()
     val current = choiceValue(if (audio) prefs.audioLanguage else prefs.subtitleLanguage, choices)
-    val options = (listOf(SettingOption(0, Strings.anyLanguage, code = "")) + choices.mapIndexed { i, it -> SettingOption(i + 1, it.name, it.code) })
+    val options = (listOf(SettingOption(0, Strings.anyLanguage, code = "")) + choices.mapIndexed { index, choice -> SettingOption(index + 1, choice.name, choice.code) })
         .filter { option ->
             query.isEmpty() || option.label.contains(query, ignoreCase = true) ||
                 option.code.equals(query, ignoreCase = true)
@@ -496,13 +423,11 @@ fun languageChoices(languages: List<Language>, prefs: LanguagePrefs): List<Langu
     return languages + unknown
 }
 
-private fun choiceValue(code: String?, choices: List<Language>): Int =
-    code?.let { c -> choices.indexOfFirst { it.matches(c) }.takeIf { it >= 0 }?.plus(1) } ?: 0
+private fun choiceValue(code: String?, choices: List<Language>): Int = code?.let { c -> choices.indexOfFirst { it.matches(c) }.takeIf { it >= 0 }?.plus(1) } ?: 0
 
-private fun languageName(code: String?, languages: List<Language>): String =
-    code?.let { c -> languages.firstOrNull { it.matches(c) }?.name ?: c } ?: Strings.anyLanguage
+private fun languageName(code: String?, languages: List<Language>): String = code?.let { c -> languages.firstOrNull { it.matches(c) }?.name ?: c } ?: Strings.anyLanguage
 
-private fun languagesSummary(prefs: LanguagePrefs, languages: List<Language>) = Strings.languagesSummary(
+internal fun languagesSummary(prefs: LanguagePrefs, languages: List<Language>) = Strings.languagesSummary(
     prefs.audioLanguage?.let { languageName(it, languages) },
     prefs.subtitleLanguage?.let { languageName(it, languages) },
     prefs.subtitleMode,
@@ -519,18 +444,25 @@ fun skippingPage(v: SettingsValues): SettingsPage {
                 Strings.skippingFooter,
                 items = listOf(
                     ChoiceItem(
-                        SettingKey.SkipBack, Strings.skipBack, value = v.skipBackSeconds,
+                        SettingKey.SkipBack,
+                        Strings.skipBack,
+                        value = v.skipBackSeconds,
                         options = ProfileSettings.SKIP_BACK_CHOICES.map { SettingOption(it, Strings.skipSecondsShort(it)) },
                         visible = profile,
                     ),
                     ChoiceItem(
-                        SettingKey.SkipForward, Strings.skipForward, value = v.skipForwardSeconds,
+                        SettingKey.SkipForward,
+                        Strings.skipForward,
+                        value = v.skipForwardSeconds,
                         options = ProfileSettings.SKIP_FORWARD_CHOICES.map { SettingOption(it, Strings.skipSecondsShort(it)) },
                         visible = profile,
                     ),
                     ToggleItem(
-                        SettingKey.AutoSkip, Strings.autoSkipSegments, Strings.autoSkipHelp,
-                        checked = v.autoSkipSegments, visible = profile,
+                        SettingKey.AutoSkip,
+                        Strings.autoSkipSegments,
+                        Strings.autoSkipHelp,
+                        checked = v.autoSkipSegments,
+                        visible = profile,
                     ),
                 ),
             ),
@@ -539,7 +471,9 @@ fun skippingPage(v: SettingsValues): SettingsPage {
                 footer = null,
                 items = listOf(
                     ChoiceItem(
-                        SettingKey.BingeThreshold, Strings.stillWatchingAfterTitle, Strings.stillWatchingAfterHelp,
+                        SettingKey.BingeThreshold,
+                        Strings.stillWatchingAfterTitle,
+                        Strings.stillWatchingAfterHelp,
                         value = v.bingeThreshold,
                         options = listOf(SettingOption(0, Strings.stillWatchingOff)) +
                             (2..5).map { SettingOption(it, Strings.stillWatchingAfter(it)) },
@@ -566,7 +500,9 @@ fun skippingPage(v: SettingsValues): SettingsPage {
                 Strings.bufferAheadHelp,
                 items = listOf(
                     ChoiceItem(
-                        SettingKey.BufferAhead, Strings.bufferAhead, value = v.bufferAheadSeconds,
+                        SettingKey.BufferAhead,
+                        Strings.bufferAhead,
+                        value = v.bufferAheadSeconds,
                         options = ProfileSettings.BUFFER_AHEAD_CHOICES.map { SettingOption(it, bufferLabel(it)) },
                         visible = profile,
                     ),
@@ -576,7 +512,7 @@ fun skippingPage(v: SettingsValues): SettingsPage {
     )
 }
 
-/** How subtitles look, at the end of the Audio and subtitles page. */
+// How subtitles look, at the end of the Audio and subtitles page.
 private fun subtitleStyleSections(v: SettingsValues): List<SettingsSection> {
     val profile = v.hasProfile
     val applies = v.subtitleStyleApplies
@@ -596,8 +532,12 @@ private fun subtitleStyleSections(v: SettingsValues): List<SettingsSection> {
             footer = Strings.captionsFollowSystemFooter,
             items = listOf(
                 ToggleItem(
-                    SettingKey.CaptionsFollowSystem, Strings.captionsFollowSystemTitle, Strings.captionsFollowSystemHelp,
-                    checked = v.captionsFollowSystem, visible = profile, enabled = applies,
+                    SettingKey.CaptionsFollowSystem,
+                    Strings.captionsFollowSystemTitle,
+                    Strings.captionsFollowSystemHelp,
+                    checked = v.captionsFollowSystem,
+                    visible = profile,
+                    enabled = applies,
                 ),
             ),
         ),
@@ -606,28 +546,44 @@ private fun subtitleStyleSections(v: SettingsValues): List<SettingsSection> {
             footer = if (applies) null else Strings.subtitleStyleIosNote,
             items = listOf(
                 ChoiceItem(
-                    SettingKey.SubtitleSize, Strings.subtitleSizeTitle, value = v.subtitleSize,
+                    SettingKey.SubtitleSize,
+                    Strings.subtitleSizeTitle,
+                    value = v.subtitleSize,
                     options = options(
                         ProfileSettings.SUBTITLE_SIZE_CHOICES,
-                        Strings.subtitleSizeSmall, Strings.subtitleSizeMedium, Strings.subtitleSizeLarge, Strings.subtitleSizeExtraLarge,
+                        Strings.subtitleSizeSmall,
+                        Strings.subtitleSizeMedium,
+                        Strings.subtitleSizeLarge,
+                        Strings.subtitleSizeExtraLarge,
                     ),
-                    visible = custom, enabled = applies,
+                    visible = custom,
+                    enabled = applies,
                 ),
                 ChoiceItem(
-                    SettingKey.SubtitleColor, Strings.subtitleColorTitle, value = v.subtitleTextColor,
+                    SettingKey.SubtitleColor,
+                    Strings.subtitleColorTitle,
+                    value = v.subtitleTextColor,
                     options = options(
                         ProfileSettings.SUBTITLE_COLOR_CHOICES,
-                        Strings.subtitleColorWhite, Strings.subtitleColorYellow, Strings.subtitleColorLightBlue,
+                        Strings.subtitleColorWhite,
+                        Strings.subtitleColorYellow,
+                        Strings.subtitleColorLightBlue,
                     ),
-                    visible = custom, enabled = applies,
+                    visible = custom,
+                    enabled = applies,
                 ),
                 ChoiceItem(
-                    SettingKey.SubtitleBackground, Strings.subtitleBackgroundTitle, value = v.subtitleBackground,
+                    SettingKey.SubtitleBackground,
+                    Strings.subtitleBackgroundTitle,
+                    value = v.subtitleBackground,
                     options = options(
                         ProfileSettings.SUBTITLE_BACKGROUND_CHOICES,
-                        Strings.subtitleBackgroundNone, Strings.subtitleBackgroundShadow, Strings.subtitleBackgroundBox,
+                        Strings.subtitleBackgroundNone,
+                        Strings.subtitleBackgroundShadow,
+                        Strings.subtitleBackgroundBox,
                     ),
-                    visible = custom, enabled = applies,
+                    visible = custom,
+                    enabled = applies,
                 ),
             ),
         ),
@@ -639,26 +595,8 @@ private fun subtitleStyleSections(v: SettingsValues): List<SettingsSection> {
     )
 }
 
-/** "Auto" for 0, else "20 s", as the mockup shows buffer lengths. */
+// "Auto" for 0, else "20 s", as the mockup shows buffer lengths.
 private fun bufferLabel(seconds: Int) = if (seconds == 0) Strings.bufferAheadAuto else Strings.skipSecondsShort(seconds)
-
-/** The sizes the downloads' limit is offered in, gigabytes; 0 is no limit. A size set some other way stays on the list. */
-private fun storageLimitOptions(current: Int) = (listOf(0, 5, 10, 20, 50, 100) + current).distinct().sorted().map { gigabytes ->
-    SettingOption(gigabytes, if (gigabytes == 0) Strings.storageLimitNone else Strings.storageLimitGb(gigabytes))
-}
-
-private fun heroItemOptions() = ProfileSettings.HOME_HERO_CHOICES.map { value ->
-    SettingOption(value, if (value == 0) Strings.homeHeroItemsOff else Strings.homeHeroItemsCount(value))
-}
-
-private fun genreRowOptions() = ProfileSettings.HOME_GENRE_CHOICES.map { value ->
-    val label = when (value) {
-        ProfileSettings.HOME_GENRES_ALL -> Strings.homeGenreRowsAll
-        ProfileSettings.HOME_GENRES_NONE -> Strings.homeGenreRowsNone
-        else -> Strings.homeGenreRowsTop(value)
-    }
-    SettingOption(value, label)
-}
 
 /** Pairs each choice with its label, in order. */
 internal fun options(choices: List<Int>, vararg labels: String): List<SettingOption> {

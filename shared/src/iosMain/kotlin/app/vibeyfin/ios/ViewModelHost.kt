@@ -23,8 +23,7 @@ internal class ViewModelHost<VM : ViewModel>(kClass: KClass<VM>, create: (Koin) 
         store,
         object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =
-                create(KoinPlatform.getKoin()) as T
+            override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T = create(KoinPlatform.getKoin()) as T
         },
     )[kClass]
     private var observing: Job? = null

@@ -117,7 +117,9 @@ class TileMenuViewModel(
 
     val uiState: StateFlow<TileMenuUiState> = combine(
         // Progress is only drawn while a menu is open; closed, the menu must not rebuild whatever shows it for every byte that arrives.
-        content, connection.sessionEnded(), downloadParts(connection, downloads, downloadFlow, canDownload, live = content.map { it.item != null }),
+        content,
+        connection.sessionEnded(),
+        downloadParts(connection, downloads, downloadFlow, canDownload, live = content.map { it.item != null }),
     ) { content, exit, parts ->
         content.copy(
             exit = exit,
@@ -205,17 +207,20 @@ class TileMenuViewModel(
 
     fun onDismissRemoval() = downloadFlow.dismissRemoval()
 
-    /** Whether this user may download is read once, quietly: it only decides whether the row is there. */
+    // Whether this user may download is read once, quietly: it only decides whether the row is there.
     private fun readDownloadPermission() {
         if (permissionRead) return
         permissionRead = true
         viewModelScope.launch {
-            val profile = connection.state.value.profileOrNull() ?: run { permissionRead = false; return@launch }
+            val profile = connection.state.value.profileOrNull() ?: run {
+                permissionRead = false
+                return@launch
+            }
             downloads.canDownload(profile)?.let { canDownload.value = it }
         }
     }
 
-    /** A trailer the server holds first (it plays in the app), else one on the web; null when the title has neither. */
+    // A trailer the server holds first (it plays in the app), else one on the web; null when the title has neither.
     private suspend fun findTrailer(detail: MediaItem): Trailer? {
         if (detail.localTrailerCount > 0) {
             (library.localTrailer(detail.id) as? ApiResult.Success)?.value?.let { return Trailer.Local(it.id) }

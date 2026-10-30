@@ -57,9 +57,8 @@ private fun String.headerEncoded(): String = buildString {
     }
 }
 
-/** Letters, digits, space and `-_.~` pass through; everything else is encoded byte by byte. */
-private fun Int.isSafeInHeader(): Boolean =
-    this in 'a'.code..'z'.code ||
-        this in 'A'.code..'Z'.code ||
-        this in '0'.code..'9'.code ||
-        this == ' '.code || this == '-'.code || this == '_'.code || this == '.'.code || this == '~'.code
+// Letters, digits, space and `-_.~` pass through; everything else is encoded byte by byte.
+private fun Int.isSafeInHeader(): Boolean = this in 'a'.code..'z'.code ||
+    this in 'A'.code..'Z'.code ||
+    this in '0'.code..'9'.code ||
+    this == ' '.code || this == '-'.code || this == '_'.code || this == '.'.code || this == '~'.code

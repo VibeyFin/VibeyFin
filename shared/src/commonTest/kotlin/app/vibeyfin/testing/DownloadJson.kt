@@ -53,7 +53,10 @@ fun itemsPage(vararg items: String) = """{"Items":[${items.joinToString(",")}],"
 /** A show or a season, with the fields a snapshot keeps. */
 fun parentJson(id: String, name: String, type: String, primaryTag: String? = "pp", number: Int? = null, seriesId: String? = null) = "{" +
     listOfNotNull(
-        """"Id":"$id"""", """"Name":"$name"""", """"Type":"$type"""", """"IsFolder":true""",
+        """"Id":"$id"""",
+        """"Name":"$name"""",
+        """"Type":"$type"""",
+        """"IsFolder":true""",
         primaryTag?.let { """"ImageTags":{"Primary":"$it"}""" },
         number?.let { """"IndexNumber":$it""" },
         seriesId?.let { """"SeriesId":"$it"""" },
@@ -65,6 +68,7 @@ fun parentJson(id: String, name: String, type: String, primaryTag: String? = "pp
  */
 suspend fun TestApp.sagaServer(): FakeServer {
     val server = signedIn()
+
     fun episode(id: String, size: Long, played: Boolean, number: Int) = downloadItemJson(
         id, "Episode $number", "Episode", size = size, seriesId = "s1", seriesName = "Saga", seasonId = "se1",
         seasonNumber = 1, episodeNumber = number, played = played,

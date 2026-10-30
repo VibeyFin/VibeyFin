@@ -37,6 +37,5 @@ class AndroidProgressSyncScheduler(private val context: Context) : ProgressSyncS
 
 /** Sends the progress saved offline. Koin is already started by the application when the process was started for this. */
 class ProgressSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
-    override suspend fun doWork(): Result =
-        if (GlobalContext.get().get<OfflineSync>().syncAll()) Result.success() else Result.retry()
+    override suspend fun doWork(): Result = if (GlobalContext.get().get<OfflineSync>().syncAll()) Result.success() else Result.retry()
 }

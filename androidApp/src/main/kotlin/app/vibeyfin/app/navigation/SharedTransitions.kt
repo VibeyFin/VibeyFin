@@ -47,10 +47,7 @@ internal inline fun <reified T : Any> NavGraphBuilder.sharedComposable(
 
 private const val SHARED_FADE_MS = 140
 
-/**
- * Off: a detail page now opens the way the owner's reference video does, the screen fading to dark and the page fading in whole, with
- * no poster flying across. The rest of the shared-transition machinery stays, ready to be switched back on.
- */
+// Off: a detail page fades in whole instead of flying the poster across; the shared-transition code stays for switching it back on
 private const val SHARED_POSTER_ENABLED = false
 
 /**
@@ -61,8 +58,10 @@ private const val SHARED_POSTER_ENABLED = false
 @Composable
 fun Modifier.sharedPoster(itemId: String, source: Boolean): Modifier {
     if (!SHARED_POSTER_ENABLED) return this
+
     val transition = LocalSharedTransitionScope.current ?: return this
     val animated = LocalNavAnimatedScope.current ?: return this
+
     if (source && SharedPick.itemId != itemId) return this
     return with(transition) {
         this@sharedPoster.sharedBounds(

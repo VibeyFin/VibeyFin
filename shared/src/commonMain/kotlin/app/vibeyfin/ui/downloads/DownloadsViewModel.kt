@@ -75,7 +75,7 @@ class DownloadsViewModel(
         if (profile == null) flowOf(DownloadsUiState(loading = false)) else load(profile)
     }
 
-    /** What waiting downloads wait for: no network, a network they may not use (mobile data), or a server that does not answer. */
+    // What waiting downloads wait for: no network, a network they may not use (mobile data), or a server that does not answer.
     private val waiting: Flow<DownloadRunner.Waiting> = combine(offline.networkState, profileSettings.downloadOverMobile) { network, mobile ->
         when {
             network == NetworkState.None -> DownloadRunner.Waiting.Network

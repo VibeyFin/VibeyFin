@@ -30,8 +30,7 @@ class OfflineProgressTest {
         app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-1")
     }
 
-    private fun progress(item: String = "e1", ticks: Long = 600_000_000, played: Boolean = false, at: Long = 1_000) =
-        PendingProgress(alex, item, ticks, played, at)
+    private fun progress(item: String = "e1", ticks: Long = 600_000_000, played: Boolean = false, at: Long = 1_000) = PendingProgress(alex, item, ticks, played, at)
 
     @Test
     fun aNewerRecordOfAnItemReplacesTheOlderOne() = runTest {

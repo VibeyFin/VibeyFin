@@ -87,7 +87,7 @@ class KeychainTokenVault(
         withItemQuery(sealed.decodeToString()) { query -> SecItemDelete(query) }
     }
 
-    /** Builds the query that identifies one token's item, runs [block] with it, and cleans up. */
+    // Builds the query that identifies one token's item, runs [block] with it, and cleans up.
     private fun <T> withItemQuery(handle: String, block: (CFMutableDictionaryRef) -> T): T {
         val query = checkNotNull(
             CFDictionaryCreateMutable(

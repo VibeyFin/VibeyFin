@@ -39,10 +39,16 @@ object NoDownloadFiles : DownloadFiles {
     private fun unsupported(): Nothing = throw UnsupportedOperationException("Downloads are not available on this platform yet.")
 
     override fun length(path: String) = 0L
+
     override fun exists(path: String) = false
+
     override fun open(path: String, append: Boolean): DownloadOutput = unsupported()
+
     override fun move(from: String, to: String) = unsupported()
+
     override fun delete(path: String) = Unit
+
     override fun freeBytes() = 0L
+
     override fun uri(path: String): String = unsupported()
 }

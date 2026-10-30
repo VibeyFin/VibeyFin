@@ -121,17 +121,6 @@ struct ChildrenView: View {
         }
     }
 
-    private func groups(_ state: ChildrenUiState) -> [(String, [MediaItem])] {
-        let movies = state.items.filter { $0.kind == ItemKind.movie }
-        let shows = state.items.filter { $0.kind == ItemKind.series }
-        let other = state.items.filter { $0.kind != ItemKind.movie && $0.kind != ItemKind.series }
-        return [
-            (Strings.shared.collectionMovies, movies),
-            (Strings.shared.collectionShows, shows),
-            (Strings.shared.collectionOther, other),
-        ].filter { !$0.1.isEmpty }
-    }
-
     @ViewBuilder
     private func content(_ state: ChildrenUiState) -> some View {
         if state.loading {
@@ -149,9 +138,9 @@ struct ChildrenView: View {
             }
             if state.collection != nil {
                 // A collection's members under sub-headings: its movies, then its shows, then whatever else it holds.
-                ForEach(groups(state), id: \.0) { group in
-                    Text(group.0).font(.title3.weight(.semibold))
-                    ArtworkGrid(items: group.1, minimumWidth: wide ? 168 : 130, onOpen: onOpen, onNearEnd: {})
+                ForEach(state.collectionGroups, id: \.title) { group in
+                    Text(group.title).font(.title3.weight(.semibold))
+                    ArtworkGrid(items: group.items, minimumWidth: wide ? 168 : 130, onOpen: onOpen, onNearEnd: {})
                 }
             } else {
                 ArtworkGrid(

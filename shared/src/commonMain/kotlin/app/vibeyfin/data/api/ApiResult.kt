@@ -3,6 +3,7 @@ package app.vibeyfin.data.api
 /** What a call to the server came back with, so callers branch on it instead of catching exceptions. */
 sealed interface ApiResult<out T> {
     data class Success<T>(val value: T) : ApiResult<T>
+
     data class Failure(val error: ApiError) : ApiResult<Nothing>
 }
 

@@ -1,8 +1,8 @@
 package app.vibeyfin.app.startup
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -17,8 +17,10 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun StartupRoute(onDecided: (StartDestination) -> Unit, viewModel: StartupViewModel = koinViewModel()) {
     val destination by viewModel.destination.collectAsStateWithLifecycle()
+
     LaunchedEffect(destination) {
         destination?.let(onDecided)
     }
+
     Box(Modifier.fillMaxSize().background(VibeyFinTokens.Colors.bg))
 }

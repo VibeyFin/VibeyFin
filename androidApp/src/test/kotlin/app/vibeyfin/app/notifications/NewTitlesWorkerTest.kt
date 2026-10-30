@@ -33,8 +33,7 @@ class NewTitlesWorkerTest {
 
     private fun episode(id: String, show: String) = NewTitle(id, "Episode $id", show, isMovie = false)
 
-    private fun profile(vararg titles: NewTitle, userId: String = "u1", name: String = "Alex") =
-        ProfileNewTitles("srv-1", userId, name, titles.toList())
+    private fun profile(vararg titles: NewTitle, userId: String = "u1", name: String = "Alex") = ProfileNewTitles("srv-1", userId, name, titles.toList())
 
     private fun runWorker(
         found: List<ProfileNewTitles>,
@@ -43,14 +42,19 @@ class NewTitlesWorkerTest {
         poll: suspend () -> List<ProfileNewTitles> = { found },
     ): ListenableWorker.Result {
         NewTitlesWork.override = NewTitlesDependencies(
-            pollAll = { polls++; poll() },
+            pollAll = {
+                polls++
+                poll()
+            },
             notifyingProfiles = { notifyingProfiles },
             canPost = { canPost },
             publisher = { titles, nameProfiles -> posted += titles to nameProfiles },
             log = { logged += it },
         )
-        // The worker never touches its context when the dependencies are set; it only has to be non-null.
+
+        // The worker never touches its context when the dependencies are set; it only has to be non-null
         val worker = TestListenableWorkerBuilder.from(ContextWrapper(null), NewTitlesWorker::class.java).build() as NewTitlesWorker
+
         return runBlocking { worker.doWork() }
     }
 
@@ -72,12 +76,15 @@ class NewTitlesWorkerTest {
 
         val notifications = postedNotifications()
         val severance = notifications.filter { it.group == "srv-1/u1/show/Severance" }
+
         assertEquals(listOf("e1", "e2", "e1"), severance.map { it.itemId })
         assertEquals(listOf(false, false, true), severance.map { it.summary })
         assertEquals("New episodes of Severance", severance.last().title)
         assertEquals("Episode e1, Episode e2", severance.last().body)
         assertEquals("New episode of Severance", severance.first().title)
+
         val movie = notifications.single { it.itemId == "m1" }
+
         assertEquals(null, movie.group)
         assertEquals("New movie", movie.title)
     }
@@ -89,9 +96,11 @@ class NewTitlesWorkerTest {
         runWorker(listOf(profile(episode("e4", "Andor"))))
 
         val andor = postedNotifications()
+
         assertEquals(listOf(false, true), andor.map { it.summary })
         assertEquals(listOf("srv-1/u1/show/Andor"), andor.mapNotNull { it.group }.distinct())
-        // One tag per show: the summary of the second check replaces the first one.
+
+        // One tag per show: the summary of the second check replaces the first one
         assertEquals("srv-1/u1/show/Andor", andor.last().tag)
     }
 
@@ -140,7 +149,9 @@ class NewTitlesWorkerTest {
         NewTitlesScheduler.apply(work, enabled = false)
 
         assertEquals(listOf("UPDATE new-titles", "cancel new-titles"), calls)
+
         val spec = kept!!.workSpec
+
         assertEquals(4.hours, spec.intervalDuration.milliseconds)
         assertEquals(NetworkType.CONNECTED, spec.constraints.requiredNetworkType)
         assertEquals(NewTitlesWorker::class.java.name, spec.workerClassName)

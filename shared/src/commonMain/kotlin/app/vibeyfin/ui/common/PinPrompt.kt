@@ -17,7 +17,13 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /** Why the PIN is asked for. */
-enum class PinReason { OpenProfile, OpenSettings, SwitchProfile, ChangePin, RemovePin, KidsOff,
+enum class PinReason {
+    OpenProfile,
+    OpenSettings,
+    SwitchProfile,
+    ChangePin,
+    RemovePin,
+    KidsOff,
 
     /** Choosing a new PIN, for Set PIN and after the current one was right for Change PIN: it is typed twice. */
     ChoosePin,
@@ -41,14 +47,18 @@ data class PinPrompt(
 ) {
     /** The line under the sheet's title. */
     val message: String
-        get() = if (forgot) Strings.pinForgotMessage(profileName) else when (reason) {
-            PinReason.OpenProfile -> Strings.pinPromptOpenProfile
-            PinReason.OpenSettings -> Strings.pinPromptOpenSettings
-            PinReason.SwitchProfile -> Strings.pinPromptSwitchProfile
-            PinReason.ChangePin -> Strings.pinPromptChangePin
-            PinReason.RemovePin -> Strings.pinPromptRemovePin
-            PinReason.KidsOff -> Strings.pinPromptKidsOff
-            PinReason.ChoosePin -> if (confirming) Strings.pinPromptConfirm else Strings.pinPromptNew
+        get() = if (forgot) {
+            Strings.pinForgotMessage(profileName)
+        } else {
+            when (reason) {
+                PinReason.OpenProfile -> Strings.pinPromptOpenProfile
+                PinReason.OpenSettings -> Strings.pinPromptOpenSettings
+                PinReason.SwitchProfile -> Strings.pinPromptSwitchProfile
+                PinReason.ChangePin -> Strings.pinPromptChangePin
+                PinReason.RemovePin -> Strings.pinPromptRemovePin
+                PinReason.KidsOff -> Strings.pinPromptKidsOff
+                PinReason.ChoosePin -> if (confirming) Strings.pinPromptConfirm else Strings.pinPromptNew
+            }
         }
 }
 
@@ -118,9 +128,11 @@ class PinGate(
                 if (asked.choosing) return@withLock choosePin(asked, pin)
                 when (val result = pins.verify(asked.serverId, asked.userId, pin)) {
                     PinResult.Ok -> pass(asked)
+
                     is PinResult.Wrong -> _prompt.update {
                         it?.copy(error = if (result.attemptsLeft > 2) Strings.pinPromptWrong else Strings.pinPromptAttemptsLeft(result.attemptsLeft))
                     }
+
                     is PinResult.Locked -> lockFor(result.secondsLeft)
                 }
             }
@@ -135,10 +147,12 @@ class PinGate(
                 chosen = pin
                 _prompt.update { it?.copy(confirming = true, error = null) }
             }
+
             first == pin -> {
                 pins.setPin(pin)
                 if (pending === asked) close()
             }
+
             else -> {
                 chosen = null
                 _prompt.update { it?.copy(confirming = false, error = Strings.pinPromptMismatch) }
@@ -165,6 +179,7 @@ class PinGate(
                     pins.removePin()
                     pass(asked)
                 }
+
                 else -> _prompt.update { it?.copy(checking = false, error = SignInMessages.forFailure(result, passwordOnly = true)) }
             }
         }

@@ -29,23 +29,21 @@ class LanguagePreferencesTest {
     @AfterTest
     fun tearDown() = runTest { app.close() }
 
-    /** A configuration with fields this app doesn't read, which a write must keep. */
+    // A configuration with fields this app doesn't read, which a write must keep.
     private val config = """{"AudioLanguagePreference":"","SubtitleLanguagePreference":"eng","SubtitleMode":"Always",
         |"PlayDefaultAudioTrack":true,"RememberAudioSelections":true,"RememberSubtitleSelections":false,
         |"DisplayMissingEpisodes":true,"OrderedViews":["a","b"],"CastReceiverId":null,"MyMediaExcludes":[],"HidePlayedInLatest":false}
     """.trimMargin()
 
-    private fun FakeServer.me(configJson: String = config) =
-        on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex","Configuration":$configJson}"""))
+    private fun FakeServer.me(configJson: String = config) = on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex","Configuration":$configJson}"""))
 
-    /** Accepts configuration writes and keeps the last one as the user's, like the server. */
+    // Accepts configuration writes and keeps the last one as the user's, like the server.
     private fun FakeServer.acceptWrites() = on("POST", "/Users/Configuration") { request ->
         me(request.body)
         Reply.noContent()
     }
 
-    private suspend fun written(): JsonObject =
-        Json.parseToJsonElement(app.jellyfin.requestsTo("POST", "/Users/Configuration").last().body).jsonObject
+    private suspend fun written(): JsonObject = Json.parseToJsonElement(app.jellyfin.requestsTo("POST", "/Users/Configuration").last().body).jsonObject
 
     @Test
     fun `the preferences are read from the account`() = runTest {
@@ -175,13 +173,15 @@ class LanguagePreferencesTest {
     @Test
     fun `the server's languages are named and sorted and listed once each`() = runTest {
         app.signedIn().on(
-            "GET", "/Localization/Cultures",
+            "GET",
+            "/Localization/Cultures",
             Reply.json(
                 """[{"DisplayName":"German","ThreeLetterISOLanguageName":"ger","ThreeLetterISOLanguageNames":["ger","deu"]},
                 |{"DisplayName":"English","ThreeLetterISOLanguageName":"eng","ThreeLetterISOLanguageNames":["eng"]},
                 |{"DisplayName":"English (UK)","ThreeLetterISOLanguageName":"eng"},
                 |{"DisplayName":"","ThreeLetterISOLanguageName":"xxx"},
-                |{"DisplayName":"Nameless code"}]""".trimMargin(),
+                |{"DisplayName":"Nameless code"}]
+                """.trimMargin(),
             ),
         )
 

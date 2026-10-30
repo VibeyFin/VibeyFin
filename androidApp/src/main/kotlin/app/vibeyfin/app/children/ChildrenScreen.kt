@@ -1,84 +1,84 @@
 package app.vibeyfin.app.children
 
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
-import androidx.compose.foundation.layout.PaddingValues
-import app.vibeyfin.app.components.TabHeader
-import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
-import app.vibeyfin.app.downloads.RemoveConfirmDialog
-import app.vibeyfin.app.downloads.DownloadConfirmDialog
-import app.vibeyfin.app.components.ActionSnackbar
-import app.vibeyfin.R
-import androidx.compose.ui.res.painterResource
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import app.vibeyfin.app.components.bleed
-import app.vibeyfin.app.components.MediaRowSection
-import app.vibeyfin.ui.home.MediaRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.draw.alpha
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.Icons
-import androidx.compose.material3.Icon
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.vibeyfin.app.theme.VibeyFinTokens
-import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.R
+import app.vibeyfin.app.components.ActionSnackbar
 import app.vibeyfin.app.components.ArtworkTile
 import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.LoadError
+import app.vibeyfin.app.components.MediaRowSection
+import app.vibeyfin.app.components.PosterSkeletonRow
+import app.vibeyfin.app.components.SkeletonLine
+import app.vibeyfin.app.components.TabHeader
+import app.vibeyfin.app.components.bleed
 import app.vibeyfin.app.components.skeletonCount
 import app.vibeyfin.app.components.skeletonTiles
-import app.vibeyfin.app.components.SkeletonLine
-import app.vibeyfin.app.components.PosterSkeletonRow
+import app.vibeyfin.app.downloads.DownloadConfirmDialog
+import app.vibeyfin.app.downloads.RemoveConfirmDialog
+import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
+import app.vibeyfin.app.navigation.LocalBottomBarPadding
+import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.children.ChildrenUiState
 import app.vibeyfin.ui.children.ChildrenViewModel
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.HomeExit
+import app.vibeyfin.ui.home.MediaRow
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-/** Start loading the next page when this many items or fewer are left below the visible ones. */
 private const val LOAD_AHEAD = 6
 
 @Composable
@@ -97,10 +97,13 @@ fun ChildrenRoute(
     viewModel: ChildrenViewModel = koinViewModel(parameters = { parametersOf(parentId) }),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
     LaunchedEffect(state.exit) {
         state.exit?.let(onExit)
     }
+
     val ensureNotifications = rememberDownloadNotificationPermission()
+
     Box(Modifier.fillMaxSize()) {
         ChildrenScreen(
             title = title,
@@ -117,6 +120,7 @@ fun ChildrenRoute(
         )
         ActionSnackbar(state.downloadMessage, onRetry = viewModel::onRetryDownload, onDismiss = viewModel::onDismissDownloadMessage)
     }
+
     state.downloadPrompt?.let { prompt ->
         DownloadConfirmDialog(
             prompt,
@@ -128,6 +132,7 @@ fun ChildrenRoute(
             onDismiss = viewModel::onDismissDownloadPrompt,
         )
     }
+
     state.removePrompt?.let { RemoveConfirmDialog(it, onConfirm = viewModel::onConfirmRemove, onDismiss = viewModel::onDismissRemoval) }
 }
 
@@ -145,31 +150,30 @@ fun ChildrenScreen(
     onOpen: (MediaItem) -> Unit,
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
-    // Buttons under the title that stay put while the list scrolls, such as a category page's Sort and Genre.
     controls: (@Composable () -> Unit)? = null,
-    // On a season's list: opens its show.
     onOpenSeries: ((String) -> Unit)? = null,
-    // On a season's list: downloads the season, or removes what of it is downloaded.
     onDownloadSeason: (() -> Unit)? = null,
     onRemoveSeasonDownloads: (() -> Unit)? = null,
 ) {
-    // With controls the title is pinned above them; without, it is the first row of the list and scrolls away.
     val pinned = controls != null
     val collectionPage = state.collection != null || collectionHint
     val tiles = skeletonCount(6)
+
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
-            // A collection's header runs under the status bar, so it takes only the sides and the bottom.
+            // A collection's header runs under the status bar, so it takes only the sides and the bottom
             val insets = if (collectionPage) {
                 Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
             } else {
                 Modifier.safeDrawingPadding()
             }
+
             Column(modifier = Modifier.fillMaxSize().then(insets).padding(horizontal = screenMargin())) {
                 if (controls != null) {
                     Title(title, subtitle, isRoot)
                     controls()
                 }
+
                 when {
                     state.loading -> LazyVerticalGrid(
                         columns = GridCells.Adaptive(if (isRoot) 104.dp else 130.dp),
@@ -179,15 +183,15 @@ fun ChildrenScreen(
                         modifier = Modifier.fillMaxSize(),
                     ) {
                         if (collectionPage) {
-                            // The collection's header is already here, with its name; the members are grey until they come.
                             item(span = { GridItemSpan(maxLineSpan) }, key = "collection") {
                                 Box(Modifier.bleed(screenMargin())) { CollectionHeader(title, state.collection, emptyList(), screenMargin(), imageHint) }
                             }
                         } else if (!pinned) {
                             item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title, subtitle, isRoot) }
                         }
+
                         if (collectionPage) {
-                            // A collection's members are rows of posters, so grey rows stand in, not a grid.
+                            // A collection's members are rows of posters, so gray rows stand in, not a grid
                             item(span = { GridItemSpan(maxLineSpan) }, key = "members-skeleton") {
                                 Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
                                     SkeletonLine(96.dp, MaterialTheme.typography.titleMedium)
@@ -198,21 +202,27 @@ fun ChildrenScreen(
                             skeletonTiles(tiles)
                         }
                     }
+
                     state.message != null -> {
                         if (!pinned) Title(title, subtitle, isRoot)
+
                         LoadError(state.message!!, onRetry)
                     }
+
                     state.isEmpty -> {
                         if (!pinned) Title(title, subtitle, isRoot)
+
                         Text(
                             text = state.emptyText,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+
                     else -> ItemGrid(title, state, collectionPage, imageHint, isRoot, onOpen, onLoadMore, onRetry, showTitle = !pinned, onOpenSeries = onOpenSeries, onDownloadSeason = onDownloadSeason, onRemoveSeasonDownloads = onRemoveSeasonDownloads)
                 }
             }
+
             if (!isRoot) FloatingBackButton(onBack)
         }
     }
@@ -220,9 +230,10 @@ fun ChildrenScreen(
 
 @Composable
 private fun Title(title: String, subtitle: String?, isRoot: Boolean) {
-    // The Library tab has the header every tab has; the screen already has the side margin.
+    // The Library tab has the header every tab has; the screen already has the side margin
     if (isRoot) return TabHeader(title, horizontalPadding = 0.dp)
-    // A Column: as a lazy grid item, several loose children would be drawn on top of each other.
+
+    // A Column: as a lazy grid item, several loose children would be drawn on top of each other
     Column {
         Spacer(Modifier.height(BackButtonSpace))
         Text(
@@ -230,15 +241,15 @@ private fun Title(title: String, subtitle: String?, isRoot: Boolean) {
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground,
         )
-        // How many titles it holds, softly, under the name.
+
         subtitle?.let {
             Text(text = it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+
         Spacer(Modifier.height(VibeyFinTokens.Space.s4))
     }
 }
 
-/** "Download season", with how many of its episodes are downloaded, and a way to remove them. */
 @Composable
 private fun SeasonDownloadRow(state: ChildrenUiState, onDownload: () -> Unit, onRemove: (() -> Unit)?) {
     Row(
@@ -251,6 +262,7 @@ private fun SeasonDownloadRow(state: ChildrenUiState, onDownload: () -> Unit, on
             Spacer(Modifier.width(VibeyFinTokens.Space.s2))
             Text(Strings.downloadSeasonButton)
         }
+
         if (state.seasonDownloads.isNotEmpty()) {
             Text(
                 text = Strings.seasonDownloadedCount(state.seasonDownloaded, state.items.size),
@@ -258,11 +270,20 @@ private fun SeasonDownloadRow(state: ChildrenUiState, onDownload: () -> Unit, on
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
+
             if (onRemove != null) {
                 TextButton(onClick = onRemove) { Text(Strings.removeDownloadsOf(state.seasonDownloads.size), color = VibeyFinTokens.Colors.inkMuted) }
             }
         }
     }
+}
+
+/** The narrowest a poster gets in the grid: the library root has the smallest, a tablet the largest */
+internal fun posterMinWidth(isRoot: Boolean, wide: Boolean): Dp = when {
+    isRoot && wide -> 140.dp
+    isRoot -> 104.dp
+    wide -> 168.dp
+    else -> 130.dp
 }
 
 @Composable
@@ -280,36 +301,42 @@ private fun ItemGrid(
     onDownloadSeason: (() -> Unit)?,
     onRemoveSeasonDownloads: (() -> Unit)?,
 ) {
-    // Saved with the screen, so coming back from an item's page finds the list where it was left.
+    // Saved with the screen, so coming back from an item's page finds the list where it was left
     val gridState = rememberLazyGridState()
-    // A new list (a filter changed) starts at its top.
+
+    // A new list (a filter changed) starts at its top
     val firstId = state.items.firstOrNull()?.id
     var firstShown by remember { mutableStateOf(true) }
+
     LaunchedEffect(firstId) {
         if (firstShown) firstShown = false else gridState.scrollToItem(0)
     }
+
     val margin = screenMargin()
     val wide = LocalConfiguration.current.screenWidthDp >= 600
     val nearEnd by remember {
         derivedStateOf {
             val info = gridState.layoutInfo
+
             (info.visibleItemsInfo.lastOrNull()?.index ?: 0) >= info.totalItemsCount - LOAD_AHEAD
         }
     }
-    // Keyed on the count too: a short page can leave the end in view, which needs another page.
+
+    // Keyed on the count too: a short page can leave the end in view, which needs another page
     LaunchedEffect(nearEnd, state.items.size, state.hasMore) {
         if (nearEnd && state.hasMore) onLoadMore()
     }
+
     LazyVerticalGrid(
         state = gridState,
-        // The old list stays, dimmed, until the new one is in: nothing jumps.
+        // The old list stays, dimmed, until the new one is in: nothing jumps
         modifier = Modifier.fillMaxSize().alpha(if (state.refreshing) 0.45f else 1f),
-        columns = GridCells.Adaptive(if (isRoot) (if (wide) 140.dp else 104.dp) else if (wide) 168.dp else 130.dp),
+        columns = GridCells.Adaptive(posterMinWidth(isRoot, wide)),
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         contentPadding = PaddingValues(bottom = LocalBottomBarPadding.current),
     ) {
-        // A collection opens on its own header, under the status bar, in place of the plain title.
+        // A collection opens on its own header, under the status bar, in place of the plain title
         if (collectionPage) {
             item(span = { GridItemSpan(maxLineSpan) }, key = "collection") {
                 Box(Modifier.bleed(margin)) {
@@ -317,9 +344,9 @@ private fun ItemGrid(
                 }
             }
         }
-        // The title is part of the list, beneath the button, and scrolls up under it.
+
         if (showTitle && !collectionPage) item(span = { GridItemSpan(maxLineSpan) }, key = "title") { Title(title, null, false) }
-        // A season's list leads back to its show.
+
         state.series?.let { series ->
             if (onOpenSeries != null) {
                 item(span = { GridItemSpan(maxLineSpan) }, key = "series") {
@@ -330,24 +357,19 @@ private fun ItemGrid(
                 }
             }
         }
-        // A season's list can be downloaded as a whole.
+
         if (onDownloadSeason != null && state.offersSeasonDownload) {
             item(span = { GridItemSpan(maxLineSpan) }, key = "download") {
                 SeasonDownloadRow(state, onDownloadSeason, onRemoveSeasonDownloads)
             }
         }
+
         if (collectionPage) {
-            // A collection's members under sub-headings: its movies, then its shows, then whatever else it holds.
-            val groups = listOf(
-                Strings.collectionMovies to state.items.filter { it.kind == ItemKind.Movie },
-                Strings.collectionShows to state.items.filter { it.kind == ItemKind.Series },
-                Strings.collectionOther to state.items.filter { it.kind != ItemKind.Movie && it.kind != ItemKind.Series },
-            ).filter { it.second.isNotEmpty() }
-            groups.forEach { (heading, members) ->
-                // A row of posters per group, oldest first, as on Home: two huge posters in a grid look empty.
+            state.collectionGroups.forEach { (heading, members) ->
+                // A row of posters per group, oldest first, as on Home: two huge posters in a grid look empty
                 item(span = { GridItemSpan(maxLineSpan) }, key = "group-$heading") {
                     MediaRowSection(
-                        row = MediaRow(heading, heading, items = members.sortedWith(compareBy({ it.year ?: Int.MAX_VALUE }, { it.title })), loading = false),
+                        row = MediaRow(heading, heading, items = members, loading = false),
                         margin = margin,
                         onOpen = onOpen,
                         onSeeAll = null,
@@ -361,6 +383,7 @@ private fun ItemGrid(
                 ArtworkTile(item, onClick = { onOpen(item) })
             }
         }
+
         if (state.loadingMore) {
             item(span = { GridItemSpan(maxLineSpan) }, key = "loading-more") {
                 Box(Modifier.fillMaxWidth().padding(VibeyFinTokens.Space.s4), contentAlignment = Alignment.Center) {
@@ -368,11 +391,13 @@ private fun ItemGrid(
                 }
             }
         }
+
         if (state.loadMoreFailed) {
             item(span = { GridItemSpan(maxLineSpan) }, key = "load-more-failed") {
                 LoadError(Strings.loadMoreFailed, onRetry)
             }
         }
+
         item(span = { GridItemSpan(maxLineSpan) }, key = "bottom-space") { Spacer(Modifier.height(VibeyFinTokens.Space.s5)) }
     }
 }

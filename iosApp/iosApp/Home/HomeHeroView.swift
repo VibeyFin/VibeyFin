@@ -10,7 +10,7 @@ struct HomeHeroView: View {
     let onOpen: (String) -> Void
     let onMyList: () -> Void
     /// What VoiceOver reads for the card; a carousel page says which of how many it is.
-    var label: String? = nil
+    var label: String?
     /// Called when a long press opens the poster menu, so a carousel stops moving under it.
     var onLongPressed: () -> Void = {}
 
@@ -57,7 +57,7 @@ struct HomeHeroView: View {
             let facts = item.heroFacts
             if !facts.isEmpty {
                 // "Show · Offbeat · Heartfelt · Comedy": what it is, then its genres.
-                Text(facts.joined(separator: "  \u{00B7}  "))
+                Text(Strings.shared.factsLine(facts: facts))
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.white)
                     .lineLimit(1)

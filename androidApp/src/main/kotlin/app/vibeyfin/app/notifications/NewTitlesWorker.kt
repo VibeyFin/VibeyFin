@@ -33,6 +33,7 @@ object NewTitlesWork {
         val koin = GlobalContext.get()
         val poller = koin.get<NewTitlesPoller>()
         val dao = koin.get<AccountDao>()
+
         NewTitlesDependencies(
             pollAll = poller::pollAll,
             notifyingProfiles = { dao.getNotifiableProfiles().size },
@@ -53,16 +54,20 @@ object NewTitlesWork {
 class NewTitlesWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val work = NewTitlesWork.dependencies(applicationContext)
+
         try {
             if (!work.canPost()) return Result.success()
+
             val found = work.pollAll()
+
             if (found.isNotEmpty()) work.publisher.post(found, nameProfiles = work.notifyingProfiles() > 1)
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
-            // Only the kind of failure: a message could carry a server address or a title.
+        } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+            // A background check must never crash the worker. Only the kind of failure: a message could carry a server address or a title
             work.log("New-title check failed: ${e::class.simpleName}")
         }
+
         return Result.success()
     }
 }

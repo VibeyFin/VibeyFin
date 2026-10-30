@@ -234,7 +234,7 @@ struct ScrubPreview: View {
         VStack(spacing: Space.s1) {
             Image(uiImage: thumbnail)
                 .resizable()
-                .aspectRatio(contentMode: .fit)
+                .scaledToFit()
                 .frame(width: pictureWidth)
                 .clipShape(RoundedRectangle(cornerRadius: Radius.artwork / 2, style: .continuous))
             Text(time)

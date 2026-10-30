@@ -46,8 +46,10 @@ internal fun MediaItem.toContinueCard(): ContinueCard {
     val subtitle = when {
         // Started: how long is left, after the episode.
         left != null -> listOfNotNull(label.takeIf { isEpisode }, left).joinToString(SEPARATOR)
+
         // Next up: the episode and its title.
         isEpisode -> listOfNotNull(label, this.title.takeIf { it.isNotBlank() }).joinToString(SEPARATOR).ifEmpty { null }
+
         else -> null
     }
     val title = if (isEpisode) seriesName ?: title else title

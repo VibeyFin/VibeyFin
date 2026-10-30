@@ -4,14 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -31,17 +32,17 @@ import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 
 /*
- * Grey stand-ins for content that is still loading: the same shapes as the real thing, so nothing moves
+ * Gray stand-ins for content that is still loading: the same shapes as the real thing, so nothing moves
  * when it arrives. Not animated; looping motion is an opt-in setting (`brand.md`). A spinner is only for
  * an action in progress (a button, the player, "loading more").
  */
 
-/** A grey block with the artwork corner radius. */
+/** A gray block with the artwork corner radius. */
 @Composable
 fun SkeletonBlock(
     modifier: Modifier = Modifier,
-    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(VibeyFinTokens.Radius.artwork),
-    color: androidx.compose.ui.graphics.Color = VibeyFinTokens.Colors.surface2,
+    shape: Shape = RoundedCornerShape(VibeyFinTokens.Radius.artwork),
+    color: Color = VibeyFinTokens.Colors.surface2,
 ) {
     Box(modifier.clip(shape).background(color))
 }
@@ -55,7 +56,7 @@ fun skeletonCount(phone: Int): Int = if (LocalConfiguration.current.screenWidthD
 
 private const val WIDE_FROM_DP = 600
 
-/** A grey bar as tall as one line of [style], so the skeleton is exactly as tall as the real text. */
+/** A gray bar as tall as one line of [style], so the skeleton is exactly as tall as the real text. */
 @Composable
 fun SkeletonLine(width: Dp, style: TextStyle) {
     Box(Modifier.width(width)) {
@@ -70,7 +71,7 @@ fun SkeletonLine(width: Dp, style: TextStyle) {
     }
 }
 
-/** Poster tiles for a lazy grid: [count] grey posters with a title line under each. */
+/** Poster tiles for a lazy grid: [count] gray posters with a title line under each. */
 fun LazyGridScope.skeletonTiles(count: Int = 6, aspectRatio: Float = 2f / 3f) {
     items(count, key = { "skeleton-$it" }) {
         Column(
@@ -92,12 +93,14 @@ fun ItemSkeleton(wide: Boolean, screenWidth: Dp, screenHeight: Dp, margin: Dp, m
     val pill = RoundedCornerShape(50)
     val bar = RoundedCornerShape(VibeyFinTokens.Radius.m3Xs)
     val line = VibeyFinTokens.Colors.surface3
+
     Box(modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = Strings.loadingPage }) {
         if (wide) {
             SkeletonBlock(Modifier.fillMaxWidth().height(screenHeight * 0.7f), RoundedCornerShape(0.dp))
         } else {
             SkeletonBlock(Modifier.fillMaxWidth().height(screenWidth * 1.5f), RoundedCornerShape(0.dp))
         }
+
         Column(
             Modifier.fillMaxWidth().then(if (wide) Modifier.fillMaxWidth(0.46f) else Modifier).padding(horizontal = margin)
                 .padding(top = if (wide) screenHeight * 0.3f else screenWidth * 1.5f - 360.dp),
@@ -108,7 +111,7 @@ fun ItemSkeleton(wide: Boolean, screenWidth: Dp, screenHeight: Dp, margin: Dp, m
             SkeletonBlock(Modifier.width(150.dp).height(16.dp), bar, line)
             SkeletonBlock(Modifier.fillMaxWidth().height(40.dp), bar, line)
             SkeletonBlock(Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge), pill, line)
-            androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 repeat(4) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
                         SkeletonBlock(Modifier.size(30.dp), CircleShape, line)
@@ -134,17 +137,16 @@ fun LazyGridScope.skeletonProfiles(count: Int, avatarSize: Dp) {
     }
 }
 
-/** A row of grey tiles at [tileWidth], for a row of posters or library tiles while it loads. */
+/** A row of gray tiles at [tileWidth], for a row of posters or library tiles while it loads. */
 @Composable
 fun PosterSkeletonRow(
     modifier: Modifier = Modifier,
     count: Int = 4,
     tileWidth: Dp = VibeyFinTokens.Size.posterWidth,
     aspectRatio: Float = 2f / 3f,
-    // As many caption lines as the real tiles reserve, so the row keeps its height when they replace the grey ones.
     captionLines: Int = 2,
 ) {
-    androidx.compose.foundation.layout.Row(
+    Row(
         modifier = modifier.clearAndSetSemantics { contentDescription = Strings.loadingPage },
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
     ) {

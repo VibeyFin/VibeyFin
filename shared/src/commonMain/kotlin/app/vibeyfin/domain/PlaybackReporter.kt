@@ -72,11 +72,17 @@ class PlaybackReporter(
 ) : PlayReporter {
     private sealed interface Event {
         data class Begin(val plan: PlaybackPlan) : Event
+
         data class Position(val ms: Long) : Event
+
         data class Playing(val ms: Long) : Event
+
         data class Paused(val ms: Long) : Event
+
         data class Seeked(val ms: Long) : Event
+
         data class Stop(val ms: Long, val failed: Boolean) : Event
+
         data object Tick : Event
     }
 
@@ -89,7 +95,7 @@ class PlaybackReporter(
     private var positionMs = 0L
     private var ticker: Job? = null
 
-    /** The session that was started, as `Stopped` has to name it; null if nobody was signed in to start it. */
+    // The session that was started, as `Stopped` has to name it; null if nobody was signed in to start it.
     private var open: PendingStop? = null
 
     init {
@@ -135,27 +141,16 @@ class PlaybackReporter(
             is Event.Begin -> {
                 val previous = plan
                 plan = event.plan
+
                 // The same play session with other tracks: the player switched audio or subtitles
                 // without a new stream, which the server should hear about now, as with a seek.
-                val switchedTracks = previous != null && previous.playSessionId == event.plan.playSessionId &&
-                    (previous.audioStreamIndex != event.plan.audioStreamIndex || previous.subtitleStreamIndex != event.plan.subtitleStreamIndex)
-                if (started && switchedTracks) sendProgress()
+                if (started && previous?.switchedTracksTo(event.plan) == true) sendProgress()
             }
+
             is Event.Position -> positionMs = event.ms
-            is Event.Playing -> {
-                positionMs = event.ms
-                if (!started) {
-                    started = true
-                    isPaused = false
-                    open = plan?.let { current -> currentProfile()?.let { openSession(it, current) } }
-                    keep()
-                    sendStart()
-                } else if (isPaused) {
-                    isPaused = false
-                    sendProgress()
-                }
-                startTicker()
-            }
+
+            is Event.Playing -> onPlaying(event.ms)
+
             is Event.Paused -> {
                 positionMs = event.ms
                 if (started && !isPaused) {
@@ -164,22 +159,44 @@ class PlaybackReporter(
                     sendProgress()
                 }
             }
+
             is Event.Seeked -> {
                 positionMs = event.ms
                 if (started) sendProgress()
             }
-            is Event.Stop -> {
-                positionMs = event.ms
-                stopTicker()
-                if (started) {
-                    started = false
-                    isPaused = false
-                    keep(event.failed)
-                    sendStopped()
-                }
-            }
+
+            is Event.Stop -> onStopped(event.ms, event.failed)
+
             Event.Tick -> if (started && !isPaused) sendProgress()
         }
+    }
+
+    private suspend fun onPlaying(ms: Long) {
+        positionMs = ms
+
+        if (!started) {
+            started = true
+            isPaused = false
+            open = plan?.let { current -> currentProfile()?.let { openSession(it, current) } }
+            keep()
+            sendStart()
+        } else if (isPaused) {
+            isPaused = false
+            sendProgress()
+        }
+
+        startTicker()
+    }
+
+    private suspend fun onStopped(ms: Long, failed: Boolean) {
+        positionMs = ms
+        stopTicker()
+        if (!started) return
+
+        started = false
+        isPaused = false
+        keep(failed)
+        sendStopped()
     }
 
     private fun startTicker() {
@@ -236,7 +253,7 @@ class PlaybackReporter(
         }
     }
 
-    /** Saves the session with where it is now, so a crash from here on leaves a `Stopped` to send. */
+    // Saves the session with where it is now, so a crash from here on leaves a `Stopped` to send.
     private suspend fun keep(failed: Boolean = false) {
         val stop = open?.copy(positionTicks = positionMs * TICKS_PER_MILLISECOND, failed = failed) ?: return
         open = stop
@@ -258,7 +275,7 @@ class PlaybackReporter(
         changes.changed()
     }
 
-    /** Sends one report with the current session. A report that can't be sent, or fails, is dropped. */
+    // Sends one report with the current session. A report that can't be sent, or fails, is dropped.
     private suspend fun call(block: suspend (JellyfinApi) -> ApiResult<Unit>): ApiResult<Unit>? {
         val connected = connection.state.value as? ConnectionState.Connected ?: return null
         return try {
@@ -270,8 +287,7 @@ class PlaybackReporter(
         }
     }
 
-    private fun currentProfile(): ProfileRef? =
-        (connection.state.value as? ConnectionState.Connected)?.let { ProfileRef(it.server.id, it.account.userId) }
+    private fun currentProfile(): ProfileRef? = (connection.state.value as? ConnectionState.Connected)?.let { ProfileRef(it.server.id, it.account.userId) }
 
     private fun openSession(profile: ProfileRef, plan: PlaybackPlan) = PendingStop(
         profile = profile,
@@ -282,3 +298,5 @@ class PlaybackReporter(
         failed = false,
     )
 }
+
+private fun PlaybackPlan.switchedTracksTo(other: PlaybackPlan) = playSessionId == other.playSessionId && (audioStreamIndex != other.audioStreamIndex || subtitleStreamIndex != other.subtitleStreamIndex)

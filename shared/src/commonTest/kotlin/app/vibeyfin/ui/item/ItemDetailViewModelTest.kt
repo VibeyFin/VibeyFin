@@ -44,7 +44,7 @@ class ItemDetailViewModelTest {
 
     private fun viewModel(id: String) = viewModels.track(ItemViewModel(id, app.library, app.connection, app.watch, app.watchChanges, app.downloadRepository))
 
-    /** What the fake server has been told is watched: a write sticks, so the page read again afterwards shows it as a real server would. */
+    // What the fake server has been told is watched: a write sticks, so the page read again afterwards shows it as a real server would.
     private val watchedOnServer = mutableSetOf<String>()
 
     private fun markWatchedOnServer(id: String, reply: Reply) = { _: app.vibeyfin.testing.RecordedRequest ->
@@ -63,7 +63,7 @@ class ItemDetailViewModelTest {
         itemJson("s2", "Season 2", type = "Season", isFolder = true, episodeNumber = 2, seriesId = "show"),
     )
 
-    /** A signed-in server with a show of three seasons (Specials, 1 and 2) and a movie; episodes come by season. */
+    // A signed-in server with a show of three seasons (Specials, 1 and 2) and a movie; episodes come by season.
     private suspend fun server(nextUp: String = itemsJson(), similar: String = itemsJson(itemJson("like-1", "Alike"))): FakeServer {
         val server = app.signedIn()
         server.on("GET", "/Items") { request ->
@@ -323,7 +323,7 @@ class ItemDetailViewModelTest {
         return server
     }
 
-    /** The request leaves on the engine's own thread, so give it a moment to arrive. */
+    // The request leaves on the engine's own thread, so give it a moment to arrive.
     private suspend fun awaitRequests(method: String, path: String) {
         kotlinx.coroutines.withContext(Dispatchers.Default) {
             kotlinx.coroutines.withTimeout(5_000) {
@@ -431,7 +431,8 @@ class ItemDetailViewModelTest {
     fun everySeasonButtonSaysSeasonWhateverTheServerCallsIt() = runTest {
         val server = server()
         server.on(
-            "GET", "/Shows/show/Seasons",
+            "GET",
+            "/Shows/show/Seasons",
             Reply.json(
                 itemsJson(
                     itemJson("sp", "Special Features", type = "Season", isFolder = true, episodeNumber = 0, seriesId = "show"),

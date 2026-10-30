@@ -92,7 +92,10 @@ class ServerRepositoryTest {
     @Test
     fun otherReachableAddressesAreKeptBehindTheBestOneInTheOrderGiven() = runTest {
         servers.save(
-            "srv", "Home", "10.10.7", "https://nas",
+            "srv",
+            "Home",
+            "10.10.7",
+            "https://nas",
             otherAddresses = listOf("http://nas:8096", "http://192.168.1.20:8096", "http://nas"),
         )
 

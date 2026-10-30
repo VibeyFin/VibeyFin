@@ -2,8 +2,8 @@ package app.vibeyfin.ios
 
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.ui.filtered.FilteredListUiState
-import app.vibeyfin.ui.filtered.ListChipKind
 import app.vibeyfin.ui.filtered.FilteredListViewModel
+import app.vibeyfin.ui.filtered.ListChipKind
 import org.koin.core.parameter.parametersOf
 
 /** The page a category button or a dropdown entry opens, as SwiftUI needs it. Its list state is a folder list's, with the buttons and picker above it. */

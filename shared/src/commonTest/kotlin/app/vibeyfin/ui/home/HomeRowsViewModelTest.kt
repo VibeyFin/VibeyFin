@@ -10,18 +10,18 @@ import app.vibeyfin.testing.ViewModelTracker
 import app.vibeyfin.testing.itemJson
 import app.vibeyfin.testing.itemsJson
 import app.vibeyfin.ui.common.LoadMessages
+import app.vibeyfin.ui.home.HomeUiState
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
-import kotlinx.coroutines.launch
-import app.vibeyfin.ui.home.HomeUiState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -64,7 +64,7 @@ class HomeRowsViewModelTest {
         itemJson("g-scifi", "Science Fiction", type = "Genre", movieCount = 1),
     )
 
-    /** A signed-in server whose Latest answers by library and whose genre rows answer by genre. */
+    // A signed-in server whose Latest answers by library and whose genre rows answer by genre.
     private suspend fun server(
         libs: List<String> = libraries,
         latest: (String) -> Reply = { library -> Reply.json("[${itemJson("new-$library", "New in $library")}]") },
@@ -84,8 +84,7 @@ class HomeRowsViewModelTest {
         return server
     }
 
-    private suspend fun HomeViewModel.rowsLoaded(count: Int) =
-        uiState.first { it.rows.size == count && it.rows.none { row -> row.loading } }.rows
+    private suspend fun HomeViewModel.rowsLoaded(count: Int) = uiState.first { it.rows.size == count && it.rows.none { row -> row.loading } }.rows
 
     @Test
     fun rowsAreRecentlyAddedPerVideoLibraryThenEveryGenreBiggestFirst() = runTest {
@@ -588,8 +587,7 @@ class HomeRowsViewModelTest {
 
     // The rows come in from top to bottom.
 
-    private fun row(id: String, loading: Boolean = false, items: Int = 1) =
-        MediaRow(id, id, items = List(items) { n -> MediaItem(id = "$id-$n", title = "t", kind = ItemKind.Movie, isFolder = false, year = null, runtimeMinutes = null, genres = emptyList(), overview = null, rating = null, ageRating = null, seriesName = null, seasonNumber = null, episodeNumber = null, posterAspectRatio = 2f / 3f, posterUrl = null, backdropUrl = null) }, loading = loading)
+    private fun row(id: String, loading: Boolean = false, items: Int = 1) = MediaRow(id, id, items = List(items) { n -> MediaItem(id = "$id-$n", title = "t", kind = ItemKind.Movie, isFolder = false, year = null, runtimeMinutes = null, genres = emptyList(), overview = null, rating = null, ageRating = null, seriesName = null, seasonNumber = null, episodeNumber = null, posterAspectRatio = 2f / 3f, posterUrl = null, backdropUrl = null) }, loading = loading)
 
     @Test
     fun aRowThatFinishedEarlyStaysGreyUntilTheRowsAboveHaveFinished() {
@@ -631,5 +629,4 @@ class HomeRowsViewModelTest {
         val done = revealInOrder(listOf(row("a"), row("empty", items = 0), row("b")), aboveLoading = false).filter { it.isVisible }
         assertEquals(listOf("a", "b"), done.map { it.id })
     }
-
 }

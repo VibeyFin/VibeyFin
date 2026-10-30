@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 
 sealed interface AddServerStep {
     data object Idle : AddServerStep
+
     data object Checking : AddServerStep
 
     /** [existing] is the saved entry for this server when it was added before, maybe at another address. */

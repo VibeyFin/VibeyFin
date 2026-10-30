@@ -40,7 +40,10 @@ class ProfileMenuViewModel(
     private val profile = ProfileActions(connection, profileSettings, searchHistory, pins, auth, downloads, viewModelScope)
 
     val uiState: StateFlow<ProfileMenuUiState> = combine(
-        connection.state, profileSettings.kidsProfile, profile.pinPrompt, profile.exit,
+        connection.state,
+        profileSettings.kidsProfile,
+        profile.pinPrompt,
+        profile.exit,
     ) { state, kids, prompt, exit ->
         ProfileMenuUiState(
             userName = (state as? ConnectionState.Connected)?.account?.name,

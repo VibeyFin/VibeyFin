@@ -28,10 +28,10 @@ struct PlayerSurface: UIViewRepresentable {
 }
 
 final class PlayerLayerView: UIView {
-    override class var layerClass: AnyClass { AVPlayerLayer.self }
+    override static var layerClass: AnyClass { AVPlayerLayer.self }
 
     var playerLayer: AVPlayerLayer {
         // `layerClass` makes this always an AVPlayerLayer.
-        layer as! AVPlayerLayer
+        unsafeDowncast(layer, to: AVPlayerLayer.self)
     }
 }

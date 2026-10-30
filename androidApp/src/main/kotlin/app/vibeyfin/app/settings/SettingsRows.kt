@@ -68,7 +68,6 @@ import app.vibeyfin.ui.settings.SettingKey
 import app.vibeyfin.ui.settings.SettingOption
 import app.vibeyfin.ui.settings.ToggleItem
 
-/** How dim a row is drawn when its item is disabled. */
 private const val DISABLED_ALPHA = 0.38f
 
 private fun Modifier.dimmedUnless(enabled: Boolean) = if (enabled) this else alpha(DISABLED_ALPHA)
@@ -109,6 +108,7 @@ fun SectionCard(content: @Composable () -> Unit) {
 private fun RowText(title: String, help: String?, modifier: Modifier = Modifier, titleColor: Color = MaterialTheme.colorScheme.onSurface) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1 / 2)) {
         Text(text = title, style = MaterialTheme.typography.titleMedium, color = titleColor)
+
         if (help != null) Text(text = help, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -122,7 +122,6 @@ private fun RowFrame(modifier: Modifier = Modifier, content: @Composable RowScop
     ) { content() }
 }
 
-/** The tonal circle a row's icon sits in. */
 @Composable
 private fun IconCircle(icon: ImageVector) {
     Box(
@@ -133,7 +132,6 @@ private fun IconCircle(icon: ImageVector) {
     }
 }
 
-/** Null for a link inside a page, which has no icon (the root's rows have one each). */
 private fun iconFor(key: SettingKey): ImageVector? = when (key) {
     SettingKey.ProfileCard -> Icons.Filled.Person
     SettingKey.Quality -> Icons.Filled.Star
@@ -150,11 +148,12 @@ private fun iconFor(key: SettingKey): ImageVector? = when (key) {
 @Composable
 fun ToggleRow(item: ToggleItem, onToggle: (Boolean) -> Unit) {
     RowFrame(
-        // The whole row toggles, not just the switch, so the label is a target too.
+        // The whole row toggles, not just the switch, so the label is a target too
         modifier = Modifier.dimmedUnless(item.enabled).toggleable(value = item.checked, enabled = item.enabled, role = Role.Switch, onValueChange = onToggle),
     ) {
         RowText(item.title, item.help, Modifier.weight(1f))
-        // Aqua is for the one primary action, so the switch is light on dark instead.
+
+        // Aqua is for the one primary action, so the switch is light on dark instead
         Switch(
             checked = item.checked,
             onCheckedChange = null,
@@ -173,18 +172,21 @@ fun ToggleRow(item: ToggleItem, onToggle: (Boolean) -> Unit) {
 @Composable
 fun ChoiceRow(item: ChoiceItem, onChoose: (Int) -> Unit) {
     var open by remember { mutableStateOf(false) }
+
     RowFrame(modifier = Modifier.dimmedUnless(item.enabled).clickable(enabled = item.enabled, role = Role.DropdownList) { open = true }) {
         RowText(item.title, item.help, Modifier.weight(1f))
-        // The menu hangs from the value on the right, where the eye is, not from the row's left edge.
+
         Box {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 item.valueLabel()?.let { Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+
             VibeyFinMenu(expanded = open, onDismiss = { open = false }) {
                 item.options.forEach { option ->
                     VibeyFinMenuItem(option.label, icon = null, selected = option.value == item.value) {
                         open = false
+
                         onChoose(option.value)
                     }
                 }
@@ -220,13 +222,16 @@ fun LinkRow(item: LinkItem, selected: Boolean? = null, onOpen: () -> Unit) {
         RowFrame(modifier = modifier) {
             iconFor(item.key)?.let { IconCircle(it) }
             RowText(
-                item.title, item.help, Modifier.weight(1f),
+                item.title,
+                item.help,
+                Modifier.weight(1f),
                 titleColor = if (selected == true) VibeyFinTokens.Colors.onAccentSoft else MaterialTheme.colorScheme.onSurface,
             )
             item.value?.let { Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+
     if (selected == null) {
         content(Modifier.dimmedUnless(item.enabled).clickable(enabled = item.enabled, role = Role.Button, onClick = onOpen))
     } else {
@@ -244,15 +249,16 @@ fun LinkRow(item: LinkItem, selected: Boolean? = null, onOpen: () -> Unit) {
 @Composable
 fun ActionRow(item: ActionItem, onClick: () -> Unit) {
     RowFrame(modifier = Modifier.dimmedUnless(item.enabled).clickable(enabled = item.enabled, role = Role.Button, onClick = onClick)) {
-        // Destructive reads in the danger colour, and the word says what it does.
         RowText(
-            item.title, item.help, Modifier.weight(1f),
+            item.title,
+            item.help,
+            Modifier.weight(1f),
             titleColor = if (item.destructive) VibeyFinTokens.Colors.danger else MaterialTheme.colorScheme.onSurface,
         )
     }
 }
 
-/** A value longer than this is drawn under its title, where it has the whole row to wrap in. */
+// A longer value is drawn under its title, where it has the whole row to wrap in
 private const val INLINE_VALUE_MAX = 16
 
 @Composable
@@ -266,6 +272,7 @@ fun InfoRow(item: InfoItem) {
             modifier = modifier,
         )
     }
+
     if (item.value.length > INLINE_VALUE_MAX) {
         RowFrame {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1 / 2)) {
@@ -281,26 +288,27 @@ fun InfoRow(item: InfoItem) {
     }
 }
 
-/** The profile page's top row: the initial on the profile's colour, the name and the server it is on. */
+/** The profile page's top row: the initial on the profile's color, the name and the server it is on. */
 @Composable
 fun ProfileHeaderRow(name: String, server: String?) {
     RowFrame {
         val tints = VibeyFinTokens.Colors.avatars
+
         Box(
             modifier = Modifier.size(VibeyFinTokens.Size.buttonLarge).clip(CircleShape).background(tints[(name.lowercase().hashCode() and 0x7FFFFFFF) % tints.size]),
             contentAlignment = Alignment.Center,
         ) {
             Text(name.take(1).uppercase(), style = MaterialTheme.typography.titleLarge, color = VibeyFinTokens.Colors.ink)
         }
+
         RowText(name, server, Modifier.weight(1f))
     }
 }
 
-// Captions mimic subtitles over video, so they are white and black like the player's, not brand tokens.
+// Captions mimic subtitles over video, so they are white and black like the player's, not brand tokens
 private val CaptionText = Color(SUBTITLE_WHITE)
 private val CaptionShadow = Color(SUBTITLE_SHADOW)
 
-/** The preview card's height. */
 private val PreviewHeight = 120.dp
 
 /** A standalone card: a sample line at the bottom of a dark ground, drawn with the style the profile has chosen. */
@@ -315,10 +323,11 @@ internal fun SubtitlePreviewCard(sample: String, style: SubtitleViewStyle) {
             .padding(VibeyFinTokens.Space.s4),
         contentAlignment = Alignment.BottomCenter,
     ) {
-        // The system style is the platform's to draw; the preview shows the default look for it.
+        // The system style is the platform's to draw; the preview shows the default look for it
         val size = if (style.followSystem) 0.0533f else style.sizeFraction
         val color = if (style.followSystem) CaptionText else Color(style.foreground)
         val box = if (style.followSystem) Color.Transparent else Color(style.background)
+
         Text(
             text = sample,
             color = color,
@@ -332,7 +341,6 @@ internal fun SubtitlePreviewCard(sample: String, style: SubtitleViewStyle) {
     }
 }
 
-/** The player height the size fractions are taken of, for the preview's text size. */
 private const val PREVIEW_PLAYER_HEIGHT = 360f
 
 /** The PIN row: its title and four lit dots, read out as one description. */

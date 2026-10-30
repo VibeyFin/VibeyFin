@@ -74,9 +74,7 @@ fun playbackInfoJson(vararg sources: String, playSessionId: String? = "ps-1", er
 const val HLS_PATH = "/videos/m1/master.m3u8?MediaSourceId=ms-1&PlaySessionId=ps-1&ApiKey=server-key"
 
 /** A `/MediaSegments/{id}` answer. */
-fun segmentsJson(vararg segments: String) =
-    """{"Items":[${segments.joinToString(",")}],"TotalRecordCount":${segments.size},"StartIndex":0}"""
+fun segmentsJson(vararg segments: String) = """{"Items":[${segments.joinToString(",")}],"TotalRecordCount":${segments.size},"StartIndex":0}"""
 
 /** One marked segment of "m1", from [startMs] to [endMs]. */
-fun segmentJson(type: String, startMs: Long, endMs: Long) =
-    """{"Id":"s-$type","ItemId":"m1","Type":"$type","StartTicks":${startMs * 10_000},"EndTicks":${endMs * 10_000}}"""
+fun segmentJson(type: String, startMs: Long, endMs: Long) = """{"Id":"s-$type","ItemId":"m1","Type":"$type","StartTicks":${startMs * 10_000},"EndTicks":${endMs * 10_000}}"""

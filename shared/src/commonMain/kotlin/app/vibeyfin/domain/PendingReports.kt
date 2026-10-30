@@ -97,8 +97,7 @@ class PendingReports(
     }
 
     /** The offline record of [itemId] for [profile], if there is one. */
-    suspend fun progress(profile: ProfileRef, itemId: String): PendingProgress? =
-        dao.find(profile.serverId, profile.userId, PENDING_PROGRESS, itemId)?.toProgress()
+    suspend fun progress(profile: ProfileRef, itemId: String): PendingProgress? = dao.find(profile.serverId, profile.userId, PENDING_PROGRESS, itemId)?.toProgress()
 
     /** Oldest first. */
     suspend fun progress(): List<PendingProgress> = dao.all(PENDING_PROGRESS).map { it.toProgress() }

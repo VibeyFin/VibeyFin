@@ -28,9 +28,8 @@ class OfflineSyncTest {
     @AfterTest
     fun tearDown() = runTest { app.close() }
 
-    /** The server's record of an item: where, whether finished, and when last watched (null: never). */
-    private fun serverItem(id: String, position: Long = 0, played: Boolean = false, lastPlayed: String? = null) =
-        """{"Items":[{"Id":"$id","Name":"X","Type":"Movie","UserData":{"PlaybackPositionTicks":$position,"Played":$played,"LastPlayedDate":${lastPlayed?.let { "\"$it\"" } ?: "null"}}}],"TotalRecordCount":1}"""
+    // The server's record of an item: where, whether finished, and when last watched (null: never).
+    private fun serverItem(id: String, position: Long = 0, played: Boolean = false, lastPlayed: String? = null) = """{"Items":[{"Id":"$id","Name":"X","Type":"Movie","UserData":{"PlaybackPositionTicks":$position,"Played":$played,"LastPlayedDate":${lastPlayed?.let { "\"$it\"" } ?: "null"}}}],"TotalRecordCount":1}"""
 
     private suspend fun server(item: String = serverItem("m1")): FakeServer {
         val server = app.signedIn()

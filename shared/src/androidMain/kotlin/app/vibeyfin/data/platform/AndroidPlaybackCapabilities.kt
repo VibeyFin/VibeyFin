@@ -31,16 +31,14 @@ class AndroidPlaybackCapabilities : PlaybackCapabilitiesSource {
 
     override fun current() = capabilities
 
-    private fun hasHardwareDecoder(mimeType: String): Boolean =
-        MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.any { info ->
-            !info.isEncoder && info.supportedTypes.any { it.equals(mimeType, ignoreCase = true) } && info.isHardware()
-        }
+    private fun hasHardwareDecoder(mimeType: String): Boolean = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.any { info ->
+        !info.isEncoder && info.supportedTypes.any { it.equals(mimeType, ignoreCase = true) } && info.isHardware()
+    }
 
-    private fun MediaCodecInfo.isHardware(): Boolean =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            isHardwareAccelerated
-        } else {
-            // Before Android 10 there is no flag; Android's own software decoders have these names.
-            !name.startsWith("OMX.google.") && !name.startsWith("c2.android.")
-        }
+    private fun MediaCodecInfo.isHardware(): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        isHardwareAccelerated
+    } else {
+        // Before Android 10 there is no flag; Android's own software decoders have these names.
+        !name.startsWith("OMX.google.") && !name.startsWith("c2.android.")
+    }
 }

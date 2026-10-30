@@ -97,6 +97,7 @@ class PlayerSwipe(private val activity: Activity?, private val audio: AudioManag
                 step = it.getStreamVolume(STREAM)
                 step / maxStep.toFloat()
             } ?: 0f
+
             SwipeLevel.Brightness -> currentBrightness()
         }
         silent = kind == SwipeLevel.Volume && step == 0
@@ -139,7 +140,7 @@ class PlayerSwipe(private val activity: Activity?, private val audio: AudioManag
         window.attributes = window.attributes.apply { screenBrightness = value.coerceAtLeast(MIN_BRIGHTNESS) }
     }
 
-    /** This window's brightness if a swipe set it, otherwise the system's, which the first swipe starts from. */
+    // This window's brightness if a swipe set it, otherwise the system's, which the first swipe starts from
     private fun currentBrightness(): Float {
         val activity = activity ?: return DEFAULT_BRIGHTNESS
         val own = activity.window.attributes.screenBrightness
@@ -187,7 +188,13 @@ fun Modifier.swipeForLevels(swipe: PlayerSwipe, enabled: Boolean, onStart: () ->
         var kind: SwipeLevel? = null
         detectVerticalDragGestures(
             onDragStart = { at ->
-                kind = if (excluded.contains(at, size)) null else if (at.x < size.width / 2f) SwipeLevel.Brightness else SwipeLevel.Volume
+                kind = if (excluded.contains(at, size)) {
+                    null
+                } else if (at.x < size.width / 2f) {
+                    SwipeLevel.Brightness
+                } else {
+                    SwipeLevel.Volume
+                }
                 kind?.let {
                     swipe.start(it)
                     started()
@@ -207,8 +214,7 @@ fun Modifier.swipeForLevels(swipe: PlayerSwipe, enabled: Boolean, onStart: () ->
 
 /** The system's gesture insets, in pixels, on each side. */
 private class Edges(val left: Int, val top: Int, val right: Int, val bottom: Int) {
-    fun contains(at: Offset, size: IntSize) =
-        at.x < left || at.y < top || at.x > size.width - right || at.y > size.height - bottom
+    fun contains(at: Offset, size: IntSize) = at.x < left || at.y < top || at.x > size.width - right || at.y > size.height - bottom
 }
 
 /**
@@ -275,10 +281,11 @@ private fun levelIcon(kind: SwipeLevel, level: Float, silent: Boolean): Int = wh
         level < 0.5f -> R.drawable.ic_volume_down
         else -> R.drawable.ic_volume_up
     }
+
     SwipeLevel.Brightness -> if (level < 0.5f) R.drawable.ic_brightness_low else R.drawable.ic_brightness_high
 }
 
-/** The share of the player's height a swipe covers to go from nothing to full. */
+// The share of the player's height a swipe covers to go from nothing to full
 private const val FULL_SWEEP = 0.6f
 private const val HIDE_AFTER_MS = 1_000L
 private const val FADE_MS = 300
@@ -286,5 +293,5 @@ private val PILL_WIDTH = 44.dp
 private val PILL_HEIGHT = 152.dp
 private val ICON_SIZE = 22.dp
 
-/** The fill's level at which it covers the glyph at the pill's foot. */
+// The fill's level at which it covers the glyph at the pill's foot
 private const val ICON_COVERED = 0.16f

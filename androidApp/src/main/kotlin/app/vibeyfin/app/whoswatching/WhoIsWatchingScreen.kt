@@ -26,15 +26,13 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,24 +51,24 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
-import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FloatingBackButton
+import app.vibeyfin.app.components.VibeyFinSheet
 import app.vibeyfin.app.components.skeletonProfiles
 import app.vibeyfin.app.components.vibeyFinTextFieldColors
+import app.vibeyfin.app.settings.PinSheet
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.Profile
 import app.vibeyfin.domain.model.ProfileRef
-import app.vibeyfin.app.settings.PinSheet
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.whoswatching.SignInSheet
 import app.vibeyfin.ui.whoswatching.WhoIsWatchingUiState
 import app.vibeyfin.ui.whoswatching.WhoIsWatchingViewModel
+import coil3.compose.AsyncImage
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-/** The side of a profile's square, and of the "Quick Connect" and "Other user" tiles beside it. */
 private val AVATAR_SIZE = 104.dp
 
 @Composable
@@ -82,9 +80,11 @@ fun WhoIsWatchingRoute(
     viewModel: WhoIsWatchingViewModel = koinViewModel(parameters = { parametersOf(serverId, pinFor) }),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
     LaunchedEffect(state.signedIn) {
         if (state.signedIn) onSignedIn()
     }
+
     WhoIsWatchingScreen(
         state = state,
         onBack = onBack,
@@ -136,36 +136,40 @@ fun WhoIsWatchingScreen(
                         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
                         modifier = Modifier.fillMaxSize(),
                     ) {
-                        // The heading is part of the grid, beneath the button, and scrolls up under it.
                         item(span = { GridItemSpan(maxLineSpan) }, key = "header") { Header(state, onRetry) }
                         items(state.profiles, key = { it.userId }) { profile ->
                             ProfileTile(profile, enabled = !state.signingIn) { onProfile(profile) }
                         }
+
                         if (state.quickConnectAvailable) {
                             item(key = "quick-connect") {
                                 ActionTile(Strings.quickConnect, symbol = "#", enabled = !state.signingIn, onClick = onQuickConnect)
                             }
                         }
+
                         item(key = "other-user") {
                             ActionTile(Strings.otherUser, symbol = "+", enabled = !state.signingIn, onClick = onOtherUser)
                         }
+
                         item(span = { GridItemSpan(maxLineSpan) }, key = "bottom-space") { Spacer(Modifier.height(VibeyFinTokens.Space.s5)) }
                     }
                 }
             }
+
             FloatingBackButton(onBack)
         }
     }
+
     state.pinPrompt?.let { prompt ->
         PinSheet(
             prompt = prompt,
             onSubmitPin = onSubmitPin,
             onForgotPin = onForgotPin,
-            // The Forgot PIN password field shares the sign-in's submit.
             onSubmitPassword = onSubmitPassword,
             onDismiss = onDismissPin,
         )
     }
+
     state.sheet?.let { sheet ->
         SignInSheet(
             sheet = sheet,
@@ -179,7 +183,6 @@ fun WhoIsWatchingScreen(
     }
 }
 
-/** The server name, the heading, and whatever needs saying before the profiles. */
 @Composable
 private fun Header(state: WhoIsWatchingUiState, onRetry: () -> Unit) {
     Column {
@@ -191,15 +194,18 @@ private fun Header(state: WhoIsWatchingUiState, onRetry: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+
         Text(
             text = Strings.whoIsWatching,
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground,
         )
+
         if (!state.loading && !state.serverReachable) {
             Spacer(Modifier.height(VibeyFinTokens.Space.s4))
             UnreachableBanner(onRetry)
         }
+
         state.error.takeIf { state.sheet == null }?.let {
             Spacer(Modifier.height(VibeyFinTokens.Space.s2))
             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
@@ -239,6 +245,7 @@ private fun ProfileTile(profile: Profile, enabled: Boolean, onClick: () -> Unit)
     ) {
         Box {
             Avatar(profile)
+
             if (profile.locked || profile.pinRequiredToOpen) {
                 Box(
                     modifier = Modifier
@@ -257,6 +264,7 @@ private fun ProfileTile(profile: Profile, enabled: Boolean, onClick: () -> Unit)
                 }
             }
         }
+
         Text(
             text = profile.name,
             style = MaterialTheme.typography.titleMedium,
@@ -266,15 +274,15 @@ private fun ProfileTile(profile: Profile, enabled: Boolean, onClick: () -> Unit)
     }
 }
 
-/** The profile's picture, or its first letter on a square tinted from the name while there is none or it loads. */
 @Composable
 private fun Avatar(profile: Profile) {
     var pictureShown by remember(profile.avatarUrl) { mutableStateOf(false) }
+
     Box(
         modifier = Modifier.size(AVATAR_SIZE).clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).background(tintFor(profile.name)),
         contentAlignment = Alignment.Center,
     ) {
-        // The letter goes once the picture is there; pictures with transparent areas would show it through.
+        // The letter goes once the picture is there; pictures with transparent areas would show it through
         if (!pictureShown) {
             Text(
                 text = profile.name.take(1).uppercase(),
@@ -282,6 +290,7 @@ private fun Avatar(profile: Profile) {
                 color = VibeyFinTokens.Colors.ink,
             )
         }
+
         profile.avatarUrl?.let { url ->
             AsyncImage(
                 model = url,
@@ -294,7 +303,6 @@ private fun Avatar(profile: Profile) {
     }
 }
 
-/** A tile that isn't a person: Strings.otherUser, Strings.quickConnect. */
 @Composable
 private fun ActionTile(label: String, symbol: String, enabled: Boolean, onClick: () -> Unit) {
     Column(
@@ -308,6 +316,7 @@ private fun ActionTile(label: String, symbol: String, enabled: Boolean, onClick:
         ) {
             Text(symbol, style = MaterialTheme.typography.displaySmall, color = VibeyFinTokens.Colors.inkMuted)
         }
+
         Text(
             text = label,
             style = MaterialTheme.typography.titleMedium,
@@ -317,9 +326,10 @@ private fun ActionTile(label: String, symbol: String, enabled: Boolean, onClick:
     }
 }
 
-/** A muted, stable colour per name (the `avatar-1` to `avatar-6` tokens), so the same person always gets the same square. */
+// Stable per name, so the same person always gets the same color
 private fun tintFor(name: String): Color {
     val tints = VibeyFinTokens.Colors.avatars
+
     return tints[(name.lowercase().hashCode() and 0x7FFFFFFF) % tints.size]
 }
 
@@ -334,11 +344,7 @@ private fun SignInSheet(
     onQuickConnectRetry: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-    ) {
+    VibeyFinSheet(onDismiss) {
         if (sheet is SignInSheet.QuickConnect) {
             QuickConnectContent(sheet, onQuickConnectRetry, onDismiss)
         } else {
@@ -358,11 +364,13 @@ private fun QuickConnectContent(sheet: SignInSheet.QuickConnect, onRetry: () -> 
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurface,
         )
+
         when {
             sheet.message != null -> {
                 Text(sheet.message!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                 FilledTonalButton(onClick = onRetry, modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.touch)) { Text(Strings.tryAgain) }
             }
+
             sheet.code != null -> {
                 Text(
                     text = Strings.quickConnectHelp,
@@ -377,11 +385,14 @@ private fun QuickConnectContent(sheet: SignInSheet.QuickConnect, onRetry: () -> 
                 )
                 WaitingLabel(Strings.quickConnectWaiting)
             }
+
             else -> WaitingLabel(Strings.quickConnectGettingCode)
         }
+
         TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
             Text(Strings.cancel, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+
         Spacer(Modifier.height(VibeyFinTokens.Space.s2))
     }
 }
@@ -409,7 +420,7 @@ private fun PasswordContent(
     onDismiss: () -> Unit,
 ) {
     run {
-        // The fields keep what was typed when a sign-in fails, so a typo is a small fix.
+        // The fields keep what was typed when a sign-in fails, so a typo is a small fix
         var username by rememberSaveable(sheet) { mutableStateOf("") }
         var password by rememberSaveable(sheet) { mutableStateOf("") }
         val isOtherUser = sheet is SignInSheet.OtherUser
@@ -419,6 +430,7 @@ private fun PasswordContent(
                 if (sheet is SignInSheet.Password) onSubmitPassword(password) else onSubmitOtherUser(username, password)
             }
         }
+
         Column(
             modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s2),
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
@@ -428,6 +440,7 @@ private fun PasswordContent(
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
+
             if (isOtherUser) {
                 OutlinedTextField(
                     value = username,
@@ -444,6 +457,7 @@ private fun PasswordContent(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
@@ -461,12 +475,14 @@ private fun PasswordContent(
                 keyboardActions = KeyboardActions(onGo = { submit() }),
                 modifier = Modifier.fillMaxWidth(),
             )
+
             if (error != null) {
                 Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
             }
+
             Button(
                 onClick = { submit() },
-                // Stays enabled while signing in so the busy button keeps its colours; submit() ignores it.
+                // Stays enabled while signing in so the busy button keeps its colors; submit() ignores it
                 enabled = canSubmit || signingIn,
                 modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge),
             ) {
@@ -482,9 +498,11 @@ private fun PasswordContent(
                     Text(Strings.signIn)
                 }
             }
+
             TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
                 Text(Strings.cancel, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+
             Spacer(Modifier.height(VibeyFinTokens.Space.s2))
         }
     }

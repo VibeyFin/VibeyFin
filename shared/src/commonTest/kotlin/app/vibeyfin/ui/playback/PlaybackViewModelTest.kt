@@ -1,21 +1,18 @@
 package app.vibeyfin.ui.playback
 
-import app.vibeyfin.testing.RecordedRequest
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.hours
-import kotlinx.coroutines.CoroutineStart
 import androidx.lifecycle.ViewModel
-import app.vibeyfin.domain.DynamicRange
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewmodel.CreationExtras
 import app.vibeyfin.data.api.ApiError
+import app.vibeyfin.domain.DynamicRange
 import app.vibeyfin.domain.LiveDiagnostics
 import app.vibeyfin.domain.PlayMethod
 import app.vibeyfin.testing.FakeJellyfin
 import app.vibeyfin.testing.HLS_PATH
-import app.vibeyfin.testing.TICKS_PER_MINUTE
+import app.vibeyfin.testing.RecordedRequest
 import app.vibeyfin.testing.Reply
+import app.vibeyfin.testing.TICKS_PER_MINUTE
 import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.ViewModelTracker
 import app.vibeyfin.testing.audioStreamJson
@@ -31,6 +28,7 @@ import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.HomeExit
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
@@ -55,7 +53,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import kotlin.reflect.KClass
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -65,13 +62,16 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlaybackViewModelTest {
     private val app = TestApp()
     private val viewModels = ViewModelTracker()
 
-    /** The reporter outlives the ViewModel, as in the app, so it has a scope of its own. */
+    // The reporter outlives the ViewModel, as in the app, so it has a scope of its own.
     private val reporterScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     @BeforeTest
@@ -88,7 +88,7 @@ class PlaybackViewModelTest {
         app.close()
     }
 
-    /** The waits before the tries at a stream that lost its connection, short so the tests don't wait. */
+    // The waits before the tries at a stream that lost its connection, short so the tests don't wait.
     private val retryDelays = listOf(1.milliseconds, 1.milliseconds)
 
     private fun viewModel(
@@ -104,7 +104,7 @@ class PlaybackViewModelTest {
         ),
     )
 
-    /** A signed-in server that offers a direct play of "Heat", answers the reports and, for an episode test, can be given another item. */
+    // A signed-in server that offers a direct play of "Heat", answers the reports and, for an episode test, can be given another item.
     private suspend fun server(
         info: String = playbackInfoJson(mediaSourceJson()),
         item: String = itemJson("m1", "Heat", year = 1995),
@@ -418,7 +418,8 @@ class PlaybackViewModelTest {
 
         // The server now offers a transcode, as it does when asked not to direct play.
         app.jellyfin.server("http://nas:8096").on(
-            "POST", "/Items/m1/PlaybackInfo",
+            "POST",
+            "/Items/m1/PlaybackInfo",
             Reply.json(playbackInfoJson(mediaSourceJson(id = "ms-1", directPlay = false, directStream = false, transcodingUrl = HLS_PATH), playSessionId = "ps-2")),
         )
         viewModel.onFailed(PlaybackFailure.Unsupported)
@@ -569,7 +570,7 @@ class PlaybackViewModelTest {
         assertEquals(2, negotiations().size)
     }
 
-    /** Plays on a device that can't direct play, then fails [times] more times with [failure] on the transcode. */
+    // Plays on a device that can't direct play, then fails [times] more times with [failure] on the transcode.
     private suspend fun TestScope.transcodeThatEndsInAnError(failure: PlaybackFailure, times: Int): PlaybackViewModel {
         serverWithTracks()
         val viewModel = viewModel()
@@ -692,8 +693,7 @@ class PlaybackViewModelTest {
             store,
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
-                override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =
-                    PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge, app.offlineLibrary, app.offline, app.localReporter(reporterScope)) as T
+                override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T = PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge, app.offlineLibrary, app.offline, app.localReporter(reporterScope)) as T
             },
         )[PlaybackViewModel::class]
         viewModel.uiState.first { it.stream != null }
@@ -710,8 +710,7 @@ class PlaybackViewModelTest {
         store,
         object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =
-                PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge, app.offlineLibrary, app.offline, app.localReporter(reporterScope)) as T
+            override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T = PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge, app.offlineLibrary, app.offline, app.localReporter(reporterScope)) as T
         },
     )[PlaybackViewModel::class]
 
@@ -725,11 +724,9 @@ class PlaybackViewModelTest {
         subtitleStreamJson(5, "Image subtitles", delivery = "Encode", codec = "hdmv_pgs_subtitle"),
     )
 
-    /**
-     * A server that answers like Jellyfin does: the user's tracks come back as the selected ones only
-     * when the request names the media source, otherwise it picks ([audioDefault], [subtitleDefault]).
-     * With [transcode], or when direct play is turned off, the source has to be streamed.
-     */
+    // A server that answers like Jellyfin does: the user's tracks come back as the selected ones only
+    // when the request names the media source, otherwise it picks ([audioDefault], [subtitleDefault]).
+    // With [transcode], or when direct play is turned off, the source has to be streamed.
     private suspend fun serverWithTracks(
         transcode: Boolean = false,
         subtitleDefault: Int? = null,
@@ -758,7 +755,7 @@ class PlaybackViewModelTest {
 
     private fun negotiations() = app.jellyfin.requestsTo("POST", "/Items/m1/PlaybackInfo")
 
-    /** A stream is on offer and it is not the one with [id]: the player has been given a new one. */
+    // A stream is on offer and it is not the one with [id]: the player has been given a new one.
     private fun PlaybackUiState.hasStreamOtherThan(id: Int) = stream?.let { it.id != id } == true
 
     @Test
@@ -1006,7 +1003,12 @@ class PlaybackViewModelTest {
     }
 
     private fun halfWatched(minutes: Long = 10, played: Boolean = false) = itemJson(
-        "m1", "Heat", year = 1995, runtimeTicks = 90 * TICKS_PER_MINUTE, positionTicks = minutes * TICKS_PER_MINUTE, played = played,
+        "m1",
+        "Heat",
+        year = 1995,
+        runtimeTicks = 90 * TICKS_PER_MINUTE,
+        positionTicks = minutes * TICKS_PER_MINUTE,
+        played = played,
     )
 
     @Test
@@ -1083,11 +1085,17 @@ class PlaybackViewModelTest {
     private val tenMinutes = 10 * 60_000L
 
     private fun episode(id: String, number: Int, minutes: Long = 10) = itemJson(
-        id, if (id == "m1") "Heat" else "Northbound", type = "Episode", seriesName = "Paper Harbour", seriesId = "s1",
-        seasonNumber = 1, episodeNumber = number, runtimeTicks = minutes * TICKS_PER_MINUTE,
+        id,
+        if (id == "m1") "Heat" else "Northbound",
+        type = "Episode",
+        seriesName = "Paper Harbour",
+        seriesId = "s1",
+        seasonNumber = 1,
+        episodeNumber = number,
+        runtimeTicks = minutes * TICKS_PER_MINUTE,
     )
 
-    /** A signed-in server with a show: m1 is episode 1, e2 comes after it. */
+    // A signed-in server with a show: m1 is episode 1, e2 comes after it.
     private suspend fun seriesServer(
         first: String = episode("m1", 1),
         episodes: String = itemsJson(first, episode("e2", 2)),
@@ -1107,7 +1115,7 @@ class PlaybackViewModelTest {
         return seen
     }
 
-    /** Playing, with the next episode looked up (it is asked for in the background). */
+    // Playing, with the next episode looked up (it is asked for in the background).
     private suspend fun TestScope.playing(viewModel: PlaybackViewModel, jellyfin: FakeJellyfin): MutableList<PlaybackUiState> {
         val seen = statesOf(viewModel)
         viewModel.uiState.first { it.stream != null }
@@ -1365,7 +1373,7 @@ class PlaybackViewModelTest {
 
     private suspend fun serverWithSegments(vararg segments: String): PlaybackViewModel = serverWithSettings({}, *segments)
 
-    /** Like [serverWithSegments], with profile settings saved (after sign-in) before the player opens. */
+    // Like [serverWithSegments], with profile settings saved (after sign-in) before the player opens.
     private suspend fun serverWithSettings(settings: suspend () -> Unit, vararg segments: String): PlaybackViewModel {
         server(segments = Reply.json(segmentsJson(*segments)))
         settings()
@@ -1523,11 +1531,9 @@ class PlaybackViewModelTest {
         assertEquals(1, jellyfin.requestsTo("POST", "/Sessions/Playing").size)
     }
 
-    /**
-     * Returns once the reporter has handled everything [vm] sent it so far: reports go out one at a time
-     * in order, so a seek's Progress reaching the server means a Stopped sent before it would have too.
-     * Needs a started session.
-     */
+    // Returns once the reporter has handled everything [vm] sent it so far: reports go out one at a time
+    // in order, so a seek's Progress reaching the server means a Stopped sent before it would have too.
+    // Needs a started session.
     private suspend fun afterEarlierReports(vm: PlaybackViewModel, jellyfin: FakeJellyfin) {
         val before = jellyfin.requestsTo("POST", "/Sessions/Playing/Progress").size
         vm.onSeeked(5_500)
@@ -1888,12 +1894,10 @@ class PlaybackViewModelTest {
         assertNull(vm.uiState.value.pendingSeekMs)
     }
 
-    private fun trickplayInfo(width: Int) =
-        """"$width":{"Width":$width,"Height":${width * 9 / 16},"TileWidth":10,"TileHeight":10,"ThumbnailCount":250,"Interval":10000,"Bandwidth":1}"""
+    private fun trickplayInfo(width: Int) = """"$width":{"Width":$width,"Height":${width * 9 / 16},"TileWidth":10,"TileHeight":10,"ThumbnailCount":250,"Interval":10000,"Bandwidth":1}"""
 
-    /** [item] with trickplay thumbnails for each of [sources] (media source ids), as the server sends them. */
-    private fun withTrickplay(item: String, vararg sources: String) =
-        item.dropLast(1) + ""","Trickplay":{${sources.joinToString(",") { """"$it":{${trickplayInfo(320)}}""" }}}}"""
+    // [item] with trickplay thumbnails for each of [sources] (media source ids), as the server sends them.
+    private fun withTrickplay(item: String, vararg sources: String) = item.dropLast(1) + ""","Trickplay":{${sources.joinToString(",") { """"$it":{${trickplayInfo(320)}}""" }}}}"""
 
     @Test
     fun `trickplay is loaded for the played media source`() = runTest {

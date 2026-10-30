@@ -20,12 +20,12 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.merge
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -113,24 +113,14 @@ class DownloadRunner(
     suspend fun run(patience: Duration = Duration.ZERO, onProgress: suspend (Progress) -> Unit = {}): Next {
         val started = timeSource.markNow()
         var failures = 0
+
         /** Waits for [reason] to pass; false when the patience is used up and the run should end. */
         suspend fun stall(reason: Next, waiting: Waiting, title: String): Boolean {
             val left = patience - started.elapsedNow()
             if (left <= Duration.ZERO) return false
             onProgress(Progress("", title, 0, null, 0, waiting))
-            withTimeoutOrNull(left) {
-                merge(
-                    flow {
-                        when (reason) {
-                            Next.WhenConnected -> network.state.first { it != NetworkState.None }
-                            Next.WhenUnmetered -> network.state.first { it == NetworkState.Unmetered }
-                            else -> delay((RETRY_BACKOFF * (1 shl failures.coerceAtMost(MAX_BACKOFF_STEPS))).coerceAtMost(left))
-                        }
-                        emit(Unit)
-                    },
-                    wake.signal,
-                ).first()
-            }
+            val backoff = (RETRY_BACKOFF * (1 shl failures.coerceAtMost(MAX_BACKOFF_STEPS))).coerceAtMost(left)
+            withTimeoutOrNull(left) { awaitChange(reason, backoff) }
             // Looks again whether something changed or the wait ran out; with no patience left the next stall ends the run.
             return true
         }
@@ -138,29 +128,18 @@ class DownloadRunner(
             val pending = dao.inStates(ACTIVE_DOWNLOAD_STATES)
             if (pending.isEmpty()) return Next.Done
             val title = pending.first().let { dao.findItem(it.serverId, it.userId, it.itemId)?.title.orEmpty() }
-            val net = network.state.value
-            var blocked: Next? = null
-            val allowed = if (net == NetworkState.None) {
-                pending.forEach { markWaiting(it) }
-                blocked = Next.WhenConnected
-                emptyList()
-            } else {
-                pending.filter { net == NetworkState.Unmetered || allowsMobile(it) }.also { allowed ->
-                    pending.filterNot { it in allowed }.forEach {
-                        markWaiting(it)
-                        blocked = Next.WhenUnmetered
-                    }
-                }
-            }
-            val chosen = allowed.firstOrNull()
+            val selection = select(pending, network.state.value)
+            val chosen = selection.allowed.firstOrNull()
             if (chosen == null) {
-                val reason = blocked ?: return Next.Done
+                val reason = selection.blocked ?: return Next.Done
                 if (!stall(reason, if (reason == Next.WhenConnected) Waiting.Network else Waiting.Wifi, title)) return reason
                 continue
             }
-            when (transfer(chosen, allowed.size, onProgress)) {
+            when (transfer(chosen, selection.allowed.size, onProgress)) {
                 Outcome.Finished -> failures = 0
+
                 Outcome.Stopped -> Unit
+
                 Outcome.Waiting, Outcome.Retry -> {
                     val lost = network.state.value == NetworkState.None
                     val reason = if (lost) Next.WhenConnected else Next.Retry
@@ -170,6 +149,37 @@ class DownloadRunner(
             }
         }
     }
+
+    // What may run on the network there is, and what the rest waits for; those that wait are marked so
+    private suspend fun select(pending: List<DownloadEntity>, net: NetworkState): Selection {
+        if (net == NetworkState.None) {
+            pending.forEach { markWaiting(it) }
+            return Selection(emptyList(), blocked = Next.WhenConnected)
+        }
+
+        val allowed = pending.filter { net == NetworkState.Unmetered || allowsMobile(it) }
+        val held = pending.filterNot { it in allowed }
+        held.forEach { markWaiting(it) }
+
+        return Selection(allowed, blocked = Next.WhenUnmetered.takeIf { held.isNotEmpty() })
+    }
+
+    // Returns when [reason] has passed or something woke the runner
+    private suspend fun awaitChange(reason: Next, backoff: Duration) {
+        merge(
+            flow {
+                when (reason) {
+                    Next.WhenConnected -> network.state.first { it != NetworkState.None }
+                    Next.WhenUnmetered -> network.state.first { it == NetworkState.Unmetered }
+                    else -> delay(backoff)
+                }
+                emit(Unit)
+            },
+            wake.signal,
+        ).first()
+    }
+
+    private class Selection(val allowed: List<DownloadEntity>, val blocked: Next?)
 
     private suspend fun transfer(row: DownloadEntity, remaining: Int, onProgress: suspend (Progress) -> Unit): Outcome = coroutineScope {
         setState(row, DOWNLOAD_RUNNING)
@@ -215,7 +225,7 @@ class DownloadRunner(
             return downloadVideo()
         }
 
-        /** The storage limit and the free space, before any bytes are fetched. */
+        // The storage limit and the free space, before any bytes are fetched.
         private suspend fun checkStorageRules(): DownloadFailure? {
             val total = row.bytesTotal.takeIf { it > 0 } ?: return null
             val need = (total - files.length(part)).coerceAtLeast(0)
@@ -227,7 +237,7 @@ class DownloadRunner(
             return null
         }
 
-        /** The pictures and subtitle files of the item, its season and its show. Null when done; else how this download ends. */
+        // The pictures and subtitle files of the item, its season and its show. Null when done; else how this download ends.
         private suspend fun fetchAssets(): Outcome? {
             val pending = listOfNotNull(row.itemId, row.seasonId, row.seriesId).distinct().mapNotNull { id ->
                 dao.findItem(row.serverId, row.userId, id)?.let { OfflineSnapshot.decode(it.snapshotJson) }
@@ -249,6 +259,7 @@ class DownloadRunner(
                     attempt.value.forEach { (id, snapshot) -> dao.setSnapshot(row.serverId, row.userId, id, snapshot.encode()) }
                     null
                 }
+
                 else -> end(attempt)
             }
         }
@@ -261,6 +272,7 @@ class DownloadRunner(
                 val file = "$dir/images/${role.replace(':', '-')}.img"
                 when (val result = fetchFile(api, path, file)) {
                     is ApiResult.Success -> images[role] = file
+
                     // A picture the server no longer has is left out, not a reason to stop.
                     is ApiResult.Failure -> if (result.error != ApiError.NotFound) return result
                 }
@@ -301,17 +313,22 @@ class DownloadRunner(
                         if (expected != null && length != expected) return waiting()
                         return complete(length)
                     }
+
                     is Attempt.Sink -> when (attempt.cause) {
                         is StopTransfer -> return Outcome.Stopped
+
                         is NoSpaceLeft -> return fail(DownloadFailure.NoSpace)
+
                         is RestartRequired -> {
                             // The file changed on the server since the first bytes: what is here belongs to the old one.
                             files.delete(part)
                             dao.setValidator(row.serverId, row.userId, row.itemId, null)
                             if (++restarts > 1) return fail(DownloadFailure.Unknown)
                         }
+
                         else -> return fail(if (files.freeBytes() < FREE_SPACE_MARGIN) DownloadFailure.NoSpace else DownloadFailure.Unknown)
                     }
+
                     Attempt.Unsatisfiable -> {
                         // The range starts at or after the end: the part is the whole file, or it is wrong.
                         val length = files.length(part)
@@ -319,12 +336,13 @@ class DownloadRunner(
                         files.delete(part)
                         if (++restarts > 1) return fail(DownloadFailure.Unknown)
                     }
+
                     else -> return end(attempt)
                 }
             }
         }
 
-        /** The video through the platform's own transfer: it may have finished while the app was away, and otherwise is started or picked up. */
+        // The video through the platform's own transfer: it may have finished while the app was away, and otherwise is started or picked up.
         private suspend fun downloadExternally(transfer: ExternalVideoTransfer): Outcome {
             val known = row.bytesTotal.takeIf { it > 0 }
             if (known != null && files.length(part) == known) return complete(known)
@@ -371,18 +389,22 @@ class DownloadRunner(
                 }
                 when (result) {
                     VideoConversion.NotNeeded -> Unit
+
                     VideoConversion.Converted -> {
                         isConverted = true
                         extension = "mp4"
                     }
+
                     VideoConversion.Stopped -> {
                         files.delete(converted)
                         return Outcome.Stopped
                     }
+
                     VideoConversion.Unsupported -> {
                         files.delete(part)
                         return fail(DownloadFailure.Unplayable)
                     }
+
                     VideoConversion.Failed -> {
                         files.delete(converted)
                         return fail(DownloadFailure.Unknown)
@@ -410,39 +432,48 @@ class DownloadRunner(
             return Outcome.Waiting
         }
 
-        /** How a download ends for an [Attempt] that did not succeed. */
+        // How a download ends for an [Attempt] that did not succeed.
         private suspend fun end(attempt: Attempt<*>): Outcome = when (attempt) {
             is Attempt.Ok -> Outcome.Finished
+
             is Attempt.Fail -> fail(attempt.failure)
+
             is Attempt.Sink -> if (attempt.cause is StopTransfer) Outcome.Stopped else fail(DownloadFailure.Unknown)
+
             Attempt.Waiting -> waiting()
+
             Attempt.ServerError -> {
                 setState(row, DOWNLOAD_QUEUED)
                 Outcome.Retry
             }
+
             Attempt.Unsatisfiable -> fail(DownloadFailure.Unknown)
         }
 
-        /** Runs [call] as the download's profile, on whichever of the server's addresses answers. */
+        // Runs [call] as the download's profile, on whichever of the server's addresses answers.
         private suspend fun <T> attempt(call: suspend (JellyfinApi) -> ApiResult<T>): Attempt<T> = try {
             when (val answer = connection.asProfile(row.serverId, row.userId, call)) {
                 ProfileCall.NoSession -> Attempt.Fail(DownloadFailure.SignIn)
+
                 ProfileCall.Unreachable -> Attempt.Waiting
+
                 is ProfileCall.Answered -> when (val result = answer.result) {
                     is ApiResult.Success -> Attempt.Ok(result.value)
-                    is ApiResult.Failure -> when (val error = result.error) {
-                        ApiError.Network -> Attempt.Waiting
-                        ApiError.Unauthorized -> Attempt.Fail(DownloadFailure.SignIn)
-                        ApiError.Forbidden -> Attempt.Fail(DownloadFailure.Forbidden)
-                        ApiError.NotFound -> Attempt.Fail(DownloadFailure.NotOnServer)
-                        is ApiError.Server -> Attempt.ServerError
-                        is ApiError.Unexpected -> if (error.status == RANGE_NOT_SATISFIABLE) Attempt.Unsatisfiable else Attempt.Fail(DownloadFailure.Unknown)
-                        ApiError.BadResponse -> Attempt.Fail(DownloadFailure.Unknown)
-                    }
+                    is ApiResult.Failure -> classify(result.error)
                 }
             }
         } catch (e: SinkFailure) {
             Attempt.Sink(e.cause)
+        }
+
+        private fun classify(error: ApiError): Attempt<Nothing> = when (error) {
+            ApiError.Network -> Attempt.Waiting
+            ApiError.Unauthorized -> Attempt.Fail(DownloadFailure.SignIn)
+            ApiError.Forbidden -> Attempt.Fail(DownloadFailure.Forbidden)
+            ApiError.NotFound -> Attempt.Fail(DownloadFailure.NotOnServer)
+            is ApiError.Server -> Attempt.ServerError
+            is ApiError.Unexpected -> if (error.status == RANGE_NOT_SATISFIABLE) Attempt.Unsatisfiable else Attempt.Fail(DownloadFailure.Unknown)
+            ApiError.BadResponse -> Attempt.Fail(DownloadFailure.Unknown)
         }
 
         /** Writes the video to the `.part` file, keeps the database and the notification up to date, and obeys [stop]. */
@@ -458,9 +489,7 @@ class DownloadRunner(
                 output?.close()
                 output = null
                 val offset = files.length(part)
-                if (start.resumed && offset > 0 && validator != null && start.validator != null && start.validator != validator) {
-                    throw RestartRequired()
-                }
+                if (start.resumed && offset > 0 && changedSince(start)) throw RestartRequired()
                 val append = start.resumed && offset > 0
                 output = files.open(part, append)
                 done = if (append) offset else 0
@@ -469,6 +498,14 @@ class DownloadRunner(
                 total?.let { if (files.freeBytes() < it - done + FREE_SPACE_MARGIN) throw NoSpaceLeft() }
                 dao.setValidator(row.serverId, row.userId, row.itemId, validator)
                 report()
+            }
+
+            // The server's copy is no longer the one the saved part came from
+            private fun changedSince(start: DownloadStart): Boolean {
+                val saved = validator ?: return false
+                val now = start.validator ?: return false
+
+                return now != saved
             }
 
             override suspend fun write(bytes: ByteArray, count: Int) {
@@ -531,17 +568,23 @@ class DownloadRunner(
 
     private sealed interface Attempt<out T> {
         class Ok<T>(val value: T) : Attempt<T>
+
         class Fail(val failure: DownloadFailure) : Attempt<Nothing>
 
         /** The sink ended the transfer, with [cause]. */
         class Sink(val cause: Throwable?) : Attempt<Nothing>
+
         data object Waiting : Attempt<Nothing>
+
         data object ServerError : Attempt<Nothing>
+
         data object Unsatisfiable : Attempt<Nothing>
     }
 
     private class StopTransfer : Exception("The download was stopped.")
+
     private class RestartRequired : Exception("The file changed on the server.")
+
     private class NoSpaceLeft : Exception("There is no room for the file.")
 
     /** Writes one small file in one go, starting it empty. */
@@ -562,15 +605,13 @@ class DownloadRunner(
         }
     }
 
-    private suspend fun setState(row: DownloadEntity, state: String) =
-        dao.setState(row.serverId, row.userId, row.itemId, state, null, clock.now().toEpochMilliseconds())
+    private suspend fun setState(row: DownloadEntity, state: String) = dao.setState(row.serverId, row.userId, row.itemId, state, null, clock.now().toEpochMilliseconds())
 
     private suspend fun markWaiting(row: DownloadEntity) {
         if (row.state != DOWNLOAD_WAITING_FOR_NETWORK) setState(row, DOWNLOAD_WAITING_FOR_NETWORK)
     }
 
-    private suspend fun allowsMobile(row: DownloadEntity): Boolean =
-        accounts.observeDownloadOverMobile(row.serverId, row.userId).first() == true
+    private suspend fun allowsMobile(row: DownloadEntity): Boolean = accounts.observeDownloadOverMobile(row.serverId, row.userId).first() == true
 
     private companion object {
         const val BYTES_PER_MB = 1_000_000L

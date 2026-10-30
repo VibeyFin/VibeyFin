@@ -41,6 +41,8 @@ Targets: `androidTarget`, `iosArm64`, `iosSimulatorArm64`.
 - iOS download remux: a small LGPL FFmpeg (n9.0.2, no GPL parts, static) built from source by `scripts/ffmpeg/build-ios.sh` (an Xcode
   build phase runs it once; output in the git-ignored `iosApp/Vendor/`). It only rewrites a downloaded MKV and similar as MP4 for AVPlayer.
   After rebuilding it by hand, `touch iosApp/iosApp/Remux/FFRemux.c` so Xcode relinks.
+- Lint: ktlint and detekt for Kotlin (`./gradlew ktlintCheck detekt`, rules in `.editorconfig` and `config/detekt/`), SwiftLint for
+  Swift (`swiftlint lint --strict`, rules in `.swiftlint.yml`). CI runs them in parallel jobs. No baselines: fix the finding.
 - Tests: `kotlin.test`, `kotlinx-coroutines-test`, Ktor `MockEngine`.
 
 **Versions:** always resolve the latest *stable* release of each dependency yourself before adding

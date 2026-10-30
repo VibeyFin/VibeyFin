@@ -59,13 +59,12 @@ private class FakeJellyfinUdp(private val answer: (question: String, count: Int)
     }
 }
 
-private fun reply(id: String, name: String = "Home", address: String = "http://192.168.1.20:8096") =
-    """{"Address":"$address","Id":"$id","Name":"$name","EndpointAddress":null}"""
+private fun reply(id: String, name: String = "Home", address: String = "http://192.168.1.20:8096") = """{"Address":"$address","Id":"$id","Name":"$name","EndpointAddress":null}"""
 
 class UdpLanDiscoveryTest {
     private val lock = FakeMulticastLock()
 
-    /** Real sockets and real timeouts, so the test runs off the virtual-time scheduler. */
+    // Real sockets and real timeouts, so the test runs off the virtual-time scheduler.
     private fun runUdpTest(
         answer: (String, Int) -> List<String>,
         block: suspend (FakeJellyfinUdp) -> Unit,
@@ -81,7 +80,7 @@ class UdpLanDiscoveryTest {
         }
     }
 
-    /** Real sockets cannot run on virtual time, so the window is generous: a busy machine can hold a reply up for a few hundred ms. */
+    // Real sockets cannot run on virtual time, so the window is generous: a busy machine can hold a reply up for a few hundred ms.
     private fun discovery(server: FakeJellyfinUdp, window: Int = 1_500) = UdpLanDiscovery(
         multicastLock = lock,
         target = server.address,

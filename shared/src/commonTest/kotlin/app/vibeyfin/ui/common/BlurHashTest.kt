@@ -15,7 +15,7 @@ class BlurHashTest {
 
     private fun BlurHashImage.pixel(x: Int, y: Int) = pixels[y * width + x]
 
-    /** Each channel within one step: the reference rounds in double precision, this in float. */
+    // Each channel within one step: the reference rounds in double precision, this in float.
     private fun assertPixel(expected: Int, actual: Int, where: String) {
         for (shift in listOf(16, 8, 0)) {
             val e = (expected shr shift) and 0xFF

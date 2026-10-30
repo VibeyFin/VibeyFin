@@ -7,8 +7,7 @@ import kotlinx.serialization.Serializable
  * `GET /MediaSegments/{id}`: the intro, outro, recap and other parts the server has marked in an
  * item. Servers before 10.10 don't have it and answer 404.
  */
-suspend fun JellyfinApi.mediaSegments(itemId: String): ApiResult<MediaSegmentsResultDto> =
-    get("/MediaSegments/$itemId", retry = true)
+suspend fun JellyfinApi.mediaSegments(itemId: String): ApiResult<MediaSegmentsResultDto> = get("/MediaSegments/$itemId", retry = true)
 
 @Serializable
 data class MediaSegmentsResultDto(

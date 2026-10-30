@@ -86,6 +86,7 @@ class PersonViewModel(
                         shows = it.shows.copy(items = result.value.filter { item -> item.kind == ItemKind.Series }, loading = false),
                     )
                 }
+
                 is ApiResult.Failure -> content.update {
                     it.copy(
                         movies = it.movies.copy(loading = false),

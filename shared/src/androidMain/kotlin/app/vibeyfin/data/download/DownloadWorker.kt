@@ -33,14 +33,17 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val next = runner.run(patience = PATIENCE) { progress -> showNotification(progress) }
         return when (next) {
             DownloadRunner.Next.Done -> Result.success()
+
             DownloadRunner.Next.WhenUnmetered -> {
                 koin.get<DownloadScheduler>().schedule(DownloadNetwork.Unmetered)
                 Result.success()
             }
+
             DownloadRunner.Next.WhenConnected -> {
                 koin.get<DownloadScheduler>().schedule(DownloadNetwork.Any)
                 Result.success()
             }
+
             DownloadRunner.Next.Retry -> Result.retry()
         }
     }
@@ -49,7 +52,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val PATIENCE = 30.minutes
     }
 
-    /** Whether the worker is in the foreground; only then is the notification the service's own, and can be updated in place. */
+    // Whether the worker is in the foreground; only then is the notification the service's own, and can be updated in place.
     private var foreground = false
 
     private suspend fun showNotification(progress: DownloadRunner.Progress?) {

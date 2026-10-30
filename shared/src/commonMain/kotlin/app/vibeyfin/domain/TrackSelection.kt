@@ -14,22 +14,30 @@ fun chooseTracks(audio: List<PlaybackTrack>, subtitles: List<PlaybackTrack>, pre
     val audioLanguage = chosenAudio?.language
     val sorted = subtitles.sortedFor(prefs.subtitleLanguage)
     val preferred = prefs.subtitleLanguage
+
     fun PlaybackTrack.isPreferred() = preferred == null || sameLanguage(language, preferred)
     val byFlags = sorted.firstOrNull()
     val subtitle = when (prefs.subtitleMode) {
         SubtitleMode.None -> null
+
         SubtitleMode.Default -> byFlags
+
         SubtitleMode.Always -> sorted.firstOrNull { !it.forced && it.isPreferred() } ?: byFlags
+
         SubtitleMode.Smart ->
-            if (preferred == null || !sameLanguage(audioLanguage, preferred)) sorted.firstOrNull { it.isPreferred() } ?: byFlags
-            else sorted.firstOrNull { it.forced }
+            if (preferred == null || !sameLanguage(audioLanguage, preferred)) {
+                sorted.firstOrNull { it.isPreferred() } ?: byFlags
+            } else {
+                sorted.firstOrNull { it.forced }
+            }
+
         SubtitleMode.OnlyForced -> sorted.firstOrNull { it.forced && preferred != null && sameLanguage(it.language, preferred) }
             ?: sorted.firstOrNull { it.forced && it.language == null }
     }
     return TrackChoice(chosenAudio?.index, subtitle?.index)
 }
 
-/** In the preferred [language] first, then the file's default, then the file's order. */
+// In the preferred [language] first, then the file's default, then the file's order.
 private fun List<PlaybackTrack>.sortedFor(language: String?): List<PlaybackTrack> = sortedWith(
     compareBy<PlaybackTrack> { language == null || !sameLanguage(it.language, language) }
         .thenBy { !it.default }
@@ -44,7 +52,7 @@ internal fun sameLanguage(a: String?, b: String?): Boolean {
     return x == y || BIBLIOGRAPHIC_TO_TERMINOLOGY[x] == y || BIBLIOGRAPHIC_TO_TERMINOLOGY[y] == x
 }
 
-/** The languages ISO 639-2 gives two codes: the bibliographic one and the terminology one. */
+// The languages ISO 639-2 gives two codes: the bibliographic one and the terminology one.
 private val BIBLIOGRAPHIC_TO_TERMINOLOGY = mapOf(
     "alb" to "sqi", "arm" to "hye", "baq" to "eus", "bur" to "mya", "chi" to "zho", "cze" to "ces", "dut" to "nld",
     "fre" to "fra", "geo" to "kat", "ger" to "deu", "gre" to "ell", "ice" to "isl", "mac" to "mkd", "mao" to "mri",

@@ -63,11 +63,10 @@ internal fun PlaybackPlan.toDiagnostics(audioIndex: Int?): PlaybackDiagnostics =
 )
 
 /** The `TranscodeReasons` in the query of a stream URL (`VideoCodecNotSupported`, ...); empty when it names none. */
-internal fun transcodeReasons(url: String): List<String> =
-    url.substringAfter('?', "")
-        .split('&')
-        .firstOrNull { it.substringBefore('=').equals("TranscodeReasons", ignoreCase = true) }
-        ?.substringAfter('=', "")
-        ?.split(',')
-        ?.filter { it.isNotEmpty() }
-        .orEmpty()
+internal fun transcodeReasons(url: String): List<String> = url.substringAfter('?', "")
+    .split('&')
+    .firstOrNull { it.substringBefore('=').equals("TranscodeReasons", ignoreCase = true) }
+    ?.substringAfter('=', "")
+    ?.split(',')
+    ?.filter { it.isNotEmpty() }
+    .orEmpty()

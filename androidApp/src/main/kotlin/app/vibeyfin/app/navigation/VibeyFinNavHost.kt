@@ -2,9 +2,7 @@
 
 package app.vibeyfin.app.navigation
 
-import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
-import androidx.compose.runtime.getValue
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
@@ -14,8 +12,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -23,10 +24,17 @@ import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraphBuilder
@@ -39,62 +47,57 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import app.vibeyfin.app.addserver.AddServerRoute
 import app.vibeyfin.app.children.ChildrenRoute
-import app.vibeyfin.app.components.TileMenuSheet
-import org.koin.compose.koinInject
-import app.vibeyfin.ui.banner.AppBannerViewModel
-import app.vibeyfin.domain.OfflineMode
-import app.vibeyfin.app.home.OfflineHomeRoute
-import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.Alignment
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.Box
 import app.vibeyfin.app.components.AppBanner
+import app.vibeyfin.app.components.TileMenuSheet
+import app.vibeyfin.app.downloads.DownloadConfirmDialog
 import app.vibeyfin.app.downloads.DownloadsRoute
-import app.vibeyfin.app.person.PersonRoute
-import app.vibeyfin.ui.item.Trailer
-import app.vibeyfin.ui.tile.TileMenuViewModel
-import org.koin.androidx.compose.koinViewModel
-import app.vibeyfin.app.search.SearchRoute
-import app.vibeyfin.domain.model.ItemKind
-import app.vibeyfin.domain.model.SearchKind
+import app.vibeyfin.app.downloads.RemoveConfirmDialog
+import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
 import app.vibeyfin.app.filtered.FilteredListRoute
 import app.vibeyfin.app.home.HomeRoute
+import app.vibeyfin.app.home.OfflineHomeRoute
 import app.vibeyfin.app.item.ItemRoute
+import app.vibeyfin.app.person.PersonRoute
 import app.vibeyfin.app.player.PlayerRoute
+import app.vibeyfin.app.search.SearchRoute
 import app.vibeyfin.app.servers.ServersRoute
 import app.vibeyfin.app.settings.SettingsRoute
 import app.vibeyfin.app.settings.pageIdOrRoot
 import app.vibeyfin.app.startup.StartupRoute
 import app.vibeyfin.app.theme.isTabletWidth
 import app.vibeyfin.app.whoswatching.WhoIsWatchingRoute
-import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.domain.HomeFilter
+import app.vibeyfin.domain.OfflineMode
 import app.vibeyfin.domain.StartDestination
+import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
+import app.vibeyfin.domain.model.ProfileRef
+import app.vibeyfin.domain.model.SearchKind
+import app.vibeyfin.ui.banner.AppBannerViewModel
 import app.vibeyfin.ui.home.HomeExit
+import app.vibeyfin.ui.item.Trailer
 import app.vibeyfin.ui.notifications.NotificationOpenViewModel
 import app.vibeyfin.ui.notifications.NotificationRoute
 import app.vibeyfin.ui.settings.SettingsPageId
+import app.vibeyfin.ui.tile.TileMenuViewModel
+import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 private const val SLIDE_MS = 180
 
-/** The detail page fades in over the shared poster-to-picture transition. */
 private const val DETAIL_FADE_MS = 300
 
-/** The screen underneath fades out a little quicker than the page fades in, so it dims first and the page comes up out of the dark. */
+// Quicker than the page fades in, so it dims first and the page rises out of the dark
 private const val DETAIL_UNDER_FADE_MS = 200
 
-/** Switching tabs is a quick cross-fade, with no scale: it is a switch, not opening something. */
+// A switch, not an opening: cross-fade with no scale
 private const val TAB_FADE_MS = 110
 
-/** Screens slide a fifth of their width, not all of it: enough to show direction without a long wait. */
 private const val SLIDE_FRACTION = 5
 
-/** Opening a screen grows it in from slightly smaller, as if opening the thing that was tapped. */
 private const val OPEN_START_SCALE = 0.92f
 
-/** The player fades in and grows a little from the page behind it, so pressing Play is felt; kept gentle so it does not fight the rotation. */
+// Gentle, so it does not fight the rotation
 private const val PLAYER_FADE_MS = 320
 
 private const val PLAYER_START_SCALE = 0.94f
@@ -105,316 +108,152 @@ private fun NavBackStackEntry.isTabRoot() = destination.hasRoute<Home>() || dest
 
 private fun NavBackStackEntry.isDetail() = destination.hasRoute<Item>()
 
-private fun enter(target: NavBackStackEntry) =
-    if (target.isDetail()) {
-        // The poster grows into the page's picture (a shared element), so the page itself only fades in under it.
-        fadeIn(tween(DETAIL_FADE_MS))
-    } else if (target.isTabRoot()) {
-        fadeIn(tween(TAB_FADE_MS))
-    } else if (target.opensPlayer()) {
-        fadeIn(tween(PLAYER_FADE_MS)) + scaleIn(tween(PLAYER_FADE_MS), initialScale = PLAYER_START_SCALE)
-    } else {
-        scaleIn(tween(SLIDE_MS), initialScale = OPEN_START_SCALE) + fadeIn(tween(SLIDE_MS))
-    }
+private fun enter(target: NavBackStackEntry) = if (target.isDetail()) {
+    // The poster grows into the page's picture (a shared element), so the page itself only fades in under it
+    fadeIn(tween(DETAIL_FADE_MS))
+} else if (target.isTabRoot()) {
+    fadeIn(tween(TAB_FADE_MS))
+} else if (target.opensPlayer()) {
+    fadeIn(tween(PLAYER_FADE_MS)) + scaleIn(tween(PLAYER_FADE_MS), initialScale = PLAYER_START_SCALE)
+} else {
+    scaleIn(tween(SLIDE_MS), initialScale = OPEN_START_SCALE) + fadeIn(tween(SLIDE_MS))
+}
 
-/** The screen underneath stays put and fades out behind the one opening over it. */
-private fun exit(target: NavBackStackEntry) = fadeOut(tween(if (target.isDetail()) DETAIL_UNDER_FADE_MS else if (target.isTabRoot()) TAB_FADE_MS else if (target.opensPlayer()) PLAYER_FADE_MS else SLIDE_MS))
+private fun exit(target: NavBackStackEntry) = fadeOut(
+    tween(
+        if (target.isDetail()) {
+            DETAIL_UNDER_FADE_MS
+        } else if (target.isTabRoot()) {
+            TAB_FADE_MS
+        } else if (target.opensPlayer()) {
+            PLAYER_FADE_MS
+        } else {
+            SLIDE_MS
+        },
+    ),
+)
 
-private fun popEnter(leaving: NavBackStackEntry) =
-    if (leaving.isDetail()) fadeIn(tween(DETAIL_FADE_MS)) else slideInHorizontally(tween(SLIDE_MS)) { -it / SLIDE_FRACTION } + fadeIn(tween(SLIDE_MS))
+private fun popEnter(leaving: NavBackStackEntry) = if (leaving.isDetail()) fadeIn(tween(DETAIL_FADE_MS)) else slideInHorizontally(tween(SLIDE_MS)) { -it / SLIDE_FRACTION } + fadeIn(tween(SLIDE_MS))
 
-private fun popExit(leaving: NavBackStackEntry) =
-    if (leaving.isDetail()) fadeOut(tween(DETAIL_FADE_MS)) else slideOutHorizontally(tween(SLIDE_MS)) { it / SLIDE_FRACTION } + fadeOut(tween(SLIDE_MS))
+private fun popExit(leaving: NavBackStackEntry) = if (leaving.isDetail()) fadeOut(tween(DETAIL_FADE_MS)) else slideOutHorizontally(tween(SLIDE_MS)) { it / SLIDE_FRACTION } + fadeOut(tween(SLIDE_MS))
 
 @Composable
 fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
     val navController = rememberNavController()
-    // A folder opens its list; anything else opens its page. Both open inside the tab the user is on.
-    val open: (MediaItem) -> Unit = { item ->
-        navController.navigate(if (item.opensList) Children(item.id, item.title, item.kind == ItemKind.Collection, item.backdropUrl ?: item.posterUrl) else Item(item.id))
-    }
+
+    val open: (MediaItem) -> Unit = navController::openItem
+
     // Leaves the tabs and everything opened from them. Servers goes underneath "Who's watching?" so
     // back from it has somewhere to go. The tabs' saved back stacks belong to this profile: dropped.
     val leave: (HomeExit) -> Unit = { exit ->
         navController.navigate(Servers) { popUpTo(navController.graph.id) }
         Tab.entries.forEach { navController.clearBackStack(it.graph) }
+
         if (exit is HomeExit.WhoIsWatching) navController.navigate(WhoIsWatching(exit.serverId))
     }
-    // Offline (no network, or the switch in Settings): three tabs, and what is on the device. The banner says so, and how to leave it.
+
     val appOffline: OfflineMode = koinInject()
     val offline by appOffline.isOffline.collectAsStateWithLifecycle()
     val bannerModel: AppBannerViewModel = koinViewModel()
     val banner by bannerModel.banner.collectAsStateWithLifecycle()
-    // Going offline is said once, in the system's own toast, not a strip over the page.
-    val toast by bannerModel.toast.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    LaunchedEffect(toast) {
-        val message = toast ?: return@LaunchedEffect
-        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-        bannerModel.onToastShown()
-    }
+
+    ToastEffect(bannerModel)
+
     val backStackEntry by navController.currentBackStackEntryAsState()
-    // The bar belongs to the three tabs and what opens from them; sign-in, settings and the player are without it.
+
+    // The bar belongs to the three tabs and what opens from them; sign-in, settings and the player are without it
     val currentTab = backStackEntry?.destination?.hierarchy?.let { path ->
         Tab.entries.firstOrNull { tab -> path.any { it.hasRoute(tab.graph::class) } }
     }
+
     val select: (Tab) -> Unit = { tab ->
         if (tab == currentTab) {
-            // Tapping the tab you are on goes back to its root.
             navController.popBackStack(tab.root, inclusive = false)
         } else {
             navController.navigate(tab.graph) {
-                // Everything above the root graph is a tab's stack: keep it for when the tab returns.
+                // Everything above the root graph is a tab's stack: keep it for when the tab returns
                 popUpTo(navController.graph.id) { saveState = true }
+
                 launchSingleTop = true
                 restoreState = true
             }
         }
     }
-    // Library needs the server: going offline while on it moves to Home (what the bar still offers).
+
+    // Library needs the server: going offline while on it moves to Home (what the bar still offers)
     LaunchedEffect(offline, currentTab) { if (offline && currentTab == Tab.Library) select(Tab.Home) }
-    // Back from the root of Library or Downloads goes to Home, as on any app with a bar, not out of the app.
-    // A tapped new-title notification is routed once the app is inside a profile, never during startup or "Who's watching?".
-    val inApp = backStackEntry?.destination?.let { destination ->
-        !(destination.hasRoute<Startup>() || destination.hasRoute<Servers>() || destination.hasRoute<WhoIsWatching>() || destination.hasRoute<AddServer>())
-    } == true
-    LaunchedEffect(inApp) { notificationOpen.onInApp(inApp) }
-    val notificationRoute by notificationOpen.route.collectAsStateWithLifecycle()
-    LaunchedEffect(notificationRoute) {
-        when (val route = notificationRoute ?: return@LaunchedEffect) {
-            is NotificationRoute.Item -> {
-                // The item opens inside the tab the user is on, or inside Home from the player or Settings.
-                if (currentTab == null) select(Tab.Home)
-                navController.navigate(Item(route.itemId))
-            }
-            is NotificationRoute.WhoIsWatching -> leave(HomeExit.WhoIsWatching(route.serverId))
-        }
-        notificationOpen.onRouted()
-    }
+
+    NotificationRouteEffect(notificationOpen, backStackEntry, currentTab, select, leave, navController)
+
+    // Back from the root of Library or Downloads goes to Home, as on any app with a bar, not out of the app
     val atOtherRoot = currentTab != null && currentTab != Tab.Home && backStackEntry?.destination?.hasRoute(currentTab.root::class) == true
+
     BackHandler(enabled = atOtherRoot) { select(Tab.Home) }
-    // The player is the whole screen: no inset of its own for the camera cut-out, so no bar of the page's colour beside the picture
+
+    // The player is the whole screen: no inset of its own for the camera cut-out, so no bar of the page's color beside the picture
     // (a foldable's cover screen, a phone turned sideways), and a black window behind it.
     val onPlayer = backStackEntry?.opensPlayer() == true
     val tabs = Tab.entries.filter { !offline || it != Tab.Library }
+
     Scaffold(
-        containerColor = if (onPlayer) androidx.compose.ui.graphics.Color.Black else MaterialTheme.colorScheme.background,
+        containerColor = if (onPlayer) Color.Black else MaterialTheme.colorScheme.background,
         contentWindowInsets = if (onPlayer) WindowInsets(0, 0, 0, 0) else ScaffoldDefaults.contentWindowInsets,
     ) { padding ->
-        // The long-press menu of a poster, wherever the poster is: Details, Trailer (when the title has one) and My List.
         val tileMenu: TileMenuViewModel = koinViewModel()
-        val menu by tileMenu.uiState.collectAsStateWithLifecycle()
-        val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
-        // A trailer on the web opens straight in YouTube (its app when it is installed), not in a player of ours.
+        val uriHandler = LocalUriHandler.current
         val openTrailerUrl: (String) -> Unit = { url -> uriHandler.openUri(url) }
-        TileMenuSheet(
-            state = menu,
-            onDetails = { val item = menu.item; tileMenu.onClose(); if (item != null) open(item) },
-            onTrailer = { trailer ->
-                tileMenu.onClose()
-                when (trailer) {
-                    is Trailer.Local -> navController.navigate(Player(trailer.itemId))
-                    is Trailer.Remote -> openTrailerUrl(trailer.url)
-                }
-            },
-            onMyList = tileMenu::onToggleFavorite,
-            onDownload = tileMenu::onDownload,
-            onDownloadAction = tileMenu::onDownloadAction,
-            onDismiss = tileMenu::onClose,
-        )
-        // The questions the menu's Download row can raise: how many episodes of a show, and before a download is deleted.
-        val ensureNotifications = app.vibeyfin.app.downloads.rememberDownloadNotificationPermission()
-        menu.downloadPrompt?.let { prompt ->
-            app.vibeyfin.app.downloads.DownloadConfirmDialog(
-                prompt,
-                onToggleUnwatched = tileMenu::onToggleUnwatchedOnly,
-                onConfirm = {
-                    ensureNotifications()
-                    tileMenu.onConfirmDownload()
-                },
-                onDismiss = tileMenu::onDismissDownloadPrompt,
-            )
-        }
-        menu.removePrompt?.let { app.vibeyfin.app.downloads.RemoveConfirmDialog(it, onConfirm = tileMenu::onConfirmRemove, onDismiss = tileMenu::onDismissRemoval) }
+
+        TileMenuHost(tileMenu, navController, openTrailerUrl)
+
         Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
-        Column(Modifier.fillMaxSize()) {
-        if (!onPlayer) banner?.let { AppBanner(it, onAction = bannerModel::onAction) }
-        SharedTransitionLayout(Modifier.weight(1f)) {
-        CompositionLocalProvider(
-            LocalSharedTransitionScope provides this,
-            // The tabs' pages scroll under the floating bar and leave its space free at the bottom of their lists.
-            LocalBottomBarPadding provides if (currentTab != null) FLOATING_BAR_SPACE else 0.dp,
-            LocalProfileButton provides { ProfileButton(offline, onSettings = { navController.navigate(Settings) }, onExit = leave) },
-            LocalTileLongPress provides { item -> tileMenu.onOpen(item) },
-            LocalOpenTrailerUrl provides openTrailerUrl,
-        ) {
-        NavHost(
-            navController = navController,
-            modifier = Modifier,
-            startDestination = Startup,
-            enterTransition = { enter(targetState) },
-            exitTransition = { exit(targetState) },
-            popEnterTransition = { popEnter(initialState) },
-            popExitTransition = { popExit(initialState) },
-            // The back gesture scrubs these two. Left alone they are the library's own scale-down, which
-            // looks nothing like the slide the back button plays, so they are the pop pair again.
-            predictivePopEnterTransition = { popEnter(initialState) },
-            predictivePopExitTransition = { popExit(initialState) },
-        ) {
-            composable<Startup> {
-                StartupRoute(
-                    onDecided = { destination ->
-                        when (destination) {
-                            StartDestination.Servers ->
-                                navController.navigate(Servers) { popUpTo(Startup) { inclusive = true } }
-                            is StartDestination.WhoIsWatching -> {
-                                // Servers sits underneath so back from "Who's watching?" has somewhere to go.
-                                navController.navigate(Servers) { popUpTo(Startup) { inclusive = true } }
-                                navController.navigate(WhoIsWatching(destination.serverId, destination.pinFor?.userId))
-                            }
-                            StartDestination.Home ->
-                                navController.navigate(HomeTab) { popUpTo(Startup) { inclusive = true } }
+            Column(Modifier.fillMaxSize()) {
+                if (!onPlayer) banner?.let { AppBanner(it, onAction = bannerModel::onAction) }
+
+                SharedTransitionLayout(Modifier.weight(1f)) {
+                    CompositionLocalProvider(
+                        LocalSharedTransitionScope provides this,
+                        LocalBottomBarPadding provides if (currentTab != null) FLOATING_BAR_SPACE else 0.dp,
+                        LocalProfileButton provides { ProfileButton(offline, onSettings = { navController.navigate(Settings) }, onExit = leave) },
+                        LocalTileLongPress provides { item -> tileMenu.onOpen(item) },
+                        LocalOpenTrailerUrl provides openTrailerUrl,
+                    ) {
+                        NavHost(
+                            navController = navController,
+                            modifier = Modifier,
+                            startDestination = Startup,
+                            enterTransition = { enter(targetState) },
+                            exitTransition = { exit(targetState) },
+                            popEnterTransition = { popEnter(initialState) },
+                            popExitTransition = { popExit(initialState) },
+                            // The back gesture scrubs these two. Left alone they are the library's own scale-down, which
+                            // looks nothing like the slide the back button plays, so they are the pop pair again.
+                            predictivePopEnterTransition = { popEnter(initialState) },
+                            predictivePopExitTransition = { popExit(initialState) },
+                        ) {
+                            appGraph(navController, offline, select, leave)
                         }
-                    },
-                )
-            }
-            composable<Servers> {
-                ServersRoute(
-                    onOpenServer = { navController.navigate(WhoIsWatching(it.id)) },
-                    onAddServer = { navController.navigate(AddServer()) },
-                    onDiscoveredServer = { navController.navigate(AddServer(address = it.address)) },
-                )
-            }
-            composable<WhoIsWatching> { entry ->
-                val route = entry.toRoute<WhoIsWatching>()
-                WhoIsWatchingRoute(
-                    serverId = route.serverId,
-                    pinFor = route.pinUserId?.let { ProfileRef(route.serverId, it) },
-                    onBack = { navController.popBackStack() },
-                    // Home becomes the root: back from it leaves the app instead of returning to sign-in.
-                    onSignedIn = { navController.navigate(HomeTab) { popUpTo(Servers) { inclusive = true } } },
-                )
-            }
-            // One graph per tab, each with the screens that open inside it: the same Item and Children
-            // screens, once per graph, so each tab has its own back stack.
-            navigation<HomeTab>(startDestination = Home) {
-                sharedComposable<Home> {
-                    if (offline) {
-                        OfflineHomeRoute(
-                            onPlay = { itemId -> navController.navigate(Player(itemId)) },
-                            onOpenDownloads = { select(Tab.Downloads) },
-                            onExit = leave,
-                        )
-                    } else HomeRoute(
-                        onExit = leave,
-                        onOpen = open,
-                        // A Continue watching card plays at once; it never goes through the detail page.
-                        onPlay = { itemId -> navController.navigate(Player(itemId)) },
-                        onDetails = { itemId -> navController.navigate(Item(itemId)) },
-                        onOpenList = { navController.navigate(it.toRoute()) },
-                    )
+                    }
                 }
-                details(navController, leave)
             }
-            navigation<SearchTab>(startDestination = Search) {
-                sharedComposable<Search> {
-                    SearchRoute(
-                        onOpenResult = { result ->
-                            navController.navigate(
-                                when {
-                                    // Offline there is no page to open: what was found is on the device, so it plays.
-                                    offline && (result.kind == SearchKind.Movie || result.kind == SearchKind.Episode) -> Player(result.id)
-                                    result.kind == SearchKind.Person -> Person(result.id)
-                                    result.kind == SearchKind.Collection -> Children(result.id, result.title, collection = true, imageUrl = result.backdropUrl ?: result.imageUrl)
-                                    else -> Item(result.id)
-                                },
-                            )
-                        },
-                        onExit = leave,
-                    )
-                }
-                details(navController, leave)
-            }
-            navigation<LibraryTab>(startDestination = Library) {
-                sharedComposable<Library> {
-                    FilteredListRoute(filter = HomeFilter.Library, isRoot = true, onBack = {}, onOpen = open, onExit = leave)
-                }
-                details(navController, leave)
-            }
-            navigation<DownloadsTab>(startDestination = Downloads) {
-                sharedComposable<Downloads> {
-                    DownloadsRoute(
-                        onOpen = { itemId -> navController.navigate(Item(itemId)) },
-                        onPlay = { itemId -> navController.navigate(Player(itemId)) },
-                        offline = offline,
-                        onExit = leave,
-                    )
-                }
-                details(navController, leave)
-            }
-            composable<Player> { entry ->
-                val route = entry.toRoute<Player>()
-                PlayerRoute(
-                    itemId = route.itemId,
-                    startOver = route.startOver,
-                    onBack = { navController.popBackStack() },
-                    onExit = leave,
+
+            if (currentTab != null) {
+                FloatingNavigationBar(
+                    selected = currentTab,
+                    tabs = tabs,
+                    onSelect = select,
+                    modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }
-            composable<Settings> {
-                SettingsRoute(
-                    pageId = SettingsPageId.Root,
-                    onOpen = { navController.navigate(SettingsPageRoute(it.name)) },
-                    onExit = leave,
-                    onBack = { navController.popBackStack() },
-                    twoPane = isTabletWidth(),
-                )
-            }
-            composable<SettingsPageRoute> { entry ->
-                // An id this build does not know opens the root page instead of crashing.
-                val id = pageIdOrRoot(entry.toRoute<SettingsPageRoute>().id)
-                // One SettingsViewModel for the whole Settings flow, kept by the root entry: the PIN is asked once and
-                // leaving Settings discards it. Without a root entry on the stack (deep link, restored state) the page keeps its own.
-                val settingsRoot = remember(entry) { runCatching { navController.getBackStackEntry<Settings>() }.getOrNull() }
-                SettingsRoute(
-                    pageId = id,
-                    viewModel = koinViewModel(viewModelStoreOwner = settingsRoot ?: entry),
-                    onOpen = { navController.navigate(SettingsPageRoute(it.name)) },
-                    onExit = leave,
-                    onBack = { navController.popBackStack() },
-                )
-            }
-            composable<AddServer> { entry ->
-                AddServerRoute(
-                    initialAddress = entry.toRoute<AddServer>().address,
-                    onBack = { navController.popBackStack() },
-                    onSaved = { navController.popBackStack() },
-                )
-            }
-        }
-        }
-        }
-        }
-        // Over the content on phones and tablets alike, so the pages scroll behind it.
-        if (currentTab != null) {
-            FloatingNavigationBar(
-                selected = currentTab,
-                tabs = tabs,
-                onSelect = select,
-                modifier = Modifier.align(Alignment.BottomCenter),
-            )
-        }
         }
     }
 }
 
-/** What opens from a tab: a folder's list and an item's page, over the tab's own root. */
 private fun NavGraphBuilder.details(navController: NavHostController, leave: (HomeExit) -> Unit) {
-    val open: (MediaItem) -> Unit = { item ->
-        navController.navigate(if (item.opensList) Children(item.id, item.title, item.kind == ItemKind.Collection, item.backdropUrl ?: item.posterUrl) else Item(item.id))
-    }
+    val open: (MediaItem) -> Unit = navController::openItem
+
     sharedComposable<Children> { entry ->
         val route = entry.toRoute<Children>()
+
         ChildrenRoute(
             parentId = route.parentId,
             title = route.title,
@@ -426,6 +265,7 @@ private fun NavGraphBuilder.details(navController: NavHostController, leave: (Ho
             onExit = leave,
         )
     }
+
     sharedComposable<FilteredList> { entry ->
         FilteredListRoute(
             filter = entry.toRoute<FilteredList>().toFilter(),
@@ -434,12 +274,13 @@ private fun NavGraphBuilder.details(navController: NavHostController, leave: (Ho
             onExit = leave,
         )
     }
+
     sharedComposable<Item> { entry ->
         val itemId = entry.toRoute<Item>().itemId
+
         ItemRoute(
             itemId = itemId,
             onBack = { navController.popBackStack() },
-            // The item itself, or for a show its next episode, or an episode tapped in a season's list.
             onPlay = { playId, startOver -> navController.navigate(Player(playId, startOver)) },
             onOpen = open,
             onOpenSeries = { seriesId -> navController.navigate(Item(seriesId)) },
@@ -447,6 +288,7 @@ private fun NavGraphBuilder.details(navController: NavHostController, leave: (Ho
             onExit = leave,
         )
     }
+
     sharedComposable<Person> { entry ->
         PersonRoute(
             personId = entry.toRoute<Person>().personId,
@@ -456,3 +298,269 @@ private fun NavGraphBuilder.details(navController: NavHostController, leave: (Ho
         )
     }
 }
+
+@Composable
+private fun TileMenuHost(tileMenu: TileMenuViewModel, navController: NavHostController, openTrailerUrl: (String) -> Unit) {
+    val menu by tileMenu.uiState.collectAsStateWithLifecycle()
+    val ensureNotifications = rememberDownloadNotificationPermission()
+
+    TileMenuSheet(
+        state = menu,
+        onDetails = {
+            val item = menu.item
+
+            tileMenu.onClose()
+
+            if (item != null) navController.openItem(item)
+        },
+        onTrailer = { trailer ->
+            tileMenu.onClose()
+
+            when (trailer) {
+                is Trailer.Local -> navController.navigate(Player(trailer.itemId))
+                is Trailer.Remote -> openTrailerUrl(trailer.url)
+            }
+        },
+        onMyList = tileMenu::onToggleFavorite,
+        onDownload = tileMenu::onDownload,
+        onDownloadAction = tileMenu::onDownloadAction,
+        onDismiss = tileMenu::onClose,
+    )
+
+    menu.downloadPrompt?.let { prompt ->
+        DownloadConfirmDialog(
+            prompt,
+            onToggleUnwatched = tileMenu::onToggleUnwatchedOnly,
+            onConfirm = {
+                ensureNotifications()
+                tileMenu.onConfirmDownload()
+            },
+            onDismiss = tileMenu::onDismissDownloadPrompt,
+        )
+    }
+
+    menu.removePrompt?.let { RemoveConfirmDialog(it, onConfirm = tileMenu::onConfirmRemove, onDismiss = tileMenu::onDismissRemoval) }
+}
+
+private fun NavHostController.openItem(item: MediaItem) {
+    navigate(if (item.opensList) Children(item.id, item.title, item.kind == ItemKind.Collection, item.backdropUrl ?: item.posterUrl) else Item(item.id))
+}
+
+private fun NavGraphBuilder.appGraph(navController: NavHostController, offline: Boolean, select: (Tab) -> Unit, leave: (HomeExit) -> Unit) {
+    entryScreens(navController)
+    tabGraphs(navController, offline, select, leave)
+    appScreens(navController, leave)
+}
+
+// Startup and signing in: everything before the tabs
+private fun NavGraphBuilder.entryScreens(navController: NavHostController) {
+    composable<Startup> {
+        StartupRoute(
+            onDecided = { destination ->
+                when (destination) {
+                    StartDestination.Servers ->
+                        navController.navigate(Servers) { popUpTo(Startup) { inclusive = true } }
+
+                    is StartDestination.WhoIsWatching -> {
+                        // Servers sits underneath so back from "Who's watching?" has somewhere to go
+                        navController.navigate(Servers) { popUpTo(Startup) { inclusive = true } }
+                        navController.navigate(WhoIsWatching(destination.serverId, destination.pinFor?.userId))
+                    }
+
+                    StartDestination.Home ->
+                        navController.navigate(HomeTab) { popUpTo(Startup) { inclusive = true } }
+                }
+            },
+        )
+    }
+
+    composable<Servers> {
+        ServersRoute(
+            onOpenServer = { navController.navigate(WhoIsWatching(it.id)) },
+            onAddServer = { navController.navigate(AddServer()) },
+            onDiscoveredServer = { navController.navigate(AddServer(address = it.address)) },
+        )
+    }
+
+    composable<WhoIsWatching> { entry ->
+        val route = entry.toRoute<WhoIsWatching>()
+
+        WhoIsWatchingRoute(
+            serverId = route.serverId,
+            pinFor = route.pinUserId?.let { ProfileRef(route.serverId, it) },
+            onBack = { navController.popBackStack() },
+            // Home becomes the root: back from it leaves the app instead of returning to sign-in
+            onSignedIn = { navController.navigate(HomeTab) { popUpTo(Servers) { inclusive = true } } },
+        )
+    }
+
+    composable<AddServer> { entry ->
+        AddServerRoute(
+            initialAddress = entry.toRoute<AddServer>().address,
+            onBack = { navController.popBackStack() },
+            onSaved = { navController.popBackStack() },
+        )
+    }
+}
+
+private fun NavGraphBuilder.tabGraphs(navController: NavHostController, offline: Boolean, select: (Tab) -> Unit, leave: (HomeExit) -> Unit) {
+    val open: (MediaItem) -> Unit = navController::openItem
+
+    // One graph per tab, each with the screens that open inside it: the same Item and Children
+    // screens, once per graph, so each tab has its own back stack.
+    navigation<HomeTab>(startDestination = Home) {
+        sharedComposable<Home> {
+            if (offline) {
+                OfflineHomeRoute(
+                    onPlay = { itemId -> navController.navigate(Player(itemId)) },
+                    onOpenDownloads = { select(Tab.Downloads) },
+                    onExit = leave,
+                )
+            } else {
+                HomeRoute(
+                    onExit = leave,
+                    onOpen = open,
+                    onPlay = { itemId -> navController.navigate(Player(itemId)) },
+                    onDetails = { itemId -> navController.navigate(Item(itemId)) },
+                    onOpenList = { navController.navigate(it.toRoute()) },
+                )
+            }
+        }
+
+        details(navController, leave)
+    }
+
+    navigation<SearchTab>(startDestination = Search) {
+        sharedComposable<Search> {
+            SearchRoute(
+                onOpenResult = { result ->
+                    navController.navigate(
+                        when {
+                            // Offline there is no page to open: what was found is on the device, so it plays
+                            offline && (result.kind == SearchKind.Movie || result.kind == SearchKind.Episode) -> Player(result.id)
+
+                            result.kind == SearchKind.Person -> Person(result.id)
+
+                            result.kind == SearchKind.Collection -> Children(result.id, result.title, collection = true, imageUrl = result.backdropUrl ?: result.imageUrl)
+
+                            else -> Item(result.id)
+                        },
+                    )
+                },
+                onExit = leave,
+            )
+        }
+
+        details(navController, leave)
+    }
+
+    navigation<LibraryTab>(startDestination = Library) {
+        sharedComposable<Library> {
+            FilteredListRoute(filter = HomeFilter.Library, isRoot = true, onBack = {}, onOpen = open, onExit = leave)
+        }
+
+        details(navController, leave)
+    }
+
+    navigation<DownloadsTab>(startDestination = Downloads) {
+        sharedComposable<Downloads> {
+            DownloadsRoute(
+                onOpen = { itemId -> navController.navigate(Item(itemId)) },
+                onPlay = { itemId -> navController.navigate(Player(itemId)) },
+                offline = offline,
+                onExit = leave,
+            )
+        }
+
+        details(navController, leave)
+    }
+}
+
+// Playback and Settings, which are opened from the tabs and leave them
+private fun NavGraphBuilder.appScreens(navController: NavHostController, leave: (HomeExit) -> Unit) {
+    composable<Player> { entry ->
+        val route = entry.toRoute<Player>()
+
+        PlayerRoute(
+            itemId = route.itemId,
+            startOver = route.startOver,
+            onBack = { navController.popBackStack() },
+            onExit = leave,
+        )
+    }
+
+    composable<Settings> {
+        SettingsRoute(
+            pageId = SettingsPageId.Root,
+            onOpen = { navController.navigate(SettingsPageRoute(it.name)) },
+            onExit = leave,
+            onBack = { navController.popBackStack() },
+            twoPane = isTabletWidth(),
+        )
+    }
+
+    composable<SettingsPageRoute> { entry ->
+        // An id this build does not know opens the root page instead of crashing
+        val id = pageIdOrRoot(entry.toRoute<SettingsPageRoute>().id)
+
+        // One SettingsViewModel for the whole Settings flow, kept by the root entry: the PIN is asked once and
+        // leaving Settings discards it. Without a root entry on the stack (deep link, restored state) the page keeps its own.
+        val settingsRoot = remember(entry) { runCatching { navController.getBackStackEntry<Settings>() }.getOrNull() }
+
+        SettingsRoute(
+            pageId = id,
+            viewModel = koinViewModel(viewModelStoreOwner = settingsRoot ?: entry),
+            onOpen = { navController.navigate(SettingsPageRoute(it.name)) },
+            onExit = leave,
+            onBack = { navController.popBackStack() },
+        )
+    }
+}
+
+// Going offline is said once, in the system's own toast, not a strip over the page
+@Composable
+private fun ToastEffect(bannerModel: AppBannerViewModel) {
+    val toast by bannerModel.toast.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    LaunchedEffect(toast) {
+        val message = toast ?: return@LaunchedEffect
+
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        bannerModel.onToastShown()
+    }
+}
+
+// A tapped new-title notification is routed once the app is inside a profile, never during startup or "Who's watching?"
+@Composable
+private fun NotificationRouteEffect(
+    notificationOpen: NotificationOpenViewModel,
+    backStackEntry: NavBackStackEntry?,
+    currentTab: Tab?,
+    select: (Tab) -> Unit,
+    leave: (HomeExit) -> Unit,
+    navController: NavHostController,
+) {
+    val inApp = backStackEntry?.destination?.isInProfile() == true
+
+    LaunchedEffect(inApp) { notificationOpen.onInApp(inApp) }
+
+    val notificationRoute by notificationOpen.route.collectAsStateWithLifecycle()
+
+    LaunchedEffect(notificationRoute) {
+        when (val route = notificationRoute ?: return@LaunchedEffect) {
+            is NotificationRoute.Item -> {
+                // The item opens inside the tab the user is on, or inside Home from the player or Settings
+                if (currentTab == null) select(Tab.Home)
+
+                navController.navigate(Item(route.itemId))
+            }
+
+            is NotificationRoute.WhoIsWatching -> leave(HomeExit.WhoIsWatching(route.serverId))
+        }
+
+        notificationOpen.onRouted()
+    }
+}
+
+private fun NavDestination.isInProfile() = !(hasRoute<Startup>() || hasRoute<Servers>() || hasRoute<WhoIsWatching>() || hasRoute<AddServer>())

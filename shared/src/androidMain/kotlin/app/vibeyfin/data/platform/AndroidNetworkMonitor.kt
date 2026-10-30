@@ -35,8 +35,7 @@ class AndroidNetworkMonitor(context: Context) : NetworkMonitor {
         )
     }
 
-    private fun read(network: Network?): NetworkState =
-        network?.let(manager::getNetworkCapabilities)?.let(::stateOf) ?: NetworkState.None
+    private fun read(network: Network?): NetworkState = network?.let(manager::getNetworkCapabilities)?.let(::stateOf) ?: NetworkState.None
 
     private fun stateOf(capabilities: NetworkCapabilities): NetworkState = when {
         !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) -> NetworkState.None

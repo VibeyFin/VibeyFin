@@ -17,18 +17,19 @@ fun PlaybackException.toFailure(): PlaybackFailure = when (errorCode) {
     PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
     PlaybackException.ERROR_CODE_TIMEOUT,
     -> PlaybackFailure.Network
+
     PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> when (httpStatus()) {
         401 -> PlaybackFailure.Unauthorized
         in 500..599 -> PlaybackFailure.Network
         else -> PlaybackFailure.Unsupported
     }
+
     else -> PlaybackFailure.Unsupported
 }
 
-/** The status the server answered with, found down the chain of causes (HLS wraps what its loaders throw). */
+// HLS wraps what its loaders throw, so the status is searched down the chain of causes
 @androidx.annotation.OptIn(UnstableApi::class)
-private fun PlaybackException.httpStatus(): Int? =
-    generateSequence(cause) { it.cause }
-        .filterIsInstance<HttpDataSource.InvalidResponseCodeException>()
-        .firstOrNull()
-        ?.responseCode
+private fun PlaybackException.httpStatus(): Int? = generateSequence(cause) { it.cause }
+    .filterIsInstance<HttpDataSource.InvalidResponseCodeException>()
+    .firstOrNull()
+    ?.responseCode

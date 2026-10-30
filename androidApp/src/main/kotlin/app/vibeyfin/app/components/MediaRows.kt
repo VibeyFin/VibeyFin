@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
@@ -40,23 +39,21 @@ fun SectionTitle(text: String, maxLines: Int = Int.MAX_VALUE, modifier: Modifier
     Text(text = text, modifier = modifier, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
 }
 
-
 /** Lets a child use [by] more width on each side than its parent gives it, to run under the parent's padding. */
 fun Modifier.bleed(by: Dp) = layout { measurable, constraints ->
     val extra = by.roundToPx() * 2
     val width = constraints.maxWidth + extra
     val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+
     layout(constraints.maxWidth, placeable.height) { placeable.place(-extra / 2, 0) }
 }
 
-
 enum class RowPhase { Loading, Failed, Ready }
 
-/** The fade from a row's grey posters to its content. */
+/** The fade from a row's gray posters to its content. */
 const val ROW_FADE_MS = 140
 
-
-/** A row of posters under a header with "See all": loading is grey posters, a failure says why with Try again. */
+/** A row of posters under a header with "See all": loading is gray posters, a failure says why with Try again. */
 @Composable
 fun MediaRowSection(
     row: MediaRow,
@@ -64,31 +61,43 @@ fun MediaRowSection(
     onOpen: (MediaItem) -> Unit,
     onSeeAll: ((SeeAll) -> Unit)?,
     onRetry: () -> Unit,
-    // Posters are 112 on a phone and larger on a tablet (`screens.md`).
+    // Posters are 112 on a phone and larger on a tablet (`screens.md`)
     tileWidth: Dp = VibeyFinTokens.Size.posterWidth,
-    // The grey tiles take the shape of the real ones: tall for posters, wide for clips such as extras.
+    // The gray tiles take the shape of the real ones: tall for posters, wide for clips such as extras
     skeletonAspect: Float = 2f / 3f,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            // One line, so a long library name never makes the header taller.
+            // One line, so a long library name never makes the header taller
             Box(Modifier.weight(1f)) { SectionTitle(row.title, maxLines = 1) }
+
             val target = row.seeAll
+
             if (target != null && onSeeAll != null && row.items.isNotEmpty()) {
                 TextButton(onClick = { onSeeAll(target) }, modifier = Modifier.semantics { contentDescription = Strings.seeAllIn(row.title) }) {
                     Text(Strings.seeAll, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
-        // The grey posters give way to the real ones with a short fade, and the row grows or shrinks smoothly if its
+
+        // The gray posters give way to the real ones with a short fade, and the row grows or shrinks smoothly if its
         // height differs.
         // Without repeats (the list keys must be unique), worked out once per list, not on every redraw.
         val tiles = remember(row.items) { row.items.distinctBy { it.id } }
-        val phase = if (row.loading) RowPhase.Loading else if (row.message != null) RowPhase.Failed else RowPhase.Ready
+        val phase = if (row.loading) {
+            RowPhase.Loading
+        } else if (row.message != null) {
+            RowPhase.Failed
+        } else {
+            RowPhase.Ready
+        }
+
         Crossfade(targetState = phase, animationSpec = tween(ROW_FADE_MS), modifier = Modifier.animateContentSize(tween(ROW_FADE_MS))) { shown ->
             when (shown) {
                 RowPhase.Loading -> PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin), tileWidth = tileWidth, aspectRatio = skeletonAspect)
+
                 RowPhase.Failed -> LoadError(row.message ?: "", onRetry)
+
                 RowPhase.Ready -> LazyRow(
                     modifier = Modifier.bleed(margin),
                     contentPadding = PaddingValues(horizontal = margin),
@@ -102,5 +111,3 @@ fun MediaRowSection(
         }
     }
 }
-
-

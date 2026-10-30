@@ -46,7 +46,9 @@ class PlaybackRecovery(
         val outcome = try {
             when (val call = connection.asProfile(stop.profile.serverId, stop.profile.userId) { it.reportPlaybackStopped(info) }) {
                 ProfileCall.NoSession -> StopOutcome.Dropped
+
                 ProfileCall.Unreachable -> StopOutcome.Retry
+
                 is ProfileCall.Answered -> when (val result = call.result) {
                     is ApiResult.Success -> StopOutcome.Sent
                     is ApiResult.Failure -> if (result.error.mayPass()) StopOutcome.Retry else StopOutcome.Dropped

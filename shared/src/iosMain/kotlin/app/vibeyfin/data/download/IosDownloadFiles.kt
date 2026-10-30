@@ -15,8 +15,8 @@ import platform.Foundation.NSNumber
 import platform.Foundation.NSURL
 import platform.Foundation.NSURLIsExcludedFromBackupKey
 import platform.Foundation.closeFile
-import platform.Foundation.fileHandleForWritingAtPath
 import platform.Foundation.create
+import platform.Foundation.fileHandleForWritingAtPath
 import platform.Foundation.seekToEndOfFile
 import platform.Foundation.truncateFileAtOffset
 import platform.Foundation.writeData
@@ -37,8 +37,8 @@ class IosDownloadFiles(private val root: String, legacyRoot: String? = null) : D
         legacyRoot?.let(::adopt)
     }
 
-    // TODO: remove the migration (this, `legacyRoot` and its call in PlatformModule.ios.kt) once nobody has downloads in Application Support: the app is in beta and only the developers do.
-    /** Moves each server's folder from [legacyRoot] into [root], on the same volume so it costs nothing, then removes the old folder. */
+    // Temporary: remove the migration (this, `legacyRoot` and its call in PlatformModule.ios.kt) once nobody has downloads in Application Support: the app is in beta and only the developers do.
+    // Moves each server's folder from [legacyRoot] into [root], on the same volume so it costs nothing, then removes the old folder.
     private fun adopt(legacyRoot: String) {
         if (!manager.fileExistsAtPath(legacyRoot)) return
         manager.contentsOfDirectoryAtPath(legacyRoot, error = null)?.filterIsInstance<String>()?.forEach { name ->
@@ -89,8 +89,7 @@ class IosDownloadFiles(private val root: String, legacyRoot: String? = null) : D
         manager.removeItemAtPath(absolute(path), error = null)
     }
 
-    override fun freeBytes(): Long =
-        (manager.attributesOfFileSystemForPath(root, error = null)?.get(NSFileSystemFreeSize) as? NSNumber)?.longLongValue ?: 0
+    override fun freeBytes(): Long = (manager.attributesOfFileSystemForPath(root, error = null)?.get(NSFileSystemFreeSize) as? NSNumber)?.longLongValue ?: 0
 
     override fun uri(path: String): String = NSURL.fileURLWithPath(absolute(path)).absoluteString ?: "file://${absolute(path)}"
 }

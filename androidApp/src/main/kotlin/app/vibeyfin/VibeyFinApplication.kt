@@ -11,10 +11,12 @@ import org.koin.android.ext.koin.androidContext
 class VibeyFinApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+
         val koin = initKoin {
             androidContext(this@VibeyFinApplication)
         }.koin
-        // The new-title work runs while any profile gets notifications, and is cancelled once none does.
+
+        // The new-title work runs while any profile gets notifications, and is cancelled once none does
         NewTitlesScheduler.follow(this, koin.get<AccountDao>().observeNotifiableProfileCount(), koin.get<CoroutineScope>(ApplicationScope))
     }
 }

@@ -34,8 +34,8 @@ fun mergeProfiles(
 ): List<Profile> {
     val baseUrl = public?.baseUrl ?: fallbackBaseUrl
     val publicById = public?.users.orEmpty().associateBy { it.id }
-    fun avatar(userId: String, tag: String?) =
-        if (baseUrl != null && tag != null) userImageUrl(baseUrl, userId, tag) else null
+
+    fun avatar(userId: String, tag: String?) = if (baseUrl != null && tag != null) userImageUrl(baseUrl, userId, tag) else null
 
     val fromSaved = saved.map { account ->
         val listed = publicById[account.userId]

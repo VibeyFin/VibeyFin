@@ -33,12 +33,10 @@ class PlaybackRecoveryTest {
     @AfterTest
     fun tearDown() = runTest { app.close() }
 
-    private fun stop(profile: ProfileRef = alex, session: String = "ps-1", ticks: Long = 315_000_000L) =
-        PendingStop(profile, itemId = "m1", mediaSourceId = "ms-1", playSessionId = session, positionTicks = ticks, failed = false)
+    private fun stop(profile: ProfileRef = alex, session: String = "ps-1", ticks: Long = 315_000_000L) = PendingStop(profile, itemId = "m1", mediaSourceId = "ms-1", playSessionId = session, positionTicks = ticks, failed = false)
 
-    /** Alex is signed in; the server takes every `Stopped`. */
-    private suspend fun serverTakingStops(): FakeServer =
-        app.signedIn().also { it.on("POST", "/Sessions/Playing/Stopped", Reply.noContent()) }
+    // Alex is signed in; the server takes every `Stopped`.
+    private suspend fun serverTakingStops(): FakeServer = app.signedIn().also { it.on("POST", "/Sessions/Playing/Stopped", Reply.noContent()) }
 
     private suspend fun savedSamToo() {
         app.accounts.saveSession("srv-1", "u2", "Sam", null, "token-2")

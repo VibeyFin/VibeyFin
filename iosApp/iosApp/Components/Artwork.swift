@@ -9,7 +9,7 @@ struct Artwork: View {
     let url: String?
     let title: String
     let aspectRatio: CGFloat
-    var blurHash: String? = nil
+    var blurHash: String?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -79,7 +79,7 @@ enum ImageMemoryCache {
 /// Like `AsyncImage`, but a picture already loaded shows at once, with no placeholder and no fade.
 struct CachedImage<Content: View, Placeholder: View>: View {
     let url: URL
-    var fade: Animation? = nil
+    var fade: Animation?
     @ViewBuilder let content: (Image) -> Content
     @ViewBuilder let placeholder: () -> Placeholder
 

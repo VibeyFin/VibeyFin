@@ -22,10 +22,10 @@ import app.vibeyfin.ui.downloads.DownloadFlow
 import app.vibeyfin.ui.downloads.DownloadPrompt
 import app.vibeyfin.ui.downloads.RemovePrompt
 import app.vibeyfin.ui.downloads.badge
-import app.vibeyfin.ui.downloads.label
-import app.vibeyfin.ui.downloads.progress
 import app.vibeyfin.ui.downloads.downloadParts
+import app.vibeyfin.ui.downloads.label
 import app.vibeyfin.ui.downloads.profileOrNull
+import app.vibeyfin.ui.downloads.progress
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.home.MediaRow
 import kotlinx.coroutines.Job
@@ -253,7 +253,7 @@ class ItemViewModel(
         episodesJob = viewModelScope.launch { loadEpisodes(seasonId, setStart = false) }
     }
 
-    /** Reads the item again without the spinner; a failure leaves the page as it was. */
+    // Reads the item again without the spinner; a failure leaves the page as it was.
     private suspend fun refresh() {
         val shown = content.value.item ?: return
         val result = library.item(itemId) as? ApiResult.Success ?: return
@@ -321,7 +321,7 @@ class ItemViewModel(
 
     private var writingFavorite = false
 
-    /** Which change last failed, so "Try again" repeats that one. */
+    // Which change last failed, so "Try again" repeats that one.
     private var failedFavorite = false
 
     /**
@@ -429,6 +429,7 @@ class ItemViewModel(
                         if (item.kind == ItemKind.Series) launch { loadSeasons() }
                     }
                 }
+
                 is ApiResult.Failure -> content.value = ItemUiState(loading = false, message = LoadMessages.forError(result.error))
             }
         }
@@ -478,7 +479,7 @@ class ItemViewModel(
         }
     }
 
-    /** The seasons and the episode to watch next, then the episodes of the season that episode is in. */
+    // The seasons and the episode to watch next, then the episodes of the season that episode is in.
     private suspend fun loadSeasons() {
         // A reload (after marking the whole show) keeps the Play button it had.
         content.update { it.copy(seasons = SeasonsState(loading = true, startEpisode = it.seasons.startEpisode, playSettled = it.seasons.playSettled)) }
@@ -499,14 +500,16 @@ class ItemViewModel(
             ?: list.firstOrNull()
         // The episodes are already marked as loading, so the page never shows "no episodes" in between.
         content.update {
-            it.copy(seasons = SeasonsState(
+            it.copy(
+                seasons = SeasonsState(
                     seasons = list,
                     selectedId = opening?.id,
                     startEpisode = nextEpisode,
                     episodes = EpisodeList(loading = opening != null),
                     // With a next-up episode Play is known now; otherwise it waits for the first season's episodes.
                     playSettled = nextEpisode != null || opening == null,
-                ))
+                ),
+            )
         }
         if (opening != null) {
             loadEpisodes(opening.id, setStart = nextEpisode == null)
@@ -526,6 +529,7 @@ class ItemViewModel(
                         // A show with nothing next up (never started, or finished) plays from its first episode.
                         startEpisode = seasons.startEpisode ?: if (setStart) result.value.firstOrNull() else null,
                     )
+
                     is ApiResult.Failure -> seasons.copy(episodes = EpisodeList(message = LoadMessages.forError(result.error)))
                 }.let { it.copy(playSettled = true) },
             )

@@ -10,10 +10,10 @@ import app.vibeyfin.testing.ViewModelTracker
 import app.vibeyfin.testing.itemJson
 import app.vibeyfin.testing.itemsJson
 import app.vibeyfin.testing.sagaServer
+import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.downloads.DownloadAction
 import app.vibeyfin.ui.downloads.actions
-import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.item.Trailer
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
@@ -50,7 +50,7 @@ class TileMenuViewModelTest {
 
     private fun viewModel() = viewModels.track(TileMenuViewModel(app.library, app.watch, app.connection, app.downloadRepository))
 
-    /** The poster as a list gives it: no trailers on it. */
+    // The poster as a list gives it: no trailers on it.
     private fun tile(favorite: Boolean = false) = MediaItem(
         id = "m1", title = "Heat", kind = ItemKind.Movie, isFolder = false, year = 1995, runtimeMinutes = null,
         genres = emptyList(), overview = null, rating = null, ageRating = null, seriesName = null, seasonNumber = null, episodeNumber = null,
@@ -168,6 +168,7 @@ class TileMenuViewModelTest {
 
         assertEquals(true, state.item?.isFavorite)
     }
+
     private fun showTile() = tile().copy(id = "s1", title = "Saga", kind = ItemKind.Series, isFolder = true)
 
     @Test

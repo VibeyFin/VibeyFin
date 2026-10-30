@@ -11,28 +11,25 @@ import app.vibeyfin.ui.playback.PlaybackStream
 import app.vibeyfin.ui.playback.SUBTITLES_OFF
 import app.vibeyfin.ui.playback.TrackOption
 
-/** The id a subtitle file gets in the player, so its track can be found again by the server's track index. */
 private fun subtitleId(index: Int) = "vibeyfin-subtitle-$index"
 
 /**
  * The stream as a Media3 item. Every subtitle the server sends as a file goes in with the video and
  * none is shown yet: [applyTrackSelection] picks one, and switching later needs no new item.
  */
-fun PlaybackStream.toMediaItem(title: String? = null, subtitle: String? = null, artworkUrl: String? = null): MediaItem =
-    MediaItem.Builder()
-        .setUri(url)
-        .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setSubtitle(subtitle).setArtworkUri(artworkUrl?.let(Uri::parse)).build())
-        .setSubtitleConfigurations(subtitleFiles.map { it.toConfiguration() })
-        .build()
+fun PlaybackStream.toMediaItem(title: String? = null, subtitle: String? = null, artworkUrl: String? = null): MediaItem = MediaItem.Builder()
+    .setUri(url)
+    .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setSubtitle(subtitle).setArtworkUri(artworkUrl?.let(Uri::parse)).build())
+    .setSubtitleConfigurations(subtitleFiles.map { it.toConfiguration() })
+    .build()
 
-private fun SubtitleFile.toConfiguration(): MediaItem.SubtitleConfiguration =
-    MediaItem.SubtitleConfiguration.Builder(Uri.parse(url))
-        .setId(subtitleId(index))
-        .setMimeType(mimeType)
-        .setLanguage(language)
-        .setLabel(label)
-        .setSelectionFlags(0)
-        .build()
+private fun SubtitleFile.toConfiguration(): MediaItem.SubtitleConfiguration = MediaItem.SubtitleConfiguration.Builder(Uri.parse(url))
+    .setId(subtitleId(index))
+    .setMimeType(mimeType)
+    .setLanguage(language)
+    .setLabel(label)
+    .setSelectionFlags(0)
+    .build()
 
 /**
  * Makes the player show what the shared state says is selected, as far as the player can do it:
@@ -54,8 +51,9 @@ fun ExoPlayer.applyTrackSelection(stream: PlaybackStream, audio: List<TrackOptio
             group.type == C.TRACK_TYPE_TEXT && group.mediaTrackGroup.getFormat(0).id?.endsWith(subtitleId(index)) == true
         }
     }
+
     if (subtitleGroup != null) {
-        // An override does not undo "disabled", which is how subtitles are switched off: say both.
+        // An override does not undo "disabled", which is how subtitles are switched off: say both
         builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
             .setOverrideForType(TrackSelectionOverride(subtitleGroup.mediaTrackGroup, 0))
     } else {
@@ -65,9 +63,11 @@ fun ExoPlayer.applyTrackSelection(stream: PlaybackStream, audio: List<TrackOptio
     if (stream.audioInPlayer && audio.size > 1) {
         val audioGroups = groups.filter { it.type == C.TRACK_TYPE_AUDIO }
         val position = audio.indexOfFirst { it.selected }
+
         if (audioGroups.size == audio.size && position >= 0) {
             builder.setOverrideForType(TrackSelectionOverride(audioGroups[position].mediaTrackGroup, 0))
         }
     }
+
     trackSelectionParameters = builder.build()
 }

@@ -108,14 +108,23 @@ class OfflineLibrary(
             val item = OfflineSnapshot.decode(row.snapshotJson).mediaItem(files)
             when (item.kind) {
                 ItemKind.Movie -> SearchResult(
-                    id = item.id, title = item.title, kind = SearchKind.Movie,
-                    subtitle = item.year?.toString(), imageUrl = item.posterUrl, aspectRatio = TALL,
+                    id = item.id,
+                    title = item.title,
+                    kind = SearchKind.Movie,
+                    subtitle = item.year?.toString(),
+                    imageUrl = item.posterUrl,
+                    aspectRatio = TALL,
                 )
+
                 ItemKind.Episode -> SearchResult(
-                    id = item.id, title = item.title, kind = SearchKind.Episode,
+                    id = item.id,
+                    title = item.title,
+                    kind = SearchKind.Episode,
                     subtitle = listOfNotNull(item.seriesName, Strings.episodeTag(item.seasonNumber, item.episodeNumber)).joinToString(" · ").ifEmpty { null },
-                    imageUrl = item.landscapeUrl ?: item.posterUrl, aspectRatio = WIDE,
+                    imageUrl = item.landscapeUrl ?: item.posterUrl,
+                    aspectRatio = WIDE,
                 )
+
                 else -> null
             }
         }
@@ -123,20 +132,19 @@ class OfflineLibrary(
 
     private class Saved(val item: MediaItem, val watchedAt: Long, val order: Int)
 
-    private fun playableItems(profile: ProfileRef): Flow<List<Saved>> =
-        combine(dao.observeAll(profile.serverId, profile.userId), dao.observeItems(profile.serverId, profile.userId)) { downloads, items ->
-            val byId = items.associateBy { it.itemId }
-            downloads.filter { it.isPlayable() }.mapNotNull { row ->
-                byId[row.itemId]?.takeIf { it.kind == ItemKind.Movie.name || it.kind == ItemKind.Episode.name }?.let { saved ->
-                    Saved(OfflineSnapshot.decode(saved.snapshotJson).toItem(saved), saved.userDataAt, order(saved))
-                }
+    private fun playableItems(profile: ProfileRef): Flow<List<Saved>> = combine(dao.observeAll(profile.serverId, profile.userId), dao.observeItems(profile.serverId, profile.userId)) { downloads, items ->
+        val byId = items.associateBy { it.itemId }
+        downloads.filter { it.isPlayable() }.mapNotNull { row ->
+            byId[row.itemId]?.takeIf { it.kind == ItemKind.Movie.name || it.kind == ItemKind.Episode.name }?.let { saved ->
+                Saved(OfflineSnapshot.decode(saved.snapshotJson).toItem(saved), saved.userDataAt, order(saved))
             }
         }
+    }
 
-    /** Done, with a file that is still there. */
+    // Done, with a file that is still there.
     private fun DownloadEntity.isPlayable() = state == DOWNLOAD_DONE && filePath != null && files.exists(filePath)
 
-    /** The saved item with the profile's own record of it, which is kept up to date on the device. */
+    // The saved item with the profile's own record of it, which is kept up to date on the device.
     private fun OfflineSnapshot.toItem(saved: DownloadItemEntity): MediaItem = mediaItem(files).copy(
         resumePositionMs = if (saved.played) 0 else saved.positionTicks / TICKS_PER_MILLISECOND,
         played = saved.played,

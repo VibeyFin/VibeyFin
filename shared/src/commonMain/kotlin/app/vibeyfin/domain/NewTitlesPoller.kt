@@ -70,63 +70,93 @@ class NewTitlesPoller(
 
         val now = clock.now()
         val known = now - MAX_AGE
-        val call = connection.asProfile(serverId, userId) { api ->
-            val added = when (val r = addedSince(api, userId, known)) {
-                is ApiResult.Success -> r.value
-                is ApiResult.Failure -> return@asProfile r
-            }
-            if (everything) return@asProfile ApiResult.Success(Listing(added, followed = emptySet()))
-            // Followed shows: in Continue watching (started, or next up) or on My List.
-            val resume = when (val r = api.resumeItems(userId, FOLLOW_LIMIT)) {
-                is ApiResult.Success -> r.value.items
-                is ApiResult.Failure -> return@asProfile r
-            }
-            val next = when (val r = api.nextUp(userId, FOLLOW_LIMIT)) {
-                is ApiResult.Success -> r.value.items
-                is ApiResult.Failure -> return@asProfile r
-            }
-            val myList = when (
-                val r = api.filteredItems(
-                    userId, types = listOf("Series"), genreId = null, sortBy = "SortName", sortOrder = "Ascending",
-                    startIndex = 0, limit = FOLLOW_LIMIT, favoritesOnly = true,
-                )
-            ) {
-                is ApiResult.Success -> r.value.items
-                is ApiResult.Failure -> return@asProfile r
-            }
-            val followed = (resume + next).mapNotNullTo(mutableSetOf()) { it.seriesId } + myList.map { it.id }
-            ApiResult.Success(Listing(added, followed))
-        }
+        val call = connection.asProfile(serverId, userId) { api -> listing(api, userId, known, everything) }
         val listing = ((call as? ProfileCall.Answered)?.result as? ApiResult.Success)?.value ?: return emptyList()
 
         val firstPoll = !dao.hasNotified(serverId, userId)
         val fresh = now - if (firstPoll) FIRST_POLL_AGE else MAX_AGE
-        val reported = mutableListOf<NewTitle>()
-        for (item in listing.added) {
-            val isMovie = item.type == "Movie"
-            if (!isMovie && item.type != "Episode") continue
-            if (!isMovie && !everything && item.seriesId !in listing.followed) continue
-            val added = item.addedAt() ?: continue
-            if (added < known) continue
-            // -1: already notified, by an earlier poll or one running alongside.
-            if (dao.insertNotified(NotifiedItemEntity(serverId, userId, item.id, now.toEpochMilliseconds())) == -1L) continue
-            if (added >= fresh) reported += NewTitle(item.id, item.name.orEmpty(), item.seriesName.takeUnless { isMovie }, isMovie)
+        val reported = listing.added.mapNotNull { item ->
+            val added = item.addedAt()?.takeIf { it >= known && item.counts(listing, everything) }
+            // Marked first, so a title is only ever announced once: an earlier poll or one running alongside may have done it.
+            val firstTime = added != null && dao.insertNotified(NotifiedItemEntity(serverId, userId, item.id, now.toEpochMilliseconds())) != -1L
+
+            if (firstTime && added >= fresh) item.asNewTitle() else null
         }
+
         dao.pruneNotified(serverId, userId, (now - PRUNE_AFTER).toEpochMilliseconds())
         return reported
     }
 
-    /**
-     * The movies and episodes added since [cutoff], newest first, one entry per episode: `GET /Items` by `DateCreated`,
-     * a page at a time until a page reaches past [cutoff] or the list ends, and never more than [MAX_PAGES] pages.
-     */
+    private suspend fun listing(api: JellyfinApi, userId: String, known: Instant, everything: Boolean): ApiResult<Listing> {
+        val added = when (val result = addedSince(api, userId, known)) {
+            is ApiResult.Success -> result.value
+            is ApiResult.Failure -> return result
+        }
+        if (everything) return ApiResult.Success(Listing(added, followed = emptySet()))
+
+        return when (val followed = followedSeries(api, userId)) {
+            is ApiResult.Success -> ApiResult.Success(Listing(added, followed.value))
+            is ApiResult.Failure -> followed
+        }
+    }
+
+    // Followed shows: in Continue watching (started, or next up) or on My List
+    private suspend fun followedSeries(api: JellyfinApi, userId: String): ApiResult<Set<String>> {
+        val resume = when (val result = api.resumeItems(userId, FOLLOW_LIMIT)) {
+            is ApiResult.Success -> result.value.items
+            is ApiResult.Failure -> return result
+        }
+        val next = when (val result = api.nextUp(userId, FOLLOW_LIMIT)) {
+            is ApiResult.Success -> result.value.items
+            is ApiResult.Failure -> return result
+        }
+        val myList = when (
+            val result = api.filteredItems(
+                userId,
+                types = listOf("Series"),
+                genreId = null,
+                sortBy = "SortName",
+                sortOrder = "Ascending",
+                startIndex = 0,
+                limit = FOLLOW_LIMIT,
+                favoritesOnly = true,
+            )
+        ) {
+            is ApiResult.Success -> result.value.items
+            is ApiResult.Failure -> return result
+        }
+
+        return ApiResult.Success((resume + next).mapNotNullTo(mutableSetOf()) { it.seriesId } + myList.map { it.id })
+    }
+
+    // A movie, or an episode of a followed show (any show when [everything])
+    private fun BaseItemDto.counts(listing: Listing, everything: Boolean): Boolean = when (type) {
+        "Movie" -> true
+        "Episode" -> everything || seriesId in listing.followed
+        else -> false
+    }
+
+    private fun BaseItemDto.asNewTitle(): NewTitle {
+        val isMovie = type == "Movie"
+
+        return NewTitle(id, name.orEmpty(), seriesName.takeUnless { isMovie }, isMovie)
+    }
+
+    // The movies and episodes added since [cutoff], newest first, one entry per episode: `GET /Items` by `DateCreated`,
+    // a page at a time until a page reaches past [cutoff] or the list ends, and never more than [MAX_PAGES] pages.
     private suspend fun addedSince(api: JellyfinApi, userId: String, cutoff: Instant): ApiResult<List<BaseItemDto>> {
         val all = mutableListOf<BaseItemDto>()
         repeat(MAX_PAGES) { page ->
             val items = when (
                 val r = api.filteredItems(
-                    userId, types = listOf("Movie", "Episode"), genreId = null, sortBy = "DateCreated", sortOrder = "Descending",
-                    startIndex = page * PAGE_SIZE, limit = PAGE_SIZE, fields = "DateCreated",
+                    userId,
+                    types = listOf("Movie", "Episode"),
+                    genreId = null,
+                    sortBy = "DateCreated",
+                    sortOrder = "Descending",
+                    startIndex = page * PAGE_SIZE,
+                    limit = PAGE_SIZE,
+                    fields = "DateCreated",
                 )
             ) {
                 is ApiResult.Success -> r.value.items

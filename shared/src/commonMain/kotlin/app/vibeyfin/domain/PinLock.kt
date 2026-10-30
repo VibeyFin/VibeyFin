@@ -34,12 +34,16 @@ data class PinGates(
     val switchProfile: Boolean = false,
 )
 
-internal fun PinGateRow?.toGates(): PinGates = if (this == null || !hasPin) PinGates() else PinGates(
-    hasPin = true,
-    openProfile = pinOpenProfile,
-    openSettings = pinOpenSettings,
-    switchProfile = pinSwitchProfile,
-)
+internal fun PinGateRow?.toGates(): PinGates = if (this == null || !hasPin) {
+    PinGates()
+} else {
+    PinGates(
+        hasPin = true,
+        openProfile = pinOpenProfile,
+        openSettings = pinOpenSettings,
+        switchProfile = pinSwitchProfile,
+    )
+}
 
 /**
  * A profile's PIN: set, removed and checked. Only a salted hash is stored, never the PIN. Wrong guesses are counted
@@ -134,7 +138,14 @@ private val K = intArrayOf(
 /** SHA-256 (FIPS 180-4) in plain Kotlin, because common code has no hashing and a PIN hash needs no more than this. */
 internal fun sha256(message: ByteArray): ByteArray {
     val h = intArrayOf(
-        0x6a09e667, -0x4498517b, 0x3c6ef372, -0x5ab00ac6, 0x510e527f, -0x64fa9774, 0x1f83d9ab, 0x5be0cd19,
+        0x6a09e667,
+        -0x4498517b,
+        0x3c6ef372,
+        -0x5ab00ac6,
+        0x510e527f,
+        -0x64fa9774,
+        0x1f83d9ab,
+        0x5be0cd19,
     )
     val padded = message.size + 1 + (((55 - message.size) % 64) + 64) % 64 + 8
     val data = ByteArray(padded)
@@ -155,14 +166,34 @@ internal fun sha256(message: ByteArray): ByteArray {
             val s1 = w[t - 2].rotr(17) xor w[t - 2].rotr(19) xor (w[t - 2] ushr 10)
             w[t] = w[t - 16] + s0 + w[t - 7] + s1
         }
-        var a = h[0]; var b = h[1]; var c = h[2]; var d = h[3]
-        var e = h[4]; var f = h[5]; var g = h[6]; var hh = h[7]
+        var a = h[0]
+        var b = h[1]
+        var c = h[2]
+        var d = h[3]
+        var e = h[4]
+        var f = h[5]
+        var g = h[6]
+        var hh = h[7]
         for (t in 0 until 64) {
             val t1 = hh + (e.rotr(6) xor e.rotr(11) xor e.rotr(25)) + ((e and f) xor (e.inv() and g)) + K[t] + w[t]
             val t2 = (a.rotr(2) xor a.rotr(13) xor a.rotr(22)) + ((a and b) xor (a and c) xor (b and c))
-            hh = g; g = f; f = e; e = d + t1; d = c; c = b; b = a; a = t1 + t2
+            hh = g
+            g = f
+            f = e
+            e = d + t1
+            d = c
+            c = b
+            b = a
+            a = t1 + t2
         }
-        h[0] += a; h[1] += b; h[2] += c; h[3] += d; h[4] += e; h[5] += f; h[6] += g; h[7] += hh
+        h[0] += a
+        h[1] += b
+        h[2] += c
+        h[3] += d
+        h[4] += e
+        h[5] += f
+        h[6] += g
+        h[7] += hh
     }
     return ByteArray(32) { (h[it / 4] ushr (24 - 8 * (it % 4))).toByte() }
 }

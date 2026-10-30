@@ -12,21 +12,20 @@ import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.DownloadRunner
 import app.vibeyfin.domain.DownloadSpeeds
 import app.vibeyfin.domain.DownloadWake
+import app.vibeyfin.domain.LanguagePreferences
 import app.vibeyfin.domain.LibraryRepository
+import app.vibeyfin.domain.LocalPlaybackReporter
+import app.vibeyfin.domain.OfflineLibrary
+import app.vibeyfin.domain.OfflineMode
+import app.vibeyfin.domain.OfflineProgress
+import app.vibeyfin.domain.OfflineSync
 import app.vibeyfin.domain.PROGRESS_INTERVAL
 import app.vibeyfin.domain.PendingReports
 import app.vibeyfin.domain.PinLock
-import app.vibeyfin.domain.LanguagePreferences
-import app.vibeyfin.domain.ProfilePolicy
-import app.vibeyfin.domain.hashPin
-import app.vibeyfin.domain.LocalPlaybackReporter
-import app.vibeyfin.domain.OfflineLibrary
-import app.vibeyfin.domain.OfflineProgress
-import app.vibeyfin.domain.OfflineSync
-import app.vibeyfin.domain.OfflineMode
 import app.vibeyfin.domain.PlaybackRecovery
 import app.vibeyfin.domain.PlaybackReporter
 import app.vibeyfin.domain.PlaybackRepository
+import app.vibeyfin.domain.ProfilePolicy
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SearchHistory
 import app.vibeyfin.domain.ServerConnector
@@ -34,6 +33,7 @@ import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.StartupRouter
 import app.vibeyfin.domain.WatchChanges
 import app.vibeyfin.domain.WatchRepository
+import app.vibeyfin.domain.hashPin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -91,12 +91,10 @@ class TestApp {
     val recovery = PlaybackRecovery(pending, connection)
 
     /** The reporter a download plays with, wired like the app's, working on [scope], which the test cancels before closing the app. */
-    fun localReporter(scope: CoroutineScope, interval: Duration = PROGRESS_INTERVAL) =
-        LocalPlaybackReporter(connection, scope, offlineProgress, offlineSync, progressScheduler, watchChanges, interval)
+    fun localReporter(scope: CoroutineScope, interval: Duration = PROGRESS_INTERVAL) = LocalPlaybackReporter(connection, scope, offlineProgress, offlineSync, progressScheduler, watchChanges, interval)
 
     /** A reporter wired like the app's, working on [scope], which the test cancels before closing the app. */
-    fun reporter(scope: CoroutineScope, interval: Duration = PROGRESS_INTERVAL) =
-        PlaybackReporter(connection, scope, pending, recovery, watchChanges, interval)
+    fun reporter(scope: CoroutineScope, interval: Duration = PROGRESS_INTERVAL) = PlaybackReporter(connection, scope, pending, recovery, watchChanges, interval)
 
     /** Saves a server reachable at [address] and returns its fake. */
     suspend fun serverAt(address: String, id: String = "srv-1", name: String = "Home"): FakeServer {
@@ -133,14 +131,11 @@ class TestApp {
 }
 
 /** A successful `AuthenticateByName` or `AuthenticateWithQuickConnect` answer. */
-fun authJson(userId: String = "u1", name: String = "Alex", token: String = "token-1", imageTag: String? = null) =
-    """{"User":{"Id":"$userId","Name":"$name","HasPassword":true,"PrimaryImageTag":${imageTag?.let { "\"$it\"" } ?: "null"}},""" +
-        """"AccessToken":"$token","ServerId":"srv-1","SessionInfo":{"Id":"s1"}}"""
+fun authJson(userId: String = "u1", name: String = "Alex", token: String = "token-1", imageTag: String? = null) = """{"User":{"Id":"$userId","Name":"$name","HasPassword":true,"PrimaryImageTag":${imageTag?.let { "\"$it\"" } ?: "null"}},""" +
+    """"AccessToken":"$token","ServerId":"srv-1","SessionInfo":{"Id":"s1"}}"""
 
-fun publicUsersJson(vararg users: Triple<String, String, Boolean>) =
-    users.joinToString(prefix = "[", postfix = "]") { (id, name, hasPassword) ->
-        """{"Id":"$id","Name":"$name","HasPassword":$hasPassword,"PrimaryImageTag":null}"""
-    }
+fun publicUsersJson(vararg users: Triple<String, String, Boolean>) = users.joinToString(prefix = "[", postfix = "]") { (id, name, hasPassword) ->
+    """{"Id":"$id","Name":"$name","HasPassword":$hasPassword,"PrimaryImageTag":null}"""
+}
 
-fun quickConnectJson(authenticated: Boolean, secret: String = "sec", code: String = "123456") =
-    """{"Authenticated":$authenticated,"Secret":"$secret","Code":"$code"}"""
+fun quickConnectJson(authenticated: Boolean, secret: String = "sec", code: String = "123456") = """{"Authenticated":$authenticated,"Secret":"$secret","Code":"$code"}"""

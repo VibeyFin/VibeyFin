@@ -2,8 +2,6 @@ package app.vibeyfin.ui.whoswatching
 
 import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.model.ProfileRef
-import app.vibeyfin.ui.common.PinReason
-import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.testing.FakeServer
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
@@ -11,6 +9,8 @@ import app.vibeyfin.testing.ViewModelTracker
 import app.vibeyfin.testing.authJson
 import app.vibeyfin.testing.publicUsersJson
 import app.vibeyfin.testing.quickConnectJson
+import app.vibeyfin.ui.common.PinReason
+import app.vibeyfin.ui.common.Strings
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -45,7 +45,7 @@ class WhoIsWatchingViewModelTest {
             val name = Regex(""""Username":"([^"]*)"""").find(request.body)!!.groupValues[1]
             val password = Regex(""""Pw":"([^"]*)"""").find(request.body)!!.groupValues[1]
             val id = mapOf("alex" to "u1", "kim" to "u2", "sam" to "u3").getValue(name.lowercase())
-            if (name.lowercase() == "kim" && password == "" || password == "right") {
+            if ((name.lowercase() == "kim" && password == "") || password == "right") {
                 Reply.json(authJson(userId = id, name = name.replaceFirstChar { it.uppercase() }, token = "token-$id"))
             } else {
                 Reply.status(HttpStatusCode.Unauthorized)
@@ -330,7 +330,7 @@ class WhoIsWatchingViewModelTest {
         assertEquals(pollsAtClose, app.jellyfin.requestsTo("GET", "/QuickConnect/Connect").size)
     }
 
-    /** Alex has a saved session and the PIN "1234", with every switch on. */
+    // Alex has a saved session and the PIN "1234", with every switch on.
     private suspend fun alexWithPin() {
         app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-u1")
         app.setPin("u1", "1234")

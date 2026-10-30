@@ -34,15 +34,15 @@ fun canPostNotifications(context: Context): Boolean {
 }
 
 /** [channelImportance] is null before the first post creates the channel: that does not stop posting. */
-internal fun mayPost(permissionGranted: Boolean, appEnabled: Boolean, channelImportance: Int?): Boolean =
-    permissionGranted && appEnabled && channelImportance != NotificationManagerCompat.IMPORTANCE_NONE
+internal fun mayPost(permissionGranted: Boolean, appEnabled: Boolean, channelImportance: Int?): Boolean = permissionGranted && appEnabled && channelImportance != NotificationManagerCompat.IMPORTANCE_NONE
 
 /** Posts new-title notifications on their own channel; tapping one opens the app on the item, see [NewTitleTap]. */
 class NotificationPublisher(private val context: Context) : NewTitlesPublisher {
-    // Checked by the worker just before posting, through [canPostNotifications].
+    // Checked by the worker just before posting, through [canPostNotifications]
     @SuppressLint("MissingPermission")
     override fun post(found: List<ProfileNewTitles>, nameProfiles: Boolean) {
         val manager = NotificationManagerCompat.from(context)
+
         ensureChannel(manager)
         planNotifications(found, nameProfiles).forEach { planned ->
             val notification = NotificationCompat.Builder(context, NEW_TITLES_CHANNEL_ID)
@@ -55,7 +55,8 @@ class NotificationPublisher(private val context: Context) : NewTitlesPublisher {
                 .setContentIntent(openIntent(planned))
                 .apply {
                     planned.group?.let { setGroup(it) }
-                    // Only the episodes alert; the summary that comes with them stays quiet.
+
+                    // Only the episodes alert; the summary that comes with them stays quiet
                     if (planned.summary) setGroupSummary(true).setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
                 }
                 .build()
@@ -65,6 +66,7 @@ class NotificationPublisher(private val context: Context) : NewTitlesPublisher {
 
     private fun openIntent(planned: PlannedNotification): PendingIntent {
         val intent = NewTitleTap(planned.serverId, planned.userId, planned.itemId).intent(context)
+
         return PendingIntent.getActivity(
             context,
             0,
@@ -73,7 +75,7 @@ class NotificationPublisher(private val context: Context) : NewTitlesPublisher {
         )
     }
 
-    /** Creating a channel that exists only updates its name and description, so this runs before every post. */
+    // Creating an existing channel only updates it, so this runs before every post
     private fun ensureChannel(manager: NotificationManagerCompat) {
         manager.createNotificationChannel(
             NotificationChannelCompat.Builder(NEW_TITLES_CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_DEFAULT)

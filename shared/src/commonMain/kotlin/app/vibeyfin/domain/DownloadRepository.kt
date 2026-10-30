@@ -63,7 +63,9 @@ data class Download(
 /** What to download: one movie or episode, a season's episodes, or every episode of a show. */
 sealed interface DownloadTarget {
     data class Item(val itemId: String) : DownloadTarget
+
     data class Season(val seriesId: String, val seasonId: String) : DownloadTarget
+
     data class Series(val seriesId: String) : DownloadTarget
 }
 
@@ -94,6 +96,7 @@ class DownloadPlan internal constructor(val candidates: List<DownloadCandidate>)
 
 sealed interface DownloadAttempt<out T> {
     data class Success<T>(val value: T) : DownloadAttempt<T>
+
     data class Failure(val failure: DownloadFailure?, val unreachable: Boolean = false) : DownloadAttempt<Nothing>
 }
 
@@ -114,44 +117,39 @@ class DownloadRepository(
     private val speeds: DownloadSpeeds = DownloadSpeeds(),
 ) {
     /** The profile's downloads, oldest request first. */
-    fun observeAll(profile: ProfileRef): Flow<List<Download>> =
-        combine(dao.observeAll(profile.serverId, profile.userId), dao.observeItems(profile.serverId, profile.userId), speeds.speeds, speeds.converting) { downloads, items, speed, converting ->
-            val byId = items.associateBy { it.itemId }
-            downloads.mapNotNull { row -> byId[row.itemId]?.let { row.toDownload(it, speed[folder(profile, row.itemId)], converting[folder(profile, row.itemId)]) } }
-        }.distinctUntilChanged()
+    fun observeAll(profile: ProfileRef): Flow<List<Download>> = combine(dao.observeAll(profile.serverId, profile.userId), dao.observeItems(profile.serverId, profile.userId), speeds.speeds, speeds.converting) { downloads, items, speed, converting ->
+        val byId = items.associateBy { it.itemId }
+        downloads.mapNotNull { row -> byId[row.itemId]?.let { row.toDownload(it, speed[folder(profile, row.itemId)], converting[folder(profile, row.itemId)]) } }
+    }.distinctUntilChanged()
 
     /**
      * [observeAll], but it only emits when a download comes, goes or changes state, not for its byte count, speed or conversion. For screens
      * that show what a download is doing but not how far it is: a running download would otherwise rebuild them several times a second.
      * The numbers in what it emits are those of the moment it last changed.
      */
-    fun observeStates(profile: ProfileRef): Flow<List<Download>> =
-        observeAll(profile).distinctUntilChanged { old, new ->
-            old.size == new.size && old.indices.all { old[it].itemId == new[it].itemId && old[it].state == new[it].state && old[it].failure == new[it].failure }
-        }
+    fun observeStates(profile: ProfileRef): Flow<List<Download>> = observeAll(profile).distinctUntilChanged { old, new ->
+        old.size == new.size && old.indices.all { old[it].itemId == new[it].itemId && old[it].state == new[it].state && old[it].failure == new[it].failure }
+    }
 
     /** The shows and seasons the profile's downloaded episodes belong to, by id, as they were saved: the name and picture of a show. */
-    fun observeParents(profile: ProfileRef): Flow<Map<String, MediaItem>> =
-        dao.observeItems(profile.serverId, profile.userId).map { rows ->
-            rows.filter { it.kind == ItemKind.Series.name || it.kind == ItemKind.Season.name }
-                .associate { it.itemId to OfflineSnapshot.decode(it.snapshotJson).mediaItem(files) }
-        }.distinctUntilChanged()
+    fun observeParents(profile: ProfileRef): Flow<Map<String, MediaItem>> = dao.observeItems(profile.serverId, profile.userId).map { rows ->
+        rows.filter { it.kind == ItemKind.Series.name || it.kind == ItemKind.Season.name }
+            .associate { it.itemId to OfflineSnapshot.decode(it.snapshotJson).mediaItem(files) }
+    }.distinctUntilChanged()
 
     /** One download, or null when the profile has none for [itemId]. */
-    fun observe(profile: ProfileRef, itemId: String): Flow<Download?> =
-        combine(dao.observe(profile.serverId, profile.userId, itemId), dao.observeItems(profile.serverId, profile.userId), speeds.speeds, speeds.converting) { row, items, speed, converting ->
-            row?.let { r -> items.firstOrNull { it.itemId == itemId }?.let { r.toDownload(it, speed[folder(profile, itemId)], converting[folder(profile, itemId)]) } }
-        }.distinctUntilChanged()
+    fun observe(profile: ProfileRef, itemId: String): Flow<Download?> = combine(dao.observe(profile.serverId, profile.userId, itemId), dao.observeItems(profile.serverId, profile.userId), speeds.speeds, speeds.converting) { row, items, speed, converting ->
+        row?.let { r -> items.firstOrNull { it.itemId == itemId }?.let { r.toDownload(it, speed[folder(profile, itemId)], converting[folder(profile, itemId)]) } }
+    }.distinctUntilChanged()
 
     /** The bytes the profile's downloads take on the device, partial ones included. */
     fun observeBytesUsed(profile: ProfileRef): Flow<Long> = dao.observeBytesUsed(profile.serverId, profile.userId)
 
     /** Whether the server lets the profile download. Unknown (null) when it can't be asked. */
-    suspend fun canDownload(profile: ProfileRef): Boolean? =
-        when (val call = connection.asProfile(profile.serverId, profile.userId) { it.me() }) {
-            is ProfileCall.Answered -> (call.result as? ApiResult.Success)?.value?.policy?.enableContentDownloading
-            else -> null
-        }
+    suspend fun canDownload(profile: ProfileRef): Boolean? = when (val call = connection.asProfile(profile.serverId, profile.userId) { it.me() }) {
+        is ProfileCall.Answered -> (call.result as? ApiResult.Success)?.value?.policy?.enableContentDownloading
+        else -> null
+    }
 
     /** Reads what [target] comes to from the server, for the confirmation and for [enqueue]. */
     suspend fun plan(profile: ProfileRef, target: DownloadTarget): DownloadAttempt<DownloadPlan> {
@@ -301,7 +299,7 @@ class DownloadRepository(
         files.delete(folder(profile, id))
     }
 
-    /** The show and the season of each episode in [items], once each, unless the profile already has them. */
+    // The show and the season of each episode in [items], once each, unless the profile already has them.
     private suspend fun readParents(profile: ProfileRef, items: List<DownloadCandidate>): DownloadAttempt<List<Pair<BaseItemDto, String>>> {
         val wanted = items.flatMap { listOfNotNull(it.dto.seriesId, it.dto.seasonId) }.distinct()
             .filter { dao.findItem(profile.serverId, profile.userId, it) == null }
@@ -338,7 +336,9 @@ class DownloadRepository(
 
     private fun <T> ProfileCall<T>.unwrap(): DownloadAttempt<T> = when (this) {
         ProfileCall.NoSession -> DownloadAttempt.Failure(DownloadFailure.SignIn)
+
         ProfileCall.Unreachable -> DownloadAttempt.Failure(null, unreachable = true)
+
         is ProfileCall.Answered -> when (val result = this.result) {
             is ApiResult.Success -> DownloadAttempt.Success(result.value)
             is ApiResult.Failure -> result.error.toAttempt()
@@ -358,7 +358,7 @@ class DownloadRepository(
 /** The folder one item's files are in, relative to the downloads folder. */
 internal fun folder(profile: ProfileRef, itemId: String) = "${profile.serverId}/${profile.userId}/$itemId"
 
-/** The saved copy of an item: the columns the lists use, and its [OfflineSnapshot] as JSON. */
+// The saved copy of an item: the columns the lists use, and its [OfflineSnapshot] as JSON.
 private fun BaseItemDto.toSnapshotEntity(profile: ProfileRef, baseUrl: String, now: Long): DownloadItemEntity {
     val snapshot = toSnapshot(baseUrl)
     val item = snapshot.item
@@ -386,6 +386,7 @@ private fun BaseItemDto.toSnapshotEntity(profile: ProfileRef, baseUrl: String, n
 internal fun BaseItemDto.toSnapshot(baseUrl: String): OfflineSnapshot {
     val item = toMediaItem(baseUrl)
     val root = baseUrl.trimEnd('/')
+
     fun String.relative() = removePrefix(root)
     val sources = buildMap {
         item.posterUrl?.let { put(OfflineSnapshot.POSTER, it.relative()) }

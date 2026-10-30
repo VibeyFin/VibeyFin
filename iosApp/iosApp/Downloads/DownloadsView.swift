@@ -109,7 +109,7 @@ struct DownloadsView: View {
     private func row(_ download: Download, waiting: DownloadRunner.Waiting, poster: Bool) -> some View {
         let item = download.item
         let done = DownloadBridge.shared.isDone(download: download)
-        let title = poster ? item.title : [Strings.shared.episodeTag(season: item.seasonNumber, episode: item.episodeNumber), item.title].compactMap { $0 }.joined(separator: " \u{00B7} ")
+        let title = poster ? item.title : Strings.shared.taggedTitle(tag: Strings.shared.episodeTag(season: item.seasonNumber, episode: item.episodeNumber), title: item.title)
         return HStack(spacing: Space.s3) {
             Button {
                 if done { player.play(download.itemId) } else if !offline { onOpen(download.itemId) }
@@ -124,7 +124,7 @@ struct DownloadsView: View {
                         if let message = DownloadBridge.shared.failureMessage(download: download) {
                             Text(message).font(.caption).foregroundStyle(.red).lineLimit(3)
                         }
-                        if (download.state == DownloadState.running || download.state == DownloadState.paused), let progress = download.progress?.floatValue {
+                        if download.state == DownloadState.running || download.state == DownloadState.paused, let progress = download.progress?.floatValue {
                             // The label colour on a quiet track: aqua is for playback progress, not for downloads.
                             ProgressView(value: progress).tint(Color(.label))
                         }

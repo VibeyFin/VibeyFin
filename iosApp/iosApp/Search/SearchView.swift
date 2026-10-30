@@ -203,7 +203,7 @@ struct SearchView: View {
         case .person:
             ZStack {
                 Circle().fill(Color(.tertiarySystemBackground))
-                Text(result.title.split(separator: " ").prefix(2).compactMap { $0.first.map(String.init) }.joined().uppercased())
+                Text(Strings.shared.initials(name: result.title))
                     .font(.headline).foregroundStyle(.secondary)
                 if let url = result.imageUrl.flatMap({ URL(string: $0) }) {
                     AsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { Color.clear }

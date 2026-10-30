@@ -5,9 +5,9 @@ import app.vibeyfin.testing.FakeJellyfin
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.authJson
 import io.ktor.http.HttpStatusCode
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
@@ -31,7 +31,8 @@ class JellyfinApiTest {
     @Test
     fun publicUsersAreReadWithoutSigningIn() = runTest {
         server.on(
-            "GET", "/Users/Public",
+            "GET",
+            "/Users/Public",
             Reply.json("""[{"Id":"u1","Name":"Alex","HasPassword":true,"PrimaryImageTag":"abc","Extra":1},{"Id":"u2","Name":"Sam"}]"""),
         )
 

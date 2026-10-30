@@ -1,7 +1,7 @@
 package app.vibeyfin.ui.children
 
-import app.vibeyfin.testing.FakeServer
 import app.vibeyfin.data.api.ApiError
+import app.vibeyfin.testing.FakeServer
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.ViewModelTracker
@@ -43,19 +43,17 @@ class ChildrenViewModelTest {
         app.close()
     }
 
-    /** The requests for a page of a list; a season's list also reads its own item, which is not a page. */
+    // The requests for a page of a list; a season's list also reads its own item, which is not a page.
     private fun pageRequests() = app.jellyfin.requestsTo("GET", "/Items").filter { it.query["parentId"] != null }
 
-    private fun viewModel(parentId: String = "folder-1") =
-        viewModels.track(ChildrenViewModel(parentId, app.library, app.connection, app.downloadRepository))
+    private fun viewModel(parentId: String = "folder-1") = viewModels.track(ChildrenViewModel(parentId, app.library, app.connection, app.downloadRepository))
 
-    /** Answers `/Items` from [all], [pageSize] at a time, like the server does. */
-    private fun FakeServer.listOf(all: List<String>, pageSize: Int) =
-        on("GET", "/Items") { request ->
-            val start = request.query["startIndex"]!!.toInt()
-            val page = all.drop(start).take(pageSize)
-            Reply.json(itemsJson(*page.map { itemJson(it) }.toTypedArray(), total = all.size, startIndex = start))
-        }
+    // Answers `/Items` from [all], [pageSize] at a time, like the server does.
+    private fun FakeServer.listOf(all: List<String>, pageSize: Int) = on("GET", "/Items") { request ->
+        val start = request.query["startIndex"]!!.toInt()
+        val page = all.drop(start).take(pageSize)
+        Reply.json(itemsJson(*page.map { itemJson(it) }.toTypedArray(), total = all.size, startIndex = start))
+    }
 
     @Test
     fun startsLoadingAndThenShowsTheFirstPage() = runTest {

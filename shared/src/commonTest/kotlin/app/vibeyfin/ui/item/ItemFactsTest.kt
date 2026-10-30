@@ -25,8 +25,7 @@ class ItemFactsTest {
         backdropUrl = null, videoFormat = videoFormat,
     )
 
-    private fun video(range: DynamicRange = DynamicRange.Sdr, width: Int = 1920, height: Int = 1080) =
-        VideoFormat(codec = "hevc", width = width, height = height, dynamicRange = range, frameRate = 24f, bitrateKbps = null)
+    private fun video(range: DynamicRange = DynamicRange.Sdr, width: Int = 1920, height: Int = 1080) = VideoFormat(codec = "hevc", width = width, height = height, dynamicRange = range, frameRate = 24f, bitrateKbps = null)
 
     @Test
     fun `Dolby Vision wins over resolution`() {

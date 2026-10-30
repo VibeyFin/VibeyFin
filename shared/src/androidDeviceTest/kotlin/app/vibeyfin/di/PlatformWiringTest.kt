@@ -94,11 +94,10 @@ class PlatformWiringTest {
         assertTrue(info.authorizationHeader("token").all { it.code in 32..126 })
     }
 
-    private fun start(): Koin =
-        koinApplication {
-            androidContext(context)
-            modules(platformModule(), appModule())
-        }.koin.also { open += it }
+    private fun start(): Koin = koinApplication {
+        androidContext(context)
+        modules(platformModule(), appModule())
+    }.koin.also { open += it }
 
     private fun cleanUp() {
         open.forEach { koin ->

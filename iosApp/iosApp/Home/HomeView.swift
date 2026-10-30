@@ -124,8 +124,11 @@ struct HomeView: View {
         // The hero's Play found what to play (an episode for a show): the player opens on it, or the page when none was found.
         .onChange(of: model.state?.heroNav != nil) { has in
             guard has, let nav = model.state?.heroNav else { return }
-            if let play = nav as? HeroNavPlay { player.play(play.itemId) }
-            else if let details = nav as? HeroNavDetails { onDetails(details.itemId) }
+            if let play = nav as? HeroNavPlay {
+                player.play(play.itemId)
+            } else if let details = nav as? HeroNavDetails {
+                onDetails(details.itemId)
+            }
             model.heroNavHandled()
         }
         .onChange(of: model.state?.openList != nil) { opened in

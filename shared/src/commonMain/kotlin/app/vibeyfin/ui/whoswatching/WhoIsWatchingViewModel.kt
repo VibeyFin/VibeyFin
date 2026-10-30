@@ -151,7 +151,7 @@ class WhoIsWatchingViewModel(
         }
     }
 
-    /** Dismissing the launch PIN goes back to that profile, through its open-this-profile PIN when it has one. */
+    // Dismissing the launch PIN goes back to that profile, through its open-this-profile PIN when it has one.
     private fun goBackTo(profile: Profile) {
         viewModelScope.launch {
             if (pins.gates(serverId, profile.userId).openProfile) {
@@ -169,10 +169,12 @@ class WhoIsWatchingViewModel(
             local.update { it.copy(signingIn = true, error = null) }
             when (connection.activate(serverId, profile.userId)) {
                 ActivateResult.Activated -> local.update { it.copy(signingIn = false, signedIn = true) }
+
                 ActivateResult.Expired, ActivateResult.Unknown -> {
                     local.update { it.copy(signingIn = false) }
                     withoutSession(profile, notice = SignInMessages.SESSION_ENDED)
                 }
+
                 ActivateResult.Unreachable ->
                     local.update { it.copy(signingIn = false, error = SignInMessages.UNREACHABLE) }
             }
@@ -218,7 +220,7 @@ class WhoIsWatchingViewModel(
         local.update { it.copy(sheet = null, error = null) }
     }
 
-    /** A profile with no usable session: sign in without a password if it has none, else ask. */
+    // A profile with no usable session: sign in without a password if it has none, else ask.
     private suspend fun withoutSession(profile: Profile, notice: String?) {
         if (!profile.needsPassword) {
             signInNow(profile.name, "", passwordOnly = true)
@@ -236,6 +238,7 @@ class WhoIsWatchingViewModel(
         local.update { it.copy(signingIn = true, error = null) }
         when (val result = auth.signIn(serverId, username, password)) {
             SignInResult.SignedIn -> local.update { it.copy(signingIn = false, sheet = null, signedIn = true) }
+
             else -> local.update {
                 it.copy(signingIn = false, error = SignInMessages.forFailure(result, passwordOnly))
             }

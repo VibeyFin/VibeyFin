@@ -71,35 +71,42 @@ fun SettingsRoute(
     connection: ConnectionManager = koinInject(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
     LeaveWhenDisconnected(connection, onExit)
-    // The PIN dismissed on open: leave Settings.
+
     LaunchedEffect(state.leave) { if (state.leave) onBack() }
-    // A page marked as a sheet (a language list) opens over this one, as a filter's list does, instead of as a page of its own.
+
     var sheet by rememberSaveable { mutableStateOf<SettingsPageId?>(null) }
     val open: (SettingsPageId) -> Unit = { id ->
         if (state.pages[id]?.sheet == true) {
             viewModel.onPageOpened(id)
+
             sheet = id
         } else {
             onOpen(id)
         }
     }
-    // A language was picked from the sheet: it closes.
+
     LaunchedEffect(state.closePage) {
         val closing = state.closePage ?: return@LaunchedEffect
+
         viewModel.onPageClosed()
+
         if (closing == sheet) sheet = null
     }
+
     NotificationPermissionRequest(
         requested = state.requestNotificationPermission,
         onRequested = viewModel::onNotificationPermissionRequested,
         onDenied = viewModel::onNotificationPermissionDenied,
     )
-    // The Kids and PIN page reads the server's limits whenever it is shown (on a tablet, when its row is selected).
+
+    // The Kids and PIN page reads the server's limits whenever it is shown (on a tablet, when its row is selected)
     val page = state.pages[pageId]
+
     if (!twoPane) LaunchedEffect(pageId, state.locked) { if (!state.locked) viewModel.onPageOpened(pageId) }
     if (state.locked) {
-        // Nothing of Settings shows until the PIN is right, or is found not needed; a spinner, so the wait never reads as an empty page.
+        // Nothing of Settings shows until the PIN is right, or is found not needed; a spinner, so the wait never reads as an empty page
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Box(Modifier.fillMaxSize()) {
                 CircularProgressIndicator(
@@ -132,6 +139,7 @@ fun SettingsRoute(
             onBack = onBack,
         )
     }
+
     sheet?.let { id -> state.pages[id]?.let { page -> SettingsPickerSheet(page, viewModel::onChooseLanguage, viewModel::onSearch) { sheet = null } } }
     state.pinPrompt?.let { prompt ->
         PinSheet(
@@ -142,6 +150,7 @@ fun SettingsRoute(
             onDismiss = viewModel::onDismissPin,
         )
     }
+
     if (state.confirmPurgeDownloads) {
         AlertDialog(
             onDismissRequest = viewModel::onDismissPurgeDownloads,
@@ -151,6 +160,7 @@ fun SettingsRoute(
             dismissButton = { TextButton(viewModel::onDismissPurgeDownloads, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)) { Text(Strings.cancel) } },
         )
     }
+
     if (state.confirmSignOut) {
         AlertDialog(
             onDismissRequest = viewModel::onDismissSignOut,
@@ -162,14 +172,13 @@ fun SettingsRoute(
     }
 }
 
-/**
- * Switch profile and Sign out end the connection here, where nothing else is watching it: go to
- * "Who's watching?" of the server that was signed in to, or to Servers when it is not known.
- */
+// Nothing else watches the connection here: Switch profile and Sign out go to "Who's watching?" of the
+// server signed in to, or to Servers when it is not known
 @Composable
 private fun LeaveWhenDisconnected(connection: ConnectionManager, onExit: (HomeExit) -> Unit) {
     val connectionState by connection.state.collectAsStateWithLifecycle()
     var serverId by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(connectionState) {
         when (val state = connectionState) {
             is ConnectionState.Connected -> serverId = state.server.id
@@ -191,6 +200,7 @@ fun SettingsPageScreen(
     hasPage: (SettingsPageId) -> Boolean = { true },
 ) {
     val content = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().padding(horizontal = screenMargin())
+
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize().safeDrawingPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -202,6 +212,7 @@ fun SettingsPageScreen(
                     SettingsPageBody(page, hasPage, content, selectedLink = null, onToggle, onChoose, onAction, onOpen = { onOpen(it.target) })
                 }
             }
+
             FloatingBackButton(onBack)
         }
     }
@@ -224,6 +235,7 @@ internal fun SettingsPageBody(
 ) {
     val drawn = page.drawn(hasPage)
     val preview = page.subtitlePreviewStyle()
+
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
         Text(
             text = page.title,
@@ -233,29 +245,30 @@ internal fun SettingsPageBody(
         )
         drawn.sections.forEachIndexed { index, section ->
             if (index > 0) Spacer(Modifier.height(VibeyFinTokens.Space.s3))
+
             section.title?.let { SectionHeader(it) }
+
             val standalone = section.items.singleOrNull()?.takeIf { it is CustomItem && it.kind == CustomKind.SubtitlePreview }
+
             if (standalone != null) {
-                // The preview is a card of its own, not a row of a group's card.
                 SubtitlePreviewCard(standalone.title, preview)
             } else {
                 SectionCard {
                     section.items.forEach { item ->
-                        // Keyed by page and key, so a key that ever sits on two pages stays distinct.
+                        // Keyed by page and key, so a key that ever sits on two pages stays distinct
                         key(rowId(page.id, item)) { ItemRow(item, selectedLink, onToggle, onChoose, onAction, onOpen) }
                     }
                 }
             }
+
             section.footer?.let { SectionFooter(it) }
         }
+
         Spacer(Modifier.height(VibeyFinTokens.Space.s5))
     }
 }
 
-/**
- * A page marked [SettingsPage.sheet] (a language list), drawn as the picker sheet the filters and the player's tracks use: its
- * search field on top, one row per option. Picking saves it; the ViewModel then asks for the sheet to close.
- */
+// Picking saves the option; the ViewModel then asks for the sheet to close
 @Composable
 private fun SettingsPickerSheet(
     page: SettingsPage,
@@ -268,12 +281,12 @@ private fun SettingsPickerSheet(
     val rows = remember(choice) {
         choice?.options.orEmpty().map { OptionRow(key = it.code.orEmpty(), label = it.label, selected = it.value == choice?.value) }
     }
+
     PickerSheet(
         title = page.title,
         rows = rows,
         loading = false,
         message = null,
-        // Nothing matches what was typed: the page's own row says so.
         emptyText = if (rows.isEmpty()) items.filterIsInstance<InfoItem>().firstOrNull()?.title else null,
         onPick = { code -> choice?.let { onChooseLanguage(it.key, code) } },
         onDismiss = onDismiss,
@@ -293,19 +306,26 @@ private fun ItemRow(
 ) {
     when (item) {
         is ToggleItem -> ToggleRow(item) { onToggle(item.key, it) }
-        // A checklist choice draws its options inline in its own section: the section's title is its title.
+
+        // A checklist choice draws its options inline in its own section: the section's title is its title
         is ChoiceItem -> if (item.asPage) {
             item.checklist().forEach { (option, selected) -> ChecklistRow(option, selected) { onChoose(item.key, option.value) } }
         } else {
             ChoiceRow(item) { onChoose(item.key, it) }
         }
+
         is LinkItem -> LinkRow(item, selected = selectedLink?.let { it == item.key }) { onOpen(item) }
+
         is ActionItem -> ActionRow(item) { onAction(item.key) }
+
         is InfoItem -> InfoRow(item)
+
         is CustomItem -> when (item.kind) {
             CustomKind.ProfileHeader -> ProfileHeaderRow(item.title, item.help)
-            // The shared builder gives the preview a section of its own (drawn above), so no row; listed to keep the when exhaustive.
+
+            // The shared builder gives the preview a section of its own (drawn above), so no row; listed to keep the when exhaustive
             CustomKind.SubtitlePreview -> Unit
+
             CustomKind.PinDots -> PinDotsItemRow(item.title, item.help)
         }
     }

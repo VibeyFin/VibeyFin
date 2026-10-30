@@ -12,16 +12,14 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/** What a download needs of an item beyond its page: the files, with their sizes, and the streams inside them. */
+// What a download needs of an item beyond its page: the files, with their sizes, and the streams inside them.
 private const val DOWNLOAD_FIELDS = "MediaSources,MediaStreams,Overview,Genres,People,ProviderIds"
 
 /** `GET /Items?ids=`: [ids] with their media sources (file sizes included), for the download confirmation and the download itself. */
-suspend fun JellyfinApi.itemsForDownload(userId: String, ids: List<String>): ApiResult<ItemsResultDto> =
-    get("/Items", mapOf("ids" to ids.joinToString(","), "userId" to userId, "fields" to DOWNLOAD_FIELDS), retry = true)
+suspend fun JellyfinApi.itemsForDownload(userId: String, ids: List<String>): ApiResult<ItemsResultDto> = get("/Items", mapOf("ids" to ids.joinToString(","), "userId" to userId, "fields" to DOWNLOAD_FIELDS), retry = true)
 
 /** `GET /Shows/{id}/Episodes`: every episode of a show, Specials included, with its media sources. */
-suspend fun JellyfinApi.episodesForDownload(userId: String, seriesId: String): ApiResult<ItemsResultDto> =
-    get("/Shows/$seriesId/Episodes", mapOf("userId" to userId, "fields" to DOWNLOAD_FIELDS), retry = true)
+suspend fun JellyfinApi.episodesForDownload(userId: String, seriesId: String): ApiResult<ItemsResultDto> = get("/Shows/$seriesId/Episodes", mapOf("userId" to userId, "fields" to DOWNLOAD_FIELDS), retry = true)
 
 /** `GET /Shows/{id}/Episodes?seasonId=`: the episodes of one season, with their media sources. */
 suspend fun JellyfinApi.seasonEpisodesForDownload(userId: String, seriesId: String, seasonId: String): ApiResult<ItemsResultDto> = get(
@@ -59,8 +57,7 @@ private const val DOWNLOAD_SOCKET_TIMEOUT_MS = 60_000L
  * timeout, only a socket timeout that ends a transfer which stops sending. On a network failure the bytes written so far stay
  * with the sink; ask again from where it got to.
  */
-suspend fun JellyfinApi.download(itemId: String, offset: Long, sink: DownloadSink): ApiResult<Unit> =
-    transfer("/Items/$itemId/Download", offset, long = true, sink)
+suspend fun JellyfinApi.download(itemId: String, offset: Long, sink: DownloadSink): ApiResult<Unit> = transfer("/Items/$itemId/Download", offset, long = true, sink)
 
 /**
  * `GET` of a small file the server holds for an item, such as an image or a subtitle, given as a path with its query that
@@ -105,7 +102,7 @@ private inline fun sinkCall(block: () -> Unit) {
         block()
     } catch (e: CancellationException) {
         throw e
-    } catch (e: Exception) {
+    } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
         throw SinkFailure(e)
     }
 }
@@ -123,5 +120,4 @@ data class UpdateUserItemDataDto(
  * `POST /UserItems/{id}/UserData`: sets where the user stopped, whether they finished, and when they last watched. This is how
  * progress made without a connection reaches the server: there was no play session to report it through.
  */
-suspend fun JellyfinApi.updateUserData(userId: String, itemId: String, data: UpdateUserItemDataDto): ApiResult<Unit> =
-    post<UpdateUserItemDataDto, Unit>("/UserItems/$itemId/UserData", data, mapOf("userId" to userId))
+suspend fun JellyfinApi.updateUserData(userId: String, itemId: String, data: UpdateUserItemDataDto): ApiResult<Unit> = post<UpdateUserItemDataDto, Unit>("/UserItems/$itemId/UserData", data, mapOf("userId" to userId))

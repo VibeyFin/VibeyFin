@@ -37,9 +37,10 @@ class DownloadRepositoryTest {
     @AfterTest
     fun tearDown() = runTest { app.close() }
 
-    /** Saga: season 1 has episodes e1 (watched, 100 bytes) and e2 (200 bytes); movie m1 is 50 bytes. */
+    // Saga: season 1 has episodes e1 (watched, 100 bytes) and e2 (200 bytes); movie m1 is 50 bytes.
     private suspend fun saga(): FakeServer {
         val server = app.signedIn()
+
         fun episode(id: String, size: Long, played: Boolean = false, number: Int) = downloadItemJson(
             id, "Episode $number", "Episode", size = size, seriesId = "s1", seriesName = "Saga", seasonId = "se1",
             seasonNumber = 1, episodeNumber = number, played = played,
@@ -258,7 +259,7 @@ class DownloadRepositoryTest {
         assertEquals(listOf(DownloadState.Running, DownloadState.Paused), seen.value.map { it.single().state })
     }
 
-    /** Lets the database's flows, which run off the test's clock, deliver what they have. */
+    // Lets the database's flows, which run off the test's clock, deliver what they have.
     private suspend fun settle() = kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.delay(300) }
 
     @Test

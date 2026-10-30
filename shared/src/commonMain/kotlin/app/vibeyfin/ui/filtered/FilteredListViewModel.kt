@@ -4,16 +4,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.domain.ConnectionManager
+import app.vibeyfin.domain.Decade
 import app.vibeyfin.domain.FilterOption
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.LibraryRepository
-import app.vibeyfin.domain.Decade
 import app.vibeyfin.domain.PageSort
-import app.vibeyfin.domain.offersCollections
-import app.vibeyfin.domain.offersYearAndPeople
 import app.vibeyfin.domain.TypeFilter
-import app.vibeyfin.domain.offersTypeFilter
 import app.vibeyfin.domain.defaultSort
+import app.vibeyfin.domain.offersCollections
+import app.vibeyfin.domain.offersTypeFilter
+import app.vibeyfin.domain.offersYearAndPeople
 import app.vibeyfin.ui.children.ChildrenUiState
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
@@ -92,6 +92,7 @@ class FilteredListViewModel(
     private var sheetJob: Job? = null
     private var pageJob: Job? = null
     private var peopleJob: Job? = null
+
     // The people the last search found, so a pick can name who was chosen.
     private var foundPeople: List<FilterOption> = emptyList()
 
@@ -106,7 +107,7 @@ class FilteredListViewModel(
     /** Called as the end of the loaded items comes into view. */
     fun onLoadMore() {
         val current = content.value
-        if (!current.hasMore || current.loading || current.loadingMore || current.refreshing) return
+        if (!current.hasMore || current.busy) return
         content.value = current.copy(loadingMore = true, loadMoreFailed = false)
         val asked = selection.value
         viewModelScope.launch {
@@ -122,6 +123,7 @@ class FilteredListViewModel(
                         loadingMore = false,
                     )
                 }
+
                 is ApiResult.Failure -> content.update { it.copy(loadingMore = false, loadMoreFailed = true) }
             }
         }
@@ -151,19 +153,23 @@ class FilteredListViewModel(
                 sheetJob?.cancel()
                 loadFirstPage()
             }
+
             ListChipKind.Sort -> sheet.value = ListSheet(
                 kind = kind,
                 title = Strings.sortTitle,
                 options = PageSort.entries.map { FilterOption(it.name, sortLabel(it)) },
                 selectedId = current.sort.name,
             )
+
             ListChipKind.Genre -> openGenres(current.genre?.id.orEmpty())
+
             ListChipKind.Year -> sheet.value = ListSheet(
                 kind = kind,
                 title = Strings.yearTitle,
                 options = listOf(FilterOption("", Strings.allYears)) + Decade.entries.map { FilterOption(it.name, decadeLabel(it)) },
                 selectedId = current.decade?.name.orEmpty(),
             )
+
             ListChipKind.People -> {
                 peopleJob?.cancel()
                 foundPeople = emptyList()
@@ -176,6 +182,7 @@ class FilteredListViewModel(
                     emptyText = Strings.peoplePrompt,
                 )
             }
+
             // Clear drops every filter and the order: the page is as it opened.
             ListChipKind.Clear -> {
                 val reset = Selection(sort = filter.defaultSort)
@@ -209,6 +216,7 @@ class FilteredListViewModel(
                             foundPeople = result.value
                             it.copy(options = result.value, emptyText = Strings.noPeopleFound, message = null)
                         }
+
                         is ApiResult.Failure -> it.copy(options = emptyList(), message = LoadMessages.forError(result.error))
                     }
                 }
@@ -225,9 +233,13 @@ class FilteredListViewModel(
         val current = selection.value
         val next = when (open.kind) {
             ListChipKind.Sort -> current.copy(sort = PageSort.entries.firstOrNull { it.name == id } ?: return)
+
             ListChipKind.Genre -> current.copy(genre = genres?.firstOrNull { it.id == id })
+
             ListChipKind.Year -> current.copy(decade = Decade.entries.firstOrNull { it.name == id })
+
             ListChipKind.People -> current.copy(person = if (id.isEmpty()) null else foundPeople.firstOrNull { it.id == id } ?: current.person)
+
             // These do not open a picker.
             ListChipKind.Movies, ListChipKind.Shows, ListChipKind.Collections, ListChipKind.Clear -> return
         }
@@ -249,9 +261,10 @@ class FilteredListViewModel(
         onChip(open.kind)
     }
 
-    /** The genre picker: "All genres" and the genres with how many of this page's kind of title each holds. */
+    // The genre picker: "All genres" and the genres with how many of this page's kind of title each holds.
     private fun openGenres(selectedId: String) {
         sheetJob?.cancel()
+
         fun rows(options: List<FilterOption>) = listOf(FilterOption("", Strings.allGenres)) + options
         genres?.let {
             sheet.value = ListSheet(ListChipKind.Genre, Strings.genreTitle, rows(it), selectedId)
@@ -309,8 +322,7 @@ class FilteredListViewModel(
         PageSort.Rating -> Strings.sortRating
     }
 
-    private suspend fun page(asked: Selection, startIndex: Int) =
-        library.filteredPage(filter, asked.sort, asked.genre?.id, startIndex = startIndex, type = asked.type, decade = asked.decade, personId = asked.person?.id)
+    private suspend fun page(asked: Selection, startIndex: Int) = library.filteredPage(filter, asked.sort, asked.genre?.id, startIndex = startIndex, type = asked.type, decade = asked.decade, personId = asked.person?.id)
 
     private fun loadFirstPage() {
         // The list on screen stays (dimmed) until the new one is in, and so does the count: nothing above it changes size or jumps.
@@ -335,11 +347,15 @@ class FilteredListViewModel(
                     // A page that was narrowed says the filters left nothing, not that the library is empty.
                     emptyText = if (asked != Selection(sort = filter.defaultSort)) Strings.nothingMatchesFilters else Strings.emptyFolder,
                 )
+
                 is ApiResult.Failure -> ChildrenUiState(loading = false, message = LoadMessages.forError(result.error))
             }
         }
     }
 }
 
-/** How long after the last key a People search starts. */
+// How long after the last key a People search starts.
 private const val SEARCH_DEBOUNCE_MS = 300L
+
+// A page is being fetched, or the list is being refreshed
+private val ChildrenUiState.busy get() = loading || loadingMore || refreshing

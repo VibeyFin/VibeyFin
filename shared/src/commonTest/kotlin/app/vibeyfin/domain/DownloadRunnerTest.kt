@@ -18,8 +18,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runCurrent
-import kotlinx.coroutines.test.testTimeSource
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.testTimeSource
 import kotlinx.coroutines.withContext
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -43,7 +43,7 @@ class DownloadRunnerTest {
     @AfterTest
     fun tearDown() = runTest { app.close() }
 
-    /** Alex is signed in; the server has movie `m1` of [body] with a poster. */
+    // Alex is signed in; the server has movie `m1` of [body] with a poster.
     private suspend fun movieOnServer(
         download: (app.vibeyfin.testing.RecordedRequest) -> Reply = { Reply.ranged(body, it) },
         subtitle: Boolean = false,
@@ -421,8 +421,7 @@ class DownloadRunnerTest {
         override fun canPlayVideo(codec: String) = playable(codec)
     }
 
-    private fun runnerWith(converter: VideoConverter) =
-        DownloadRunner(app.downloads, app.database.accountDao(), app.connection, app.files, app.network, app.wake, app.clock, speeds = app.speeds, converter = converter)
+    private fun runnerWith(converter: VideoConverter) = DownloadRunner(app.downloads, app.database.accountDao(), app.connection, app.files, app.network, app.wake, app.clock, speeds = app.speeds, converter = converter)
 
     @Test
     fun aVideoThePlayerCannotOpenIsReplacedByTheConvertedFile() = runTest {
@@ -499,8 +498,7 @@ class DownloadRunnerTest {
         }
     }
 
-    private fun externalRunner(transfer: ExternalVideoTransfer) =
-        DownloadRunner(app.downloads, app.database.accountDao(), app.connection, app.files, app.network, app.wake, app.clock, speeds = app.speeds, external = transfer)
+    private fun externalRunner(transfer: ExternalVideoTransfer) = DownloadRunner(app.downloads, app.database.accountDao(), app.connection, app.files, app.network, app.wake, app.clock, speeds = app.speeds, external = transfer)
 
     @Test
     fun aPlatformTransferReportsOncePerStepOfBytesNotOncePerChunk() = runTest {

@@ -6,6 +6,7 @@ import android.os.SystemClock
 import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -34,6 +34,10 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
+import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.domain.PlaybackDiagnostics
+import app.vibeyfin.domain.TrickplayTrack
+import app.vibeyfin.ui.common.Strings
 import coil3.SingletonImageLoader
 import coil3.network.NetworkHeaders
 import coil3.network.httpHeaders
@@ -42,10 +46,6 @@ import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import coil3.toBitmap
-import app.vibeyfin.app.theme.VibeyFinTokens
-import app.vibeyfin.domain.TrickplayTrack
-import app.vibeyfin.domain.PlaybackDiagnostics
-import app.vibeyfin.ui.common.Strings
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -57,9 +57,11 @@ fun StatsOverlay(diagnostics: PlaybackDiagnostics, modifier: Modifier = Modifier
     val none = Strings.statsUnavailable
     val rows = buildList {
         add(Strings.statsLabelMethod to (diagnostics.method?.let(Strings::statsMethod) ?: none))
+
         if (diagnostics.transcodeReasons.isNotEmpty()) {
             add(Strings.statsLabelReasons to diagnostics.transcodeReasons.joinToString("\n"))
         }
+
         add(Strings.statsLabelVideo to (diagnostics.videoCodec ?: none))
         add(Strings.statsLabelAudio to (diagnostics.audioCodec ?: none))
         add(
@@ -76,6 +78,7 @@ fun StatsOverlay(diagnostics: PlaybackDiagnostics, modifier: Modifier = Modifier
         add(Strings.statsLabelThroughput to (diagnostics.throughputKbps?.let(Strings::statsBitrate) ?: none))
         add(Strings.statsLabelBuffer to (diagnostics.bufferMs?.let(Strings::statsBuffer) ?: none))
     }
+
     Column(
         modifier = modifier
             .widthIn(max = 260.dp)
@@ -84,7 +87,7 @@ fun StatsOverlay(diagnostics: PlaybackDiagnostics, modifier: Modifier = Modifier
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         rows.forEach { (label, value) ->
-            // One spoken phrase per row, "Bitrate, 4.5 Mbps", instead of two separate texts.
+            // One spoken phrase per row, "Bitrate, 4.5 Mbps", instead of two separate texts
             Row(
                 Modifier.clearAndSetSemantics { contentDescription = Strings.labelled(label, value) },
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -128,7 +131,6 @@ fun StillWatchingPrompt(onContinue: () -> Unit, onStop: () -> Unit, modifier: Mo
         modifier = modifier
             .fillMaxSize()
             .background(VibeyFinTokens.Colors.scrim)
-            // The picture beneath is not touched while the question is up.
             .pointerInput(Unit) { detectTapGestures { } },
         contentAlignment = Alignment.Center,
     ) {
@@ -142,6 +144,7 @@ fun StillWatchingPrompt(onContinue: () -> Unit, onStop: () -> Unit, modifier: Mo
                 FilledTonalButton(onClick = onStop, modifier = Modifier.height(VibeyFinTokens.Size.touch)) {
                     Text(Strings.stillWatchingStop)
                 }
+
                 Button(onClick = onContinue, modifier = Modifier.height(VibeyFinTokens.Size.touch)) {
                     Text(Strings.stillWatchingContinue)
                 }
@@ -157,11 +160,11 @@ fun StillWatchingPrompt(onContinue: () -> Unit, onStop: () -> Unit, modifier: Mo
  * counts as missing for a short while (scrubbing carries on with the timestamp alone), then it is tried again.
  */
 class TrickplayTiles(private val context: Context, private val track: TrickplayTrack, private val headers: Map<String, String>) {
-    // Bounded by bytes; a tile that falls out is fetched again when it is needed.
+    // Bounded by bytes; a tile that falls out is fetched again when it is needed
     private val tiles = object : LruCache<Int, Bitmap>(CACHE_BYTES) {
         override fun sizeOf(key: Int, value: Bitmap): Int = value.byteCount
     }
-    /** When each tile failed, on [SystemClock.elapsedRealtime]. */
+
     private val failed = ConcurrentHashMap<Int, Long>()
 
     /** Which tile image holds the thumbnail for [positionMs]. */
@@ -173,6 +176,7 @@ class TrickplayTiles(private val context: Context, private val track: TrickplayT
         val tile = tiles.get(at.tileIndex) ?: load(at.tileIndex) ?: return null
         val x = at.column * track.thumbWidth
         val y = at.row * track.thumbHeight
+
         if (x + track.thumbWidth > tile.width || y + track.thumbHeight > tile.height) return null
         return Bitmap.createBitmap(tile, x, y, track.thumbWidth, track.thumbHeight).asImageBitmap()
     }
@@ -183,20 +187,24 @@ class TrickplayTiles(private val context: Context, private val track: TrickplayT
 
     private suspend fun load(index: Int): Bitmap? {
         val failedAt = failed[index]
+
         if (failedAt != null) {
             if (!track.mayRetryTile(failedAt, SystemClock.elapsedRealtime())) return null
+
             failed.remove(index)
         }
+
         val request = ImageRequest.Builder(context)
             .data(track.tileUrl(index))
             .httpHeaders(NetworkHeaders.Builder().apply { headers.forEach { (name, value) -> set(name, value) } }.build())
-            // Cropping needs pixels in memory; the tiles are held here, not in Coil's shared caches.
+            // Cropping needs pixels in memory; the tiles are held here, not in Coil's shared caches
             .allowHardware(false)
             .memoryCachePolicy(CachePolicy.DISABLED)
             .diskCachePolicy(CachePolicy.DISABLED)
             .build()
         val result = SingletonImageLoader.get(context).execute(request)
         val bitmap = (result as? SuccessResult)?.image?.toBitmap()
+
         if (bitmap == null) failed[index] = SystemClock.elapsedRealtime() else tiles.put(index, bitmap)
         return bitmap
     }
@@ -204,7 +212,7 @@ class TrickplayTiles(private val context: Context, private val track: TrickplayT
 
 /**
  * The thumbnail above the scrubber's thumb with the time under it, on the scrim. [fraction] is where
- * the thumb is along the bar; the preview is centred on it but kept inside the bar's width, so it
+ * the thumb is along the bar; the preview is centered on it but kept inside the bar's width, so it
  * never leaves the screen at either end. It takes no touches.
  */
 @Composable
@@ -213,7 +221,7 @@ fun ScrubPreview(thumbnail: ImageBitmap, time: String, fraction: Float, modifier
         modifier = modifier
             .layout { measurable, constraints ->
                 val placeable = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
-                // Sits on top of the bar without taking room in it.
+                // Sits on top of the bar without taking room in it
                 layout(0, 0) {
                     val centred = (constraints.maxWidth * fraction - placeable.width / 2f).toInt()
                     placeable.place(centred.coerceIn(0, (constraints.maxWidth - placeable.width).coerceAtLeast(0)), -placeable.height)

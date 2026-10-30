@@ -53,11 +53,14 @@ fun ProfileButton(
     viewModel: ProfileMenuViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
     LaunchedEffect(state.exit) { state.exit?.let(onExit) }
     state.pinPrompt?.let { prompt ->
         PinSheet(prompt, viewModel::onSubmitPin, viewModel::onForgotPin, viewModel::onSubmitPassword, viewModel::onDismissPin)
     }
+
     var open by remember { mutableStateOf(false) }
+
     Box {
         Box(
             modifier = Modifier
@@ -65,11 +68,16 @@ fun ProfileButton(
                 .clip(CircleShape)
                 .background(VibeyFinTokens.Colors.surface3)
                 .clickable(role = Role.Button, onClickLabel = Strings.showOptions) { open = true }
-                // Named for the person, as on iOS; the letter on it would only be read as "A".
+                // Named for the person, as on iOS; the letter on it would only be read as "A"
                 .semantics {
                     contentDescription = state.userName.orEmpty()
                     if (!offline) {
-                        customActions = listOf(CustomAccessibilityAction(Strings.switchProfile) { viewModel.onSwitchProfile(); true })
+                        customActions = listOf(
+                            CustomAccessibilityAction(Strings.switchProfile) {
+                                viewModel.onSwitchProfile()
+                                true
+                            },
+                        )
                     }
                 },
             contentAlignment = Alignment.Center,
@@ -81,15 +89,35 @@ fun ProfileButton(
                 modifier = Modifier.clearAndSetSemantics { },
             )
         }
+
         VibeyFinMenu(expanded = open, onDismiss = { open = false }) {
             if (!offline) {
-                VibeyFinMenuItem(Strings.switchProfile, Icons.Filled.Person) { open = false; viewModel.onSwitchProfile() }
-                VibeyFinMenuItem(Strings.switchServer, Icons.Filled.Refresh) { open = false; viewModel.onSwitchServer() }
+                VibeyFinMenuItem(Strings.switchProfile, Icons.Filled.Person) {
+                    open = false
+
+                    viewModel.onSwitchProfile()
+                }
+
+                VibeyFinMenuItem(Strings.switchServer, Icons.Filled.Refresh) {
+                    open = false
+
+                    viewModel.onSwitchServer()
+                }
             }
-            VibeyFinMenuItem(Strings.settings, Icons.Filled.Settings) { open = false; onSettings() }
-            // A kids profile cannot sign out; the view model ignores it too.
+
+            VibeyFinMenuItem(Strings.settings, Icons.Filled.Settings) {
+                open = false
+
+                onSettings()
+            }
+
+            // A kids profile cannot sign out; the view model ignores it too
             if (!offline && !state.kidsProfile) {
-                VibeyFinMenuItem(Strings.signOut, Icons.AutoMirrored.Filled.ExitToApp) { open = false; viewModel.onSignOut() }
+                VibeyFinMenuItem(Strings.signOut, Icons.AutoMirrored.Filled.ExitToApp) {
+                    open = false
+
+                    viewModel.onSignOut()
+                }
             }
         }
     }

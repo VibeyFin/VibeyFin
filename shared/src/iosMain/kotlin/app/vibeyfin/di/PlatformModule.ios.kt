@@ -5,28 +5,28 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
 import app.vibeyfin.data.db.VibeyFinDatabase
-import app.vibeyfin.data.platform.DeviceInfo
-import app.vibeyfin.data.platform.IosDeviceInfo
-import app.vibeyfin.data.platform.IosPlaybackCapabilities
-import app.vibeyfin.data.prefs.createDevicePreferencesDataStore
-import app.vibeyfin.data.vault.KeychainTokenVault
-import app.vibeyfin.data.vault.TokenVault
 import app.vibeyfin.data.download.IosBackgroundTransfer
 import app.vibeyfin.data.download.IosDownloadFiles
 import app.vibeyfin.data.download.IosDownloadScheduler
 import app.vibeyfin.data.download.IosVideoConverter
-import app.vibeyfin.domain.VideoConverter
+import app.vibeyfin.data.platform.DeviceInfo
+import app.vibeyfin.data.platform.IosDeviceInfo
 import app.vibeyfin.data.platform.IosNetworkMonitor
-import app.vibeyfin.domain.DownloadRunner
-import app.vibeyfin.domain.ExternalVideoTransfer
+import app.vibeyfin.data.platform.IosPlaybackCapabilities
+import app.vibeyfin.data.prefs.createDevicePreferencesDataStore
+import app.vibeyfin.data.vault.KeychainTokenVault
+import app.vibeyfin.data.vault.TokenVault
 import app.vibeyfin.domain.DownloadFiles
+import app.vibeyfin.domain.DownloadRunner
 import app.vibeyfin.domain.DownloadScheduler
+import app.vibeyfin.domain.ExternalVideoTransfer
 import app.vibeyfin.domain.LanDiscovery
 import app.vibeyfin.domain.NetworkMonitor
-import app.vibeyfin.domain.NoProgressSyncScheduler
-import app.vibeyfin.domain.ProgressSyncScheduler
 import app.vibeyfin.domain.NoLanDiscovery
+import app.vibeyfin.domain.NoProgressSyncScheduler
 import app.vibeyfin.domain.PlaybackCapabilitiesSource
+import app.vibeyfin.domain.ProgressSyncScheduler
+import app.vibeyfin.domain.VideoConverter
 import kotlinx.cinterop.ExperimentalForeignApi
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -51,7 +51,7 @@ actual fun platformModule(): Module = module {
     single<NetworkMonitor> { IosNetworkMonitor() }
     // Downloads: the files in Documents, so they show in the Files app under "On My iPhone / VibeyFin" (out of backups), and videos
     // through a background URLSession. They used to be in Application Support: whatever is still there is moved over.
-    // TODO: remove `legacyRoot` with the migration in IosDownloadFiles (beta only, developers' devices).
+    // Temporary: remove `legacyRoot` with the migration in IosDownloadFiles (beta only, developers' devices).
     single { IosDownloadFiles("${documentsDirectory()}/Downloads", legacyRoot = "${appSupportDirectory()}/downloads") }
     single<DownloadFiles> { get<IosDownloadFiles>() }
     single { IosBackgroundTransfer(get(), get()) }
@@ -62,7 +62,7 @@ actual fun platformModule(): Module = module {
     single<ProgressSyncScheduler> { NoProgressSyncScheduler }
 }
 
-/** Documents is what the Files app shows of the app (with `UIFileSharingEnabled`); only the downloads go there. */
+// Documents is what the Files app shows of the app (with `UIFileSharingEnabled`); only the downloads go there.
 @OptIn(ExperimentalForeignApi::class)
 private fun documentsDirectory(): String {
     val url = NSFileManager.defaultManager.URLForDirectory(
@@ -75,7 +75,7 @@ private fun documentsDirectory(): String {
     return checkNotNull(url?.path) { "Documents directory is unavailable." }
 }
 
-/** Application Support is private to the app and, unlike Documents, not shown in the Files app. */
+// Application Support is private to the app and, unlike Documents, not shown in the Files app.
 @OptIn(ExperimentalForeignApi::class)
 private fun appSupportDirectory(): String {
     val url = NSFileManager.defaultManager.URLForDirectory(

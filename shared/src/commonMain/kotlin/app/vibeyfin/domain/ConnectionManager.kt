@@ -93,6 +93,7 @@ class ConnectionManager(
                 connect(server, account, token, reached.api)
                 ActivateResult.Activated
             }
+
             is ApiResult.Failure -> if (result.error == ApiError.Unauthorized) {
                 expireSession(serverId, userId)
                 ActivateResult.Expired
@@ -178,7 +179,7 @@ class ConnectionManager(
         expireSession(current.serverId, current.userId)
     }
 
-    /** Asks the server about the token. A rejection is handled by [onTokenRejected] like any other. */
+    // Asks the server about the token. A rejection is handled by [onTokenRejected] like any other.
     private suspend fun verify(serverId: String, token: String) {
         val reached = connector.firstAnswer(serverId, token) { it.me() } ?: return
         if (reached.result !is ApiResult.Success) return
@@ -188,12 +189,10 @@ class ConnectionManager(
         }
     }
 
-    /**
-     * The one place a rejected token ends a session: drops the token, locks the profile and moves
-     * the state to [ConnectionState.Expired] so the app routes to "Who's watching?". Explicit
-     * sign-out is the only other way a token is cleared, and it goes through [signOut]; [asProfile]
-     * locks a rejected token of a profile that isn't signed in, which has no state to move.
-     */
+    // The one place a rejected token ends a session: drops the token, locks the profile and moves
+    // the state to [ConnectionState.Expired] so the app routes to "Who's watching?". Explicit
+    // sign-out is the only other way a token is cleared, and it goes through [signOut]; [asProfile]
+    // locks a rejected token of a profile that isn't signed in, which has no state to move.
     private suspend fun expireSession(serverId: String, userId: String) {
         accounts.expire(serverId, userId)
         _state.value = ConnectionState.Expired(serverId, userId)

@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.IndicationNodeFactory
+import androidx.compose.foundation.interaction.Interaction
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.material3.ripple
@@ -14,7 +15,7 @@ import androidx.compose.ui.node.DelegatingNode
 import androidx.compose.ui.node.DrawModifierNode
 import kotlinx.coroutines.launch
 
-/** How far a pressed button, card or chip shrinks. Small: it should feel like pressing, not like a bounce. */
+// Small: it should feel like pressing, not bouncing
 private const val PRESSED_SCALE = 0.95f
 
 /**
@@ -25,8 +26,7 @@ private const val PRESSED_SCALE = 0.95f
 object PressScaleIndication : IndicationNodeFactory {
     private val ripple = ripple()
 
-    override fun create(interactionSource: InteractionSource): DelegatableNode =
-        PressScaleNode(interactionSource, ripple.create(interactionSource))
+    override fun create(interactionSource: InteractionSource): DelegatableNode = PressScaleNode(interactionSource, ripple.create(interactionSource))
 
     override fun equals(other: Any?) = other === this
 
@@ -36,7 +36,8 @@ object PressScaleIndication : IndicationNodeFactory {
 private class PressScaleNode(
     private val source: InteractionSource,
     rippleNode: DelegatableNode,
-) : DelegatingNode(), DrawModifierNode {
+) : DelegatingNode(),
+    DrawModifierNode {
     private val scale = Animatable(1f)
 
     init {
@@ -46,8 +47,15 @@ private class PressScaleNode(
     override fun onAttach() {
         coroutineScope.launch {
             source.interactions.collect { interaction ->
-                val target = if (interaction is PressInteraction.Press) PRESSED_SCALE else if (interaction.endsAPress()) 1f else return@collect
-                // Each change takes over from the one before, so a quick tap never leaves it shrunk.
+                val target = if (interaction is PressInteraction.Press) {
+                    PRESSED_SCALE
+                } else if (interaction.endsAPress()) {
+                    1f
+                } else {
+                    return@collect
+                }
+
+                // Each change takes over from the one before, so a quick tap never leaves it shrunk
                 launch { scale.animateTo(target, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium)) }
             }
         }
@@ -58,5 +66,4 @@ private class PressScaleNode(
     }
 }
 
-private fun androidx.compose.foundation.interaction.Interaction.endsAPress() =
-    this is PressInteraction.Release || this is PressInteraction.Cancel
+private fun Interaction.endsAPress() = this is PressInteraction.Release || this is PressInteraction.Cancel

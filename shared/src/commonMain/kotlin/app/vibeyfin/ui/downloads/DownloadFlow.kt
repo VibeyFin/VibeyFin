@@ -73,7 +73,7 @@ class DownloadFlow(
     private val _removal = MutableStateFlow<RemovePrompt?>(null)
     val removal: StateFlow<RemovePrompt?> = _removal
 
-    /** A download that could not be started, with what to try. */
+    // A download that could not be started, with what to try.
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message
 
@@ -94,6 +94,7 @@ class DownloadFlow(
                     _prompt.value = null
                     _message.value = plan.text()
                 }
+
                 is DownloadAttempt.Success -> if (ask) {
                     _prompt.update { it?.copy(loading = false, plan = plan.value) }
                 } else if (plan.value.candidates.isEmpty()) {
@@ -177,11 +178,11 @@ internal class DownloadParts(
     val message: String?,
 )
 
-@OptIn(ExperimentalCoroutinesApi::class)
 /**
  * The [DownloadParts] of whoever is signed in; [canDownload] is whether the server lets them download. While [live] is false the downloads
  * only change with their state (see [DownloadRepository.observeStates]), so a screen that shows no progress is not rebuilt by one.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 internal fun downloadParts(
     connection: ConnectionManager,
     downloads: DownloadRepository,

@@ -44,8 +44,7 @@ class SearchViewModelTest {
 
     private fun hints(vararg items: String) = """{"SearchHints":[${items.joinToString(",")}],"TotalRecordCount":${items.size}}"""
 
-    private fun hint(id: String, name: String, type: String, year: Int? = null, series: String? = null, season: Int? = null, episode: Int? = null, tag: String? = null) =
-        """{"ItemId":"$id","Id":"$id","Name":"$name","Type":"$type","ProductionYear":${year ?: "null"},"Series":${series?.let { "\"$it\"" } ?: "null"},"ParentIndexNumber":${season ?: "null"},"IndexNumber":${episode ?: "null"},"PrimaryImageTag":${tag?.let { "\"$it\"" } ?: "null"}}"""
+    private fun hint(id: String, name: String, type: String, year: Int? = null, series: String? = null, season: Int? = null, episode: Int? = null, tag: String? = null) = """{"ItemId":"$id","Id":"$id","Name":"$name","Type":"$type","ProductionYear":${year ?: "null"},"Series":${series?.let { "\"$it\"" } ?: "null"},"ParentIndexNumber":${season ?: "null"},"IndexNumber":${episode ?: "null"},"PrimaryImageTag":${tag?.let { "\"$it\"" } ?: "null"}}"""
 
     private suspend fun server(body: String = hints()) = app.signedIn().also { it.on("GET", "/Search/Hints", Reply.json(body)) }
 

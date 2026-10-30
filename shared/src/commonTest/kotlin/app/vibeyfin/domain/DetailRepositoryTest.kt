@@ -29,11 +29,16 @@ class DetailRepositoryTest {
     @Test
     fun anItemCarriesItsLogoItsActorsAndItsSeasonCount() = runTest {
         app.signedIn().on(
-            "GET", "/Items",
+            "GET",
+            "/Items",
             Reply.json(
                 itemsJson(
                     itemJson(
-                        "show", "Severance", type = "Series", logoTag = "logo-tag", childCount = 2,
+                        "show",
+                        "Severance",
+                        type = "Series",
+                        logoTag = "logo-tag",
+                        childCount = 2,
                         people = listOf(
                             personJson("p1", "Adam Scott", role = "Mark", imageTag = "face"),
                             personJson("p2", "Ben Stiller", type = "Director"),
@@ -87,7 +92,8 @@ class DetailRepositoryTest {
     @Test
     fun seasonsComeInTheServersOrderWithTheirNumbers() = runTest {
         app.signedIn().on(
-            "GET", "/Shows/s1/Seasons",
+            "GET",
+            "/Shows/s1/Seasons",
             Reply.json(
                 itemsJson(
                     itemJson("sp", "Specials", type = "Season", isFolder = true, episodeNumber = 0, seriesId = "s1"),
@@ -106,7 +112,8 @@ class DetailRepositoryTest {
     @Test
     fun episodesOfASeasonAreAskedForWithTheirSynopsis() = runTest {
         app.signedIn().on(
-            "GET", "/Shows/s1/Episodes",
+            "GET",
+            "/Shows/s1/Episodes",
             Reply.json(itemsJson(itemJson("e1", "Pilot", type = "Episode", overview = "It begins.", episodeNumber = 1, seasonNumber = 1, seriesId = "s1"))),
         )
 
@@ -141,11 +148,15 @@ class DetailRepositoryTest {
     @Test
     fun anItemCarriesWhetherItIsOnMyListAndItsTrailers() = runTest {
         app.signedIn().on(
-            "GET", "/Items",
+            "GET",
+            "/Items",
             Reply.json(
                 itemsJson(
                     itemJson(
-                        "m1", "Heat", favorite = true, localTrailerCount = 2,
+                        "m1",
+                        "Heat",
+                        favorite = true,
+                        localTrailerCount = 2,
                         remoteTrailers = listOf("not a link", "https://www.youtube.com/watch?v=abc"),
                     ),
                 ),

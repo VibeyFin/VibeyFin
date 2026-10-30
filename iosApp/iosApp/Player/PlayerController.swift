@@ -294,7 +294,7 @@ final class PlayerController: ObservableObject {
 
     private static func fourCC(_ code: FourCharCode) -> String {
         let bytes = [24, 16, 8, 0].map { UInt8((code >> $0) & 0xFF) }
-        return String(decoding: bytes, as: UTF8.self)
+        return String(bytes: bytes, encoding: .utf8) ?? ""
     }
 
     /// Reads the item's access log, size and buffer, and tells the shared model when something changed.

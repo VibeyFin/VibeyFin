@@ -2,32 +2,31 @@ package app.vibeyfin.app.item
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -38,9 +37,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.FilterChip
@@ -59,43 +58,47 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.vectorResource
 import app.vibeyfin.R
 import app.vibeyfin.app.components.Artwork
-import app.vibeyfin.app.downloads.EpisodeDownloadButton
-import app.vibeyfin.app.downloads.DownloadActionMenuItem
-import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
-import app.vibeyfin.domain.Download
-import app.vibeyfin.ui.downloads.actions
-import app.vibeyfin.ui.downloads.badge
 import app.vibeyfin.app.components.LoadError
+import app.vibeyfin.app.components.PlaybackProgressBar
 import app.vibeyfin.app.components.ROW_FADE_MS
 import app.vibeyfin.app.components.RowPhase
 import app.vibeyfin.app.components.SectionTitle
 import app.vibeyfin.app.components.SkeletonBlock
-import app.vibeyfin.app.components.SkeletonLine
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.components.bleed
+import app.vibeyfin.app.downloads.DownloadActionMenuItem
+import app.vibeyfin.app.downloads.EpisodeDownloadButton
+import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.model.CastMember
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
+import app.vibeyfin.ui.downloads.actions
 import app.vibeyfin.ui.item.SeasonsState
-import app.vibeyfin.ui.item.EpisodeList as EpisodeData
-import app.vibeyfin.ui.item.seasonLabel
 import app.vibeyfin.ui.item.TechnicalLine
+import app.vibeyfin.ui.item.seasonLabel
 import coil3.compose.AsyncImage
+import app.vibeyfin.ui.item.EpisodeList as EpisodeData
 
 /**
  * A show's seasons as a row of buttons (the selected one in `accent-soft`, aqua stays for Play), then the selected season's
@@ -118,11 +121,20 @@ fun SeasonsSection(
     downloadCallbacks: DownloadCallbacks,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-        val phase = if (seasons.loading) RowPhase.Loading else if (seasons.message != null) RowPhase.Failed else RowPhase.Ready
+        val phase = if (seasons.loading) {
+            RowPhase.Loading
+        } else if (seasons.message != null) {
+            RowPhase.Failed
+        } else {
+            RowPhase.Ready
+        }
+
         Crossfade(targetState = phase, animationSpec = tween(ROW_FADE_MS), modifier = Modifier.animateContentSize(tween(ROW_FADE_MS))) { shown ->
             when (shown) {
                 RowPhase.Loading -> SeasonSkeleton(margin)
+
                 RowPhase.Failed -> LoadError(seasons.message ?: "", onRetrySeasons)
+
                 RowPhase.Ready -> if (seasons.seasons.isEmpty()) {
                     Text(Strings.noSeasons, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
@@ -130,6 +142,7 @@ fun SeasonsSection(
                 }
             }
         }
+
         if (seasons.seasons.isNotEmpty() && !seasons.loading && seasons.message == null) {
             EpisodeList(seasons, wide, margin, onPlayEpisode, onToggleEpisodePlayed, onViewEpisode, onRetryEpisodes, downloads, canDownload, downloadCallbacks)
         }
@@ -143,12 +156,12 @@ private fun SeasonSkeleton(margin: Dp) {
     }
 }
 
-/** Each season a button, in the server's order; about four fit and the next peeks. */
 @Composable
 private fun SeasonButtons(seasons: SeasonsState, margin: Dp, onSelect: (String) -> Unit) {
     val listState = rememberLazyListState()
-    // Opens with the season Play starts in in view.
+
     val opening = seasons.seasons.indexOfFirst { it.id == seasons.selectedId }.coerceAtLeast(0)
+
     LaunchedEffect(seasons.seasons.size) { if (opening > 0) listState.scrollToItem(opening) }
     LazyRow(
         state = listState,
@@ -158,11 +171,11 @@ private fun SeasonButtons(seasons: SeasonsState, margin: Dp, onSelect: (String) 
     ) {
         items(seasons.seasons, key = { it.id }) { season ->
             val selected = season.id == seasons.selectedId
+
             FilterChip(
                 selected = selected,
                 onClick = { onSelect(season.id) },
                 label = { Text(season.seasonLabel, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                // No outline: a filled button, softly lit when selected.
                 colors = FilterChipDefaults.filterChipColors(
                     containerColor = VibeyFinTokens.Colors.surface2,
                     labelColor = VibeyFinTokens.Colors.inkMuted,
@@ -185,34 +198,44 @@ private class EpisodePhase(val seasonId: String?, val index: Int, val snapshot: 
     val failed: Boolean get() = snapshot.message != null
     val loading: Boolean get() = snapshot.loading && snapshot.items.isEmpty()
     private val empty: Boolean get() = snapshot.items.isEmpty()
+
     override fun equals(other: Any?) = other is EpisodePhase && seasonId == other.seasonId && failed == other.failed && loading == other.loading && empty == other.empty
+
     override fun hashCode() = listOf(seasonId, failed, loading, empty).hashCode()
 }
 
-/** The selected season's episodes, down the page on a phone and sideways as cards on a tablet; choosing another season fades to its loading cards, then to its episodes. */
 @Composable
 private fun EpisodeList(
-    seasons: SeasonsState, wide: Boolean, margin: Dp, onPlay: (String) -> Unit, onToggleWatched: (String) -> Unit, onViewEpisode: (MediaItem) -> Unit, onRetry: () -> Unit,
-    downloads: Map<String, Download>, canDownload: Boolean, downloadCallbacks: DownloadCallbacks,
+    seasons: SeasonsState,
+    wide: Boolean,
+    margin: Dp,
+    onPlay: (String) -> Unit,
+    onToggleWatched: (String) -> Unit,
+    onViewEpisode: (MediaItem) -> Unit,
+    onRetry: () -> Unit,
+    downloads: Map<String, Download>,
+    canDownload: Boolean,
+    downloadCallbacks: DownloadCallbacks,
 ) {
     val episodes = seasons.episodes
     val cardWidth = if (wide) EPISODE_CARD_WIDE else EPISODE_CARD
     val currentPhase = EpisodePhase(seasons.selectedId, seasons.seasons.indexOfFirst { it.id == seasons.selectedId }, episodes)
+
     // The episode area keeps the height of the tallest list it has shown, so choosing a season swaps its content in place and
     // nothing below it moves.
     val density = LocalDensity.current
     var tallest by remember { mutableStateOf(0.dp) }
+
     Column(
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         modifier = Modifier
             .heightIn(min = tallest)
             .onSizeChanged { size -> with(density) { if (!currentPhase.loading && size.height.toDp() > tallest) tallest = size.height.toDp() } },
     ) {
-        // The list crossfades between a season loading and a season shown, so a tap never snaps.
         AnimatedContent(
             targetState = currentPhase,
             transitionSpec = {
-                // A later season slides in from the right, an earlier one from the left; the same season only fades.
+                // A later season slides in from the right, an earlier one from the left; the same season only fades
                 val forward = targetState.index > initialState.index
                 if (targetState.index == initialState.index) {
                     fadeIn(tween(ROW_FADE_MS)) togetherWith fadeOut(tween(ROW_FADE_MS))
@@ -224,38 +247,53 @@ private fun EpisodeList(
             },
             label = "episodes",
         ) { phase ->
-            // The phase on screen follows the live list (a watched mark changes a card, not the phase); one fading out keeps its own.
+            // The phase on screen follows the live list (a watched mark changes a card, not the phase); one fading out keeps its own
             val list = if (phase == currentPhase) episodes else phase.snapshot
+
             when {
                 phase.failed -> LoadError(list.message ?: "", onRetry)
+
                 phase.loading && wide ->
                     Row(Modifier.bleed(margin).padding(horizontal = margin), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
                         repeat(3) { EpisodeCardSkeleton(cardWidth) }
                     }
+
                 phase.loading ->
                     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
                         repeat(3) { EpisodeRowSkeleton() }
                     }
+
                 list.items.isEmpty() -> Text(Strings.noEpisodes, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                // A phone lists the episodes down the page; the one Play starts is marked, and the page scrolls to it as it would anywhere.
+
                 !wide -> Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
                     list.items.distinctBy { it.id }.forEach { episode ->
                         key(episode.id) {
                             EpisodeRow(
-                                episode, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) }, onView = { onViewEpisode(episode) },
-                                download = downloads[episode.id], canDownload = canDownload, downloadCallbacks = downloadCallbacks,
+                                episode,
+                                current = episode.id == seasons.startEpisode?.id,
+                                onPlay = { onPlay(episode.id) },
+                                onToggleWatched = { onToggleWatched(episode.id) },
+                                onView = { onViewEpisode(episode) },
+                                download = downloads[episode.id],
+                                canDownload = canDownload,
+                                downloadCallbacks = downloadCallbacks,
                             )
                         }
                     }
                 }
+
                 else -> {
                     val listState = rememberLazyListState()
-                    // A season opens at the episode Play will start, so the one being watched is in view; another season opens at its first.
+
+                    // A season opens at the episode Play will start, so the one being watched is in view; another season opens at its first
                     val firstId = list.items.first().id
+
                     LaunchedEffect(firstId) {
                         val at = list.items.indexOfFirst { it.id == seasons.startEpisode?.id }
+
                         listState.scrollToItem(if (at > 0) at else 0)
                     }
+
                     LazyRow(
                         state = listState,
                         modifier = Modifier.bleed(margin),
@@ -275,11 +313,9 @@ private fun EpisodeList(
     }
 }
 
-/** An episode card is this wide on a phone, and wider on a tablet. */
 private val EPISODE_CARD = 300.dp
 private val EPISODE_CARD_WIDE = 380.dp
 
-/** An episode card is this much wider than tall. */
 private const val EPISODE_ASPECT = 1.6f
 
 @Composable
@@ -287,7 +323,6 @@ private fun EpisodeCardSkeleton(width: Dp) {
     SkeletonBlock(Modifier.width(width).aspectRatio(EPISODE_ASPECT))
 }
 
-/** An episode row's picture is this wide. */
 private val EPISODE_ROW_PICTURE = 148.dp
 
 @Composable
@@ -303,27 +338,27 @@ private fun EpisodeRowSkeleton() {
     }
 }
 
-/** How long an episode is, or how much of it is left once it is part watched. */
 private fun episodeTime(episode: MediaItem): String? = when {
     episode.progress != null && episode.runtimeMs != null -> Strings.timeLeftShort(episode.runtimeMs!! - episode.resumePositionMs)
     else -> episode.runtimeMinutes?.let(Strings::minutesShort)
 }
 
-/**
- * An episode on a phone: a row in the list down the page. The picture on the left plays it, with a check on it once watched, an
- * aqua progress bar along its bottom edge when part watched, and a brighter outline on the one Play starts. On the right, the
- * "S1 E4" tag, the title, how long it is (or how much is left), its rating and air date, and two lines of synopsis; those open its
- * page. A long press on either opens the menu: View episode, and the watched mark.
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun EpisodeRow(
-    episode: MediaItem, current: Boolean, onPlay: () -> Unit, onToggleWatched: () -> Unit, onView: () -> Unit,
-    download: Download?, canDownload: Boolean, downloadCallbacks: DownloadCallbacks,
+    episode: MediaItem,
+    current: Boolean,
+    onPlay: () -> Unit,
+    onToggleWatched: () -> Unit,
+    onView: () -> Unit,
+    download: Download?,
+    canDownload: Boolean,
+    downloadCallbacks: DownloadCallbacks,
 ) {
     var menu by remember { mutableStateOf(false) }
     val ensureNotifications = rememberDownloadNotificationPermission()
     val shape = RoundedCornerShape(VibeyFinTokens.Radius.artwork)
+
     Box {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
             Box(
@@ -341,6 +376,7 @@ private fun EpisodeRow(
                     blurHash = episode.landscapeBlurHash,
                     modifier = Modifier.fillMaxSize(),
                 )
+
                 if (episode.played) {
                     Icon(
                         Icons.Filled.CheckCircle,
@@ -349,13 +385,12 @@ private fun EpisodeRow(
                         modifier = Modifier.align(Alignment.TopEnd).padding(VibeyFinTokens.Space.s2).size(20.dp),
                     )
                 }
+
                 episode.progress?.let { progress ->
-                    Box(Modifier.align(Alignment.BottomStart).fillMaxWidth()) {
-                        Box(Modifier.fillMaxWidth().size(width = 0.dp, height = 4.dp).background(VibeyFinTokens.Colors.progressTrack))
-                        Box(Modifier.fillMaxWidth(progress).size(width = 0.dp, height = 4.dp).background(VibeyFinTokens.Colors.accent))
-                    }
+                    PlaybackProgressBar(progress, Modifier.align(Alignment.BottomStart))
                 }
             }
+
             Column(
                 Modifier
                     .weight(1f)
@@ -365,22 +400,26 @@ private fun EpisodeRow(
                 Strings.episodeTag(episode.seasonNumber, episode.episodeNumber)?.let {
                     Text(it, style = MaterialTheme.typography.labelMedium, color = VibeyFinTokens.Colors.inkMuted, maxLines = 1)
                 }
+
                 Text(
                     text = episode.title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = VibeyFinTokens.Colors.ink,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+
                 val facts = listOfNotNull(
                     episodeTime(episode),
                     episode.rating?.takeIf { it > 0 }?.let(Strings::ratingTag),
                     Strings.releaseDate(episode.premiereDate),
                 )
+
                 if (facts.isNotEmpty()) {
-                    Text(facts.joinToString("  ·  "), style = MaterialTheme.typography.labelMedium, color = VibeyFinTokens.Colors.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(Strings.factsLine(facts), style = MaterialTheme.typography.labelMedium, color = VibeyFinTokens.Colors.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                // Two lines, always, so every row is the same height.
+
+                // Two lines, always, so every row is the same height
                 Text(
                     text = episode.overview.orEmpty(),
                     style = MaterialTheme.typography.bodyMedium,
@@ -390,7 +429,7 @@ private fun EpisodeRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            // Each episode has its own download control at the end of its row.
+
             EpisodeDownloadButton(
                 title = episode.title,
                 download = download,
@@ -399,44 +438,70 @@ private fun EpisodeRow(
                 onAction = { downloadCallbacks.onAction(episode.id, it) },
             )
         }
+
         VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
-            VibeyFinMenuItem(Strings.viewEpisode, Icons.Default.Info) { menu = false; onView() }
+            VibeyFinMenuItem(Strings.viewEpisode, Icons.Default.Info) {
+                menu = false
+
+                onView()
+            }
+
             VibeyFinMenuItem(
                 if (episode.played) Strings.markUnwatched else Strings.markWatched,
                 if (episode.played) Icons.Default.Clear else Icons.Default.Check,
-            ) { menu = false; onToggleWatched() }
+            ) {
+                menu = false
+
+                onToggleWatched()
+            }
+
             EpisodeDownloadItems(episode.id, download, canDownload, downloadCallbacks, ensureNotifications) { menu = false }
         }
     }
 }
 
-/** The download entries of an episode's menu: "Download episode" when it has none, otherwise pause, resume and remove. */
 @Composable
 private fun EpisodeDownloadItems(
-    episodeId: String, download: Download?, canDownload: Boolean, callbacks: DownloadCallbacks, ensureNotifications: () -> Unit, close: () -> Unit,
+    episodeId: String,
+    download: Download?,
+    canDownload: Boolean,
+    callbacks: DownloadCallbacks,
+    ensureNotifications: () -> Unit,
+    close: () -> Unit,
 ) {
     if (download != null) {
-        download.actions.forEach { action -> DownloadActionMenuItem(action) { close(); callbacks.onAction(episodeId, action) } }
+        download.actions.forEach { action ->
+            DownloadActionMenuItem(action) {
+                close()
+                callbacks.onAction(episodeId, action)
+            }
+        }
     } else if (canDownload) {
-        VibeyFinMenuItem(Strings.downloadEpisode, ImageVector.vectorResource(R.drawable.ic_download)) { close(); ensureNotifications(); callbacks.onDownloadEpisode(episodeId) }
+        VibeyFinMenuItem(Strings.downloadEpisode, ImageVector.vectorResource(R.drawable.ic_download)) {
+            close()
+            ensureNotifications()
+            callbacks.onDownloadEpisode(episodeId)
+        }
     }
 }
 
-/**
- * An episode: a card in a row that scrolls sideways, all of it on the still. At the bottom, over a scrim: the "S1 E4" tag, the
- * title, two lines of synopsis, and a line with how long it is (or how much is left), its rating and the day it aired. A check
- * sits at the top once watched, a progress bar runs along the bottom edge when it is part watched, and the one Play starts has a
- * brighter outline. Tapping the picture plays it, tapping the words opens its page; a long press opens a menu: View episode, and the watched mark.
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun EpisodeCard(
-    episode: MediaItem, width: Dp, current: Boolean, onPlay: () -> Unit, onToggleWatched: () -> Unit, onView: () -> Unit,
-    download: Download?, canDownload: Boolean, downloadCallbacks: DownloadCallbacks,
+    episode: MediaItem,
+    width: Dp,
+    current: Boolean,
+    onPlay: () -> Unit,
+    onToggleWatched: () -> Unit,
+    onView: () -> Unit,
+    download: Download?,
+    canDownload: Boolean,
+    downloadCallbacks: DownloadCallbacks,
 ) {
     var menu by remember { mutableStateOf(false) }
     val ensureNotifications = rememberDownloadNotificationPermission()
     val shape = RoundedCornerShape(VibeyFinTokens.Radius.artwork)
+
     Box {
         Box(
             Modifier
@@ -453,18 +518,9 @@ private fun EpisodeCard(
                 blurHash = episode.landscapeBlurHash,
                 modifier = Modifier.fillMaxSize(),
             )
-            // The scrim the text sits on: the picture stays clear well down the card, and only the lower part darkens (to about
-            // three quarters), just enough for the white text to read.
-            Box(
-                Modifier.matchParentSize().background(
-                    androidx.compose.ui.graphics.Brush.verticalGradient(
-                        0f to androidx.compose.ui.graphics.Color.Transparent,
-                        0.4f to androidx.compose.ui.graphics.Color.Transparent,
-                        0.75f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.55f),
-                        1f to androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.78f),
-                    ),
-                ),
-            )
+
+            EpisodeCardScrim()
+
             if (episode.played) {
                 Icon(
                     Icons.Filled.CheckCircle,
@@ -473,7 +529,7 @@ private fun EpisodeCard(
                     modifier = Modifier.align(Alignment.TopEnd).padding(VibeyFinTokens.Space.s3).size(22.dp),
                 )
             }
-            // The card's own download control, on the still: the arrow, then the state of its download.
+
             EpisodeDownloadButton(
                 title = episode.title,
                 download = download,
@@ -487,7 +543,6 @@ private fun EpisodeCard(
                 Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    // The words open the episode's page; the picture above them plays.
                     .combinedClickable(role = Role.Button, onLongClickLabel = Strings.showOptions, onClick = onView, onLongClick = { menu = true })
                     .padding(horizontal = VibeyFinTokens.Space.s3)
                     .padding(bottom = VibeyFinTokens.Space.s3 + if (episode.progress != null) 4.dp else 0.dp),
@@ -496,12 +551,13 @@ private fun EpisodeCard(
                 Strings.episodeTag(episode.seasonNumber, episode.episodeNumber)?.let { EpisodeTag(it) }
                 Text(
                     text = episode.title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = VibeyFinTokens.Colors.ink,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                // Two lines, always, so every card in the row is the same.
+
+                // Two lines, always, so every card in the row is the same
                 Text(
                     text = episode.overview.orEmpty(),
                     style = MaterialTheme.typography.bodyMedium,
@@ -510,35 +566,36 @@ private fun EpisodeCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                val time = episodeTime(episode)
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-                    time?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = VibeyFinTokens.Colors.ink) }
-                    episode.rating?.takeIf { it > 0 }?.let { Text(Strings.ratingTag(it), style = MaterialTheme.typography.labelLarge, color = VibeyFinTokens.Colors.ink) }
-                    Spacer(Modifier.weight(1f))
-                    Strings.releaseDate(episode.premiereDate)?.let {
-                        Text(it, style = MaterialTheme.typography.labelMedium, color = VibeyFinTokens.Colors.inkMuted, maxLines = 1)
-                    }
-                }
+
+                EpisodeFacts(episode)
             }
+
             episode.progress?.let { progress ->
-                Box(Modifier.align(Alignment.BottomStart).fillMaxWidth()) {
-                    Box(Modifier.fillMaxWidth().size(width = 0.dp, height = 4.dp).background(VibeyFinTokens.Colors.progressTrack))
-                    Box(Modifier.fillMaxWidth(progress).size(width = 0.dp, height = 4.dp).background(VibeyFinTokens.Colors.accent))
-                }
+                PlaybackProgressBar(progress, Modifier.align(Alignment.BottomStart))
             }
         }
+
         VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
-            VibeyFinMenuItem(Strings.viewEpisode, Icons.Default.Info) { menu = false; onView() }
+            VibeyFinMenuItem(Strings.viewEpisode, Icons.Default.Info) {
+                menu = false
+
+                onView()
+            }
+
             VibeyFinMenuItem(
                 if (episode.played) Strings.markUnwatched else Strings.markWatched,
                 if (episode.played) Icons.Default.Clear else Icons.Default.Check,
-            ) { menu = false; onToggleWatched() }
+            ) {
+                menu = false
+
+                onToggleWatched()
+            }
+
             EpisodeDownloadItems(episode.id, download, canDownload, downloadCallbacks, ensureNotifications) { menu = false }
         }
     }
 }
 
-/** A small tag over a picture: how long, how well rated, which age. */
 @Composable
 private fun EpisodeTag(text: String) {
     Text(
@@ -553,7 +610,7 @@ private fun EpisodeTag(text: String) {
     )
 }
 
-/** A row of the actors: a round picture, the name and the part they play; one opens their page. A person with no picture is a grey disc with initials. */
+/** A row of the actors: a round picture, the name and the part they play; one opens their page. A person with no picture is a gray disc with initials. */
 @Composable
 fun CastSection(cast: List<CastMember>, margin: Dp, tile: Dp, onOpenPerson: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
@@ -580,12 +637,14 @@ private fun CastTile(person: CastMember, tile: Dp, onClick: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
     ) {
         Box(Modifier.size(tile).clip(CircleShape).background(VibeyFinTokens.Colors.surface2), contentAlignment = Alignment.Center) {
-            Text(initials(person.name), style = MaterialTheme.typography.titleMedium, color = VibeyFinTokens.Colors.inkMuted)
+            Text(Strings.initials(person.name), style = MaterialTheme.typography.titleMedium, color = VibeyFinTokens.Colors.inkMuted)
+
             if (person.imageUrl != null) {
                 AsyncImage(model = person.imageUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.matchSize())
             }
         }
-        // Names take two lines and roles one, always, so the row keeps one height.
+
+        // Names take two lines and roles one, always, so the row keeps one height
         Text(person.name, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onBackground, textAlign = TextAlign.Center, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Text(person.role.orEmpty(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, minLines = 1, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
@@ -593,13 +652,11 @@ private fun CastTile(person: CastMember, tile: Dp, onClick: () -> Unit) {
 
 private fun Modifier.matchSize(): Modifier = this.fillMaxWidth().fillMaxHeight()
 
-private fun initials(name: String): String =
-    name.split(" ").filter { it.isNotBlank() }.take(2).joinToString("") { it.first().uppercase() }
-
 /** The file's details, collapsed until asked for. */
 @Composable
 fun TechnicalInfo(lines: List<TechnicalLine>) {
     var open by remember { mutableStateOf(false) }
+
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -608,6 +665,7 @@ fun TechnicalInfo(lines: List<TechnicalLine>) {
             SectionTitle(Strings.technicalInfo, modifier = Modifier.weight(1f))
             Icon(if (open) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+
         if (open) {
             lines.forEach { line ->
                 Column {
@@ -615,6 +673,35 @@ fun TechnicalInfo(lines: List<TechnicalLine>) {
                     Text(line.value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
                 }
             }
+        }
+    }
+}
+
+// The scrim the text sits on: the picture stays clear well down the card, and only the lower part darkens, just enough for white text to read
+@Composable
+private fun BoxScope.EpisodeCardScrim() {
+    Box(
+        Modifier.matchParentSize().background(
+            Brush.verticalGradient(
+                0f to Color.Transparent,
+                0.4f to Color.Transparent,
+                0.75f to Color.Black.copy(alpha = 0.55f),
+                1f to Color.Black.copy(alpha = 0.78f),
+            ),
+        ),
+    )
+}
+
+@Composable
+private fun EpisodeFacts(episode: MediaItem) {
+    val time = episodeTime(episode)
+
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
+        time?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = VibeyFinTokens.Colors.ink) }
+        episode.rating?.takeIf { it > 0 }?.let { Text(Strings.ratingTag(it), style = MaterialTheme.typography.labelLarge, color = VibeyFinTokens.Colors.ink) }
+        Spacer(Modifier.weight(1f))
+        Strings.releaseDate(episode.premiereDate)?.let {
+            Text(it, style = MaterialTheme.typography.labelMedium, color = VibeyFinTokens.Colors.inkMuted, maxLines = 1)
         }
     }
 }

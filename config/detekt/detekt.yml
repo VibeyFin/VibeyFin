@@ -1,0 +1,77 @@
+comments:
+  DocumentationOverPrivateFunction:
+    active: true
+  DocumentationOverPrivateProperty:
+    active: true
+
+complexity:
+  TooManyFunctions:
+    active: true
+    allowedFunctionsPerFile: 20
+    allowedFunctionsPerClass: 20
+    # A DAO lists its queries, Strings the app's text, a ViewModel its events (and the iOS facade the same ones again),
+    # ProfileSettings a getter and setter per setting: wide by what they are for, and each entry is read by name
+    ignoreAnnotated: ['Dao']
+    excludes: ['**/ui/common/Strings.kt', '**/*ViewModel.kt', '**/ios/*Model.kt', '**/domain/ProfileSettings.kt', '**/commonTest/**', '**/androidHostTest/**', '**/androidDeviceTest/**', '**/iosTest/**']
+  LongMethod:
+    active: true
+    allowedLines: 100
+  LongParameterList:
+    active: true
+    allowedFunctionParameters: 12
+    allowedConstructorParameters: 12
+  CyclomaticComplexMethod:
+    active: true
+    allowedComplexity: 20
+    excludes: ['**/commonTest/**', '**/androidHostTest/**', '**/androidDeviceTest/**', '**/iosTest/**']
+  LargeClass:
+    active: true
+    allowedLines: 400
+    # A ViewModel holds all the state and events of its screen, as TooManyFunctions allows above
+    excludes: ['**/ui/common/Strings.kt', '**/*ViewModel.kt', '**/commonTest/**', '**/androidHostTest/**', '**/androidDeviceTest/**', '**/iosTest/**']
+
+exceptions:
+  TooGenericExceptionThrown:
+    active: true
+    excludes: ['**/commonTest/**', '**/androidHostTest/**', '**/androidDeviceTest/**', '**/iosTest/**']
+
+naming:
+  # Files are named after the feature they hold, as ktlint's filename rule is told too
+  MatchingDeclarationName:
+    active: false
+  FunctionNaming:
+    active: true
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    active: false
+
+style:
+  # Swift reads Strings through the object, which a const val would take away
+  MayBeConstant:
+    active: false
+  # The code and its names say what happens; a comment says why
+  ForbiddenComment:
+    active: true
+    comments:
+      - reason: 'Use the issue tracker'
+        value: 'TODO:'
+      - reason: 'Use the issue tracker'
+        value: 'FIXME:'
+      - reason: 'A comment describes what is, not the history'
+        value: 'Phase '
+  MagicNumber:
+    active: false
+  MaxLineLength:
+    active: false
+  ReturnCount:
+    active: false
+  UnusedParameter:
+    active: true
+  UnusedPrivateFunction:
+    active: true
+  UnusedPrivateProperty:
+    active: true
+  UnusedPrivateClass:
+    active: true
+  WildcardImport:
+    active: true
