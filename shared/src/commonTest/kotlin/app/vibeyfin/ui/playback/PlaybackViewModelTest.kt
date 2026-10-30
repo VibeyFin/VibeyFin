@@ -202,6 +202,16 @@ class PlaybackViewModelTest {
     }
 
     @Test
+    fun `swipeGestures follows the profile setting`() = runTest {
+        server()
+        val viewModel = viewModel()
+        assertEquals(true, viewModel.uiState.first { it.stream != null }.swipeGestures)
+
+        app.profileSettings.setSwipeGestures(false)
+        assertEquals(false, viewModel.uiState.first { !it.swipeGestures }.swipeGestures)
+    }
+
+    @Test
     fun `subtitle style follows the profile settings`() = runTest {
         server()
         val viewModel = viewModel()
@@ -1149,6 +1159,43 @@ class PlaybackViewModelTest {
     }
 
     @Test
+    fun `an episode with a next one offers it for the Next episode button`() = runTest {
+        val jellyfin = seriesServer()
+        val viewModel = viewModel()
+        val seen = playing(viewModel, jellyfin)
+
+        assertEquals("S1 E2  ·  Northbound", seen.last().nextEpisode)
+
+        viewModel.onPlayNow()
+        val next = viewModel.uiState.first { it.title == "Northbound" && it.stream != null }
+        // The next one has no episode after it.
+        assertNull(next.nextEpisode)
+    }
+
+    @Test
+    fun `the next episode is known with autoplay off too`() = runTest {
+        val jellyfin = seriesServer()
+        val viewModel = viewModel(autoAdvance = false)
+        val seen = playing(viewModel, jellyfin)
+
+        assertEquals("S1 E2  ·  Northbound", seen.last().nextEpisode)
+    }
+
+    @Test
+    fun `the last episode and a movie offer no next episode`() = runTest {
+        val last = seriesServer(episodes = itemsJson(episode("m1", 1)))
+        val seen = playing(viewModel(), last)
+        assertNull(seen.last().nextEpisode)
+    }
+
+    @Test
+    fun `a movie offers no next episode`() = runTest {
+        server()
+        val viewModel = viewModel()
+        assertNull(viewModel.uiState.first { it.stream != null }.nextEpisode)
+    }
+
+    @Test
     fun playNowDoesNotWaitForTheCountdown() = runTest {
         val jellyfin = seriesServer()
         val viewModel = viewModel()
@@ -1242,18 +1289,18 @@ class PlaybackViewModelTest {
     }
 
     @Test
-    fun withAutoAdvanceOffNothingIsLookedUpAndTheEpisodeJustFinishes() = runTest {
+    fun withAutoAdvanceOffNoCardShowsAndTheEpisodeJustFinishes() = runTest {
         val jellyfin = seriesServer()
         val viewModel = viewModel(autoAdvance = false)
-        val seen = statesOf(viewModel)
-        viewModel.uiState.first { it.stream != null }
+        // The next episode is still looked up, for the Next episode button.
+        val seen = playing(viewModel, jellyfin)
 
         viewModel.onPosition(tenMinutes - 5_000)
         viewModel.onEnded(tenMinutes)
 
         assertNull(seen.last().upNext)
         assertTrue(seen.last().finished)
-        assertEquals(0, jellyfin.requestsTo("GET", "/Shows/s1/Episodes").size)
+        assertEquals(0, jellyfin.requestsTo("POST", "/Items/e2/PlaybackInfo").size)
     }
 
     @Test

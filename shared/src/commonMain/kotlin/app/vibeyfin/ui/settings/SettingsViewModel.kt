@@ -196,6 +196,7 @@ class SettingsViewModel(
         live(searches),
         live(closePage),
         live(confirmPurgeDownloads),
+        perProfile(profileSettings.swipeGestures),
     )
 
     /** Eager, so the reads start with the ViewModel and not when the screen first draws. */
@@ -248,6 +249,7 @@ class SettingsViewModel(
             autoSkipSegments = read(AUTO_SKIP) ?: defaults.autoSkipSegments,
             bufferAheadSeconds = read(BUFFER_AHEAD) ?: defaults.bufferAheadSeconds,
             pictureInPicture = read(PICTURE_IN_PICTURE) ?: defaults.pictureInPicture,
+            swipeGestures = read(SWIPE_GESTURES) ?: defaults.swipeGestures,
             offlineMode = v[OFFLINE_MODE] as Boolean? ?: defaults.offlineMode,
             downloadOverMobile = read(DOWNLOAD_OVER_MOBILE) ?: defaults.downloadOverMobile,
             storageLimitGb = read<Long>(STORAGE_LIMIT)?.let { (it / MB_PER_GB).toInt() } ?: defaults.storageLimitGb,
@@ -289,6 +291,7 @@ class SettingsViewModel(
                 SettingKey.ShowStats -> profileSettings.setShowPlaybackStats(value)
                 SettingKey.AutoSkip -> profileSettings.setAutoSkipSegments(value)
                 SettingKey.PictureInPicture -> profileSettings.setPictureInPicture(value)
+                SettingKey.SwipeGestures -> profileSettings.setSwipeGestures(value)
                 SettingKey.OfflineMode -> preferences.setOfflineMode(value)
                 // A download that waits for Wi-Fi is looked at again at once.
                 SettingKey.DownloadOverMobile -> {
@@ -577,5 +580,6 @@ private const val LANGUAGE_STATUS = 33
 private const val SEARCHES = 34
 private const val CLOSE_PAGE = 35
 private const val CONFIRM_PURGE_DOWNLOADS = 36
+private const val SWIPE_GESTURES = 37
 
 private const val MB_PER_GB = 1_000L

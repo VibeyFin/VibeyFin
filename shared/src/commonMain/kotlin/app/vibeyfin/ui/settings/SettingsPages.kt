@@ -61,6 +61,7 @@ data class SettingsValues(
     val autoSkipSegments: Boolean = false,
     val bufferAheadSeconds: Int = ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
     val pictureInPicture: Boolean = true,
+    val swipeGestures: Boolean = true,
     /** The app uses only its downloads, even with a network (device-wide). */
     val offlineMode: Boolean = false,
     /** Downloads may use mobile data; off, they wait for Wi-Fi. */
@@ -551,6 +552,13 @@ fun skippingPage(v: SettingsValues): SettingsPage {
                 Strings.pictureInPictureHelp,
                 items = listOf(
                     ToggleItem(SettingKey.PictureInPicture, Strings.pictureInPicture, checked = v.pictureInPicture, visible = profile),
+                ),
+            ),
+            SettingsSection(
+                Strings.swipeGesturesGroup,
+                Strings.swipeGesturesHelp,
+                items = listOf(
+                    ToggleItem(SettingKey.SwipeGestures, Strings.swipeGestures, checked = v.swipeGestures, visible = profile),
                 ),
             ),
             SettingsSection(

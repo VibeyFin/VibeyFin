@@ -98,10 +98,15 @@ fun PlayerControls(
     onSeek: (Long) -> Unit,
     /** The thumbnails to preview while scrubbing; null shows the timestamp alone. */
     trickplay: TrickplayTiles? = null,
+    /** The episode after this one ("S1 E2  ·  Northbound"), read with the Next episode button; null hides the button. */
+    nextEpisode: String? = null,
+    onNextEpisode: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxSize()) {
-        TopBar(title, subtitle, hasTrackChoices, badge, speedLabel, onClose, onTracks, onSpeed, onPip, Modifier.align(Alignment.TopStart)
+        TopBar(
+            title, subtitle, hasTrackChoices, badge, speedLabel, nextEpisode, onClose, onNextEpisode, onTracks, onSpeed, onPip,
+            Modifier.align(Alignment.TopStart),
         )
         if (showTransport) {
             Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s6)) {
@@ -139,7 +144,10 @@ private fun TopBar(
     hasTrackChoices: Boolean,
     badge: String?,
     speedLabel: String,
+    /** The episode after this one; null hides the Next episode button. */
+    nextEpisode: String?,
     onClose: () -> Unit,
+    onNextEpisode: () -> Unit,
     onTracks: () -> Unit,
     onSpeed: () -> Unit,
     onPip: (() -> Unit)?,
@@ -180,6 +188,10 @@ private fun TopBar(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
+        if (nextEpisode != null) {
+            Spacer(Modifier.width(VibeyFinTokens.Space.s3))
+            ChipButton(R.drawable.ic_skip_next, Strings.labelled(Strings.nextEpisode, nextEpisode), onNextEpisode)
         }
         Spacer(Modifier.width(VibeyFinTokens.Space.s3))
         TextChipButton(speedLabel, Strings.speed, onSpeed)

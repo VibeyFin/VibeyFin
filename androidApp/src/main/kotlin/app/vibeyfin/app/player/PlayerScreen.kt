@@ -369,6 +369,7 @@ fun PlayerRoute(
     var controlsVisible by remember { mutableStateOf(true) }
     LaunchedEffect(pip.active) { if (pip.active) controlsVisible = false }
     var interactions by remember { mutableIntStateOf(0) }
+    val swipe = rememberPlayerSwipe()
     // The "10s" shown after a double-tap; each tap restarts the timer, so stacked skips keep it up.
     var scrubbing by remember { mutableStateOf(false) }
     val screenReaderOn = remember(context) {
@@ -410,9 +411,12 @@ fun PlayerRoute(
                 )
             }
         }
-        // A tap anywhere on the video shows or hides the controls.
+        // A tap anywhere on the video shows or hides the controls; a vertical swipe changes the volume or the brightness.
         Box(
-            Modifier.fillMaxSize().pointerInput(Unit) {
+            Modifier.fillMaxSize().swipeForLevels(swipe, enabled = state.swipeGestures && !pip.active && !leaving) {
+                viewModel.onUserInteraction()
+                interactions++
+            }.pointerInput(Unit) {
                 detectTapGestures(
                     onTap = {
                         viewModel.onUserInteraction()
@@ -451,6 +455,12 @@ fun PlayerRoute(
                     showTransport = playable,
                     speedLabel = Strings.speedValue(state.speed),
                     trickplay = trickplay,
+                    // Gives way to the up next card, which has its own Play now.
+                    nextEpisode = state.nextEpisode.takeIf { state.upNext == null && state.message == null },
+                    onNextEpisode = {
+                        viewModel.onUserInteraction()
+                        viewModel.onPlayNow()
+                    },
                     onClose = close,
                     onTracks = {
                         viewModel.onUserInteraction()
@@ -565,6 +575,8 @@ fun PlayerRoute(
                 UpNextCard(upNext = upNext, onPlayNow = viewModel::onPlayNow, onWatchCredits = viewModel::onWatchCredits)
             }
         }
+        // Over everything else on the video, so the up next card or the skip button never covers it.
+        if (!leaving && !pip.active) SwipeLevelIndicator(swipe)
         state.message?.let { message ->
             Column(Modifier.align(Alignment.Center).safeDrawingPadding().padding(horizontal = screenMargin())) {
                 LoadError(message = message, onRetry = viewModel::onRetry)

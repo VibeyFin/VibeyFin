@@ -8,6 +8,8 @@ struct PlayerView: View {
     @StateObject private var model: PlaybackObservable
     @StateObject private var controller = PlayerController()
     @StateObject private var pip = PlayerPictureInPicture()
+    /// The volume and brightness a vertical swipe on the video changes.
+    @StateObject private var swipe = PlayerSwipe()
     /// The Control Center and lock screen buttons, held for as long as this player lives.
     @State private var remote = PlayerRemoteCommands()
 
@@ -46,6 +48,8 @@ struct PlayerView: View {
 
     private var state: PlaybackUiState? { model.state }
     private var hasStream: Bool { state?.stream != nil }
+    /// The profile wants the swipe, and the player is on screen rather than in a picture-in-picture window.
+    private var swipeEnabled: Bool { state?.swipeGestures != false && !pip.isActive }
     private var isWaiting: Bool { state?.message == nil && (state?.loading ?? true || controller.isBuffering) }
 
     var body: some View {
@@ -54,6 +58,7 @@ struct PlayerView: View {
             PlayerSurface(player: controller.player, onLayer: { pip.attach(to: $0) }).ignoresSafeArea()
             // A touch anywhere on the video shows or hides the controls; a double tap on the left or
             // right third seeks. The double tap comes first so a single tap isn't taken for half of it.
+            // A vertical swipe changes the brightness on the left half and the volume on the right.
             GeometryReader { proxy in
                 Color.clear
                     .contentShape(Rectangle())
@@ -62,6 +67,10 @@ struct PlayerView: View {
                             .onEnded { doubleTap(at: $0.location.x, width: proxy.size.width) }
                             .exclusively(before: TapGesture().onEnded { toggleControls() })
                     )
+                    .swipeForLevels(swipe, enabled: swipeEnabled, size: proxy.size) {
+                        model.userInteraction()
+                        if controlsVisible { scheduleHide() }
+                    }
             }
             .ignoresSafeArea()
             .accessibilityHidden(true)
@@ -113,6 +122,15 @@ struct PlayerView: View {
                 .transition(reduceMotion ? .opacity : .scale(scale: 0.92).combined(with: .opacity))
             }
         }
+        // Over everything else on the video, so the up next card or the skip button never covers it.
+        .overlay {
+            if swipeEnabled {
+                ZStack {
+                    PlayerVolumeHost(swipe: swipe).frame(width: 0, height: 0)
+                    SwipeLevelIndicator(swipe: swipe)
+                }
+            }
+        }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.26), value: state?.upNext != nil)
         // The app tints aqua; in the player everything that takes a tint (the spinner, glass buttons,
         // menus) is white. Aqua stays on the scrubber's fill, which sets its own colour.
@@ -143,6 +161,7 @@ struct PlayerView: View {
             remote.remove()
             if !pip.isActive { controller.tearDown() }
             OrientationLock.restore()
+            swipe.restoreBrightness()
         }
         .onReceive(model.$state) { state in
             if let stream = state?.stream {
@@ -185,6 +204,8 @@ struct PlayerView: View {
             }
         }
         .onChange(of: scenePhase) { phase in
+            // The brightness is the whole screen's on iOS, so other apps and the home screen get theirs back.
+            if phase != .active { swipe.restoreBrightness() }
             // The home screen or the lock button: the video stops and the server is told. Only the
             // background counts; a pulled-down notification centre is `.inactive` and playback goes on.
             if phase == .background && !pip.isActive {
@@ -289,6 +310,14 @@ struct PlayerView: View {
             .padding(.top, Space.s1)
             Spacer(minLength: 0)
             PlayerControlCluster {
+                // Episodes with a next one only; gives way to the up next card, which has its own Play Now.
+                if let next = state?.nextEpisode, state?.upNext == nil {
+                    PlayerIconButton(systemName: "forward.end", label: Strings.shared.nextEpisode) {
+                        model.userInteraction()
+                        model.playNow()
+                    }
+                    .accessibilityHint(next)
+                }
                 if let state {
                     PlayerSpeedMenu(
                         speeds: state.speeds.map { $0.floatValue },
