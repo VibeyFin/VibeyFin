@@ -17,7 +17,9 @@ import app.vibeyfin.testing.itemsPage
 import app.vibeyfin.testing.parentJson
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -242,17 +244,18 @@ class DownloadRepositoryTest {
         saga()
         repository.enqueue(alex, plan(DownloadTarget.Item("m1")))
         app.downloads.setState("srv-1", "u1", "m1", DOWNLOAD_RUNNING, null, 1)
-        val seen = java.util.Collections.synchronizedList(mutableListOf<List<Download>>())
-        backgroundScope.launch(Dispatchers.Default) { repository.observeStates(alex).collect { seen += it } }
+        // Collected on another thread, so the list sits in a flow instead of a plain MutableList.
+        val seen = MutableStateFlow(emptyList<List<Download>>())
+        backgroundScope.launch(Dispatchers.Default) { repository.observeStates(alex).collect { states -> seen.update { it + listOf(states) } } }
         settle()
 
         repeat(50) { app.downloads.setProgress("srv-1", "u1", "m1", it * 1_000L, 100_000, 2) }
         settle()
-        assertEquals(listOf(DownloadState.Running), seen.map { it.single().state }, "progress alone does not emit")
+        assertEquals(listOf(DownloadState.Running), seen.value.map { it.single().state }, "progress alone does not emit")
 
         app.downloads.setState("srv-1", "u1", "m1", DOWNLOAD_PAUSED, null, 3)
         settle()
-        assertEquals(listOf(DownloadState.Running, DownloadState.Paused), seen.map { it.single().state })
+        assertEquals(listOf(DownloadState.Running, DownloadState.Paused), seen.value.map { it.single().state })
     }
 
     /** Lets the database's flows, which run off the test's clock, deliver what they have. */
