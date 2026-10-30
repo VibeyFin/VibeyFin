@@ -10,11 +10,16 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
 /**
- * The downloads live in the app's private files folder (`files/downloads`), which no other app can read and which is not
- * in backups (backups are off for the app). Every path is checked to stay inside that folder.
+ * The downloads live in the app's own folder on shared storage (`Android/data/<app>/files/Downloads`): no permission is needed, a file
+ * manager can open it, and Android deletes it with the app. A `.nomedia` file keeps the videos out of the gallery. Where shared storage
+ * is not there (no card or volume mounted) the private files folder is used. It is not in backups (backups are off for the app). Every
+ * path is checked to stay inside that folder.
  */
 class AndroidDownloadFiles(context: Context) : DownloadFiles {
-    private val root = File(context.filesDir, "downloads")
+    private val root = File(context.getExternalFilesDir(null) ?: context.filesDir, "Downloads").also {
+        it.mkdirs()
+        File(it, ".nomedia").createNewFile()
+    }
 
     private fun file(path: String): File {
         val file = File(root, path).canonicalFile

@@ -2,6 +2,7 @@ package app.vibeyfin.domain
 
 import app.vibeyfin.data.db.VibeyFinDatabase
 import app.vibeyfin.testing.FakeClock
+import app.vibeyfin.testing.FakeDownloadFiles
 import app.vibeyfin.testing.FakeTokenVault
 import app.vibeyfin.testing.count
 import app.vibeyfin.testing.inMemoryDatabase
@@ -129,6 +130,20 @@ class ServerRepositoryTest {
     @Test
     fun unknownServerIsNull() = runTest {
         assertNull(servers.get("missing"))
+    }
+
+    @Test
+    fun deletingAServerDeletesTheDownloadedFilesOfAllItsProfiles() = runTest {
+        val files = FakeDownloadFiles()
+        listOf("srv/u1/m1/video.mkv", "srv/u2/m2/video.mkv", "other/u9/m3/video.mkv").forEach {
+            files.open(it, append = false).also { out -> out.write("x".encodeToByteArray(), 1) }.close()
+        }
+        val withFiles = ServerRepository(database.serverDao(), database.accountDao(), vault, clock, files)
+        withFiles.save("srv", "Home", "10.10.7", "http://nas:8096")
+
+        withFiles.delete("srv")
+
+        assertEquals(setOf("other/u9/m3/video.mkv"), files.contents.keys)
     }
 
     @Test

@@ -15,6 +15,8 @@ class ServerRepository(
     private val accountDao: AccountDao,
     private val vault: TokenVault,
     private val clock: Clock,
+    /** Where downloaded files are kept: a deleted server takes the files of all its profiles with it. */
+    private val files: DownloadFiles = NoDownloadFiles,
 ) {
     val servers: Flow<List<Server>> = combine(
         serverDao.observeServers(),
@@ -52,7 +54,9 @@ class ServerRepository(
     /** Removes the server with its addresses and profiles, and releases their stored tokens. */
     suspend fun delete(id: String) {
         accountDao.getSealedTokens(id).forEach(vault::discard)
+        // The rows go first: that ends any download of the server still coming in, before its folder is deleted.
         serverDao.delete(id)
+        files.delete(id)
     }
 }
 

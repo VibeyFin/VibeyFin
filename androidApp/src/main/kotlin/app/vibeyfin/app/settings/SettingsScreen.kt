@@ -142,6 +142,15 @@ fun SettingsRoute(
             onDismiss = viewModel::onDismissPin,
         )
     }
+    if (state.confirmPurgeDownloads) {
+        AlertDialog(
+            onDismissRequest = viewModel::onDismissPurgeDownloads,
+            title = { Text(Strings.purgeDownloadsConfirmTitle) },
+            text = { Text(Strings.purgeDownloadsConfirmMessage) },
+            confirmButton = { TextButton(viewModel::onConfirmPurgeDownloads) { Text(Strings.deleteFiles, color = VibeyFinTokens.Colors.danger) } },
+            dismissButton = { TextButton(viewModel::onDismissPurgeDownloads, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)) { Text(Strings.cancel) } },
+        )
+    }
     if (state.confirmSignOut) {
         AlertDialog(
             onDismissRequest = viewModel::onDismissSignOut,

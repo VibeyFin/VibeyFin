@@ -1,8 +1,8 @@
 package app.vibeyfin.domain
 
 /**
- * Where downloaded files live, and the file work a download needs. Each platform keeps them in its own private
- * storage (Android: the app's files folder; iOS: Application Support, left out of backups). Paths are relative to the
+ * Where downloaded files live, and the file work a download needs. Each platform keeps them where the user can find them
+ * (iOS: Documents, shown in the Files app and left out of backups; Android: the app's own folder on shared storage, which Android deletes with the app). Paths are relative to the
  * downloads folder and use `/`: `{serverId}/{userId}/{itemId}/video.mkv`.
  */
 interface DownloadFiles {

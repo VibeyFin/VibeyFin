@@ -166,7 +166,7 @@ class HomeViewModel(
     auth: AuthRepository,
     private val downloads: DownloadRepository,
 ) : ViewModel() {
-    private val profile = ProfileActions(connection, profileSettings, searchHistory, pins, auth, viewModelScope)
+    private val profile = ProfileActions(connection, profileSettings, searchHistory, pins, auth, downloads, viewModelScope)
     private val downloadFlow = DownloadFlow(viewModelScope, downloads) { connection.state.value.profileOrNull() }
     private val canDownload = MutableStateFlow(true)
     private val exit = profile.exit

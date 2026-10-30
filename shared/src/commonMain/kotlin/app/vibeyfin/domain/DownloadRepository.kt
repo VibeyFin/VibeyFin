@@ -120,6 +120,16 @@ class DownloadRepository(
             downloads.mapNotNull { row -> byId[row.itemId]?.let { row.toDownload(it, speed[folder(profile, row.itemId)], converting[folder(profile, row.itemId)]) } }
         }.distinctUntilChanged()
 
+    /**
+     * [observeAll], but it only emits when a download comes, goes or changes state, not for its byte count, speed or conversion. For screens
+     * that show what a download is doing but not how far it is: a running download would otherwise rebuild them several times a second.
+     * The numbers in what it emits are those of the moment it last changed.
+     */
+    fun observeStates(profile: ProfileRef): Flow<List<Download>> =
+        observeAll(profile).distinctUntilChanged { old, new ->
+            old.size == new.size && old.indices.all { old[it].itemId == new[it].itemId && old[it].state == new[it].state && old[it].failure == new[it].failure }
+        }
+
     /** The shows and seasons the profile's downloaded episodes belong to, by id, as they were saved: the name and picture of a show. */
     fun observeParents(profile: ProfileRef): Flow<Map<String, MediaItem>> =
         dao.observeItems(profile.serverId, profile.userId).map { rows ->
@@ -261,6 +271,15 @@ class DownloadRepository(
     /** Deletes every download of the profile. */
     suspend fun removeAll(profile: ProfileRef) {
         dao.observeAll(profile.serverId, profile.userId).first().forEach { remove(profile, it.itemId) }
+    }
+
+    /**
+     * Deletes everything of the profile on the device: every download, and the whole of its folder, so the metadata of downloads that
+     * never finished and any file that no row knows about go too. On a platform that shows the folder to the user, that is the clean-up.
+     */
+    suspend fun purge(profile: ProfileRef) {
+        removeAll(profile)
+        files.delete("${profile.serverId}/${profile.userId}")
     }
 
     /** Starts the background work again after the app starts, for downloads an earlier run left unfinished. */
