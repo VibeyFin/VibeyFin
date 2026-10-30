@@ -29,7 +29,7 @@ Glass is the **navigation and controls layer** floating above content — never 
 | --- | --- |
 | Play / Resume | `Button` + `.buttonStyle(.borderedProminent)`, `.buttonBorderShape(.capsule)`, `.controlSize(.large)` |
 | Secondary action | `.bordered`; tertiary `.borderless` (tinted) |
-| Quick actions on a poster or the hero | A native `.sheet`, not `.contextMenu`: the Trailer row arrives after the server answers and the Download row shows live state, and a menu is static once open (see **Poster menu** in `screens.md`) |
+| Quick actions on a poster or the hero | A native `.contextMenu`, like Continue watching and the episodes: press, slide to a row, let go. Details, Trailer, My List, Download, in that order. SwiftUI fixes the rows as the finger lands, so they are built from what the poster knows and a greyed "Checking for trailer…" row holds the Trailer's place while the server is asked; the menu updates by itself when the answer comes. The menu goes on the poster's Button, not inside its label, with no gesture of ours beside it (either one stops the system's long press) |
 | Episode card actions | `.contextMenu` on the card (View episode, the watched mark); no swipe actions |
 | Audio / subtitles | `Menu` / `Picker` in a toolbar or a sheet with `.presentationDetents([.medium, .large])` |
 | Season buttons (series detail) | Horizontal `ScrollView` of capsule buttons, selected filled `ink`; `ScrollViewReader` scrolls to the next-up season on open |
