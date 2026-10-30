@@ -37,7 +37,11 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 shrinks and optimizes the app; Compose in particular runs noticeably smoother for it. The app has no reflection of
+            // its own, and the libraries bring their own keep rules.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
             signingConfigs.findByName("release")?.let { signingConfig = it }
         }
         // What to install to judge how smooth the app is: the release build (not debuggable, so Compose and the runtime skip their
