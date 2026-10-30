@@ -78,6 +78,9 @@ final class PlayerController: ObservableObject {
     private var lastPushedSecond = -1
     /// Seeks the player hasn't finished or cancelled yet.
     private var seeksInFlight = 0
+    /// Where the opened stream should start, until the item is ready. Over AirPlay the early seek can
+    /// be dropped and the stream starts at 0:00, so `itemIsReady` checks it landed.
+    private var pendingStart: TimeInterval?
     private var failureReported = false
     private var endReported = false
 
@@ -118,6 +121,8 @@ final class PlayerController: ObservableObject {
 
     /// The current position in milliseconds, for the shared model.
     var currentMilliseconds: Int64 {
+        // Until the item is ready the player says 0:00, which would overwrite the position being resumed.
+        if let pendingStart { return Int64(pendingStart * 1000) }
         let seconds = player.currentTime().seconds
         return Int64((seconds.isFinite ? max(0, seconds) : position) * 1000)
     }
@@ -135,6 +140,7 @@ final class PlayerController: ObservableObject {
         endReported = false
         lastPushedSecond = -1
         appliedAudio = nil
+        pendingStart = nil
         lastDiagnostics = nil
         trackInfo = TrackInfo()
         // The player may still say "paused" for the old item; the new stream starts from "not playing".
@@ -161,6 +167,7 @@ final class PlayerController: ObservableObject {
         bufferedPosition = start
         duration = 0
         if start > 0 {
+            pendingStart = start
             // The seek goes in before the item is ready; the player applies it once it can, so the first
             // frames aren't shown and a transcode starts at the resume point. Seeking after the item is
             // ready makes the server drop the transcode it began at 0 and restart it, which takes seconds.
@@ -180,6 +187,7 @@ final class PlayerController: ObservableObject {
     func clear() {
         itemSubscriptions.removeAll()
         openedStreamId = nil
+        pendingStart = nil
         wantedAudio = nil
         appliedAudio = nil
         isPlaying = false
@@ -453,11 +461,33 @@ final class PlayerController: ObservableObject {
     private func itemIsReady(_ item: AVPlayerItem) {
         Self.timing.debug("item ready \(Int((CACurrentMediaTime() - self.openedAt) * 1000)) ms after the stream was opened")
         if item.duration.isNumeric, item.duration.seconds > 0 { duration = item.duration.seconds }
+        confirmStartPosition()
         applyAudio(to: item)
         loadTrackInfo(for: item)
     }
 
     // MARK: - Now playing
+
+    /// Seeks again to the wanted start when the early seek didn't land. Only over AirPlay: locally the early seek
+    /// is what keeps the transcode from restarting.
+    private func confirmStartPosition() {
+        guard let start = pendingStart else { return }
+        pendingStart = nil
+        guard Self.needsStartSeek(start: start, current: player.currentTime().seconds, external: player.isExternalPlaybackActive) else { return }
+        seeksInFlight += 1
+        player.seek(
+            to: CMTime(seconds: start, preferredTimescale: 600),
+            toleranceBefore: .zero,
+            toleranceAfter: .zero
+        ) { [weak self] _ in
+            DispatchQueue.main.async { self?.seeksInFlight -= 1 }
+        }
+    }
+
+    static func needsStartSeek(start: TimeInterval, current: TimeInterval, external: Bool) -> Bool {
+        guard external, start > 0 else { return false }
+        return !current.isFinite || abs(current - start) > 1
+    }
 
     private var nowPlayingTitle: String?
     private var nowPlayingSubtitle: String?
