@@ -67,6 +67,10 @@ final class PlayerController: ObservableObject {
     @Published private(set) var isPlaying = false
     /// Waiting for data, on a first load or after a stall or a seek.
     @Published private(set) var isBuffering = false
+    /// The video plays on another screen over AirPlay; the phone shows the controls over a backdrop.
+    @Published private(set) var isExternalPlayback = false
+    /// The receiver's name while `isExternalPlayback`; nil when the system gave none.
+    @Published private(set) var externalDeviceName: String?
 
     var events = PlayerEvents()
 
@@ -106,6 +110,15 @@ final class PlayerController: ObservableObject {
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] status in self?.timeControlChanged(status) }
+            .store(in: &playerSubscriptions)
+        player.publisher(for: \.isExternalPlaybackActive)
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] active in self?.externalPlaybackChanged(active) }
+            .store(in: &playerSubscriptions)
+        NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.refreshExternalDevice() }
             .store(in: &playerSubscriptions)
         timeObserver = player.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 0.5, preferredTimescale: 600),
@@ -401,6 +414,16 @@ final class PlayerController: ObservableObject {
     }
 
     // MARK: - Player and item state
+
+    private func externalPlaybackChanged(_ active: Bool) {
+        isExternalPlayback = active
+        refreshExternalDevice()
+    }
+
+    private func refreshExternalDevice() {
+        let name = isExternalPlayback ? ExternalPlayback.deviceName(fromPortNames: ExternalPlayback.currentPortNames()) : nil
+        if name != externalDeviceName { externalDeviceName = name }
+    }
 
     private func timeControlChanged(_ status: AVPlayer.TimeControlStatus) {
         isBuffering = status == .waitingToPlayAtSpecifiedRate && openedStreamId != nil
