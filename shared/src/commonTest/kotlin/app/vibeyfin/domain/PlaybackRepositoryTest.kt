@@ -40,8 +40,7 @@ class PlaybackRepositoryTest {
         app.signedIn().on("POST", "/Items/m1/PlaybackInfo", Reply.json(json))
     }
 
-    private fun requestBody(): JsonObject =
-        Json.parseToJsonElement(app.jellyfin.requestsTo("POST", "/Items/m1/PlaybackInfo").single().body).jsonObject
+    private fun requestBody(): JsonObject = Json.parseToJsonElement(app.jellyfin.requestsTo("POST", "/Items/m1/PlaybackInfo").single().body).jsonObject
 
     @Test
     fun aFileTheDeviceCanPlayIsPlayedDirectly() = runTest {
@@ -177,7 +176,9 @@ class PlaybackRepositoryTest {
         answerWith(
             playbackInfoJson(
                 mediaSourceJson(
-                    container = "mkv", directPlay = false, directStream = false,
+                    container = "mkv",
+                    directPlay = false,
+                    directStream = false,
                     transcodingUrl = "$HLS_PATH&TranscodeReasons=ContainerNotSupported,VideoCodecNotSupported",
                 ),
             ),
@@ -307,6 +308,7 @@ class PlaybackRepositoryTest {
         val profiles = requestBody().getValue("DeviceProfile").jsonObject.getValue("CodecProfiles").jsonArray
         val h264 = profiles.map { it.jsonObject }.single { it.getValue("Codec").jsonPrimitive.content == "h264" }
         val conditions = (h264.getValue("Conditions") as JsonArray).map { it.jsonObject }
+
         fun condition(property: String) = conditions.single { it.getValue("Property").jsonPrimitive.content == property }
         assertEquals("8", condition("VideoBitDepth").getValue("Value").jsonPrimitive.content)
         assertEquals("52", condition("VideoLevel").getValue("Value").jsonPrimitive.content)
@@ -530,9 +532,8 @@ class PlaybackRepositoryTest {
         assertTrue("SubtitleProfiles" !in requestBody().getValue("DeviceProfile").jsonObject)
     }
 
-    private suspend fun formatOf(rangeType: String?): VideoFormat =
-        answerWith(playbackInfoJson(mediaSourceJson(videoWidth = 3840, videoHeight = 2160, videoRangeType = rangeType)))
-            .let { ready().videoFormat ?: fail("Expected a video format") }
+    private suspend fun formatOf(rangeType: String?): VideoFormat = answerWith(playbackInfoJson(mediaSourceJson(videoWidth = 3840, videoHeight = 2160, videoRangeType = rangeType)))
+        .let { ready().videoFormat ?: fail("Expected a video format") }
 
     @Test
     fun videoFormatReadsVideoRangeType() = runTest {
@@ -565,11 +566,9 @@ class PlaybackRepositoryTest {
         assertEquals(DynamicRange.Sdr, formatOf(null).dynamicRange)
     }
 
-    private fun segmentsJson(vararg items: String) =
-        """{"Items":[${items.joinToString(",")}],"TotalRecordCount":${items.size},"StartIndex":0}"""
+    private fun segmentsJson(vararg items: String) = """{"Items":[${items.joinToString(",")}],"TotalRecordCount":${items.size},"StartIndex":0}"""
 
-    private fun segmentJson(type: String, startTicks: Long, endTicks: Long) =
-        """{"Id":"s-$type","ItemId":"m1","Type":"$type","StartTicks":$startTicks,"EndTicks":$endTicks}"""
+    private fun segmentJson(type: String, startTicks: Long, endTicks: Long) = """{"Id":"s-$type","ItemId":"m1","Type":"$type","StartTicks":$startTicks,"EndTicks":$endTicks}"""
 
     @Test
     fun segmentsAreMappedFromTicks() = runTest {
@@ -604,11 +603,9 @@ class PlaybackRepositoryTest {
         assertEquals(emptyList(), app.playback.segments("m1"))
     }
 
-    private fun trickplayItemJson(trickplay: String) =
-        """{"Items":[{"Id":"m1","Name":"Film","Type":"Movie","Trickplay":$trickplay}],"TotalRecordCount":1,"StartIndex":0}"""
+    private fun trickplayItemJson(trickplay: String) = """{"Items":[{"Id":"m1","Name":"Film","Type":"Movie","Trickplay":$trickplay}],"TotalRecordCount":1,"StartIndex":0}"""
 
-    private fun infoJson(width: Int) =
-        """"$width":{"Width":$width,"Height":${width * 9 / 16},"TileWidth":10,"TileHeight":10,"ThumbnailCount":250,"Interval":10000,"Bandwidth":1}"""
+    private fun infoJson(width: Int) = """"$width":{"Width":$width,"Height":${width * 9 / 16},"TileWidth":10,"TileHeight":10,"ThumbnailCount":250,"Interval":10000,"Bandwidth":1}"""
 
     @Test
     fun trickplayPicksTheWidthClosestTo320() = runTest {

@@ -14,11 +14,11 @@ import app.vibeyfin.domain.DownloadRunner
 import app.vibeyfin.domain.DownloadSpeeds
 import app.vibeyfin.domain.DownloadWake
 import app.vibeyfin.domain.LibraryRepository
-import app.vibeyfin.domain.OfflineSync
-import app.vibeyfin.domain.OfflineProgress
-import app.vibeyfin.domain.OfflineLibrary
 import app.vibeyfin.domain.LocalPlaybackReporter
+import app.vibeyfin.domain.OfflineLibrary
 import app.vibeyfin.domain.OfflineMode
+import app.vibeyfin.domain.OfflineProgress
+import app.vibeyfin.domain.OfflineSync
 import app.vibeyfin.domain.PlaybackRecovery
 import app.vibeyfin.domain.PlaybackReporter
 import app.vibeyfin.domain.PlaybackRepository

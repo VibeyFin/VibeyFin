@@ -53,8 +53,7 @@ class ProfilePolicy(private val connection: ConnectionManager) {
         /** Approximate US names, used only when the server's own list can't be read. Several names share a level. */
         val FALLBACK = mapOf(5 to "G", 7 to "TV-Y7", 10 to "PG", 13 to "PG-13", 14 to "TV-14", 17 to "R", 18 to "NC-17")
 
-        fun ratingName(level: Int, server: List<Pair<String?, Int?>>?): String? =
-            server?.firstOrNull { it.second == level && !it.first.isNullOrBlank() }?.first ?: FALLBACK[level]
+        fun ratingName(level: Int, server: List<Pair<String?, Int?>>?): String? = server?.firstOrNull { it.second == level && !it.first.isNullOrBlank() }?.first ?: FALLBACK[level]
 
         fun AccessScheduleDto.toWindow() = AccessWindow(
             days = AccessDays.entries.firstOrNull { it.name.equals(dayOfWeek, ignoreCase = true) } ?: AccessDays.Everyday,

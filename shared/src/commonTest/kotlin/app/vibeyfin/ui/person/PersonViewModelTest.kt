@@ -43,17 +43,21 @@ class PersonViewModelTest {
     private fun viewModel(id: String = "p1") = viewModels.track(PersonViewModel(id, app.library, app.connection))
 
     private fun person(overview: String? = "Born in Rotterdam.") = itemJson(
-        "p1", "Alexander Burger", type = "Person", overview = overview, primaryTag = "tag",
-        premiereDate = "1999-10-17T00:00:00.0000000Z", productionLocations = listOf("Rotterdam, Netherlands"),
+        "p1",
+        "Alexander Burger",
+        type = "Person",
+        overview = overview,
+        primaryTag = "tag",
+        premiereDate = "1999-10-17T00:00:00.0000000Z",
+        productionLocations = listOf("Rotterdam, Netherlands"),
     )
 
-    /** Answers the person by id and what they appear in by `personIds`, as the server does for both on `/Items`. */
-    private suspend fun server(appearances: String = itemsJson(itemJson("m1", year = 2026), itemJson("s1", type = "Series", isFolder = true), itemJson("m2", year = 2020)), person: String = person()) =
-        app.signedIn().also {
-            it.on("GET", "/Items") { request ->
-                if (request.query["personIds"] != null) Reply.json(appearances) else Reply.json(itemsJson(person))
-            }
+    // Answers the person by id and what they appear in by `personIds`, as the server does for both on `/Items`.
+    private suspend fun server(appearances: String = itemsJson(itemJson("m1", year = 2026), itemJson("s1", type = "Series", isFolder = true), itemJson("m2", year = 2020)), person: String = person()) = app.signedIn().also {
+        it.on("GET", "/Items") { request ->
+            if (request.query["personIds"] != null) Reply.json(appearances) else Reply.json(itemsJson(person))
         }
+    }
 
     @Test
     fun showsThePersonAndWhatTheyAppearIn() = runTest {

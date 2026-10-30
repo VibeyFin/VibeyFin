@@ -41,28 +41,27 @@ class IosVideoConverter(private val files: IosDownloadFiles) : VideoConverter {
     private val native: NativeVideoConverter
         get() = checkNotNull(NativeVideoConverterHost.converter) { "The video converter was not registered at start." }
 
-    override suspend fun convert(source: String, target: String, stop: StateFlow<Boolean>, onProgress: suspend (Float) -> Unit): VideoConversion =
-        coroutineScope {
-            val progress = MutableStateFlow(0f)
-            val reporter = launch { progress.collect { onProgress(it) } }
-            try {
-                val code = withContext(Dispatchers.Default) {
-                    native.convert(files.absolute(source), files.absolute(target)) { fraction ->
-                        progress.value = fraction
-                        stop.value
-                    }
+    override suspend fun convert(source: String, target: String, stop: StateFlow<Boolean>, onProgress: suspend (Float) -> Unit): VideoConversion = coroutineScope {
+        val progress = MutableStateFlow(0f)
+        val reporter = launch { progress.collect { onProgress(it) } }
+        try {
+            val code = withContext(Dispatchers.Default) {
+                native.convert(files.absolute(source), files.absolute(target)) { fraction ->
+                    progress.value = fraction
+                    stop.value
                 }
-                when (code) {
-                    NativeVideoConverter.NOT_NEEDED -> VideoConversion.NotNeeded
-                    NativeVideoConverter.CONVERTED -> VideoConversion.Converted
-                    NativeVideoConverter.UNSUPPORTED -> VideoConversion.Unsupported
-                    NativeVideoConverter.STOPPED -> VideoConversion.Stopped
-                    else -> VideoConversion.Failed
-                }
-            } finally {
-                reporter.cancel()
             }
+            when (code) {
+                NativeVideoConverter.NOT_NEEDED -> VideoConversion.NotNeeded
+                NativeVideoConverter.CONVERTED -> VideoConversion.Converted
+                NativeVideoConverter.UNSUPPORTED -> VideoConversion.Unsupported
+                NativeVideoConverter.STOPPED -> VideoConversion.Stopped
+                else -> VideoConversion.Failed
+            }
+        } finally {
+            reporter.cancel()
         }
+    }
 
     override fun canPlayVideo(codec: String): Boolean = native.canPlayVideo(codec)
 }

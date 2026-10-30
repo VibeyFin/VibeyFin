@@ -15,10 +15,9 @@ class AccountRepository(
     private val clock: Clock,
 ) {
     /** Profiles on [serverId], most recently used first, each knowing whether it asks for its PIN to open. */
-    fun observeAccounts(serverId: String): Flow<List<Account>> =
-        combine(dao.observeAccounts(serverId), dao.observePinToOpen(serverId)) { accounts, pinToOpen ->
-            accounts.map { it.toAccount().copy(pinRequiredToOpen = it.userId in pinToOpen) }
-        }
+    fun observeAccounts(serverId: String): Flow<List<Account>> = combine(dao.observeAccounts(serverId), dao.observePinToOpen(serverId)) { accounts, pinToOpen ->
+        accounts.map { it.toAccount().copy(pinRequiredToOpen = it.userId in pinToOpen) }
+    }
 
     suspend fun account(serverId: String, userId: String): Account? = dao.getAccount(serverId, userId)?.toAccount()
 

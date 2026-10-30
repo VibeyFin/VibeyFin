@@ -6,10 +6,10 @@ import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.ConnectionManager
+import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.DownloadTarget
-import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.FilterOption
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.LibraryRepository
@@ -23,19 +23,15 @@ import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.ItemPage
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.LoadMessages
+import app.vibeyfin.ui.common.PinPrompt
+import app.vibeyfin.ui.common.ProfileActions
+import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.downloads.DownloadAction
 import app.vibeyfin.ui.downloads.DownloadFlow
 import app.vibeyfin.ui.downloads.RemovePrompt
 import app.vibeyfin.ui.downloads.downloadParts
 import app.vibeyfin.ui.downloads.profileOrNull
-import app.vibeyfin.ui.common.ProfileActions
-import app.vibeyfin.ui.common.PinPrompt
-import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.item.seasonIndex
-import kotlin.random.Random
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.Instant
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -54,6 +50,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlin.random.Random
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 /** Where Home sends the user when they leave it. */
 sealed interface HomeExit {
@@ -109,8 +109,10 @@ data class HomeUiState(
     val removePrompt: RemovePrompt? = null,
 )
 
-/** The hero: the items once picked, or [loading] while they are being picked; [slots] is the profile's setting. */
-/** [ready] is false until the profile's hero setting has been read: Home waits for it, so the grey card is in its very first frame, not slid in later. */
+/**
+ * The hero: the items once picked, or [loading] while they are being picked; [slots] is the profile's setting.
+ * [ready] is false until the profile's hero setting has been read: Home waits for it, so the grey card is in its very first frame, not slid in later.
+ */
 private data class HeroState(val items: List<MediaItem> = emptyList(), val loading: Boolean = false, val ready: Boolean = false, val slots: Int = 0) {
     /** [items] with the one with [id] changed; the same when it is no longer featured. */
     fun withItem(id: String, change: (MediaItem) -> MediaItem) = copy(items = items.map { if (it.id == id) change(it) else it })
@@ -130,19 +132,19 @@ sealed interface HeroNav {
     data class Details(val itemId: String) : HeroNav
 }
 
-/** How many libraries get a "Recently added" row. Every genre gets a row: there is no cap on Home. */
+// How many libraries get a "Recently added" row. Every genre gets a row: there is no cap on Home.
 private const val MAX_LATEST_ROWS = 6
 
-/** How many recently added titles, and how many favourites, the hero is picked from. */
+// How many recently added titles, and how many favourites, the hero is picked from.
 private const val HERO_CANDIDATES = 40
 
-/** How many genre rows load from the server at the same time; the rest wait their turn, top to bottom. */
+// How many genre rows load from the server at the same time; the rest wait their turn, top to bottom.
 private const val GENRE_ROWS_AT_ONCE = 4
 
-/** The id of the My List row, the first of Home's rows. */
+// The id of the My List row, the first of Home's rows.
 private const val MY_LIST_ID = "my-list"
 
-/** The id of the row that stands in for the Recently added rows when the libraries couldn't be listed. */
+// The id of the row that stands in for the Recently added rows when the libraries couldn't be listed.
 private const val LIBRARIES_FAILED_ID = "latest:failed"
 
 private data class Libraries(
@@ -151,7 +153,7 @@ private data class Libraries(
     val message: String? = null,
 )
 
-/** Coming back to Home reloads Continue watching if it has been this long since it last loaded. */
+// Coming back to Home reloads Continue watching if it has been this long since it last loaded.
 private val FOREGROUND_REFRESH_AFTER = 60.seconds
 
 class HomeViewModel(
@@ -170,6 +172,7 @@ class HomeViewModel(
     private val downloadFlow = DownloadFlow(viewModelScope, downloads) { connection.state.value.profileOrNull() }
     private val canDownload = MutableStateFlow(true)
     private val exit = profile.exit
+
     // Signed in, the libraries are always on their way, so the first thing to show is loading, not empty.
     private val libraries = MutableStateFlow(Libraries(loading = true))
     private val continueRow = MutableStateFlow(ContinueRow(loading = true))
@@ -183,12 +186,16 @@ class HomeViewModel(
 
     private val latestRows = MutableStateFlow<List<MediaRow>>(emptyList())
     private val genreRows = MutableStateFlow<List<MediaRow>>(emptyList())
+
     // The first row under Continue watching; hidden while the user has nothing on My List.
     private val myListRow = MutableStateFlow<MediaRow?>(null)
+
     // Picked once per session (a new profile or address picks again).
     private val hero = MutableStateFlow(HeroState())
+
     // The featured items whose My List write is in flight; a second tap on one waits for it.
     private val heroWriting = mutableSetOf<String>()
+
     // False from a new session until Continue watching has answered once; the rows below wait for it (a later retry of it
     // does not hide them again).
     private val continueAnswered = MutableStateFlow(false)
@@ -199,6 +206,7 @@ class HomeViewModel(
 
     private val categoryUi = MutableStateFlow(CategoryUi())
     private var sheetJob: Job? = null
+
     // The sheets' lists, fetched once per session when first opened.
     private var genreOptions: List<FilterOption>? = null
 
@@ -213,11 +221,13 @@ class HomeViewModel(
                 refreshing = refreshing,
                 exit = exit,
             )
+
             // A rejected token ended the session: back to "Who's watching?", where the tile is now locked.
             is ConnectionState.Expired -> HomeUiState(
                 serverId = state.serverId,
                 exit = HomeExit.WhoIsWatching(state.serverId),
             )
+
             ConnectionState.Disconnected -> HomeUiState(exit = exit)
         }
     }
@@ -238,7 +248,10 @@ class HomeViewModel(
     }
 
     val uiState: StateFlow<HomeUiState> = combine(
-        content, profileSettings.kidsProfile, profile.pinPrompt, downloadParts(connection, downloads, downloadFlow, canDownload),
+        content,
+        profileSettings.kidsProfile,
+        profile.pinPrompt,
+        downloadParts(connection, downloads, downloadFlow, canDownload),
     ) { content, kids, prompt, parts ->
         content.copy(
             kidsProfile = kids == true,
@@ -291,7 +304,11 @@ class HomeViewModel(
         // The hero's number changed in Settings: it is picked again for the new number, or goes when switched off.
         viewModelScope.launch {
             profileSettings.homeHeroItems.filterNotNull().distinctUntilChanged().drop(1).collect { slots ->
-                if (slots == 0) hero.value = HeroState(ready = true) else if (connection.state.value is ConnectionState.Connected) loadHeroIfEnabled()
+                if (slots == 0) {
+                    hero.value = HeroState(ready = true)
+                } else if (connection.state.value is ConnectionState.Connected) {
+                    loadHeroIfEnabled()
+                }
             }
         }
         // What was watched changed (a play session ended, something was marked): bring the row up to date.
@@ -327,16 +344,18 @@ class HomeViewModel(
                     latestRows.updateRow(id) { it.copy(loading = true, message = null) }
                     loadLatest(to.library, quiet = false)
                 }
+
                 is SeeAll.Genre -> {
                     genreRows.updateRow(id) { it.copy(loading = true, message = null) }
                     loadGenreRow(to.filter, quiet = false)
                 }
+
                 SeeAll.MyList, null -> Unit
             }
         }
     }
 
-    /** Whether this user may download is read once per session, quietly: it only decides whether the menu entry is there. */
+    // Whether this user may download is read once per session, quietly: it only decides whether the menu entry is there.
     private suspend fun readDownloadPermission() {
         val profile = connection.state.value.profileOrNull() ?: return
         downloads.canDownload(profile)?.let { canDownload.value = it }
@@ -451,10 +470,8 @@ class HomeViewModel(
         continueReload = viewModelScope.launch { loadContinue(first = false) }
     }
 
-    /**
-     * [first] puts the skeleton up (a new session, or "Try again"); otherwise the cards on screen stay
-     * until the answer replaces them, and a failure leaves them as they were.
-     */
+    // [first] puts the skeleton up (a new session, or "Try again"); otherwise the cards on screen stay
+    // until the answer replaces them, and a failure leaves them as they were.
     private suspend fun loadContinue(first: Boolean) {
         if (first) continueRow.value = ContinueRow(loading = true)
         val result = watch.continueWatching()
@@ -475,7 +492,7 @@ class HomeViewModel(
         }
     }
 
-    /** One "Recently added" row per library that holds video; the rows keep their order while each loads on its own. */
+    // One "Recently added" row per library that holds video; the rows keep their order while each loads on its own.
     private suspend fun loadLatestRows(quiet: Boolean) {
         // Without the libraries there is nothing to ask for: one row says why, where their rows would be, and tries again.
         libraries.value.message?.let { message ->
@@ -503,7 +520,7 @@ class HomeViewModel(
         }
     }
 
-    /** Every genre, biggest first, a row each; they are optional, so a failure to list them shows nothing. */
+    // Every genre, biggest first, a row each; they are optional, so a failure to list them shows nothing.
     private suspend fun loadGenreRows(quiet: Boolean) {
         val listed = library.genres()
         if (listed is ApiResult.Success) genreOptions = listed.value
@@ -557,7 +574,7 @@ class HomeViewModel(
         }
     }
 
-    /** The first episode of the first real season (not Specials), or of the first season there is. */
+    // The first episode of the first real season (not Specials), or of the first season there is.
     private suspend fun firstEpisodeOf(seriesId: String): String? {
         val seasons = (library.seasons(seriesId) as? ApiResult.Success)?.value.orEmpty()
         val season = seasons.firstOrNull { (it.seasonIndex ?: 0) > 0 } ?: seasons.firstOrNull() ?: return null
@@ -586,7 +603,7 @@ class HomeViewModel(
         }
     }
 
-    /** Picks the hero when the profile has it on; a grey card stands in until it is known, and goes if nothing qualifies. */
+    // Picks the hero when the profile has it on; a grey card stands in until it is known, and goes if nothing qualifies.
     private suspend fun loadHeroIfEnabled() {
         val slots = profileSettings.homeHeroItems.first() ?: ProfileSettings.DEFAULT_HOME_HERO_ITEMS
         if (slots == 0) {
@@ -597,7 +614,7 @@ class HomeViewModel(
         loadHero(slots)
     }
 
-    /** Picks up to [count] featured items from what was added lately and from My List. A failure shows no hero: it is optional. */
+    // Picks up to [count] featured items from what was added lately and from My List. A failure shows no hero: it is optional.
     private suspend fun loadHero(count: Int) {
         val (added, favourites) = coroutineScope {
             val added = async { library.filteredPage(HomeFilter.New, PageSort.Added, limit = HERO_CANDIDATES, fields = "Genres") }
@@ -608,7 +625,7 @@ class HomeViewModel(
         hero.value = HeroState(items = pickHeroes(candidates, count, Random.Default), loading = false, ready = true, slots = count)
     }
 
-    /** What is on My List, newest additions first; the row is hidden while it is empty. */
+    // What is on My List, newest additions first; the row is hidden while it is empty.
     private suspend fun loadMyList(quiet: Boolean) {
         val result = library.filteredPage(HomeFilter.MyList, PageSort.Added, limit = LibraryRepository.ROW_LIMIT)
         myListRow.update { row ->
@@ -621,11 +638,9 @@ class HomeViewModel(
         if (result is ApiResult.Success) syncHeroFavourites(result.value)
     }
 
-    /**
-     * Brings the featured items' hearts in line with My List, which may have changed elsewhere (a poster's menu, a long press on
-     * the hero, an item's page). On the list is certain; off it only when the row holds the whole list. One whose own write is
-     * still in flight keeps what was tapped.
-     */
+    // Brings the featured items' hearts in line with My List, which may have changed elsewhere (a poster's menu, a long press on
+    // the hero, an item's page). On the list is certain; off it only when the row holds the whole list. One whose own write is
+    // still in flight keeps what was tapped.
     private fun syncHeroFavourites(myList: ItemPage) {
         val onList = myList.items.mapTo(mutableSetOf()) { it.id }
         val complete = myList.total <= myList.items.size
@@ -643,16 +658,14 @@ class HomeViewModel(
         }
     }
 
-    /** A refresh that fails leaves the row as it was; a first load or a retry shows why. */
-    private fun failed(row: MediaRow, error: ApiError, quiet: Boolean) =
-        if (quiet && row.items.isNotEmpty()) row.copy(loading = false) else row.copy(items = emptyList(), loading = false, message = LoadMessages.forError(error))
+    // A refresh that fails leaves the row as it was; a first load or a retry shows why.
+    private fun failed(row: MediaRow, error: ApiError, quiet: Boolean) = if (quiet && row.items.isNotEmpty()) row.copy(loading = false) else row.copy(items = emptyList(), loading = false, message = LoadMessages.forError(error))
 
     private fun latestId(lib: MediaItem) = "latest:${lib.id}"
 
     private fun genreId(filter: HomeFilter.Genre) = "genre:${filter.id}"
 
-    private fun MutableStateFlow<List<MediaRow>>.updateRow(id: String, transform: (MediaRow) -> MediaRow) =
-        update { rows -> rows.map { if (it.id == id) transform(it) else it } }
+    private fun MutableStateFlow<List<MediaRow>>.updateRow(id: String, transform: (MediaRow) -> MediaRow) = update { rows -> rows.map { if (it.id == id) transform(it) else it } }
 
     /**
      * A tap on a category button. Shows, Movies and New open their page at once; Studios and Categories open a

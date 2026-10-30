@@ -48,14 +48,13 @@ fun effectiveBitrate(setting: Int): Int = if (setting == 0) MAX_STREAMING_BITRAT
 
 private const val VIDEO = "Video"
 
-/** Optional: a stream that doesn't say (no level in its metadata) is judged by the player instead. */
-private fun lessThanOrEqual(property: String, value: String) =
-    ProfileConditionDto(condition = "LessThanEqual", property = property, value = value, isRequired = false)
+// Optional: a stream that doesn't say (no level in its metadata) is judged by the player instead.
+private fun lessThanOrEqual(property: String, value: String) = ProfileConditionDto(condition = "LessThanEqual", property = property, value = value, isRequired = false)
 
-/** Transcodes are always AAC stereo in HLS, and H.264 unless the file's own codec can be carried as it is. */
+// Transcodes are always AAC stereo in HLS, and H.264 unless the file's own codec can be carried as it is.
 private const val TRANSCODE_AUDIO = "aac"
 
-/** The newest H.264 level (5.2) common phone decoders handle, as the server counts it (level × 10). */
+// The newest H.264 level (5.2) common phone decoders handle, as the server counts it (level × 10).
 private const val H264_MAX_LEVEL = "52"
 
 internal fun PlaybackCapabilities.toDeviceProfile(maxBitrate: Int): DeviceProfileDto = DeviceProfileDto(

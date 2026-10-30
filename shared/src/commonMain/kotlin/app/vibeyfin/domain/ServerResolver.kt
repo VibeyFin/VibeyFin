@@ -44,6 +44,7 @@ sealed interface ConnectionIssue {
 
 sealed interface ResolveResult {
     data class Found(val server: ResolvedServer) : ResolveResult
+
     data class Failed(val issue: ConnectionIssue) : ResolveResult
 }
 
@@ -88,7 +89,7 @@ class ServerResolver(
             client.get("$candidate$INFO_PATH")
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
             return Probe.Failed(if (isTlsFailure(e)) ConnectionIssue.TlsFailed else ConnectionIssue.Unreachable)
         }
         val elapsed = started.elapsedNow()
@@ -152,8 +153,7 @@ class ServerResolver(
          * Jellyfin beats a timeout, because it tells the user the host is right and the port or
          * path isn't.
          */
-        fun List<ConnectionIssue>.mostUseful(): ConnectionIssue =
-            maxByOrNull { it.usefulness() } ?: ConnectionIssue.Unreachable
+        fun List<ConnectionIssue>.mostUseful(): ConnectionIssue = maxByOrNull { it.usefulness() } ?: ConnectionIssue.Unreachable
 
         fun ConnectionIssue.usefulness() = when (this) {
             is ConnectionIssue.VersionTooOld -> 5

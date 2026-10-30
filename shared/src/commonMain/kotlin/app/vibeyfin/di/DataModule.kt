@@ -6,10 +6,10 @@ import app.vibeyfin.data.db.buildVibeyFinDatabase
 import app.vibeyfin.data.prefs.DataStoreDevicePreferences
 import app.vibeyfin.domain.AccountRepository
 import app.vibeyfin.domain.DevicePreferences
+import app.vibeyfin.domain.LanguagePreferences
 import app.vibeyfin.domain.NewTitlesPoller
 import app.vibeyfin.domain.PendingReports
 import app.vibeyfin.domain.PinLock
-import app.vibeyfin.domain.LanguagePreferences
 import app.vibeyfin.domain.ProfilePolicy
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SearchHistory

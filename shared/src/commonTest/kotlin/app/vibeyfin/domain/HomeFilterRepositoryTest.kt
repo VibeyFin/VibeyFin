@@ -19,6 +19,7 @@ import kotlin.test.assertTrue
 /** The server calls behind the Home category buttons: the Categories dropdown and the category pages. */
 class HomeFilterRepositoryTest {
     private val app = TestApp()
+
     @AfterTest
     fun tearDown() = runTest { app.close() }
 
@@ -110,7 +111,8 @@ class HomeFilterRepositoryTest {
     @Test
     fun genresCarryHowManyMoviesAndShowsTheyHoldAndAnEmptyOneIsLeftOut() = runTest {
         app.signedIn().on(
-            "GET", "/Genres",
+            "GET",
+            "/Genres",
             Reply.json(
                 itemsJson(
                     itemJson("g1", "Drama", type = "Genre", movieCount = 8, seriesCount = 1),
@@ -204,7 +206,8 @@ class HomeFilterRepositoryTest {
     @Test
     fun aNewEpisodeAndANewSeasonAreShownAsTheirShowWithTheShowsPoster() = runTest {
         app.signedIn().on(
-            "GET", "/Items/Latest",
+            "GET",
+            "/Items/Latest",
             Reply.json(
                 "[" + listOf(
                     itemJson("ep1", "Pilot", type = "Episode", seriesId = "show-1", seriesName = "Severance", primaryTag = "episode-still", seriesPrimaryImageTag = "show-poster", seasonNumber = 1, episodeNumber = 1, year = 2022),
@@ -232,7 +235,8 @@ class HomeFilterRepositoryTest {
     @Test
     fun severalNewEpisodesOfOneShowAreOnePoster() = runTest {
         app.signedIn().on(
-            "GET", "/Items/Latest",
+            "GET",
+            "/Items/Latest",
             Reply.json(
                 "[" + listOf(
                     itemJson("ep3", "Three", type = "Episode", seriesId = "show-1", seriesName = "Severance", seriesPrimaryImageTag = "p"),

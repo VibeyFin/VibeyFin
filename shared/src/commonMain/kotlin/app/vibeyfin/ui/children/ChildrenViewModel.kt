@@ -73,6 +73,22 @@ data class ChildrenUiState(
 
     val isEmpty: Boolean get() = !loading && message == null && items.isEmpty()
 
+    /**
+     * A collection's members under sub-headings: its movies, then its shows, then whatever else it holds. Each group is oldest first, as on
+     * Home, with the title breaking a tie; a group with nothing in it is left out. Screens show it for a collection's page, whether or not
+     * [collection] itself has been read yet.
+     */
+    val collectionGroups: List<CollectionGroup>
+        get() {
+            val oldestFirst = compareBy<MediaItem>({ it.year ?: Int.MAX_VALUE }, { it.title })
+
+            return listOf(
+                CollectionGroup(Strings.collectionMovies, items.filter { it.kind == ItemKind.Movie }.sortedWith(oldestFirst)),
+                CollectionGroup(Strings.collectionShows, items.filter { it.kind == ItemKind.Series }.sortedWith(oldestFirst)),
+                CollectionGroup(Strings.collectionOther, items.filter { it.kind != ItemKind.Movie && it.kind != ItemKind.Series }.sortedWith(oldestFirst)),
+            ).filter { it.items.isNotEmpty() }
+        }
+
     /** A collection's facts line, "2 movies · 1 show · 1999–2026"; empty for anything else or before the members are in. */
     val collectionFacts: List<String>
         get() {
@@ -92,6 +108,9 @@ data class ChildrenUiState(
             ).ifEmpty { listOf(Strings.collectionTitles(items.size)) }
         }
 }
+
+/** One sub-heading of a collection and the members under it. */
+data class CollectionGroup(val title: String, val items: List<MediaItem>)
 
 /** The show a season belongs to. */
 data class SeriesLink(val id: String, val name: String)
@@ -154,10 +173,8 @@ class ChildrenViewModel(
 
     fun onDismissDownloadMessage() = downloadFlow.dismissMessage()
 
-    /**
-     * A season's list offers a way to its show and a collection's list its own header; for any other folder the lookup finds
-     * nothing and the page is as it was.
-     */
+    // A season's list offers a way to its show and a collection's list its own header; for any other folder the lookup finds
+    // nothing and the page is as it was.
     private fun findSeries() {
         viewModelScope.launch {
             val parent = (library.item(parentId) as? ApiResult.Success)?.value ?: return@launch
@@ -187,6 +204,7 @@ class ChildrenViewModel(
                         loadingMore = false,
                     )
                 }
+
                 is ApiResult.Failure -> content.update { it.copy(loadingMore = false, loadMoreFailed = true) }
             }
         }
@@ -211,6 +229,7 @@ class ChildrenViewModel(
                         collection = it.collection,
                     )
                 }
+
                 is ApiResult.Failure -> content.update {
                     ChildrenUiState(loading = false, message = LoadMessages.forError(result.error), series = it.series, collection = it.collection)
                 }

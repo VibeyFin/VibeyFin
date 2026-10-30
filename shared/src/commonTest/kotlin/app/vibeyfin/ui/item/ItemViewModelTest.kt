@@ -1,9 +1,5 @@
 package app.vibeyfin.ui.item
 
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.CoroutineScope
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TICKS_PER_MINUTE
 import app.vibeyfin.testing.TestApp
@@ -14,9 +10,13 @@ import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.whoswatching.SignInMessages
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -52,12 +52,18 @@ class ItemViewModelTest {
     fun showsTheItemWithItsFacts() = runTest {
         val server = app.signedIn()
         server.on(
-            "GET", "/Items",
+            "GET",
+            "/Items",
             Reply.json(
                 itemsJson(
                     itemJson(
-                        "m1", "Caminandes", year = 2013, runtimeTicks = 84 * TICKS_PER_MINUTE, overview = "A llama.",
-                        genres = listOf("Animation"), communityRating = 7.3,
+                        "m1",
+                        "Caminandes",
+                        year = 2013,
+                        runtimeTicks = 84 * TICKS_PER_MINUTE,
+                        overview = "A llama.",
+                        genres = listOf("Animation"),
+                        communityRating = 7.3,
                     ),
                 ),
             ),
@@ -116,8 +122,7 @@ class ItemViewModelTest {
         assertEquals(HomeExit.WhoIsWatching("srv-1"), state.exit)
     }
 
-    private suspend fun itemServer(item: String) =
-        app.signedIn().also { it.on("GET", "/Items", Reply.json(itemsJson(item))) }
+    private suspend fun itemServer(item: String) = app.signedIn().also { it.on("GET", "/Items", Reply.json(itemsJson(item))) }
 
     @Test
     fun anItemInProgressOffersResumeFromWhereTheUserStoppedAndStartOver() = runTest {
@@ -163,8 +168,7 @@ class ItemViewModelTest {
         assertFalse(state.loading)
     }
 
-    private fun played(played: Boolean? = null, position: Long? = null) =
-        itemJson("m1", runtimeTicks = 90 * TICKS_PER_MINUTE, positionTicks = position, played = played)
+    private fun played(played: Boolean? = null, position: Long? = null) = itemJson("m1", runtimeTicks = 90 * TICKS_PER_MINUTE, positionTicks = position, played = played)
 
     private fun CoroutineScope.collectStates(into: MutableList<ItemUiState>, viewModel: ItemViewModel) {
         launch(UnconfinedTestDispatcher(), start = CoroutineStart.UNDISPATCHED) { viewModel.uiState.collect { into += it } }

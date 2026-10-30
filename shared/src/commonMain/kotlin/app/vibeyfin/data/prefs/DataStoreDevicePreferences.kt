@@ -14,8 +14,7 @@ import kotlinx.coroutines.flow.map
 import okio.Path.Companion.toPath
 import kotlin.uuid.Uuid
 
-fun createDevicePreferencesDataStore(path: String): DataStore<Preferences> =
-    PreferenceDataStoreFactory.createWithPath(produceFile = { path.toPath() })
+fun createDevicePreferencesDataStore(path: String): DataStore<Preferences> = PreferenceDataStoreFactory.createWithPath(produceFile = { path.toPath() })
 
 class DataStoreDevicePreferences(
     private val dataStore: DataStore<Preferences>,

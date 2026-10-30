@@ -3,12 +3,12 @@ package app.vibeyfin.domain
 import app.vibeyfin.data.prefs.DataStoreDevicePreferences
 import app.vibeyfin.testing.FakeNetworkMonitor
 import app.vibeyfin.testing.InMemoryPreferencesDataStore
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals

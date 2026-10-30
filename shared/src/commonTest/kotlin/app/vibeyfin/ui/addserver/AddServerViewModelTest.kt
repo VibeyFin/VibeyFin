@@ -56,7 +56,7 @@ class AddServerViewModelTest {
         return viewModels.track(AddServerViewModel(initialAddress, network.resolver(), servers))
     }
 
-    /** Types [address], taps Connect, and waits for the check to finish. */
+    // Types [address], taps Connect, and waits for the check to finish.
     private suspend fun AddServerViewModel.connect(address: String): AddServerStep {
         onAddressChange(address)
         onConnect()

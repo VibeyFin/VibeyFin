@@ -67,7 +67,7 @@ private fun ServerEntity.toServer(addresses: List<ServerAddressEntity>) = Server
     addresses = addresses.sortedWith(addressOrder).map { it.url },
 )
 
-/** Last address that worked first, then ones that never did in the order they were added. */
+// Last address that worked first, then ones that never did in the order they were added.
 private val addressOrder = compareByDescending<ServerAddressEntity> { it.lastSuccessAt != null }
     .thenByDescending { it.lastSuccessAt }
     .thenBy { it.addedAt }

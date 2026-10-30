@@ -78,11 +78,10 @@ object JellyfinHttpClient {
         return if (engine != null) HttpClient(engine, configure) else HttpClient(configure)
     }
 
-    private fun authorization(clientInfo: suspend () -> ClientInfo, defaultToken: String?) =
-        createClientPlugin("JellyfinAuthorization") {
-            onRequest { request, _ ->
-                val token = request.attributes.getOrNull(TokenAttribute) ?: defaultToken
-                request.headers[HttpHeaders.Authorization] = clientInfo().authorizationHeader(token)
-            }
+    private fun authorization(clientInfo: suspend () -> ClientInfo, defaultToken: String?) = createClientPlugin("JellyfinAuthorization") {
+        onRequest { request, _ ->
+            val token = request.attributes.getOrNull(TokenAttribute) ?: defaultToken
+            request.headers[HttpHeaders.Authorization] = clientInfo().authorizationHeader(token)
         }
+    }
 }

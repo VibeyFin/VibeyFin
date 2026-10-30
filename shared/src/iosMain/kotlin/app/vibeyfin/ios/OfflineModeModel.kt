@@ -1,12 +1,12 @@
 package app.vibeyfin.ios
 
 import app.vibeyfin.domain.OfflineMode
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.Job
 import org.koin.mp.KoinPlatform
 
 /** Whether the app is offline (no network, or Offline mode on), for the shell that decides which tabs and which Home to show. */

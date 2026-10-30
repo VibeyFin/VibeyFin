@@ -31,25 +31,21 @@ class NewTitlesPollerTest {
     @AfterTest
     fun tearDown() = runTest { app.close() }
 
-    /** The fake clock's now is 2023-11-14T22:13:20Z. */
+    // The fake clock's now is 2023-11-14T22:13:20Z.
     private val twoHoursAgo = "2023-11-14T20:13:20.0000000Z"
     private val threeDaysAgo = "2023-11-11T22:13:20.0000000Z"
     private val threeWeeksAgo = "2023-10-24T22:13:20.0000000Z"
 
     private fun minutesAgo(n: Int) = (app.clock.now() - n.minutes).toString()
 
-    private fun episode(id: String, seriesId: String, seriesName: String, created: String = twoHoursAgo) =
-        """{"Id":"$id","Name":"Episode $id","Type":"Episode","SeriesId":"$seriesId","SeriesName":"$seriesName","DateCreated":"$created"}"""
+    private fun episode(id: String, seriesId: String, seriesName: String, created: String = twoHoursAgo) = """{"Id":"$id","Name":"Episode $id","Type":"Episode","SeriesId":"$seriesId","SeriesName":"$seriesName","DateCreated":"$created"}"""
 
-    private fun movie(id: String, created: String = twoHoursAgo) =
-        """{"Id":"$id","Name":"Movie $id","Type":"Movie","DateCreated":"$created"}"""
+    private fun movie(id: String, created: String = twoHoursAgo) = """{"Id":"$id","Name":"Movie $id","Type":"Movie","DateCreated":"$created"}"""
 
     private fun page(items: List<String>) = """{"Items":${items.joinToString(",", "[", "]")},"TotalRecordCount":${items.size}}"""
 
-    /**
-     * Answers `GET /Items`: My List (`filters=IsFavorite`) with [myList], anything else with a page of [added]
-     * (newest first, as the server sorts them by `DateCreated`).
-     */
+    // Answers `GET /Items`: My List (`filters=IsFavorite`) with [myList], anything else with a page of [added]
+    // (newest first, as the server sorts them by `DateCreated`).
     private fun FakeServer.library(added: List<String>, myList: List<String> = emptyList()) = on("GET", "/Items") { request ->
         if (request.query["filters"] == "IsFavorite") return@on Reply.json(page(myList))
         val start = request.query["startIndex"]!!.toInt()
@@ -68,11 +64,10 @@ class NewTitlesPollerTest {
         dao.setNotificationScope("srv-1", userId, scope)
     }
 
-    /** Marks something old as notified, so the profile is past its first poll. */
-    private suspend fun pastFirstPoll(userId: String = "u1") =
-        dao.markNotified(NotifiedItemEntity("srv-1", userId, "seen-before", app.clock.now().toEpochMilliseconds()))
+    // Marks something old as notified, so the profile is past its first poll.
+    private suspend fun pastFirstPoll(userId: String = "u1") = dao.markNotified(NotifiedItemEntity("srv-1", userId, "seen-before", app.clock.now().toEpochMilliseconds()))
 
-    /** Alex is signed in and follows Severance (s1) through Next Up. */
+    // Alex is signed in and follows Severance (s1) through Next Up.
     private suspend fun followedServer(): FakeServer = app.signedIn().also {
         it.resume()
         it.nextUp(episode("e0", "s1", "Severance", threeWeeksAgo))
@@ -354,8 +349,11 @@ class NewTitlesPollerTest {
     fun `one profile failing does not stop the others`() = runTest {
         val server = followedServer()
         server.on("GET", "/Items") { request ->
-            if (request.authorization?.contains("token-2") == true) Reply.status(HttpStatusCode.Unauthorized)
-            else Reply.json(page(listOf(movie("m1"))))
+            if (request.authorization?.contains("token-2") == true) {
+                Reply.status(HttpStatusCode.Unauthorized)
+            } else {
+                Reply.json(page(listOf(movie("m1"))))
+            }
         }
         app.accounts.saveSession("srv-1", "u2", "Sam", null, "token-2")
         enable(userId = "u2")

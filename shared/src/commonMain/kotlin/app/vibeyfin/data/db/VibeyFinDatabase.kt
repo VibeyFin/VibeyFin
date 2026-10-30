@@ -1,16 +1,16 @@
 package app.vibeyfin.data.db
 
 import androidx.room3.AutoMigration
-import androidx.room3.DeleteColumn
 import androidx.room3.ConstructedBy
 import androidx.room3.Database
+import androidx.room3.DeleteColumn
 import androidx.room3.RoomDatabase
 import androidx.room3.RoomDatabaseConstructor
 import androidx.room3.migration.AutoMigrationSpec
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.coroutines.Dispatchers
-import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.IO
+import kotlin.coroutines.CoroutineContext
 
 @Database(
     entities = [
@@ -45,8 +45,11 @@ import kotlinx.coroutines.IO
 @ConstructedBy(VibeyFinDatabaseConstructor::class)
 abstract class VibeyFinDatabase : RoomDatabase() {
     abstract fun serverDao(): ServerDao
+
     abstract fun accountDao(): AccountDao
+
     abstract fun pendingReportDao(): PendingReportDao
+
     abstract fun downloadDao(): DownloadDao
 }
 
@@ -64,7 +67,6 @@ expect object VibeyFinDatabaseConstructor : RoomDatabaseConstructor<VibeyFinData
 }
 
 /** Applies the settings every platform shares: the bundled SQLite driver and an IO context ([queryContext]: tests run queries inline). */
-fun RoomDatabase.Builder<VibeyFinDatabase>.buildVibeyFinDatabase(queryContext: CoroutineContext = Dispatchers.IO): VibeyFinDatabase =
-    setDriver(BundledSQLiteDriver())
-        .setQueryCoroutineContext(queryContext)
-        .build()
+fun RoomDatabase.Builder<VibeyFinDatabase>.buildVibeyFinDatabase(queryContext: CoroutineContext = Dispatchers.IO): VibeyFinDatabase = setDriver(BundledSQLiteDriver())
+    .setQueryCoroutineContext(queryContext)
+    .build()

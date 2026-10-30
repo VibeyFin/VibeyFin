@@ -14,7 +14,7 @@ class BlurHashImage(val width: Int, val height: Int, val pixels: IntArray)
  * only turns the pixels into a bitmap. The format is from https://blurha.sh.
  */
 object BlurHash {
-    /** The longest side of a decoded picture. It is stretched to the tile, so more pixels only cost time. */
+    // The longest side of a decoded picture. It is stretched to the tile, so more pixels only cost time.
     private const val MAX_SIDE = 32
 
     private const val ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~"
@@ -63,7 +63,7 @@ object BlurHash {
         return BlurHashImage(width, height, pixels)
     }
 
-    /** `cos(pi * position * component / size)` for every component and pixel position along one axis. */
+    // `cos(pi * position * component / size)` for every component and pixel position along one axis.
     private fun basis(components: Int, size: Int) = Array(components) { component ->
         FloatArray(size) { position -> cos(PI * component * position / size).toFloat() }
     }
@@ -78,11 +78,10 @@ object BlurHash {
         return value
     }
 
-    /** The average colour, stored as sRGB bytes. */
-    private fun dc(value: Int) =
-        floatArrayOf(toLinear(value shr 16), toLinear((value shr 8) and 255), toLinear(value and 255))
+    // The average colour, stored as sRGB bytes.
+    private fun dc(value: Int) = floatArrayOf(toLinear(value shr 16), toLinear((value shr 8) and 255), toLinear(value and 255))
 
-    /** One wave's strength per channel, stored as three base-19 digits, squared to keep the sign. */
+    // One wave's strength per channel, stored as three base-19 digits, squared to keep the sign.
     private fun ac(value: Int, maximum: Float) = floatArrayOf(
         signedSquare((value / (19 * 19) - 9) / 9f) * maximum,
         signedSquare((value / 19 % 19 - 9) / 9f) * maximum,

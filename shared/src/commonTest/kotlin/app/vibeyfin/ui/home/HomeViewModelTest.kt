@@ -1,31 +1,31 @@
 package app.vibeyfin.ui.home
 
-import app.vibeyfin.ui.common.LoadMessages
-import app.vibeyfin.ui.common.PinReason
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.CoroutineScope
-import app.vibeyfin.domain.ConnectionState
-import app.vibeyfin.testing.FakeServer
 import app.vibeyfin.data.db.DOWNLOAD_PAUSED
 import app.vibeyfin.data.db.DOWNLOAD_QUEUED
+import app.vibeyfin.domain.ConnectionState
+import app.vibeyfin.testing.FakeServer
 import app.vibeyfin.testing.Reply
-import app.vibeyfin.testing.downloadItemJson
-import app.vibeyfin.testing.itemsPage
-import app.vibeyfin.ui.downloads.DownloadAction
-import app.vibeyfin.ui.downloads.actions
 import app.vibeyfin.testing.TICKS_PER_MINUTE
 import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.ViewModelTracker
+import app.vibeyfin.testing.downloadItemJson
 import app.vibeyfin.testing.itemJson
 import app.vibeyfin.testing.itemsJson
+import app.vibeyfin.testing.itemsPage
+import app.vibeyfin.ui.common.LoadMessages
+import app.vibeyfin.ui.common.PinReason
+import app.vibeyfin.ui.downloads.DownloadAction
+import app.vibeyfin.ui.downloads.actions
 import app.vibeyfin.ui.whoswatching.SignInMessages
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -214,7 +214,8 @@ class HomeViewModelTest {
     }
 
     private fun FakeServer.libraries() = on(
-        "GET", "/UserViews",
+        "GET",
+        "/UserViews",
         Reply.json(
             itemsJson(
                 itemJson("lib-1", "Movies", type = "CollectionFolder", isFolder = true),
@@ -310,13 +311,19 @@ class HomeViewModelTest {
         blurHashes = mapOf("Thumb" to mapOf("t" to "LEHV6nWB2yk8pyo0adR*.7kCMdnj")),
     )
     private val nextEpisode = itemJson(
-        "e9", "Opener", type = "Episode", seriesName = "Other", seriesId = "s2", seasonNumber = 1, episodeNumber = 1,
+        "e9",
+        "Opener",
+        type = "Episode",
+        seriesName = "Other",
+        seriesId = "s2",
+        seasonNumber = 1,
+        episodeNumber = 1,
         runtimeTicks = 40 * TICKS_PER_MINUTE,
     )
 
     private suspend fun HomeViewModel.loadedRow() = uiState.first { it.serverId != null && !it.continueRow.loading }.continueRow
 
-    /** Lets anything the ViewModel started run to its end. The fake server answers inline, so there is nothing to wait for in real time. */
+    // Lets anything the ViewModel started run to its end. The fake server answers inline, so there is nothing to wait for in real time.
     private suspend fun settle() = repeat(5) { yield() }
 
     @Test
@@ -599,9 +606,11 @@ class HomeViewModelTest {
         assertEquals(0, app.jellyfin.requestsTo("POST", "/UserPlayedItems/nope").size)
         assertEquals(listOf("e1"), viewModel.uiState.value.continueRow.cards.map { it.id })
     }
-    /** What the download plan reads for the card: the same episode, with its file. */
+
+    // What the download plan reads for the card: the same episode, with its file.
     private fun FakeServer.episodeFile() = on(
-        "GET", "/Items",
+        "GET",
+        "/Items",
         Reply.json(itemsPage(downloadItemJson("e1", "Pilot", "Episode", seriesId = "s1", seriesName = "Show", seasonNumber = 2, episodeNumber = 5))),
     )
 

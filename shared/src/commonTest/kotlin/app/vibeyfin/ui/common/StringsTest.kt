@@ -153,4 +153,23 @@ class StringsTest {
         assertEquals("Pilot", Strings.addedTitleNotificationBody("Pilot", null))
         assertEquals("Pilot, for Anna", Strings.addedTitleNotificationBody("Pilot", "Anna"))
     }
+
+    @Test
+    fun factsAreJoinedOnOneLine() {
+        assertEquals("2021  ·  16+  ·  1h 40m", Strings.factsLine(listOf("2021", "16+", "1h 40m")))
+        assertEquals("", Strings.factsLine(emptyList()))
+    }
+
+    @Test
+    fun taggedTitleLeavesOutAMissingTag() {
+        assertEquals("S1 E4 · Northbound", Strings.taggedTitle("S1 E4", "Northbound"))
+        assertEquals("Northbound", Strings.taggedTitle(null, "Northbound"))
+    }
+
+    @Test
+    fun initialsAreTheFirstLettersOfTheFirstTwoWords() {
+        assertEquals("AK", Strings.initials("Ada King Lovelace"))
+        assertEquals("A", Strings.initials("  ada  "))
+        assertEquals("", Strings.initials(""))
+    }
 }

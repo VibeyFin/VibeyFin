@@ -4,30 +4,30 @@ import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.data.api.BaseItemDto
 import app.vibeyfin.data.api.JellyfinApi
-import app.vibeyfin.data.api.items
-import app.vibeyfin.data.api.itemImageUrl
-import app.vibeyfin.data.api.itemsById
-import app.vibeyfin.data.api.map
-import app.vibeyfin.data.api.userViews
-import app.vibeyfin.data.api.genres
 import app.vibeyfin.data.api.collectionsOf
+import app.vibeyfin.data.api.episodesOfSeason
+import app.vibeyfin.data.api.filteredItems
+import app.vibeyfin.data.api.genres
+import app.vibeyfin.data.api.itemImageUrl
+import app.vibeyfin.data.api.items
+import app.vibeyfin.data.api.itemsById
 import app.vibeyfin.data.api.itemsOfPerson
+import app.vibeyfin.data.api.latestItems
+import app.vibeyfin.data.api.localTrailers
+import app.vibeyfin.data.api.map
 import app.vibeyfin.data.api.persons
+import app.vibeyfin.data.api.searchHints
+import app.vibeyfin.data.api.seasonsOf
+import app.vibeyfin.data.api.similarItems
 import app.vibeyfin.data.api.specialFeatures
+import app.vibeyfin.data.api.userViews
+import app.vibeyfin.domain.model.CastMember
+import app.vibeyfin.domain.model.ItemKind
+import app.vibeyfin.domain.model.ItemPage
+import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.model.Person
 import app.vibeyfin.domain.model.SearchKind
 import app.vibeyfin.domain.model.SearchResult
-import app.vibeyfin.data.api.searchHints
-import app.vibeyfin.data.api.localTrailers
-import app.vibeyfin.data.api.latestItems
-import app.vibeyfin.data.api.seasonsOf
-import app.vibeyfin.data.api.episodesOfSeason
-import app.vibeyfin.data.api.similarItems
-import app.vibeyfin.data.api.filteredItems
-import app.vibeyfin.domain.model.ItemKind
-import app.vibeyfin.domain.model.ItemPage
-import app.vibeyfin.domain.model.CastMember
-import app.vibeyfin.domain.model.MediaItem
 
 /**
  * What is on the server for the signed-in profile: its libraries, what is inside them, and one
@@ -40,17 +40,17 @@ class LibraryRepository(private val connection: ConnectionManager) {
     }
 
     /** One page of what is inside [parentId]: a library, folder, series or season. */
-    suspend fun children(parentId: String, startIndex: Int = 0, limit: Int = PAGE_SIZE): ApiResult<ItemPage> =
-        call { api, userId ->
-            api.items(parentId, userId, startIndex, limit).map { result ->
-                ItemPage(result.items.map { it.toMediaItem(api.baseUrl) }, result.totalRecordCount, result.startIndex)
-            }
+    suspend fun children(parentId: String, startIndex: Int = 0, limit: Int = PAGE_SIZE): ApiResult<ItemPage> = call { api, userId ->
+        api.items(parentId, userId, startIndex, limit).map { result ->
+            ItemPage(result.items.map { it.toMediaItem(api.baseUrl) }, result.totalRecordCount, result.startIndex)
         }
+    }
 
     /** One item with its overview and genres. An id the server doesn't know is [ApiError.NotFound]. */
     suspend fun item(id: String): ApiResult<MediaItem> = call { api, userId ->
         when (val result = api.itemsById(id, userId)) {
             is ApiResult.Failure -> result
+
             is ApiResult.Success -> result.value.items.firstOrNull()
                 ?.let { ApiResult.Success(it.toMediaItem(api.baseUrl)) }
                 ?: ApiResult.Failure(ApiError.NotFound)
@@ -107,6 +107,7 @@ class LibraryRepository(private val connection: ConnectionManager) {
     suspend fun person(id: String): ApiResult<Person> = call { api, userId ->
         when (val result = api.itemsById(id, userId)) {
             is ApiResult.Failure -> result
+
             is ApiResult.Success -> result.value.items.firstOrNull()
                 ?.let { ApiResult.Success(it.toPerson(api.baseUrl)) }
                 ?: ApiResult.Failure(ApiError.NotFound)
@@ -166,6 +167,7 @@ class LibraryRepository(private val connection: ConnectionManager) {
         )
         when (favourites) {
             is ApiResult.Failure -> favourites
+
             is ApiResult.Success -> {
                 val counts = favourites.value.items.flatMap { it.genres.distinct() }.groupingBy { it }.eachCount()
                 ApiResult.Success(all.value.mapNotNull { option -> counts[option.name]?.let { option.copy(count = it) } })
@@ -263,25 +265,11 @@ private fun BaseItemDto.toPerson(baseUrl: String): Person {
 }
 
 internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
-    val kind = when (type) {
-        "CollectionFolder", "UserView" -> ItemKind.Library
-        "Folder" -> ItemKind.Folder
-        "Movie" -> ItemKind.Movie
-        "Series" -> ItemKind.Series
-        "Season" -> ItemKind.Season
-        "Episode" -> ItemKind.Episode
-        "BoxSet" -> ItemKind.Collection
-        else -> ItemKind.Other
-    }
+    val kind = itemKind()
     val posterTag = imageTags["Primary"]
     val backdropTag = backdropImageTags.firstOrNull()
-    val thumbTag = imageTags["Thumb"]
-    val landscape = when {
-        thumbTag != null -> "Thumb" to thumbTag
-        backdropTag != null -> "Backdrop" to backdropTag
-        posterTag != null -> "Primary" to posterTag
-        else -> null
-    }
+    val landscape = landscapeImage(posterTag, backdropTag)
+
     return MediaItem(
         id = id,
         title = name.orEmpty(),
@@ -298,8 +286,7 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
         seasonNumber = parentIndexNumber,
         episodeNumber = indexNumber,
         // A collection is always a tall poster, whatever shape its picture is (it is cropped to fit).
-        posterAspectRatio = if (kind == ItemKind.Collection) TALL else primaryImageAspectRatio?.toFloat()?.takeIf { it > 0f }
-            ?: if (kind == ItemKind.Movie || kind == ItemKind.Series || kind == ItemKind.Season) TALL else WIDE,
+        posterAspectRatio = posterAspectRatio(kind),
         posterUrl = posterTag?.let { itemImageUrl(baseUrl, id, "Primary", it, POSTER_WIDTH) },
         backdropUrl = backdropTag?.let { itemImageUrl(baseUrl, id, "Backdrop", it, BACKDROP_WIDTH) },
         seriesId = seriesId,
@@ -314,11 +301,7 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
         videoFormat = mediaStreams.firstOrNull { it.type == "Video" }?.toVideoFormat(),
         collectionType = collectionType?.takeIf { it.isNotBlank() },
         logoUrl = imageTags["Logo"]?.let { itemImageUrl(baseUrl, id, "Logo", it, LOGO_WIDTH) },
-        cast = people.filter { it.type == "Actor" || it.type == "GuestStar" }.mapNotNull { person ->
-            person.name?.takeIf { it.isNotBlank() }?.let { name ->
-                CastMember(person.id, name, person.role?.takeIf { it.isNotBlank() }, person.primaryImageTag?.let { itemImageUrl(baseUrl, person.id, "Primary", it, CAST_WIDTH) })
-            }
-        },
+        cast = castMembers(baseUrl),
         seasonCount = if (kind == ItemKind.Series) childCount else null,
         isFavorite = userData?.isFavorite == true,
         localTrailerCount = localTrailerCount ?: 0,
@@ -326,14 +309,47 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
     )
 }
 
-/** The BlurHash the server sent for the image of [type] with [tag]; the tag keeps it from belonging to an older picture. */
-private fun BaseItemDto.blurHash(type: String, tag: String): String? =
-    imageBlurHashes[type]?.get(tag)?.takeIf { it.isNotBlank() }
+private fun BaseItemDto.itemKind(): ItemKind = when (type) {
+    "CollectionFolder", "UserView" -> ItemKind.Library
+    "Folder" -> ItemKind.Folder
+    "Movie" -> ItemKind.Movie
+    "Series" -> ItemKind.Series
+    "Season" -> ItemKind.Season
+    "Episode" -> ItemKind.Episode
+    "BoxSet" -> ItemKind.Collection
+    else -> ItemKind.Other
+}
 
-/**
- * An episode or a season as the show it belongs to: the show's id and name, its poster, a folder that opens its
- * seasons. Null for anything else, or when the server did not say which show it is.
- */
+// The picture for a wide card, as its image type and tag: a thumb, else a backdrop, else the poster
+private fun BaseItemDto.landscapeImage(posterTag: String?, backdropTag: String?): Pair<String, String>? {
+    val thumbTag = imageTags["Thumb"]
+
+    return when {
+        thumbTag != null -> "Thumb" to thumbTag
+        backdropTag != null -> "Backdrop" to backdropTag
+        posterTag != null -> "Primary" to posterTag
+        else -> null
+    }
+}
+
+private fun BaseItemDto.posterAspectRatio(kind: ItemKind): Float {
+    if (kind == ItemKind.Collection) return TALL
+
+    return primaryImageAspectRatio?.toFloat()?.takeIf { it > 0f }
+        ?: if (kind == ItemKind.Movie || kind == ItemKind.Series || kind == ItemKind.Season) TALL else WIDE
+}
+
+private fun BaseItemDto.castMembers(baseUrl: String): List<CastMember> = people.filter { it.type == "Actor" || it.type == "GuestStar" }.mapNotNull { person ->
+    person.name?.takeIf { it.isNotBlank() }?.let { name ->
+        CastMember(person.id, name, person.role?.takeIf { it.isNotBlank() }, person.primaryImageTag?.let { itemImageUrl(baseUrl, person.id, "Primary", it, CAST_WIDTH) })
+    }
+}
+
+// The BlurHash the server sent for the image of [type] with [tag]; the tag keeps it from belonging to an older picture.
+private fun BaseItemDto.blurHash(type: String, tag: String): String? = imageBlurHashes[type]?.get(tag)?.takeIf { it.isNotBlank() }
+
+// An episode or a season as the show it belongs to: the show's id and name, its poster, a folder that opens its
+// seasons. Null for anything else, or when the server did not say which show it is.
 private fun BaseItemDto.asSeries(baseUrl: String): MediaItem? {
     if ((type != "Episode" && type != "Season") || seriesId == null) return null
     return toMediaItem(baseUrl).copy(
@@ -367,20 +383,19 @@ private enum class GenreKind(val types: List<String>) {
     Both(listOf("Movie", "Series")),
 }
 
-private fun List<BaseItemDto>.toOptions(kind: GenreKind): List<FilterOption> =
-    mapNotNull { dto ->
-        val name = dto.name?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-        // When the server sent no counts at all the genre is listed without a number.
-        val known = dto.movieCount != null || dto.seriesCount != null
-        val count = when (kind) {
-            GenreKind.Movies -> dto.movieCount ?: 0
-            GenreKind.Shows -> dto.seriesCount ?: 0
-            GenreKind.Both -> (dto.movieCount ?: 0) + (dto.seriesCount ?: 0)
-        }
-        if (known && count == 0) null else FilterOption(dto.id, name, count.takeIf { known })
-    }.sortedBy { it.name.lowercase() }
+private fun List<BaseItemDto>.toOptions(kind: GenreKind): List<FilterOption> = mapNotNull { dto ->
+    val name = dto.name?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+    // When the server sent no counts at all the genre is listed without a number.
+    val known = dto.movieCount != null || dto.seriesCount != null
+    val count = when (kind) {
+        GenreKind.Movies -> dto.movieCount ?: 0
+        GenreKind.Shows -> dto.seriesCount ?: 0
+        GenreKind.Both -> (dto.movieCount ?: 0) + (dto.seriesCount ?: 0)
+    }
+    if (known && count == 0) null else FilterOption(dto.id, name, count.takeIf { known })
+}.sortedBy { it.name.lowercase() }
 
-/** "S1 E4"; null when the server sent neither number. */
+// "S1 E4"; null when the server sent neither number.
 private fun episodeCode(season: Int?, episode: Int?): String? = when {
     season != null && episode != null -> "S$season E$episode"
     episode != null -> "E$episode"

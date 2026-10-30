@@ -87,14 +87,19 @@ val Download.bytes: Long get() = bytesTotal ?: bytesDone
 /** The one line under a download: its state, and how far it is. [waiting] says what a download that is waiting waits for. */
 fun Download.statusLine(waiting: DownloadRunner.Waiting): String = when (state) {
     DownloadState.Done -> Strings.downloadedWithSize(bytes)
+
     DownloadState.Running -> if (conversion != null) Strings.downloadConverting((conversion * 100).toInt()) else listOfNotNull(Strings.downloading, Strings.downloadProgress(bytesDone, bytesTotal), timeLeft?.let { Strings.downloadTimeLeft(it.inWholeSeconds) }).joinToString(" · ")
+
     DownloadState.Queued -> Strings.downloadQueued
+
     DownloadState.WaitingForNetwork -> when (waiting) {
         DownloadRunner.Waiting.Network -> Strings.downloadWaitingForNetwork
         DownloadRunner.Waiting.Wifi -> Strings.downloadWaitingForWifi
         DownloadRunner.Waiting.Server -> Strings.downloadWaitingForServer
     }
+
     DownloadState.Paused -> if (bytesDone > 0) "${Strings.downloadPaused} · ${Strings.downloadProgress(bytesDone, bytesTotal)}" else Strings.downloadPaused
+
     DownloadState.Failed -> Strings.downloadFailed
 }
 
@@ -128,5 +133,4 @@ internal fun unreachableMessage() = LoadMessages.forError(ApiError.Network)
 internal val ConnectionManager.profile: Flow<ProfileRef?>
     get() = state.map { it.profileOrNull() }.distinctUntilChanged()
 
-internal fun ConnectionState.profileOrNull(): ProfileRef? =
-    (this as? ConnectionState.Connected)?.let { ProfileRef(it.server.id, it.account.userId) }
+internal fun ConnectionState.profileOrNull(): ProfileRef? = (this as? ConnectionState.Connected)?.let { ProfileRef(it.server.id, it.account.userId) }

@@ -167,10 +167,9 @@ internal fun MediaSourceDto.tracks(baseUrl: String): Tracks {
 private fun MediaStreamDto.trackLanguage() = language?.takeIf { it.isNotBlank() && !it.equals("und", ignoreCase = true) }
 
 /** The server's own name for the track; failing that, what the file says about it. */
-internal fun MediaStreamDto.name(): String? =
-    displayTitle?.takeIf { it.isNotBlank() }
-        ?: title?.takeIf { it.isNotBlank() }
-        ?: listOfNotNull(language?.takeIf { it.isNotBlank() }, codec?.uppercase()).joinToString(" · ").ifEmpty { null }
+internal fun MediaStreamDto.name(): String? = displayTitle?.takeIf { it.isNotBlank() }
+    ?: title?.takeIf { it.isNotBlank() }
+    ?: listOfNotNull(language?.takeIf { it.isNotBlank() }, codec?.uppercase()).joinToString(" · ").ifEmpty { null }
 
 private fun MediaStreamDto.toSubtitleFile(baseUrl: String): SubtitleFile? {
     val path = deliveryUrl ?: return null
@@ -184,7 +183,7 @@ private fun MediaStreamDto.toSubtitleFile(baseUrl: String): SubtitleFile? {
     return SubtitleFile(index, serverUrl(baseUrl, path), mimeType, language?.takeIf { it.isNotBlank() }, name())
 }
 
-/** `GET /Videos/{id}/stream.{container}?static=true`: the file as it is on the server. */
+// `GET /Videos/{id}/stream.{container}?static=true`: the file as it is on the server.
 private fun directPlayUrl(baseUrl: String, itemId: String, source: MediaSourceDto, deviceId: String, playSessionId: String): String {
     // The extension helps players that choose a parser by file name; ffprobe-style names can list several.
     val container = source.container?.substringBefore(',')?.trim()?.takeIf { it.isNotEmpty() }
@@ -198,7 +197,7 @@ private fun directPlayUrl(baseUrl: String, itemId: String, source: MediaSourceDt
     }.buildString()
 }
 
-/** The server gives paths such as `/videos/{id}/master.m3u8?...`; they hang off its address. */
+// The server gives paths such as `/videos/{id}/master.m3u8?...`; they hang off its address.
 private fun serverUrl(baseUrl: String, path: String): String = when {
     path.startsWith("http://", ignoreCase = true) || path.startsWith("https://", ignoreCase = true) -> path
     path.startsWith("/") -> baseUrl.trimEnd('/') + path

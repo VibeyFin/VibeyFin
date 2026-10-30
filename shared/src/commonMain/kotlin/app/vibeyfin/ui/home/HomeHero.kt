@@ -11,13 +11,12 @@ import kotlin.random.Random
  * the user has not watched, in a random order. Picked once and kept until the session ends. Fewer qualify: only those; none, and Home
  * is as it would be without a hero.
  */
-internal fun pickHeroes(candidates: List<MediaItem>, count: Int, random: Random): List<MediaItem> =
-    candidates
-        .distinctBy { it.id }
-        // Something already watched is not worth featuring.
-        .filter { it.backdropUrl != null && it.logoUrl != null && !it.played }
-        .shuffled(random)
-        .take(count)
+internal fun pickHeroes(candidates: List<MediaItem>, count: Int, random: Random): List<MediaItem> = candidates
+    .distinctBy { it.id }
+    // Something already watched is not worth featuring.
+    .filter { it.backdropUrl != null && it.logoUrl != null && !it.played }
+    .shuffled(random)
+    .take(count)
 
 /**
  * How long a page of the hero's carousel shows before it moves on by itself, in milliseconds. After the last item it comes back to
@@ -27,4 +26,12 @@ const val HERO_ADVANCE_MILLIS = 8_000L
 
 /** The line under the hero's logo, as on Netflix: what it is ("Movie", "Show"), then up to four of its genres. */
 val MediaItem.heroFacts: List<String>
-    get() = listOfNotNull(if (kind == ItemKind.Series) Strings.heroShow else if (kind == ItemKind.Movie) Strings.heroMovie else null) + genres.take(4)
+    get() = listOfNotNull(
+        if (kind == ItemKind.Series) {
+            Strings.heroShow
+        } else if (kind == ItemKind.Movie) {
+            Strings.heroMovie
+        } else {
+            null
+        },
+    ) + genres.take(4)

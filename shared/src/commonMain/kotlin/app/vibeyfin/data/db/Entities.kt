@@ -189,7 +189,7 @@ const val PENDING_PROGRESS = "progress"
 
 /**
  * A report the server hasn't confirmed, kept so it survives a crash or a killed process. A [kind] is
- * [PENDING_STOPPED] or [PENDING_PROGRESS] (what was watched offline; roadmap Phase 10).
+ * [PENDING_STOPPED] or [PENDING_PROGRESS] (what was watched offline).
  * It belongs to the profile that made it, because that profile's token is the one that can send it.
  * A play session is one row: it is added when playback starts, its position follows playback, and it
  * is deleted once the server has answered.

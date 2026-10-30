@@ -89,7 +89,6 @@ data class UserItemDataDto(
     @SerialName("LastPlayedDate") val lastPlayedDate: String? = null,
 )
 
-
 /**
  * One set of trickplay thumbnails: [thumbnailCount] pictures of [width] by [height], packed into tiles of [tileWidth] by [tileHeight].
  * A field the server leaves out is 0, so one odd entry doesn't fail the whole item; a set missing its sizes or interval is never used.

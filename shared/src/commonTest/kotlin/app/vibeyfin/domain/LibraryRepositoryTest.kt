@@ -33,7 +33,8 @@ class LibraryRepositoryTest {
     fun librariesAreOpenableWideTilesWithTheirArtwork() = runTest {
         val server = app.signedIn()
         server.on(
-            "GET", "/UserViews",
+            "GET",
+            "/UserViews",
             Reply.json(
                 itemsJson(
                     itemJson("lib-1", "Movies", type = "CollectionFolder", isFolder = true, primaryTag = "tag-1"),
@@ -60,7 +61,8 @@ class LibraryRepositoryTest {
     fun aMovieKeepsEverythingTheDetailPageShows() = runTest {
         val server = app.signedIn()
         server.on(
-            "GET", "/Items",
+            "GET",
+            "/Items",
             Reply.json(
                 itemsJson(
                     itemJson(
@@ -95,7 +97,8 @@ class LibraryRepositoryTest {
     fun anEpisodeKnowsItsShowSeasonAndNumber() = runTest {
         val server = app.signedIn()
         server.on(
-            "GET", "/Items",
+            "GET",
+            "/Items",
             Reply.json(
                 itemsJson(
                     itemJson("e1", "Pilot", type = "Episode", seriesName = "Big Buck", seasonNumber = 1, episodeNumber = 3, primaryTag = "p"),
@@ -116,7 +119,8 @@ class LibraryRepositoryTest {
     fun theKindFollowsTheServersType() = runTest {
         val server = app.signedIn()
         server.on(
-            "GET", "/Items",
+            "GET",
+            "/Items",
             Reply.json(
                 itemsJson(
                     itemJson("a", type = "Folder", isFolder = true),
@@ -145,7 +149,8 @@ class LibraryRepositoryTest {
     fun runtimesRoundToTheNearestMinuteAndNeverShowZero() = runTest {
         val server = app.signedIn()
         server.on(
-            "GET", "/Items",
+            "GET",
+            "/Items",
             Reply.json(
                 itemsJson(
                     itemJson("a", runtimeTicks = 90 * TICKS_PER_MINUTE + TICKS_PER_MINUTE / 2),
@@ -248,7 +253,8 @@ class LibraryRepositoryTest {
     fun whatTheUserHasWatchedComesWithTheItem() = runTest {
         val server = app.signedIn()
         server.on(
-            "GET", "/Items",
+            "GET",
+            "/Items",
             Reply.json(
                 itemsJson(
                     itemJson(
@@ -272,7 +278,8 @@ class LibraryRepositoryTest {
     fun aFinishedItemHasNoPositionToResumeFromWhateverTheServerStored() = runTest {
         val server = app.signedIn()
         server.on(
-            "GET", "/Items",
+            "GET",
+            "/Items",
             Reply.json(itemsJson(itemJson("m1", runtimeTicks = 90 * TICKS_PER_MINUTE, positionTicks = 80 * TICKS_PER_MINUTE, played = true))),
         )
 
@@ -298,7 +305,8 @@ class LibraryRepositoryTest {
     fun theLandscapePictureIsTheThumbElseTheBackdropElseThePrimaryImage() = runTest {
         val server = app.signedIn()
         server.on(
-            "GET", "/Items",
+            "GET",
+            "/Items",
             Reply.json(
                 itemsJson(
                     itemJson("a", thumbTag = "t", backdropTag = "b", primaryTag = "p"),
@@ -326,11 +334,15 @@ class LibraryRepositoryTest {
     fun eachPictureCarriesTheBlurHashOfItsOwnTag() = runTest {
         val server = app.signedIn()
         server.on(
-            "GET", "/Items",
+            "GET",
+            "/Items",
             Reply.json(
                 itemsJson(
                     itemJson(
-                        "a", thumbTag = "t", backdropTag = "b", primaryTag = "p",
+                        "a",
+                        thumbTag = "t",
+                        backdropTag = "b",
+                        primaryTag = "p",
                         blurHashes = mapOf(
                             // An older picture's hash sits beside the current one and must not be used.
                             "Primary" to mapOf("old" to "STALE", "p" to "POSTER"),
@@ -354,7 +366,8 @@ class LibraryRepositoryTest {
     fun theLandscapeBlurHashBelongsToWhicheverPictureTheLandscapeUrlUses() = runTest {
         val server = app.signedIn()
         server.on(
-            "GET", "/Items",
+            "GET",
+            "/Items",
             Reply.json(
                 itemsJson(
                     itemJson("b", backdropTag = "b", primaryTag = "p", blurHashes = mapOf("Backdrop" to mapOf("b" to "BACKDROP"), "Primary" to mapOf("p" to "POSTER"))),
@@ -373,7 +386,8 @@ class LibraryRepositoryTest {
     fun aPictureWithoutAUsableBlurHashHasNone() = runTest {
         val server = app.signedIn()
         server.on(
-            "GET", "/Items",
+            "GET",
+            "/Items",
             Reply.json(
                 itemsJson(
                     // A picture the server never hashed, one whose hash is for another tag, one that is blank, and no picture.

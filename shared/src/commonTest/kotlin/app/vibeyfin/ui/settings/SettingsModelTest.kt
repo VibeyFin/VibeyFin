@@ -13,14 +13,16 @@ class SettingsModelTest {
             "Settings",
             listOf(
                 SettingsSection(
-                    "Playback", null,
+                    "Playback",
+                    null,
                     listOf(
                         ToggleItem(SettingKey.AutoSkip, "Auto skip", checked = true),
                         ToggleItem(SettingKey.ShowStats, "Stats", checked = false, visible = false),
                     ),
                 ),
                 SettingsSection(
-                    "Advanced", null,
+                    "Advanced",
+                    null,
                     listOf(InfoItem(SettingKey.About, "About", value = "1.0", visible = false)),
                 ),
             ),
@@ -73,8 +75,11 @@ class SettingsModelTest {
     }
 
     private val styleKeys = setOf(
-        SettingKey.CaptionsFollowSystem, SettingKey.SubtitleSize, SettingKey.SubtitleColor,
-        SettingKey.SubtitleBackground, SettingKey.ResetSubtitles,
+        SettingKey.CaptionsFollowSystem,
+        SettingKey.SubtitleSize,
+        SettingKey.SubtitleColor,
+        SettingKey.SubtitleBackground,
+        SettingKey.ResetSubtitles,
     )
 
     @Test

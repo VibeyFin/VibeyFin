@@ -55,8 +55,7 @@ class FakeTokenVault : TokenVault {
 
     override fun seal(token: String): ByteArray = "sealed:$token".encodeToByteArray()
 
-    override fun open(sealed: ByteArray): String? =
-        if (unreadable) null else sealed.decodeToString().removePrefix("sealed:")
+    override fun open(sealed: ByteArray): String? = if (unreadable) null else sealed.decodeToString().removePrefix("sealed:")
 
     override fun discard(sealed: ByteArray) {
         discarded += sealed.decodeToString()
@@ -138,25 +137,22 @@ class InMemoryPreferencesDataStore : DataStore<Preferences> {
 
     override val data: Flow<Preferences> = state
 
-    override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences =
-        lock.withLock { transform(state.value).also { state.value = it } }
+    override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences = lock.withLock { transform(state.value).also { state.value = it } }
 }
 
 /**
  * A fresh database in memory, built the same way as the real one except that its queries run on the caller's thread: like the fake
  * server, it is done by the time the code that asked resumes, so a test never races a database thread.
  */
-fun inMemoryDatabase(): VibeyFinDatabase =
-    Room.inMemoryDatabaseBuilder<VibeyFinDatabase>().buildVibeyFinDatabase(Dispatchers.Unconfined)
+fun inMemoryDatabase(): VibeyFinDatabase = Room.inMemoryDatabaseBuilder<VibeyFinDatabase>().buildVibeyFinDatabase(Dispatchers.Unconfined)
 
 /** Counts rows straight from SQLite, so cascades can be checked without a DAO for every table. */
-suspend fun VibeyFinDatabase.count(table: String, where: String = "1"): Int =
-    useReaderConnection { connection ->
-        connection.usePrepared("SELECT COUNT(*) FROM $table WHERE $where") { statement ->
-            statement.step()
-            statement.getLong(0).toInt()
-        }
+suspend fun VibeyFinDatabase.count(table: String, where: String = "1"): Int = useReaderConnection { connection ->
+    connection.usePrepared("SELECT COUNT(*) FROM $table WHERE $where") { statement ->
+        statement.step()
+        statement.getLong(0).toInt()
     }
+}
 
 /** A network the test switches: [state] starts connected on an unmetered connection. */
 class FakeNetworkMonitor(initial: NetworkState = NetworkState.Unmetered) : NetworkMonitor {

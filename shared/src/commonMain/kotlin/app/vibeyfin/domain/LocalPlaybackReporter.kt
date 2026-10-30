@@ -27,11 +27,17 @@ class LocalPlaybackReporter(
 ) : PlayReporter {
     private sealed interface Event {
         data class Begin(val plan: PlaybackPlan) : Event
+
         data class Position(val ms: Long) : Event
+
         data class Playing(val ms: Long) : Event
+
         data class Paused(val ms: Long) : Event
+
         data class Seeked(val ms: Long) : Event
+
         data class Stop(val ms: Long) : Event
+
         data object Tick : Event
     }
 
@@ -78,7 +84,9 @@ class LocalPlaybackReporter(
     private suspend fun handle(event: Event) {
         when (event) {
             is Event.Begin -> plan = event.plan
+
             is Event.Position -> positionMs = event.ms
+
             is Event.Playing -> {
                 positionMs = event.ms
                 if (!started) {
@@ -88,6 +96,7 @@ class LocalPlaybackReporter(
                 isPaused = false
                 startTicker()
             }
+
             is Event.Paused -> {
                 positionMs = event.ms
                 if (started && !isPaused) {
@@ -96,10 +105,12 @@ class LocalPlaybackReporter(
                     save()
                 }
             }
+
             is Event.Seeked -> {
                 positionMs = event.ms
                 if (started) save()
             }
+
             is Event.Stop -> {
                 positionMs = event.ms
                 stopTicker()
@@ -110,6 +121,7 @@ class LocalPlaybackReporter(
                     finish()
                 }
             }
+
             Event.Tick -> if (started && !isPaused) save()
         }
     }
@@ -126,7 +138,7 @@ class LocalPlaybackReporter(
         }
     }
 
-    /** The watch state changed on the device: the screens look again, and the server is told when it can be. */
+    // The watch state changed on the device: the screens look again, and the server is told when it can be.
     private fun finish() {
         changes.changed()
         scheduler.schedule()

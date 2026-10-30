@@ -71,22 +71,24 @@ object Strings {
 
     fun alsoReachableAt(addresses: List<String>) = "Also reachable at " + addresses.joinToString(", ")
 
-    fun alreadySaved(addressIsNew: Boolean) =
-        if (addressIsNew) {
-            "You already have this server. This adds the new address to it."
-        } else {
-            "You already have this server at this address."
-        }
+    fun alreadySaved(addressIsNew: Boolean) = if (addressIsNew) {
+        "You already have this server. This adds the new address to it."
+    } else {
+        "You already have this server at this address."
+    }
 
     // Home and browsing
     val home = "Home"
+
     /** The header of a library's row of what was added most recently. */
     fun recentlyAddedIn(library: String) = "Recently added in $library"
+
     /** The header of the row that stands in for those when the libraries couldn't be listed. */
     val recentlyAdded = "Recently added"
 
     /** The action in a row's header that opens the whole list, and what a screen reader says for it. */
     val seeAll = "See all"
+
     fun seeAllIn(row: String) = "See all, $row"
 
     /** The main navigation bar: its labels, and the name a screen reader gives the bar. */
@@ -115,10 +117,13 @@ object Strings {
     val genreTitle = "Genre"
     val genreButton = "Genre"
     val allGenres = "All genres"
+
     /** The Library page's extra filters. */
     val yearButton = "Year"
     val yearTitle = "Release year"
+
     fun yearChip(label: String) = "Year: $label"
+
     val allYears = "All years"
     val decade2020s = "2020s"
     val decade2010s = "2010s"
@@ -128,7 +133,9 @@ object Strings {
     val decadeOlder = "Before 1980"
     val peopleButton = "People"
     val peopleTitle = "People"
+
     fun peopleChip(name: String) = "With $name"
+
     val peopleSearchHint = "Search for an actor or a director"
     val peoplePrompt = "Type a name to find someone."
     val noPeopleFound = "Nobody by that name."
@@ -140,7 +147,9 @@ object Strings {
         val grouped = digits.reversed().chunked(3).joinToString(",").reversed()
         return if (count == 1) "1 title" else "$grouped titles"
     }
+
     fun sortChip(label: String) = "Sort: $label"
+
     fun genreChip(name: String) = "Genre: $name"
 
     /** What a screen reader says for a sheet row that holds [count] titles. */
@@ -158,6 +167,7 @@ object Strings {
     val loadMoreFailed = "Couldn't load the rest of this list. Check your connection and try again."
 
     val continueWatching = "Continue watching"
+
     /** The label of the Watched button under Play; its state is the tick. */
     val watchedAction = "Watched"
     val viewEpisode = "View episode"
@@ -182,6 +192,7 @@ object Strings {
 
     /** A rating tag on a picture: "\u2605 8.1". */
     fun ratingTag(rating: Double): String = "\u2605 ${kotlin.math.round(rating * 10) / 10.0}"
+
     val markSeriesWatched = "Mark series as watched"
     val markSeriesUnwatched = "Mark series as unwatched"
     val markWatched = "Mark as watched"
@@ -207,8 +218,7 @@ object Strings {
      * What a screen reader says for a Continue watching card: the title, what it is (the episode, or
      * a movie's year) and, for something in progress, how far in the user is.
      */
-    fun continueCardLabel(title: String, detail: String?, percentWatched: Int?) =
-        listOfNotNull(title, detail, percentWatched?.let { "$it% watched" }).joinToString(", ")
+    fun continueCardLabel(title: String, detail: String?, percentWatched: Int?) = listOfNotNull(title, detail, percentWatched?.let { "$it% watched" }).joinToString(", ")
 
     /** What a screen reader says for a poster: the title and, when known, the year. */
     fun cardLabel(title: String, year: Int?) = listOfNotNull(title, year?.toString()).joinToString(", ")
@@ -247,6 +257,7 @@ object Strings {
 
     /** The Resume button: "Resume · 38m left". */
     fun resumeTimeLeft(remainingMs: Long) = "Resume · ${timeLeftShort(remainingMs)}"
+
     val pause = "Pause"
     val close = "Close"
     val playbackPosition = "Playback position"
@@ -260,6 +271,7 @@ object Strings {
 
     /** The level a swipe on the player set, for the indicator's screen-reader text: "Volume 60%". */
     fun volumeLevel(percent: Int) = "Volume $percent%"
+
     fun brightnessLevel(percent: Int) = "Brightness $percent%"
 
     /** The name of the Android notification channel for the media controls shown while a video plays. */
@@ -274,6 +286,7 @@ object Strings {
         PlayMethod.DirectStream -> "Direct stream"
         PlayMethod.Transcode -> "Transcode"
     }
+
     val statsLabelMethod = "Method"
     val statsLabelReasons = "Reasons"
     val statsLabelVideo = "Video"
@@ -345,8 +358,7 @@ object Strings {
     }
 
     /** `850 kbps` below a megabit, `4.5 Mbps` from there. Used for bitrate and throughput. */
-    fun statsBitrate(kbps: Int) =
-        if (kbps < 1000) "$kbps kbps" else "${kbps / 1000}.${(kbps % 1000) / 100} Mbps"
+    fun statsBitrate(kbps: Int) = if (kbps < 1000) "$kbps kbps" else "${kbps / 1000}.${(kbps % 1000) / 100} Mbps"
 
     /** `12.3 s` of video buffered ahead. */
     fun statsBuffer(milliseconds: Long): String {
@@ -358,8 +370,16 @@ object Strings {
     const val META_SEPARATOR = "  ·  "
 
     /** The player's one meta line: the [subtitle] then the picture [badge], what is there; null when neither is. */
-    fun metaLine(subtitle: String?, badge: String?): String? =
-        listOfNotNull(subtitle, badge).filter { it.isNotBlank() }.joinToString(META_SEPARATOR).ifEmpty { null }
+    fun metaLine(subtitle: String?, badge: String?): String? = listOfNotNull(subtitle, badge).filter { it.isNotBlank() }.joinToString(META_SEPARATOR).ifEmpty { null }
+
+    /** The facts under a title ("Show  ·  Offbeat  ·  Comedy"), on one line. */
+    fun factsLine(facts: List<String>): String = facts.joinToString(META_SEPARATOR)
+
+    /** A tag and its title on one line ("S1 E4 · Northbound"); the title alone when there is no tag. */
+    fun taggedTitle(tag: String?, title: String): String = listOfNotNull(tag, title).joinToString(" · ")
+
+    /** Up to two initials from the first words of a [name], for a picture that is not there. */
+    fun initials(name: String): String = name.split(" ").filter { it.isNotBlank() }.take(2).joinToString("") { it.first().uppercase() }
 
     /** The button that jumps over a marked part of the video. */
     fun skip(type: SegmentType): String = when (type) {
@@ -397,30 +417,41 @@ object Strings {
 
     /** The actions under Play on an item's page. My List is the server's favourites. */
     val myList = "My List"
+
     fun myListAction(onList: Boolean) = if (onList) "Remove from My List" else "Add to My List"
+
     val trailer = "Trailer"
     val download = "Download"
 
     /** What a season's button says: always "Season 3"; the server's own names ("Series 3", "Season 3") are not used. 0 is Specials. */
     val specials = "Specials"
+
     fun season(number: Int) = "Season $number"
+
     val moreLikeThis = "More like this"
     val technicalInfo = "Technical info"
     val more = "More"
     val less = "Less"
+
     /** Search. */
     val tabSearch = "Search"
     val searchHint = "Search movies, shows and people"
     val searchPrompt = "Find something to watch"
     val searchPromptHelp = "Type a title, a show or a name."
     val clearSearch = "Clear"
+
     fun featured(title: String) = "Featured: $title, opens its page"
+
     /** One page of the hero's carousel, [index] counted from 1. */
     fun featuredPage(title: String, index: Int, count: Int) = "Featured, $index of $count: $title, opens its page"
+
     val recentSearches = "Recent searches"
     val clearHistory = "Clear all"
+
     fun removeFromHistory(term: String) = "Remove $term from recent searches"
+
     fun noSearchResults(query: String) = "Nothing found for \u201C$query\u201D"
+
     val noSearchResultsHelp = "Check the spelling, or try fewer words."
     val searchAll = "All"
     val searchMovies = "Movies"
@@ -428,24 +459,34 @@ object Strings {
     val searchEpisodes = "Episodes"
     val searchPeople = "People"
     val searchCollections = "Collections"
+
     fun searchResultDescription(title: String, subtitle: String?) = if (subtitle.isNullOrBlank()) title else "$title, $subtitle"
 
     /** A cast member's page. */
     fun born(year: Int) = "Born $year"
+
     val noAppearances = "Nothing in your library yet."
     val noBiography = "No biography on the server."
+
     fun personDescription(name: String, role: String?) = if (role.isNullOrBlank()) "$name, opens their page" else "$name as $role, opens their page"
+
     val extras = "Extras"
 
     /** The sub-headings of a collection's members. */
     val collectionMovies = "Movies"
     val collectionShows = "Shows"
     val collectionOther = "More"
+
     fun collectionMovieCount(count: Int) = if (count == 1) "1 movie" else "$count movies"
+
     fun collectionShowCount(count: Int) = if (count == 1) "1 show" else "$count shows"
+
     fun collectionTitles(count: Int) = if (count == 1) "1 title" else "$count titles"
+
     fun seasonCount(count: Int) = if (count == 1) "1 season" else "$count seasons"
+
     fun playEpisode(episode: String) = "Play $episode"
+
     fun resumeEpisodeFrom(episode: String, positionMs: Long) = "Resume $episode from ${clock(positionMs)}"
 
     /** The link from an episode's or a season's page to its show: what a screen reader says for it. */
@@ -459,6 +500,7 @@ object Strings {
 
     /** What a screen reader says for a season button, and for the row of them. */
     fun seasonDescription(name: String, selected: Boolean) = if (selected) "$name, selected" else name
+
     fun seasonsDescription(count: Int) = "Seasons, $count"
 
     /** In the season's list when it holds nothing, and when the show has no seasons. */
@@ -495,15 +537,22 @@ object Strings {
     val playbackSection = "Playback"
     val skipBack = "Skip back"
     val skipForward = "Skip forward"
+
     fun skipSeconds(seconds: Int) = "$seconds seconds"
+
     fun skipBackLabel(seconds: Int) = "Back $seconds seconds"
+
     fun skipForwardLabel(seconds: Int) = "Forward $seconds seconds"
+
     fun seekFlash(seconds: Int) = "${seconds}s"
+
     val autoSkipSegments = "Auto skip intros and recaps"
     val autoSkipSegmentsHelp = "Jump past marked intros and recaps without asking."
     val bufferAhead = "Buffer ahead"
     val bufferAheadAuto = "Auto"
+
     fun bufferAheadChoice(seconds: Int) = if (seconds == 0) bufferAheadAuto else "$seconds seconds"
+
     val bufferAheadHelp =
         "How much video the player loads ahead of where you are. A longer buffer rides out a slow connection but uses more data and memory. Auto leaves it to the device's player."
     val skipHelp = "These set the player's buttons and the double-tap on the left and right of the picture."
@@ -511,12 +560,16 @@ object Strings {
     val heroShow = "Show"
     val homeHeroItemsTitle = "Featured titles on Home"
     val homeHeroItemsOff = "Off"
+
     fun homeHeroItemsCount(n: Int) = if (n == 1) "1 title" else "$n titles"
+
     val homeGenreRowsTitle = "Genre rows on Home"
     val homeGenreRowsHelp = "How many genres get a row on Home, the biggest first."
     val homeGenreRowsAll = "All genres"
     val homeGenreRowsNone = "None"
+
     fun homeGenreRowsTop(n: Int) = "Top $n"
+
     val stillWatchingTitle = "Ask if you're still watching"
     val stillWatchingHelp =
         "Pause and ask after several episodes in a row so the next one doesn't play to an empty room. Applies to this profile."
@@ -526,6 +579,7 @@ object Strings {
     val stillWatchingPrompt = "Are you still watching?"
     val stillWatchingContinue = "Keep watching"
     val stillWatchingStop = "Stop watching"
+
     fun stillWatchingAfter(n: Int) = "After $n episodes"
 
     // Settings pages, groups and rows (the data-driven Settings screen)
@@ -587,12 +641,12 @@ object Strings {
     val swipeGesturesHelp =
         "Swipe up or down on the right of the player to change the volume, on the left to change the brightness. The brightness goes back to normal when the player closes."
     val bufferingGroup = "Buffering"
+
     fun skipSecondsShort(seconds: Int) = "$seconds s"
 
     /** The root's one-line summary of the skipping page: "10 s · 10 s · Still watching after 3". */
-    fun skippingSummary(back: Int, forward: Int, stillWatching: Int) =
-        "${skipSecondsShort(back)} \u00B7 ${skipSecondsShort(forward)} \u00B7 " +
-            if (stillWatching == 0) "Still watching off" else "Still watching after $stillWatching"
+    fun skippingSummary(back: Int, forward: Int, stillWatching: Int) = "${skipSecondsShort(back)} \u00B7 ${skipSecondsShort(forward)} \u00B7 " +
+        if (stillWatching == 0) "Still watching off" else "Still watching after $stillWatching"
 
     // Audio and subtitles page: the preferred languages, kept on the Jellyfin account
     val audioLanguageTitle = "Audio language"
@@ -732,17 +786,20 @@ object Strings {
     val pinPromptChangePin = "Enter your current PIN to change it."
     val pinPromptRemovePin = "Enter your PIN to remove it."
     val pinPromptKidsOff = "Enter your PIN to turn off kids mode."
-    fun pinPromptAttemptsLeft(attempts: Int) =
-        if (attempts == 1) "That PIN is wrong. 1 try left before a short wait." else "That PIN is wrong. $attempts tries left before a short wait."
-    fun pinPromptLocked(seconds: Int) =
-        if (seconds == 1) "Too many wrong PINs. Try again in 1 second." else "Too many wrong PINs. Try again in $seconds seconds."
+
+    fun pinPromptAttemptsLeft(attempts: Int) = if (attempts == 1) "That PIN is wrong. 1 try left before a short wait." else "That PIN is wrong. $attempts tries left before a short wait."
+
+    fun pinPromptLocked(seconds: Int) = if (seconds == 1) "Too many wrong PINs. Try again in 1 second." else "Too many wrong PINs. Try again in $seconds seconds."
+
     val pinForgot = "Forgot PIN?"
-    fun pinForgotMessage(name: String) =
-        "Enter $name's Jellyfin password to remove the PIN. Kids mode stays as it is; the password is not saved."
+
+    fun pinForgotMessage(name: String) = "Enter $name's Jellyfin password to remove the PIN. Kids mode stays as it is; the password is not saved."
+
     val pinForgotSubmit = "Remove PIN"
 
     /** The keypad's delete key, and the four dots read out by a screen reader. */
     val pinKeypadDelete = "Delete"
+
     fun pinDigitsEntered(count: Int) = if (count == 1) "1 of 4 digits entered" else "$count of 4 digits entered"
 
     /** A tile's lock badge when the profile asks for its PIN to open. */
@@ -757,29 +814,30 @@ object Strings {
     val notificationsFollowed = "Shows I follow and new movies"
     val notificationsEverything = "Everything new in the library"
     val notificationsBlocked = "Notifications are blocked for VibeyFin. Allow them in system settings, then switch this on again."
-    fun notificationsScopeLabel(scope: Int) =
-        if (scope == ProfileSettings.NOTIFY_EVERYTHING) notificationsEverything else notificationsFollowed
+
+    fun notificationsScopeLabel(scope: Int) = if (scope == ProfileSettings.NOTIFY_EVERYTHING) notificationsEverything else notificationsFollowed
+
     val notificationsFooter =
         "Jellyfin sends no push, so the app checks in the background: expect a delay. Switching this on asks for notification permission."
 
     // New-title notifications: one per movie, one per episode. No name starts with "new": Kotlin/Native renames those for Swift.
     val addedMovieNotificationTitle = "New movie"
+
     /** The title of an episode's notification; [seriesName] is null when the server did not say which show. */
-    fun addedEpisodeNotificationTitle(seriesName: String?) =
-        if (seriesName.isNullOrBlank()) "New episode" else "New episode of $seriesName"
+    fun addedEpisodeNotificationTitle(seriesName: String?) = if (seriesName.isNullOrBlank()) "New episode" else "New episode of $seriesName"
+
     /** The body: the title, plus whose it is when more than one profile on this device gets notifications. */
-    fun addedTitleNotificationBody(title: String, profileName: String?) =
-        if (profileName == null) title else "$title, for $profileName"
+    fun addedTitleNotificationBody(title: String, profileName: String?) = if (profileName == null) title else "$title, for $profileName"
 
     // New-title notifications on Android: the channel, and the summary over several new episodes of one show
     val addedTitlesChannel = "New episodes and movies"
     val addedTitlesChannelDescription = "New episodes of the shows you follow and new movies, for each profile with notifications on"
+
     /** The summary over a show's episodes, which may come from several checks; [seriesName] is null when the server did not say which show. */
-    fun addedEpisodesSummary(seriesName: String?) =
-        if (seriesName.isNullOrBlank()) "New episodes" else "New episodes of $seriesName"
+    fun addedEpisodesSummary(seriesName: String?) = if (seriesName.isNullOrBlank()) "New episodes" else "New episodes of $seriesName"
+
     /** The summary's body: the episodes this check found, plus whose they are as in [addedTitleNotificationBody]. */
-    fun addedEpisodesSummaryBody(titles: List<String>, profileName: String?) =
-        addedTitleNotificationBody(titles.joinToString(", "), profileName)
+    fun addedEpisodesSummaryBody(titles: List<String>, profileName: String?) = addedTitleNotificationBody(titles.joinToString(", "), profileName)
 
     // Downloads and offline mode
     val downloadsEmptyTitle = "Nothing downloaded yet"
@@ -787,7 +845,9 @@ object Strings {
     val downloaded = "Downloaded"
     val downloading = "Downloading"
     val converting = "Converting"
+
     fun downloadConverting(percent: Int) = "Converting for this device · $percent%"
+
     val downloadQueued = "Waiting to download"
     val downloadWaitingForWifi = "Waiting for Wi-Fi"
     val downloadWaitingForNetwork = "Waiting for a connection"
@@ -822,13 +882,15 @@ object Strings {
     }
 
     /** The line under a download that is coming in; [total] is null until the server has said how big the file is. */
-    fun downloadProgress(done: Long, total: Long?) =
-        if (total == null || total <= 0) fileSize(done) else "${fileSize(done)} of ${fileSize(total)}"
+    fun downloadProgress(done: Long, total: Long?) = if (total == null || total <= 0) fileSize(done) else "${fileSize(done)} of ${fileSize(total)}"
 
     fun downloadStorageUsed(bytes: Long) = "${fileSize(bytes)} used"
+
     /** Above how much the downloads take, in the storage card at the top of Downloads (Android). */
     val downloadsStorageHeading = "On this device"
+
     fun downloadConfirmTitle(episodes: Int) = if (episodes == 1) "Download 1 episode?" else "Download $episodes episodes?"
+
     fun downloadConfirmSize(bytes: Long) = "They take about ${fileSize(bytes)}."
 
     /** What a screen reader says for a download's state; the sighted see an icon or a ring. */
@@ -836,8 +898,10 @@ object Strings {
 
     val offlineBannerTitle = "You're offline"
     val offlineBannerHelp = "Showing what you've downloaded."
+
     /** The toast when the app goes offline for want of a network. */
     val offlineToast = "You're offline. Showing what you've downloaded."
+
     /** The toast when Offline mode is switched on. */
     val offlineModeToast = "Offline mode is on. Showing what you've downloaded."
     val offlineByChoiceHelp = "Offline mode is on. Showing what you've downloaded."
@@ -866,34 +930,49 @@ object Strings {
     /** The notification that shows while downloads run in the background. */
     val downloadsChannelName = "Downloads"
     val downloadsNotificationIdle = "Downloading"
+
     fun downloadingNotificationTitle(title: String) = "Downloading $title"
+
     fun downloadsWaiting(count: Int) = if (count == 1) "1 more waiting" else "$count more waiting"
 
     // Downloads: the actions, the confirmations and the Downloads screen.
     fun downloadedWithSize(bytes: Long) = if (bytes > 0) "$downloaded · ${fileSize(bytes)}" else downloaded
+
     val pauseDownload = "Pause download"
     val resumeDownload = "Resume download"
+
     fun downloadSeasonNamed(season: String) = "Download $season"
+
     fun removeDownloadsOf(count: Int) = if (count == 1) "Remove 1 download" else "Remove $count downloads"
+
     fun downloadedCount(count: Int) = "$count downloaded"
+
     fun downloadActionDescription(title: String, state: String) = "Download $title, $state"
+
     val downloadConfirmAction = "Download"
     val downloadNothingNew = "Everything here is already downloaded."
-    fun downloadConfirmSize(bytes: Long, episodes: Int) =
-        if (bytes > 0) "${if (episodes == 1) "It takes" else "They take"} about ${fileSize(bytes)}." else null
+
+    fun downloadConfirmSize(bytes: Long, episodes: Int) = if (bytes > 0) "${if (episodes == 1) "It takes" else "They take"} about ${fileSize(bytes)}." else null
+
     fun removeConfirmTitle(count: Int, title: String) = if (count == 1) "Remove $title?" else "Remove $count downloads?"
-    fun removeConfirmBody(bytes: Long) =
-        if (bytes > 0) "This frees ${fileSize(bytes)}. You can download it again later." else "You can download it again later."
+
+    fun removeConfirmBody(bytes: Long) = if (bytes > 0) "This frees ${fileSize(bytes)}. You can download it again later." else "You can download it again later."
+
     val removeConfirmAction = "Remove"
-    fun showDownloadLine(episodes: Int, bytes: Long) =
-        listOfNotNull(if (episodes == 1) "1 episode" else "$episodes episodes", if (bytes > 0) fileSize(bytes) else null).joinToString(" · ")
+
+    fun showDownloadLine(episodes: Int, bytes: Long) = listOfNotNull(if (episodes == 1) "1 episode" else "$episodes episodes", if (bytes > 0) fileSize(bytes) else null).joinToString(" · ")
+
     fun seasonDownloadedCount(done: Int, total: Int) = "$done of $total downloaded"
+
     val downloadSeasonButton = "Download season"
 
     /** How long a download has left, from its speed: "Under 1m left", "7m left", "1h 20m left". */
     fun downloadTimeLeft(seconds: Long) = if (seconds < 60) "Under 1m left" else timeLeftShort(seconds * 1_000)
+
     val downloadLabelWaiting = "Waiting"
     val downloadLabelFailed = "Failed"
+
     fun downloadDescription(title: String) = "Download $title"
+
     fun storageLimitGb(gb: Int) = "$gb GB"
 }

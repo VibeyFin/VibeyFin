@@ -28,7 +28,9 @@ class AndroidDownloadScheduler(private val context: Context) : DownloadScheduler
                         when (network) {
                             // WorkManager stops running work when its network is lost, so work that must outlast that has none.
                             DownloadNetwork.None -> NetworkType.NOT_REQUIRED
+
                             DownloadNetwork.Any -> NetworkType.CONNECTED
+
                             DownloadNetwork.Unmetered -> NetworkType.UNMETERED
                         },
                     )

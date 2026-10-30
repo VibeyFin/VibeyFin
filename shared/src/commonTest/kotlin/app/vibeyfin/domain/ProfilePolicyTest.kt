@@ -20,11 +20,9 @@ class ProfilePolicyTest {
     @AfterTest
     fun tearDown() = runTest { app.close() }
 
-    private suspend fun load(): PolicySummary =
-        assertIs<ApiResult.Success<PolicySummary>>(policy.load()).value
+    private suspend fun load(): PolicySummary = assertIs<ApiResult.Success<PolicySummary>>(policy.load()).value
 
-    private fun FakeServer.user(policyJson: String) =
-        on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex","Policy":$policyJson}"""))
+    private fun FakeServer.user(policyJson: String) = on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex","Policy":$policyJson}"""))
 
     private fun FakeServer.ratings(json: String) = on("GET", "/Localization/ParentalRatings", Reply.json(json))
 
@@ -33,7 +31,8 @@ class ProfilePolicyTest {
         val server = app.signedIn()
         server.user(
             """{"MaxParentalRating":10,"BlockedTags":["horror","gore"],
-            |"AccessSchedules":[{"DayOfWeek":"Weekday","StartHour":8.0,"EndHour":20.5}]}""".trimMargin(),
+            |"AccessSchedules":[{"DayOfWeek":"Weekday","StartHour":8.0,"EndHour":20.5}]}
+            """.trimMargin(),
         )
         server.ratings("""[{"Name":"G","Value":5},{"Name":"PG","Value":10},{"Name":"TV-PG","Value":10}]""")
 
@@ -113,7 +112,8 @@ class ProfilePolicyTest {
             """{"AccessSchedules":[
             |{"DayOfWeek":"Saturday","StartHour":22.0,"EndHour":6.0},
             |{"StartHour":0.0,"EndHour":24.0},
-            |{"DayOfWeek":"Someday","StartHour":9.25,"EndHour":17.0}]}""".trimMargin(),
+            |{"DayOfWeek":"Someday","StartHour":9.25,"EndHour":17.0}]}
+            """.trimMargin(),
         )
 
         assertEquals(

@@ -33,11 +33,9 @@ class ServerResolverTest {
 
     private fun status(code: HttpStatusCode, body: String = "") = httpStatus(code, body)
 
-    private suspend fun ServerResolver.found(input: String): ResolvedServer =
-        assertIs<ResolveResult.Found>(resolve(input)).server
+    private suspend fun ServerResolver.found(input: String): ResolvedServer = assertIs<ResolveResult.Found>(resolve(input)).server
 
-    private suspend fun ServerResolver.failure(input: String): ConnectionIssue =
-        assertIs<ResolveResult.Failed>(resolve(input)).issue
+    private suspend fun ServerResolver.failure(input: String): ConnectionIssue = assertIs<ResolveResult.Failed>(resolve(input)).issue
 
     // Candidates for "nas", in order: https://nas, https://nas:8920, http://nas, http://nas:8096
 

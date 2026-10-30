@@ -42,19 +42,22 @@ class ChildrenDownloadsTest {
 
     private fun viewModel(parentId: String) = viewModels.track(ChildrenViewModel(parentId, app.library, app.connection, app.downloadRepository))
 
-    private fun episode(id: String, size: Long, played: Boolean, number: Int) =
-        downloadItemJson(id, "Episode $number", "Episode", size = size, seriesId = "s1", seriesName = "Saga", seasonId = "se1", seasonNumber = 1, episodeNumber = number, played = played)
+    private fun episode(id: String, size: Long, played: Boolean, number: Int) = downloadItemJson(id, "Episode $number", "Episode", size = size, seriesId = "s1", seriesName = "Saga", seasonId = "se1", seasonNumber = 1, episodeNumber = number, played = played)
 
-    /** Season se1 of Saga, with two episodes, and a plain folder "folder-1" with one movie. */
+    // Season se1 of Saga, with two episodes, and a plain folder "folder-1" with one movie.
     private suspend fun seasonServer() {
         val server = app.signedIn()
         server.on("GET", "/Items") { request ->
             when {
                 request.query["parentId"] == "se1" ->
                     Reply.json(itemsJson(itemJson("e1", "Episode 1", type = "Episode", seriesId = "s1"), itemJson("e2", "Episode 2", type = "Episode", seriesId = "s1")))
+
                 request.query["parentId"] == "folder-1" -> Reply.json(itemsJson(itemJson("m1", "Heat")))
+
                 request.query["ids"] == "se1" -> Reply.json(itemsJson(itemJson("se1", "Season 1", type = "Season", isFolder = true, seriesId = "s1", seriesName = "Saga")))
+
                 request.query["ids"] == "s1,se1" -> Reply.json(itemsPage(parentJson("s1", "Saga", "Series"), parentJson("se1", "Season 1", "Season", number = 1, seriesId = "s1")))
+
                 else -> Reply.json(itemsPage())
             }
         }

@@ -110,7 +110,7 @@ class IosBackgroundTransfer(
         return task
     }
 
-    /** A task the app started earlier and the system kept going. */
+    // A task the app started earlier and the system kept going.
     private suspend fun runningTask(partPath: String): NSURLSessionDownloadTask? = suspendCancellableCoroutine { continuation ->
         session.getAllTasksWithCompletionHandler { tasks ->
             continuation.resume(tasks?.firstOrNull { (it as? NSURLSessionTask)?.taskDescription == partPath } as? NSURLSessionDownloadTask)
@@ -127,12 +127,13 @@ class IosBackgroundTransfer(
 private class TransferDelegate(
     private val files: IosDownloadFiles,
     private val scope: CoroutineScope,
-) : NSObject(), NSURLSessionDownloadDelegateProtocol {
+) : NSObject(),
+    NSURLSessionDownloadDelegateProtocol {
     private class Waiter(val continuation: CancellableContinuation<ExternalTransferResult>, val onProgress: suspend (Long, Long?) -> Unit)
 
     private val waiters = mutableMapOf<String, Waiter>()
 
-    /** The tasks whose file has been moved into place, by part path. */
+    // The tasks whose file has been moved into place, by part path.
     private val moved = mutableSetOf<String>()
 
     /** What the system gave the app when it woke it for the session; called once the delegate has been told everything. */
@@ -169,9 +170,13 @@ private class TransferDelegate(
         (error?.userInfo?.get(NSURLSessionDownloadTaskResumeData) as? NSData)?.let { files.saveResumeData(partPath, it) }
         val result = when {
             error == null && partPath in moved -> ExternalTransferResult.Finished
+
             error == null -> status.toFailure()
+
             error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled -> ExternalTransferResult.Stopped
+
             status in 400..599 -> status.toFailure()
+
             // Any other trouble is the connection: the transfer comes back when there is one.
             else -> ExternalTransferResult.Interrupted
         }
@@ -201,7 +206,6 @@ internal fun IosDownloadFiles.saveResumeData(partPath: String, data: NSData?) {
     data.writeToFile(absolute(resumePath(partPath)), atomically = true)
 }
 
-internal fun IosDownloadFiles.readResumeData(partPath: String): NSData? =
-    if (exists(resumePath(partPath))) NSData.dataWithContentsOfFile(absolute(resumePath(partPath))) else null
+internal fun IosDownloadFiles.readResumeData(partPath: String): NSData? = if (exists(resumePath(partPath))) NSData.dataWithContentsOfFile(absolute(resumePath(partPath))) else null
 
 internal fun IosDownloadFiles.discardResumeData(partPath: String) = delete(resumePath(partPath))

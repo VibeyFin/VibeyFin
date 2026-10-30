@@ -8,9 +8,9 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -27,7 +27,7 @@ class ConnectionManagerTest {
     @AfterTest
     fun tearDown() = runTest { app.close() }
 
-    /** A saved server with a signed-in profile "u1" holding "token-1". */
+    // A saved server with a signed-in profile "u1" holding "token-1".
     private suspend fun signedInProfile(): FakeServer {
         val server = app.serverAt(address)
         app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-1")

@@ -7,8 +7,7 @@ import app.vibeyfin.ui.startup.StartupViewModel
 class StartupModel {
     private val host = ViewModelHost(StartupViewModel::class) { it.get<StartupViewModel>() }
 
-    fun observe(onDecided: (StartDestination) -> Unit) =
-        host.observe(host.viewModel.destination) { destination -> destination?.let(onDecided) }
+    fun observe(onDecided: (StartDestination) -> Unit) = host.observe(host.viewModel.destination) { destination -> destination?.let(onDecided) }
 
     fun close() = host.close()
 }

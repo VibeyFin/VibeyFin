@@ -1,8 +1,8 @@
 package app.vibeyfin.domain
 
-import app.vibeyfin.testing.RecordedRequest
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.testing.FakeJellyfin
+import app.vibeyfin.testing.RecordedRequest
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.count
@@ -58,7 +58,7 @@ class PlaybackReporterTest {
         app.close()
     }
 
-    /** A reporter that only sends when told to: the interval is too long to ever fire. */
+    // A reporter that only sends when told to: the interval is too long to ever fire.
     private fun reporter(interval: Duration = 10.hours) = app.reporter(scope, interval).also { it.begin(plan) }
 
     private suspend fun serverAnsweringReports(): FakeJellyfin {

@@ -59,7 +59,7 @@ class LocalPlaybackViewModelTest {
         ),
     )
 
-    /** Signed in as Alex, the server there but with nothing for playback; then the network is taken away when [offline]. */
+    // Signed in as Alex, the server there but with nothing for playback; then the network is taken away when [offline].
     private suspend fun signedIn(offline: Boolean): FakeServer {
         val server = app.signedIn()
         server.on("GET", "/Items", Reply.json("""{"Items":[],"TotalRecordCount":0}"""))
@@ -72,10 +72,10 @@ class LocalPlaybackViewModelTest {
         return server
     }
 
-    /** What was asked of the server since the profile was signed in (that sign-in is the one `/Users/Me`). */
+    // What was asked of the server since the profile was signed in (that sign-in is the one `/Users/Me`).
     private suspend fun requests() = app.jellyfin.callLog().filter { it != "GET /Users/Me" }
 
-    /** Waits, in real time, for [condition]: the reporter works on its own threads. */
+    // Waits, in real time, for [condition]: the reporter works on its own threads.
     private suspend fun until(condition: suspend () -> Boolean) {
         withContext(Dispatchers.Default) {
             repeat(300) {
@@ -136,7 +136,8 @@ class LocalPlaybackViewModelTest {
     fun onlineTheServersRecordOfWhereTheUserStoppedWinsButTheFileIsStillPlayed() = runTest {
         val server = signedIn(offline = false)
         server.on(
-            "GET", "/Items",
+            "GET",
+            "/Items",
             Reply.json("""{"Items":[{"Id":"m1","Name":"Heat","Type":"Movie","RunTimeTicks":1000000000,"UserData":{"PlaybackPositionTicks":600000000,"Played":false}}],"TotalRecordCount":1}"""),
         )
         app.downloaded("m1", "Heat", positionMs = 10_000)

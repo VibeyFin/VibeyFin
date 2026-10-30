@@ -2,6 +2,7 @@ package app.vibeyfin.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.ConnectionState
@@ -16,26 +17,25 @@ import app.vibeyfin.domain.ProfilePolicy
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.SubtitleMode
-import app.vibeyfin.data.api.ApiResult
+import app.vibeyfin.domain.model.Account
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.domain.model.Server
 import app.vibeyfin.ui.common.PinGate
 import app.vibeyfin.ui.common.PinPrompt
 import app.vibeyfin.ui.common.PinReason
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import app.vibeyfin.domain.model.Account
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.distinctUntilChangedBy
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -95,10 +95,9 @@ class SettingsViewModel(
     private val confirmSignOut = MutableStateFlow(false)
     private val confirmPurgeDownloads = MutableStateFlow(false)
     private val pin = PinGate(pins, auth, viewModelScope)
-    /**
-     * The profile whose PIN to open Settings is known not to be needed or has been entered. Only the gate collector below and a passed
-     * PIN set it; the state is locked for every other profile, so the lock comes from the data and not from which collector ran first.
-     */
+
+    // The profile whose PIN to open Settings is known not to be needed or has been entered. Only the gate collector below and a passed
+    // PIN set it; the state is locked for every other profile, so the lock comes from the data and not from which collector ran first.
     private val unlockedFor = MutableStateFlow<ProfileKey?>(null)
     private val leave = MutableStateFlow(false)
     private val requestNotificationPermission = MutableStateFlow(false)
@@ -154,10 +153,8 @@ class SettingsViewModel(
         }
     }
 
-    /**
-     * Each source with the value it starts from. A Room or DataStore read starts from null ("not read yet"), so the page is drawn from
-     * the defaults at once and no source that is slow on a cold start, or right after a sign-in, holds the others back.
-     */
+    // Each source with the value it starts from. A Room or DataStore read starts from null ("not read yet"), so the page is drawn from
+    // the defaults at once and no source that is slow on a cold start, or right after a sign-in, holds the others back.
     private val sources: List<Pair<Flow<Any?>, Any?>> = listOf(
         unread(preferences.alwaysAskWhoIsWatching),
         perProfile(profileSettings.showPlaybackStats),
@@ -203,10 +200,8 @@ class SettingsViewModel(
     val uiState: StateFlow<SettingsUiState> = combine(sources.map { it.first }) { state(it.asList()) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, state(sources.map { it.second }))
 
-    /**
-     * A profile setting tagged with the profile it was read for, starting from "not read yet" (null) each time the profile changes, so
-     * one profile's values never show under another, whatever order the sources arrive in.
-     */
+    // A profile setting tagged with the profile it was read for, starting from "not read yet" (null) each time the profile changes, so
+    // one profile's values never show under another, whatever order the sources arrive in.
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun <T> perProfile(flow: Flow<T?>): Pair<Flow<Any?>, Any?> = connection.state
         .map { (it as? ConnectionState.Connected)?.account?.key() }
@@ -225,6 +220,8 @@ class SettingsViewModel(
             return if (profile != null && read.profile == profile) read.value as T? else null
         }
 
+        fun <T> read(index: Int, default: T): T = read<T>(index) ?: default
+
         // The saved server, not the one the connection started with: addresses can be added later.
         val server = (v[SERVERS] as List<*>).filterIsInstance<Server>().firstOrNull { it.id == connected?.server?.id } ?: connected?.server
         val kids = read<Boolean>(KIDS)
@@ -237,27 +234,27 @@ class SettingsViewModel(
             kidsProfile = kids ?: (connected != null),
             pinGates = read(PIN_GATES) ?: PinGates(),
             policy = v[POLICY] as PolicyState,
-            notificationsEnabled = read(NOTIFICATIONS) ?: defaults.notificationsEnabled,
-            notificationScope = read(NOTIFICATION_SCOPE) ?: defaults.notificationScope,
+            notificationsEnabled = read(NOTIFICATIONS, defaults.notificationsEnabled),
+            notificationScope = read(NOTIFICATION_SCOPE, defaults.notificationScope),
             notificationsBlocked = v[NOTIFICATIONS_BLOCKED] as Boolean,
-            showPlaybackStats = read(SHOW_STATS) ?: defaults.showPlaybackStats,
-            bingeThreshold = read(BINGE) ?: defaults.bingeThreshold,
-            homeGenreRows = read(GENRE_ROWS) ?: defaults.homeGenreRows,
-            homeHeroItems = read(HERO) ?: defaults.homeHeroItems,
-            skipBackSeconds = read(SKIP_BACK) ?: defaults.skipBackSeconds,
-            skipForwardSeconds = read(SKIP_FORWARD) ?: defaults.skipForwardSeconds,
-            autoSkipSegments = read(AUTO_SKIP) ?: defaults.autoSkipSegments,
-            bufferAheadSeconds = read(BUFFER_AHEAD) ?: defaults.bufferAheadSeconds,
-            pictureInPicture = read(PICTURE_IN_PICTURE) ?: defaults.pictureInPicture,
-            swipeGestures = read(SWIPE_GESTURES) ?: defaults.swipeGestures,
+            showPlaybackStats = read(SHOW_STATS, defaults.showPlaybackStats),
+            bingeThreshold = read(BINGE, defaults.bingeThreshold),
+            homeGenreRows = read(GENRE_ROWS, defaults.homeGenreRows),
+            homeHeroItems = read(HERO, defaults.homeHeroItems),
+            skipBackSeconds = read(SKIP_BACK, defaults.skipBackSeconds),
+            skipForwardSeconds = read(SKIP_FORWARD, defaults.skipForwardSeconds),
+            autoSkipSegments = read(AUTO_SKIP, defaults.autoSkipSegments),
+            bufferAheadSeconds = read(BUFFER_AHEAD, defaults.bufferAheadSeconds),
+            pictureInPicture = read(PICTURE_IN_PICTURE, defaults.pictureInPicture),
+            swipeGestures = read(SWIPE_GESTURES, defaults.swipeGestures),
             offlineMode = v[OFFLINE_MODE] as Boolean? ?: defaults.offlineMode,
-            downloadOverMobile = read(DOWNLOAD_OVER_MOBILE) ?: defaults.downloadOverMobile,
+            downloadOverMobile = read(DOWNLOAD_OVER_MOBILE, defaults.downloadOverMobile),
             storageLimitGb = read<Long>(STORAGE_LIMIT)?.let { (it / MB_PER_GB).toInt() } ?: defaults.storageLimitGb,
-            maxStreamingBitrate = read(QUALITY) ?: defaults.maxStreamingBitrate,
-            captionsFollowSystem = read(CAPTIONS_FOLLOW_SYSTEM) ?: defaults.captionsFollowSystem,
-            subtitleSize = read(SUBTITLE_SIZE) ?: defaults.subtitleSize,
-            subtitleTextColor = read(SUBTITLE_COLOR) ?: defaults.subtitleTextColor,
-            subtitleBackground = read(SUBTITLE_BACKGROUND) ?: defaults.subtitleBackground,
+            maxStreamingBitrate = read(QUALITY, defaults.maxStreamingBitrate),
+            captionsFollowSystem = read(CAPTIONS_FOLLOW_SYSTEM, defaults.captionsFollowSystem),
+            subtitleSize = read(SUBTITLE_SIZE, defaults.subtitleSize),
+            subtitleTextColor = read(SUBTITLE_COLOR, defaults.subtitleTextColor),
+            subtitleBackground = read(SUBTITLE_BACKGROUND, defaults.subtitleBackground),
             profileName = connected?.account?.name.orEmpty(),
             serverName = server?.name.orEmpty(),
             serverAddresses = server?.addresses.orEmpty(),
@@ -288,23 +285,32 @@ class SettingsViewModel(
         viewModelScope.launch {
             when (key) {
                 SettingKey.AlwaysAsk -> preferences.setAlwaysAskWhoIsWatching(value)
+
                 SettingKey.ShowStats -> profileSettings.setShowPlaybackStats(value)
+
                 SettingKey.AutoSkip -> profileSettings.setAutoSkipSegments(value)
+
                 SettingKey.PictureInPicture -> profileSettings.setPictureInPicture(value)
+
                 SettingKey.SwipeGestures -> profileSettings.setSwipeGestures(value)
+
                 SettingKey.OfflineMode -> preferences.setOfflineMode(value)
+
                 // A download that waits for Wi-Fi is looked at again at once.
                 SettingKey.DownloadOverMobile -> {
                     profileSettings.setDownloadOverMobile(value)
                     downloads.schedule()
                 }
+
                 SettingKey.CaptionsFollowSystem -> profileSettings.setCaptionsFollowSystem(value)
+
                 SettingKey.KidsProfile -> if (value) {
                     profileSettings.setKidsProfile(true)
                 } else {
                     // Turning kids mode on needs nothing; turning it off asks for the PIN whenever there is one.
                     guarded(PinReason.KidsOff, { it.hasPin }) { profileSettings.setKidsProfile(false) }
                 }
+
                 SettingKey.Notifications -> {
                     // A kids profile has no Notifications page; this keeps a stale toggle from reaching it.
                     if (profileSettings.kidsProfile.first() == true) return@launch
@@ -312,10 +318,15 @@ class SettingsViewModel(
                     notificationsBlocked.value = false
                     requestNotificationPermission.value = value
                 }
+
                 SettingKey.PinOpenProfile -> profileSettings.setPinOpenProfile(value)
+
                 SettingKey.PinOpenSettings -> profileSettings.setPinOpenSettings(value)
+
                 SettingKey.PinSwitchProfile -> profileSettings.setPinSwitchProfile(value)
+
                 SettingKey.RememberTracks -> saveLanguages({ it.copy(rememberTracks = value) }) { languagePreferences.setRememberTracks(value) }
+
                 else -> Unit
             }
         }
@@ -330,10 +341,12 @@ class SettingsViewModel(
                     pickedFrom(SettingsPageId.AudioLanguage)
                     saveLanguages({ it.copy(audioLanguage = language) }) { languagePreferences.setAudioLanguage(language) }
                 }
+
                 SettingKey.SubtitleLanguage -> {
                     pickedFrom(SettingsPageId.SubtitleLanguage)
                     saveLanguages({ it.copy(subtitleLanguage = language) }) { languagePreferences.setSubtitleLanguage(language) }
                 }
+
                 else -> Unit
             }
         }
@@ -344,25 +357,38 @@ class SettingsViewModel(
         viewModelScope.launch {
             when (key) {
                 SettingKey.BingeThreshold -> profileSettings.setBingeThreshold(value)
+
                 SettingKey.HomeGenreRows -> profileSettings.setHomeGenreRows(value)
+
                 SettingKey.HomeHeroItems -> profileSettings.setHomeHeroItems(value)
+
                 SettingKey.SkipBack -> profileSettings.setSkipBackSeconds(value)
+
                 SettingKey.SkipForward -> profileSettings.setSkipForwardSeconds(value)
+
                 SettingKey.BufferAhead -> profileSettings.setBufferAheadSeconds(value)
+
                 SettingKey.Quality -> profileSettings.setMaxStreamingBitrate(value)
+
                 SettingKey.SubtitleSize -> profileSettings.setSubtitleSize(value)
+
                 SettingKey.SubtitleColor -> profileSettings.setSubtitleTextColor(value)
+
                 SettingKey.SubtitleBackground -> profileSettings.setSubtitleBackground(value)
+
                 SettingKey.NotificationScope -> profileSettings.setNotificationScope(value)
+
                 SettingKey.SubtitleMode -> {
                     val mode = SubtitleMode.entries.getOrNull(value) ?: return@launch
                     saveLanguages({ it.copy(subtitleMode = mode) }) { languagePreferences.setSubtitleMode(mode) }
                 }
+
                 // In gigabytes; 0 is no limit.
                 SettingKey.StorageLimit -> {
                     profileSettings.setStorageLimitMb(value * MB_PER_GB)
                     downloads.schedule()
                 }
+
                 else -> Unit
             }
         }
@@ -373,14 +399,21 @@ class SettingsViewModel(
         viewModelScope.launch {
             when (key) {
                 SettingKey.ResetSubtitles -> profileSettings.resetSubtitleStyle()
+
                 SettingKey.SwitchProfile -> guarded(PinReason.SwitchProfile, { it.switchProfile }) { connection.switchProfile() }
+
                 // A kids profile has no Sign out row; this keeps a stale tap from reaching it.
                 SettingKey.SignOut -> if (profileSettings.kidsProfile.first() != true) confirmSignOut.value = true
+
                 SettingKey.PurgeDownloads -> confirmPurgeDownloads.value = true
+
                 SettingKey.RemovePin -> guarded(PinReason.RemovePin, { it.hasPin }) { pins.removePin() }
+
                 SettingKey.SetPin -> choosePin()
+
                 // The current PIN first, then a new one typed twice.
                 SettingKey.ChangePin -> guarded(PinReason.ChangePin, { it.hasPin }) { choosePin() }
+
                 else -> Unit
             }
         }
@@ -411,7 +444,7 @@ class SettingsViewModel(
         closePage.value = null
     }
 
-    /** A language was picked from its list: the list is done with, so its search is cleared and the screen closes it. */
+    // A language was picked from its list: the list is done with, so its search is cleared and the screen closes it.
     private fun pickedFrom(page: SettingsPageId) {
         searches.value = searches.value - page
         closePage.value = page
@@ -422,7 +455,7 @@ class SettingsViewModel(
         searches.value = searches.value + (page to query)
     }
 
-    /** Reads the account's preferred languages, and the languages the server knows, for the profile signed in now. */
+    // Reads the account's preferred languages, and the languages the server knows, for the profile signed in now.
     private fun loadLanguages() {
         languageLoad?.cancel()
         languageStatus.value = LanguageStatus.Loading
@@ -440,10 +473,8 @@ class SettingsViewModel(
         }
     }
 
-    /**
-     * Shows [change] at once and saves it with [save]. What the server saved replaces it; a failure puts the values from before back and
-     * says so on the page. Only while the values were read: the rows are inert otherwise.
-     */
+    // Shows [change] at once and saves it with [save]. What the server saved replaces it; a failure puts the values from before back and
+    // says so on the page. Only while the values were read: the rows are inert otherwise.
     private suspend fun saveLanguages(change: (LanguagePrefs) -> LanguagePrefs, save: suspend () -> ApiResult<LanguagePrefs>) {
         val before = languagePrefs.value ?: return
         if (languageStatus.value !is LanguageStatus.Ready && languageStatus.value !is LanguageStatus.SaveFailed) return
@@ -453,6 +484,7 @@ class SettingsViewModel(
                 languagePrefs.value = saved.value
                 languageStatus.value = LanguageStatus.Ready
             }
+
             is ApiResult.Failure -> {
                 languagePrefs.value = before
                 languageStatus.value = LanguageStatus.SaveFailed(saved.error)
@@ -515,7 +547,7 @@ class SettingsViewModel(
 
     fun onDismissPin() = pin.dismiss()
 
-    /** Runs [action] for the signed-in profile, after its PIN when [needed] says so for its current [PinGates]. */
+    // Runs [action] for the signed-in profile, after its PIN when [needed] says so for its current [PinGates].
     private suspend fun guarded(reason: PinReason, needed: (PinGates) -> Boolean, action: suspend () -> Unit) {
         val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
         if (needed(pins.gates(account.serverId, account.userId))) {
@@ -526,7 +558,7 @@ class SettingsViewModel(
     }
 }
 
-/** A source's value as the type its flow has; [combine] hands them over as `Any?`. */
+// A source's value as the type its flow has; [combine] hands them over as `Any?`.
 @Suppress("UNCHECKED_CAST")
 private fun <T> Any?.cast(): T = this as T
 

@@ -5,8 +5,7 @@ data class JellyfinVersion(
     val minor: Int,
     val patch: Int,
 ) : Comparable<JellyfinVersion> {
-    override fun compareTo(other: JellyfinVersion): Int =
-        compareValuesBy(this, other, JellyfinVersion::major, JellyfinVersion::minor, JellyfinVersion::patch)
+    override fun compareTo(other: JellyfinVersion): Int = compareValuesBy(this, other, JellyfinVersion::major, JellyfinVersion::minor, JellyfinVersion::patch)
 
     override fun toString() = "$major.$minor.$patch"
 

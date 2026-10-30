@@ -95,8 +95,7 @@ fun itemJson(
 }
 
 /** A page of items: [total] counts the whole list, [startIndex] is where this page starts in it. */
-fun itemsJson(vararg items: String, total: Int = items.size, startIndex: Int = 0) =
-    """{"Items":[${items.joinToString(",")}],"TotalRecordCount":$total,"StartIndex":$startIndex}"""
+fun itemsJson(vararg items: String, total: Int = items.size, startIndex: Int = 0) = """{"Items":[${items.joinToString(",")}],"TotalRecordCount":$total,"StartIndex":$startIndex}"""
 
 /** Ticks in a minute: Jellyfin counts runtime in 100-nanosecond ticks. */
 const val TICKS_PER_MINUTE = 600_000_000L

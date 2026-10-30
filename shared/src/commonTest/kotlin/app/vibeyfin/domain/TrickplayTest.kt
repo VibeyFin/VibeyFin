@@ -8,7 +8,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class TrickplayTest {
-    /** 250 thumbnails, one every 10 seconds, in tiles of 10 columns by 10 rows (100 thumbnails a tile). */
+    // 250 thumbnails, one every 10 seconds, in tiles of 10 columns by 10 rows (100 thumbnails a tile).
     private val track = TrickplayTrack(
         mediaSourceId = "ms-1",
         width = 320,

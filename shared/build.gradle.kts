@@ -134,7 +134,13 @@ val unpackSqliteHostNatives = tasks.register<UnpackNatives>("unpackSqliteHostNat
 val sqliteHostNativesDir = run {
     val os = System.getProperty("os.name").lowercase()
     val arch = System.getProperty("os.arch").lowercase()
-    val osName = if ("mac" in os) "osx" else if ("win" in os) "windows" else "linux"
+    val osName = if ("mac" in os) {
+        "osx"
+    } else if ("win" in os) {
+        "windows"
+    } else {
+        "linux"
+    }
     val archName = if (arch == "aarch64" || arch == "arm64") "arm64" else "x64"
 
     layout.buildDirectory.dir("sqlite-host-natives/natives/${osName}_$archName")

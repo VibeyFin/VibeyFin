@@ -75,8 +75,7 @@ class LanguagePreferences(
     }
 
     /** The copy on the device of [profile]'s preferences; null when they have never been read. */
-    suspend fun saved(profile: ProfileRef): LanguagePrefs? =
-        dao.getLanguagePrefs(profile.serverId, profile.userId)?.let { runCatching { JSON.decodeFromString(LanguagePrefs.serializer(), it) }.getOrNull() }
+    suspend fun saved(profile: ProfileRef): LanguagePrefs? = dao.getLanguagePrefs(profile.serverId, profile.userId)?.let { runCatching { JSON.decodeFromString(LanguagePrefs.serializer(), it) }.getOrNull() }
 
     /** Reads [profile]'s preferences from the server into the copy on the device; leaves the copy as it was when that fails. */
     suspend fun refresh(profile: ProfileRef) {
@@ -104,7 +103,7 @@ class LanguagePreferences(
 
     suspend fun setRememberTracks(remember: Boolean) = update { it.copy(rememberTracks = remember) }
 
-    /** Reads the configuration, applies [change] to our keys only, and writes all of it back. Returns what was saved. */
+    // Reads the configuration, applies [change] to our keys only, and writes all of it back. Returns what was saved.
     private suspend fun update(change: (LanguagePrefs) -> LanguagePrefs): ApiResult<LanguagePrefs> {
         val connected = connection.state.value as? ConnectionState.Connected ?: return ApiResult.Failure(ApiError.Unauthorized)
         val (userId, config) = when (val read = configuration()) {
@@ -119,21 +118,21 @@ class LanguagePreferences(
         }
     }
 
-    /** Keeps [prefs] as the signed-in profile's copy on the device. */
+    // Keeps [prefs] as the signed-in profile's copy on the device.
     private suspend fun keep(prefs: LanguagePrefs) {
         val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
         keep(ProfileRef(account.serverId, account.userId), prefs)
     }
 
-    private suspend fun keep(profile: ProfileRef, prefs: LanguagePrefs) =
-        dao.setLanguagePrefs(profile.serverId, profile.userId, JSON.encodeToString(LanguagePrefs.serializer(), prefs))
+    private suspend fun keep(profile: ProfileRef, prefs: LanguagePrefs) = dao.setLanguagePrefs(profile.serverId, profile.userId, JSON.encodeToString(LanguagePrefs.serializer(), prefs))
 
-    /** The signed-in user's id and whole configuration. */
+    // The signed-in user's id and whole configuration.
     private suspend fun configuration(): ApiResult<Pair<String, JsonObject>> {
         val connected = connection.state.value as? ConnectionState.Connected ?: return ApiResult.Failure(ApiError.Unauthorized)
         return when (val me = connected.api.me()) {
             // A signed-in user always has one; without it there would be nothing to write back whole.
             is ApiResult.Success -> me.value.configuration?.let { ApiResult.Success(me.value.id to it) } ?: ApiResult.Failure(ApiError.BadResponse)
+
             is ApiResult.Failure -> me
         }
     }
@@ -150,6 +149,7 @@ class LanguagePreferences(
 
         fun JsonObject.toPrefs(): LanguagePrefs {
             fun string(key: String) = (this[key] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
+
             fun flag(key: String) = (this[key] as? JsonPrimitive)?.booleanOrNull ?: true
             return LanguagePrefs(
                 audioLanguage = string(AUDIO_LANGUAGE),
@@ -188,4 +188,3 @@ class LanguagePreferences(
         }.distinctBy { it.code }.sortedBy { it.name.lowercase() }
     }
 }
-

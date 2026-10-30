@@ -1,13 +1,14 @@
 package app.vibeyfin.ui.filtered
 
 import app.vibeyfin.domain.HomeFilter
-import app.vibeyfin.ui.children.ChildrenUiState
 import app.vibeyfin.testing.FakeServer
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.ViewModelTracker
 import app.vibeyfin.testing.itemJson
 import app.vibeyfin.testing.itemsJson
+import app.vibeyfin.ui.children.ChildrenUiState
+import app.vibeyfin.ui.common.Strings
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -23,7 +24,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
-import app.vibeyfin.ui.common.Strings
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -47,15 +47,13 @@ class FilteredListViewModelTest {
 
     private suspend fun FilteredListViewModel.list(until: (ChildrenUiState) -> Boolean) = uiState.map { it.list }.first(until)
 
-    private fun viewModel(filter: HomeFilter) =
-        viewModels.track(FilteredListViewModel(filter, app.library, app.connection))
+    private fun viewModel(filter: HomeFilter) = viewModels.track(FilteredListViewModel(filter, app.library, app.connection))
 
-    private fun FakeServer.listOf(all: List<String>, pageSize: Int) =
-        on("GET", "/Items") { request ->
-            val start = request.query["startIndex"]!!.toInt()
-            val page = all.drop(start).take(pageSize)
-            Reply.json(itemsJson(*page.map { itemJson(it) }.toTypedArray(), total = all.size, startIndex = start))
-        }
+    private fun FakeServer.listOf(all: List<String>, pageSize: Int) = on("GET", "/Items") { request ->
+        val start = request.query["startIndex"]!!.toInt()
+        val page = all.drop(start).take(pageSize)
+        Reply.json(itemsJson(*page.map { itemJson(it) }.toTypedArray(), total = all.size, startIndex = start))
+    }
 
     @Test
     fun theTitleIsTheButtonOrTheGenreName() = runTest {
@@ -196,7 +194,8 @@ class FilteredListViewModelTest {
         server.on("GET", "/Genres", Reply.json(itemsJson(itemJson("g1", "Action", type = "Genre", movieCount = 6, seriesCount = 2), itemJson("g2", "Drama", type = "Genre", movieCount = 8, seriesCount = 1), itemJson("g3", "Comedy", type = "Genre", movieCount = 5))))
         // Three titles on the list: two drama (one of them also action), nothing comic.
         server.on(
-            "GET", "/Items",
+            "GET",
+            "/Items",
             Reply.json(itemsJson(itemJson("a", genres = listOf("Drama", "Action")), itemJson("b", genres = listOf("Drama")), itemJson("c", type = "Series", genres = listOf("Action")))),
         )
         val viewModel = viewModel(HomeFilter.MyList)
@@ -503,7 +502,8 @@ class FilteredListViewModelTest {
         val server = app.signedIn()
         server.on("GET", "/Items", Reply.json(itemsJson(itemJson("a"))))
         server.on(
-            "GET", "/Genres",
+            "GET",
+            "/Genres",
             Reply.json(
                 itemsJson(
                     itemJson("g1", "Drama", type = "Genre", movieCount = 8, seriesCount = 1),
@@ -527,7 +527,8 @@ class FilteredListViewModelTest {
         val server = app.signedIn()
         server.on("GET", "/Items", Reply.json(itemsJson(itemJson("a"))))
         server.on(
-            "GET", "/Genres",
+            "GET",
+            "/Genres",
             Reply.json(
                 itemsJson(
                     itemJson("g1", "Drama", type = "Genre", movieCount = 8, seriesCount = 1),

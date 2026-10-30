@@ -27,7 +27,7 @@ class MockJellyfinNetwork(vararg routes: Pair<String, Route>) {
     val requested = mutableListOf<String>()
     val authorization = mutableListOf<String?>()
 
-    /** Probes run side by side on the engine's threads; a plain list would lose an append now and then. */
+    // Probes run side by side on the engine's threads; a plain list would lose an append now and then.
     private val recording = Mutex()
     private val byAddress = routes.toMap()
 

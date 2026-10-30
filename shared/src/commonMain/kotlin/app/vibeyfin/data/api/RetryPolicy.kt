@@ -20,5 +20,4 @@ class RetryPolicy(val attempts: Int, val backoff: Duration) {
     }
 }
 
-internal fun ApiResult<*>.isRetryable(): Boolean =
-    this is ApiResult.Failure && (error is ApiError.Network || error is ApiError.Server)
+internal fun ApiResult<*>.isRetryable(): Boolean = this is ApiResult.Failure && (error is ApiError.Network || error is ApiError.Server)

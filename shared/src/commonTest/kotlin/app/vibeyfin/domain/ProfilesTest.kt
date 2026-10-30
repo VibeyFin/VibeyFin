@@ -9,8 +9,7 @@ import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 class ProfilesTest {
-    private fun saved(id: String, name: String, session: Boolean = true, tag: String? = null) =
-        Account("srv-1", id, name, tag, session, Instant.fromEpochMilliseconds(0))
+    private fun saved(id: String, name: String, session: Boolean = true, tag: String? = null) = Account("srv-1", id, name, tag, session, Instant.fromEpochMilliseconds(0))
 
     private fun public(vararg users: PublicUser) = PublicProfiles(users.toList(), "http://nas:8096", quickConnectEnabled = false)
 

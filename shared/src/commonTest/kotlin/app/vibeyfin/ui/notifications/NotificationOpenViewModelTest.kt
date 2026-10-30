@@ -40,11 +40,10 @@ class NotificationOpenViewModelTest {
 
     private fun viewModel() = viewModels.track(NotificationOpenViewModel(app.connection, app.pins))
 
-    /** Waits for a route on the real dispatcher, since the gate check reads the database. */
-    private suspend fun NotificationOpenViewModel.nextRoute() =
-        withContext(Dispatchers.Default) { withTimeout(5_000) { route.first { it != null } } }
+    // Waits for a route on the real dispatcher, since the gate check reads the database.
+    private suspend fun NotificationOpenViewModel.nextRoute() = withContext(Dispatchers.Default) { withTimeout(5_000) { route.first { it != null } } }
 
-    /** Alex (u1) is signed in; Sam (u2) is another saved profile on the same server. */
+    // Alex (u1) is signed in; Sam (u2) is another saved profile on the same server.
     private suspend fun twoProfiles() {
         val server = app.signedIn()
         server.on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex"}"""))

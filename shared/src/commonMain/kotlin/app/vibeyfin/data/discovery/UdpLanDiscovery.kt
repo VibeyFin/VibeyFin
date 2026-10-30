@@ -82,7 +82,7 @@ class UdpLanDiscovery(
         const val BROADCAST_ADDRESS = "255.255.255.255"
         const val QUESTION = "who is JellyfinServer?"
 
-        /** Port Jellyfin listens on when a reply doesn't say. */
+        // Port Jellyfin listens on when a reply doesn't say.
         private const val DEFAULT_PORT = 8096
 
         /**
@@ -105,13 +105,10 @@ class UdpLanDiscovery(
     }
 }
 
-/**
- * The sender's IPv4 address as text, or null. Built from the raw bytes: `hostname` does a reverse
- * DNS lookup on the JVM, which can block for seconds and returns a name such as "localhost".
- */
-private fun SocketAddress.ipv4(): String? =
-    (this as? InetSocketAddress)?.resolveAddress()?.takeIf { it.size == 4 }
-        ?.joinToString(".") { (it.toInt() and 0xFF).toString() }
+// The sender's IPv4 address as text, or null. Built from the raw bytes: `hostname` does a reverse
+// DNS lookup on the JVM, which can block for seconds and returns a name such as "localhost".
+private fun SocketAddress.ipv4(): String? = (this as? InetSocketAddress)?.resolveAddress()?.takeIf { it.size == 4 }
+    ?.joinToString(".") { (it.toInt() and 0xFF).toString() }
 
 /** `MediaBrowser.Model.ApiClient.ServerDiscoveryInfo`, which is all the server sends. */
 @Serializable

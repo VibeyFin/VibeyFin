@@ -20,8 +20,8 @@ import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
 import io.ktor.utils.io.writeFully
 import io.ktor.utils.io.writer
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -71,7 +71,9 @@ class Reply(
                 Reply(HttpStatusCode.OK, body, "application/octet-stream", headers + (HttpHeaders.ContentLength to body.length.toString()))
             } else {
                 Reply(
-                    HttpStatusCode.PartialContent, body.substring(from), "application/octet-stream",
+                    HttpStatusCode.PartialContent,
+                    body.substring(from),
+                    "application/octet-stream",
                     headers + (HttpHeaders.ContentRange to "bytes $from-${body.length - 1}/${body.length}"),
                 )
             }
@@ -92,7 +94,9 @@ class Reply(
         )
 
         fun json(body: String, status: HttpStatusCode = HttpStatusCode.OK) = Reply(status, body, "application/json")
+
         fun status(status: HttpStatusCode, body: String = "") = Reply(status, body, "text/plain")
+
         fun noContent() = Reply(HttpStatusCode.NoContent, "", "text/plain")
     }
 }
@@ -157,7 +161,7 @@ class FakeJellyfin(
 
     private val servers = mutableMapOf<String, FakeServer>()
 
-    /** Calls can overlap on the engine's threads; a plain list would lose an append now and then. */
+    // Calls can overlap on the engine's threads; a plain list would lose an append now and then.
     private val recording = Mutex()
 
     fun server(address: String): FakeServer = servers.getOrPut(address) { FakeServer(address) }
@@ -198,11 +202,14 @@ class FakeJellyfin(
         }
     }
 
-    /**
-     * Answers on the caller's thread, not the engine's own pool: a call is done by the time the code that made it resumes, so a
-     * test that sends an event and then reads state is not racing a thread.
-     */
-    private val engine = MockEngine(MockEngineConfig().apply { dispatcher = Dispatchers.Unconfined; addHandler(handler) })
+    // Answers on the caller's thread, not the engine's own pool: a call is done by the time the code that made it resumes, so a
+    // test that sends an event and then reads state is not racing a thread.
+    private val engine = MockEngine(
+        MockEngineConfig().apply {
+            dispatcher = Dispatchers.Unconfined
+            addHandler(handler)
+        },
+    )
 
     private val http = JellyfinHttpClient.create(
         clientInfo = { ClientInfo(deviceName = "Test phone", deviceId = "device-1", appVersion = "1.0.0") },

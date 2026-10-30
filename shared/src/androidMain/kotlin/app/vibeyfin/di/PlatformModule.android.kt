@@ -7,10 +7,10 @@ import androidx.room3.RoomDatabase
 import app.vibeyfin.data.db.VibeyFinDatabase
 import app.vibeyfin.data.discovery.AndroidMulticastLock
 import app.vibeyfin.data.discovery.UdpLanDiscovery
-import app.vibeyfin.data.platform.AndroidDeviceInfo
 import app.vibeyfin.data.download.AndroidDownloadFiles
 import app.vibeyfin.data.download.AndroidDownloadScheduler
 import app.vibeyfin.data.download.AndroidProgressSyncScheduler
+import app.vibeyfin.data.platform.AndroidDeviceInfo
 import app.vibeyfin.data.platform.AndroidNetworkMonitor
 import app.vibeyfin.data.platform.AndroidPlaybackCapabilities
 import app.vibeyfin.data.platform.DeviceInfo

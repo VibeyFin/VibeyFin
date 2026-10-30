@@ -19,9 +19,10 @@ import app.vibeyfin.domain.DownloadFiles
 import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.DownloadRunner
 import app.vibeyfin.domain.DownloadScheduler
+import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.LanDiscovery
-import app.vibeyfin.domain.NewTitlesPoller
 import app.vibeyfin.domain.NetworkMonitor
+import app.vibeyfin.domain.NewTitlesPoller
 import app.vibeyfin.domain.OfflineMode
 import app.vibeyfin.domain.PlaybackCapabilitiesSource
 import app.vibeyfin.domain.ProgressSyncScheduler
@@ -37,16 +38,15 @@ import app.vibeyfin.testing.FakeProgressSyncScheduler
 import app.vibeyfin.testing.FakeTokenVault
 import app.vibeyfin.testing.InMemoryPreferencesDataStore
 import app.vibeyfin.ui.addserver.AddServerViewModel
-import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.ui.children.ChildrenViewModel
 import app.vibeyfin.ui.filtered.FilteredListViewModel
 import app.vibeyfin.ui.home.HomeViewModel
 import app.vibeyfin.ui.item.ItemViewModel
+import app.vibeyfin.ui.notifications.NotificationOpenViewModel
 import app.vibeyfin.ui.playback.PlaybackViewModel
 import app.vibeyfin.ui.servers.ServersViewModel
 import app.vibeyfin.ui.settings.SettingsViewModel
 import app.vibeyfin.ui.startup.StartupViewModel
-import app.vibeyfin.ui.notifications.NotificationOpenViewModel
 import app.vibeyfin.ui.whoswatching.WhoIsWatchingViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -55,8 +55,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.job
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.koin.core.parameter.parametersOf
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
@@ -79,7 +79,7 @@ class AppModuleTest {
         Dispatchers.resetMain()
     }
 
-    /** Stands in for [platformModule]: same bindings, but in memory. */
+    // Stands in for [platformModule]: same bindings, but in memory.
     private fun fakePlatformModule() = module {
         single<RoomDatabase.Builder<VibeyFinDatabase>> { Room.inMemoryDatabaseBuilder<VibeyFinDatabase>() }
         single<DataStore<Preferences>> { InMemoryPreferencesDataStore() }

@@ -5,12 +5,12 @@ import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.data.api.ItemsResultDto
 import app.vibeyfin.data.api.JellyfinApi
 import app.vibeyfin.data.api.episodesFrom
+import app.vibeyfin.data.api.map
 import app.vibeyfin.data.api.nextUp
 import app.vibeyfin.data.api.nextUpOf
 import app.vibeyfin.data.api.resumeItems
 import app.vibeyfin.data.api.setFavorite
 import app.vibeyfin.data.api.setPlayed
-import app.vibeyfin.data.api.map
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
 import kotlinx.coroutines.async
@@ -36,8 +36,11 @@ class WatchRepository(private val connection: ConnectionManager, private val cha
             when {
                 resumeItems is ApiResult.Success && nextItems is ApiResult.Success ->
                     ApiResult.Success(mergeContinueWatching(resumeItems.value, nextItems.value))
+
                 resumeItems is ApiResult.Success -> ApiResult.Success(mergeContinueWatching(resumeItems.value, emptyList()))
+
                 nextItems is ApiResult.Success -> ApiResult.Success(mergeContinueWatching(emptyList(), nextItems.value))
+
                 else -> ApiResult.Failure(worseOf((resumeItems as ApiResult.Failure).error, (nextItems as ApiResult.Failure).error))
             }
         }
@@ -85,15 +88,13 @@ class WatchRepository(private val connection: ConnectionManager, private val cha
         return result
     }
 
-    private fun ApiResult<ItemsResultDto>.toItems(api: JellyfinApi): ApiResult<List<MediaItem>> =
-        when (this) {
-            is ApiResult.Success -> ApiResult.Success(value.items.map { it.toMediaItem(api.baseUrl) })
-            is ApiResult.Failure -> this
-        }
+    private fun ApiResult<ItemsResultDto>.toItems(api: JellyfinApi): ApiResult<List<MediaItem>> = when (this) {
+        is ApiResult.Success -> ApiResult.Success(value.items.map { it.toMediaItem(api.baseUrl) })
+        is ApiResult.Failure -> this
+    }
 
-    /** A rejected token matters most: it ends the session, whatever else went wrong. */
-    private fun worseOf(first: ApiError, second: ApiError) =
-        if (second == ApiError.Unauthorized && first != ApiError.Unauthorized) second else first
+    // A rejected token matters most: it ends the session, whatever else went wrong.
+    private fun worseOf(first: ApiError, second: ApiError) = if (second == ApiError.Unauthorized && first != ApiError.Unauthorized) second else first
 
     private suspend fun <T> call(block: suspend (JellyfinApi, String) -> ApiResult<T>): ApiResult<T> {
         val connected = connection.state.value as? ConnectionState.Connected

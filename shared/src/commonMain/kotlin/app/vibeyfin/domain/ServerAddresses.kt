@@ -51,31 +51,43 @@ object ServerAddresses {
     }
 
     private fun parseAuthority(authority: String): Pair<String, Int?>? {
-        val host: String
-        val portText: String?
-        if (authority.startsWith('[')) {
-            val close = authority.indexOf(']')
-            if (close < 0) return null
-            host = authority.substring(1, close).lowercase()
-            val after = authority.substring(close + 1)
-            portText = when {
-                after.isEmpty() -> null
-                after.startsWith(':') -> after.substring(1)
-                else -> return null
-            }
-            if (host.isEmpty() || host.any { !(it.isDigit() || it in 'a'..'f' || it == ':' || it == '.') }) return null
-        } else {
-            if (authority.count { it == ':' } > 1) return null
-            host = authority.substringBefore(':').trimEnd('.').lowercase()
-            portText = if (':' in authority) authority.substringAfter(':') else null
-            if (host.isEmpty() || host.startsWith('.')) return null
-            if (host.any { !(it in 'a'..'z' || it.isDigit() || it == '-' || it == '.' || it == '_') }) return null
-        }
-        val port = portText?.let { text ->
-            text.takeIf { it.isNotEmpty() && it.all(Char::isDigit) }?.toIntOrNull()?.takeIf { it in 1..65535 } ?: return null
-        }
+        val (host, portText) = (if (authority.startsWith('[')) parseBracketedAuthority(authority) else parseNamedAuthority(authority)) ?: return null
+        val port = portText?.let { parsePort(it) ?: return null }
+
         return host to port
     }
+
+    // `[::1]:8096`: the host without its brackets, and the text after the colon
+    private fun parseBracketedAuthority(authority: String): Pair<String, String?>? {
+        val close = authority.indexOf(']')
+        if (close < 0) return null
+
+        val host = authority.substring(1, close).lowercase()
+        val after = authority.substring(close + 1)
+        val portText = when {
+            after.isEmpty() -> null
+            after.startsWith(':') -> after.substring(1)
+            else -> return null
+        }
+
+        return (host to portText).takeIf { host.isNotEmpty() && host.all(::isIpv6Char) }
+    }
+
+    // `jellyfin.local:8096`: the host without a trailing dot, and the text after the colon
+    private fun parseNamedAuthority(authority: String): Pair<String, String?>? {
+        if (authority.count { it == ':' } > 1) return null
+
+        val host = authority.substringBefore(':').trimEnd('.').lowercase()
+        val portText = if (':' in authority) authority.substringAfter(':') else null
+
+        return (host to portText).takeIf { host.isNotEmpty() && !host.startsWith('.') && host.all(::isHostnameChar) }
+    }
+
+    private fun parsePort(text: String): Int? = text.takeIf { it.isNotEmpty() && it.all(Char::isDigit) }?.toIntOrNull()?.takeIf { it in 1..65535 }
+
+    private fun isIpv6Char(char: Char) = char.isDigit() || char in 'a'..'f' || char in ":."
+
+    private fun isHostnameChar(char: Char) = char in 'a'..'z' || char.isDigit() || char in "-._"
 
     private fun normalisePath(path: String): List<String> {
         val segments = path.split('/').filter { it.isNotEmpty() }.toMutableList()
@@ -86,6 +98,5 @@ object ServerAddresses {
 
     private fun defaultPort(scheme: String) = if (scheme == "https") 443 else 80
 
-    private fun defaultJellyfinPort(scheme: String) =
-        if (scheme == "https") HTTPS_DEFAULT_JELLYFIN_PORT else HTTP_DEFAULT_JELLYFIN_PORT
+    private fun defaultJellyfinPort(scheme: String) = if (scheme == "https") HTTPS_DEFAULT_JELLYFIN_PORT else HTTP_DEFAULT_JELLYFIN_PORT
 }
