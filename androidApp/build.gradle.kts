@@ -60,6 +60,11 @@ android {
     }
 }
 
+baselineProfile {
+    // One profile in src/main, so the benchmark build gets it as well as release
+    mergeIntoMain = true
+}
+
 dependencies {
     implementation(project(":shared"))
 

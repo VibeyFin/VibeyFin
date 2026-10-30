@@ -17,7 +17,8 @@ class BaselineProfileGenerator {
     val rule = BaselineProfileRule()
 
     @Test
-    fun generate() = rule.collect(packageName = APP_PACKAGE) {
+    // Also the startup profile, which R8 uses to put what a cold start needs together in the APK
+    fun generate() = rule.collect(packageName = APP_PACKAGE, includeInStartupProfile = true) {
         pressHome()
         startActivityAndWait()
         waitForHome()
