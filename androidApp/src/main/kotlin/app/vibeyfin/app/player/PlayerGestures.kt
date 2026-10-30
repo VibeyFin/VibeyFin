@@ -70,34 +70,46 @@ class PlayerSwipe(private val activity: Activity?, private val audio: AudioManag
     var kind by mutableStateOf<SwipeLevel?>(null)
         private set
 
-    /** The level shown, 0 to 1: the volume in the stream's own steps, so it never shows a level the device can't play. */
+    /**
+     * The level shown, 0 to 1. It follows the finger smoothly for the volume too; the stream only has a few steps (often 15),
+     * and the pill jumping between them felt rough, so the stream moves a step whenever the level crosses one.
+     */
     var level by mutableFloatStateOf(0f)
+        private set
+
+    /** The volume is at its lowest step, so nothing is heard; the pill shows the muted glyph. */
+    var silent by mutableStateOf(false)
         private set
 
     /** A finger is on the screen changing [kind]. */
     var dragging by mutableStateOf(false)
         private set
 
-    // The level between steps, so a slow swipe still adds up to the next volume step.
-    private var exact = 0f
+    // Read once a swipe starts, so a drag doesn't ask the audio service on every move.
+    private var maxStep = 1
+    private var step = 0
 
     fun start(kind: SwipeLevel) {
         this.kind = kind
-        exact = when (kind) {
-            SwipeLevel.Volume -> audio?.let { it.getStreamVolume(STREAM) / it.getStreamMaxVolume(STREAM).coerceAtLeast(1).toFloat() } ?: 0f
+        level = when (kind) {
+            SwipeLevel.Volume -> audio?.let {
+                maxStep = it.getStreamMaxVolume(STREAM).coerceAtLeast(1)
+                step = it.getStreamVolume(STREAM)
+                step / maxStep.toFloat()
+            } ?: 0f
             SwipeLevel.Brightness -> currentBrightness()
         }
-        level = exact
+        silent = kind == SwipeLevel.Volume && step == 0
         dragging = true
     }
 
     /** Moves the level by [by], a share of the full range; up is positive. */
     fun drag(by: Float) {
-        exact = (exact + by).coerceIn(0f, 1f)
-        level = when (kind) {
-            SwipeLevel.Volume -> setVolume(exact)
-            SwipeLevel.Brightness -> setBrightness(exact)
-            null -> return
+        level = (level + by).coerceIn(0f, 1f)
+        when (kind) {
+            SwipeLevel.Volume -> setVolume(level)
+            SwipeLevel.Brightness -> setBrightness(level)
+            null -> Unit
         }
     }
 
@@ -111,20 +123,20 @@ class PlayerSwipe(private val activity: Activity?, private val audio: AudioManag
         window.attributes = window.attributes.apply { screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE }
     }
 
-    private fun setVolume(value: Float): Float {
-        val audio = audio ?: return value
-        val max = audio.getStreamMaxVolume(STREAM).coerceAtLeast(1)
-        val step = (value * max).roundToInt()
+    private fun setVolume(value: Float) {
+        val audio = audio ?: return
+        val next = (value * maxStep).roundToInt()
+        silent = next == 0
+        if (next == step) return
+        step = next
         // No FLAG_SHOW_UI: the system's volume panel stays away while the indicator shows.
-        if (step != audio.getStreamVolume(STREAM)) audio.setStreamVolume(STREAM, step, 0)
-        return step / max.toFloat()
+        audio.setStreamVolume(STREAM, next, 0)
     }
 
-    private fun setBrightness(value: Float): Float {
-        val window = activity?.window ?: return value
+    private fun setBrightness(value: Float) {
+        val window = activity?.window ?: return
         // Not quite zero, which some devices take as "screen off".
         window.attributes = window.attributes.apply { screenBrightness = value.coerceAtLeast(MIN_BRIGHTNESS) }
-        return value
     }
 
     /** This window's brightness if a swipe set it, otherwise the system's, which the first swipe starts from. */
@@ -225,12 +237,12 @@ fun BoxScope.SwipeLevelIndicator(swipe: PlayerSwipe) {
             .safeDrawingPadding()
             .padding(horizontal = VibeyFinTokens.Space.s6),
     ) {
-        LevelPill(kind, swipe.level)
+        LevelPill(kind, swipe.level, swipe.silent)
     }
 }
 
 @Composable
-private fun LevelPill(kind: SwipeLevel, level: Float) {
+private fun LevelPill(kind: SwipeLevel, level: Float, silent: Boolean) {
     val percent = (level * 100).roundToInt()
     val spoken = if (kind == SwipeLevel.Volume) Strings.volumeLevel(percent) else Strings.brightnessLevel(percent)
     Box(
@@ -248,7 +260,7 @@ private fun LevelPill(kind: SwipeLevel, level: Float) {
         Box(Modifier.fillMaxWidth().fillMaxHeight(level).background(VibeyFinTokens.Colors.ink))
         // Dark once the fill has reached the glyph, so it stays readable on either.
         Icon(
-            painter = painterResource(levelIcon(kind, level)),
+            painter = painterResource(levelIcon(kind, level, silent)),
             contentDescription = null,
             tint = if (level >= ICON_COVERED) VibeyFinTokens.Colors.bg else VibeyFinTokens.Colors.ink,
             modifier = Modifier.padding(bottom = VibeyFinTokens.Space.s3).size(ICON_SIZE),
@@ -257,9 +269,9 @@ private fun LevelPill(kind: SwipeLevel, level: Float) {
 }
 
 @DrawableRes
-private fun levelIcon(kind: SwipeLevel, level: Float): Int = when (kind) {
+private fun levelIcon(kind: SwipeLevel, level: Float, silent: Boolean): Int = when (kind) {
     SwipeLevel.Volume -> when {
-        level <= 0f -> R.drawable.ic_volume_off
+        silent -> R.drawable.ic_volume_off
         level < 0.5f -> R.drawable.ic_volume_down
         else -> R.drawable.ic_volume_up
     }
