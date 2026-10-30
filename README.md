@@ -60,7 +60,7 @@ when they are.
 | Module | What it is |
 |---|---|
 | `shared/` | The Kotlin Multiplatform library: API client, storage, repositories, connection and session handling, and the ViewModels with their UI state. Logic only, no UI toolkit. |
-| `androidApp/` | The Android app: Compose screens, navigation, theme, Activity and manifest. |
+| `androidMobileApp/` | The Android app: Compose screens, navigation, theme, Activity and manifest. |
 | `iosApp/` | The iOS app: SwiftUI screens, reading shared state through the Kotlin facades in `shared/src/iosMain`. |
 | `docs/` | The [roadmap](docs/ROADMAP.md), the [design system](docs/design/brand.md) and the [test server](docs/test-server.md). |
 | `scripts/` | Design drift and title-case checks, and a disposable local Jellyfin for testing (`scripts/test-server/`). |
@@ -81,8 +81,8 @@ Targets are `androidTarget`, `iosArm64` and `iosSimulatorArm64`. The Android app
 Android:
 
 ```sh
-./gradlew :androidApp:assembleDebug     # build
-./gradlew :androidApp:installDebug      # install on the connected device or emulator
+./gradlew :androidMobileApp:assembleDebug     # build
+./gradlew :androidMobileApp:installDebug      # install on the connected device or emulator
 ```
 
 iOS: open `iosApp/iosApp.xcodeproj` in Xcode and run. Xcode builds the shared framework itself

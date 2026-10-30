@@ -10,13 +10,13 @@ The app should become very configurable over time, so settings live per profile 
 - `shared/`: KMP library (`com.android.kotlin.multiplatform.library`). Logic only: data, domain,
   DI and the ViewModels with their UI state. No UI toolkit. Source sets: `commonMain`,
   `androidMain`, `iosMain`, `commonTest`, `androidHostTest`, `androidDeviceTest`.
-- `androidApp/`: the native Android app: Jetpack Compose screens, navigation and theme (package
+- `androidMobileApp/`: the native Android app: Jetpack Compose screens, navigation and theme (package
   `app.vibeyfin.app`), plus Activity, manifest and icons. AGP 9 does not allow the KMP
   plugin and `com.android.application` in one module, which is why this is separate.
 - `iosApp/`: the native iOS app in SwiftUI (Xcode project with synchronized folders). It reads
   shared state through the facades in `shared/src/iosMain/.../ios`.
   Swift files sit in feature folders under `iosApp/iosApp/` (`App`, `Home`, `Item`, `Library`, `Player`,
-  `Components` and so on), like the packages in `androidApp`. A new screen goes in its feature's folder.
+  `Components` and so on), like the packages in `androidMobileApp`. A new screen goes in its feature's folder.
 
 Targets: `androidTarget`, `iosArm64`, `iosSimulatorArm64`.
 
@@ -124,7 +124,7 @@ apps share are in `guardrails.md`; which Jellyfin field drives which UI is in `j
 
 - Work in the phases of the roadmap in `docs/ROADMAP.md`. Finish one phase, make sure it builds
   and its tests pass, summarise what changed, then stop for review before the next phase.
-- Run `./gradlew :shared:allTests` (or the equivalent) and `./gradlew :androidApp:assembleDebug`
+- Run `./gradlew :shared:allTests` (or the equivalent) and `./gradlew :androidMobileApp:assembleDebug`
   before calling a phase done. A feature that touches the Jellyfin API or the player is also
   verified against the test server (below).
 - iOS can only be built with Xcode. Say plainly when iOS code was only compiled to klibs or

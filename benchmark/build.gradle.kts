@@ -14,7 +14,7 @@ android {
     }
 
     // The app under test; the plugin adds the build types that measure it.
-    targetProjectPath = ":androidApp"
+    targetProjectPath = ":androidMobileApp"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

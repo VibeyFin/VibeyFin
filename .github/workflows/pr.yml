@@ -36,4 +36,4 @@ jobs:
           java-version: 25
       - uses: gradle/actions/setup-gradle@v5
       # allTests also needs iOS targets, which only run on macOS. The Android host tests stand in for it.
-      - run: ./gradlew :shared:testAndroidHostTest :androidApp:testDebugUnitTest :androidApp:assembleDebug
+      - run: ./gradlew :shared:testAndroidHostTest :androidMobileApp:testDebugUnitTest :androidMobileApp:assembleDebug

@@ -41,7 +41,7 @@ android {
             signingConfigs.findByName("release")?.let { signingConfig = it }
         }
         // What to install to judge how smooth the app is: the release build (not debuggable, so Compose and the runtime skip their
-        // debug checks and the JIT works fully), signed with the debug key so it installs. `./gradlew :androidApp:installBenchmark`.
+        // debug checks and the JIT works fully), signed with the debug key so it installs. `./gradlew :androidMobileApp:installBenchmark`.
         create("benchmark") {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
@@ -76,7 +76,7 @@ dependencies {
 
     implementation(libs.androidx.work.runtime.ktx)
 
-    // Installs the baseline profile the benchmark module generates (`./gradlew :androidApp:generateBaselineProfile`).
+    // Installs the baseline profile the benchmark module generates (`./gradlew :androidMobileApp:generateBaselineProfile`).
     implementation(libs.androidx.profileinstaller)
     baselineProfile(project(":benchmark"))
 

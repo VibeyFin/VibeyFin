@@ -7,8 +7,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Walks what a person does first: start, scroll Home, open an item. Run with `./gradlew :androidApp:generateBaselineProfile`; the
- * profile lands in `androidApp/src/main/generated/baselineProfiles` and is committed. The app must be signed in on the local test
+ * Walks what a person does first: start, scroll Home, open an item. Run with `./gradlew :androidMobileApp:generateBaselineProfile`; the
+ * profile lands in `androidMobileApp/src/main/generated/baselineProfiles` and is committed. The app must be signed in on the local test
  * server (`docs/test-server.md`).
  */
 @RunWith(AndroidJUnit4::class)

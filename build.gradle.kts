@@ -18,7 +18,7 @@ plugins {
 // Style checks: ./gradlew ktlintCheck and detekt; ktlintFormat fixes what it can
 val ktlintVersion = libs.versions.ktlint.get()
 
-listOf(":androidApp", ":shared").map { project(it) }.forEach { module ->
+listOf(":androidMobileApp", ":shared").map { project(it) }.forEach { module ->
     module.run {
         apply(plugin = "org.jlleitschuh.gradle.ktlint")
         apply(plugin = "dev.detekt")

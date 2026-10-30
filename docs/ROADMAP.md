@@ -70,7 +70,7 @@ _Exit: log in, list libraries, fetch an item's metadata._
 ### Phase 1 — Core playback
 - [x] PlaybackInfo negotiation with a device profile (direct play vs HLS transcode)
 - [x] Player behind `expect`/`actual` (Media3 / AVPlayer / VLCJ); direct play + transcode fallback — _the
-  boundary is the app module: Media3 in `androidApp`, AVPlayer in `iosApp` (plan 03); iOS is written, not built_
+  boundary is the app module: Media3 in `androidMobileApp`, AVPlayer in `iosApp` (plan 03); iOS is written, not built_
 - [x] Progress beacon: `POST /Sessions/Playing`, `/Sessions/Playing/Progress` (~10s + pause/seek), `/Sessions/Playing/Stopped` — _`Stopped` on backgrounding and on leaving the screen; after a crash, see Phase 2_
 - [x] Audio & subtitle track selection from `MediaStreams` — _in the player where the server sends the track as a file or for a direct play's audio, a new negotiation otherwise (plan 03); iOS burns subtitles in_
 - [x] Player failures: a lost connection tries the same stream again twice and then says so, a 401 on the
@@ -190,7 +190,7 @@ _Starts after the state audit (see Cross-cutting)._
 - [x] Tile trailers (Android built and run; iOS written and only parsed): a long press on any poster opens a menu with Details, Trailer (only when the title has one, found when the menu opens because lists do not carry trailers: one the server holds plays in the app, one on the web opens in the system's viewer) and My List. The detail page has the same Trailer button
 
 Also built in this phase, not on the original list: Home shows a row for every genre with a per-profile setting to limit them, collections open on their own page with a tablet view, the player uses the whole screen
-including the camera cut-out, and a `benchmark` build type (`./gradlew :androidApp:installBenchmark`) for judging smoothness, as the
+including the camera cut-out, and a `benchmark` build type (`./gradlew :androidMobileApp:installBenchmark`) for judging smoothness, as the
 debug build is slow. Cut: thumbs. A baseline profile for first-scroll speed moves to Phase 6 (it needs Macrobenchmark, which is not in the stack yet: ask first).
 
 Owed after Phase 4: the phone pass and an iOS Xcode pass, its own task: build `iosApp` in Xcode and fix what the compiler finds (every Swift file so far is only parsed, and the `Shared` framework names such as `HeroNavPlay`, `SeeAllMyList` and `ItemFactsKt.getSeasonLabel` are read from the Kotlin source, not from a built framework).
@@ -224,7 +224,7 @@ _Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a
 - [x] iOS mini player: dropped. PiP steps the player aside and the system window is the only mini view; a setting turns PiP off.
 - [ ] Baseline profile for first-scroll speed: the `:benchmark` module, the startup and scroll benchmarks and the profile generator
   are in and build (Macrobenchmark 1.5.0, `androidx.baselineprofile` 1.5.0). **Not run**: it needs a device or emulator signed in on the
-  test server. Next: `./gradlew :benchmark:connectedBenchmarkReleaseAndroidTest`, then `./gradlew :androidApp:generateBaselineProfile`,
+  test server. Next: `./gradlew :benchmark:connectedBenchmarkReleaseAndroidTest`, then `./gradlew :androidMobileApp:generateBaselineProfile`,
   commit `baseline-prof.txt` and record the numbers.
 
 Owed from Phase 6, not done: the phone pass, a look at the iOS PiP and Control Center behaviour on a real iPhone (the simulator has no PiP).

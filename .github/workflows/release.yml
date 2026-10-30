@@ -34,13 +34,13 @@ jobs:
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          ./gradlew :shared:testAndroidHostTest :androidApp:assembleRelease \
+          ./gradlew :shared:testAndroidHostTest :androidMobileApp:assembleRelease \
             -PversionName="$VERSION" -PversionCode="${{ github.run_number }}"
 
       - name: Create release
         uses: ncipollo/release-action@v1.21.0
         with:
-          artifacts: androidApp/build/outputs/apk/release/androidApp-release.apk
+          artifacts: androidMobileApp/build/outputs/apk/release/androidMobileApp-release.apk
           prerelease: ${{ contains(github.ref_name, '-') }}
           generateReleaseNotes: true
           allowUpdates: true

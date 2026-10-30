@@ -73,5 +73,5 @@ System fonts for UI on each platform; one brand face.
 
 - `shared/` (Kotlin Multiplatform): Ktor + Jellyfin API, repositories, caching, playback session and progress reporting, download queue, and one state holder per screen exposing `StateFlow`s.
 - `iosApp/` (SwiftUI): consumes the shared state holders (via SKIE or KMP-NativeCoroutines for Flows and suspend functions), owns navigation (`TabView` + `NavigationStack`), AVPlayer playback.
-- `androidApp/` (Jetpack Compose + Material 3): consumes the same state holders, Navigation Compose, Media3 playback.
+- `androidMobileApp/` (Jetpack Compose + Material 3): consumes the same state holders, Navigation Compose, Media3 playback.
 - Tokens: generate a Swift asset catalog / `Color` extension and a Kotlin M3 `ColorScheme` + `Typography` from `tokens.json` — never hand-copy values.
