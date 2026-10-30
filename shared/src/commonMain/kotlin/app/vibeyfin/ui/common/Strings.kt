@@ -421,6 +421,9 @@ object Strings {
     fun myListAction(onList: Boolean) = if (onList) "Remove from My List" else "Add to My List"
 
     val trailer = "Trailer"
+
+    /** The poster menu's greyed row while the server is still asked whether the title has a trailer. */
+    val checkingTrailer = "Checking for trailer\u2026"
     val download = "Download"
 
     /** What a season's button says: always "Season 3"; the server's own names ("Series 3", "Season 3") are not used. 0 is Specials. */
