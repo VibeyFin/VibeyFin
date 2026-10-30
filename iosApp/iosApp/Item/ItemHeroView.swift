@@ -153,7 +153,7 @@ struct HeroDetailsView: View {
             titleArt
             facts
             if !item.genres.isEmpty {
-                Text(item.genres.joined(separator: "  ·  "))
+                Text(Strings.shared.factsLine(facts: item.genres))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(centered ? .center : .leading)
@@ -197,7 +197,7 @@ struct HeroDetailsView: View {
     private var facts: some View {
         if !state.facts.isEmpty || state.watched || state.badge != nil {
             HStack(spacing: Space.s2) {
-                Text(state.facts.joined(separator: "  ·  "))
+                Text(Strings.shared.factsLine(facts: state.facts))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 if let badge = state.badge {

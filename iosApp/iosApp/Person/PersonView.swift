@@ -79,7 +79,7 @@ struct PersonView: View {
                 .lineLimit(3)
                 .padding(.top, Space.s2)
             if !state.facts.isEmpty {
-                Text(state.facts.joined(separator: "  \u{00B7}  "))
+                Text(Strings.shared.factsLine(facts: state.facts))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -100,22 +100,8 @@ struct PersonView: View {
     }
 
     private func portrait(_ person: Person) -> some View {
-        ZStack {
-            Circle().fill(Color(.tertiarySystemBackground))
-            Text(person.name.split(separator: " ").prefix(2).compactMap { $0.first.map(String.init) }.joined().uppercased())
-                .font(.brandDisplay)
-                .foregroundStyle(.secondary)
-            if let url = person.imageUrl.flatMap({ URL(string: $0) }) {
-                AsyncImage(url: url) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
-                    Color.clear
-                }
-                .clipShape(Circle())
-            }
-        }
-        .frame(width: 160, height: 160)
-        .accessibilityLabel(person.name)
+        PortraitView(name: person.name, imageUrl: person.imageUrl, size: 160, initialsFont: .brandDisplay)
+            .accessibilityLabel(person.name)
     }
 
     private var skeleton: some View {

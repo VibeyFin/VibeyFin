@@ -24,7 +24,7 @@ struct PickerSheetView: View {
     let onPick: (String) -> Void
     let onRetry: () -> Void
     /// A search field above the rows (the People filter): what was typed and who hears each change.
-    var search: Binding<String>? = nil
+    var search: Binding<String>?
     var searchHint = ""
 
     var body: some View {
