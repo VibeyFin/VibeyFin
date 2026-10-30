@@ -63,6 +63,8 @@ struct HeroPager<Page: View>: UIViewRepresentable {
             cell.contentConfiguration = UIHostingConfiguration { parent.page(index) }
                 .margins(.all, 0)
                 .margins(.horizontal, parent.gap / 2)
+                // The pager is `Lift.room` taller than the card, so a long press can grow it.
+                .margins(.vertical, Lift.room)
         }
 
         func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {

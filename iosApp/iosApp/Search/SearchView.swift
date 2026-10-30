@@ -142,7 +142,7 @@ struct SearchView: View {
                     ) {
                         ForEach(group.results, id: \.id) { result in
                             Button { model.resultOpened(); onOpenResult(result) } label: { tile(result) }
-                                .buttonStyle(PressableButtonStyle())
+                                .tileButton(result.asMediaItem())
                                 .accessibilityLabel(Strings.shared.searchResultDescription(title: result.title, subtitle: result.subtitle))
                         }
                     }

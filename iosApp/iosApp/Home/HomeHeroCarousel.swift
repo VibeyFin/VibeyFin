@@ -55,6 +55,7 @@ struct HomeHeroCarousel: View {
                             .accessibilityHidden(slot == 0 || slot == items.count + 1)
                         }
                         .padding(.horizontal, -Space.s2 / 2)
+                        .padding(.vertical, -Lift.room)
                     }
                 HeroPageControl(count: items.count, current: $page)
                     .frame(height: HomeHeroCarousel.dotsHeight)
