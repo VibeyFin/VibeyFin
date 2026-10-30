@@ -8,6 +8,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: gradle/actions/setup-gradle@v5
+      - run: ./gradlew ktlintCheck detekt
+
+  swiftlint:
+    runs-on: ubuntu-latest
+    container: ghcr.io/realm/swiftlint:0.65.1
+    steps:
+      - uses: actions/checkout@v7
+      - run: swiftlint lint --strict
+
   test:
     runs-on: ubuntu-latest
     steps:

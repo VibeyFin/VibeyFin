@@ -1,0 +1,32 @@
+included:
+  - iosApp/iosApp
+  - iosApp/Tests
+
+excluded:
+  - iosApp/Vendor
+
+disabled_rules:
+  # As in the Kotlin code, where ktlint and detekt leave the line length alone
+  - line_length
+  # SwiftUI's own `Button(action: { ... }) { label }` shape
+  - multiple_closures_with_trailing_closure
+  # Either is fine; trailing commas keep diffs to the line that changed
+  - trailing_comma
+
+identifier_name:
+  min_length: 2
+  # Coordinates and the names Swift reads best with
+  excluded: [id, x, y, on, by, at]
+
+type_name:
+  excluded: [iOSApp]
+
+function_parameter_count:
+  warning: 8
+  error: 12
+
+# The player is one object and one view; splitting them is a change of its own
+file_length:
+  warning: 700
+type_body_length:
+  warning: 600
