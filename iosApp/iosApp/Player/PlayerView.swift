@@ -312,7 +312,7 @@ struct PlayerView: View {
             PlayerControlCluster {
                 // Episodes with a next one only; gives way to the up next card, which has its own Play Now.
                 if let next = state?.nextEpisode, state?.upNext == nil {
-                    PlayerIconButton(systemName: "forward.end.fill", label: Strings.shared.nextEpisode) {
+                    PlayerIconButton(systemName: "forward.end", label: Strings.shared.nextEpisode) {
                         model.userInteraction()
                         model.playNow()
                     }
