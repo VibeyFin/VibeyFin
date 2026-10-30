@@ -42,6 +42,8 @@ data class SettingsValues(
     val appVersion: String = "",
     /** False where subtitles are burned into the picture (iOS), so the style cannot apply. */
     val subtitleStyleApplies: Boolean = true,
+    /** False where the player has no swipe for volume and brightness (iOS), so its row is hidden. */
+    val swipeGesturesApply: Boolean = true,
     val hasProfile: Boolean = false,
     /** A kids profile: no Advanced settings, no Sign out, no Notifications. */
     val kidsProfile: Boolean = false,
@@ -61,6 +63,7 @@ data class SettingsValues(
     val autoSkipSegments: Boolean = false,
     val bufferAheadSeconds: Int = ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
     val pictureInPicture: Boolean = true,
+    val swipeGestures: Boolean = true,
     /** The app uses only its downloads, even with a network (device-wide). */
     val offlineMode: Boolean = false,
     /** Downloads may use mobile data; off, they wait for Wi-Fi. */
@@ -551,6 +554,16 @@ fun skippingPage(v: SettingsValues): SettingsPage {
                 Strings.pictureInPictureHelp,
                 items = listOf(
                     ToggleItem(SettingKey.PictureInPicture, Strings.pictureInPicture, checked = v.pictureInPicture, visible = profile),
+                ),
+            ),
+            SettingsSection(
+                Strings.swipeGesturesGroup,
+                Strings.swipeGesturesHelp,
+                items = listOf(
+                    ToggleItem(
+                        SettingKey.SwipeGestures, Strings.swipeGestures, checked = v.swipeGestures,
+                        visible = profile && v.swipeGesturesApply,
+                    ),
                 ),
             ),
             SettingsSection(

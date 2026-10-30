@@ -80,6 +80,16 @@ class ProfileSettingsTest {
     }
 
     @Test
+    fun `swipe gestures are null with nobody signed in and on for a new profile and saved when switched`() = runTest {
+        assertNull(app.profileSettings.swipeGestures.first())
+        app.signedIn()
+        assertEquals(true, app.profileSettings.swipeGestures.first())
+
+        app.profileSettings.setSwipeGestures(false)
+        assertEquals(false, app.profileSettings.swipeGestures.first())
+    }
+
+    @Test
     fun `buffer ahead is null with nobody signed in and 20 seconds for a new profile`() = runTest {
         assertNull(app.profileSettings.bufferAheadSeconds.first())
         app.signedIn()

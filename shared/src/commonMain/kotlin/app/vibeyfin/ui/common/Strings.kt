@@ -255,6 +255,10 @@ object Strings {
     /** The player button that turns the video into a small window over other apps. */
     val pictureInPicture = "Picture in picture"
 
+    /** The level a swipe on the player set, for the indicator's screen-reader text: "Volume 60%". */
+    fun volumeLevel(percent: Int) = "Volume $percent%"
+    fun brightnessLevel(percent: Int) = "Brightness $percent%"
+
     /** The name of the Android notification channel for the media controls shown while a video plays. */
     val playbackNotificationChannel = "Playback"
 
@@ -575,6 +579,10 @@ object Strings {
     val stillWatchingAfterHelp = "Off, or after 2 to 5 episodes in a row."
     val pictureInPictureHelp =
         "On by default. The player offers picture in picture and starts it when you leave the app. Off, playback pauses when you leave."
+    val swipeGesturesGroup = "Gestures"
+    val swipeGestures = "Swipe for volume and brightness"
+    val swipeGesturesHelp =
+        "Swipe up or down on the right of the player to change the volume, on the left to change the brightness. The brightness goes back to normal when the player closes."
     val bufferingGroup = "Buffering"
     fun skipSecondsShort(seconds: Int) = "$seconds s"
 

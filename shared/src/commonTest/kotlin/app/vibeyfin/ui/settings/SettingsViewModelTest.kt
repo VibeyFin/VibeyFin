@@ -291,6 +291,17 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `swipe for volume and brightness is on by default and follows its toggle`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        assertTrue(viewModel.uiState.first { it.hasProfile }.checked(SettingKey.SwipeGestures))
+
+        viewModel.onToggle(SettingKey.SwipeGestures, false)
+        assertFalse(viewModel.uiState.first { !it.checked(SettingKey.SwipeGestures) }.checked(SettingKey.SwipeGestures))
+        assertEquals(false, app.profileSettings.swipeGestures.first())
+    }
+
+    @Test
     fun `buffer ahead defaults to 20 and follows its handler`() = runTest {
         app.signedIn()
         val viewModel = viewModel()
@@ -373,7 +384,7 @@ class SettingsViewModelTest {
         val skipping = viewModel.uiState.first { it.hasProfile }.page(SettingsPageId.Skipping)
 
         assertEquals(
-            listOf(SettingKey.SkipBack, SettingKey.SkipForward, SettingKey.AutoSkip, SettingKey.BingeThreshold, SettingKey.PictureInPicture, SettingKey.BufferAhead),
+            listOf(SettingKey.SkipBack, SettingKey.SkipForward, SettingKey.AutoSkip, SettingKey.BingeThreshold, SettingKey.PictureInPicture, SettingKey.SwipeGestures, SettingKey.BufferAhead),
             skipping.keys(),
         )
 

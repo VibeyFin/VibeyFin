@@ -202,6 +202,16 @@ class PlaybackViewModelTest {
     }
 
     @Test
+    fun `swipeGestures follows the profile setting`() = runTest {
+        server()
+        val viewModel = viewModel()
+        assertEquals(true, viewModel.uiState.first { it.stream != null }.swipeGestures)
+
+        app.profileSettings.setSwipeGestures(false)
+        assertEquals(false, viewModel.uiState.first { !it.swipeGestures }.swipeGestures)
+    }
+
+    @Test
     fun `subtitle style follows the profile settings`() = runTest {
         server()
         val viewModel = viewModel()

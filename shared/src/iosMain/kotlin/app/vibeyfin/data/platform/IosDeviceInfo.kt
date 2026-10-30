@@ -10,6 +10,9 @@ class IosDeviceInfo : DeviceInfo {
     // AVPlayer gets every subtitle burned in (no text formats are advertised), so the style cannot apply.
     override val subtitleStyleApplies: Boolean = false
 
+    // The system volume and brightness controls are the way on iOS; the player has no swipe for them.
+    override val swipeGesturesApply: Boolean = false
+
     override val appVersion: String =
         NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String ?: "0"
 }

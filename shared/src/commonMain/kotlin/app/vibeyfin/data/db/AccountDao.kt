@@ -72,6 +72,12 @@ abstract class AccountDao {
     @Query("UPDATE account_settings SET pictureInPicture = :value WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun setPictureInPicture(serverId: String, userId: String, value: Boolean)
 
+    @Query("SELECT swipeGestures FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeSwipeGestures(serverId: String, userId: String): Flow<Boolean?>
+
+    @Query("UPDATE account_settings SET swipeGestures = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setSwipeGestures(serverId: String, userId: String, value: Boolean)
+
     @Query("SELECT autoSkipSegments FROM account_settings WHERE serverId = :serverId AND userId = :userId")
     abstract fun observeAutoSkipSegments(serverId: String, userId: String): Flow<Boolean?>
 

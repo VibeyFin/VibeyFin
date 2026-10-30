@@ -16,7 +16,7 @@ enum class SettingKey {
     SetPin, PolicyStatus,
     RatingLimit, BlockedTags, AllowedHours,
     Notifications, NotificationScope,
-    PictureInPicture,
+    PictureInPicture, SwipeGestures,
     OfflineMode, DownloadOverMobile, StorageLimit, PurgeDownloads,
     AudioSubtitles, AudioLanguage, SubtitleLanguage, SubtitleMode, RememberTracks, NoLanguageMatch,
 }
