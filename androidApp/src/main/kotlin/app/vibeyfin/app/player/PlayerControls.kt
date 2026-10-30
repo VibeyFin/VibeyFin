@@ -2,7 +2,6 @@ package app.vibeyfin.app.player
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -37,7 +36,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.CornerRadius
@@ -106,7 +104,9 @@ fun PlayerControls(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxSize()) {
-        TopBar(title, subtitle, hasTrackChoices, badge, speedLabel, onClose, onTracks, onSpeed, onPip, Modifier.align(Alignment.TopStart)
+        TopBar(
+            title, subtitle, hasTrackChoices, badge, speedLabel, nextEpisode, onClose, onNextEpisode, onTracks, onSpeed, onPip,
+            Modifier.align(Alignment.TopStart),
         )
         if (showTransport) {
             Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s6)) {
@@ -122,10 +122,7 @@ fun PlayerControls(
             trickplay,
             onScrubbing,
             onSeek,
-            Modifier.align(Alignment.BottomCenter),
-            trailing = nextEpisode?.let { next ->
-                { ChipButton(R.drawable.ic_skip_next, Strings.labelled(Strings.nextEpisode, next), onNextEpisode) }
-            },
+            Modifier.align(Alignment.BottomCenter)
         )
     }
 }
@@ -147,7 +144,10 @@ private fun TopBar(
     hasTrackChoices: Boolean,
     badge: String?,
     speedLabel: String,
+    /** The episode after this one; null hides the Next episode button. */
+    nextEpisode: String?,
     onClose: () -> Unit,
+    onNextEpisode: () -> Unit,
     onTracks: () -> Unit,
     onSpeed: () -> Unit,
     onPip: (() -> Unit)?,
@@ -188,6 +188,10 @@ private fun TopBar(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
+        if (nextEpisode != null) {
+            Spacer(Modifier.width(VibeyFinTokens.Space.s3))
+            ChipButton(R.drawable.ic_skip_next, Strings.labelled(Strings.nextEpisode, nextEpisode), onNextEpisode)
         }
         Spacer(Modifier.width(VibeyFinTokens.Space.s3))
         TextChipButton(speedLabel, Strings.speed, onSpeed)
@@ -333,8 +337,6 @@ private fun Scrubber(
     onScrubbing: (Boolean) -> Unit,
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
-    /** A button at the end of the row, right of the bar and the times (Next episode); it fades out while scrubbing. */
-    trailing: (@Composable () -> Unit)? = null,
 ) {
     // While the thumb is held, show where it is, not where the video is.
     var dragged by remember { mutableStateOf<Float?>(null) }
@@ -352,75 +354,67 @@ private fun Scrubber(
         thumbnailTile = tile
         thumbnail = if (trickplay != null && dragged != null) trickplay.thumbnail(shownMs) else null
     }
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .background(scrimBand(atTop = false))
             .safeDrawingPadding()
             .padding(horizontal = screenMargin(), vertical = VibeyFinTokens.Space.s2)
             .padding(top = VibeyFinTokens.Space.s4),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f)) {
-            Box {
-                Slider(
-                    value = if (known) shown else 0f,
-                    onValueChange = {
-                        if (dragged == null) onScrubbing(true)
-                        dragged = it
-                    },
-                    onValueChangeFinished = {
-                        dragged?.let { onSeek(it.toLong()) }
-                        dragged = null
-                        onScrubbing(false)
-                    },
-                    valueRange = 0f..(if (known) durationMs.toFloat() else 1f),
-                    enabled = known,
-                    track = { state ->
-                        BufferedTrack(
-                            played = fraction(state.value, state.valueRange),
-                            buffered = if (known) maxOf(bufferedMs, shownMs).toFloat() / durationMs else 0f,
-                            enabled = known,
-                        )
-                    },
-                    colors = SliderDefaults.colors(
-                        thumbColor = VibeyFinTokens.Colors.accent,
-                        activeTrackColor = VibeyFinTokens.Colors.accent,
-                        inactiveTrackColor = VibeyFinTokens.Colors.progressTrack,
-                        disabledThumbColor = VibeyFinTokens.Colors.progressTrack,
-                        disabledActiveTrackColor = VibeyFinTokens.Colors.progressTrack,
-                        disabledInactiveTrackColor = VibeyFinTokens.Colors.progressTrack,
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics {
-                            contentDescription = Strings.playbackPosition
-                            stateDescription = Strings.positionDescription(shownMs, durationMs)
-                        },
-                )
-                val preview = thumbnail
-                if (dragged != null && preview != null && known) {
-                    ScrubPreview(
-                        preview,
-                        Strings.clock(shownMs),
-                        shown / durationMs,
-                        Modifier.align(Alignment.TopStart)
+        Box {
+            Slider(
+                value = if (known) shown else 0f,
+                onValueChange = {
+                    if (dragged == null) onScrubbing(true)
+                    dragged = it
+                },
+                onValueChangeFinished = {
+                    dragged?.let { onSeek(it.toLong()) }
+                    dragged = null
+                    onScrubbing(false)
+                },
+                valueRange = 0f..(if (known) durationMs.toFloat() else 1f),
+                enabled = known,
+                track = { state ->
+                    BufferedTrack(
+                        played = fraction(state.value, state.valueRange),
+                        buffered = if (known) maxOf(bufferedMs, shownMs).toFloat() / durationMs else 0f,
+                        enabled = known,
                     )
-                }
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(Strings.clock(shownMs), style = TimeStyle, color = VibeyFinTokens.Colors.ink)
-                if (known) Text(
-                    Strings.timeLeft(shownMs, durationMs),
-                    style = TimeStyle,
-                    color = VibeyFinTokens.Colors.ink
+                },
+                colors = SliderDefaults.colors(
+                    thumbColor = VibeyFinTokens.Colors.accent,
+                    activeTrackColor = VibeyFinTokens.Colors.accent,
+                    inactiveTrackColor = VibeyFinTokens.Colors.progressTrack,
+                    disabledThumbColor = VibeyFinTokens.Colors.progressTrack,
+                    disabledActiveTrackColor = VibeyFinTokens.Colors.progressTrack,
+                    disabledInactiveTrackColor = VibeyFinTokens.Colors.progressTrack,
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription = Strings.playbackPosition
+                        stateDescription = Strings.positionDescription(shownMs, durationMs)
+                    },
+            )
+            val preview = thumbnail
+            if (dragged != null && preview != null && known) {
+                ScrubPreview(
+                    preview,
+                    Strings.clock(shownMs),
+                    shown / durationMs,
+                    Modifier.align(Alignment.TopStart)
                 )
             }
         }
-        if (trailing != null) {
-            val alpha by animateFloatAsState(if (dragged != null) 0f else 1f, label = "trailingAlpha")
-            Spacer(Modifier.width(VibeyFinTokens.Space.s3))
-            Box(Modifier.alpha(alpha)) { trailing() }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(Strings.clock(shownMs), style = TimeStyle, color = VibeyFinTokens.Colors.ink)
+            if (known) Text(
+                Strings.timeLeft(shownMs, durationMs),
+                style = TimeStyle,
+                color = VibeyFinTokens.Colors.ink
+            )
         }
     }
 }
