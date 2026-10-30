@@ -344,8 +344,10 @@ private fun Content(
     ) {
         // Rows are built between frames up to a screen before they scroll in, and kept for half a screen after they leave, so a fast
         // fling doesn't have to build a whole row (and its posters) in the frame it appears in
+        val listState = rememberLazyListState(cacheWindow = LazyLayoutCacheWindow(aheadFraction = 1f, behindFraction = 0.5f))
+
         LazyColumn(
-            state = rememberLazyListState(cacheWindow = LazyLayoutCacheWindow(aheadFraction = 1f, behindFraction = 0.5f)),
+            state = listState,
             contentPadding = PaddingValues(start = margin, top = 0.dp, end = margin, bottom = margin + LocalBottomBarPadding.current),
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
             modifier = Modifier.fillMaxSize(),
@@ -362,7 +364,7 @@ private fun Content(
                         if (ids.isEmpty() || heroes.isEmpty()) {
                             HomeHeroSkeleton(wideHero, dots = state.heroSlots >= 2)
                         } else {
-                            HomeHeroCarousel(heroes, wideHero, onHeroPlay, onDetails, onHeroMyList)
+                            HomeHeroCarousel(heroes, wideHero, onHeroPlay, onDetails, onHeroMyList, pageScrolling = { listState.isScrollInProgress })
                         }
                     }
                 }
