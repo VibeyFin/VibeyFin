@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -20,7 +21,7 @@ import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.ui.banner.Banner
 
 /**
- * The line under the status bar that says the app is offline, or that the server cannot be reached, with the button that ends it
+ * The line at the top, its color running up behind the status bar, that says the app is offline, or that the server cannot be reached, with the button that ends it
  * (when one does). A quiet strip in the page's own surface colors: it is not an error and nothing here is aqua. Announced to a
  * screen reader when it appears.
  */
@@ -30,6 +31,7 @@ fun AppBanner(banner: Banner, onAction: () -> Unit, modifier: Modifier = Modifie
         modifier = modifier
             .fillMaxWidth()
             .background(VibeyFinTokens.Colors.surface3)
+            .statusBarsPadding()
             .padding(horizontal = screenMargin(), vertical = VibeyFinTokens.Space.s1)
             .semantics { liveRegion = LiveRegionMode.Polite },
         verticalAlignment = Alignment.CenterVertically,

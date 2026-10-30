@@ -17,10 +17,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -190,14 +191,14 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
 
     BackHandler(enabled = atOtherRoot) { select(Tab.Home) }
 
-    // The player is the whole screen: no inset of its own for the camera cut-out, so no bar of the page's color beside the picture
-    // (a foldable's cover screen, a phone turned sideways), and a black window behind it.
+    // Every page has the whole screen, under the status bar and the gesture bar, and keeps its own content clear of them (artwork
+    // runs under them). The player has a black window behind it.
     val onPlayer = backStackEntry?.opensPlayer() == true
     val tabs = Tab.entries.filter { !offline || it != Tab.Library }
 
     Scaffold(
         containerColor = if (onPlayer) Color.Black else MaterialTheme.colorScheme.background,
-        contentWindowInsets = if (onPlayer) WindowInsets(0, 0, 0, 0) else ScaffoldDefaults.contentWindowInsets,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { padding ->
         val tileMenu: TileMenuViewModel = koinViewModel()
         val uriHandler = LocalUriHandler.current
@@ -207,9 +208,12 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
 
         Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
             Column(Modifier.fillMaxSize()) {
-                if (!onPlayer) banner?.let { AppBanner(it, onAction = bannerModel::onAction) }
+                val shownBanner = banner.takeUnless { onPlayer }
 
-                SharedTransitionLayout(Modifier.weight(1f)) {
+                shownBanner?.let { AppBanner(it, onAction = bannerModel::onAction) }
+
+                // The banner takes the status bar's place, so the page under it doesn't leave room for it again
+                SharedTransitionLayout(Modifier.weight(1f).consumeWindowInsets(if (shownBanner != null) WindowInsets.statusBars else WindowInsets(0, 0, 0, 0))) {
                     CompositionLocalProvider(
                         LocalSharedTransitionScope provides this,
                         LocalBottomBarPadding provides if (currentTab != null) FLOATING_BAR_SPACE else 0.dp,
@@ -241,7 +245,7 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
                     selected = currentTab,
                     tabs = tabs,
                     onSelect = select,
-                    modifier = Modifier.align(Alignment.BottomCenter),
+                    modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
                 )
             }
         }
