@@ -455,6 +455,12 @@ fun PlayerRoute(
                     showTransport = playable,
                     speedLabel = Strings.speedValue(state.speed),
                     trickplay = trickplay,
+                    // Gives way to the up next card, which has its own Play now.
+                    nextEpisode = state.nextEpisode.takeIf { state.upNext == null && state.message == null },
+                    onNextEpisode = {
+                        viewModel.onUserInteraction()
+                        viewModel.onPlayNow()
+                    },
                     onClose = close,
                     onTracks = {
                         viewModel.onUserInteraction()

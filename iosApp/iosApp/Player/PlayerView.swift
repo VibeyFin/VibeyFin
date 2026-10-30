@@ -381,6 +381,22 @@ struct PlayerView: View {
     }
 
     private var bottomBar: some View {
+        HStack(spacing: Space.s3) {
+            progressBar
+            // Episodes with a next one only; gives way to the up next card, which has its own Play Now.
+            if let next = state?.nextEpisode, state?.upNext == nil {
+                PlayerIconButton(systemName: "forward.end.fill", label: Strings.shared.nextEpisode) {
+                    model.userInteraction()
+                    model.playNow()
+                }
+                .accessibilityHint(next)
+                .opacity(scrubPosition == nil ? 1 : 0)
+                .animation(.easeOut(duration: 0.2), value: scrubPosition == nil)
+            }
+        }
+    }
+
+    private var progressBar: some View {
         PlayerProgressBar(
             clock: controller.clock,
             duration: controller.duration,
