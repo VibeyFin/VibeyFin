@@ -227,9 +227,8 @@ _Exit: switch tabs with their own back stacks, open the Shows, Movies, New and a
   test server. Next: `./gradlew :benchmark:connectedBenchmarkReleaseAndroidTest`, then `./gradlew :androidApp:generateBaselineProfile`,
   commit `baseline-prof.txt` and record the numbers.
 
-Owed from Phase 6, not done: the phone pass, a look at the iOS PiP and Control Center behaviour on a real iPhone (the simulator has no PiP). `scripts/ios-smoke.sh` passes
-(3 of 3 UITests on an iPhone 16 simulator, iOS 27.0, after the Kids profile row and first-user tile lookups in the UITest were corrected);
-it does not exercise playback, PiP or Control Center.
+Owed from Phase 6, not done: the phone pass, a look at the iOS PiP and Control Center behaviour on a real iPhone (the simulator has no PiP).
+The iOS UI smoke test was replaced by unit tests; nothing on iOS exercises playback, PiP or Control Center.
 
 ### Phase 7 — Customisation _(later)_
 

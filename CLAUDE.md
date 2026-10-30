@@ -127,17 +127,15 @@ apps share are in `guardrails.md`; which Jellyfin field drives which UI is in `j
   verified against the test server (below).
 - iOS can only be built with Xcode. Say plainly when iOS code was only compiled to klibs or
   parsed, not built or run.
-- **iOS smoke test is required when the tools are available** (macOS with Xcode, an iOS simulator and
-  the local test server's podman). Every implementation that touches iOS code or shared code the iOS
-  app uses must then pass `scripts/ios-smoke.sh` before it is called done. When a tool is missing,
-  skip it and say which one; don't treat that as a failure. It builds the app, installs it fresh
-  on a simulator (`IOS_SIMULATOR="iPhone 18 Pro"` picks one) and runs the XCUITest onboarding flow
-  in `iosApp/UITests/` against the local test server (`docs/test-server.md`): launch, add server,
-  Who's watching, sign in, tabs. Report its result with the phase summary. If the change alters
-  onboarding or adds a main flow or screen, extend the UITest in the same change; label lookups there
-  are case-insensitive because iOS shows title case. Say plainly when the smoke test could not run.
-  Run it with the shared scheme `iosAppUITests` (a personal `iosApp` scheme in `xcuserdata` hides the
-  shared one of the same name).
+- **iOS unit tests are required when the tools are available** (macOS with Xcode and an iOS simulator).
+  Every implementation that touches iOS code or shared code the iOS app uses must then pass both
+  `./gradlew :shared:iosSimulatorArm64Test` (the `iosMain` facades) and
+  `xcodebuild test -project iosApp/iosApp.xcodeproj -scheme iosApp -destination 'platform=iOS Simulator,name=iPhone 18 Pro'`
+  (XCTest target `iosAppTests` in `iosApp/Tests/`, for non-UI Swift logic) before it is called done.
+  When a tool is missing, skip it and say which one. There are no UI or end-to-end tests on iOS, as on
+  Android: put behaviour in the ViewModel and test it in `shared/`, and test pure Swift helpers with
+  XCTest. New Swift logic that isn't a view gets a test in `iosApp/Tests/`. Say plainly when the iOS
+  tests could not run.
 - **Mockups:** every new feature or UI change adds a mockup to the shared mockups artifact
   (https://claude.ai/code/artifact/9a3ea814-fd54-4106-b2ab-71115ddc3c7b) before or with the
   implementation. Read it first (`Artifact` action `read`), update it in place with the same `url`,

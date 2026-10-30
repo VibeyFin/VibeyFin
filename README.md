@@ -51,8 +51,7 @@ What works today:
 Not built yet: downloads and offline, customisation of Home rows and tabs, Seerr, translations (issue #27),
 TV apps. Android has been run on an emulator against a local test server (see
 [`docs/test-server.md`](docs/test-server.md)); there has been no real-device pass yet,
-so real HDR output is unverified. **The iOS app builds and passes `scripts/ios-smoke.sh` on the simulator
-(onboarding, series episodes, player controls), but most screens have not been walked through by hand**,
+so real HDR output is unverified. **The iOS app builds and its unit tests pass on the simulator, but most screens have not been walked through by hand**,
 and picture-in-picture, Control Center and notifications have not been seen running on iOS. Expect fixes
 when they are.
 
@@ -105,10 +104,10 @@ compiles for it with:
 ./gradlew :shared:compileKotlinIosSimulatorArm64 :shared:compileTestKotlinIosSimulatorArm64 :shared:compileKotlinIosArm64
 ```
 
-With Xcode, a simulator and podman, `scripts/ios-smoke.sh` builds the iOS app, installs it fresh on a
-simulator and runs the XCUITests in `iosApp/UITests/` against the local test server
-(`IOS_SIMULATOR="iPhone 18 Pro"` picks the simulator). `./gradlew :shared:allTests` runs the shared tests
-on every target, which also needs Xcode.
+With Xcode and a simulator, `./gradlew :shared:iosSimulatorArm64Test` runs the shared tests on iOS and
+`xcodebuild test -project iosApp/iosApp.xcodeproj -scheme iosApp -destination 'platform=iOS Simulator,name=iPhone 18 Pro'`
+runs the Swift unit tests in `iosApp/Tests/`. `./gradlew :shared:allTests` runs the shared tests on every
+target, which also needs Xcode.
 
 ## CI and releases
 
