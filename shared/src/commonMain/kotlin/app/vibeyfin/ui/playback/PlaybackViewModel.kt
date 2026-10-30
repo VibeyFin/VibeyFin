@@ -169,6 +169,11 @@ data class PlaybackUiState(
     val message: String? = null,
     /** The next episode is about to start; null when there is none or nobody is being offered it. */
     val upNext: UpNext? = null,
+    /**
+     * The episode after this one ("S2:E5 · Low Tide"), once it is known; null for a movie, the last episode, or before the
+     * lookup is back. The player's Next episode button shows while this is set and [upNext] isn't; it calls `onPlayNow`.
+     */
+    val nextEpisode: String? = null,
     /** Playback reached the end and nothing follows; the screen should close. */
     val finished: Boolean = false,
     /** Set when the session ended and the screen must be left. */
@@ -746,7 +751,8 @@ class PlaybackViewModel(
     }
 
     private fun lookUpNext(current: MediaItem) {
-        if (!autoAdvance || current.kind != ItemKind.Episode || current.seriesId == null) return
+        // Looked up whether or not the episode plays on by itself: the Next episode button needs it either way.
+        if (current.kind != ItemKind.Episode || current.seriesId == null) return
         viewModelScope.launch {
             // A download plays on into the next one downloaded; the server's own order is for what comes from the server.
             val found = if (local != null) {
@@ -755,7 +761,10 @@ class PlaybackViewModel(
                 (watch.nextEpisode(current) as? ApiResult.Success)?.value
             } ?: return@launch
             // Only if the user is still on the episode this was asked for.
-            if (item?.id == current.id) next = found
+            if (item?.id == current.id) {
+                next = found
+                content.update { it.copy(nextEpisode = Strings.metaLine(found.episodeLabel(), found.title)) }
+            }
         }
     }
 
@@ -798,7 +807,7 @@ class PlaybackViewModel(
         content.update { it.copy(upNext = null, skipOffer = skipOfferNow(cardShowing = false)) }
     }
 
-    /** "Play now" on the card: the next episode starts without waiting for the countdown. */
+    /** "Play now" on the card, or the player's Next episode button: the next episode starts without waiting for the countdown. */
     fun onPlayNow() {
         if (next == null) return
         binge.interacted()
@@ -852,7 +861,7 @@ class PlaybackViewModel(
         segmentsRequested = false
         trickplayFor = null
         content.update {
-            it.copy(loading = true, stream = null, upNext = null, skipOffer = null, trickplay = null, speed = 1f, badge = null, stillWatching = false, audioTracks = emptyList(), subtitleTracks = emptyList(), message = null, finished = false)
+            it.copy(loading = true, stream = null, upNext = null, nextEpisode = null, skipOffer = null, trickplay = null, speed = 1f, badge = null, stillWatching = false, audioTracks = emptyList(), subtitleTracks = emptyList(), message = null, finished = false)
         }
         viewModelScope.launch {
             // A download goes on into the next one, which is downloaded too: it is found there again to play from the device.

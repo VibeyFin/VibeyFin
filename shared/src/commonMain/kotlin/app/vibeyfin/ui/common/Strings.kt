@@ -221,6 +221,9 @@ object Strings {
     val upNext = "Up next"
     val playNow = "Play now"
 
+    /** The player's icon button that starts the next episode now; its hint is the episode's label and title. */
+    val nextEpisode = "Next episode"
+
     /** Dismisses the card and plays the episode out to the end of its credits. */
     val watchCredits = "Watch credits"
 
