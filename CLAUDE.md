@@ -1,7 +1,7 @@
 # VibeyFin: Jellyfin client (Kotlin Multiplatform)
 
-A Netflix-style Jellyfin client with Seerr request integration, visually inspired by Nuvio
-(dark, artwork-forward). Phone and tablet first. Android ships first; iOS shares the logic.
+A Netflix-style Jellyfin client with Seerr request integration. Dark and
+artwork-forward. Phone and tablet first. Android ships first; iOS shares the logic.
 The UI is native on each platform (Jetpack Compose, SwiftUI); only the logic is shared.
 The app should become very configurable over time, so settings live per profile from day one.
 
