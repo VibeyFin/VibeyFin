@@ -24,6 +24,8 @@ final class SeerrTitleObservable: ObservableObject {
     }
 
     func retry() { model.onRetry() }
+    func selectSeason(_ number: Int32) { model.onSelectSeason(number: number) }
+    func retryEpisodes() { model.onRetryEpisodes() }
     func request() { model.onRequest() }
     func request4k() { model.onRequest4k() }
     func pickerAllMissing(_ on: Bool) { model.onPickerAllMissing(on: on) }

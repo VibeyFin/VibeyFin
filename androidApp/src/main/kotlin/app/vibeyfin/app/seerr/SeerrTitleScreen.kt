@@ -2,6 +2,7 @@ package app.vibeyfin.app.seerr
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,6 +31,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
@@ -50,6 +55,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -57,12 +63,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.R
+import app.vibeyfin.app.components.Artwork
 import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.ItemSkeleton
 import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.components.SectionTitle
+import app.vibeyfin.app.components.SkeletonBlock
+import app.vibeyfin.app.components.bleed
 import app.vibeyfin.app.item.ActionButton
 import app.vibeyfin.app.item.ActionRow
+import app.vibeyfin.app.item.EpisodeCardScrim
+import app.vibeyfin.app.item.EpisodeTag
 import app.vibeyfin.app.item.ItemBackdrop
 import app.vibeyfin.app.item.Overview
 import app.vibeyfin.app.item.PinnedBackdrop
@@ -74,11 +85,11 @@ import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.RequestState
 import app.vibeyfin.domain.model.SeerrCastMember
+import app.vibeyfin.domain.model.SeerrEpisode
 import app.vibeyfin.domain.model.SeerrMediaType
 import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.seerr.SeerrNoticeAction
-import app.vibeyfin.ui.seerr.SeerrSeasonRow
 import app.vibeyfin.ui.seerr.SeerrTitleUiState
 import app.vibeyfin.ui.seerr.SeerrTitleViewModel
 import coil3.compose.AsyncImage
@@ -167,7 +178,7 @@ private fun SeerrTitlePage(
     val picture = title.backdropUrl ?: title.posterUrl
     val sections: @Composable () -> Unit = {
         Column(Modifier.padding(horizontal = margin, vertical = VibeyFinTokens.Space.s5), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s5)) {
-            if (state.seasons.isNotEmpty()) SeasonList(state.seasons)
+            if (state.seasons.isNotEmpty()) SeasonsAndEpisodes(state, margin, viewModel::onSelectSeason, viewModel::onRetryEpisodes)
             if (state.cast.isNotEmpty()) CastRow(state.cast)
             if (state.moreLikeThis.isNotEmpty()) MoreLikeThis(state.moreLikeThis, onOpenItem, onOpenSeerr)
             Spacer(Modifier.height(VibeyFinTokens.Space.s5))
@@ -219,34 +230,48 @@ private fun Hero(state: SeerrTitleUiState, centered: Boolean, viewModel: SeerrTi
     ) {
         Text(title.title, style = BrandDisplay.copy(fontSize = 32.sp, lineHeight = 36.sp), color = VibeyFinTokens.Colors.ink, textAlign = align, maxLines = 3, overflow = TextOverflow.Ellipsis)
 
-        if (state.facts.isNotEmpty()) Text(Strings.factsLine(state.facts), style = MaterialTheme.typography.bodyMedium, color = VibeyFinTokens.Colors.inkMuted, textAlign = align)
+        // Where it stands, as a tag at the start of the facts: a word or two with its icon, in ink (never aqua)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3, if (centered) Alignment.CenterHorizontally else Alignment.Start),
+            modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = listOfNotNull(state.status, Strings.factsLine(state.facts)).joinToString(", ") },
+        ) {
+            StateTag(state.tag, state.state)
+            if (state.facts.isNotEmpty()) Text(Strings.factsLine(state.facts), style = MaterialTheme.typography.bodyMedium, color = VibeyFinTokens.Colors.inkMuted)
+        }
         if (state.genres.isNotEmpty()) Text(Strings.factsLine(state.genres), style = MaterialTheme.typography.bodyMedium, color = VibeyFinTokens.Colors.inkMuted, textAlign = align)
 
         state.overview?.let { Overview(it) }
 
-        state.status?.let { StatusLine(it, state.state) }
+        // Who asked and what is next, once someone did
+        state.statusDetail?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = VibeyFinTokens.Colors.inkMuted, textAlign = align) }
         state.status4k?.let { StatusLine(it, state.state) }
 
         state.primary?.let { primary ->
-            // The one aqua button. When there is nothing to do it stays, quiet and disabled, so the page doesn't jump
-            Button(
-                onClick = viewModel::onRequest,
-                enabled = primary.enabled,
-                modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge),
-            ) {
-                if (state.sending && state.picker == null) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                } else {
-                    Text(primary.label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            // The one aqua button, with the trailer beside it as Play has Start over. With nothing to do it stays, quiet and
+            // disabled, so the page doesn't jump
+            Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3), modifier = Modifier.fillMaxWidth()) {
+                Button(
+                    onClick = viewModel::onRequest,
+                    enabled = primary.enabled,
+                    modifier = Modifier.weight(1f).height(VibeyFinTokens.Size.buttonLarge),
+                ) {
+                    if (state.sending && state.picker == null) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                    } else {
+                        Text(primary.label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                    }
+                }
+                state.trailerUrl?.let { url ->
+                    FilledTonalIconButton(onClick = { openTrailer(url) }, modifier = Modifier.size(VibeyFinTokens.Size.buttonLarge)) {
+                        Icon(painterResource(R.drawable.ic_trailer), contentDescription = Strings.trailer)
+                    }
                 }
             }
         }
 
-        if (state.trailerUrl != null || state.offer4k || state.cancelRequestId != null) {
+        if (state.offer4k || state.cancelRequestId != null) {
             ActionRow(Modifier.fillMaxWidth()) {
-                state.trailerUrl?.let { url ->
-                    ActionButton(Strings.trailer, Strings.trailer, icon = { Icon(painterResource(R.drawable.ic_trailer), null, tint = VibeyFinTokens.Colors.ink, modifier = it) }) { openTrailer(url) }
-                }
                 if (state.offer4k) {
                     ActionButton(Strings.seerrRequest4k, Strings.seerrRequest4k, icon = { Icon(Icons.Filled.Add, null, tint = VibeyFinTokens.Colors.ink, modifier = it) }, onClick = viewModel::onRequest4k)
                 }
@@ -255,6 +280,25 @@ private fun Hero(state: SeerrTitleUiState, centered: Boolean, viewModel: SeerrTi
                 }
             }
         }
+    }
+}
+
+/** The state as a tag: an icon and a word or two on a quiet pill, in ink (a failure in `danger`); never aqua. */
+@Composable
+internal fun StateTag(text: String, state: RequestState) {
+    val color = if (state == RequestState.Failed) VibeyFinTokens.Colors.danger else VibeyFinTokens.Colors.ink
+
+    Row(
+        Modifier.clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(start = 8.dp, end = 10.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (state == RequestState.NotRequested) {
+            Icon(Icons.Filled.Add, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+        } else {
+            Icon(painterResource(stateIconOf(state)), contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+        }
+        Text(text, style = MaterialTheme.typography.labelMedium, color = color, maxLines = 1)
     }
 }
 
@@ -273,25 +317,97 @@ internal fun StatusLine(text: String, state: RequestState) {
     }
 }
 
+// As on a library show's page: a row of season buttons, the chosen season's state, then its episodes as cards with their text on
+// the still. Seerr's episodes don't play: these are for looking at what you'd be asking for.
 @Composable
-private fun SeasonList(seasons: List<SeerrSeasonRow>) {
-    Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
+private fun SeasonsAndEpisodes(state: SeerrTitleUiState, margin: Dp, onSelect: (Int) -> Unit, onRetry: () -> Unit) {
+    val chosen = state.episodes?.season
+    val season = state.seasons.firstOrNull { it.number == chosen }
+
+    Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         SectionTitle(Strings.seerrSeasons, modifier = Modifier.semantics { heading() })
-        seasons.forEach { season ->
-            Row(Modifier.fillMaxWidth().padding(vertical = VibeyFinTokens.Space.s1), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(season.name, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
-                    Text(
-                        listOfNotNull(season.episodes, season.year?.toString()).joinToString(" · "),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+        LazyRow(
+            modifier = Modifier.bleed(margin).semantics { contentDescription = Strings.seasonsDescription(state.seasons.size) },
+            contentPadding = PaddingValues(horizontal = margin),
+            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
+        ) {
+            items(state.seasons, key = { it.number }) { row ->
+                val selected = row.number == chosen
+
+                FilterChip(
+                    selected = selected,
+                    onClick = { onSelect(row.number) },
+                    label = { Text(row.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = VibeyFinTokens.Colors.surface2,
+                        labelColor = VibeyFinTokens.Colors.inkMuted,
+                        selectedContainerColor = VibeyFinTokens.Colors.accentSoft,
+                        selectedLabelColor = VibeyFinTokens.Colors.onAccentSoft,
+                    ),
+                    border = null,
+                    modifier = Modifier.semantics { contentDescription = Strings.seasonDescription(row.name, selected) },
+                )
+            }
+        }
+
+        season?.let {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
+                StateTag(it.stateLabel ?: Strings.seerrTag(RequestState.NotRequested), it.state)
+                Text(listOfNotNull(it.episodes, it.year?.toString()).joinToString(" \u00b7 "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+
+        val episodes = state.episodes
+        // One height whatever is shown, so the page doesn't move as a season loads
+        Box(Modifier.fillMaxWidth()) {
+            when {
+                episodes == null || (episodes.loading && episodes.episodes.isEmpty()) -> Row(Modifier.bleed(margin).padding(horizontal = margin), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
+                    repeat(2) { SkeletonBlock(Modifier.width(EPISODE_CARD).aspectRatio(EPISODE_ASPECT)) }
                 }
-                season.stateLabel?.let { StatusLine(it, season.state) }
+
+                episodes.message != null -> LoadError(episodes.message!!, onRetry)
+
+                else -> LazyRow(
+                    modifier = Modifier.bleed(margin),
+                    contentPadding = PaddingValues(horizontal = margin),
+                    horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+                ) {
+                    items(episodes.episodes, key = { "${it.season}-${it.number}" }) { SeerrEpisodeCard(it) }
+                }
             }
         }
     }
 }
+
+@Composable
+private fun SeerrEpisodeCard(episode: SeerrEpisode) {
+    val shape = RoundedCornerShape(VibeyFinTokens.Radius.artwork)
+
+    Box(
+        Modifier.width(EPISODE_CARD).aspectRatio(EPISODE_ASPECT).clip(shape).border(1.dp, VibeyFinTokens.Colors.surface3, shape)
+            .semantics(mergeDescendants = true) { },
+    ) {
+        Artwork(url = episode.stillUrl, title = episode.title, aspectRatio = EPISODE_ASPECT, modifier = Modifier.fillMaxSize())
+        EpisodeCardScrim()
+        Column(
+            Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = VibeyFinTokens.Space.s3).padding(bottom = VibeyFinTokens.Space.s3),
+            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
+        ) {
+            Strings.episodeTag(episode.season, episode.number)?.let { EpisodeTag(it) }
+            Text(episode.title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = VibeyFinTokens.Colors.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // Two lines, always, so every card in the row is the same
+            Text(episode.overview.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = VibeyFinTokens.Colors.ink, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                episode.rating?.let { Text(Strings.ratingTag(it), style = MaterialTheme.typography.labelLarge, color = VibeyFinTokens.Colors.ink) }
+                Spacer(Modifier.weight(1f))
+                Strings.releaseDate(episode.airDate)?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = VibeyFinTokens.Colors.inkMuted, maxLines = 1) }
+            }
+        }
+    }
+}
+
+private val EPISODE_CARD = 300.dp
+private const val EPISODE_ASPECT = 1.6f
 
 @Composable
 private fun CastRow(cast: List<SeerrCastMember>) {

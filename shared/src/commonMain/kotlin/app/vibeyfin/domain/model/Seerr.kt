@@ -97,6 +97,19 @@ data class SeerrPage(
     val hasMore: Boolean get() = page < totalPages
 }
 
+/** An episode of a show on its Seerr page, from TMDB. */
+data class SeerrEpisode(
+    val season: Int,
+    val number: Int,
+    val title: String,
+    val overview: String?,
+    /** "2011-04-17". */
+    val airDate: String?,
+    val stillUrl: String?,
+    /** TMDB's rating out of 10; null when it has none. */
+    val rating: Double?,
+)
+
 /** A season of a show on its Seerr page. */
 data class SeerrSeason(
     val number: Int,

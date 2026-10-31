@@ -264,3 +264,20 @@ data class SeerrImdbRatingDto(
     val criticsScoreCount: Long? = null,
 )
 
+/** `GET /tv/{id}/season/{n}`: a season's episodes. Seerr sends `stillPath` as a whole TMDB URL. */
+@Serializable
+data class SeerrSeasonDetailsDto(
+    val seasonNumber: Int = 0,
+    val episodes: List<SeerrEpisodeDto> = emptyList(),
+)
+
+@Serializable
+data class SeerrEpisodeDto(
+    val episodeNumber: Int,
+    val seasonNumber: Int? = null,
+    val name: String? = null,
+    val overview: String? = null,
+    val airDate: String? = null,
+    val stillPath: String? = null,
+    val voteAverage: Double? = null,
+)

@@ -112,9 +112,14 @@ struct SeerrTitleView: View {
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(centered ? .center : .leading)
                 .lineLimit(3)
-            if !state.facts.isEmpty {
-                Text(Strings.shared.factsLine(facts: state.facts)).font(.subheadline).foregroundStyle(.secondary)
+            // Where it stands, as a tag at the start of the facts: a word or two with its symbol, never aqua.
+            HStack(spacing: Space.s3) {
+                SeerrStateTag(text: state.tag, state: state.state)
+                if !state.facts.isEmpty {
+                    Text(Strings.shared.factsLine(facts: state.facts)).font(.subheadline).foregroundStyle(.secondary)
+                }
             }
+            .accessibilityElement(children: .combine)
             if !state.genres.isEmpty {
                 Text(Strings.shared.factsLine(facts: state.genres)).font(.subheadline).foregroundStyle(.secondary)
             }
@@ -122,22 +127,31 @@ struct SeerrTitleView: View {
                 Text(overview).font(.subheadline).foregroundStyle(.primary).lineLimit(4)
                     .multilineTextAlignment(centered ? .center : .leading)
             }
-            if let status = state.status { SeerrStatusLine(text: status, state: state.state) }
+            // Who asked and what is next, once someone did.
+            if let detail = state.statusDetail { Text(detail).font(.footnote).foregroundStyle(.secondary) }
             if let status4k = state.status4k { SeerrStatusLine(text: status4k, state: state.state) }
             if let primary = state.primary {
-                // The one aqua button. With nothing to do it stays, quiet and disabled, so the page doesn't jump.
-                PrimaryButton(action: { model.request() }) {
-                    HStack(spacing: Space.s3) {
-                        if state.sending && state.picker == nil { PrimaryButtonSpinner() }
-                        Text(primary.label.titleCased())
+                // The one aqua button, with the trailer beside it as Play has Start over. With nothing to do it stays, quiet and
+                // disabled, so the page doesn't jump.
+                HStack(spacing: Space.s3) {
+                    PrimaryButton(action: { model.request() }) {
+                        HStack(spacing: Space.s3) {
+                            if state.sending && state.picker == nil { PrimaryButtonSpinner() }
+                            Text(primary.label.titleCased())
+                        }
+                    }
+                    .disabled(!primary.enabled)
+                    if let trailer = state.trailerUrl, let url = URL(string: trailer) {
+                        Button { openURL(url) } label: { Image(systemName: "play.rectangle").font(.title3) }
+                            .buttonStyle(.bordered)
+                            .buttonBorderShape(.circle)
+                            .controlSize(.large)
+                            .tint(.primary)
+                            .accessibilityLabel(Strings.shared.trailer)
                     }
                 }
-                .disabled(!primary.enabled)
             }
             HStack(spacing: Space.s4) {
-                if let trailer = state.trailerUrl, let url = URL(string: trailer) {
-                    SeerrActionButton(title: Strings.shared.trailer, systemImage: "play.rectangle") { openURL(url) }
-                }
                 if state.offer4k {
                     SeerrActionButton(title: Strings.shared.seerrRequest4k, systemImage: "plus") { model.request4k() }
                 }
@@ -152,23 +166,7 @@ struct SeerrTitleView: View {
     @ViewBuilder
     private func sections(_ state: SeerrTitleUiState) -> some View {
         VStack(alignment: .leading, spacing: Space.s5) {
-            if !state.seasons.isEmpty {
-                VStack(alignment: .leading, spacing: Space.s2) {
-                    Text(Strings.shared.seerrSeasons.titleCased()).sectionTitle().accessibilityAddTraits(.isHeader)
-                    ForEach(state.seasons, id: \.number) { season in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(season.name).font(.subheadline.weight(.semibold))
-                                Text([season.episodes, season.year.map { "\($0)" }].compactMap { $0 }.joined(separator: " · "))
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if let label = season.stateLabel { SeerrStatusLine(text: label, state: season.state) }
-                        }
-                        .accessibilityElement(children: .combine)
-                    }
-                }
-            }
+            if !state.seasons.isEmpty { SeerrSeasonsView(state: state, model: model) }
             if !state.cast.isEmpty {
                 VStack(alignment: .leading, spacing: Space.s2) {
                     Text(Strings.shared.cast.titleCased()).sectionTitle().accessibilityAddTraits(.isHeader)
@@ -254,3 +252,111 @@ private struct SeerrActionButton: View {
         .buttonStyle(PressableButtonStyle())
     }
 }
+
+/// The state as a tag: a symbol and a word or two on a quiet capsule, in the primary colour (a failure in red); never aqua.
+struct SeerrStateTag: View {
+    let text: String
+    let state: RequestState
+
+    var body: some View {
+        Label {
+            Text(text).font(.caption.weight(.semibold)).lineLimit(1)
+        } icon: {
+            Image(systemName: state == .notrequested ? "plus" : SeerrMarker.symbol(state)).font(.caption2.weight(.semibold))
+        }
+        .labelStyle(.titleAndIcon)
+        .foregroundStyle(state == .failed ? Color(.systemRed) : Color.primary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
+        .background(Color(.tertiarySystemFill), in: Capsule())
+    }
+}
+
+/// As on a library show's page: season buttons, the chosen season's state, then its episodes as cards with their text on the
+/// still. Seerr's episodes don't play: they show what you'd be asking for.
+private struct SeerrSeasonsView: View {
+    let state: SeerrTitleUiState
+    @ObservedObject var model: SeerrTitleObservable
+
+    var body: some View {
+        let chosen = state.episodes?.season
+        VStack(alignment: .leading, spacing: Space.s3) {
+            Text(Strings.shared.seerrSeasons.titleCased()).sectionTitle().accessibilityAddTraits(.isHeader)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Space.s2) {
+                    ForEach(state.seasons, id: \.number) { season in
+                        let selected = season.number == chosen
+                        Button { model.selectSeason(season.number) } label: {
+                            Text(season.name).font(.subheadline.weight(.semibold)).lineLimit(1)
+                                .padding(.horizontal, Space.s4).padding(.vertical, Space.s2)
+                                .foregroundStyle(selected ? Brand.onAccentSoft : Color.secondary)
+                                .background(selected ? Brand.accentSoft : Color(.secondarySystemBackground), in: Capsule())
+                        }
+                        .buttonStyle(PressableButtonStyle())
+                        .accessibilityAddTraits(selected ? .isSelected : [])
+                    }
+                }
+            }
+            if let season = state.seasons.first(where: { $0.number == chosen }) {
+                HStack(spacing: Space.s3) {
+                    SeerrStateTag(text: season.stateLabel ?? Strings.shared.seerrTag(state: .notrequested), state: season.state)
+                    Text([season.episodes, season.year.map { "\($0)" }].compactMap { $0 }.joined(separator: " · "))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            episodes
+        }
+    }
+
+    @ViewBuilder
+    private var episodes: some View {
+        if let episodes = state.episodes, let message = episodes.message {
+            LoadErrorView(message: message, onRetry: { model.retryEpisodes() })
+        } else if let episodes = state.episodes, !episodes.loading || !episodes.episodes.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: Space.s3) {
+                    ForEach(episodes.episodes, id: \.number) { episode in SeerrEpisodeCard(episode: episode) }
+                }
+            }
+        } else {
+            HStack(spacing: Space.s3) {
+                ForEach(0..<2, id: \.self) { _ in SkeletonBlock().frame(width: 300, height: 300 / 1.6) }
+            }
+        }
+    }
+}
+
+private struct SeerrEpisodeCard: View {
+    let episode: SeerrEpisode
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            Artwork(url: episode.stillUrl, title: episode.title, aspectRatio: 1.6, blurHash: nil)
+            LinearGradient(
+                stops: [.init(color: .clear, location: 0.4), .init(color: .black.opacity(0.55), location: 0.75), .init(color: .black.opacity(0.78), location: 1)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            VStack(alignment: .leading, spacing: Space.s1) {
+                if let tag = Strings.shared.episodeTag(season: KotlinInt(int: episode.season), episode: KotlinInt(int: episode.number)) {
+                    Text(tag).font(.caption2.weight(.semibold)).padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Brand.scrim, in: RoundedRectangle(cornerRadius: 6))
+                }
+                Text(episode.title).font(.headline).lineLimit(1)
+                // Two lines, always, so every card in the row is the same.
+                Text(episode.overview ?? "").font(.subheadline).lineLimit(2, reservesSpace: true)
+                HStack {
+                    if let rating = episode.rating { Text(Strings.shared.ratingTag(rating: rating.doubleValue)).font(.caption.weight(.semibold)) }
+                    Spacer()
+                    if let date = Strings.shared.releaseDate(iso: episode.airDate) { Text(date).font(.caption).foregroundStyle(.white.opacity(0.75)) }
+                }
+            }
+            .foregroundStyle(.white)
+            .padding(Space.s3)
+        }
+        .frame(width: 300, height: 300 / 1.6)
+        .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+}
+

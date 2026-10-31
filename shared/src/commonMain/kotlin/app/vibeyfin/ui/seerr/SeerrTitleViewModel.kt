@@ -11,6 +11,7 @@ import app.vibeyfin.domain.SeerrRepository
 import app.vibeyfin.domain.SeerrState
 import app.vibeyfin.domain.model.RequestState
 import app.vibeyfin.domain.model.SeerrCastMember
+import app.vibeyfin.domain.model.SeerrEpisode
 import app.vibeyfin.domain.model.SeerrMediaType
 import app.vibeyfin.domain.model.SeerrRequest
 import app.vibeyfin.domain.model.SeerrSeason
@@ -77,6 +78,14 @@ data class SeerrNotice(
     val failure: Boolean = false,
 )
 
+/** The episodes of the season chosen on a show's Seerr page. */
+data class SeerrEpisodes(
+    val season: Int,
+    val episodes: List<SeerrEpisode> = emptyList(),
+    val loading: Boolean = true,
+    val message: String? = null,
+)
+
 data class SeerrTitleUiState(
     /** The title is being read: the page shows its skeleton, a poster menu its header with nothing under it yet. */
     val loading: Boolean = true,
@@ -87,8 +96,12 @@ data class SeerrTitleUiState(
     val facts: List<String> = emptyList(),
     val genres: List<String> = emptyList(),
     val overview: String? = null,
-    /** The status line under the overview, in ink with the state's icon (in `danger` for a failure). */
+    /** The whole status sentence ("Requested by you · Waiting for approval"), for screen readers and the 4K line. */
     val status: String? = null,
+    /** The tag at the start of the facts: the state in a word or two ("Not in your library", "Requested"), with the state's icon. */
+    val tag: String = "",
+    /** Under the overview once someone asked: who, when and what is next ("By you, today · Waiting for approval"). */
+    val statusDetail: String? = null,
     val state: RequestState = RequestState.NotRequested,
     /** A second line when a 4K request exists. */
     val status4k: String? = null,
@@ -99,6 +112,8 @@ data class SeerrTitleUiState(
     /** The profile's own request still waiting for approval: "Cancel request" shows. */
     val cancelRequestId: Int? = null,
     val seasons: List<SeerrSeasonRow> = emptyList(),
+    /** A show: the season whose episodes show under the season buttons, and those episodes. */
+    val episodes: SeerrEpisodes? = null,
     val cast: List<SeerrCastMember> = emptyList(),
     val moreLikeThis: List<SeerrTitle> = emptyList(),
     val picker: SeerrSeasonPicker? = null,
@@ -139,6 +154,36 @@ class SeerrTitleViewModel(
 
     init {
         load(showSkeleton = true)
+    }
+
+    /** A season button: its episodes replace the ones shown. */
+    fun onSelectSeason(number: Int) {
+        if (content.value.episodes?.season == number) return
+        loadEpisodes(number)
+    }
+
+    /** Try again after a season's episodes couldn't be read. */
+    fun onRetryEpisodes() {
+        content.value.episodes?.season?.let(::loadEpisodes)
+    }
+
+    private var episodesLoad: kotlinx.coroutines.Job? = null
+
+    private fun loadEpisodes(season: Int) {
+        episodesLoad?.cancel()
+        content.update { it.copy(episodes = SeerrEpisodes(season)) }
+        episodesLoad = viewModelScope.launch {
+            val result = repository.season(tmdbId, season)
+            content.update { state ->
+                if (state.episodes?.season != season) return@update state
+                state.copy(
+                    episodes = when (result) {
+                        is ApiResult.Success -> SeerrEpisodes(season, result.value, loading = false)
+                        is ApiResult.Failure -> SeerrEpisodes(season, loading = false, message = SeerrMessages.UNREACHABLE_NOW)
+                    },
+                )
+            }
+        }
     }
 
     /** Try again after the title couldn't be read. */
@@ -266,6 +311,11 @@ class SeerrTitleViewModel(
                     details = result.value
                     val similar = (more.await() as? ApiResult.Success)?.value?.titles.orEmpty()
                     content.update { show(it, result.value, similar) }
+                    // A show opens on its first season (Specials only when it has nothing else); a reload keeps the chosen one.
+                    if (type == SeerrMediaType.Show && content.value.episodes == null) {
+                        val numbers = result.value.seasons.map { it.number }
+                        (numbers.firstOrNull { it > 0 } ?: numbers.firstOrNull())?.let(::loadEpisodes)
+                    }
                 }
 
                 is ApiResult.Failure -> {
@@ -296,6 +346,8 @@ class SeerrTitleViewModel(
             genres = details.genres,
             overview = title.overview,
             status = Strings.seerrStatusLine(title.state, latest?.byMe == true, asker),
+            tag = Strings.seerrTag(title.state),
+            statusDetail = if (title.state == RequestState.NotRequested) null else menuDetail(title.state, latest).takeIf { it.isNotEmpty() },
             state = title.state,
             status4k = details.state4k.takeIf { it != RequestState.NotRequested }
                 ?.let { Strings.seerr4kLine(Strings.seerrStatusLine(it, latest4k?.byMe == true, latest4k?.takeIf { request -> !request.byMe }?.requestedBy)) },

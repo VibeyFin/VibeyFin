@@ -597,7 +597,7 @@ private fun EpisodeCard(
 }
 
 @Composable
-private fun EpisodeTag(text: String) {
+internal fun EpisodeTag(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelSmall,
@@ -679,7 +679,7 @@ fun TechnicalInfo(lines: List<TechnicalLine>) {
 
 // The scrim the text sits on: the picture stays clear well down the card, and only the lower part darkens, just enough for white text to read
 @Composable
-private fun BoxScope.EpisodeCardScrim() {
+internal fun BoxScope.EpisodeCardScrim() {
     Box(
         Modifier.matchParentSize().background(
             Brush.verticalGradient(

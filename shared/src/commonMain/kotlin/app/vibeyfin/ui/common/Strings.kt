@@ -175,6 +175,11 @@ object Strings {
     val viewEpisode = "View episode"
 
     /** "S1 E4" on an episode's card; "E4" when the season is not known. */
+    fun episodeNumber(number: Int) = "Episode $number"
+
+    /** The tag at the start of a Seerr page's facts: where the title stands in one or two words. */
+    fun seerrTag(state: RequestState): String = seerrStateLabel(state) ?: "Not in your library"
+
     fun episodeTag(season: Int?, episode: Int?): String? = when {
         season != null && episode != null -> "S$season E$episode"
         episode != null -> "E$episode"

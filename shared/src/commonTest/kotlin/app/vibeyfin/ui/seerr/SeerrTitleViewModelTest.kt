@@ -171,6 +171,40 @@ class SeerrTitleViewModelTest {
     }
 
     @Test
+    fun aShowsPageOpensOnItsFirstSeasonsEpisodesAndSwitchesSeason() = runTest {
+        connected {
+            onSignedIn("GET", "/api/v1/tv/19885/season/1") {
+                Reply.json(
+                    """{"seasonNumber":1,"episodes":[{"episodeNumber":2,"name":"Two","airDate":"2010-08-01"},
+                {"episodeNumber":1,"name":"Pilot","overview":"It starts.","stillPath":"https://image.tmdb.org/t/p/original//a.jpg","voteAverage":8.2}]}""",
+                )
+            }
+            onSignedIn("GET", "/api/v1/tv/19885/season/2") { Reply.json("""{"seasonNumber":2,"episodes":[{"episodeNumber":1,"name":""}]}""") }
+        }
+        val viewModel = viewModel(SeerrMediaType.Show, 19885)
+
+        val first = viewModel.await { it.episodes?.loading == false }.episodes!!
+
+        assertEquals(1, first.season)
+        assertEquals(listOf("Pilot", "Two"), first.episodes.map { it.title })
+        assertEquals("https://image.tmdb.org/t/p/w500//a.jpg", first.episodes[0].stillUrl)
+        assertEquals(8.2, first.episodes[0].rating)
+
+        viewModel.onSelectSeason(2)
+
+        val second = viewModel.await { it.episodes?.season == 2 && it.episodes?.loading == false }.episodes!!
+        assertEquals(listOf("Episode 1"), second.episodes.map { it.title })
+    }
+
+    @Test
+    fun theTagSaysWhereTheTitleStandsAndTheDetailWhoAsked() = runTest {
+        connected()
+        val fresh = viewModel(SeerrMediaType.Movie, 603).await { !it.loading }
+        assertEquals("Not in your library", fresh.tag)
+        assertNull(fresh.statusDetail)
+    }
+
+    @Test
     fun allMissingSeasonsOffLeavesNothingToRequest() = runTest {
         connected()
         val viewModel = viewModel(SeerrMediaType.Show, 19885)

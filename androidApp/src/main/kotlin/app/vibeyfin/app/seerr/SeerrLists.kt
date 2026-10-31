@@ -198,49 +198,21 @@ fun MyRequestsRoute(onBack: () -> Unit, onOpen: (SeerrTitle) -> Unit, viewModel:
                 modifier = Modifier.padding(horizontal = margin, vertical = VibeyFinTokens.Space.s5),
             )
 
-            else -> LazyColumn(
-                contentPadding = PaddingValues(start = margin, top = VibeyFinTokens.Space.s2, end = margin, bottom = VibeyFinTokens.Space.s5 + LocalBottomBarPadding.current),
+            // A poster grid like the other lists: the pill says where each stands, the line under it when that last changed
+            else -> LazyVerticalGrid(
+                columns = GridCells.Adaptive(GRID_MIN_WIDTH),
+                contentPadding = PaddingValues(start = margin, top = VibeyFinTokens.Space.s3, end = margin, bottom = VibeyFinTokens.Space.s5 + LocalBottomBarPadding.current),
+                horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+                verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
             ) {
                 itemsIndexed(state.items, key = { _, item -> item.request.id }) { index, item ->
                     if (index >= state.items.size - LOAD_MORE_BEFORE) LaunchedEffect(state.items.size) { viewModel.onLoadMore() }
-                    val failed = item.request.state == RequestState.Failed
-                    val color = if (failed) VibeyFinTokens.Colors.danger else VibeyFinTokens.Colors.ink
-
-                    Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
-                            .combinedClickableTitle(item.title, onOpen)
-                            .padding(vertical = VibeyFinTokens.Space.s2)
-                            .semantics(mergeDescendants = true) { contentDescription = listOf(item.title.title, item.kind, item.stateLabel, item.changed).joinToString(", ") },
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-                    ) {
-                        Box(Modifier.width(56.dp).aspectRatio(2f / 3f).clip(RoundedCornerShape(6.dp))) {
-                            Artwork(url = item.title.posterUrl, title = item.title.title, aspectRatio = 2f / 3f, modifier = Modifier.fillMaxWidth())
-                        }
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(item.title.title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Text(item.kind, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Icon(painterResource(stateIconOf(item.request.state)), contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
-                                Text(item.stateLabel, style = MaterialTheme.typography.bodySmall, color = color)
-                                Text("· ${item.changed}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                        }
-                    }
+                    SeerrTile(item.title, onOpen, Modifier.fillMaxWidth(), meta = item.changed)
                 }
-                if (state.loadingMore) item { MoreSpinner() }
+                if (state.loadingMore) item(span = { GridItemSpan(maxLineSpan) }) { MoreSpinner() }
             }
         }
     }
-}
-
-// A request opens like a Seerr poster: the library's page once it is there, Seerr's otherwise; a long press its Seerr menu.
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun Modifier.combinedClickableTitle(title: SeerrTitle, onOpen: (SeerrTitle) -> Unit): Modifier {
-    val longPress = LocalSeerrLongPress.current
-
-    return combinedClickable(role = Role.Button, onLongClick = longPress?.let { press -> { press(title) } }, onClick = { onOpen(title) })
 }
 
 private fun RequestFilter.label() = when (this) {

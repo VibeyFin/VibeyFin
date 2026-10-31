@@ -19,15 +19,18 @@ import app.vibeyfin.data.seerr.requests
 import app.vibeyfin.data.seerr.search
 import app.vibeyfin.data.seerr.show
 import app.vibeyfin.data.seerr.showRecommendations
+import app.vibeyfin.data.seerr.showSeason
 import app.vibeyfin.data.seerr.trending
 import app.vibeyfin.data.seerr.upcomingMovies
 import app.vibeyfin.data.seerr.upcomingShows
 import app.vibeyfin.domain.model.RequestQuota
+import app.vibeyfin.domain.model.SeerrEpisode
 import app.vibeyfin.domain.model.SeerrMediaType
 import app.vibeyfin.domain.model.SeerrPage
 import app.vibeyfin.domain.model.SeerrRequest
 import app.vibeyfin.domain.model.SeerrRequestPage
 import app.vibeyfin.domain.model.SeerrTitleDetails
+import app.vibeyfin.ui.common.Strings
 
 /** The discover lists Home shows as rows. */
 enum class DiscoverList { Trending, PopularMovies, PopularShows, UpcomingMovies, UpcomingShows }
@@ -71,6 +74,26 @@ class SeerrRepository(private val seerr: SeerrConnection) {
         when (type) {
             SeerrMediaType.Movie -> api.movie(tmdbId).map { it.toDetails(me.id) }
             SeerrMediaType.Show -> api.show(tmdbId).map { it.toDetails(me.id) }
+        }
+    }
+
+    /** The episodes of [season] of the show [tmdbId]. */
+    suspend fun season(tmdbId: Int, season: Int): ApiResult<List<SeerrEpisode>> = seerr.call { api, _ ->
+        api.showSeason(tmdbId, season).map { details ->
+            details.episodes.sortedBy { it.episodeNumber }.map { episode ->
+                SeerrEpisode(
+                    season = episode.seasonNumber ?: season,
+                    number = episode.episodeNumber,
+                    title = episode.name?.takeIf { it.isNotBlank() } ?: Strings.episodeNumber(episode.episodeNumber),
+                    overview = episode.overview?.takeIf { it.isNotBlank() },
+                    airDate = episode.airDate?.takeIf { it.isNotBlank() },
+                    // Seerr sends a whole URL at TMDB's largest size; a card needs far less
+                    stillUrl = episode.stillPath?.takeIf { it.isNotBlank() }?.let { path ->
+                        if (path.startsWith("http")) path.replace("/t/p/original/", "/t/p/w500/") else tmdbImage(path, "w500")
+                    },
+                    rating = episode.voteAverage?.takeIf { it > 0 },
+                )
+            }
         }
     }
 

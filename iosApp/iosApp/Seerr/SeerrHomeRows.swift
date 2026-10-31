@@ -171,7 +171,6 @@ final class MyRequestsObservable: ObservableObject {
 struct MyRequestsView: View {
     @StateObject private var model = MyRequestsObservable()
     let onOpen: (SeerrTitle) -> Void
-    @Environment(\.seerrMenu) private var seerrMenu
 
     private static let filters: [(RequestFilter, String)] = [
         (.all, Strings.shared.searchAll),
@@ -199,15 +198,14 @@ struct MyRequestsView: View {
                     } else if state.empty {
                         Text(Strings.shared.seerrNoRequests).font(.body).foregroundStyle(.secondary).padding(.vertical, Space.s5)
                     } else {
-                        LazyVStack(alignment: .leading, spacing: Space.s2) {
+                        // A poster grid like the other lists: the pill says where each stands, the line under it when that last changed.
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
                             ForEach(Array(state.items.enumerated()), id: \.element.request.id) { index, item in
-                                Button { onOpen(item.title) } label: { row(item) }
-                                    .buttonStyle(PressableButtonStyle())
-                                    .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in seerrMenu?.open(item.title) })
+                                SeerrTileButton(title: item.title, onOpen: onOpen, meta: item.changed)
                                     .onAppear { if index >= state.items.count - 6 { model.loadMore() } }
                             }
-                            if state.loadingMore { ProgressView().frame(maxWidth: .infinity) }
                         }
+                        if state.loadingMore { ProgressView().frame(maxWidth: .infinity) }
                     }
                 }
                 .screenMargin()
@@ -217,30 +215,6 @@ struct MyRequestsView: View {
         .navigationTitle(Strings.shared.seerrMyRequests.titleCased())
         .navigationBarTitleDisplayMode(.large)
         .onAppear { model.start() }
-    }
-
-    private func row(_ item: RequestListItem) -> some View {
-        HStack(spacing: Space.s3) {
-            Artwork(url: item.title.posterUrl, title: item.title.title, aspectRatio: 2.0 / 3.0, blurHash: nil)
-                .frame(width: 56)
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.title.title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary).lineLimit(2)
-                Text(item.kind).font(.caption).foregroundStyle(.secondary)
-                HStack(spacing: 4) {
-                    Image(systemName: SeerrMarker.symbol(item.request.state))
-                    Text(item.stateLabel)
-                    Text("· \(item.changed)").foregroundStyle(.secondary).lineLimit(1)
-                }
-                .font(.caption)
-                .foregroundStyle(item.request.state == .failed ? Color(.systemRed) : Color.primary)
-            }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.tertiary)
-        }
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel([item.title.title, item.kind, item.stateLabel, item.changed].joined(separator: ", "))
     }
 }
 

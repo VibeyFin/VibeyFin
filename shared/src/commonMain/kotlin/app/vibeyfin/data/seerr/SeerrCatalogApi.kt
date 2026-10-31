@@ -40,6 +40,9 @@ suspend fun SeerrApi.movie(tmdbId: Int): ApiResult<SeerrMovieDto> = get("/movie/
 /** `GET /tv/{id}`, by TMDB id. */
 suspend fun SeerrApi.show(tmdbId: Int): ApiResult<SeerrTvDto> = get("/tv/$tmdbId", retry = true)
 
+/** `GET /tv/{id}/season/{n}`: the season's episodes. */
+suspend fun SeerrApi.showSeason(tmdbId: Int, season: Int): ApiResult<SeerrSeasonDetailsDto> = get("/tv/$tmdbId/season/$season", retry = true)
+
 /** `GET /movie/{id}/ratingscombined`: the movie's IMDb (and Rotten Tomatoes) rating, which Seerr looks up when asked. */
 suspend fun SeerrApi.movieRatings(tmdbId: Int): ApiResult<SeerrRatingsDto> = get("/movie/$tmdbId/ratingscombined", retry = true)
 

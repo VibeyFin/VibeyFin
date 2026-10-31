@@ -15,6 +15,10 @@ class SeerrTitleModel(type: SeerrMediaType, tmdbId: Int) {
 
     fun onRetry() = host.viewModel.onRetry()
 
+    fun onSelectSeason(number: Int) = host.viewModel.onSelectSeason(number)
+
+    fun onRetryEpisodes() = host.viewModel.onRetryEpisodes()
+
     fun onRequest() = host.viewModel.onRequest()
 
     fun onRequest4k() = host.viewModel.onRequest4k()
