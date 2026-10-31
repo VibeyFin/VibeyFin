@@ -1,6 +1,6 @@
 # Player
 
-The player on both platforms. Behaviour rules are in `guardrails.md` (Playback); this file is the layout and look. The interactive mockups (controls, scrubbing, skip offer, up next, Settings → Playback) are the `PlayerControls` and `PlayerScreen` components of the VibeyFin design-system artifact (the Settings screens are `SettingsPhone` and `SettingsTablet`, see `screens.md`): https://claude.ai/artifact/HeWVw1EzAbYcvssURJ2rNc
+The player on both platforms. Behaviour rules are in `guardrails.md` (Playback); this file is the layout and look. The interactive mockups (controls, scrubbing, skip offer, up next, Settings → Playback) are the `PlayerControls` and `PlayerScreen` components of the VibeyFin design-system artifact (the Settings screens are `SettingsPhone` and `SettingsTablet`, see `screens.md`): https://claude.ai/artifact/L3iSAKqvpmXtUtRy2qBGAe
 
 ## iOS (SwiftUI, AVPlayer)
 

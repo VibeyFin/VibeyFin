@@ -7,14 +7,14 @@ What VibeyFin is designed for, how the mockups are named and grouped, and what i
 | Device | iOS family | Android family | Input | Width class | Status |
 | --- | --- | --- | --- | --- | --- |
 | Phone | **iOS** — iPhone (SwiftUI) | **Android mobile** (Compose M3) | Touch | compact | Designed |
-| Tablet | **iPadOS** — iPad (SwiftUI) | **Android tablet**, foldables open (Compose M3) | Touch, pointer, keyboard | regular / medium–expanded | Designed: Home, Detail, Player, Settings |
+| Tablet | **iPadOS** — iPad (SwiftUI) | **Android tablet**, foldables open (Compose M3) | Touch, pointer, keyboard | regular / medium–expanded | Designed: Home, Detail, Player, Settings, Search |
 | TV | tvOS — Apple TV | Google TV / Android TV | Remote, focus | 10-foot | Planned, not designed |
 
 The device follows the **width class**, not the hardware: an iPad in Split View at compact width, or a folded phone, uses the phone layout; an unfolded foldable uses the tablet layout.
 
 ## How the mockups are organized
 
-- **Screens** are grouped per feature — **Screens · Home**, **Screens · Detail**, **Screens · Player**, **Screens · Settings** — and named `<Feature>[<Variant>]<Device>`: `HomePhone`, `HomeFilteredPhone`, `HomeTablet`, `DetailMoviePhone`, `DetailSeriesPhone`, `DetailTablet`, `PlayerPhone`, `PlayerTablet`, `SettingsPhone`, `SettingsTablet`. A new device is a new card in the same group: `HomeTablet`, later `HomeTV`.
+- **Screens** are grouped per feature — **Screens · Home**, **Screens · Detail**, **Screens · Player**, **Screens · Settings** — and named `<Feature>[<Variant>]<Device>`: `HomePhone`, `CategoryPagePhone`, `HomeTablet`, `DetailMoviePhone`, `DetailSeriesPhone`, `DetailTablet`, `PlayerPhone`, `PlayerTablet`, `SettingsPhone`, `SettingsTablet`. A new device is a new card in the same group: `HomeTablet`, later `HomeTV`.
 - Each screen card holds one device for both platform families; the page's theme switch picks which one you see — **iOS / iPadOS** shows the iPhone or iPad mockup, **Android** the Android mobile or tablet one. The header names the device first ("iPadOS · iPad · SwiftUI", "Android tablet · Compose M3"); the card's subtitle starts with the device class.
 - **Components · …** (Actions, Cards, Layout, Navigation, Playback, Status) are the building blocks. They are device-agnostic and previewed at phone size; when a component changes per device, its README says how (sizes, layout), and a screen card shows it in place.
 - In previews, `Platform` takes `device` (`phone`, `tablet`; `tv` reserved) and adds `data-device` and a `.vf-device-<device>` class, so device-specific styles hook in without new components.
@@ -23,17 +23,18 @@ The device follows the **width class**, not the hardware: an iPad in Split View 
 
 | Feature | Phone (iOS · Android mobile) | Tablet (iPadOS · Android tablet) | TV |
 | --- | --- | --- | --- |
-| Home | `HomePhone`, `HomeFilteredPhone` | `HomeTablet` (filtered: same as phone, at tablet sizes) | Planned |
+| Home | `HomePhone`, `CategoryPagePhone` | `HomeTablet` | Planned |
 | Detail | `DetailMoviePhone`, `DetailSeriesPhone` | `DetailTablet` (movie; series follows the same layout) | Planned |
 | Player | `PlayerPhone` | `PlayerTablet` | Planned |
 | Settings | `SettingsPhone` | `SettingsTablet` (two panes) | Planned |
-| Search, Library, Downloads, Sign-in | Not yet | Not yet | Planned (no Downloads on TV) |
+| Search | `SearchResultsPhone` | `SearchResultsTablet` | Planned |
+| Library, Downloads, Sign-in | Not yet | Not yet | Planned (no Downloads on TV) |
 
 ## Tablet rules (today)
 
 - Margins `space-5` on Android tablet and 20 on iPad; posters 140 (medium) / 168 (expanded).
-- Navigation: iPad uses the system tab bar at the top (`.sidebarAdaptable`); Android tablet puts the same four destinations at the top (see **Android**).
-- The player keeps the device's orientation; rows show more cards, never bigger artwork ratios.
+- Navigation: iPad uses the system tab bar at the top (`.sidebarAdaptable`); Android tablet uses the same floating bottom bar as phones, centred (see **Android**).
+- The player opens landscape on tablets as on phones (see **guardrails.md**, Playback); rows show more cards, never bigger artwork ratios.
 
 ## When TV is added
 
