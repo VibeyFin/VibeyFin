@@ -260,8 +260,12 @@ private fun Hero(state: SeerrTitleUiState, centered: Boolean, viewModel: SeerrTi
                 ) {
                     if (state.sending && state.picker == null) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                    } else if (primary.enabled) {
+                        // A plus, not words: the label is what a screen reader says
+                        Icon(Icons.Filled.Add, contentDescription = primary.label, modifier = Modifier.size(28.dp))
                     } else {
-                        Text(primary.label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                        // Nothing to do: the state's own icon, quiet
+                        Icon(painterResource(stateIconOf(state.state)), contentDescription = primary.label, modifier = Modifier.size(24.dp))
                     }
                 }
                 state.trailerUrl?.let { url ->
@@ -294,11 +298,7 @@ internal fun StateTag(text: String, state: RequestState) {
         Modifier.size(28.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh).semantics { contentDescription = text },
         contentAlignment = Alignment.Center,
     ) {
-        if (state == RequestState.NotRequested) {
-            Icon(Icons.Filled.Add, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
-        } else {
-            Icon(painterResource(stateIconOf(state)), contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
-        }
+        Icon(painterResource(stateIconOf(state)), contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
     }
 }
 
@@ -308,11 +308,7 @@ internal fun StatusLine(text: String, state: RequestState) {
     val color = if (state == RequestState.Failed) VibeyFinTokens.Colors.danger else VibeyFinTokens.Colors.ink
 
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-        if (state == RequestState.NotRequested) {
-            Icon(Icons.Filled.Add, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
-        } else {
-            Icon(painterResource(stateIconOf(state)), contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
-        }
+        Icon(painterResource(stateIconOf(state)), contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
         Text(text, style = MaterialTheme.typography.bodyMedium, color = color)
     }
 }
@@ -452,7 +448,8 @@ internal fun stateIconOf(state: RequestState): Int = when (state) {
     RequestState.PartlyAvailable -> R.drawable.ic_seerr_partly
     RequestState.Available -> R.drawable.ic_seerr_available
     RequestState.Declined -> R.drawable.ic_seerr_declined
-    RequestState.Failed, RequestState.NotRequested -> R.drawable.ic_seerr_failed
+    RequestState.Failed -> R.drawable.ic_seerr_failed
+    RequestState.NotRequested -> R.drawable.ic_seerr_not_in_library
 }
 
 private val WIDE_FROM = 600.dp

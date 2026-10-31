@@ -135,12 +135,17 @@ struct SeerrTitleView: View {
                 // disabled, so the page doesn't jump.
                 HStack(spacing: Space.s3) {
                     PrimaryButton(action: { model.request() }) {
-                        HStack(spacing: Space.s3) {
-                            if state.sending && state.picker == nil { PrimaryButtonSpinner() }
-                            Text(primary.label.titleCased())
+                        // A plus, not words (the label is what VoiceOver says); with nothing to do, the state's own symbol.
+                        if state.sending && state.picker == nil {
+                            PrimaryButtonSpinner()
+                        } else if primary.enabled {
+                            Image(systemName: "plus").font(.title3.weight(.semibold))
+                        } else {
+                            SeerrStateSymbol(state: state.state).font(.title3)
                         }
                     }
                     .disabled(!primary.enabled)
+                    .accessibilityLabel(primary.label)
                     if let trailer = state.trailerUrl, let url = URL(string: trailer) {
                         Button { openURL(url) } label: { Image(systemName: "play.rectangle").font(.title3) }
                             .buttonStyle(.bordered)
@@ -228,7 +233,7 @@ struct SeerrStatusLine: View {
         Label {
             Text(text).font(.subheadline)
         } icon: {
-            Image(systemName: state == .notrequested ? "plus" : SeerrMarker.symbol(state))
+            SeerrStateSymbol(state: state)
         }
         .foregroundStyle(state == .failed ? Color(.systemRed) : Color.primary)
     }
@@ -260,7 +265,7 @@ struct SeerrStateTag: View {
     let state: RequestState
 
     var body: some View {
-        Image(systemName: state == .notrequested ? "plus" : SeerrMarker.symbol(state))
+        SeerrStateSymbol(state: state)
             .font(.caption.weight(.semibold))
             .foregroundStyle(state == .failed ? Color(.systemRed) : Color.primary)
             .frame(width: 28, height: 28)
@@ -347,6 +352,29 @@ private struct SeerrEpisodeCard: View {
         .frame(width: 300, height: 300 / 1.6)
         .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// A state's symbol. Not in your library is the Library tab's symbol with one diagonal line through it (SF Symbols has no
+/// such symbol); the others are `SeerrMarker`'s.
+struct SeerrStateSymbol: View {
+    let state: RequestState
+
+    var body: some View {
+        if state == .notrequested {
+            Image(systemName: "play.rectangle.on.rectangle")
+                .overlay {
+                    GeometryReader { proxy in
+                        Path { path in
+                            path.move(to: CGPoint(x: proxy.size.width * 0.08, y: proxy.size.height * 0.08))
+                            path.addLine(to: CGPoint(x: proxy.size.width * 0.92, y: proxy.size.height * 0.92))
+                        }
+                        .stroke(style: StrokeStyle(lineWidth: max(1.5, proxy.size.width / 12), lineCap: .round))
+                    }
+                }
+        } else {
+            Image(systemName: SeerrMarker.symbol(state))
+        }
     }
 }
 
