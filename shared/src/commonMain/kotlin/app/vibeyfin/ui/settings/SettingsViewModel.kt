@@ -15,6 +15,8 @@ import app.vibeyfin.domain.PinGates
 import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.ProfilePolicy
 import app.vibeyfin.domain.ProfileSettings
+import app.vibeyfin.domain.SeerrConnection
+import app.vibeyfin.domain.SeerrState
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.SubtitleMode
 import app.vibeyfin.domain.model.Account
@@ -23,6 +25,7 @@ import app.vibeyfin.domain.model.Server
 import app.vibeyfin.ui.common.PinGate
 import app.vibeyfin.ui.common.PinPrompt
 import app.vibeyfin.ui.common.PinReason
+import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -91,6 +94,7 @@ class SettingsViewModel(
     private val applicationScope: CoroutineScope,
     private val appVersion: String = "",
     private val subtitleStyleApplies: Boolean = true,
+    seerr: SeerrConnection? = null,
 ) : ViewModel() {
     private val confirmSignOut = MutableStateFlow(false)
     private val confirmPurgeDownloads = MutableStateFlow(false)
@@ -194,6 +198,7 @@ class SettingsViewModel(
         live(closePage),
         live(confirmPurgeDownloads),
         perProfile(profileSettings.swipeGestures),
+        live(seerr?.state ?: MutableStateFlow<SeerrState>(SeerrState.Hidden)),
     )
 
     /** Eager, so the reads start with the ViewModel and not when the screen first draws. */
@@ -262,6 +267,7 @@ class SettingsViewModel(
             languages = v[LANGUAGES].cast(),
             languageStatus = v[LANGUAGE_STATUS] as LanguageStatus,
             searches = v[SEARCHES].cast(),
+            seerrStatus = seerrStatus(v[SEERR] as SeerrState),
         )
         return SettingsUiState(
             pages = settingsPages(values),
@@ -558,6 +564,16 @@ class SettingsViewModel(
     }
 }
 
+// The Seerr row's value; null hides it.
+private fun seerrStatus(state: SeerrState): String? = when (state) {
+    SeerrState.Hidden -> null
+    SeerrState.NotSet -> Strings.seerrNotSetUp
+    is SeerrState.Off -> Strings.seerrOff
+    is SeerrState.Connecting -> Strings.seerrSigningIn
+    is SeerrState.Ready -> Strings.seerrConnected
+    is SeerrState.NeedsPassword, is SeerrState.Unavailable -> Strings.seerrNotSignedIn
+}
+
 // A source's value as the type its flow has; [combine] hands them over as `Any?`.
 @Suppress("UNCHECKED_CAST")
 private fun <T> Any?.cast(): T = this as T
@@ -613,5 +629,6 @@ private const val SEARCHES = 34
 private const val CLOSE_PAGE = 35
 private const val CONFIRM_PURGE_DOWNLOADS = 36
 private const val SWIPE_GESTURES = 37
+private const val SEERR = 38
 
 private const val MB_PER_GB = 1_000L

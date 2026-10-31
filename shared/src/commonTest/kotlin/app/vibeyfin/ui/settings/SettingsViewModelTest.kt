@@ -10,6 +10,7 @@ import app.vibeyfin.domain.DevicePreferences
 import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.PinResult
 import app.vibeyfin.domain.ProfileSettings
+import app.vibeyfin.domain.SeerrConnection
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.SubtitleMode
 import app.vibeyfin.domain.hashPin
@@ -87,9 +88,43 @@ class SettingsViewModelTest {
         profileSettings: ProfileSettings = app.profileSettings,
         pins: PinLock = app.pins,
         appVersion: String = "",
+        seerr: SeerrConnection? = null,
     ) = viewModels.track(
-        SettingsViewModel(preferences, profileSettings, app.connection, app.servers, pins, app.policy, app.languages, app.auth, app.downloadRepository, applicationScope, appVersion),
+        SettingsViewModel(preferences, profileSettings, app.connection, app.servers, pins, app.policy, app.languages, app.auth, app.downloadRepository, applicationScope, appVersion, seerr = seerr),
     )
+
+    @Test
+    fun `the Seerr row shows where the profile stands with Seerr and leads to its page`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel(seerr = app.seerr)
+
+        val row = viewModel.uiState.first { it.rootKeys().contains(SettingKey.Seerr) }.item(SettingKey.Seerr) as LinkItem
+
+        assertEquals(Strings.seerrNotSetUp, row.value)
+        assertEquals(SettingsPageId.Seerr, row.target)
+        assertTrue(SettingsPageId.Seerr in viewModel.uiState.value.pages)
+        // Its group, Requests, sits between Notifications and Kids and PIN.
+        val titles = viewModel.uiState.value.page(SettingsPageId.Root).sections.mapNotNull { it.title }
+        assertEquals(listOf(Strings.notificationsTitle, Strings.requestsSection, Strings.settingsGroupKids), titles.subList(2, 5))
+    }
+
+    @Test
+    fun `a kids profile has no Seerr row`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel(seerr = app.seerr)
+        viewModel.uiState.first { it.rootKeys().contains(SettingKey.Seerr) }
+
+        app.profileSettings.setKidsProfile(true)
+
+        assertFalse(viewModel.uiState.first { it.kidsProfile }.rootKeys().contains(SettingKey.Seerr))
+    }
+
+    @Test
+    fun `without Seerr wired in the row is hidden`() = runTest {
+        app.signedIn()
+
+        assertFalse(viewModel().uiState.first { !it.locked }.rootKeys().contains(SettingKey.Seerr))
+    }
 
     /**
      * A database whose reads wait until [release], like Room still opening on a cold start. It holds no rows, as for a profile that has
@@ -341,7 +376,7 @@ class SettingsViewModelTest {
     private fun SettingsPage.keys() = sections.flatMap { section -> section.items.map { it.key } }
 
     @Test
-    fun `the root has its seven groups in the designed order`() = runTest {
+    fun `the root has its groups in the designed order`() = runTest {
         app.signedIn()
         val root = viewModel().uiState.first { it.hasProfile }.page(SettingsPageId.Root)
 

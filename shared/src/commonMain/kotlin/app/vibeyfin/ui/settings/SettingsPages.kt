@@ -86,6 +86,8 @@ data class SettingsValues(
     val languageStatus: LanguageStatus = LanguageStatus.Loading,
     /** What is typed in each page's search field. */
     val searches: Map<SettingsPageId, String> = emptyMap(),
+    /** Where this profile stands with Seerr, as the root row shows it; null hides the row (a kids profile, nobody signed in). */
+    val seerrStatus: String? = null,
 )
 
 /** Every page the shared code builds, keyed by its id. */
@@ -99,7 +101,11 @@ fun settingsPages(values: SettingsValues): Map<SettingsPageId, SettingsPage> = l
     skippingPage(values),
     kidsAndPinPage(values),
     notificationsPage(values),
+    seerrPage(),
 ).associateBy { it.id }
+
+/** The Seerr page's place in the tree. Its content is each app's own Seerr screen ([app.vibeyfin.ui.seerr.SeerrSettingsViewModel]). */
+fun seerrPage(): SettingsPage = SettingsPage(SettingsPageId.Seerr, Strings.seerr, emptyList())
 
 /** A kids profile has no Sign out: only the password, which a child should not know, gets past its PIN. */
 fun profilePage(v: SettingsValues): SettingsPage {

@@ -14,6 +14,7 @@ import app.vibeyfin.ui.person.PersonViewModel
 import app.vibeyfin.ui.playback.PlaybackViewModel
 import app.vibeyfin.ui.profile.ProfileMenuViewModel
 import app.vibeyfin.ui.search.SearchViewModel
+import app.vibeyfin.ui.seerr.SeerrSettingsViewModel
 import app.vibeyfin.ui.servers.ServersViewModel
 import app.vibeyfin.ui.settings.SettingsViewModel
 import app.vibeyfin.ui.startup.StartupViewModel
@@ -50,8 +51,9 @@ fun appModule() = module {
     viewModelOf(::NotificationOpenViewModel)
     viewModel {
         val device = get<DeviceInfo>()
-        SettingsViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(ApplicationScope), device.appVersion, device.subtitleStyleApplies)
+        SettingsViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(ApplicationScope), device.appVersion, device.subtitleStyleApplies, seerr = get())
     }
     viewModelOf(::AppBannerViewModel)
     viewModelOf(::DownloadsViewModel)
+    viewModel { SeerrSettingsViewModel(get(), get(), get(), get(ApplicationScope)) }
 }

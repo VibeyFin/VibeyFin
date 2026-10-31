@@ -975,4 +975,57 @@ object Strings {
     fun downloadDescription(title: String) = "Download $title"
 
     fun storageLimitGb(gb: Int) = "$gb GB"
+
+    // Seerr: connecting it in Settings. Errors are in SeerrMessages.
+    val requestsSection = "Requests"
+    val seerr = "Seerr"
+    val seerrRowHelp = "Find and request titles that aren\u2019t in your library."
+    val seerrNotSetUp = "Not set up"
+    val seerrConnected = "Connected"
+    val seerrOff = "Off"
+    val seerrNotSignedIn = "Not signed in"
+    val seerrLead = "Connect Seerr to find and request titles that aren\u2019t in your library yet."
+    val seerrAddress = "Seerr address"
+    val seerrAddressPlaceholder = "requests.example.org"
+    val seerrAddressHelp = "Set up once for this server. Every profile signs in by itself, with no password."
+    val seerrAddressSharedHelp = "Other profiles on this server use this address. Changing it changes it for them too."
+    val seerrConnecting = "Connecting\u2026"
+    val seerrSigningIn = "Signing in\u2026"
+    val seerrServerSection = "Seerr"
+    val seerrAddressRow = "Address"
+    val seerrVersion = "Version"
+    val seerrThisProfile = "This profile"
+
+    fun seerrSignedInAs(name: String) = "Signed in as $name"
+
+    val seerrSignedInAutomatically = "Signed in automatically"
+    val seerrSignedInWithPassword = "Signed in with your password"
+    val seerrSignInWithPassword = "Sign in with password"
+    val seerrChangeAddress = "Change address"
+    val seerrRequestsLeft = "Requests left"
+
+    /** What is left of the quota, for the kinds that have one: "3 movies, 2 seasons". Seerr counts a show's requests in seasons. */
+    fun seerrQuotaLeft(movies: Int?, seasons: Int?) = listOfNotNull(
+        movies?.let { if (it == 1) "1 movie" else "$it movies" },
+        seasons?.let { if (it == 1) "1 season" else "$it seasons" },
+    ).joinToString(", ")
+
+    /** How often the quota starts again, when Seerr says. */
+    fun seerrQuotaPeriod(days: Int) = if (days == 1) {
+        "Every day"
+    } else if (days == 7) {
+        "Every week"
+    } else {
+        "Every $days days"
+    }
+
+    val seerrDisconnect = "Disconnect Seerr"
+    val seerrDisconnectHelp = "Signs this profile out of Seerr and hides it here. Other profiles on this server keep it. Your requests stay in Seerr."
+    val seerrDisconnectConfirmTitle = "Disconnect Seerr?"
+    val seerrDisconnectConfirmMessage = "This profile is signed out of Seerr and stops seeing it. Other profiles on this server keep it."
+    val seerrDisconnectConfirm = "Disconnect"
+    val seerrPasswordTitle = "Sign in to Seerr"
+    val seerrPasswordReason = "Quick Connect is off on your Jellyfin server, so Seerr needs your Jellyfin password once."
+    val seerrPasswordNotKept = "VibeyFin doesn\u2019t keep your password."
+    val seerrUser = "User"
 }
