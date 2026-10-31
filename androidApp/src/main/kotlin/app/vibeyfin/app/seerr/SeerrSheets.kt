@@ -25,14 +25,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -183,29 +187,35 @@ private fun ColumnScope.SeasonPickerContent(
     }
 }
 
-// The quality to ask for: one row with the chosen profile and a chevron, opening a plain dropdown of the server's profiles (no
-// search). The default is chosen to begin with.
+// The quality to ask for: M3's exposed dropdown, a read-only field with the chosen profile that opens a plain list of the server's
+// profiles (no search) right under it, as wide as the field. The default is chosen to begin with.
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun QualityDropdown(picker: SeerrSeasonPicker, onProfile: (Int) -> Unit) {
     var open by remember { mutableStateOf(false) }
     val chosen = picker.qualities.firstOrNull { it.selected }
 
-    Box(Modifier.padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s2)) {
-        Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).clickable(enabled = !picker.qualitiesLoading, role = Role.DropdownList) { open = true }
-                .padding(vertical = VibeyFinTokens.Space.s3)
-                .semantics(mergeDescendants = true) { },
-            verticalAlignment = Alignment.CenterVertically,
+    ExposedDropdownMenuBox(
+        expanded = open,
+        onExpandedChange = { if (!picker.qualitiesLoading) open = it },
+        modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s2),
+    ) {
+        OutlinedTextField(
+            value = if (picker.qualitiesLoading) "" else chosen?.name.orEmpty(),
+            onValueChange = {},
+            readOnly = true,
+            singleLine = true,
+            enabled = !picker.qualitiesLoading,
+            label = { Text(Strings.seerrQuality) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = open) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+        )
+        ExposedDropdownMenu(
+            expanded = open,
+            onDismissRequest = { open = false },
+            shape = RoundedCornerShape(16.dp),
+            containerColor = VibeyFinTokens.Colors.surface2,
         ) {
-            Text(Strings.seerrQuality, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-            if (picker.qualitiesLoading) {
-                SkeletonLine(96.dp, MaterialTheme.typography.bodyLarge)
-            } else {
-                Text(chosen?.name.orEmpty(), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        VibeyFinMenu(expanded = open, onDismiss = { open = false }) {
             picker.qualities.forEach { quality ->
                 VibeyFinMenuItem(quality.name, icon = null, selected = quality.selected) {
                     open = false
