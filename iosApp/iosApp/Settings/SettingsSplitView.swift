@@ -81,7 +81,13 @@ struct SettingsSplitView: View {
                 if let link = selectedLink {
                     // A link inside a page pushes over the detail.
                     NavigationStack {
-                        SettingsPageView(pageId: link.target, model: model, onExit: onExit)
+                        Group {
+                            if link.target == .seerr {
+                                SeerrSettingsView(onLeave: { storedRow = "" })
+                            } else {
+                                SettingsPageView(pageId: link.target, model: model, onExit: onExit)
+                            }
+                        }
                             .navigationDestination(for: TabRoute.self) { route in
                                 if case .settingsPage(let id) = route {
                                     SettingsPageView(pageId: id, model: model, onExit: onExit)

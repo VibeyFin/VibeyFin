@@ -292,7 +292,12 @@ struct TabShell: View {
                     case .settings:
                         if let model = settings.current { SettingsEntryView(model: model, onExit: onExit) }
                     case .settingsPage(let id):
-                        if let model = settings.current { SettingsPageView(pageId: id, model: model, onExit: onExit) }
+                        if id == .seerr {
+                            // Seerr has an address field, which the shared Settings rows don't draw.
+                            SeerrSettingsView()
+                        } else if let model = settings.current {
+                            SettingsPageView(pageId: id, model: model, onExit: onExit)
+                        }
                     case .children(let parentId, let title):
                         ChildrenView(parentId: parentId, title: title, onOpen: { open($0, in: path) }, onOpenSeries: { path.wrappedValue.append(.item(itemId: $0)) }, onExit: onExit)
                     case .item(let itemId):
