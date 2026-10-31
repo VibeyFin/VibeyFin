@@ -170,19 +170,16 @@ struct SearchView: View {
         }
     }
 
-    /// Seerr's titles that aren't in the library, always last: the heading (left out when the filter shows nothing else), a note,
-    /// then the tiles, three grey tiles while Seerr answers, or why it didn't.
+    /// Seerr's titles that aren't in the library, always last: the heading (left out when the filter shows nothing else), then the
+    /// tiles, three grey tiles while Seerr answers, or why it didn't.
     @ViewBuilder
     private func seerrGroup(_ seerr: SeerrSearch, titled: Bool) -> some View {
-        VStack(alignment: .leading, spacing: Space.s1) {
-            if titled {
-                Text(Strings.shared.seerrNotInLibrary.titleCased())
-                    .sectionTitle()
-                    .accessibilityAddTraits(.isHeader)
-            }
-            Text(Strings.shared.seerrSearchNote).font(.footnote).foregroundStyle(.secondary)
+        if titled {
+            Text(Strings.shared.seerrNotInLibrary.titleCased())
+                .sectionTitle()
+                .accessibilityAddTraits(.isHeader)
+                .padding(.top, Space.s3)
         }
-        .padding(.top, Space.s3)
         if let failed = seerr as? SeerrSearchFailed {
             LoadErrorView(message: failed.message, onRetry: { model.retrySeerr() })
         } else {
@@ -199,12 +196,7 @@ struct SearchView: View {
                             .accessibilityAction(named: Strings.shared.showOptions) { seerrMenu?.open(title) }
                     }
                 } else {
-                    ForEach(0..<3, id: \.self) { _ in
-                        VStack(alignment: .leading, spacing: Space.s2) {
-                            SkeletonBlock().aspectRatio(2.0 / 3.0, contentMode: .fit)
-                            SkeletonLine(font: .subheadline, width: 80)
-                        }
-                    }
+                    ForEach(0..<3, id: \.self) { _ in SeerrPosterPlaceholder() }
                 }
             }
         }

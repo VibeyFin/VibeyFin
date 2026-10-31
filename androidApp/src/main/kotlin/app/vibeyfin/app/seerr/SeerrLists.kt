@@ -51,7 +51,6 @@ import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FilterChipButton
 import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.LoadError
-import app.vibeyfin.app.components.PosterSkeletonRow
 import app.vibeyfin.app.components.SectionTitle
 import app.vibeyfin.app.components.SkeletonBlock
 import app.vibeyfin.app.components.bleed
@@ -108,7 +107,10 @@ fun SeerrRowSection(row: SeerrRow, margin: Dp, onOpen: (SeerrTitle) -> Unit, onS
         }
 
         if (row.loading) {
-            PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin))
+            // Laid out like the real tiles, so nothing under the row moves when they arrive
+            Row(Modifier.bleed(margin).padding(horizontal = margin), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
+                repeat(PLACEHOLDER_TILES) { SeerrPosterPlaceholder(Modifier.width(VibeyFinTokens.Size.posterWidth)) }
+            }
         } else {
             LazyRow(
                 modifier = Modifier.bleed(margin),
@@ -126,8 +128,6 @@ fun SeerrRowSection(row: SeerrRow, margin: Dp, onOpen: (SeerrTitle) -> Unit, onS
                 }
             }
         }
-
-        row.note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
@@ -291,6 +291,8 @@ private fun MoreSpinner() {
 }
 
 private val GRID_MIN_WIDTH = 110.dp
+
+private const val PLACEHOLDER_TILES = 4
 
 // The next page is asked for when the list is this close to its end.
 private const val LOAD_MORE_BEFORE = 6

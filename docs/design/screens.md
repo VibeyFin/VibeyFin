@@ -311,8 +311,7 @@ Only once the profile is signed in to Seerr, never on a kids profile. The refere
 "Screens · Seerr" group: `SeerrSettingsPhone`, `SeerrSearchPhone`, `SeerrRequestPhone`, `SeerrRequestSheet`, `HomeRequestsPhone`,
 `HomeDiscoverPhone`.
 
-- **Search:** "Not in your library" is the last group, with the note "From Seerr. Press and hold to request." and a "Not in
-  library" filter chip. When the library has nothing, a line says so above it.
+- **Search:** "Not in your library" is the last group, with a "Not in library" filter chip. When the library has nothing, a line says so above it.
 - **Home:** My requests right after Continue watching; Trending, Popular movies, Popular shows and Coming soon after the
   library's rows and before the genres. Each loads on its own and is hidden when empty or failing.
 - **Title page:** the detail page's hero and layout. Status line in ink with its icon (danger for a failure). One aqua button:

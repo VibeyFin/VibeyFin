@@ -47,8 +47,6 @@ data class SeerrRow(
     val title: String,
     val titles: List<SeerrTitle> = emptyList(),
     val loading: Boolean = true,
-    /** The one quiet line the first discover row carries: "From Seerr. Press and hold to request." */
-    val note: String? = null,
     /** Coming soon: the tiles show the release day ("Dec 12") instead of the year and kind. */
     val showsDates: Boolean = false,
 ) {
@@ -56,7 +54,7 @@ data class SeerrRow(
 }
 
 data class SeerrHomeUiState(
-    /** "My requests", right after Continue watching; null when there is nothing recent to show or no Seerr. */
+    /** "My requests", right after Continue watching; null while it loads, when there is nothing recent to show, or no Seerr. */
     val requests: SeerrRow? = null,
     /** Trending, Popular movies, Popular shows, Coming soon: after the library's rows, before the genre rows. Only visible rows. */
     val discover: List<SeerrRow> = emptyList(),
@@ -163,15 +161,16 @@ class SeerrHomeViewModel(
     private suspend fun loadAll(quiet: Boolean = false) = coroutineScope {
         if (!quiet) {
             content.value = SeerrHomeUiState(
-                requests = SeerrRow(null, Strings.seerrMyRequests),
-                discover = SeerrListKind.entries.mapIndexed { index, kind -> row(kind, index, emptyList(), loading = true) },
+                // My requests is often empty: it appears once it has something rather than holding grey posters that then vanish.
+                requests = null,
+                discover = SeerrListKind.entries.map { kind -> row(kind, emptyList(), loading = true) },
             )
         }
         launch { loadRequests() }
-        SeerrListKind.entries.forEachIndexed { index, kind ->
+        SeerrListKind.entries.forEach { kind ->
             launch {
                 val found = (repository.page(kind, 1) as? ApiResult.Success)?.value?.titles.orEmpty().take(ROW_SIZE)
-                content.update { state -> state.copy(discover = state.discover.replaceRow(kind, row(kind, index, found, loading = false)).filter { it.isVisible }) }
+                content.update { state -> state.copy(discover = state.discover.replaceRow(kind, row(kind, found, loading = false)).filter { it.isVisible }) }
             }
         }
     }
@@ -190,20 +189,15 @@ class SeerrHomeViewModel(
         content.update { it.copy(requests = SeerrRow(null, Strings.seerrMyRequests, tiles, loading = false).takeIf { row -> row.isVisible }) }
     }
 
-    private fun row(kind: SeerrListKind, index: Int, found: List<SeerrTitle>, loading: Boolean) = SeerrRow(
+    private fun row(kind: SeerrListKind, found: List<SeerrTitle>, loading: Boolean) = SeerrRow(
         kind = kind,
         title = kind.title(),
         titles = found,
         loading = loading,
-        note = Strings.seerrDiscoverNote.takeIf { index == 0 },
         showsDates = kind == SeerrListKind.ComingSoon,
     )
 
-    // The note goes with whichever discover row comes first once the empty ones are gone.
-    private fun List<SeerrRow>.replaceRow(kind: SeerrListKind, row: SeerrRow): List<SeerrRow> {
-        val rows = if (any { it.kind == kind }) map { if (it.kind == kind) row else it } else (this + row).sortedBy { it.kind?.ordinal }
-        return rows.mapIndexed { index, shown -> shown.copy(note = Strings.seerrDiscoverNote.takeIf { index == 0 }) }
-    }
+    private fun List<SeerrRow>.replaceRow(kind: SeerrListKind, row: SeerrRow): List<SeerrRow> = if (any { it.kind == kind }) map { if (it.kind == kind) row else it } else (this + row).sortedBy { it.kind?.ordinal }
 
     private companion object {
         const val ROW_SIZE = 20

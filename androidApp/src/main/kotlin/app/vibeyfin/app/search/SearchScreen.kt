@@ -75,6 +75,7 @@ import app.vibeyfin.app.components.TabHeader
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.navigation.LocalSeerrLongPress
 import app.vibeyfin.app.navigation.LocalTileLongPress
+import app.vibeyfin.app.seerr.SeerrPosterPlaceholder
 import app.vibeyfin.app.seerr.SeerrPosterTile
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
@@ -303,24 +304,18 @@ private fun Results(state: SearchUiState, margin: Dp, onOpen: (SearchResult) -> 
     }
 }
 
-// Seerr's titles that aren't in the library, always last: the heading (left out when the filter shows nothing else), a note, then
-// the tiles, three grey tiles while Seerr answers, or why it didn't
+// Seerr's titles that aren't in the library, always last: the heading (left out when the filter shows nothing else), then the
+// tiles, three grey tiles while Seerr answers, or why it didn't
 @OptIn(ExperimentalFoundationApi::class)
 private fun LazyGridScope.seerrGroup(seerr: SeerrSearch, titled: Boolean, onRetry: () -> Unit, onOpen: (SeerrTitle) -> Unit, onLongPress: ((SeerrTitle) -> Unit)?) {
-    item(key = "seerr-heading", span = { GridItemSpan(maxLineSpan) }) {
-        Column(Modifier.padding(top = VibeyFinTokens.Space.s3), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
-            if (titled) SectionTitle(Strings.seerrNotInLibrary, modifier = Modifier.semantics { heading() })
-            Text(Strings.seerrSearchNote, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    if (titled) {
+        item(key = "seerr-heading", span = { GridItemSpan(maxLineSpan) }) {
+            SectionTitle(Strings.seerrNotInLibrary, modifier = Modifier.padding(top = VibeyFinTokens.Space.s3).semantics { heading() })
         }
     }
 
     when (seerr) {
-        SeerrSearch.Searching -> items(SEERR_SKELETON_TILES, key = { "seerr-skeleton-$it" }) {
-            Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-                SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(2f / 3f))
-                SkeletonLine(80.dp, MaterialTheme.typography.titleSmall)
-            }
-        }
+        SeerrSearch.Searching -> items(SEERR_SKELETON_TILES, key = { "seerr-skeleton-$it" }) { SeerrPosterPlaceholder(Modifier.fillMaxWidth()) }
 
         is SeerrSearch.Found -> gridItems(seerr.titles, key = { "seerr-${it.type}-${it.tmdbId}" }) { title ->
             // A tap opens its Seerr page; a long press its Seerr menu (Request, Details, Trailer)

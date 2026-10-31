@@ -76,7 +76,7 @@ class SeerrListsTest {
     private suspend fun <T> Flow<T>.await(predicate: (T) -> Boolean): T = withContext(Dispatchers.Default) { withTimeout(5.seconds) { first(predicate) } }
 
     @Test
-    fun homeShowsTheDiscoverRowsThatHaveTitlesWithTheNoteOnTheFirst() = runTest {
+    fun homeShowsTheDiscoverRowsThatHaveTitles() = runTest {
         connected()
         val home = viewModels.track(SeerrHomeViewModel(app.seerr, app.seerrRepository, app.clock))
 
@@ -84,8 +84,6 @@ class SeerrListsTest {
 
         // Popular shows came back empty, so it isn't there.
         assertEquals(listOf(SeerrListKind.Trending, SeerrListKind.PopularMovies, SeerrListKind.ComingSoon), state.discover.map { it.kind })
-        assertEquals(Strings.seerrDiscoverNote, state.discover.first().note)
-        assertNull(state.discover[1].note)
         assertEquals(listOf("Low Tide", "Tidewater"), state.discover.first().titles.map { it.title })
         // Coming soon puts movies and shows together by date, and shows the dates.
         val soon = state.discover.last()

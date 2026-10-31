@@ -56,7 +56,13 @@ struct SeerrRowView: View {
             }
             .screenMargin()
             if row.loading {
-                PosterSkeletonRow().screenMargin()
+                // Laid out like the real tiles, so nothing under the row moves when they arrive.
+                HStack(alignment: .top, spacing: Space.s3) {
+                    ForEach(0..<4, id: \.self) { _ in SeerrPosterPlaceholder().frame(width: 112) }
+                }
+                .screenMargin()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .clipped()
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: Space.s3) {
@@ -72,9 +78,6 @@ struct SeerrRowView: View {
                     }
                     .screenMargin()
                 }
-            }
-            if let note = row.note {
-                Text(note).font(.footnote).foregroundStyle(.secondary).screenMargin()
             }
         }
     }

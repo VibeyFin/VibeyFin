@@ -1033,7 +1033,6 @@ object Strings {
 
     // Seerr titles in search, and Seerr posters anywhere
     val seerrNotInLibrary = "Not in your library"
-    val seerrSearchNote = "From Seerr. Press and hold to request."
     val seerrNotInLibraryChip = "Not in library"
 
     fun libraryNoMatch(query: String) = "Nothing in your library matches \u201c$query\u201d."
@@ -1137,7 +1136,6 @@ object Strings {
     val seerrPopularMovies = "Popular movies"
     val seerrPopularShows = "Popular shows"
     val seerrComingSoon = "Coming soon"
-    val seerrDiscoverNote = "From Seerr. Press and hold to request."
     val seerrNoRequests = "You haven\u2019t requested anything yet. Search for a title that isn\u2019t in your library to request it."
     val seerrFilterWaiting = "Waiting"
     val seerrFilterApproved = "Approved"
