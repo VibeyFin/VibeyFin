@@ -414,7 +414,7 @@ class SeerrTitleViewModel(
             state = title.state,
             status4k = details.state4k.takeIf { it != RequestState.NotRequested }
                 ?.let { Strings.seerr4kLine(Strings.seerrStatusLine(it, latest4k?.byMe == true, latest4k?.takeIf { request -> !request.byMe }?.requestedBy)) },
-            primary = primary(title.state, mayRequest, missing = requestable(is4k = false).isNotEmpty()),
+            primary = primary(title.state, mayRequest, missing = defaultSeasons(is4k = false).isNotEmpty()),
             trailerUrl = details.trailerUrl,
             offer4k = offer4k && type == SeerrMediaType.Movie,
             cancelRequestId = details.requests.filter { it.byMe && it.pendingApproval }.maxByOrNull { it.id }?.id,
@@ -427,7 +427,7 @@ class SeerrTitleViewModel(
             menuSubtitle = Strings.seerrMenuSubtitle(Strings.seerrTitleMeta(title.year, title.type), title.state),
             menuStatus = Strings.seerrStateLabel(title.state),
             menuStatusDetail = if (title.state == RequestState.NotRequested) null else menuDetail(title.state, latest),
-            canRequest = mayRequest && primary(title.state, mayRequest = true, missing = requestable(is4k = false).isNotEmpty()).enabled,
+            canRequest = mayRequest && primary(title.state, mayRequest = true, missing = defaultSeasons(is4k = false).isNotEmpty()).enabled,
             // The picker keeps 4K open after a reload only if it is still offered
             picker = current.picker?.takeIf { !it.is4k || offer4k },
         )
@@ -462,7 +462,8 @@ class SeerrTitleViewModel(
         state == RequestState.NotRequested || state == RequestState.Declined
     }
 
-    // "All missing seasons": every requestable season but Specials.
+    // "All missing seasons": every requestable season but Specials. Request stays offered on a show only while one of these is left:
+    // Specials alone, never asked for by default, doesn't keep it.
     private fun defaultSeasons(is4k: Boolean): Set<Int> = requestable(is4k).map { it.number }.filter { it != 0 }.toSet()
 
     private fun picker(is4k: Boolean, chosen: Set<Int>, allMissing: Boolean): SeerrSeasonPicker {

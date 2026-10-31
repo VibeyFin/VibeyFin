@@ -74,8 +74,10 @@ internal fun requestState(status: Int, requests: List<SeerrRequestDto>, is4k: Bo
 
         MEDIA_PENDING -> RequestState.Requested
 
+        // Seerr hasn't marked the title (or season) yet: an approved request it hasn't passed on still counts as asked for
         else -> when (latest?.status) {
             REQUEST_PENDING -> RequestState.Requested
+            REQUEST_APPROVED -> RequestState.Approved
             REQUEST_DECLINED -> RequestState.Declined
             REQUEST_FAILED -> RequestState.Failed
             else -> RequestState.NotRequested

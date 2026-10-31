@@ -318,6 +318,36 @@ class SeerrTitleViewModelTest {
     }
 
     @Test
+    fun aShowWithEverySeasonButSpecialsRequestedOffersNoMoreRequests() = runTest {
+        // A limited series: Specials and one season, which was asked for (approved at once, before Seerr marked the season).
+        val limited = """{"id":19885,"name":"Low Tide","seasons":[{"seasonNumber":0,"name":"Specials","episodeCount":2},
+            {"seasonNumber":1,"name":"Limited Series","episodeCount":6}],"mediaInfo":{"status":3,"seasons":[],
+            "requests":[{"id":5,"status":2,"type":"tv","requestedBy":{"id":7},"seasons":[{"seasonNumber":1,"status":2}]}]}}"""
+        connected { onSignedIn("GET", "/api/v1/tv/19885") { Reply.json(limited) } }
+        val page = viewModel(SeerrMediaType.Show, 19885).await { !it.loading }
+
+        assertFalse(page.primary!!.enabled)
+        assertFalse(page.canRequest)
+        assertEquals(RequestState.Approved, page.seasons.first { it.number == 1 }.state)
+    }
+
+    @Test
+    fun aSeasonWithAnApprovedRequestSeerrHasNotMarkedYetIsNotRequestableAgain() = runTest {
+        connected {
+            onSignedIn("GET", "/api/v1/tv/19885") {
+                Reply.json(showJson("""{"status":3,"seasons":[],"requests":[{"id":5,"status":2,"type":"tv","requestedBy":{"id":7},"seasons":[{"seasonNumber":2,"status":2}]}]}"""))
+            }
+        }
+        val viewModel = viewModel(SeerrMediaType.Show, 19885)
+        val page = viewModel.await { !it.loading }
+
+        assertEquals(RequestState.Approved, page.seasons.first { it.number == 2 }.state)
+        assertTrue(page.primary!!.enabled)
+        viewModel.onRequest()
+        assertTrue(viewModel.uiState.value.picker!!.seasons.first { it.number == 2 }.locked)
+    }
+
+    @Test
     fun aTitleInTheLibraryOpensTheLibrarysPageInstead() = runTest {
         connected {
             onSignedIn("GET", "/api/v1/tv/19885") { Reply.json(showJson("""{"status":5,"jellyfinMediaId":"jf-1"}""")) }
