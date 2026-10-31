@@ -42,10 +42,16 @@ class AccountRepository(
 
     /**
      * Drops the token but keeps the profile, which then shows as locked. Used for a 401 and for
-     * an explicit sign-out; nothing else ends a session.
+     * an explicit sign-out; nothing else ends a session. The profile's Seerr session goes too: it
+     * signs in to Seerr again once the profile is signed in again.
      */
     suspend fun expire(serverId: String, userId: String) {
-        val sealed = dao.getAccount(serverId, userId)?.sealedToken ?: return
+        val account = dao.getAccount(serverId, userId) ?: return
+        account.sealedSeerrSession?.let { seerr ->
+            dao.clearSeerrSession(serverId, userId)
+            vault.discard(seerr)
+        }
+        val sealed = account.sealedToken ?: return
         dao.clearToken(serverId, userId)
         vault.discard(sealed)
     }
