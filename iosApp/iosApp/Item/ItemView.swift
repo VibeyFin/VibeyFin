@@ -235,7 +235,7 @@ struct ItemView: View {
 
 /// How far the scroll view around it has scrolled, read from the `UIScrollView` itself: SwiftUI's own geometry preferences don't
 /// report a scroll that is under way. Put inside a `ScrollView`'s content; 0 at the top, growing as the page scrolls up.
-private struct ScrollOffsetReader: UIViewRepresentable {
+struct ScrollOffsetReader: UIViewRepresentable {
     let onChange: (CGFloat) -> Void
 
     func makeUIView(context: Context) -> ReaderView { ReaderView() }

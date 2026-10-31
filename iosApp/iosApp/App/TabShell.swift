@@ -13,6 +13,8 @@ enum TabRoute: Hashable {
     case person(personId: String)
     /// A category page: `kind` is `shows`, `movies`, `new` or `genre`; `id` and `name` are the genre's own.
     case filtered(kind: String, id: String?, name: String?)
+    /// The Seerr page of a title that isn't in the library, by TMDB id.
+    case seerrTitle(type: SeerrMediaType, tmdbId: Int32)
 }
 
 private extension TabRoute {
@@ -61,6 +63,7 @@ struct TabShell: View {
     @State private var selection: MainTab = .home
     @Namespace private var zoomNamespace
     @StateObject private var tileMenu = TileMenuObservable()
+    @StateObject private var seerrMenu = SeerrMenuOpener()
     /// One shared Settings ViewModel for the whole page tree, made again each time Settings opens so the PIN to open it is asked every time.
     @State private var settings = SettingsSession()
     @StateObject private var player = PlayerSession()
@@ -139,6 +142,7 @@ struct TabShell: View {
 
             stack($searchPath) {
                 SearchView(
+                    onOpenSeerr: { openSeerr($0, in: $searchPath) },
                     onOpenResult: { result in
                         // Offline there is no page to open: what was found is on the device, so it plays (a show opens its downloads).
                         if offline {
@@ -215,6 +219,35 @@ struct TabShell: View {
                 )
             }
         }
+        .environment(\.seerrMenu, seerrMenu)
+        // The long-press menu of a Seerr poster, wherever the poster is.
+        .sheet(isPresented: Binding(get: { seerrMenu.title != nil }, set: { if !$0 { seerrMenu.close() } })) {
+            if let title = seerrMenu.title {
+                SeerrMenuSheetView(
+                    title: title,
+                    onDetails: {
+                        seerrMenu.close()
+                        openSeerrFromMenu(title)
+                    },
+                    onTrailer: { trailer in
+                        seerrMenu.close()
+                        if let url = URL(string: trailer) { openURL(url) }
+                    },
+                    onNotice: { notice in
+                        seerrMenu.noticeTitle = title
+                        seerrMenu.notice = notice
+                    },
+                    onDismiss: { seerrMenu.close() }
+                )
+            }
+        }
+        // What a request from a Seerr poster menu came to, over whatever screen the menu was on.
+        .seerrNoticeBanner(
+            seerrMenu.notice,
+            showsAction: seerrMenu.notice?.action == .view,
+            onAction: { if let title = seerrMenu.noticeTitle { openSeerrFromMenu(title) } },
+            onDismiss: { seerrMenu.notice = nil }
+        )
         .environment(\.playerSession, player)
         // Playback covers the tabs, and goes out of sight while picture-in-picture plays, so the page it was opened from shows.
         .overlay {
@@ -279,6 +312,25 @@ struct TabShell: View {
         }
     }
 
+    /// A Seerr title: the library's page when the library has it, otherwise Seerr's.
+    private func openSeerr(_ title: SeerrTitle, in path: Binding<[TabRoute]>) {
+        if let itemId = title.jellyfinItemId {
+            path.wrappedValue.append(.item(itemId: itemId))
+        } else {
+            path.wrappedValue.append(.seerrTitle(type: title.type, tmdbId: title.tmdbId))
+        }
+    }
+
+    /// Details (or View) from a Seerr poster's menu: opens in the tab on screen.
+    private func openSeerrFromMenu(_ title: SeerrTitle) {
+        switch selection {
+        case .home: openSeerr(title, in: $homePath)
+        case .search: openSeerr(title, in: $searchPath)
+        case .library: openSeerr(title, in: $libraryPath)
+        case .downloads: openSeerr(title, in: $downloadsPath)
+        }
+    }
+
     /// A folder opens its list; anything else opens its page.
     private func open(_ item: MediaItem, in path: Binding<[TabRoute]>) {
         path.wrappedValue.append(item.opensList ? .children(parentId: item.id, title: item.title) : .item(itemId: item.id))
@@ -310,6 +362,17 @@ struct TabShell: View {
                         if let filter = route.filter() {
                             FilteredListView(filter: filter, onOpen: { open($0, in: path) }, onExit: onExit)
                         }
+                    case .seerrTitle(let type, let tmdbId):
+                        SeerrTitleView(
+                            type: type,
+                            tmdbId: tmdbId,
+                            // The library has it: its own page takes this one's place.
+                            onOpenItem: { itemId in
+                                if !path.wrappedValue.isEmpty { path.wrappedValue.removeLast() }
+                                path.wrappedValue.append(.item(itemId: itemId))
+                            },
+                            onOpenSeerr: { openSeerr($0, in: path) }
+                        )
                     }
                 }
         }

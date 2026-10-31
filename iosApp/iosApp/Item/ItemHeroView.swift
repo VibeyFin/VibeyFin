@@ -38,14 +38,29 @@ struct ItemHeroView: View {
 /// darkens (`progress`, 0 at the top to 1 once about half of it has scrolled by) so what scrolls over it reads. The scrim is a band at
 /// the top for the bar, clear through the middle so the picture reads, then darker towards the text, ending in the page's own colour.
 struct PinnedItemBackdrop: View {
-    let item: MediaItem
+    let title: String
+    let url: String?
+    let blurHash: String?
     let height: CGFloat
     let progress: CGFloat
 
+    init(item: MediaItem, height: CGFloat, progress: CGFloat) {
+        self.init(title: item.title, url: item.backdropUrl ?? item.posterUrl, blurHash: item.backdropUrl != nil ? item.backdropBlurHash : item.posterBlurHash, height: height, progress: progress)
+    }
+
+    /// For a picture that isn't a library item's, such as a Seerr title's.
+    init(title: String, url: String?, blurHash: String?, height: CGFloat, progress: CGFloat) {
+        self.title = title
+        self.url = url
+        self.blurHash = blurHash
+        self.height = height
+        self.progress = progress
+    }
+
     var body: some View {
         ZStack {
-            if let url = item.backdropUrl ?? item.posterUrl {
-                Artwork(url: url, title: item.title, aspectRatio: 2.0 / 3.0, blurHash: item.backdropUrl != nil ? item.backdropBlurHash : item.posterBlurHash)
+            if let url {
+                Artwork(url: url, title: title, aspectRatio: 2.0 / 3.0, blurHash: blurHash)
             } else {
                 // Nothing to show behind the title: a plain tile.
                 Color(.tertiarySystemBackground)
@@ -75,18 +90,32 @@ struct PinnedItemBackdrop: View {
 /// page scrolls (`progress` from 0 at the top to 1 once the first screen is gone), so what scrolls up reads on it. A scrim from the
 /// left sits behind the first screen's column of text, and a band at the top behind the back button.
 struct WideItemBackdrop: View {
-    let item: MediaItem
+    let title: String
+    let url: String?
+    let blurHash: String?
     let progress: CGFloat
+
+    init(item: MediaItem, progress: CGFloat) {
+        self.init(title: item.title, url: item.backdropUrl ?? item.posterUrl, blurHash: item.backdropUrl != nil ? item.backdropBlurHash : item.posterBlurHash, progress: progress)
+    }
+
+    /// For a picture that isn't a library item's, such as a Seerr title's.
+    init(title: String, url: String?, blurHash: String?, progress: CGFloat) {
+        self.title = title
+        self.url = url
+        self.blurHash = blurHash
+        self.progress = progress
+    }
 
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                if let url = item.backdropUrl ?? item.posterUrl {
+                if let url {
                     Artwork(
                         url: url,
-                        title: item.title,
+                        title: title,
                         aspectRatio: proxy.size.width / max(proxy.size.height, 1),
-                        blurHash: item.backdropUrl != nil ? item.backdropBlurHash : item.posterBlurHash
+                        blurHash: blurHash
                     )
                 } else {
                     Color(.tertiarySystemBackground)

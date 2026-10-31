@@ -6,8 +6,11 @@ struct SearchView: View {
     @StateObject private var model = SearchObservable()
     @State private var text = ""
 
+    /// A Seerr title was tapped: its Seerr page, or the library's when the library has it.
+    var onOpenSeerr: (SeerrTitle) -> Void = { _ in }
     let onOpenResult: (SearchResult) -> Void
     let onExit: (HomeExit) -> Void
+    @Environment(\.seerrMenu) private var seerrMenu
 
     var body: some View {
         ZStack {
@@ -168,7 +171,7 @@ struct SearchView: View {
     }
 
     /// Seerr's titles that aren't in the library, always last: the heading (left out when the filter shows nothing else), a note,
-    /// then the tiles, three grey tiles while Seerr answers, or why it didn't. Opening a title comes with the request page.
+    /// then the tiles, three grey tiles while Seerr answers, or why it didn't.
     @ViewBuilder
     private func seerrGroup(_ seerr: SeerrSearch, titled: Bool) -> some View {
         VStack(alignment: .leading, spacing: Space.s1) {
@@ -186,7 +189,14 @@ struct SearchView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
                 if let found = seerr as? SeerrSearchFound {
                     ForEach(found.titles, id: \.self) { title in
-                        SeerrPosterTile(title: title)
+                        // A tap opens its Seerr page; a long press its Seerr menu (Request, Details, Trailer).
+                        Button {
+                            model.resultOpened()
+                            onOpenSeerr(title)
+                        } label: { SeerrPosterTile(title: title) }
+                            .buttonStyle(PressableButtonStyle())
+                            .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in seerrMenu?.open(title) })
+                            .accessibilityAction(named: Strings.shared.showOptions) { seerrMenu?.open(title) }
                     }
                 } else {
                     ForEach(0..<3, id: \.self) { _ in
