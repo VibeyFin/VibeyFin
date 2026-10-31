@@ -278,8 +278,9 @@ class HomeViewModel(
                     latestRows.value = emptyList()
                     genreRows.value = emptyList()
                     myListRow.value = MediaRow(MY_LIST_ID, Strings.myList, seeAll = SeeAll.MyList)
-                    // Not ready until the hero setting is read (in loadHeroIfEnabled), which the server calls don't wait for.
-                    hero.value = HeroState()
+                    // The grey card is up from the first state when the profile has the hero on, so it is there, not slid in later.
+                    val slots = profileSettings.homeHeroItems.first() ?: ProfileSettings.DEFAULT_HOME_HERO_ITEMS
+                    hero.value = HeroState(loading = slots > 0, ready = true, slots = slots)
                     continueAnswered.value = false
                     coroutineScope {
                         launch {
@@ -602,15 +603,14 @@ class HomeViewModel(
         }
     }
 
-    // Picks the hero when the profile has it on; a grey card stands in until it is known, and goes if nothing qualifies. Home is
-    // ready to draw once the setting is read, so the grey card is in its very first frame, not slid in later.
+    // Picks the hero when the profile has it on; a grey card stands in until it is known, and goes if nothing qualifies.
     private suspend fun loadHeroIfEnabled() {
         val slots = profileSettings.homeHeroItems.first() ?: ProfileSettings.DEFAULT_HOME_HERO_ITEMS
         if (slots == 0) {
             hero.value = HeroState(ready = true)
             return
         }
-        hero.update { it.copy(loading = it.items.isEmpty(), ready = true, slots = slots) }
+        hero.update { it.copy(loading = it.items.isEmpty(), slots = slots) }
         loadHero(slots)
     }
 

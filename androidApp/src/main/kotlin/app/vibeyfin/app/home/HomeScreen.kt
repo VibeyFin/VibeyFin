@@ -3,7 +3,6 @@ package app.vibeyfin.app.home
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,11 +16,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -189,7 +190,7 @@ fun HomeScreen(
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         // No side margin on the column: the Continue watching row runs to the screen edge, so the
-        // header and the list each apply the margin themselves.
+        // header and the grid each apply the margin themselves.
         Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
             TabHeader(Strings.home)
 
@@ -308,7 +309,7 @@ private fun SheetAction(label: String, icon: ImageVector, onClick: () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Content(
     state: HomeUiState,
@@ -342,18 +343,15 @@ private fun Content(
             )
         },
     ) {
-        // Rows are built between frames up to a screen before they scroll in, and kept for half a screen after they leave, so a fast
-        // fling doesn't have to build a whole row (and its posters) in the frame it appears in
-        val listState = rememberLazyListState(cacheWindow = LazyLayoutCacheWindow(aheadFraction = 1f, behindFraction = 0.5f))
-
-        LazyColumn(
-            state = listState,
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(150.dp),
             contentPadding = PaddingValues(start = margin, top = 0.dp, end = margin, bottom = margin + LocalBottomBarPadding.current),
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
+            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
             modifier = Modifier.fillMaxSize(),
         ) {
             if (state.heroes.isNotEmpty() || state.heroLoading) {
-                section(key = "hero", type = "hero", animate = false) {
+                fullWidth(key = "hero", animate = false) {
                     val wideHero = LocalConfiguration.current.screenWidthDp >= 600
 
                     // Keyed on which titles they are, not on their data: a tap on My List changes the data, and only the heart
@@ -364,35 +362,34 @@ private fun Content(
                         if (ids.isEmpty() || heroes.isEmpty()) {
                             HomeHeroSkeleton(wideHero, dots = state.heroSlots >= 2)
                         } else {
-                            HomeHeroCarousel(heroes, wideHero, onHeroPlay, onDetails, onHeroMyList, pageScrolling = { listState.isScrollInProgress })
+                            HomeHeroCarousel(heroes, wideHero, onHeroPlay, onDetails, onHeroMyList)
                         }
                     }
                 }
             }
 
-            section(key = "continue", type = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onDetails, onLongPress, onRetryContinue) }
+            fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onDetails, onLongPress, onRetryContinue) }
 
             if (state.loadingLibraries && state.rows.isEmpty()) {
                 repeat(PLACEHOLDER_ROWS) { index ->
-                    section(key = "placeholder-$index", type = "placeholder") { RowPlaceholder(margin) }
+                    fullWidth(key = "placeholder-$index") { RowPlaceholder(margin) }
                 }
             }
 
             state.rows.forEach { row ->
-                section(key = row.id, type = "row") { MediaRowSection(row, margin, onOpen, onSeeAll, onRetry = { onRetryRow(row.id) }) }
+                fullWidth(key = row.id) { MediaRowSection(row, margin, onOpen, onSeeAll, onRetry = { onRetryRow(row.id) }) }
             }
         }
     }
 }
 
-private fun LazyListScope.section(key: String, type: String, animate: Boolean = true, content: @Composable () -> Unit) {
+private fun LazyGridScope.fullWidth(key: String, animate: Boolean = true, content: @Composable () -> Unit) {
     // Rows that arrive, leave or change height slide and fade into place instead of snapping, so nothing jumps. The hero does not:
-    // its gray card is simply there, and the hero fades into it in place. [type] lets a row scrolled away be reused only for another
-    // row, never for the hero or Continue watching, which are built differently.
-    item(key = key, contentType = type) { Box(if (animate) Modifier.animateItem() else Modifier) { content() } }
+    // its gray card is simply there, and the hero fades into it in place.
+    item(key = key, span = { GridItemSpan(maxLineSpan) }, contentType = "row") { Box(if (animate) Modifier.animateItem() else Modifier) { content() } }
 }
 
-/** The row of what the user is in the middle of. Its cards run past the list's margins to the screen edge. */
+/** The row of what the user is in the middle of. Its cards run past the grid's margins to the screen edge. */
 @Composable
 internal fun ContinueWatching(
     row: ContinueRow,

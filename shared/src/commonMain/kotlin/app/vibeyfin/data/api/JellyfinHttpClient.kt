@@ -75,7 +75,7 @@ object JellyfinHttpClient {
                 socketTimeoutMillis = timeouts.socket.inWholeMilliseconds
             }
         }
-        return HttpClient(engine ?: platformHttpEngine(), configure)
+        return if (engine != null) HttpClient(engine, configure) else HttpClient(configure)
     }
 
     private fun authorization(clientInfo: suspend () -> ClientInfo, defaultToken: String?) = createClientPlugin("JellyfinAuthorization") {

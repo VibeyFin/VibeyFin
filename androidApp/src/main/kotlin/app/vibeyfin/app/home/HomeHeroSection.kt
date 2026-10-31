@@ -38,7 +38,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,7 +69,6 @@ import app.vibeyfin.ui.home.HERO_ADVANCE_MILLIS
 import app.vibeyfin.ui.home.heroFacts
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 
 // A banner rather than a full poster, so Continue watching stays near the top
 private const val HERO_ASPECT = 4f / 3f
@@ -186,8 +184,7 @@ fun HomeHeroSection(
 /**
  * The featured items: one card, or from two a pager of them with page dots under it. The pager moves on by itself every
  * [HERO_ADVANCE_MILLIS], round and round; a swipe or a long press stops that until Home is left, a finger on it pauses it, and it
- * never moves with animations removed, with TalkBack on, or while Home is not the screen in front. A move that falls due while the page
- * is being scrolled waits for the scroll to stop ([pageScrolling]), so the two don't share frames. Play and My List act on their page.
+ * never moves with animations removed, with TalkBack on, or while Home is not the screen in front. Play and My List act on their page.
  */
 @Composable
 fun HomeHeroCarousel(
@@ -196,7 +193,6 @@ fun HomeHeroCarousel(
     onPlay: (String) -> Unit,
     onOpen: (String) -> Unit,
     onMyList: (String) -> Unit,
-    pageScrolling: () -> Boolean = { false },
 ) {
     if (items.size == 1) {
         val item = items.single()
@@ -234,7 +230,6 @@ fun HomeHeroCarousel(
         if (advanceBlocked) return@LaunchedEffect
 
         delay(HERO_ADVANCE_MILLIS)
-        snapshotFlow(pageScrolling).first { !it }
         pager.animateScrollToPage(pager.settledPage + 1)
     }
 
