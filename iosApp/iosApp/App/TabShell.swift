@@ -361,7 +361,7 @@ struct TabShell: View {
                         ChildrenView(parentId: parentId, title: title, onOpen: { open($0, in: path) }, onOpenSeries: { path.wrappedValue.append(.item(itemId: $0)) }, onExit: onExit)
                     case .item(let itemId):
                         // On iOS 18 the page zooms out of the poster that was tapped.
-                        ItemView(itemId: itemId, onOpen: { open($0, in: path) }, onOpenSeries: { path.wrappedValue.append(.item(itemId: $0)) }, onOpenPerson: { path.wrappedValue.append(.person(personId: $0)) }, onExit: onExit)
+                        ItemView(itemId: itemId, onOpen: { open($0, in: path) }, onOpenSeries: { path.wrappedValue.append(.item(itemId: $0)) }, onOpenPerson: { path.wrappedValue.append(.person(personId: $0)) }, onExit: onExit, onOpenSeerr: { openSeerr($0, in: path) })
                             .zoomDestination(itemId)
                     case .person(let personId):
                         PersonView(personId: personId, onOpen: { open($0, in: path) }, onExit: onExit)

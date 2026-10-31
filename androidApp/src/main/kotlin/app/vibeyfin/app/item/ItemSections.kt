@@ -76,7 +76,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.vibeyfin.R
 import app.vibeyfin.app.components.Artwork
+import app.vibeyfin.app.components.ArtworkTile
 import app.vibeyfin.app.components.LoadError
+import app.vibeyfin.app.components.MediaRowSection
+import app.vibeyfin.app.components.POSTER_CAPTION_LINES
 import app.vibeyfin.app.components.PlaybackProgressBar
 import app.vibeyfin.app.components.ROW_FADE_MS
 import app.vibeyfin.app.components.RowPhase
@@ -88,13 +91,17 @@ import app.vibeyfin.app.components.bleed
 import app.vibeyfin.app.downloads.DownloadActionMenuItem
 import app.vibeyfin.app.downloads.EpisodeDownloadButton
 import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
+import app.vibeyfin.app.seerr.SeerrTile
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.model.CastMember
 import app.vibeyfin.domain.model.MediaItem
+import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.downloads.actions
+import app.vibeyfin.ui.home.MediaRow
 import app.vibeyfin.ui.item.SeasonsState
+import app.vibeyfin.ui.item.SimilarTile
 import app.vibeyfin.ui.item.TechnicalLine
 import app.vibeyfin.ui.item.seasonLabel
 import coil3.compose.AsyncImage
@@ -702,6 +709,33 @@ private fun EpisodeFacts(episode: MediaItem) {
         Spacer(Modifier.weight(1f))
         Strings.releaseDate(episode.premiereDate)?.let {
             Text(it, style = MaterialTheme.typography.labelMedium, color = VibeyFinTokens.Colors.inkMuted, maxLines = 1)
+        }
+    }
+}
+
+/**
+ * "More like this": the library's titles with Seerr's mixed in (they can be requested; a press and hold offers the Seerr menu).
+ * While it loads or when it fails it is the library's row; once read, the tiles the view model mixed.
+ */
+@Composable
+fun SimilarSection(row: MediaRow, tiles: List<SimilarTile>, margin: Dp, onOpen: (MediaItem) -> Unit, onOpenSeerr: (SeerrTitle) -> Unit, onRetry: () -> Unit, tileWidth: Dp) {
+    if (row.loading || row.message != null || tiles.none { it is SimilarTile.Seerr }) {
+        MediaRowSection(row, margin, onOpen, onSeeAll = null, onRetry = onRetry, tileWidth = tileWidth)
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
+        SectionTitle(row.title, maxLines = 1, modifier = Modifier.semantics { heading() })
+        LazyRow(
+            modifier = Modifier.bleed(margin),
+            contentPadding = PaddingValues(horizontal = margin),
+            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+        ) {
+            items(tiles, key = { it.key }, contentType = { if (it is SimilarTile.Seerr) "seerr-poster" else "poster" }) { tile ->
+                when (tile) {
+                    is SimilarTile.Library -> ArtworkTile(tile.item, onClick = { onOpen(tile.item) }, modifier = Modifier.width(tileWidth), captionLines = POSTER_CAPTION_LINES)
+                    is SimilarTile.Seerr -> SeerrTile(tile.title, onOpenSeerr, Modifier.width(tileWidth))
+                }
+            }
         }
     }
 }

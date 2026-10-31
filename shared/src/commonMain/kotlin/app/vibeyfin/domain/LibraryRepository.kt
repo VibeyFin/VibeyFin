@@ -306,6 +306,7 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
         isFavorite = userData?.isFavorite == true,
         localTrailerCount = localTrailerCount ?: 0,
         remoteTrailerUrl = remoteTrailers.firstNotNullOfOrNull { trailer -> trailer.url?.takeIf { it.startsWith("https://") || it.startsWith("http://") } },
+        tmdbId = providerIds.entries.firstOrNull { it.key.equals("Tmdb", ignoreCase = true) }?.value?.toIntOrNull(),
     )
 }
 

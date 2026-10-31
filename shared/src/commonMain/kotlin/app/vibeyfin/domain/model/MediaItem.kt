@@ -78,6 +78,8 @@ data class MediaItem(
     val localTrailerCount: Int = 0,
     /** The first trailer on the web, a page to open; null when the server knows none. */
     val remoteTrailerUrl: String? = null,
+    /** TMDB's id for it, when the server knows it (detail pages only): what Seerr names it by. */
+    val tmdbId: Int? = null,
 ) {
     /** How far in the user is, from 0 to 1; null when they haven't started or the length isn't known. */
     val progress: Float?

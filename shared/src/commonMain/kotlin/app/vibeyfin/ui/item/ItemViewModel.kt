@@ -9,10 +9,16 @@ import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.DownloadTarget
 import app.vibeyfin.domain.LibraryRepository
+import app.vibeyfin.domain.SeerrConnection
+import app.vibeyfin.domain.SeerrRepository
+import app.vibeyfin.domain.SeerrState
 import app.vibeyfin.domain.WatchChanges
 import app.vibeyfin.domain.WatchRepository
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
+import app.vibeyfin.domain.model.RequestState
+import app.vibeyfin.domain.model.SeerrMediaType
+import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
@@ -35,9 +41,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.seconds
 
 /** The selected season's episodes: while another season loads the old list stays on screen. */
 data class EpisodeList(
@@ -67,6 +76,20 @@ sealed interface Trailer {
     data class Remote(val url: String) : Trailer
 }
 
+/** A tile in "More like this": one of the library's, or a Seerr title the library doesn't have (it can be requested). */
+sealed interface SimilarTile {
+    /** Unique in the row. */
+    val key: String
+
+    data class Library(val item: MediaItem) : SimilarTile {
+        override val key: String get() = "jf-${item.id}"
+    }
+
+    data class Seerr(val title: SeerrTitle) : SimilarTile {
+        override val key: String get() = "seerr-${title.type}-${title.tmdbId}"
+    }
+}
+
 data class ItemUiState(
     val item: MediaItem? = null,
     /** The short facts under the title: "S1 E3", year, age rating, runtime or seasons, rating. */
@@ -80,6 +103,11 @@ data class ItemUiState(
     val trailer: Trailer? = null,
     /** "More like this"; null until the page is read, and not [MediaRow.isVisible] when the server knows nothing like it. */
     val similar: MediaRow? = null,
+    /**
+     * "More like this" as it is drawn once read: the library's titles with Seerr's recommendations the library doesn't have mixed
+     * in (one after every two of the library's), when Seerr is connected. Only the library's while Seerr's are on their way.
+     */
+    val similarTiles: List<SimilarTile> = emptyList(),
     /** "In collections": the box sets the item is part of; not [MediaRow.isVisible] when it is in none. Null until the page is read. */
     val collections: MediaRow? = null,
     /** "Extras": behind the scenes and the like; not [MediaRow.isVisible] when the item has none. Null until the page is read. */
@@ -183,7 +211,11 @@ class ItemViewModel(
     private val watch: WatchRepository,
     changes: WatchChanges,
     private val downloads: DownloadRepository,
+    private val seerr: SeerrRepository? = null,
+    private val seerrConnection: SeerrConnection? = null,
 ) : ViewModel() {
+    // Seerr's recommendations for this title, not in the library; mixed into "More like this".
+    private var seerrSimilar: List<SeerrTitle> = emptyList()
     private val content = MutableStateFlow(ItemUiState())
     private var episodesJob: Job? = null
     private val downloadFlow = DownloadFlow(viewModelScope, downloads) { connection.state.value.profileOrNull() }
@@ -421,6 +453,7 @@ class ItemViewModel(
                     // The rest of the page loads on its own: each part fails and retries alone.
                     coroutineScope {
                         launch { loadSimilar() }
+                        launch { loadSeerrSimilar(item) }
                         // A trailer the server holds plays in the app and wins over one on the web.
                         if (item.canHaveTrailer && item.localTrailerCount > 0) launch { loadLocalTrailer() }
                         // Movies and shows can be in collections; an episode or a season is not.
@@ -470,13 +503,31 @@ class ItemViewModel(
         content.update { it.copy(similar = MediaRow("similar", Strings.moreLikeThis, loading = true)) }
         val result = library.similar(itemId)
         content.update {
-            it.copy(
-                similar = when (result) {
-                    is ApiResult.Success -> MediaRow("similar", Strings.moreLikeThis, items = result.value, loading = false)
-                    is ApiResult.Failure -> MediaRow("similar", Strings.moreLikeThis, loading = false, message = LoadMessages.forError(result.error))
-                },
-            )
+            val similar = when (result) {
+                is ApiResult.Success -> MediaRow("similar", Strings.moreLikeThis, items = result.value, loading = false)
+                is ApiResult.Failure -> MediaRow("similar", Strings.moreLikeThis, loading = false, message = LoadMessages.forError(result.error))
+            }
+            it.copy(similar = similar, similarTiles = mixSimilar(similar.items, seerrSimilar))
         }
+    }
+
+    // Seerr's recommendations for a movie or show, when Seerr is connected (never for a kids profile, which has no Seerr). A failure
+    // just leaves them out: the row is the library's, as without Seerr.
+    private suspend fun loadSeerrSimilar(item: MediaItem) {
+        val seerr = seerr ?: return
+        val tmdbId = item.tmdbId ?: return
+        val type = when (item.kind) {
+            ItemKind.Movie -> SeerrMediaType.Movie
+            ItemKind.Series -> SeerrMediaType.Show
+            else -> return
+        }
+        // Seerr may still be signing in as the app starts; wait a moment for it rather than leaving its titles out
+        val state = seerrConnection?.state ?: return
+        val settled = withTimeoutOrNull(SEERR_WAIT) { state.first { it !is SeerrState.Connecting } }
+        if (settled !is SeerrState.Ready) return
+        val page = (seerr.recommendations(type, tmdbId) as? ApiResult.Success)?.value ?: return
+        seerrSimilar = page.titles.filter { it.jellyfinItemId == null && it.state != RequestState.Available }.take(SEERR_SIMILAR_LIMIT)
+        content.update { it.copy(similarTiles = mixSimilar(it.similar?.items.orEmpty(), seerrSimilar)) }
     }
 
     // The seasons and the episode to watch next, then the episodes of the season that episode is in.
@@ -535,4 +586,24 @@ class ItemViewModel(
             )
         }
     }
+}
+
+private const val SEERR_SIMILAR_LIMIT = 10
+private val SEERR_WAIT = 5.seconds
+
+/**
+ * The library's titles with Seerr's mixed in, one after every two of the library's, and the rest of either at the end. A title
+ * twice (the same id) is shown once.
+ */
+internal fun mixSimilar(library: List<MediaItem>, seerr: List<SeerrTitle>): List<SimilarTile> {
+    val own = library.distinctBy { it.id }.map { SimilarTile.Library(it) }
+    val others = seerr.distinctBy { "${it.type}-${it.tmdbId}" }.map { SimilarTile.Seerr(it) }
+    val mixed = ArrayList<SimilarTile>(own.size + others.size)
+    var next = 0
+    own.forEachIndexed { index, tile ->
+        mixed += tile
+        if (index % 2 == 1 && next < others.size) mixed += others[next++]
+    }
+    mixed += others.drop(next)
+    return mixed
 }

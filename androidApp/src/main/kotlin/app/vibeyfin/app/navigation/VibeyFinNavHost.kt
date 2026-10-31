@@ -314,6 +314,7 @@ private fun NavGraphBuilder.details(navController: NavHostController, leave: (Ho
             onOpenSeries = { seriesId -> navController.navigate(Item(seriesId)) },
             onOpenPerson = { personId -> navController.navigate(Person(personId)) },
             onExit = leave,
+            onOpenSeerr = navController::openSeerr,
         )
     }
 

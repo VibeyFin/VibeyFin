@@ -19,14 +19,24 @@ struct ItemView: View {
     let onOpenPerson: (String) -> Void
     /// Called when the session ended and the screen must be left.
     let onExit: (HomeExit) -> Void
+    /// A Seerr title in "More like this" opens its Seerr page.
+    let onOpenSeerr: (SeerrTitle) -> Void
 
-    init(itemId: String, onOpen: @escaping (MediaItem) -> Void, onOpenSeries: @escaping (String) -> Void, onOpenPerson: @escaping (String) -> Void, onExit: @escaping (HomeExit) -> Void) {
+    init(
+        itemId: String,
+        onOpen: @escaping (MediaItem) -> Void,
+        onOpenSeries: @escaping (String) -> Void,
+        onOpenPerson: @escaping (String) -> Void,
+        onExit: @escaping (HomeExit) -> Void,
+        onOpenSeerr: @escaping (SeerrTitle) -> Void = { _ in }
+    ) {
         _model = StateObject(wrappedValue: ItemObservable(itemId: itemId))
         self.itemId = itemId
         self.onOpen = onOpen
         self.onOpenSeries = onOpenSeries
         self.onOpenPerson = onOpenPerson
         self.onExit = onExit
+        self.onOpenSeerr = onOpenSeerr
     }
 
     private var wide: Bool { sizeClass == .regular }
@@ -128,9 +138,15 @@ struct ItemView: View {
                 MediaRowView(row: collections, onOpen: onOpen, onSeeAll: { _ in }, onRetry: { model.retryCollections() }, tileWidth: wide ? 168 : 112)
                     .padding(.horizontal, -margin)
             }
-            if let similar = state.similar, similar.isVisible {
-                MediaRowView(row: similar, onOpen: onOpen, onSeeAll: { _ in }, onRetry: { model.retrySimilar() }, tileWidth: wide ? 168 : 112)
-                    .padding(.horizontal, -margin)
+            // The library's titles with Seerr's mixed in, once read; the library's row while it loads or when it fails.
+            if let similar = state.similar, similar.isVisible || !state.similarTiles.isEmpty {
+                if !similar.loading, similar.message == nil, state.similarTiles.contains(where: { $0 is SimilarTileSeerr }) {
+                    SimilarRowView(title: similar.title, tiles: state.similarTiles, tileWidth: wide ? 168 : 112, onOpen: onOpen, onOpenSeerr: onOpenSeerr)
+                        .padding(.horizontal, -margin)
+                } else {
+                    MediaRowView(row: similar, onOpen: onOpen, onSeeAll: { _ in }, onRetry: { model.retrySimilar() }, tileWidth: wide ? 168 : 112)
+                        .padding(.horizontal, -margin)
+                }
             }
             if !state.technical.isEmpty {
                 TechnicalInfoView(lines: state.technical)
