@@ -33,6 +33,7 @@ import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.ui.settings.SettingKey
 import app.vibeyfin.ui.settings.SettingsPageId
 import app.vibeyfin.ui.settings.SettingsUiState
+import org.koin.androidx.compose.koinViewModel
 
 private val ListPaneWidth = 380.dp
 
@@ -90,7 +91,14 @@ fun SettingsTabletScreen(
                 ) {
                     Spacer(Modifier.height(BackButtonSpace))
 
-                    if (detail != null) {
+                    if (detail?.id == SettingsPageId.Seerr) {
+                        // Seerr's page is its own screen, drawn here beside the list
+                        SeerrSettingsContent(
+                            koinViewModel(),
+                            Modifier.widthIn(max = DetailMaxWidth).fillMaxWidth().padding(horizontal = margin),
+                            onLeave = { saved = null },
+                        )
+                    } else if (detail != null) {
                         // Keyed by page so scroll and menus do not carry over from the page before
                         key(detail.id) {
                             SettingsPageBody(

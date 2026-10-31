@@ -61,6 +61,7 @@ import app.vibeyfin.app.person.PersonRoute
 import app.vibeyfin.app.player.PlayerRoute
 import app.vibeyfin.app.search.SearchRoute
 import app.vibeyfin.app.servers.ServersRoute
+import app.vibeyfin.app.settings.SeerrSettingsRoute
 import app.vibeyfin.app.settings.SettingsRoute
 import app.vibeyfin.app.settings.pageIdOrRoot
 import app.vibeyfin.app.startup.StartupRoute
@@ -506,6 +507,12 @@ private fun NavGraphBuilder.appScreens(navController: NavHostController, leave: 
         // One SettingsViewModel for the whole Settings flow, kept by the root entry: the PIN is asked once and
         // leaving Settings discards it. Without a root entry on the stack (deep link, restored state) the page keeps its own.
         val settingsRoot = remember(entry) { runCatching { navController.getBackStackEntry<Settings>() }.getOrNull() }
+
+        // Seerr has an address field, which the shared Settings rows don't draw: it is a screen of its own
+        if (id == SettingsPageId.Seerr) {
+            SeerrSettingsRoute(onBack = { navController.popBackStack() })
+            return@composable
+        }
 
         SettingsRoute(
             pageId = id,
