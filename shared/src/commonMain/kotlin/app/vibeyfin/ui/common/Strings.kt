@@ -1131,6 +1131,63 @@ object Strings {
         return listOfNotNull(asked, next).joinToString(" \u00b7 ")
     }
 
+    // Seerr on Home: My requests and the discover rows, and their pages
+    val seerrMyRequests = "My requests"
+    val seerrTrending = "Trending"
+    val seerrPopularMovies = "Popular movies"
+    val seerrPopularShows = "Popular shows"
+    val seerrComingSoon = "Coming soon"
+    val seerrDiscoverNote = "From Seerr. Press and hold to request."
+    val seerrNoRequests = "You haven\u2019t requested anything yet. Search for a title that isn\u2019t in your library to request it."
+    val seerrFilterWaiting = "Waiting"
+    val seerrFilterApproved = "Approved"
+    val seerrFilterAvailable = "Available"
+    val seerrFilterDeclined = "Declined"
+
+    private val monthNames = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+    /** A release date ("2026-12-12") as Coming soon shows it: "Dec 12". Null when it can't be read. */
+    fun seerrReleaseDay(date: String?): String? {
+        val parts = date?.split("-")?.takeIf { it.size >= 3 } ?: return null
+        val month = parts[1].toIntOrNull()?.takeIf { it in 1..12 } ?: return null
+        val day = parts[2].take(2).toIntOrNull() ?: return null
+        return "${monthNames[month - 1]} $day"
+    }
+
+    /** What a request is for: "Movie · 2022", "Show · Seasons 1–2", "Show · Season 3". */
+    fun seerrRequestKind(type: SeerrMediaType, year: Int?, seasons: List<Int>): String = if (type == SeerrMediaType.Movie) {
+        listOfNotNull("Movie", year?.toString()).joinToString(" \u00b7 ")
+    } else {
+        val sorted = seasons.sorted()
+        val which = when {
+            sorted.isEmpty() -> null
+            sorted.size == 1 -> "Season ${sorted.first()}"
+            sorted == (sorted.first()..sorted.last()).toList() -> "Seasons ${sorted.first()}\u2013${sorted.last()}"
+            else -> "Seasons " + sorted.joinToString(", ")
+        }
+        listOfNotNull("Show", which).joinToString(" \u00b7 ")
+    }
+
+    /** When a request last changed, said as what happened: "Requested 2 days ago", "Approved yesterday", "Added to your library today". */
+    fun seerrRequestWhen(state: RequestState, daysAgo: Int?): String {
+        val what = when (state) {
+            RequestState.Available, RequestState.PartlyAvailable -> "Added to your library"
+            RequestState.Approved -> "Approved"
+            RequestState.Declined -> "Declined"
+            RequestState.Failed -> "Failed"
+            RequestState.Requested, RequestState.NotRequested -> "Requested"
+        }
+        val whenText = when (daysAgo) {
+            null -> null
+            0 -> "today"
+            1 -> "yesterday"
+            in 2..6 -> "$daysAgo days ago"
+            in 7..13 -> "last week"
+            else -> "${daysAgo / 7} weeks ago"
+        }
+        return listOfNotNull(what, whenText).joinToString(" ")
+    }
+
     /** What a screen reader says for a Seerr poster: "Harbour Bridge, 2025 · Movie, not in your library, can be requested". */
     fun seerrTitleDescription(title: String, meta: String, state: RequestState) = "$title, $meta, ${seerrStateLabel(state)?.lowercase() ?: "not in your library, can be requested"}"
 }
