@@ -4,11 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
+import app.vibeyfin.data.seerr.QualityChoice
 import app.vibeyfin.data.seerr.SeasonChoice
 import app.vibeyfin.domain.RequestOutcome
 import app.vibeyfin.domain.SeerrConnection
 import app.vibeyfin.domain.SeerrRepository
 import app.vibeyfin.domain.SeerrState
+import app.vibeyfin.domain.model.QualityOptions
 import app.vibeyfin.domain.model.RequestState
 import app.vibeyfin.domain.model.SeerrCastMember
 import app.vibeyfin.domain.model.SeerrEpisode
@@ -53,10 +55,22 @@ data class SeerrPickerSeason(
     val stateLabel: String?,
 )
 
-/** The season picker a show's Request opens. */
+/** A quality in the request sheet: a Radarr or Sonarr quality profile. */
+data class SeerrQualityRow(val id: Int, val name: String, val selected: Boolean)
+
+/**
+ * The request sheet: a show's season picker, and for whoever may choose, the quality to ask for. A movie only opens it when
+ * there is a quality to choose; otherwise its Request sends at once.
+ */
 data class SeerrSeasonPicker(
     val title: String,
     val subtitle: String,
+    /** A show: the season list and "All missing seasons" show. */
+    val showsSeasons: Boolean = true,
+    /** The quality profiles to choose from; empty when the profile may not choose (Seerr's default quality is used). */
+    val qualities: List<SeerrQualityRow> = emptyList(),
+    /** The qualities are being read. */
+    val qualitiesLoading: Boolean = false,
     /** "All missing seasons": every season that can be asked for except Specials. On by default. */
     val allMissing: Boolean,
     /** The profile may ask for 4K here, so a Standard / 4K choice shows above the seasons. */
@@ -150,7 +164,7 @@ class SeerrTitleViewModel(
 
     // IMDb's rating, read beside the page (Seerr looks it up, which can be slow) and added to the facts when it comes.
     private var imdb: Double? = null
-    private var lastAttempt: Pair<SeasonChoice?, Boolean>? = null
+    private var lastAttempt: Triple<SeasonChoice?, Boolean, QualityChoice?>? = null
 
     init {
         load(showSkeleton = true)
@@ -208,15 +222,30 @@ class SeerrTitleViewModel(
         content.update { it.copy(picker = picker(picker.is4k, chosen, allMissing = chosen == defaultSeasons(picker.is4k))) }
     }
 
+    /** Standard or 4K. The qualities on offer are that tier's server's. */
     fun onPickerQuality(is4k: Boolean) {
+        chosenProfile = null
         content.update { it.copy(picker = picker(is4k, defaultSeasons(is4k), allMissing = true)) }
+        loadQualities(is4k)
+    }
+
+    /** A quality profile in the request sheet. */
+    fun onPickerProfile(id: Int) {
+        val picker = content.value.picker ?: return
+        chosenProfile = id
+        content.update { it.copy(picker = picker(picker.is4k, picker.seasons.filter { season -> season.selected }.map { season -> season.number }.toSet(), picker.allMissing)) }
     }
 
     fun onPickerConfirm() {
         val picker = content.value.picker ?: return
+        val quality = qualityChoice(picker.is4k)
+        if (!picker.showsSeasons) {
+            send(null, picker.is4k, quality)
+            return
+        }
         val chosen = picker.seasons.filter { it.selected }.map { it.number }
         if (chosen.isEmpty()) return
-        send(SeasonChoice.Only(chosen), picker.is4k)
+        send(SeasonChoice.Only(chosen), picker.is4k, quality)
     }
 
     fun onPickerDismiss() {
@@ -242,8 +271,8 @@ class SeerrTitleViewModel(
 
     /** "Try again" on a request that couldn't reach Seerr: the same request once more. */
     fun onRetryRequest() {
-        val (seasons, is4k) = lastAttempt ?: return
-        send(seasons, is4k)
+        val (seasons, is4k, quality) = lastAttempt ?: return
+        send(seasons, is4k, quality)
     }
 
     /** The notice was shown. */
@@ -258,19 +287,53 @@ class SeerrTitleViewModel(
 
     private fun request(is4k: Boolean) {
         if (content.value.sending || details == null) return
-        if (type == SeerrMediaType.Movie) {
-            send(null, is4k)
+        val choosesQuality = (seerr.state.value as? SeerrState.Ready)?.user?.permissions?.canChooseQuality == true
+        if (type == SeerrMediaType.Movie && !choosesQuality) {
+            send(null, is4k, null)
         } else {
+            chosenProfile = null
             content.update { it.copy(picker = picker(is4k, defaultSeasons(is4k), allMissing = true)) }
+            if (choosesQuality) loadQualities(is4k)
         }
     }
 
-    private fun send(seasons: SeasonChoice?, is4k: Boolean) {
+    // The quality profiles of each tier (false standard, true 4K), read once; null where Seerr has no server for it.
+    private val qualities = mutableMapOf<Boolean, QualityOptions?>()
+    private val qualitiesLoading = mutableSetOf<Boolean>()
+    private var chosenProfile: Int? = null
+
+    private fun loadQualities(is4k: Boolean) {
+        if (is4k in qualities || is4k in qualitiesLoading) return
+        qualitiesLoading += is4k
+        refreshPicker()
+        viewModelScope.launch {
+            val options = (repository.qualityOptions(type, is4k) as? ApiResult.Success)?.value
+            qualitiesLoading -= is4k
+            qualities[is4k] = options
+            refreshPicker()
+        }
+    }
+
+    private fun refreshPicker() {
+        content.update { state ->
+            val picker = state.picker ?: return@update state
+            state.copy(picker = picker(picker.is4k, picker.seasons.filter { it.selected }.map { it.number }.toSet(), picker.allMissing))
+        }
+    }
+
+    // What the request asks for: the chosen profile, or the server's default, on that tier's server; null when there is nothing to choose.
+    private fun qualityChoice(is4k: Boolean): QualityChoice? {
+        val options = qualities[is4k] ?: return null
+        val profile = chosenProfile ?: options.defaultProfileId ?: return null
+        return QualityChoice(options.serverId, profile)
+    }
+
+    private fun send(seasons: SeasonChoice?, is4k: Boolean, quality: QualityChoice?) {
         if (content.value.sending) return
-        lastAttempt = seasons to is4k
+        lastAttempt = Triple(seasons, is4k, quality)
         content.update { it.copy(sending = true) }
         viewModelScope.launch {
-            val outcome = repository.request(type, tmdbId, seasons, is4k)
+            val outcome = repository.request(type, tmdbId, seasons, is4k, quality)
             val name = content.value.title?.title.orEmpty()
             val notice = when (outcome) {
                 is RequestOutcome.Sent -> SeerrNotice(Strings.seerrRequested(name), SeerrNoticeAction.View, Strings.seerrView)
@@ -420,15 +483,25 @@ class SeerrTitleViewModel(
             )
         }
         val count = chosen.size
+        val movie = type == SeerrMediaType.Movie
+        val options = qualities[is4k]
+        val selectedProfile = chosenProfile ?: options?.defaultProfileId
         return SeerrSeasonPicker(
-            title = Strings.seerrRequestSeasons,
-            subtitle = Strings.seerrPickerSubtitle(details?.title?.title.orEmpty(), details?.seasons.orEmpty().count { it.number != 0 }),
+            title = if (movie) Strings.seerrRequest else Strings.seerrRequestSeasons,
+            subtitle = if (movie) {
+                details?.title?.let { Strings.seerrTitleMeta(it.year, it.type).let { meta -> "${it.title} \u00b7 $meta" } }.orEmpty()
+            } else {
+                Strings.seerrPickerSubtitle(details?.title?.title.orEmpty(), details?.seasons.orEmpty().count { it.number != 0 })
+            },
+            showsSeasons = !movie,
+            qualities = options?.profiles.orEmpty().map { SeerrQualityRow(it.id, it.name, selected = it.id == selectedProfile) },
+            qualitiesLoading = is4k in qualitiesLoading,
             allMissing = allMissing,
             offer4k = offer4k,
             is4k = is4k,
             seasons = seasons,
-            confirmLabel = Strings.seerrRequestSeasonCount(count),
-            canConfirm = count > 0,
+            confirmLabel = if (movie) Strings.seerrRequest else Strings.seerrRequestSeasonCount(count),
+            canConfirm = movie || count > 0,
         )
     }
 

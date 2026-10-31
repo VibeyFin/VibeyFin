@@ -29,6 +29,8 @@ class SeerrTitleModel(type: SeerrMediaType, tmdbId: Int) {
 
     fun onPickerQuality(is4k: Boolean) = host.viewModel.onPickerQuality(is4k)
 
+    fun onPickerProfile(id: Int) = host.viewModel.onPickerProfile(id)
+
     fun onPickerConfirm() = host.viewModel.onPickerConfirm()
 
     fun onPickerDismiss() = host.viewModel.onPickerDismiss()

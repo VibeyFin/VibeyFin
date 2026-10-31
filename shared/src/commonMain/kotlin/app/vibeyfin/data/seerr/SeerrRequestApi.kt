@@ -13,6 +13,15 @@ import kotlinx.serialization.json.JsonPrimitive
 
 // Requests: asking for a title, listing them, withdrawing one, and the quota that limits them. Writes are never retried.
 
+/** A quality profile on a Radarr or Sonarr server, chosen for a request. Seerr only honours it from users who may choose. */
+data class QualityChoice(val serverId: Int, val profileId: Int)
+
+/** `GET /service/radarr` (movies) or `/service/sonarr` (shows): the servers Seerr sends requests to. */
+suspend fun SeerrApi.services(movies: Boolean): ApiResult<List<SeerrServiceServerDto>> = get(if (movies) "/service/radarr" else "/service/sonarr", retry = true)
+
+/** `GET /service/radarr/{id}` or `/service/sonarr/{id}`: the server's quality profiles. */
+suspend fun SeerrApi.service(movies: Boolean, id: Int): ApiResult<SeerrServiceDetailsDto> = get(if (movies) "/service/radarr/$id" else "/service/sonarr/$id", retry = true)
+
 /** Which seasons of a show to request. */
 sealed interface SeasonChoice {
     /** Every season not yet available or requested; Seerr works out which. */
@@ -26,15 +35,15 @@ sealed interface SeasonChoice {
  * [app.vibeyfin.data.api.ApiError.Forbidden] when the user may not request it (in 4K, say) or has reached their quota,
  * and `409` ([app.vibeyfin.data.api.ApiError.Unexpected]) when it is already requested.
  */
-suspend fun SeerrApi.requestMovie(tmdbId: Int, is4k: Boolean = false): ApiResult<SeerrRequestDto?> = newRequest(SeerrNewRequestDto(mediaType = "movie", mediaId = tmdbId, is4k = is4k))
+suspend fun SeerrApi.requestMovie(tmdbId: Int, is4k: Boolean = false, quality: QualityChoice? = null): ApiResult<SeerrRequestDto?> = newRequest(SeerrNewRequestDto(mediaType = "movie", mediaId = tmdbId, is4k = is4k, serverId = quality?.serverId, profileId = quality?.profileId))
 
 /** `POST /request` for some or all seasons of a show. Null when every season asked for is already requested or available. */
-suspend fun SeerrApi.requestShow(tmdbId: Int, seasons: SeasonChoice, is4k: Boolean = false): ApiResult<SeerrRequestDto?> {
+suspend fun SeerrApi.requestShow(tmdbId: Int, seasons: SeasonChoice, is4k: Boolean = false, quality: QualityChoice? = null): ApiResult<SeerrRequestDto?> {
     val chosen = when (seasons) {
         SeasonChoice.All -> JsonPrimitive("all")
         is SeasonChoice.Only -> JsonArray(seasons.seasons.map(::JsonPrimitive))
     }
-    return newRequest(SeerrNewRequestDto(mediaType = "tv", mediaId = tmdbId, seasons = chosen, is4k = is4k))
+    return newRequest(SeerrNewRequestDto(mediaType = "tv", mediaId = tmdbId, seasons = chosen, is4k = is4k, serverId = quality?.serverId, profileId = quality?.profileId))
 }
 
 private suspend fun SeerrApi.newRequest(body: SeerrNewRequestDto): ApiResult<SeerrRequestDto?> = execute({ response ->

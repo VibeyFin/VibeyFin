@@ -155,6 +155,7 @@ fun SeerrTitleRoute(
             onAllMissing = viewModel::onPickerAllMissing,
             onSeason = viewModel::onPickerSeason,
             onQuality = viewModel::onPickerQuality,
+            onProfile = viewModel::onPickerProfile,
             onConfirm = viewModel::onPickerConfirm,
             onDismiss = viewModel::onPickerDismiss,
         )
@@ -283,22 +284,20 @@ private fun Hero(state: SeerrTitleUiState, centered: Boolean, viewModel: SeerrTi
     }
 }
 
-/** The state as a tag: an icon and a word or two on a quiet pill, in ink (a failure in `danger`); never aqua. */
+/** The state as a tag: its icon alone on a quiet round chip, in ink (a failure in `danger`); never aqua. [text] is what a screen reader says. */
 @Composable
 internal fun StateTag(text: String, state: RequestState) {
     val color = if (state == RequestState.Failed) VibeyFinTokens.Colors.danger else VibeyFinTokens.Colors.ink
 
-    Row(
-        Modifier.clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(start = 8.dp, end = 10.dp, top = 4.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    Box(
+        Modifier.size(28.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh).semantics { contentDescription = text },
+        contentAlignment = Alignment.Center,
     ) {
         if (state == RequestState.NotRequested) {
-            Icon(Icons.Filled.Add, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+            Icon(Icons.Filled.Add, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
         } else {
-            Icon(painterResource(stateIconOf(state)), contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+            Icon(painterResource(stateIconOf(state)), contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
         }
-        Text(text, style = MaterialTheme.typography.labelMedium, color = color, maxLines = 1)
     }
 }
 
@@ -322,7 +321,6 @@ internal fun StatusLine(text: String, state: RequestState) {
 @Composable
 private fun SeasonsAndEpisodes(state: SeerrTitleUiState, margin: Dp, onSelect: (Int) -> Unit, onRetry: () -> Unit) {
     val chosen = state.episodes?.season
-    val season = state.seasons.firstOrNull { it.number == chosen }
 
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         SectionTitle(Strings.seerrSeasons, modifier = Modifier.semantics { heading() })
@@ -347,13 +345,6 @@ private fun SeasonsAndEpisodes(state: SeerrTitleUiState, margin: Dp, onSelect: (
                     border = null,
                     modifier = Modifier.semantics { contentDescription = Strings.seasonDescription(row.name, selected) },
                 )
-            }
-        }
-
-        season?.let {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-                StateTag(it.stateLabel ?: Strings.seerrTag(RequestState.NotRequested), it.state)
-                Text(listOfNotNull(it.episodes, it.year?.toString()).joinToString(" \u00b7 "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 

@@ -37,6 +37,9 @@ enum class RequestState {
 value class SeerrPermissions(val bits: Long) {
     val isAdmin: Boolean get() = has(ADMIN)
 
+    /** Whether the user may pick the quality profile (and server) of a request; Seerr ignores it from anyone else. */
+    val canChooseQuality: Boolean get() = isAdmin || has(MANAGE_REQUESTS) || has(REQUEST_ADVANCED)
+
     /** Whether the user may request [type] in standard quality. */
     fun canRequest(type: SeerrMediaType): Boolean = isAdmin || has(REQUEST) || has(if (type == SeerrMediaType.Movie) REQUEST_MOVIE else REQUEST_TV)
 
@@ -47,7 +50,9 @@ value class SeerrPermissions(val bits: Long) {
 
     private companion object {
         const val ADMIN = 2L
+        const val MANAGE_REQUESTS = 16L
         const val REQUEST = 32L
+        const val REQUEST_ADVANCED = 8192L
         const val REQUEST_4K = 1024L
         const val REQUEST_4K_MOVIE = 2048L
         const val REQUEST_4K_TV = 4096L
@@ -182,3 +187,13 @@ data class RequestQuota(
 ) {
     fun forType(type: SeerrMediaType): QuotaLeft? = if (type == SeerrMediaType.Movie) movies else shows
 }
+
+/** A quality a request can ask for: a Radarr or Sonarr quality profile ("HD-1080p"). */
+data class QualityProfile(val id: Int, val name: String)
+
+/** The qualities offered for one kind and quality tier, on the server Seerr would use, and the one it uses by default. */
+data class QualityOptions(
+    val serverId: Int,
+    val profiles: List<QualityProfile>,
+    val defaultProfileId: Int?,
+)

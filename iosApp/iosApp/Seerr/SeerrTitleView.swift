@@ -253,22 +253,19 @@ private struct SeerrActionButton: View {
     }
 }
 
-/// The state as a tag: a symbol and a word or two on a quiet capsule, in the primary colour (a failure in red); never aqua.
+/// The state as a tag: its symbol alone on a quiet round chip, in the primary colour (a failure in red); never aqua. `text` is what
+/// VoiceOver says.
 struct SeerrStateTag: View {
     let text: String
     let state: RequestState
 
     var body: some View {
-        Label {
-            Text(text).font(.caption.weight(.semibold)).lineLimit(1)
-        } icon: {
-            Image(systemName: state == .notrequested ? "plus" : SeerrMarker.symbol(state)).font(.caption2.weight(.semibold))
-        }
-        .labelStyle(.titleAndIcon)
-        .foregroundStyle(state == .failed ? Color(.systemRed) : Color.primary)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 4)
-        .background(Color(.tertiarySystemFill), in: Capsule())
+        Image(systemName: state == .notrequested ? "plus" : SeerrMarker.symbol(state))
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(state == .failed ? Color(.systemRed) : Color.primary)
+            .frame(width: 28, height: 28)
+            .background(Color(.tertiarySystemFill), in: Circle())
+            .accessibilityLabel(text)
     }
 }
 
@@ -295,13 +292,6 @@ private struct SeerrSeasonsView: View {
                         .buttonStyle(PressableButtonStyle())
                         .accessibilityAddTraits(selected ? .isSelected : [])
                     }
-                }
-            }
-            if let season = state.seasons.first(where: { $0.number == chosen }) {
-                HStack(spacing: Space.s3) {
-                    SeerrStateTag(text: season.stateLabel ?? Strings.shared.seerrTag(state: .notrequested), state: season.state)
-                    Text([season.episodes, season.year.map { "\($0)" }].compactMap { $0 }.joined(separator: " · "))
-                        .font(.caption).foregroundStyle(.secondary)
                 }
             }
             episodes

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -29,6 +30,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -76,10 +78,11 @@ fun SeerrSeasonPickerSheet(
     onAllMissing: (Boolean) -> Unit,
     onSeason: (Int) -> Unit,
     onQuality: (Boolean) -> Unit,
+    onProfile: (Int) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    VibeyFinSheet(onDismiss) { SeasonPickerContent(picker, sending, onAllMissing, onSeason, onQuality, onConfirm) }
+    VibeyFinSheet(onDismiss) { SeasonPickerContent(picker, sending, onAllMissing, onSeason, onQuality, onProfile, onConfirm) }
 }
 
 @Composable
@@ -89,6 +92,7 @@ private fun ColumnScope.SeasonPickerContent(
     onAllMissing: (Boolean) -> Unit,
     onSeason: (Int) -> Unit,
     onQuality: (Boolean) -> Unit,
+    onProfile: (Int) -> Unit,
     onConfirm: () -> Unit,
 ) {
     Column(Modifier.navigationBarsPadding().padding(bottom = VibeyFinTokens.Space.s4).verticalScroll(rememberScrollState())) {
@@ -110,34 +114,61 @@ private fun ColumnScope.SeasonPickerContent(
             }
         }
 
-        Row(
-            Modifier.fillMaxWidth().toggleable(value = picker.allMissing, role = Role.Switch, onValueChange = onAllMissing).padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s3),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(Strings.seerrAllMissingSeasons, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-            // Aqua is for the one primary action, so the switch is light on dark
-            Switch(
-                checked = picker.allMissing,
-                onCheckedChange = null,
-                colors = SwitchDefaults.colors(checkedTrackColor = VibeyFinTokens.Colors.ink, checkedThumbColor = VibeyFinTokens.Colors.bg),
+        // The quality to ask for, for whoever may choose it: the server's quality profiles, its default picked
+        if (picker.qualitiesLoading || picker.qualities.isNotEmpty()) {
+            Text(
+                Strings.seerrQuality,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s5).padding(top = VibeyFinTokens.Space.s2).semantics { heading() },
             )
+            if (picker.qualitiesLoading) {
+                Row(Modifier.padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s3)) { SkeletonLine(140.dp, MaterialTheme.typography.bodyLarge) }
+            }
+            picker.qualities.forEach { quality ->
+                Row(
+                    Modifier.fillMaxWidth().selectable(selected = quality.selected, role = Role.RadioButton, onClick = { onProfile(quality.id) })
+                        .padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s1),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(selected = quality.selected, onClick = null)
+                    Spacer(Modifier.width(VibeyFinTokens.Space.s3))
+                    Text(quality.name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+            HorizontalDivider(Modifier.padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s2), color = MaterialTheme.colorScheme.outlineVariant)
         }
-        HorizontalDivider(Modifier.padding(horizontal = VibeyFinTokens.Space.s5), color = MaterialTheme.colorScheme.outlineVariant)
 
-        picker.seasons.forEach { season ->
+        if (picker.showsSeasons) {
             Row(
-                Modifier.fillMaxWidth()
-                    .toggleable(value = season.selected, enabled = !season.locked, role = Role.Checkbox, onValueChange = { onSeason(season.number) })
-                    .padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s1),
+                Modifier.fillMaxWidth().toggleable(value = picker.allMissing, role = Role.Switch, onValueChange = onAllMissing).padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s3),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Checkbox(checked = season.selected, onCheckedChange = null, enabled = !season.locked)
-                Spacer(Modifier.width(VibeyFinTokens.Space.s3))
-                Column(Modifier.weight(1f)) {
-                    Text(season.name, style = MaterialTheme.typography.bodyLarge, color = if (season.locked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
-                    Text(season.episodes, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(Strings.seerrAllMissingSeasons, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                // Aqua is for the one primary action, so the switch is light on dark
+                Switch(
+                    checked = picker.allMissing,
+                    onCheckedChange = null,
+                    colors = SwitchDefaults.colors(checkedTrackColor = VibeyFinTokens.Colors.ink, checkedThumbColor = VibeyFinTokens.Colors.bg),
+                )
+            }
+            HorizontalDivider(Modifier.padding(horizontal = VibeyFinTokens.Space.s5), color = MaterialTheme.colorScheme.outlineVariant)
+
+            picker.seasons.forEach { season ->
+                Row(
+                    Modifier.fillMaxWidth()
+                        .toggleable(value = season.selected, enabled = !season.locked, role = Role.Checkbox, onValueChange = { onSeason(season.number) })
+                        .padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s1),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(checked = season.selected, onCheckedChange = null, enabled = !season.locked)
+                    Spacer(Modifier.width(VibeyFinTokens.Space.s3))
+                    Column(Modifier.weight(1f)) {
+                        Text(season.name, style = MaterialTheme.typography.bodyLarge, color = if (season.locked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
+                        Text(season.episodes, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    season.stateLabel?.let { StatusLine(it, season.state) }
                 }
-                season.stateLabel?.let { StatusLine(it, season.state) }
             }
         }
 
@@ -184,7 +215,7 @@ fun SeerrMenuSheet(title: SeerrTitle, onDetails: () -> Unit, onTrailer: (String)
         val picker = state.picker
 
         if (picker != null) {
-            SeasonPickerContent(picker, state.sending, viewModel::onPickerAllMissing, viewModel::onPickerSeason, viewModel::onPickerQuality, viewModel::onPickerConfirm)
+            SeasonPickerContent(picker, state.sending, viewModel::onPickerAllMissing, viewModel::onPickerSeason, viewModel::onPickerQuality, viewModel::onPickerProfile, viewModel::onPickerConfirm)
         } else {
             MenuContent(title, state, viewModel, onDetails, onTrailer)
         }

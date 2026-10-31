@@ -147,6 +147,25 @@ struct SeerrSeasonPickerView: View {
                         .pickerStyle(.segmented)
                     }
                 }
+                // The quality to ask for, for whoever may choose it: the server's quality profiles, its default picked.
+                if picker.qualitiesLoading || !picker.qualities.isEmpty {
+                    Section(Strings.shared.seerrQuality) {
+                        if picker.qualitiesLoading {
+                            ProgressView().frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        ForEach(picker.qualities, id: \.id) { quality in
+                            Button { model.pickerProfile(quality.id) } label: {
+                                HStack {
+                                    Text(quality.name).foregroundStyle(.primary)
+                                    Spacer()
+                                    if quality.selected { Image(systemName: "checkmark").foregroundStyle(Brand.accent) }
+                                }
+                            }
+                            .accessibilityAddTraits(quality.selected ? .isSelected : [])
+                        }
+                    }
+                }
+                if picker.showsSeasons {
                 Section {
                     Toggle(Strings.shared.seerrAllMissingSeasons, isOn: Binding(get: { picker.allMissing }, set: { model.pickerAllMissing($0) }))
                         .tint(Color(.systemGray))
@@ -170,6 +189,7 @@ struct SeerrSeasonPickerView: View {
                         .disabled(season.locked)
                         .accessibilityAddTraits(season.selected ? .isSelected : [])
                     }
+                }
                 }
             }
             .listStyle(.insetGrouped)

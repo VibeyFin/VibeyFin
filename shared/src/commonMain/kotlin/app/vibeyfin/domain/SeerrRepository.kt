@@ -3,6 +3,7 @@ package app.vibeyfin.domain
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.data.api.map
+import app.vibeyfin.data.seerr.QualityChoice
 import app.vibeyfin.data.seerr.SeasonChoice
 import app.vibeyfin.data.seerr.SeerrPageDto
 import app.vibeyfin.data.seerr.SeerrResultDto
@@ -17,12 +18,16 @@ import app.vibeyfin.data.seerr.requestMovie
 import app.vibeyfin.data.seerr.requestShow
 import app.vibeyfin.data.seerr.requests
 import app.vibeyfin.data.seerr.search
+import app.vibeyfin.data.seerr.service
+import app.vibeyfin.data.seerr.services
 import app.vibeyfin.data.seerr.show
 import app.vibeyfin.data.seerr.showRecommendations
 import app.vibeyfin.data.seerr.showSeason
 import app.vibeyfin.data.seerr.trending
 import app.vibeyfin.data.seerr.upcomingMovies
 import app.vibeyfin.data.seerr.upcomingShows
+import app.vibeyfin.domain.model.QualityOptions
+import app.vibeyfin.domain.model.QualityProfile
 import app.vibeyfin.domain.model.RequestQuota
 import app.vibeyfin.domain.model.SeerrEpisode
 import app.vibeyfin.domain.model.SeerrMediaType
@@ -113,11 +118,11 @@ class SeerrRepository(private val seerr: SeerrConnection) {
      * a request is a write. Seerr says only "forbidden" both for a quota that is used up and for a missing permission, so
      * the quota is read to tell them apart.
      */
-    suspend fun request(type: SeerrMediaType, tmdbId: Int, seasons: SeasonChoice? = null, is4k: Boolean = false): RequestOutcome {
+    suspend fun request(type: SeerrMediaType, tmdbId: Int, seasons: SeasonChoice? = null, is4k: Boolean = false, quality: QualityChoice? = null): RequestOutcome {
         val sent = seerr.call { api, me ->
             when (type) {
-                SeerrMediaType.Movie -> api.requestMovie(tmdbId, is4k)
-                SeerrMediaType.Show -> api.requestShow(tmdbId, seasons ?: SeasonChoice.All, is4k)
+                SeerrMediaType.Movie -> api.requestMovie(tmdbId, is4k, quality)
+                SeerrMediaType.Show -> api.requestShow(tmdbId, seasons ?: SeasonChoice.All, is4k, quality)
             }.map { it?.toRequest(me.id, type) }
         }
         return when (sent) {
@@ -133,6 +138,33 @@ class SeerrRepository(private val seerr: SeerrConnection) {
                 ApiError.Unexpected(CONFLICT) -> RequestOutcome.AlreadyRequested
 
                 else -> RequestOutcome.Failed(error)
+            }
+        }
+    }
+
+    /**
+     * The quality profiles a request for [type] (in 4K when [is4k]) could ask for, on the server Seerr would send it to: the default
+     * one of that tier, else the first. Null when Seerr has no such server.
+     */
+    suspend fun qualityOptions(type: SeerrMediaType, is4k: Boolean): ApiResult<QualityOptions?> = seerr.call { api, _ ->
+        val movies = type == SeerrMediaType.Movie
+        when (val servers = api.services(movies)) {
+            is ApiResult.Failure -> servers
+
+            is ApiResult.Success -> {
+                val tier = servers.value.filter { it.is4k == is4k }
+                val server = tier.firstOrNull { it.isDefault } ?: tier.firstOrNull()
+                if (server == null) {
+                    ApiResult.Success(null)
+                } else {
+                    api.service(movies, server.id).map { details ->
+                        QualityOptions(
+                            serverId = server.id,
+                            profiles = details.profiles.map { QualityProfile(it.id, it.name?.takeIf(String::isNotBlank) ?: "#${it.id}") },
+                            defaultProfileId = details.server?.activeProfileId ?: server.activeProfileId,
+                        )
+                    }
+                }
             }
         }
     }

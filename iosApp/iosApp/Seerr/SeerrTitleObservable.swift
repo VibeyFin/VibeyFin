@@ -31,6 +31,7 @@ final class SeerrTitleObservable: ObservableObject {
     func pickerAllMissing(_ on: Bool) { model.onPickerAllMissing(on: on) }
     func pickerSeason(_ number: Int32) { model.onPickerSeason(number: number) }
     func pickerQuality(_ is4k: Bool) { model.onPickerQuality(is4k: is4k) }
+    func pickerProfile(_ id: Int32) { model.onPickerProfile(id: id) }
     func pickerConfirm() { model.onPickerConfirm() }
     func pickerDismiss() { model.onPickerDismiss() }
     func cancelRequest() { model.onCancelRequest() }

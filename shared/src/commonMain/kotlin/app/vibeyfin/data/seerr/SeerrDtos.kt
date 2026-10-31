@@ -144,6 +144,9 @@ internal data class SeerrNewRequestDto(
     val mediaId: Int,
     val seasons: JsonElement? = null,
     val is4k: Boolean = false,
+    /** The Radarr or Sonarr server and its quality profile; left out, Seerr uses the server's defaults. */
+    val serverId: Int? = null,
+    val profileId: Int? = null,
 )
 
 @Serializable
@@ -281,3 +284,23 @@ data class SeerrEpisodeDto(
     val stillPath: String? = null,
     val voteAverage: Double? = null,
 )
+
+/** One Radarr or Sonarr server in `GET /service/radarr` or `/service/sonarr` (the parts any user may see). */
+@Serializable
+data class SeerrServiceServerDto(
+    val id: Int,
+    val name: String? = null,
+    val is4k: Boolean = false,
+    val isDefault: Boolean = false,
+    val activeProfileId: Int? = null,
+)
+
+/** `GET /service/radarr/{id}` or `/service/sonarr/{id}`: the server and its quality profiles. */
+@Serializable
+data class SeerrServiceDetailsDto(
+    val server: SeerrServiceServerDto? = null,
+    val profiles: List<SeerrQualityProfileDto> = emptyList(),
+)
+
+@Serializable
+data class SeerrQualityProfileDto(val id: Int, val name: String? = null)

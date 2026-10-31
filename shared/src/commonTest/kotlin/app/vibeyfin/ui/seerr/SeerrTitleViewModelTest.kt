@@ -192,7 +192,7 @@ class SeerrTitleViewModelTest {
 
         viewModel.onSelectSeason(2)
 
-        val second = viewModel.await { it.episodes?.season == 2 && it.episodes?.loading == false }.episodes!!
+        val second = viewModel.await { it.episodes?.let { shown -> shown.season == 2 && !shown.loading } == true }.episodes!!
         assertEquals(listOf("Episode 1"), second.episodes.map { it.title })
     }
 
@@ -202,6 +202,43 @@ class SeerrTitleViewModelTest {
         val fresh = viewModel(SeerrMediaType.Movie, 603).await { !it.loading }
         assertEquals("Not in your library", fresh.tag)
         assertNull(fresh.statusDetail)
+    }
+
+    @Test
+    fun whoMayChooseQualityGetsTheRequestSheetWithTheServersProfiles() = runTest {
+        connected {
+            user = seerrUserJson(permissions = 32 or 8192)
+            onSignedIn("GET", "/api/v1/service/radarr") { Reply.json("""[{"id":1,"name":"Radarr 4K","is4k":true},{"id":0,"name":"Radarr","is4k":false,"isDefault":true,"activeProfileId":4}]""") }
+            onSignedIn("GET", "/api/v1/service/radarr/0") { Reply.json("""{"server":{"id":0,"activeProfileId":4},"profiles":[{"id":4,"name":"HD-1080p"},{"id":5,"name":"Ultra-HD"}]}""") }
+        }.onSignedIn("POST", "/api/v1/request") { Reply.json("""{"id":9,"status":1,"type":"movie"}""", HttpStatusCode.Created) }
+        val viewModel = viewModel(SeerrMediaType.Movie, 603)
+        viewModel.await { !it.loading }
+
+        viewModel.onRequest()
+
+        val sheet = viewModel.await { it.picker?.qualities?.isNotEmpty() == true }.picker!!
+        assertFalse(sheet.showsSeasons)
+        assertEquals(listOf("HD-1080p" to true, "Ultra-HD" to false), sheet.qualities.map { it.name to it.selected })
+        assertTrue(app.jellyfin.requestsTo("POST", "/api/v1/request").isEmpty())
+
+        viewModel.onPickerProfile(5)
+        viewModel.onPickerConfirm()
+
+        viewModel.await { it.notice != null }
+        assertEquals("""{"mediaType":"movie","mediaId":603,"serverId":0,"profileId":5}""", app.jellyfin.requestsTo("POST", "/api/v1/request").single().body)
+    }
+
+    @Test
+    fun everyoneElsesMovieRequestGoesAtOnceWithTheDefaultQuality() = runTest {
+        connected().onSignedIn("POST", "/api/v1/request") { Reply.json("""{"id":9,"status":1,"type":"movie"}""", HttpStatusCode.Created) }
+        val viewModel = viewModel(SeerrMediaType.Movie, 603)
+        viewModel.await { !it.loading }
+
+        viewModel.onRequest()
+
+        viewModel.await { it.notice != null }
+        assertNull(viewModel.uiState.value.picker)
+        assertTrue(app.jellyfin.requestsTo("GET", "/api/v1/service/radarr").isEmpty())
     }
 
     @Test
