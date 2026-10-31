@@ -1079,6 +1079,15 @@ object Strings {
 
     fun seerrEpisodeCount(count: Int) = if (count == 1) "1 episode" else "$count episodes"
 
+    /** A season's tile in the request sheet: its number, "SP" for Specials. */
+    fun seerrSeasonTile(number: Int) = if (number == 0) "SP" else number.toString()
+
+    /** The episode count under a season's tile: "10 ep". */
+    fun seerrEpisodeCountShort(count: Int) = "$count ep"
+
+    /** What a screen reader says for a season's tile: "Season 3, 10 episodes, Available". */
+    fun seerrSeasonTileDescription(name: String, episodes: String, state: String?) = listOfNotNull(name, episodes, state).joinToString(", ")
+
     fun seerrRequestSeasonCount(count: Int) = if (count == 1) "Request 1 season" else "Request $count seasons"
 
     fun seerrPickerSubtitle(title: String, seasons: Int) = "$title \u00b7 ${seasonCount(seasons)}"

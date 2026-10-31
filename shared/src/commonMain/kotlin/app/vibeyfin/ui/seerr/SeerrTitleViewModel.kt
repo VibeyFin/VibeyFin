@@ -53,6 +53,12 @@ data class SeerrPickerSeason(
     val locked: Boolean,
     val state: RequestState,
     val stateLabel: String?,
+    /** On its tile: "3", "SP" for Specials. */
+    val tile: String = "",
+    /** Under the tile: "10 ep". */
+    val tileEpisodes: String = "",
+    /** What a screen reader says for the tile: "Season 3, 10 episodes, Available". */
+    val description: String = "",
 )
 
 /** A quality in the request sheet: a Radarr or Sonarr quality profile. */
@@ -481,6 +487,13 @@ class SeerrTitleViewModel(
                 locked = season.number !in open,
                 state = state,
                 stateLabel = if (season.number in open) null else Strings.seerrStateLabel(state),
+                tile = Strings.seerrSeasonTile(season.number),
+                tileEpisodes = Strings.seerrEpisodeCountShort(season.episodeCount),
+                description = Strings.seerrSeasonTileDescription(
+                    season.label(),
+                    Strings.seerrEpisodeCount(season.episodeCount),
+                    if (season.number in open) null else Strings.seerrStateLabel(state),
+                ),
             )
         }
         val count = chosen.size

@@ -1,11 +1,15 @@
 package app.vibeyfin.app.seerr
 
 import androidx.compose.foundation.LocalOverscrollFactory
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -23,11 +27,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -59,8 +63,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelStore
@@ -78,6 +84,7 @@ import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.seerr.SeerrNotice
+import app.vibeyfin.ui.seerr.SeerrPickerSeason
 import app.vibeyfin.ui.seerr.SeerrSeasonPicker
 import app.vibeyfin.ui.seerr.SeerrTitleUiState
 import app.vibeyfin.ui.seerr.SeerrTitleViewModel
@@ -151,22 +158,7 @@ private fun ColumnScope.SeasonPickerContent(
                 }
                 HorizontalDivider(Modifier.padding(horizontal = VibeyFinTokens.Space.s5), color = MaterialTheme.colorScheme.outlineVariant)
 
-                picker.seasons.forEach { season ->
-                    Row(
-                        Modifier.fillMaxWidth()
-                            .toggleable(value = season.selected, enabled = !season.locked, role = Role.Checkbox, onValueChange = { onSeason(season.number) })
-                            .padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s1),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(checked = season.selected, onCheckedChange = null, enabled = !season.locked)
-                        Spacer(Modifier.width(VibeyFinTokens.Space.s3))
-                        Column(Modifier.weight(1f)) {
-                            Text(season.name, style = MaterialTheme.typography.bodyLarge, color = if (season.locked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
-                            Text(season.episodes, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        season.stateLabel?.let { StatusLine(it, season.state) }
-                    }
-                }
+                SeasonGrid(picker.seasons, onSeason)
             }
 
             Button(
@@ -186,6 +178,50 @@ private fun ColumnScope.SeasonPickerContent(
         }
     }
 }
+
+// The seasons as a grid of tiles, so twenty seasons fit on a screen: the number large, the episode count under it. A chosen one
+// is filled in ink with a tick; one that can't be asked for (available, requested) is dimmed and shows its state's icon.
+@Composable
+private fun SeasonGrid(seasons: List<SeerrPickerSeason>, onSeason: (Int) -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s3)) {
+        val gap = VibeyFinTokens.Space.s2
+        val columns = ((maxWidth + gap) / (SEASON_TILE_MIN + gap)).toInt().coerceAtLeast(MIN_SEASON_COLUMNS)
+        val tile = (maxWidth - gap * (columns - 1)) / columns
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(gap)) {
+            seasons.forEach { season -> SeasonTile(season, Modifier.width(tile)) { onSeason(season.number) } }
+        }
+    }
+}
+
+@Composable
+private fun SeasonTile(season: SeerrPickerSeason, modifier: Modifier, onToggle: () -> Unit) {
+    val shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md)
+    val fill = if (season.selected) VibeyFinTokens.Colors.ink else VibeyFinTokens.Colors.surface2
+    val text = when {
+        season.selected -> VibeyFinTokens.Colors.bg
+        season.locked -> VibeyFinTokens.Colors.inkSubtle
+        else -> VibeyFinTokens.Colors.ink
+    }
+    Box(
+        modifier.aspectRatio(1f).clip(shape).background(fill)
+            .then(if (season.selected) Modifier else Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape))
+            .toggleable(value = season.selected, enabled = !season.locked, role = Role.Checkbox, onValueChange = { onToggle() })
+            .semantics(mergeDescendants = true) { contentDescription = season.description },
+    ) {
+        Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(season.tile, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = text, maxLines = 1)
+            Text(season.tileEpisodes, style = MaterialTheme.typography.labelSmall, color = text, maxLines = 1)
+        }
+        val corner = Modifier.align(Alignment.TopEnd).padding(VibeyFinTokens.Space.s1).size(16.dp)
+        when {
+            season.selected -> Icon(Icons.Filled.Check, contentDescription = null, tint = text, modifier = corner)
+            season.locked -> Icon(painterResource(stateIconOf(season.state)), contentDescription = null, tint = text, modifier = corner)
+        }
+    }
+}
+
+private val SEASON_TILE_MIN = 64.dp
+private const val MIN_SEASON_COLUMNS = 4
 
 // The quality to ask for: M3's exposed dropdown, a read-only field with the chosen profile that opens a plain list of the server's
 // profiles (no search) right under it, as wide as the field. The default is chosen to begin with.

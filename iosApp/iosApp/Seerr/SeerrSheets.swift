@@ -173,24 +173,13 @@ struct SeerrSeasonPickerView: View {
                         .tint(Color(.systemGray))
                 }
                 Section {
-                    ForEach(picker.seasons, id: \.number) { season in
-                        Button { model.pickerSeason(season.number) } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(season.name).foregroundStyle(season.locked ? .secondary : .primary)
-                                    Text(season.episodes).font(.caption).foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                if let label = season.stateLabel {
-                                    SeerrStatusLine(text: label, state: season.state).font(.caption)
-                                } else if season.selected {
-                                    Image(systemName: "checkmark").foregroundStyle(Brand.accent)
-                                }
-                            }
+                    // A grid of tiles, so twenty seasons fit on a screen.
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 60), spacing: Space.s2)], spacing: Space.s2) {
+                        ForEach(picker.seasons, id: \.number) { season in
+                            SeerrSeasonTile(season: season) { model.pickerSeason(season.number) }
                         }
-                        .disabled(season.locked)
-                        .accessibilityAddTraits(season.selected ? .isSelected : [])
                     }
+                    .padding(.vertical, Space.s2)
                 }
                 }
             }
@@ -270,5 +259,44 @@ private struct SeerrNoticeBanner: ViewModifier {
 extension View {
     func seerrNoticeBanner(_ notice: SeerrNotice?, showsAction: Bool, onAction: @escaping () -> Void, onDismiss: @escaping () -> Void) -> some View {
         modifier(SeerrNoticeBanner(notice: notice, showsAction: showsAction, onAction: onAction, onDismiss: onDismiss))
+    }
+}
+
+/// A season in the request sheet: its number large, the episode count under it. A chosen one is filled with a tick; one that can't be
+/// asked for (available, requested) is dimmed and shows its state's symbol.
+struct SeerrSeasonTile: View {
+    let season: SeerrPickerSeason
+    let onToggle: () -> Void
+
+    var body: some View {
+        Button(action: onToggle) {
+            VStack(spacing: 2) {
+                Text(season.tile).font(.title3.weight(.semibold))
+                Text(season.tileEpisodes).font(.caption2)
+            }
+            .foregroundStyle(season.selected ? Color(.systemBackground) : (season.locked ? Color.secondary : Color.primary))
+            .frame(maxWidth: .infinity)
+            .aspectRatio(1, contentMode: .fit)
+            .background(
+                RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+                    .fill(season.selected ? Color.primary : Color(.tertiarySystemFill))
+            )
+            .overlay(alignment: .topTrailing) {
+                Group {
+                    if season.selected {
+                        Image(systemName: "checkmark").foregroundStyle(Color(.systemBackground))
+                    } else if season.locked {
+                        SeerrStateSymbol(state: season.state).foregroundStyle(.secondary)
+                    }
+                }
+                .font(.caption2.weight(.bold))
+                .padding(6)
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(season.locked)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(season.description)
+        .accessibilityAddTraits(season.selected ? .isSelected : [])
     }
 }
