@@ -132,6 +132,9 @@ class SeerrTitleViewModel(
     val uiState: StateFlow<SeerrTitleUiState> = content.asStateFlow()
 
     private var details: SeerrTitleDetails? = null
+
+    // IMDb's rating, read beside the page (Seerr looks it up, which can be slow) and added to the facts when it comes.
+    private var imdb: Double? = null
     private var lastAttempt: Pair<SeasonChoice?, Boolean>? = null
 
     init {
@@ -250,6 +253,12 @@ class SeerrTitleViewModel(
 
     private fun load(showSkeleton: Boolean) {
         if (showSkeleton) content.update { it.copy(loading = true, message = null) }
+        if (type == SeerrMediaType.Movie && imdb == null) {
+            viewModelScope.launch {
+                imdb = (repository.imdbRating(tmdbId) as? ApiResult.Success)?.value ?: return@launch
+                content.update { state -> details?.let { state.copy(facts = facts(it)) } ?: state }
+            }
+        }
         viewModelScope.launch {
             val more = async { repository.recommendations(type, tmdbId) }
             when (val result = repository.title(type, tmdbId)) {
@@ -283,7 +292,7 @@ class SeerrTitleViewModel(
             loading = false,
             message = null,
             title = title,
-            facts = listOfNotNull(title.year?.toString(), details.certification, details.runtimeMinutes?.let(::runtimeText)),
+            facts = facts(details),
             genres = details.genres,
             overview = title.overview,
             status = Strings.seerrStatusLine(title.state, latest?.byMe == true, asker),
@@ -310,6 +319,13 @@ class SeerrTitleViewModel(
     }
 
     // [missing]: a show has seasons nobody asked for yet, which a partly available show can still request.
+    private fun facts(details: SeerrTitleDetails) = listOfNotNull(
+        details.title.year?.toString(),
+        details.certification,
+        details.runtimeMinutes?.let(::runtimeText),
+        imdb?.let(Strings::imdbRating),
+    )
+
     private fun primary(state: RequestState, mayRequest: Boolean, missing: Boolean): SeerrPrimary {
         val ask = if (type == SeerrMediaType.Movie) Strings.seerrRequest else Strings.seerrRequestSeasons
         return when {

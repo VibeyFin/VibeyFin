@@ -8,6 +8,7 @@ import app.vibeyfin.data.seerr.SeerrPageDto
 import app.vibeyfin.data.seerr.SeerrResultDto
 import app.vibeyfin.data.seerr.deleteRequest
 import app.vibeyfin.data.seerr.movie
+import app.vibeyfin.data.seerr.movieRatings
 import app.vibeyfin.data.seerr.movieRecommendations
 import app.vibeyfin.data.seerr.popularMovies
 import app.vibeyfin.data.seerr.popularShows
@@ -72,6 +73,9 @@ class SeerrRepository(private val seerr: SeerrConnection) {
             SeerrMediaType.Show -> api.show(tmdbId).map { it.toDetails(me.id) }
         }
     }
+
+    /** A movie's IMDb rating out of 10; null when IMDb has none. Shows have none on Seerr. */
+    suspend fun imdbRating(tmdbId: Int): ApiResult<Double?> = seerr.call { api, _ -> api.movieRatings(tmdbId).map { it.imdb?.criticsScore?.takeIf { score -> score > 0 } } }
 
     /** What TMDB suggests for a title, for "More like this". */
     suspend fun recommendations(type: SeerrMediaType, tmdbId: Int): ApiResult<SeerrPage> = seerr.call { api, _ ->

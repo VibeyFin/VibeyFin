@@ -40,6 +40,9 @@ suspend fun SeerrApi.movie(tmdbId: Int): ApiResult<SeerrMovieDto> = get("/movie/
 /** `GET /tv/{id}`, by TMDB id. */
 suspend fun SeerrApi.show(tmdbId: Int): ApiResult<SeerrTvDto> = get("/tv/$tmdbId", retry = true)
 
+/** `GET /movie/{id}/ratingscombined`: the movie's IMDb (and Rotten Tomatoes) rating, which Seerr looks up when asked. */
+suspend fun SeerrApi.movieRatings(tmdbId: Int): ApiResult<SeerrRatingsDto> = get("/movie/$tmdbId/ratingscombined", retry = true)
+
 /** `GET /movie/{id}/recommendations`: what TMDB suggests for a movie, as "More like this". */
 suspend fun SeerrApi.movieRecommendations(tmdbId: Int): ApiResult<SeerrPageDto<SeerrResultDto>> = get("/movie/$tmdbId/recommendations", retry = true)
 

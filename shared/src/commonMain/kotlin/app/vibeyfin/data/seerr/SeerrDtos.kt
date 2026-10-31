@@ -252,3 +252,15 @@ data class SeerrQuotaPartDto(
     val remaining: Int? = null,
     val restricted: Boolean = false,
 )
+
+/** `GET /movie/{id}/ratingscombined`: Rotten Tomatoes and IMDb. Seerr has no IMDb rating for shows. */
+@Serializable
+data class SeerrRatingsDto(val imdb: SeerrImdbRatingDto? = null)
+
+/** IMDb's rating out of 10 (Seerr calls it `criticsScore`) and how many votes it rests on. */
+@Serializable
+data class SeerrImdbRatingDto(
+    val criticsScore: Double? = null,
+    val criticsScoreCount: Long? = null,
+)
+

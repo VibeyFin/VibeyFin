@@ -96,6 +96,17 @@ class SeerrTitleViewModelTest {
     }
 
     @Test
+    fun aMoviesImdbRatingJoinsItsFactsWhenSeerrHasOne() = runTest {
+        connected().onSignedIn("GET", "/api/v1/movie/603/ratingscombined") {
+            Reply.json("""{"rt":{"criticsScore":83},"imdb":{"title":"Harbour Bridge","criticsScore":8.66,"criticsScoreCount":2289808}}""")
+        }
+
+        val state = viewModel(SeerrMediaType.Movie, 603).await { it.facts.size == 4 }
+
+        assertEquals(listOf("2025", "PG-13", "1 h 36 min", "IMDb 8.7"), state.facts)
+    }
+
+    @Test
     fun requestingAMovieSendsItOnceAndThePageThenShowsItWaiting() = runTest {
         val seerr = connected()
         seerr.onSignedIn("POST", "/api/v1/request") {
