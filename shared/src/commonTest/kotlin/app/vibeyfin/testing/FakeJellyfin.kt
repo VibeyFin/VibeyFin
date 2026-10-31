@@ -7,6 +7,8 @@ import app.vibeyfin.data.api.JellyfinHttpClient
 import app.vibeyfin.data.api.RetryPolicy
 import app.vibeyfin.data.api.ServerReachability
 import app.vibeyfin.data.api.UnauthorizedEvents
+import app.vibeyfin.data.seerr.SeerrApiFactory
+import app.vibeyfin.data.seerr.SeerrHttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockEngineConfig
 import io.ktor.client.engine.mock.MockRequestHandler
@@ -39,6 +41,10 @@ class RecordedRequest(
     val body: String,
     /** The `Range` header, when the request had one. */
     val range: String? = null,
+    /** The `Cookie` header: Seerr's session travels in it. */
+    val cookie: String? = null,
+    /** The query exactly as sent, still encoded. */
+    val encodedQuery: String = "",
 )
 
 /** How a fake server answers one call. */
@@ -179,6 +185,8 @@ class FakeJellyfin(
             authorization = data.headers[HttpHeaders.Authorization],
             body = data.bodyText(),
             range = data.headers[HttpHeaders.Range],
+            cookie = data.headers[HttpHeaders.Cookie],
+            encodedQuery = data.url.encodedQuery,
         )
         recording.withLock { requests += recorded }
         val reply = server.answer(recorded)
@@ -217,6 +225,9 @@ class FakeJellyfin(
     )
 
     val apiFactory = JellyfinApiFactory(http, unauthorized, retries, reachability)
+
+    /** Seerr's client on the same pretend network: a Seerr is just another [server] address. */
+    val seerrFactory = SeerrApiFactory(SeerrHttpClient.create(engine = engine), retries)
 
     fun api(address: String, token: String? = null): JellyfinApi = apiFactory.create(address, token)
 
