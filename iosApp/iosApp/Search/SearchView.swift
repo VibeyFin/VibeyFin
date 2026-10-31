@@ -61,13 +61,14 @@ struct SearchView: View {
                 } else {
                     prompt(Strings.shared.searchPrompt, Strings.shared.searchPromptHelp)
                 }
-            } else if state.message == nil && state.noResults == false && state.groups.isEmpty {
+            } else if state.message == nil && state.noResults == false && state.searched.isEmpty {
+                // The first answer for this text is on its way.
                 VStack(spacing: Space.s3) { chips(state); skeleton }
             } else if let message = state.message {
                 LoadErrorView(message: message, onRetry: { model.retry() }).screenMargin()
             } else if state.noResults {
                 VStack(spacing: 0) { chips(state); prompt(Strings.shared.noSearchResults(query: state.searched), state.offline ? Strings.shared.offlineSearchEmpty : Strings.shared.noSearchResultsHelp) }
-            } else if state.groups.isEmpty {
+            } else if state.searched.isEmpty {
                 skeleton
             } else {
                 results(state)
@@ -129,6 +130,13 @@ struct SearchView: View {
         chips(state)
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Space.s2) {
+                // The library had nothing, but Seerr's group follows: say so above it (issue #14).
+                if state.libraryNoMatch {
+                    Text(Strings.shared.libraryNoMatch(query: state.searched))
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, Space.s3)
+                }
                 ForEach(state.visibleGroups, id: \.kind) { group in
                     Text(group.title.titleCased())
                         .sectionTitle()
@@ -147,12 +155,48 @@ struct SearchView: View {
                         }
                     }
                 }
+                if let seerr = state.seerrGroup {
+                    seerrGroup(seerr, titled: state.filter != .notinlibrary)
+                }
             }
             .screenMargin()
             .padding(.vertical, Space.s2)
             // The older answer stays while the next one is on its way, dimmed.
             .opacity(state.loading ? 0.5 : 1)
         }
+        }
+    }
+
+    /// Seerr's titles that aren't in the library, always last: the heading (left out when the filter shows nothing else), a note,
+    /// then the tiles, three grey tiles while Seerr answers, or why it didn't. Opening a title comes with the request page.
+    @ViewBuilder
+    private func seerrGroup(_ seerr: SeerrSearch, titled: Bool) -> some View {
+        VStack(alignment: .leading, spacing: Space.s1) {
+            if titled {
+                Text(Strings.shared.seerrNotInLibrary.titleCased())
+                    .sectionTitle()
+                    .accessibilityAddTraits(.isHeader)
+            }
+            Text(Strings.shared.seerrSearchNote).font(.footnote).foregroundStyle(.secondary)
+        }
+        .padding(.top, Space.s3)
+        if let failed = seerr as? SeerrSearchFailed {
+            LoadErrorView(message: failed.message, onRetry: { model.retrySeerr() })
+        } else {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
+                if let found = seerr as? SeerrSearchFound {
+                    ForEach(found.titles, id: \.self) { title in
+                        SeerrPosterTile(title: title)
+                    }
+                } else {
+                    ForEach(0..<3, id: \.self) { _ in
+                        VStack(alignment: .leading, spacing: Space.s2) {
+                            SkeletonBlock().aspectRatio(2.0 / 3.0, contentMode: .fit)
+                            SkeletonLine(font: .subheadline, width: 80)
+                        }
+                    }
+                }
+            }
         }
     }
 

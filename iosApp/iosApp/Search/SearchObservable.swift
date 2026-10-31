@@ -32,6 +32,8 @@ final class SearchObservable: ObservableObject {
 
     func retry() { model.onRetry() }
 
+    func retrySeerr() { model.onSeerrRetry() }
+
     deinit {
         model.close()
     }
