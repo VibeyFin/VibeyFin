@@ -269,6 +269,9 @@ object Strings {
     /** The player button that turns the video into a small window over other apps. */
     val pictureInPicture = "Picture in picture"
 
+    /** The player's status while the video plays on another screen over AirPlay: the receiver's [device] name, or a generic one when the system gave none. */
+    fun playingOn(device: String?): String = device?.trim()?.takeIf { it.isNotEmpty() }?.let { "Playing on $it" } ?: "Playing on AirPlay"
+
     /** The level a swipe on the player set, for the indicator's screen-reader text: "Volume 60%". */
     fun volumeLevel(percent: Int) = "Volume $percent%"
 

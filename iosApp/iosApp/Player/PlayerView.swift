@@ -48,14 +48,19 @@ struct PlayerView: View {
 
     private var state: PlaybackUiState? { model.state }
     private var hasStream: Bool { state?.stream != nil }
-    /// The profile wants the swipe, and the player is on screen rather than in a picture-in-picture window.
-    private var swipeEnabled: Bool { state?.swipeGestures != false && !pip.isActive }
+    /// The profile wants the swipe, and the picture is on this screen: not in a picture-in-picture window, not over AirPlay.
+    private var swipeEnabled: Bool { state?.swipeGestures != false && !pip.isActive && !controller.isExternalPlayback }
     private var isWaiting: Bool { state?.message == nil && (state?.loading ?? true || controller.isBuffering) }
 
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
             PlayerSurface(player: controller.player, onLayer: { pip.attach(to: $0) }).ignoresSafeArea()
+            // The picture is on the other screen over AirPlay: the item's artwork, blurred, stands in for it.
+            if controller.isExternalPlayback {
+                ExternalPlaybackBackdrop(artworkUrl: state?.artworkUrl)
+                    .transition(.opacity)
+            }
             // A touch anywhere on the video shows or hides the controls; a double tap on the left or
             // right third seeks. The double tap comes first so a single tap isn't taken for half of it.
             // A vertical swipe changes the brightness on the left half and the volume on the right.
@@ -88,7 +93,7 @@ struct PlayerView: View {
                 if isWaiting {
                     ProgressView().controlSize(.large)
                 }
-                if controlsVisible {
+                if controlsVisible || controller.isExternalPlayback {
                     controls
                         .transition(.opacity)
                 }
@@ -132,6 +137,7 @@ struct PlayerView: View {
             }
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.26), value: state?.upNext != nil)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: controller.isExternalPlayback)
         // The app tints aqua; in the player everything that takes a tint (the spinner, glass buttons,
         // menus) is white. Aqua stays on the scrubber's fill, which sets its own colour.
         .tint(.white)
@@ -193,6 +199,15 @@ struct PlayerView: View {
                 forward: Int(state?.skipForwardSeconds ?? ProfileSettings.Companion.shared.DEFAULT_SKIP_FORWARD_SECONDS)
             )
             pip.allow(state?.pictureInPicture != false)
+        }
+        // Over AirPlay the controls are the whole screen, so they stay up until it stops.
+        .onChange(of: controller.isExternalPlayback) { active in
+            if active {
+                hideTask?.cancel()
+                setControlsVisible(true)
+            } else {
+                scheduleHide()
+            }
         }
         .onChange(of: controller.isPlaying) { isPlaying in
             if isPlaying {
@@ -269,6 +284,9 @@ struct PlayerView: View {
                             },
                             onSkipForward: { skip(.forward) }
                         )
+                    }
+                    if controller.isExternalPlayback {
+                        ExternalPlaybackStatus(text: Strings.shared.playingOn(device: controller.externalDeviceName))
                     }
                 }
                 .screenMargin()
@@ -352,7 +370,8 @@ struct PlayerView: View {
                         onOpenChange: menuOpenChanged
                     )
                 }
-                if pip.isSupported && state?.pictureInPicture != false {
+                // Picture in picture doesn't apply to external playback; the button is back when AirPlay stops.
+                if pip.isSupported && state?.pictureInPicture != false && !controller.isExternalPlayback {
                     PlayerIconButton(
                         systemName: "pip.enter",
                         label: Strings.shared.pictureInPicture,
@@ -586,6 +605,8 @@ struct PlayerView: View {
 
     private func toggleControls() {
         model.userInteraction()
+        // Over AirPlay the controls stay up.
+        guard !controller.isExternalPlayback else { return }
         // A touch on the video means no menu or picker is open, whatever it last reported.
         menuOpen = false
         if controlsVisible {
@@ -606,7 +627,7 @@ struct PlayerView: View {
     private func scheduleHide() {
         hideTask?.cancel()
         guard controller.isPlaying, scrubPosition == nil, !menuOpen, state?.message == nil,
-              !UIAccessibility.isVoiceOverRunning else { return }
+              !controller.isExternalPlayback, !UIAccessibility.isVoiceOverRunning else { return }
         hideTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: hideDelay)
             guard !Task.isCancelled else { return }
