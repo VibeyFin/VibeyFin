@@ -5,13 +5,18 @@ import Shared
 /// "2025 · Movie" under it. Read as one element, with what Seerr knows of it.
 struct SeerrPosterTile: View {
     let title: SeerrTitle
+    /// Under the title instead of "2025 · Movie", such as Coming soon's "Dec 12".
+    var meta: String?
+    /// A title the library has is drawn as the library's own tile, with no Seerr marker (the discover rows).
+    var plainInLibrary = false
 
     var body: some View {
-        let meta = Strings.shared.seerrTitleMeta(year: title.year, type: title.type)
+        let meta = self.meta ?? Strings.shared.seerrTitleMeta(year: title.year, type: title.type)
+        let marked = !(plainInLibrary && title.jellyfinItemId != nil)
         VStack(alignment: .leading, spacing: Space.s2) {
             Artwork(url: title.posterUrl, title: title.title, aspectRatio: 2.0 / 3.0, blurHash: nil)
                 .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
-                .overlay(alignment: .topLeading) { SeerrMarker(state: title.state).padding(6) }
+                .overlay(alignment: .topLeading) { if marked { SeerrMarker(state: title.state).padding(6) } }
             VStack(alignment: .leading, spacing: 2) {
                 Text(title.title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary).lineLimit(2)
                 Text(meta).font(.caption).foregroundStyle(.secondary).lineLimit(1)

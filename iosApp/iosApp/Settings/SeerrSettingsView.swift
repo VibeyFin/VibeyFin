@@ -8,6 +8,8 @@ struct SeerrSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     /// Called instead of going back when Seerr goes away for the profile (kids mode turned on); the iPad detail has nothing to pop.
     var onLeave: (() -> Void)?
+    /// Opens the My requests page; nil where there is no stack to push it on (the iPad split view's detail).
+    var onMyRequests: (() -> Void)?
     /// The address field; it starts from the server's address and sends every change to the shared state.
     @State private var address = ""
 
@@ -88,6 +90,17 @@ struct SeerrSettingsView: View {
                         Text(left)
                     } label: {
                         SeerrRowText(title: Strings.shared.seerrRequestsLeft, help: state.quotaPeriod)
+                    }
+                }
+            }
+            if let onMyRequests {
+                Section {
+                    Button(action: onMyRequests) {
+                        HStack {
+                            Text(Strings.shared.seerrMyRequests.titleCased()).foregroundStyle(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.tertiary)
+                        }
                     }
                 }
             }

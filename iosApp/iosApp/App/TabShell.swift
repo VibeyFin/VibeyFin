@@ -15,6 +15,10 @@ enum TabRoute: Hashable {
     case filtered(kind: String, id: String?, name: String?)
     /// The Seerr page of a title that isn't in the library, by TMDB id.
     case seerrTitle(type: SeerrMediaType, tmdbId: Int32)
+    /// A Seerr discover list's See all.
+    case seerrList(kind: SeerrListKind)
+    /// The profile's Seerr requests.
+    case myRequests
 }
 
 private extension TabRoute {
@@ -129,7 +133,10 @@ struct TabShell: View {
                         onExit: onExit,
                         onOpen: { open($0, in: $homePath) },
                         onDetails: { homePath.append(.item(itemId: $0)) },
-                        onOpenList: { homePath.append(TabRoute.opening($0)) }
+                        onOpenList: { homePath.append(TabRoute.opening($0)) },
+                        onOpenSeerr: { openSeerr($0, in: $homePath) },
+                        onSeerrSeeAll: { homePath.append(.seerrList(kind: $0)) },
+                        onMyRequests: { homePath.append(.myRequests) }
                     )
                     .navigationBarBackButtonHidden(true)
                     .backMenuTitle(Strings.shared.tabHome.titleCased())
@@ -346,7 +353,7 @@ struct TabShell: View {
                     case .settingsPage(let id):
                         if id == .seerr {
                             // Seerr has an address field, which the shared Settings rows don't draw.
-                            SeerrSettingsView()
+                            SeerrSettingsView(onMyRequests: { path.wrappedValue.append(.myRequests) })
                         } else if let model = settings.current {
                             SettingsPageView(pageId: id, model: model, onExit: onExit)
                         }
@@ -373,6 +380,10 @@ struct TabShell: View {
                             },
                             onOpenSeerr: { openSeerr($0, in: path) }
                         )
+                    case .seerrList(let kind):
+                        SeerrListView(kind: kind, onOpen: { openSeerr($0, in: path) })
+                    case .myRequests:
+                        MyRequestsView(onOpen: { openSeerr($0, in: path) })
                     }
                 }
         }
