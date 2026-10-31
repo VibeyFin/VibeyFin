@@ -158,7 +158,8 @@ struct SeerrTitleView: View {
             }
             HStack(spacing: Space.s4) {
                 if state.offer4k {
-                    SeerrActionButton(title: Strings.shared.seerrRequest4k, systemImage: "plus") { model.request4k() }
+                    SeerrActionButton(title: Strings.shared.seerr4k, systemImage: "plus") { model.request4k() }
+                        .accessibilityLabel(Strings.shared.seerrRequest4k)
                 }
                 if state.cancelRequestId != nil {
                     SeerrActionButton(title: Strings.shared.seerrCancelRequest, systemImage: "xmark") { model.cancelRequest() }

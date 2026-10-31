@@ -279,7 +279,7 @@ private fun Hero(state: SeerrTitleUiState, centered: Boolean, viewModel: SeerrTi
         if (state.offer4k || state.cancelRequestId != null) {
             ActionRow(Modifier.fillMaxWidth()) {
                 if (state.offer4k) {
-                    ActionButton(Strings.seerrRequest4k, Strings.seerrRequest4k, icon = { Icon(Icons.Filled.Add, null, tint = VibeyFinTokens.Colors.ink, modifier = it) }, onClick = viewModel::onRequest4k)
+                    ActionButton(Strings.seerr4k, Strings.seerrRequest4k, icon = { Icon(Icons.Filled.Add, null, tint = VibeyFinTokens.Colors.ink, modifier = it) }, onClick = viewModel::onRequest4k)
                 }
                 if (state.cancelRequestId != null) {
                     ActionButton(Strings.seerrCancelRequest, Strings.seerrCancelRequest, icon = { Icon(Icons.Filled.Close, null, tint = VibeyFinTokens.Colors.ink, modifier = it) }, onClick = viewModel::onCancelRequest)

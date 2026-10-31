@@ -101,7 +101,7 @@ fun OptionList(title: String, options: List<OptionRow>, onSelect: (String) -> Un
 }
 
 // Scrolling past the list's end must not move the sheet; pulling down at the top still reaches it, so a swipe down closes it
-private val KeepAtListEnd = object : NestedScrollConnection {
+internal val KeepAtListEnd = object : NestedScrollConnection {
     override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource) = if (available.y < 0f) available else Offset.Zero
 
     override suspend fun onPostFling(consumed: Velocity, available: Velocity) = if (available.y < 0f) available else Velocity.Zero

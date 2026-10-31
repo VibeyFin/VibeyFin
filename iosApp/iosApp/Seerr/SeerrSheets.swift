@@ -149,19 +149,21 @@ struct SeerrSeasonPickerView: View {
                 }
                 // The quality to ask for, for whoever may choose it: the server's quality profiles, its default picked.
                 if picker.qualitiesLoading || !picker.qualities.isEmpty {
-                    Section(Strings.shared.seerrQuality) {
+                    Section {
                         if picker.qualitiesLoading {
-                            ProgressView().frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        ForEach(picker.qualities, id: \.id) { quality in
-                            Button { model.pickerProfile(quality.id) } label: {
-                                HStack {
-                                    Text(quality.name).foregroundStyle(.primary)
-                                    Spacer()
-                                    if quality.selected { Image(systemName: "checkmark").foregroundStyle(Brand.accent) }
-                                }
+                            LabeledContent(Strings.shared.seerrQuality) { ProgressView() }
+                        } else {
+                            // A plain dropdown of the server's quality profiles, no search; the default is chosen to begin with.
+                            Picker(
+                                Strings.shared.seerrQuality,
+                                selection: Binding(
+                                    get: { picker.qualities.first(where: { $0.selected })?.id ?? -1 },
+                                    set: { model.pickerProfile($0) }
+                                )
+                            ) {
+                                ForEach(picker.qualities, id: \.id) { quality in Text(quality.name).tag(quality.id) }
                             }
-                            .accessibilityAddTraits(quality.selected ? .isSelected : [])
+                            .pickerStyle(.menu)
                         }
                     }
                 }
@@ -194,13 +196,12 @@ struct SeerrSeasonPickerView: View {
             }
             .listStyle(.insetGrouped)
             .safeAreaInset(edge: .bottom) {
+                // A plus, not words: what it will ask for ("Request 2 seasons") is what VoiceOver says.
                 PrimaryButton(action: { model.pickerConfirm() }) {
-                    HStack(spacing: Space.s3) {
-                        if sending { PrimaryButtonSpinner() }
-                        Text(picker.confirmLabel.titleCased())
-                    }
+                    if sending { PrimaryButtonSpinner() } else { Image(systemName: "plus").font(.title3.weight(.semibold)) }
                 }
                 .disabled(!picker.canConfirm && !sending)
+                .accessibilityLabel(picker.confirmLabel)
                 .padding(Space.s4)
                 .background(.bar)
             }

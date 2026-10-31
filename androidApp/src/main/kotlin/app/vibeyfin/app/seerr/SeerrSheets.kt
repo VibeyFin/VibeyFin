@@ -1,5 +1,6 @@
 package app.vibeyfin.app.seerr
 
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,14 +40,18 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -58,7 +64,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import app.vibeyfin.R
 import app.vibeyfin.app.components.Artwork
+import app.vibeyfin.app.components.KeepAtListEnd
 import app.vibeyfin.app.components.SkeletonLine
+import app.vibeyfin.app.components.VibeyFinMenu
+import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.components.VibeyFinSheet
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.model.SeerrTitle
@@ -95,92 +104,110 @@ private fun ColumnScope.SeasonPickerContent(
     onProfile: (Int) -> Unit,
     onConfirm: () -> Unit,
 ) {
-    Column(Modifier.navigationBarsPadding().padding(bottom = VibeyFinTokens.Space.s4).verticalScroll(rememberScrollState())) {
-        Column(Modifier.padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s2)) {
-            Text(picker.title, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.semantics { heading() })
-            Text(picker.subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-
-        if (picker.offer4k) {
-            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s2)) {
-                listOf(false to Strings.seerrStandard, true to Strings.seerr4k).forEachIndexed { index, (is4k, label) ->
-                    SegmentedButton(
-                        selected = picker.is4k == is4k,
-                        onClick = { onQuality(is4k) },
-                        shape = SegmentedButtonDefaults.itemShape(index, 2),
-                        colors = SegmentedButtonDefaults.colors(activeContainerColor = VibeyFinTokens.Colors.accentSoft, activeContentColor = VibeyFinTokens.Colors.ink),
-                    ) { Text(label) }
-                }
+    // No stretch at the ends, and scrolling past the end doesn't move the sheet (as the app's other sheets): no bounce at the bottom
+    CompositionLocalProvider(LocalOverscrollFactory provides null) {
+        Column(Modifier.navigationBarsPadding().padding(bottom = VibeyFinTokens.Space.s4).nestedScroll(remember { KeepAtListEnd }).verticalScroll(rememberScrollState())) {
+            Column(Modifier.padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s2)) {
+                Text(picker.title, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.semantics { heading() })
+                Text(picker.subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-        }
 
-        // The quality to ask for, for whoever may choose it: the server's quality profiles, its default picked
-        if (picker.qualitiesLoading || picker.qualities.isNotEmpty()) {
-            Text(
-                Strings.seerrQuality,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s5).padding(top = VibeyFinTokens.Space.s2).semantics { heading() },
-            )
-            if (picker.qualitiesLoading) {
-                Row(Modifier.padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s3)) { SkeletonLine(140.dp, MaterialTheme.typography.bodyLarge) }
-            }
-            picker.qualities.forEach { quality ->
-                Row(
-                    Modifier.fillMaxWidth().selectable(selected = quality.selected, role = Role.RadioButton, onClick = { onProfile(quality.id) })
-                        .padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s1),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    RadioButton(selected = quality.selected, onClick = null)
-                    Spacer(Modifier.width(VibeyFinTokens.Space.s3))
-                    Text(quality.name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-                }
-            }
-            HorizontalDivider(Modifier.padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s2), color = MaterialTheme.colorScheme.outlineVariant)
-        }
-
-        if (picker.showsSeasons) {
-            Row(
-                Modifier.fillMaxWidth().toggleable(value = picker.allMissing, role = Role.Switch, onValueChange = onAllMissing).padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s3),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(Strings.seerrAllMissingSeasons, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-                // Aqua is for the one primary action, so the switch is light on dark
-                Switch(
-                    checked = picker.allMissing,
-                    onCheckedChange = null,
-                    colors = SwitchDefaults.colors(checkedTrackColor = VibeyFinTokens.Colors.ink, checkedThumbColor = VibeyFinTokens.Colors.bg),
-                )
-            }
-            HorizontalDivider(Modifier.padding(horizontal = VibeyFinTokens.Space.s5), color = MaterialTheme.colorScheme.outlineVariant)
-
-            picker.seasons.forEach { season ->
-                Row(
-                    Modifier.fillMaxWidth()
-                        .toggleable(value = season.selected, enabled = !season.locked, role = Role.Checkbox, onValueChange = { onSeason(season.number) })
-                        .padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s1),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Checkbox(checked = season.selected, onCheckedChange = null, enabled = !season.locked)
-                    Spacer(Modifier.width(VibeyFinTokens.Space.s3))
-                    Column(Modifier.weight(1f)) {
-                        Text(season.name, style = MaterialTheme.typography.bodyLarge, color = if (season.locked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
-                        Text(season.episodes, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (picker.offer4k) {
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s2)) {
+                    listOf(false to Strings.seerrStandard, true to Strings.seerr4k).forEachIndexed { index, (is4k, label) ->
+                        SegmentedButton(
+                            selected = picker.is4k == is4k,
+                            onClick = { onQuality(is4k) },
+                            shape = SegmentedButtonDefaults.itemShape(index, 2),
+                            colors = SegmentedButtonDefaults.colors(activeContainerColor = VibeyFinTokens.Colors.accentSoft, activeContentColor = VibeyFinTokens.Colors.ink),
+                        ) { Text(label) }
                     }
-                    season.stateLabel?.let { StatusLine(it, season.state) }
+                }
+            }
+
+            // The quality to ask for, for whoever may choose it: the server's quality profiles, its default picked
+            if (picker.qualitiesLoading || picker.qualities.isNotEmpty()) {
+                QualityDropdown(picker, onProfile)
+                HorizontalDivider(Modifier.padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s2), color = MaterialTheme.colorScheme.outlineVariant)
+            }
+
+            if (picker.showsSeasons) {
+                Row(
+                    Modifier.fillMaxWidth().toggleable(value = picker.allMissing, role = Role.Switch, onValueChange = onAllMissing).padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s3),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(Strings.seerrAllMissingSeasons, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                    // Aqua is for the one primary action, so the switch is light on dark
+                    Switch(
+                        checked = picker.allMissing,
+                        onCheckedChange = null,
+                        colors = SwitchDefaults.colors(checkedTrackColor = VibeyFinTokens.Colors.ink, checkedThumbColor = VibeyFinTokens.Colors.bg),
+                    )
+                }
+                HorizontalDivider(Modifier.padding(horizontal = VibeyFinTokens.Space.s5), color = MaterialTheme.colorScheme.outlineVariant)
+
+                picker.seasons.forEach { season ->
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .toggleable(value = season.selected, enabled = !season.locked, role = Role.Checkbox, onValueChange = { onSeason(season.number) })
+                            .padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s1),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(checked = season.selected, onCheckedChange = null, enabled = !season.locked)
+                        Spacer(Modifier.width(VibeyFinTokens.Space.s3))
+                        Column(Modifier.weight(1f)) {
+                            Text(season.name, style = MaterialTheme.typography.bodyLarge, color = if (season.locked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
+                            Text(season.episodes, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        season.stateLabel?.let { StatusLine(it, season.state) }
+                    }
+                }
+            }
+
+            Button(
+                onClick = onConfirm,
+                enabled = picker.canConfirm || sending,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s3).height(VibeyFinTokens.Size.buttonLarge),
+            ) {
+                if (sending) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                } else {
+                    // A plus, not words: what it will ask for ("Request 2 seasons") is what a screen reader says
+                    Icon(Icons.Filled.Add, contentDescription = picker.confirmLabel, modifier = Modifier.size(28.dp))
                 }
             }
         }
+    }
+}
 
-        Button(
-            onClick = onConfirm,
-            enabled = picker.canConfirm || sending,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s3).height(VibeyFinTokens.Size.buttonLarge),
+// The quality to ask for: one row with the chosen profile and a chevron, opening a plain dropdown of the server's profiles (no
+// search). The default is chosen to begin with.
+@Composable
+private fun QualityDropdown(picker: SeerrSeasonPicker, onProfile: (Int) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val chosen = picker.qualities.firstOrNull { it.selected }
+
+    Box(Modifier.padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s2)) {
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).clickable(enabled = !picker.qualitiesLoading, role = Role.DropdownList) { open = true }
+                .padding(vertical = VibeyFinTokens.Space.s3)
+                .semantics(mergeDescendants = true) { },
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (sending) {
-                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+            Text(Strings.seerrQuality, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+            if (picker.qualitiesLoading) {
+                SkeletonLine(96.dp, MaterialTheme.typography.bodyLarge)
             } else {
-                Text(picker.confirmLabel)
+                Text(chosen?.name.orEmpty(), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        VibeyFinMenu(expanded = open, onDismiss = { open = false }) {
+            picker.qualities.forEach { quality ->
+                VibeyFinMenuItem(quality.name, icon = null, selected = quality.selected) {
+                    open = false
+                    onProfile(quality.id)
+                }
             }
         }
     }
