@@ -177,24 +177,24 @@ struct SeerrTitleView: View {
                     Text(Strings.shared.cast.titleCased()).sectionTitle().accessibilityAddTraits(.isHeader)
                     // Not tappable: these people have no page in the library.
                     ScrollView(.horizontal, showsIndicators: false) {
+                        // The library page's sizes: bigger circles at a regular width.
+                        let tile: CGFloat = sizeClass == .regular ? 112 : 88
                         HStack(alignment: .top, spacing: Space.s3) {
                             ForEach(state.cast, id: \.id) { person in
                                 VStack(spacing: Space.s1) {
-                                    ZStack {
-                                        Circle().fill(Color(.tertiarySystemBackground))
-                                        Text(Strings.shared.initials(name: person.name)).font(.headline).foregroundStyle(.secondary)
-                                        if let url = person.photoUrl.flatMap(URL.init(string:)) {
-                                            AsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { Color.clear }
-                                        }
-                                    }
-                                    .frame(width: 72, height: 72)
-                                    .clipShape(Circle())
-                                    Text(person.name).font(.caption.weight(.semibold)).lineLimit(2).multilineTextAlignment(.center)
-                                    if let character = person.character {
-                                        Text(character).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                                    }
+                                    PortraitView(name: person.name, imageUrl: person.photoUrl, size: tile, initialsFont: .headline)
+                                    // Names take two lines and parts one, always, so the row keeps one height.
+                                    Text(person.name)
+                                        .font(.caption.weight(.medium))
+                                        .multilineTextAlignment(.center)
+                                        .lineLimit(2, reservesSpace: true)
+                                    Text(person.character ?? "")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .multilineTextAlignment(.center)
+                                        .lineLimit(1, reservesSpace: true)
                                 }
-                                .frame(width: 80)
+                                .frame(width: tile)
                                 .accessibilityElement(children: .combine)
                             }
                         }

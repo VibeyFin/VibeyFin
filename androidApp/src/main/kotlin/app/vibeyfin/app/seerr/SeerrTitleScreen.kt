@@ -50,6 +50,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -407,15 +408,18 @@ private fun CastRow(cast: List<SeerrCastMember>) {
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
         SectionTitle(Strings.cast, modifier = Modifier.semantics { heading() })
         // Not tappable: these people have no page in the library
+        // The library page's sizes: bigger circles on a tablet
+        val tile = if (isTabletWidth()) CAST_TILE_WIDE else CAST_TILE
         LazyRow(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
             items(cast, key = { it.id }) { person ->
-                Column(Modifier.width(CAST_TILE), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
-                    Box(Modifier.size(CAST_TILE).clip(CircleShape).background(VibeyFinTokens.Colors.surface2), contentAlignment = Alignment.Center) {
+                Column(Modifier.width(tile), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
+                    Box(Modifier.size(tile).clip(CircleShape).background(VibeyFinTokens.Colors.surface2), contentAlignment = Alignment.Center) {
                         Text(Strings.initials(person.name), style = MaterialTheme.typography.titleMedium, color = VibeyFinTokens.Colors.inkMuted)
-                        person.photoUrl?.let { AsyncImage(model = it, contentDescription = null, modifier = Modifier.fillMaxSize()) }
+                        person.photoUrl?.let { AsyncImage(model = it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
                     }
-                    Text(person.name, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onBackground, maxLines = 2, textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis)
-                    person.character?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis) }
+                    // Names take two lines and parts one, always, so the row keeps one height
+                    Text(person.name, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onBackground, minLines = 2, maxLines = 2, textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis)
+                    Text(person.character.orEmpty(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, minLines = 1, maxLines = 1, textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -461,5 +465,6 @@ private val WIDE_FROM = 600.dp
 private const val PHONE_HERO_BY_WIDTH = 1.5f
 private const val FIRST_SCREEN = 0.7f
 private const val FIRST_SCREEN_CLEAR = 0.3f
-private val CAST_TILE = 72.dp
+private val CAST_TILE = 88.dp
+private val CAST_TILE_WIDE = 112.dp
 private val POSTER_WIDE = 168.dp
