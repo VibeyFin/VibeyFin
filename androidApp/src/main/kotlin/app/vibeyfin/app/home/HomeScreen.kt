@@ -400,18 +400,18 @@ private fun Content(
             fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onDetails, onLongPress, onRetryContinue) }
 
             // The profile's own Seerr news sits with resume, above discovery
-            seerr.requests?.let { row -> fullWidth(key = "seerr-requests") { SeerrRowSection(row, margin, onOpenSeerr, onSeeAll = onMyRequests) } }
+            seerr.requests?.let { row -> fullWidth(key = "seerr-requests", contentType = SEERR_ROW) { SeerrRowSection(row, margin, onOpenSeerr, onSeeAll = onMyRequests) } }
 
             if (state.loadingLibraries && state.rows.isEmpty()) {
                 repeat(PLACEHOLDER_ROWS) { index ->
-                    fullWidth(key = "placeholder-$index") { RowPlaceholder(margin) }
+                    fullWidth(key = "placeholder-$index", contentType = PLACEHOLDER_ROW) { RowPlaceholder(margin) }
                 }
             }
 
             // The library's rows, then Seerr's discover rows, then the genres
             state.rows.forEachIndexed { index, row ->
                 if (index == state.firstGenreRow) seerrDiscover(seerr, margin, onOpenSeerr, onSeerrSeeAll)
-                fullWidth(key = row.id) { MediaRowSection(row, margin, onOpen, onSeeAll, onRetry = { onRetryRow(row.id) }) }
+                fullWidth(key = row.id, contentType = MEDIA_ROW) { MediaRowSection(row, margin, onOpen, onSeeAll, onRetry = { onRetryRow(row.id) }) }
             }
             if (state.firstGenreRow >= state.rows.size) seerrDiscover(seerr, margin, onOpenSeerr, onSeerrSeeAll)
         }
@@ -422,14 +422,16 @@ private fun LazyGridScope.seerrDiscover(seerr: SeerrHomeUiState, margin: Dp, onO
     seerr.discover.forEach { row ->
         val kind = row.kind ?: return@forEach
 
-        fullWidth(key = "seerr-${kind.name}") { SeerrRowSection(row, margin, onOpen, onSeeAll = { onSeeAll(kind) }) }
+        fullWidth(key = "seerr-${kind.name}", contentType = SEERR_ROW) { SeerrRowSection(row, margin, onOpen, onSeeAll = { onSeeAll(kind) }) }
     }
 }
 
-private fun LazyGridScope.fullWidth(key: String, animate: Boolean = true, content: @Composable () -> Unit) {
+private fun LazyGridScope.fullWidth(key: String, animate: Boolean = true, contentType: String = key, content: @Composable () -> Unit) {
     // Rows that arrive, leave or change height slide and fade into place instead of snapping, so nothing jumps. The hero does not:
     // its gray card is simply there, and the hero fades into it in place.
-    item(key = key, span = { GridItemSpan(maxLineSpan) }, contentType = "row") { Box(if (animate) Modifier.animateItem() else Modifier) { content() } }
+    // One content type per kind of row, so a row scrolled away is reused only for a row drawn the same way (a library row for a
+    // library row, a Seerr row for a Seerr row), instead of being torn down and rebuilt as a different one mid-fling.
+    item(key = key, span = { GridItemSpan(maxLineSpan) }, contentType = contentType) { Box(if (animate) Modifier.animateItem() else Modifier) { content() } }
 }
 
 /** The row of what the user is in the middle of. Its cards run past the grid's margins to the screen edge. */
@@ -489,3 +491,7 @@ private fun RowPlaceholder(margin: Dp) {
         PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin))
     }
 }
+
+private const val MEDIA_ROW = "media-row"
+private const val SEERR_ROW = "seerr-row"
+private const val PLACEHOLDER_ROW = "placeholder-row"

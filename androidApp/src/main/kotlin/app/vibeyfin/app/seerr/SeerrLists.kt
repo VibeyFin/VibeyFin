@@ -119,7 +119,7 @@ fun SeerrRowSection(row: SeerrRow, margin: Dp, onOpen: (SeerrTitle) -> Unit, onS
                 contentPadding = PaddingValues(horizontal = margin),
                 horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
             ) {
-                items(row.titles, key = { "${it.type}-${it.tmdbId}" }) { title ->
+                items(row.titles, key = { "${it.type}-${it.tmdbId}" }, contentType = { "seerr-poster" }) { title ->
                     SeerrTile(
                         title,
                         onOpen,
