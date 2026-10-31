@@ -42,7 +42,7 @@ fun appModule() = module {
     viewModelOf(::ProfileMenuViewModel)
     viewModel { params -> ChildrenViewModel(params.get(), get(), get(), get()) }
     viewModel { params -> PersonViewModel(params.get(), get(), get()) }
-    viewModelOf(::SearchViewModel)
+    viewModel { SearchViewModel(get(), get(), get(), get(), get(), seerr = get(), seerrRepository = get()) }
     viewModelOf(::TileMenuViewModel)
     viewModel { params -> FilteredListViewModel(params.get(), get(), get()) }
     viewModel { params -> ItemViewModel(params.get(), get(), get(), get(), get(), get()) }

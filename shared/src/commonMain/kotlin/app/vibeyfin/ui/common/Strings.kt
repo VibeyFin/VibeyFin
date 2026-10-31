@@ -4,6 +4,8 @@ import app.vibeyfin.domain.PlayMethod
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SegmentType
 import app.vibeyfin.domain.SubtitleMode
+import app.vibeyfin.domain.model.RequestState
+import app.vibeyfin.domain.model.SeerrMediaType
 import kotlin.math.roundToInt
 
 /**
@@ -1028,4 +1030,28 @@ object Strings {
     val seerrPasswordReason = "Quick Connect is off on your Jellyfin server, so Seerr needs your Jellyfin password once."
     val seerrPasswordNotKept = "VibeyFin doesn\u2019t keep your password."
     val seerrUser = "User"
+
+    // Seerr titles in search, and Seerr posters anywhere
+    val seerrNotInLibrary = "Not in your library"
+    val seerrSearchNote = "From Seerr. Press and hold to request."
+    val seerrNotInLibraryChip = "Not in library"
+
+    fun libraryNoMatch(query: String) = "Nothing in your library matches \u201c$query\u201d."
+
+    /** The line under a Seerr poster: "2025 · Movie". */
+    fun seerrTitleMeta(year: Int?, type: SeerrMediaType) = listOfNotNull(year?.toString(), if (type == SeerrMediaType.Movie) "Movie" else "Show").joinToString(" \u00b7 ")
+
+    /** The word on a Seerr poster's pill; null for a title nobody asked for, which shows the + disc instead. */
+    fun seerrStateLabel(state: RequestState): String? = when (state) {
+        RequestState.NotRequested -> null
+        RequestState.Requested -> "Requested"
+        RequestState.Approved -> "Approved"
+        RequestState.PartlyAvailable -> "Partly available"
+        RequestState.Available -> "Available"
+        RequestState.Declined -> "Declined"
+        RequestState.Failed -> "Failed"
+    }
+
+    /** What a screen reader says for a Seerr poster: "Harbour Bridge, 2025 · Movie, not in your library, can be requested". */
+    fun seerrTitleDescription(title: String, meta: String, state: RequestState) = "$title, $meta, ${seerrStateLabel(state)?.lowercase() ?: "not in your library, can be requested"}"
 }
