@@ -77,7 +77,7 @@ class MigrationTest {
             )
             // Seerr came later: no address, no session, and not turned off.
             assertEquals(1, database.count("servers", "id = 'srv-1' AND seerrUrl IS NULL"), "no Seerr address, from v$version")
-            assertEquals(1, database.count("accounts", "userId = 'u1' AND sealedSeerrSession IS NULL AND seerrUserId IS NULL AND seerrOff = 0"), "no Seerr session, from v$version")
+            assertEquals(1, database.count("accounts", "userId = 'u1' AND sealedSeerrSession IS NULL AND seerrUserId IS NULL AND seerrOff = 0 AND seerrPasswordSignIn = 0"), "no Seerr session, from v$version")
             // Settings a profile never changed take the default of every column added since.
             assertEquals(
                 1,

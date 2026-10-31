@@ -6,8 +6,8 @@ import app.vibeyfin.data.vault.TokenVault
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-/** A profile's saved Seerr session: the cookie's value and the profile's user id on Seerr. */
-class StoredSeerrSession(val session: String, val seerrUserId: Int)
+/** A profile's saved Seerr session: the cookie's value, the profile's user id on Seerr, and whether the password opened it. */
+class StoredSeerrSession(val session: String, val seerrUserId: Int, val viaPassword: Boolean = false)
 
 /**
  * Where Seerr's address and each profile's Seerr session are kept: the address on the server's row (one Seerr per server),
@@ -41,12 +41,12 @@ class SeerrStore(
             clearSession(serverId, userId)
             return null
         }
-        return StoredSeerrSession(session, userIdOnSeerr)
+        return StoredSeerrSession(session, userIdOnSeerr, row.seerrPasswordSignIn)
     }
 
-    suspend fun saveSession(serverId: String, userId: String, session: String, seerrUserId: Int) {
+    suspend fun saveSession(serverId: String, userId: String, session: String, seerrUserId: Int, viaPassword: Boolean = false) {
         val previous = accounts.getSeerrProfile(serverId, userId)?.sealedSeerrSession
-        accounts.setSeerrSession(serverId, userId, vault.seal(session), seerrUserId)
+        accounts.setSeerrSession(serverId, userId, vault.seal(session), seerrUserId, viaPassword)
         previous?.let(vault::discard)
     }
 

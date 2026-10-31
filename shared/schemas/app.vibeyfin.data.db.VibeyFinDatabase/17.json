@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 17,
-    "identityHash": "7f83ca3b7d9a6a5c7199369d5640488d",
+    "identityHash": "3fa5ac705dd0bda242a9cd12ccb8a2ef",
     "entities": [
       {
         "tableName": "servers",
@@ -95,7 +95,7 @@
       },
       {
         "tableName": "accounts",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `userId` TEXT NOT NULL, `name` TEXT NOT NULL, `imageTag` TEXT, `sealedToken` BLOB, `lastUsedAt` INTEGER NOT NULL, `sealedSeerrSession` BLOB, `seerrUserId` INTEGER, `seerrOff` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`serverId`, `userId`), FOREIGN KEY(`serverId`) REFERENCES `servers`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `userId` TEXT NOT NULL, `name` TEXT NOT NULL, `imageTag` TEXT, `sealedToken` BLOB, `lastUsedAt` INTEGER NOT NULL, `sealedSeerrSession` BLOB, `seerrUserId` INTEGER, `seerrOff` INTEGER NOT NULL DEFAULT 0, `seerrPasswordSignIn` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`serverId`, `userId`), FOREIGN KEY(`serverId`) REFERENCES `servers`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "serverId",
@@ -144,6 +144,13 @@
           {
             "fieldPath": "seerrOff",
             "columnName": "seerrOff",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "seerrPasswordSignIn",
+            "columnName": "seerrPasswordSignIn",
             "affinity": "INTEGER",
             "notNull": true,
             "defaultValue": "0"
@@ -822,7 +829,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7f83ca3b7d9a6a5c7199369d5640488d')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3fa5ac705dd0bda242a9cd12ccb8a2ef')"
     ]
   }
 }

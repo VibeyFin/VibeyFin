@@ -69,6 +69,9 @@ class AccountEntity(
     /** The profile disconnected Seerr: it isn't signed in to it again by itself, though the server keeps its address. */
     @ColumnInfo(defaultValue = "0")
     val seerrOff: Boolean = false,
+    /** The Seerr session came from the Jellyfin password (Quick Connect was off), so it is asked again when it ends. */
+    @ColumnInfo(defaultValue = "0")
+    val seerrPasswordSignIn: Boolean = false,
 )
 
 /** What [AccountDao.getSeerrProfile] reads: a profile's Seerr session and whether it turned Seerr off. */
@@ -76,6 +79,7 @@ class SeerrProfileRow(
     val sealedSeerrSession: ByteArray?,
     val seerrUserId: Int?,
     val seerrOff: Boolean,
+    val seerrPasswordSignIn: Boolean,
 )
 
 /** Per-profile settings. Each option becomes one column here as it is added. */

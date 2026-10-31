@@ -6,6 +6,7 @@ import app.vibeyfin.testing.FakeJellyfin
 import app.vibeyfin.testing.Reply
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -14,6 +15,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SeerrApiTest {
     private val network = FakeJellyfin()
     private val seerr = network.server("http://seerr:5055")

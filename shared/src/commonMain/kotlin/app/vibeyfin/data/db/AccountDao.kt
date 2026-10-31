@@ -22,14 +22,17 @@ abstract class AccountDao {
     @Query("UPDATE accounts SET sealedToken = NULL WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun clearToken(serverId: String, userId: String)
 
-    @Query("SELECT sealedSeerrSession, seerrUserId, seerrOff FROM accounts WHERE serverId = :serverId AND userId = :userId")
+    @Query("SELECT sealedSeerrSession, seerrUserId, seerrOff, seerrPasswordSignIn FROM accounts WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun getSeerrProfile(serverId: String, userId: String): SeerrProfileRow?
 
     @Query("SELECT sealedSeerrSession FROM accounts WHERE serverId = :serverId AND sealedSeerrSession IS NOT NULL")
     abstract suspend fun getSealedSeerrSessions(serverId: String): List<ByteArray>
 
-    @Query("UPDATE accounts SET sealedSeerrSession = :sealed, seerrUserId = :seerrUserId WHERE serverId = :serverId AND userId = :userId")
-    abstract suspend fun setSeerrSession(serverId: String, userId: String, sealed: ByteArray, seerrUserId: Int)
+    @Query(
+        "UPDATE accounts SET sealedSeerrSession = :sealed, seerrUserId = :seerrUserId, seerrPasswordSignIn = :viaPassword " +
+            "WHERE serverId = :serverId AND userId = :userId",
+    )
+    abstract suspend fun setSeerrSession(serverId: String, userId: String, sealed: ByteArray, seerrUserId: Int, viaPassword: Boolean)
 
     @Query("UPDATE accounts SET sealedSeerrSession = NULL, seerrUserId = NULL WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun clearSeerrSession(serverId: String, userId: String)

@@ -55,6 +55,8 @@ sealed interface SeerrState {
         val address: String,
         val user: SeerrUser,
         val features: SeerrFeatures,
+        /** The session came from the Jellyfin password, so it is asked again when Seerr ends the session. */
+        val signedInWithPassword: Boolean,
         internal val serverId: String,
         internal val userId: String,
         internal val api: SeerrApi,
@@ -194,7 +196,7 @@ class SeerrConnection(
                 SeerrPasswordResult.WrongServer
             } else {
                 store.setOff(key.serverId, key.userId, false)
-                ready(key, address, result.value)
+                ready(key, address, result.value, viaPassword = true)
                 SeerrPasswordResult.SignedIn
             }
         }
@@ -279,7 +281,7 @@ class SeerrConnection(
             val api = factory.create(address, saved.session)
             when (val me = api.me()) {
                 is ApiResult.Success -> {
-                    _state.value = SeerrState.Ready(address, me.value.toUser(), features(api), key.serverId, key.userId, api)
+                    _state.value = SeerrState.Ready(address, me.value.toUser(), features(api), saved.viaPassword, key.serverId, key.userId, api)
                     return
                 }
 
@@ -367,10 +369,10 @@ class SeerrConnection(
 
     private fun SeerrState.Ready.isFor(key: Key, address: String) = serverId == key.serverId && userId == key.userId && this.address == address
 
-    private suspend fun ready(key: Key, address: String, signIn: SeerrSignIn) {
-        store.saveSession(key.serverId, key.userId, signIn.session, signIn.user.id)
+    private suspend fun ready(key: Key, address: String, signIn: SeerrSignIn, viaPassword: Boolean = false) {
+        store.saveSession(key.serverId, key.userId, signIn.session, signIn.user.id, viaPassword)
         val api = factory.create(address, signIn.session)
-        _state.value = SeerrState.Ready(address, signIn.user.toUser(), features(api), key.serverId, key.userId, api)
+        _state.value = SeerrState.Ready(address, signIn.user.toUser(), features(api), viaPassword, key.serverId, key.userId, api)
     }
 
     private suspend fun features(api: SeerrApi): SeerrFeatures = when (val settings = api.publicSettings()) {

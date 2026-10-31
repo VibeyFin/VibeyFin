@@ -116,6 +116,9 @@ class SeerrRepository(private val seerr: SeerrConnection) {
 
     suspend fun quota(): ApiResult<RequestQuota> = seerr.call { api, me -> api.quota(me.id).map { it.toQuota() } }
 
+    /** The Seerr's version, as Settings shows it; null when it doesn't say. */
+    suspend fun version(): ApiResult<String?> = seerr.call { api, _ -> api.status().map { it.version } }
+
     private fun SeerrPageDto<SeerrResultDto>.toPage() = SeerrPage(titles = results.mapNotNull { it.toTitle() }, page = page, totalPages = totalPages)
 
     private companion object {
