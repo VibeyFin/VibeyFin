@@ -67,6 +67,8 @@ import app.vibeyfin.app.item.ItemRoute
 import app.vibeyfin.app.person.PersonRoute
 import app.vibeyfin.app.player.PlayerRoute
 import app.vibeyfin.app.search.SearchRoute
+import app.vibeyfin.app.seerr.MyRequestsRoute
+import app.vibeyfin.app.seerr.SeerrListRoute
 import app.vibeyfin.app.seerr.SeerrMenuSheet
 import app.vibeyfin.app.seerr.SeerrTitleRoute
 import app.vibeyfin.app.servers.ServersRoute
@@ -90,6 +92,7 @@ import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.item.Trailer
 import app.vibeyfin.ui.notifications.NotificationOpenViewModel
 import app.vibeyfin.ui.notifications.NotificationRoute
+import app.vibeyfin.ui.seerr.SeerrListKind
 import app.vibeyfin.ui.seerr.SeerrNoticeAction
 import app.vibeyfin.ui.settings.SettingsPageId
 import app.vibeyfin.ui.tile.TileMenuViewModel
@@ -327,6 +330,16 @@ private fun NavGraphBuilder.details(navController: NavHostController, leave: (Ho
         )
     }
 
+    sharedComposable<SeerrList> { entry ->
+        val kind = SeerrListKind.entries.firstOrNull { it.name == entry.toRoute<SeerrList>().kind } ?: SeerrListKind.Trending
+
+        SeerrListRoute(kind, onBack = { navController.popBackStack() }, onOpen = navController::openSeerr)
+    }
+
+    sharedComposable<MyRequests> {
+        MyRequestsRoute(onBack = { navController.popBackStack() }, onOpen = navController::openSeerr)
+    }
+
     sharedComposable<Person> { entry ->
         PersonRoute(
             personId = entry.toRoute<Person>().personId,
@@ -490,6 +503,9 @@ private fun NavGraphBuilder.tabGraphs(navController: NavHostController, offline:
                 HomeRoute(
                     onExit = leave,
                     onOpen = open,
+                    onOpenSeerr = navController::openSeerr,
+                    onSeerrSeeAll = { kind -> navController.navigate(SeerrList(kind.name)) },
+                    onMyRequests = { navController.navigate(MyRequests) },
                     onPlay = { itemId -> navController.navigate(Player(itemId)) },
                     onDetails = { itemId -> navController.navigate(Item(itemId)) },
                     onOpenList = { navController.navigate(it.toRoute()) },
@@ -570,6 +586,10 @@ private fun NavGraphBuilder.appScreens(navController: NavHostController, leave: 
         )
     }
 
+    composable<SettingsMyRequests> {
+        MyRequestsRoute(onBack = { navController.popBackStack() }, onOpen = navController::openSeerr)
+    }
+
     composable<SettingsPageRoute> { entry ->
         // An id this build does not know opens the root page instead of crashing
         val id = pageIdOrRoot(entry.toRoute<SettingsPageRoute>().id)
@@ -580,7 +600,7 @@ private fun NavGraphBuilder.appScreens(navController: NavHostController, leave: 
 
         // Seerr has an address field, which the shared Settings rows don't draw: it is a screen of its own
         if (id == SettingsPageId.Seerr) {
-            SeerrSettingsRoute(onBack = { navController.popBackStack() })
+            SeerrSettingsRoute(onBack = { navController.popBackStack() }, onMyRequests = { navController.navigate(SettingsMyRequests) })
             return@composable
         }
 

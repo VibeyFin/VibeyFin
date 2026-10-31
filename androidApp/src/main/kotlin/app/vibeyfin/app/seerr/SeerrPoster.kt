@@ -36,8 +36,16 @@ import app.vibeyfin.ui.common.Strings
  * "2025 · Movie" under it. Read as one item, with what Seerr knows of it.
  */
 @Composable
-fun SeerrPosterTile(title: SeerrTitle, modifier: Modifier = Modifier) {
-    val meta = Strings.seerrTitleMeta(title.year, title.type)
+fun SeerrPosterTile(
+    title: SeerrTitle,
+    modifier: Modifier = Modifier,
+    /** Under the title instead of "2025 · Movie", such as Coming soon's "Dec 12". */
+    meta: String? = null,
+    /** A title the library has is drawn as the library's own tile, with no Seerr marker (the discover rows). */
+    plainInLibrary: Boolean = false,
+) {
+    val meta = meta ?: Strings.seerrTitleMeta(title.year, title.type)
+    val marked = !(plainInLibrary && title.jellyfinItemId != null)
 
     Column(
         modifier = modifier.semantics(mergeDescendants = true) { contentDescription = Strings.seerrTitleDescription(title.title, meta, title.state) },
@@ -45,7 +53,7 @@ fun SeerrPosterTile(title: SeerrTitle, modifier: Modifier = Modifier) {
     ) {
         Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
             Artwork(url = title.posterUrl, title = title.title, aspectRatio = 2f / 3f, modifier = Modifier.fillMaxWidth())
-            SeerrMarker(title.state, Modifier.align(Alignment.TopStart).padding(6.dp))
+            if (marked) SeerrMarker(title.state, Modifier.align(Alignment.TopStart).padding(6.dp))
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {

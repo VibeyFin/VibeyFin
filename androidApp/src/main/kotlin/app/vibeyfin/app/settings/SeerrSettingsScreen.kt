@@ -63,7 +63,7 @@ import org.koin.androidx.compose.koinViewModel
 
 /** Settings › Seerr on a phone: its own page, because it has the address field the shared Settings rows don't. */
 @Composable
-fun SeerrSettingsRoute(onBack: () -> Unit, viewModel: SeerrSettingsViewModel = koinViewModel()) {
+fun SeerrSettingsRoute(onBack: () -> Unit, onMyRequests: () -> Unit = {}, viewModel: SeerrSettingsViewModel = koinViewModel()) {
     val content = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().padding(horizontal = screenMargin())
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -74,7 +74,7 @@ fun SeerrSettingsRoute(onBack: () -> Unit, viewModel: SeerrSettingsViewModel = k
                     modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    SeerrSettingsContent(viewModel, content, onLeave = onBack)
+                    SeerrSettingsContent(viewModel, content, onLeave = onBack, onMyRequests = onMyRequests)
                 }
             }
 
@@ -85,12 +85,12 @@ fun SeerrSettingsRoute(onBack: () -> Unit, viewModel: SeerrSettingsViewModel = k
 
 /** The Seerr page's content with its sheet and dialog; the phone's page and the tablet's right pane both draw it. */
 @Composable
-internal fun SeerrSettingsContent(viewModel: SeerrSettingsViewModel, modifier: Modifier, onLeave: () -> Unit = {}) {
+internal fun SeerrSettingsContent(viewModel: SeerrSettingsViewModel, modifier: Modifier, onLeave: () -> Unit = {}, onMyRequests: (() -> Unit)? = null) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.leave) { if (state.leave) onLeave() }
 
-    SeerrSettingsBody(state, viewModel, modifier)
+    SeerrSettingsBody(state, viewModel, modifier, onMyRequests)
 
     state.passwordSheet?.let { sheet -> SeerrPasswordSheetView(sheet, viewModel::onSubmitPassword, viewModel::onDismissPassword) }
 
@@ -108,7 +108,7 @@ internal fun SeerrSettingsContent(viewModel: SeerrSettingsViewModel, modifier: M
 }
 
 @Composable
-private fun SeerrSettingsBody(state: SeerrSettingsUiState, viewModel: SeerrSettingsViewModel, modifier: Modifier) {
+private fun SeerrSettingsBody(state: SeerrSettingsUiState, viewModel: SeerrSettingsViewModel, modifier: Modifier, onMyRequests: (() -> Unit)?) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
         Text(
             text = Strings.seerr,
@@ -163,6 +163,10 @@ private fun SeerrSettingsBody(state: SeerrSettingsUiState, viewModel: SeerrSetti
                             Text(left, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
+                }
+                onMyRequests?.let {
+                    Spacer(Modifier.height(VibeyFinTokens.Space.s3))
+                    SectionCard { OpenRow(Strings.seerrMyRequests, it) }
                 }
                 DisconnectCard(viewModel::onDisconnect)
             }

@@ -70,11 +70,13 @@ import app.vibeyfin.app.downloads.DownloadBadgeIcon
 import app.vibeyfin.app.downloads.RemoveConfirmDialog
 import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
+import app.vibeyfin.app.seerr.SeerrRowSection
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.model.MediaItem
+import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.downloads.DownloadAction
 import app.vibeyfin.ui.downloads.DownloadBadge
@@ -88,6 +90,9 @@ import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.home.HomeUiState
 import app.vibeyfin.ui.home.HomeViewModel
 import app.vibeyfin.ui.home.SeeAll
+import app.vibeyfin.ui.seerr.SeerrHomeUiState
+import app.vibeyfin.ui.seerr.SeerrHomeViewModel
+import app.vibeyfin.ui.seerr.SeerrListKind
 import org.koin.androidx.compose.koinViewModel
 import app.vibeyfin.ui.home.ContinueCard as ContinueCardState
 
@@ -100,16 +105,24 @@ fun HomeRoute(
     onPlay: (String) -> Unit,
     onDetails: (String) -> Unit,
     onOpenList: (HomeFilter) -> Unit,
+    onOpenSeerr: (SeerrTitle) -> Unit = {},
+    onSeerrSeeAll: (SeerrListKind) -> Unit = {},
+    onMyRequests: () -> Unit = {},
     viewModel: HomeViewModel = koinViewModel(),
+    seerrModel: SeerrHomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val seerr by seerrModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.exit) {
         state.exit?.let(onExit)
     }
 
     // Back from another screen, or from the background: something may have been watched elsewhere
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onForeground() }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        viewModel.onForeground()
+        seerrModel.onForeground()
+    }
 
     LaunchedEffect(state.openList) {
         state.openList?.let {
@@ -142,7 +155,14 @@ fun HomeRoute(
         onDismissRemoval = viewModel::onDismissRemoval,
         onRetryAction = viewModel::onRetryAction,
         onDismissMessage = viewModel::onDismissMessage,
-        onRefresh = viewModel::onRefresh,
+        onRefresh = {
+            viewModel.onRefresh()
+            seerrModel.onRefresh()
+        },
+        seerr = seerr,
+        onOpenSeerr = onOpenSeerr,
+        onSeerrSeeAll = onSeerrSeeAll,
+        onMyRequests = onMyRequests,
         onRetryContinue = viewModel::onRetryContinue,
         onRetryRow = viewModel::onRetryRow,
         onSeeAll = { target ->
@@ -183,6 +203,10 @@ fun HomeScreen(
     onPickOption: (String) -> Unit,
     onDismissSheet: () -> Unit,
     onRetrySheet: () -> Unit,
+    seerr: SeerrHomeUiState = SeerrHomeUiState(),
+    onOpenSeerr: (SeerrTitle) -> Unit = {},
+    onSeerrSeeAll: (SeerrListKind) -> Unit = {},
+    onMyRequests: () -> Unit = {},
 ) {
     val margin = screenMargin()
 
@@ -202,6 +226,7 @@ fun HomeScreen(
                 )
                 Content(
                     state, margin, onOpen, onPlay, onDetails, onHeroMyList, onHeroPlay, { menuCard = it }, onRefresh, onRetryContinue, onRetryRow, onSeeAll,
+                    seerr, onOpenSeerr, onSeerrSeeAll, onMyRequests,
                 )
             }
         }
@@ -324,6 +349,10 @@ private fun Content(
     onRetryContinue: () -> Unit,
     onRetryRow: (String) -> Unit,
     onSeeAll: (SeeAll) -> Unit,
+    seerr: SeerrHomeUiState,
+    onOpenSeerr: (SeerrTitle) -> Unit,
+    onSeerrSeeAll: (SeerrListKind) -> Unit,
+    onMyRequests: () -> Unit,
 ) {
     val refreshState = rememberPullToRefreshState()
 
@@ -370,16 +399,30 @@ private fun Content(
 
             fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onDetails, onLongPress, onRetryContinue) }
 
+            // The profile's own Seerr news sits with resume, above discovery
+            seerr.requests?.let { row -> fullWidth(key = "seerr-requests") { SeerrRowSection(row, margin, onOpenSeerr, onSeeAll = onMyRequests) } }
+
             if (state.loadingLibraries && state.rows.isEmpty()) {
                 repeat(PLACEHOLDER_ROWS) { index ->
                     fullWidth(key = "placeholder-$index") { RowPlaceholder(margin) }
                 }
             }
 
-            state.rows.forEach { row ->
+            // The library's rows, then Seerr's discover rows, then the genres
+            state.rows.forEachIndexed { index, row ->
+                if (index == state.firstGenreRow) seerrDiscover(seerr, margin, onOpenSeerr, onSeerrSeeAll)
                 fullWidth(key = row.id) { MediaRowSection(row, margin, onOpen, onSeeAll, onRetry = { onRetryRow(row.id) }) }
             }
+            if (state.firstGenreRow >= state.rows.size) seerrDiscover(seerr, margin, onOpenSeerr, onSeerrSeeAll)
         }
+    }
+}
+
+private fun LazyGridScope.seerrDiscover(seerr: SeerrHomeUiState, margin: Dp, onOpen: (SeerrTitle) -> Unit, onSeeAll: (SeerrListKind) -> Unit) {
+    seerr.discover.forEach { row ->
+        val kind = row.kind ?: return@forEach
+
+        fullWidth(key = "seerr-${kind.name}") { SeerrRowSection(row, margin, onOpen, onSeeAll = { onSeeAll(kind) }) }
     }
 }
 
