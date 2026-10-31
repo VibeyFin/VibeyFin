@@ -205,7 +205,7 @@ struct SeerrTitleView: View {
                                 // A title the library has opens the library's page.
                                 Button { onOpenSeerr(title) } label: { SeerrPosterTile(title: title) }
                                     .buttonStyle(PressableButtonStyle())
-                                    .frame(width: 112)
+                                    .frame(width: sizeClass == .regular ? 168 : 112)
                                     .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in seerrMenu?.open(title) })
                                     .accessibilityAction(named: Strings.shared.showOptions) { seerrMenu?.open(title) }
                             }

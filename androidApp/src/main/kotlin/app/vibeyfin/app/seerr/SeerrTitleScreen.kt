@@ -82,6 +82,7 @@ import app.vibeyfin.app.navigation.LocalOpenTrailerUrl
 import app.vibeyfin.app.navigation.LocalSeerrLongPress
 import app.vibeyfin.app.theme.BrandDisplay
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.isTabletWidth
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.RequestState
 import app.vibeyfin.domain.model.SeerrCastMember
@@ -431,7 +432,8 @@ private fun MoreLikeThis(titles: List<SeerrTitle>, onOpenItem: (String) -> Unit,
             items(titles, key = { "${it.type}-${it.tmdbId}" }) { title ->
                 SeerrPosterTile(
                     title,
-                    Modifier.width(VibeyFinTokens.Size.posterWidth).clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).combinedClickable(
+                    // As the library's More like this: bigger posters on a tablet
+                    Modifier.width(if (isTabletWidth()) POSTER_WIDE else VibeyFinTokens.Size.posterWidth).clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).combinedClickable(
                         role = Role.Button,
                         onLongClickLabel = Strings.showOptions,
                         onLongClick = longPress?.let { press -> { press(title) } },
@@ -458,3 +460,4 @@ private const val PHONE_HERO_BY_WIDTH = 1.5f
 private const val FIRST_SCREEN = 0.7f
 private const val FIRST_SCREEN_CLEAR = 0.3f
 private val CAST_TILE = 72.dp
+private val POSTER_WIDE = 168.dp
