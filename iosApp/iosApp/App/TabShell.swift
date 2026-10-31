@@ -90,7 +90,7 @@ struct TabShell: View {
             banner.start()
             profileMenu.start()
         }
-        .onChange(of: profileMenu.state?.exit != nil) { hasExit in
+        .onChange(of: profileMenu.state?.exit != nil) { _, hasExit in
             if hasExit, let exit = profileMenu.state?.exit { onExit(exit) }
         }
         // The PIN for Switch profile and Switch server.
@@ -109,7 +109,7 @@ struct TabShell: View {
             }
         }
         // Library needs the server: going offline while on it moves to Home, which the bar still offers.
-        .onChange(of: offline) { isOffline in
+        .onChange(of: offline) { _, isOffline in
             if isOffline && selection == .library { selection = .home }
         }
     }

@@ -66,7 +66,7 @@ struct FilteredListView: View {
         // Only the chevron, no "Back" label. The swipe from the edge still goes back.
         .toolbarRole(.editor)
         .navigationBarBackButtonHidden(isRoot)
-        .onChange(of: model.state?.list.exit != nil) { hasExit in
+        .onChange(of: model.state?.list.exit != nil) { _, hasExit in
             if hasExit, let exit = model.state?.list.exit { onExit(exit) }
         }
         .sheet(isPresented: Binding(

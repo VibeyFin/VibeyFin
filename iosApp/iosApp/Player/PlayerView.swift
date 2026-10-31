@@ -157,7 +157,7 @@ struct PlayerView: View {
             }
         }
         // Out of sight while picture-in-picture plays: the page behind is upright, and the player is back in landscape when it returns.
-        .onChange(of: session.minimised) { minimised in
+        .onChange(of: session.minimised) { _, minimised in
             if minimised { OrientationLock.restore() } else { OrientationLock.lockLandscape() }
         }
         .onDisappear {
@@ -209,7 +209,7 @@ struct PlayerView: View {
                 scheduleHide()
             }
         }
-        .onChange(of: controller.isPlaying) { isPlaying in
+        .onChange(of: controller.isPlaying) { _, isPlaying in
             if isPlaying {
                 scheduleHide()
             } else {
@@ -218,7 +218,7 @@ struct PlayerView: View {
                 showControls()
             }
         }
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { _, phase in
             // The brightness is the whole screen's on iOS, so other apps and the home screen get theirs back.
             if phase != .active { swipe.restoreBrightness() }
             // The home screen or the lock button: the video stops and the server is told. Only the
@@ -245,13 +245,13 @@ struct PlayerView: View {
                 showControls()
             }
         }
-        .onChange(of: model.state?.finished == true) { finished in
+        .onChange(of: model.state?.finished == true) { _, finished in
             if finished {
                 pip.stop()
                 session.end()
             }
         }
-        .onChange(of: model.state?.exit != nil) { hasExit in
+        .onChange(of: model.state?.exit != nil) { _, hasExit in
             if hasExit, let exit = model.state?.exit {
                 pip.stop()
                 session.end()

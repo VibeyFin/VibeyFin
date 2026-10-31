@@ -27,11 +27,11 @@ struct SearchView: View {
             }
         }
         .onAppear { model.start() }
-        .onChange(of: text) { model.setQuery($0) }
+        .onChange(of: text) { _, query in model.setQuery(query) }
         .backMenuTitle(Strings.shared.tabSearch.titleCased())
         // The tab draws its own header; the system bar above it would only be empty space.
         .tabRootBar()
-        .onChange(of: model.state?.exit != nil) { hasExit in
+        .onChange(of: model.state?.exit != nil) { _, hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
         }
     }

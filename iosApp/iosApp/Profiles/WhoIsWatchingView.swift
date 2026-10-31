@@ -23,7 +23,7 @@ struct WhoIsWatchingView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         // Only the chevron, no "Back" label. The swipe from the edge still goes back.
         .toolbarRole(.editor)
-        .onChange(of: model.state?.signedIn) { signedIn in
+        .onChange(of: model.state?.signedIn) { _, signedIn in
             if signedIn == true { onSignedIn() }
         }
         // One sheet: the PIN question replaces a sign-in sheet that is open under it and gives it back once answered.

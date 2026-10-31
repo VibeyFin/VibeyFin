@@ -22,7 +22,7 @@ struct iOSApp: App {
                 .preferredColorScheme(.dark)
         }
         // At launch and each time the app comes back: the next background check is asked for, or dropped when nobody wants one.
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { _, phase in
             if phase == .active { NewTitlesScheduler.refresh() }
         }
     }

@@ -32,7 +32,7 @@ struct SettingsEntryView: View {
         // The session ended (Switch profile once its PIN was right, a confirmed Sign out): "Who's watching?" on the server we were on, the
         // same way back as Home's. One observer here, not on every page of the stack, and only for Disconnected: an expired token takes
         // the global route to "Who's watching?" instead.
-        .onChange(of: model.state?.disconnected ?? false) { disconnected in
+        .onChange(of: model.state?.disconnected ?? false) { _, disconnected in
             guard disconnected, !exited else { return }
             exited = true
             if model.lastServerId.isEmpty {
@@ -42,7 +42,7 @@ struct SettingsEntryView: View {
             }
         }
         // The PIN to open Settings was dismissed: back to where Settings was opened from.
-        .onChange(of: model.state?.leave) { leave in
+        .onChange(of: model.state?.leave) { _, leave in
             if leave == true { dismiss() }
         }
         // Only the PIN to open Settings: while it is asked the root is the page on top. The other questions come from pages that are pushed

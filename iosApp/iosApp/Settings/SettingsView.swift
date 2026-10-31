@@ -39,7 +39,7 @@ struct SettingsPageView: View {
             model.pageOpened(pageId)
         }
         // A language was picked from the sheet: it closes.
-        .onChange(of: model.state?.closePage) { page in
+        .onChange(of: model.state?.closePage) { _, page in
             guard let page, page == sheetPage else { return }
             model.pageClosed()
             sheetPage = nil

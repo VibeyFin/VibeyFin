@@ -38,7 +38,7 @@ struct PinSheet: View {
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
-        .onChange(of: prompt.error) { shownError = $0 }
+        .onChange(of: prompt.error) { _, error in shownError = error }
         // A wrong PIN is announced after every attempt (the prompt does not change when the text repeats, so each attempt restarts this
         // task). During the lock the countdown is not read out every second: one announcement when it starts.
         .task(id: submitted) {
@@ -48,7 +48,7 @@ struct PinSheet: View {
                 UIAccessibility.post(notification: .announcement, argument: error)
             }
         }
-        .onChange(of: prompt.lockedSeconds != nil) { locked in
+        .onChange(of: prompt.lockedSeconds != nil) { _, locked in
             shownLocked = locked
             // The keys come back when the wait is over; whatever was typed during it is dropped.
             if locked {
