@@ -25,7 +25,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.vibeyfin.R
 import app.vibeyfin.app.components.Artwork
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.model.RequestState
@@ -80,16 +79,7 @@ fun SeerrMarker(state: RequestState, modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Icon(painterResource(stateIcon(state)), contentDescription = null, tint = color, modifier = Modifier.size(12.dp))
+        Icon(painterResource(stateIconOf(state)), contentDescription = null, tint = color, modifier = Modifier.size(12.dp))
         Text(label, style = MaterialTheme.typography.labelSmall, color = color, maxLines = 1)
     }
-}
-
-private fun stateIcon(state: RequestState): Int = when (state) {
-    RequestState.Requested -> R.drawable.ic_seerr_requested
-    RequestState.Approved -> R.drawable.ic_seerr_approved
-    RequestState.PartlyAvailable -> R.drawable.ic_seerr_partly
-    RequestState.Available -> R.drawable.ic_seerr_available
-    RequestState.Declined -> R.drawable.ic_seerr_declined
-    RequestState.Failed, RequestState.NotRequested -> R.drawable.ic_seerr_failed
 }

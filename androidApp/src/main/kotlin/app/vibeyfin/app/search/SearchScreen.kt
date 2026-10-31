@@ -73,12 +73,14 @@ import app.vibeyfin.app.components.SkeletonBlock
 import app.vibeyfin.app.components.SkeletonLine
 import app.vibeyfin.app.components.TabHeader
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
+import app.vibeyfin.app.navigation.LocalSeerrLongPress
 import app.vibeyfin.app.navigation.LocalTileLongPress
 import app.vibeyfin.app.seerr.SeerrPosterTile
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.SearchKind
 import app.vibeyfin.domain.model.SearchResult
+import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.domain.model.asMediaItem
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.HomeExit
@@ -94,6 +96,7 @@ import androidx.compose.foundation.lazy.grid.items as gridItems
 fun SearchRoute(
     onOpenResult: (SearchResult) -> Unit,
     onExit: (HomeExit) -> Unit,
+    onOpenSeerr: (SeerrTitle) -> Unit = {},
     viewModel: SearchViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -117,6 +120,10 @@ fun SearchRoute(
             viewModel.onResultOpened()
             onOpenResult(result)
         },
+        onOpenSeerr = { title ->
+            viewModel.onResultOpened()
+            onOpenSeerr(title)
+        },
     )
 }
 
@@ -130,6 +137,7 @@ fun SearchScreen(
     onFilter: (SearchFilter) -> Unit,
     onSubmit: () -> Unit,
     onSeerrRetry: () -> Unit = {},
+    onOpenSeerr: (SeerrTitle) -> Unit = {},
     onHistoryPicked: (String) -> Unit,
     onHistoryRemoved: (String) -> Unit,
     onHistoryCleared: () -> Unit,
@@ -201,7 +209,7 @@ fun SearchScreen(
                     // The first answer for this text is on its way
                     state.searched.isEmpty() -> ResultSkeleton(margin)
 
-                    else -> Results(state, margin, onOpenResult, onSeerrRetry)
+                    else -> Results(state, margin, onOpenResult, onSeerrRetry, onOpenSeerr)
                 }
             }
         }
@@ -255,7 +263,9 @@ private fun History(history: List<String>, margin: Dp, onPick: (String) -> Unit,
 }
 
 @Composable
-private fun Results(state: SearchUiState, margin: Dp, onOpen: (SearchResult) -> Unit, onSeerrRetry: () -> Unit) {
+private fun Results(state: SearchUiState, margin: Dp, onOpen: (SearchResult) -> Unit, onSeerrRetry: () -> Unit, onOpenSeerr: (SeerrTitle) -> Unit) {
+    val seerrLongPress = LocalSeerrLongPress.current
+
     // Each group is a grid under its heading: poster tiles, round portraits for people, and rows for episodes.
     // The older answer stays while the next one is on its way, dimmed.
     LazyVerticalGrid(
@@ -287,7 +297,7 @@ private fun Results(state: SearchUiState, margin: Dp, onOpen: (SearchResult) -> 
             }
         }
 
-        state.seerrGroup?.let { seerr -> seerrGroup(seerr, titled = state.filter != SearchFilter.NotInLibrary, onSeerrRetry) }
+        state.seerrGroup?.let { seerr -> seerrGroup(seerr, titled = state.filter != SearchFilter.NotInLibrary, onSeerrRetry, onOpenSeerr, seerrLongPress) }
 
         item(key = "bottom", span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(VibeyFinTokens.Space.s5)) }
     }
@@ -295,7 +305,8 @@ private fun Results(state: SearchUiState, margin: Dp, onOpen: (SearchResult) -> 
 
 // Seerr's titles that aren't in the library, always last: the heading (left out when the filter shows nothing else), a note, then
 // the tiles, three grey tiles while Seerr answers, or why it didn't
-private fun LazyGridScope.seerrGroup(seerr: SeerrSearch, titled: Boolean, onRetry: () -> Unit) {
+@OptIn(ExperimentalFoundationApi::class)
+private fun LazyGridScope.seerrGroup(seerr: SeerrSearch, titled: Boolean, onRetry: () -> Unit, onOpen: (SeerrTitle) -> Unit, onLongPress: ((SeerrTitle) -> Unit)?) {
     item(key = "seerr-heading", span = { GridItemSpan(maxLineSpan) }) {
         Column(Modifier.padding(top = VibeyFinTokens.Space.s3), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
             if (titled) SectionTitle(Strings.seerrNotInLibrary, modifier = Modifier.semantics { heading() })
@@ -312,8 +323,16 @@ private fun LazyGridScope.seerrGroup(seerr: SeerrSearch, titled: Boolean, onRetr
         }
 
         is SeerrSearch.Found -> gridItems(seerr.titles, key = { "seerr-${it.type}-${it.tmdbId}" }) { title ->
-            // Opening a title and its poster menu come with the request page
-            SeerrPosterTile(title, Modifier.fillMaxWidth())
+            // A tap opens its Seerr page; a long press its Seerr menu (Request, Details, Trailer)
+            SeerrPosterTile(
+                title,
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).combinedClickable(
+                    role = Role.Button,
+                    onLongClickLabel = if (onLongPress != null) Strings.showOptions else null,
+                    onLongClick = onLongPress?.let { press -> { press(title) } },
+                    onClick = { onOpen(title) },
+                ),
+            )
         }
 
         is SeerrSearch.Failed -> item(key = "seerr-failed", span = { GridItemSpan(maxLineSpan) }) { LoadError(seerr.message, onRetry) }
