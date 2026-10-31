@@ -1,3 +1,5 @@
+import com.android.build.api.variant.HostTestBuilder
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -54,9 +56,21 @@ android {
         }
     }
 
+    // Compose Preview reads the compiled resources through the unit test classpath
+    testOptions.unitTests.isIncludeAndroidResources = true
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+@Suppress("UnstableApiUsage")
+androidComponents {
+    // The baseline profile plugin turns unit tests off for the release and benchmark build types, but Compose Preview needs them on
+    // every variant and fails IDE sync otherwise.
+    beforeVariants(selector().all()) {
+        it.hostTests[HostTestBuilder.UNIT_TEST_TYPE]?.enable = true
     }
 }
 
