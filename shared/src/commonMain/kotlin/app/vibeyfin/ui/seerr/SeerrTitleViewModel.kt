@@ -477,7 +477,8 @@ class SeerrTitleViewModel(
         val open = requestable(is4k).map { it.number }.toSet()
         val ready = seerr.state.value as? SeerrState.Ready
         val offer4k = ready != null && ready.features.has4k(type) && ready.user.permissions.canRequest4k(type)
-        val seasons = details?.seasons.orEmpty().map { season ->
+        // Specials last, so the grid starts at season 1
+        val seasons = details?.seasons.orEmpty().sortedBy { if (it.number == 0) Int.MAX_VALUE else it.number }.map { season ->
             val state = if (is4k) season.state4k else season.state
             SeerrPickerSeason(
                 number = season.number,

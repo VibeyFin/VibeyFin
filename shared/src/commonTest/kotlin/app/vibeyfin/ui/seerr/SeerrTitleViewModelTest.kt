@@ -150,6 +150,8 @@ class SeerrTitleViewModelTest {
         val picker = viewModel.uiState.value.picker!!
         assertTrue(picker.allMissing)
         assertEquals("Storm Harbour · 4 seasons", picker.subtitle)
+        // Specials last, so the grid starts at season 1
+        assertEquals(listOf(1, 2, 3, 4, 0), picker.seasons.map { it.number })
         assertEquals(listOf(2, 3, 4), picker.seasons.filter { it.selected }.map { it.number })
         assertTrue(picker.seasons.first { it.number == 1 }.locked)
         assertFalse(picker.seasons.first { it.number == 0 }.locked)
