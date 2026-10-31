@@ -107,6 +107,8 @@ final class SeerrListObservable: ObservableObject {
 /// A discover list's See all: a poster grid titled as the row, Movies and Shows chips where it holds both, more as it scrolls.
 struct SeerrListView: View {
     @StateObject private var model: SeerrListObservable
+    /// The library's grid: bigger posters at a regular width.
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let onOpen: (SeerrTitle) -> Void
 
     init(kind: SeerrListKind, onOpen: @escaping (SeerrTitle) -> Void) {
@@ -127,9 +129,9 @@ struct SeerrListView: View {
                     if let message = state.message {
                         LoadErrorView(message: message, onRetry: { model.retry() })
                     } else if state.loading {
-                        posterSkeleton
+                        SeerrGridSkeleton()
                     } else {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: sizeClass == .regular ? 168 : 130), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
                             ForEach(Array(state.titles.enumerated()), id: \.element) { index, title in
                                 SeerrTileButton(title: title, onOpen: onOpen, meta: state.showsDates ? Strings.shared.seerrReleaseDay(date: title.releaseDate) : nil, plainInLibrary: true)
                                     .onAppear { if index >= state.titles.count - 6 { model.loadMore() } }
@@ -170,6 +172,8 @@ final class MyRequestsObservable: ObservableObject {
 /// My requests: every request of this profile, newest change first, filtered by state, more as it scrolls.
 struct MyRequestsView: View {
     @StateObject private var model = MyRequestsObservable()
+    /// The library's grid: bigger posters at a regular width.
+    @Environment(\.horizontalSizeClass) private var sizeClass
     let onOpen: (SeerrTitle) -> Void
 
     private static let filters: [(RequestFilter, String)] = [
@@ -194,12 +198,12 @@ struct MyRequestsView: View {
                     if let message = state.message {
                         LoadErrorView(message: message, onRetry: { model.retry() })
                     } else if state.loading {
-                        posterSkeleton
+                        SeerrGridSkeleton()
                     } else if state.empty {
                         Text(Strings.shared.seerrNoRequests).font(.body).foregroundStyle(.secondary).padding(.vertical, Space.s5)
                     } else {
                         // A poster grid like the other lists: the pill says where each stands, the line under it when that last changed.
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: sizeClass == .regular ? 168 : 130), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
                             ForEach(Array(state.items.enumerated()), id: \.element.request.id) { index, item in
                                 SeerrTileButton(title: item.title, onOpen: onOpen, meta: item.changed)
                                     .onAppear { if index >= state.items.count - 6 { model.loadMore() } }
@@ -218,9 +222,13 @@ struct MyRequestsView: View {
     }
 }
 
-/// Grey posters while a Seerr page's first answer is on its way.
-private var posterSkeleton: some View {
-    LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
-        ForEach(0..<9, id: \.self) { _ in SkeletonBlock().aspectRatio(2.0 / 3.0, contentMode: .fit) }
+/// Grey posters while a Seerr page's first answer is on its way, sized as the library's grid.
+private struct SeerrGridSkeleton: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: sizeClass == .regular ? 168 : 130), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
+            ForEach(0..<9, id: \.self) { _ in SeerrPosterPlaceholder() }
+        }
     }
 }

@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.vibeyfin.app.children.posterMinWidth
 import app.vibeyfin.app.components.Artwork
 import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FilterChipButton
@@ -57,6 +58,7 @@ import app.vibeyfin.app.components.bleed
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.navigation.LocalSeerrLongPress
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.isTabletWidth
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.RequestState
 import app.vibeyfin.domain.model.SeerrMediaType
@@ -152,7 +154,8 @@ fun SeerrListRoute(kind: SeerrListKind, onBack: () -> Unit, onOpen: (SeerrTitle)
             state.message != null -> LoadError(state.message!!, viewModel::onRetry, Modifier.padding(horizontal = margin))
 
             else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(GRID_MIN_WIDTH),
+                // The library's grid: bigger posters on a tablet
+                columns = GridCells.Adaptive(posterMinWidth(isRoot = false, wide = isTabletWidth())),
                 contentPadding = PaddingValues(start = margin, top = VibeyFinTokens.Space.s3, end = margin, bottom = VibeyFinTokens.Space.s5 + LocalBottomBarPadding.current),
                 horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
                 verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
@@ -200,7 +203,8 @@ fun MyRequestsRoute(onBack: () -> Unit, onOpen: (SeerrTitle) -> Unit, viewModel:
 
             // A poster grid like the other lists: the pill says where each stands, the line under it when that last changed
             else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(GRID_MIN_WIDTH),
+                // The library's grid: bigger posters on a tablet
+                columns = GridCells.Adaptive(posterMinWidth(isRoot = false, wide = isTabletWidth())),
                 contentPadding = PaddingValues(start = margin, top = VibeyFinTokens.Space.s3, end = margin, bottom = VibeyFinTokens.Space.s5 + LocalBottomBarPadding.current),
                 horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
                 verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
@@ -245,13 +249,14 @@ private fun PageFrame(title: String, onBack: () -> Unit, content: @Composable ()
 @Composable
 private fun PosterGridSkeleton(margin: Dp) {
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(GRID_MIN_WIDTH),
+        // The library's grid: bigger posters on a tablet
+        columns = GridCells.Adaptive(posterMinWidth(isRoot = false, wide = isTabletWidth())),
         userScrollEnabled = false,
         contentPadding = PaddingValues(start = margin, top = VibeyFinTokens.Space.s3, end = margin),
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
     ) {
-        items(9) { SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(2f / 3f)) }
+        items(9) { SeerrPosterPlaceholder(Modifier.fillMaxWidth()) }
     }
 }
 
@@ -261,8 +266,6 @@ private fun MoreSpinner() {
         CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
-
-private val GRID_MIN_WIDTH = 110.dp
 
 private const val PLACEHOLDER_TILES = 4
 
