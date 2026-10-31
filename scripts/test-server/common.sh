@@ -12,3 +12,10 @@ AUTH_HDR='Authorization: MediaBrowser Client="VibeyFin Test", Device="script", D
 # A second throwaway user the seed script creates with downloading switched off, for the "no permission" case.
 JF_NODL_USER="nodownload"
 JF_NODL_PASS="vibeyfin-test"
+# Seerr, linked to the Jellyfin above (seerr.sh). 5155, not Seerr's usual 5055, so a real Seerr can run alongside.
+SEERR_IMAGE="ghcr.io/seerr-team/seerr:v3.5.1"
+SEERR_NAME="vibeyfin-seerr"
+SEERR_PORT="5155"
+SEERR_URL="http://localhost:${SEERR_PORT}"
+# How the Seerr container reaches Jellyfin on the host.
+SEERR_JF_HOST="host.containers.internal"

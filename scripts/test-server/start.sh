@@ -83,4 +83,5 @@ print(next(t['Id'] for t in json.load(sys.stdin) if t['Name'] == '$task'))")"
 done
 
 echo "Jellyfin test server: ${JF_URL}  user=${JF_USER}  password=${JF_PASS}"
+[ "${SEERR:-1}" = "0" ] || "${DIR}/seerr.sh"
 echo "Libraries scan in the background; trickplay and segments follow (see docs/test-server.md)."
