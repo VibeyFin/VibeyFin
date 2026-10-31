@@ -40,6 +40,12 @@ suspend fun SeerrApi.movie(tmdbId: Int): ApiResult<SeerrMovieDto> = get("/movie/
 /** `GET /tv/{id}`, by TMDB id. */
 suspend fun SeerrApi.show(tmdbId: Int): ApiResult<SeerrTvDto> = get("/tv/$tmdbId", retry = true)
 
+/** `GET /movie/{id}/recommendations`: what TMDB suggests for a movie, as "More like this". */
+suspend fun SeerrApi.movieRecommendations(tmdbId: Int): ApiResult<SeerrPageDto<SeerrResultDto>> = get("/movie/$tmdbId/recommendations", retry = true)
+
+/** `GET /tv/{id}/recommendations`. */
+suspend fun SeerrApi.showRecommendations(tmdbId: Int): ApiResult<SeerrPageDto<SeerrResultDto>> = get("/tv/$tmdbId/recommendations", retry = true)
+
 /** Percent-encodes everything but RFC 3986's unreserved characters, UTF-8 first, as Seerr's query validator wants. */
 internal fun seerrQueryEncode(value: String): String = buildString {
     for (byte in value.encodeToByteArray()) {

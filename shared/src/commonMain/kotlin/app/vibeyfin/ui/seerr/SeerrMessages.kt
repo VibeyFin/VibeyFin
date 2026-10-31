@@ -16,6 +16,25 @@ internal object SeerrMessages {
     const val QUICK_CONNECT_OFF = "Quick Connect is off on your Jellyfin server."
     const val WRONG_PASSWORD = "That password didn’t work. Try again."
     const val PASSWORD_UNREACHABLE = "Can’t reach Seerr. Check your connection and try again."
+    const val ALREADY_REQUESTED = "Someone already asked for this."
+    const val NOT_ALLOWED = "Your Seerr account can’t request this. Ask whoever runs Seerr."
+    const val REQUEST_UNREACHABLE = "Can’t reach Seerr. Check your connection, then try again."
+    const val REQUEST_FAILED = "Seerr couldn’t take the request. Try again."
+    const val CANCEL_FAILED = "Couldn’t cancel the request. Try again."
+    const val TITLE_NOT_FOUND = "Seerr doesn’t know this title."
+
+    /** The request limit is used up: how many this profile may ask for, and how often, as Seerr counts them. */
+    fun quotaReached(limit: Int?, days: Int?, movies: Boolean): String {
+        if (limit == null) return "Your request limit is reached. Try again later."
+        val what = if (movies) (if (limit == 1) "1 movie" else "$limit movies") else (if (limit == 1) "1 season" else "$limit seasons")
+        val often = when (days) {
+            null -> ""
+            1 -> " a day"
+            7 -> " a week"
+            else -> " every $days days"
+        }
+        return "Your request limit is reached. You can request $what$often."
+    }
 
     /** Why connecting failed; null when it didn't. */
     fun forConnect(result: SeerrConnectResult): String? = when (result) {

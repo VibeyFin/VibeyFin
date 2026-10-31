@@ -1052,6 +1052,85 @@ object Strings {
         RequestState.Failed -> "Failed"
     }
 
+    // The Seerr page of a title, its poster menu and requesting. Errors are in SeerrMessages.
+    val seerrRequest = "Request"
+    val seerrRequestSeasons = "Request seasons"
+    val seerrRequestAgain = "Request again"
+    val seerrRequest4k = "Request in 4K"
+    val seerrCancelRequest = "Cancel request"
+    val seerrMoreLikeThis = "More like this"
+    val seerrSeasons = "Seasons"
+    val seerrAllMissingSeasons = "All missing seasons"
+    val seerrQuality = "Quality"
+    val seerrStandard = "Standard"
+    val seerr4k = "4K"
+    val seerrView = "View"
+    val seerrRequestCancelled = "Request cancelled"
+
+    fun seerrEpisodeCount(count: Int) = if (count == 1) "1 episode" else "$count episodes"
+
+    fun seerrRequestSeasonCount(count: Int) = if (count == 1) "Request 1 season" else "Request $count seasons"
+
+    fun seerrPickerSubtitle(title: String, seasons: Int) = "$title \u00b7 ${seasonCount(seasons)}"
+
+    fun seerrRequested(title: String) = "Requested $title"
+
+    /**
+     * The line under a title's overview: where it stands, and who asked when someone did. [requestedBy] is the requester's name, or
+     * null when it is the profile itself or not known; [byMe] says it is the profile.
+     */
+    fun seerrStatusLine(state: RequestState, byMe: Boolean, requestedBy: String?): String = when (state) {
+        RequestState.NotRequested -> "Not in your library"
+
+        RequestState.Requested -> when {
+            byMe -> "Requested by you \u00b7 Waiting for approval"
+            requestedBy != null -> "Requested by $requestedBy \u00b7 Waiting for approval"
+            else -> "Requested \u00b7 Waiting for approval"
+        }
+
+        RequestState.Approved -> "Approved \u00b7 Added when the download finishes"
+
+        RequestState.PartlyAvailable -> "Some seasons are in your library"
+
+        RequestState.Available -> "In your library"
+
+        RequestState.Declined -> "Declined \u00b7 You can ask again"
+
+        RequestState.Failed -> "The download failed \u00b7 Seerr will try again"
+    }
+
+    /** The second status line, for a 4K request: "4K · Requested by you · Waiting for approval". */
+    fun seerr4kLine(line: String) = "4K \u00b7 $line"
+
+    /** Under a Seerr poster menu's title: "2025 · Movie · Not in your library", or the state's word. */
+    fun seerrMenuSubtitle(meta: String, state: RequestState) = "$meta \u00b7 ${seerrStateLabel(state) ?: "Not in your library"}"
+
+    /** Under the status row of a Seerr poster menu: "By you, 2 days ago · Waiting for approval". */
+    fun seerrMenuStatusDetail(state: RequestState, byMe: Boolean, requestedBy: String?, daysAgo: Int?): String {
+        val who = when {
+            byMe -> "By you"
+            requestedBy != null -> "By $requestedBy"
+            else -> null
+        }
+        val whenAsked = daysAgo?.let {
+            when (it) {
+                0 -> "today"
+                1 -> "yesterday"
+                else -> "$it days ago"
+            }
+        }
+        val asked = listOfNotNull(who, whenAsked).joinToString(", ").takeIf { it.isNotEmpty() }
+        val next = when (state) {
+            RequestState.Requested -> "Waiting for approval"
+            RequestState.Approved -> "Added when the download finishes"
+            RequestState.Failed -> "Seerr will try again"
+            RequestState.Declined -> "You can ask again"
+            RequestState.PartlyAvailable -> "Some seasons are in your library"
+            RequestState.NotRequested, RequestState.Available -> null
+        }
+        return listOfNotNull(asked, next).joinToString(" \u00b7 ")
+    }
+
     /** What a screen reader says for a Seerr poster: "Harbour Bridge, 2025 · Movie, not in your library, can be requested". */
     fun seerrTitleDescription(title: String, meta: String, state: RequestState) = "$title, $meta, ${seerrStateLabel(state)?.lowercase() ?: "not in your library, can be requested"}"
 }

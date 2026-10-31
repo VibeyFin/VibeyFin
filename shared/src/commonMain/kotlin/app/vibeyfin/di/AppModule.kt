@@ -15,6 +15,7 @@ import app.vibeyfin.ui.playback.PlaybackViewModel
 import app.vibeyfin.ui.profile.ProfileMenuViewModel
 import app.vibeyfin.ui.search.SearchViewModel
 import app.vibeyfin.ui.seerr.SeerrSettingsViewModel
+import app.vibeyfin.ui.seerr.SeerrTitleViewModel
 import app.vibeyfin.ui.servers.ServersViewModel
 import app.vibeyfin.ui.settings.SettingsViewModel
 import app.vibeyfin.ui.startup.StartupViewModel
@@ -56,4 +57,5 @@ fun appModule() = module {
     viewModelOf(::AppBannerViewModel)
     viewModelOf(::DownloadsViewModel)
     viewModel { SeerrSettingsViewModel(get(), get(), get(), get(ApplicationScope)) }
+    viewModel { params -> SeerrTitleViewModel(params.get(), params.get(), get(), get(), get()) }
 }

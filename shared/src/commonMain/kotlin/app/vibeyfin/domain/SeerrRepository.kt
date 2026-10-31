@@ -8,6 +8,7 @@ import app.vibeyfin.data.seerr.SeerrPageDto
 import app.vibeyfin.data.seerr.SeerrResultDto
 import app.vibeyfin.data.seerr.deleteRequest
 import app.vibeyfin.data.seerr.movie
+import app.vibeyfin.data.seerr.movieRecommendations
 import app.vibeyfin.data.seerr.popularMovies
 import app.vibeyfin.data.seerr.popularShows
 import app.vibeyfin.data.seerr.quota
@@ -16,6 +17,7 @@ import app.vibeyfin.data.seerr.requestShow
 import app.vibeyfin.data.seerr.requests
 import app.vibeyfin.data.seerr.search
 import app.vibeyfin.data.seerr.show
+import app.vibeyfin.data.seerr.showRecommendations
 import app.vibeyfin.data.seerr.trending
 import app.vibeyfin.data.seerr.upcomingMovies
 import app.vibeyfin.data.seerr.upcomingShows
@@ -69,6 +71,14 @@ class SeerrRepository(private val seerr: SeerrConnection) {
             SeerrMediaType.Movie -> api.movie(tmdbId).map { it.toDetails(me.id) }
             SeerrMediaType.Show -> api.show(tmdbId).map { it.toDetails(me.id) }
         }
+    }
+
+    /** What TMDB suggests for a title, for "More like this". */
+    suspend fun recommendations(type: SeerrMediaType, tmdbId: Int): ApiResult<SeerrPage> = seerr.call { api, _ ->
+        when (type) {
+            SeerrMediaType.Movie -> api.movieRecommendations(tmdbId)
+            SeerrMediaType.Show -> api.showRecommendations(tmdbId)
+        }.map { it.toPage() }
     }
 
     /**
