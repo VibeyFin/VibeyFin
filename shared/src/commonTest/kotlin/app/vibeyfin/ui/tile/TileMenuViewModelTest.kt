@@ -120,6 +120,20 @@ class TileMenuViewModelTest {
     }
 
     @Test
+    fun askingForThePosterAgainKeepsItsTrailerAndDoesNotCheckAgain() = runTest {
+        server(itemJson("m1", "Heat", remoteTrailers = listOf("https://example.com/t")))
+        val viewModel = viewModel()
+
+        viewModel.onOpen(tile())
+        viewModel.uiState.first { it.trailer != null }
+        viewModel.onOpen(tile())
+        val state = viewModel.uiState.value
+
+        assertEquals(Trailer.Remote("https://example.com/t"), state.trailer)
+        assertFalse(state.checkingTrailer)
+    }
+
+    @Test
     fun theMenuOpensForThePosterAndClosingEmptiesIt() = runTest {
         server(itemJson("m1", "Heat", remoteTrailers = listOf("https://example.com/t")))
         val viewModel = viewModel()

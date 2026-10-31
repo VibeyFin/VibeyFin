@@ -175,7 +175,9 @@ struct ContinueRowView: View {
                         }
                     }
                     .screenMargin()
+                    .liftRoomInside()
                 }
+                .liftRoom()
             }
         }
     }

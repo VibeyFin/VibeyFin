@@ -177,43 +177,36 @@ struct TabShell: View {
         .environmentObject(profileMenu)
         .environment(\.profileButtonContext, ProfileButtonContext(offline: offline, onSettings: openSettings))
         .environment(\.tileMenu, tileMenu)
-        .onAppear { tileMenu.start() }
+        .onAppear {
+            tileMenu.start()
+            tileMenu.handlers = TileMenuHandlers(
+                details: { openFromMenu($0) },
+                trailer: { trailer in
+                    if let local = trailer as? TrailerLocal {
+                        player.play(local.itemId)
+                    } else if let remote = trailer as? TrailerRemote, let url = URL(string: remote.url) {
+                        openURL(url)
+                    }
+                }
+            )
+        }
         .onReceive(taps.$pending) { tap in
             if let tap { openTapped(tap) }
         }
-        // The long-press menu of a poster, wherever the poster is.
-        .sheet(isPresented: Binding(get: { tileMenu.state?.item != nil }, set: { if !$0 { tileMenu.close() } })) {
-            if let state = tileMenu.state {
-                TileMenuSheetView(
-                    state: state,
-                    onDetails: {
-                        let item = state.item
-                        tileMenu.close()
-                        if let item { openFromMenu(item) }
-                    },
-                    onTrailer: { trailer in
-                        tileMenu.close()
-                        if let local = trailer as? TrailerLocal {
-                            player.play(local.itemId)
-                        } else if let remote = trailer as? TrailerRemote, let url = URL(string: remote.url) {
-                            openURL(url)
-                        }
-                    },
-                    onMyList: { tileMenu.toggleFavorite() },
-                    onDownload: { tileMenu.download() },
-                    onDownloadAction: { tileMenu.act($0) }
-                )
-                // The questions the menu's Download row can raise: how many episodes of a show, and before a download is deleted.
-                .downloadPrompts(
-                    prompt: state.downloadPrompt,
-                    removal: state.removePrompt,
-                    onToggleUnwatched: { tileMenu.toggleUnwatchedOnly() },
-                    onConfirm: { tileMenu.confirmDownload() },
-                    onDismiss: { tileMenu.dismissDownloadPrompt() },
-                    onConfirmRemove: { tileMenu.confirmRemove() },
-                    onDismissRemoval: { tileMenu.dismissRemoval() }
-                )
-            }
+        .downloadPrompts(
+            prompt: tileMenu.overlay.prompt,
+            removal: tileMenu.overlay.removal,
+            onToggleUnwatched: { tileMenu.toggleUnwatchedOnly() },
+            onConfirm: { tileMenu.confirmDownload() },
+            onDismiss: { tileMenu.dismissDownloadPrompt() },
+            onConfirmRemove: { tileMenu.confirmRemove() },
+            onDismissRemoval: { tileMenu.dismissRemoval() }
+        )
+        .alert(
+            tileMenu.overlay.message ?? "",
+            isPresented: Binding(get: { tileMenu.overlay.message != nil }, set: { if !$0 { tileMenu.dismissMessage() } })
+        ) {
+            Button(Strings.shared.close.titleCased(), role: .cancel) {}
         }
         .environment(\.playerSession, player)
         // Playback covers the tabs, and goes out of sight while picture-in-picture plays, so the page it was opened from shows.

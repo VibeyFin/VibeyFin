@@ -204,18 +204,27 @@ extension View {
 /// player buttons): the label shrinks a little under the finger and springs back. The system's bordered and
 /// glass styles keep their own highlight. Nothing moves when the system asks for Reduce Motion.
 struct PressableButtonStyle: ButtonStyle {
+    /// Called once the finger has stayed down for a moment, not for a tap or a scroll.
+    var onHold: (() -> Void)?
+
     func makeBody(configuration: Configuration) -> some View {
-        PressableLabel(configuration: configuration)
+        PressableLabel(configuration: configuration, onHold: onHold)
     }
 
     private struct PressableLabel: View {
         let configuration: ButtonStyleConfiguration
+        let onHold: (() -> Void)?
         @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
         var body: some View {
             configuration.label
                 .scaleEffect(configuration.isPressed && !reduceMotion ? 0.95 : 1)
                 .animation(reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.6), value: configuration.isPressed)
+                .task(id: configuration.isPressed) {
+                    guard configuration.isPressed, let onHold else { return }
+                    try? await Task.sleep(nanoseconds: 150_000_000)
+                    if !Task.isCancelled { onHold() }
+                }
         }
     }
 }
