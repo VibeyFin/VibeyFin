@@ -1071,10 +1071,10 @@ object Strings {
     val seerrView = "View"
     val seerrRequestCancelled = "Request cancelled"
 
-    /** IMDb's rating in the facts line: "IMDb 8.7". */
-    fun imdbRating(score: Double): String {
+    /** A rating out of 10 in a facts line, the library's and Seerr's alike: "★ 8.7". */
+    fun starRating(score: Double): String {
         val tenths = (score * 10 + 0.5).toInt()
-        return "IMDb ${tenths / 10}.${tenths % 10}"
+        return "\u2605 ${tenths / 10}.${tenths % 10}"
     }
 
     fun seerrEpisodeCount(count: Int) = if (count == 1) "1 episode" else "$count episodes"

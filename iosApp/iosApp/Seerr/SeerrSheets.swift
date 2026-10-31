@@ -196,12 +196,15 @@ struct SeerrSeasonPickerView: View {
             }
             .listStyle(.insetGrouped)
             .safeAreaInset(edge: .bottom) {
-                // A plus, not words: what it will ask for ("Request 2 seasons") is what VoiceOver says.
+                // A plus and what it will ask for ("Request 2 seasons").
                 PrimaryButton(action: { model.pickerConfirm() }) {
-                    if sending { PrimaryButtonSpinner() } else { Image(systemName: "plus").font(.title3.weight(.semibold)) }
+                    if sending {
+                        PrimaryButtonSpinner()
+                    } else {
+                        Label(picker.confirmLabel.titleCased(), systemImage: "plus").lineLimit(1)
+                    }
                 }
                 .disabled(!picker.canConfirm && !sending)
-                .accessibilityLabel(picker.confirmLabel)
                 .padding(Space.s4)
                 .background(.bar)
             }

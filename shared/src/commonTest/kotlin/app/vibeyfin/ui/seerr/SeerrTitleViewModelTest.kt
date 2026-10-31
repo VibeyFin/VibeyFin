@@ -103,7 +103,7 @@ class SeerrTitleViewModelTest {
 
         val state = viewModel(SeerrMediaType.Movie, 603).await { it.facts.size == 4 }
 
-        assertEquals(listOf("2025", "PG-13", "1 h 36 min", "IMDb 8.7"), state.facts)
+        assertEquals(listOf("2025", "PG-13", "1 h 36 min", "\u2605 8.7"), state.facts)
     }
 
     @Test

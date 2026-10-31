@@ -13,7 +13,7 @@ internal fun MediaItem.facts(): List<String> = listOfNotNull(
     ageRating,
     // A show has seasons, not a runtime.
     if (kind == ItemKind.Series) seasonCount?.let(Strings::seasonCount) else runtimeMinutes?.let(::runtimeText),
-    rating?.let { "★ ${oneDecimal(it)}" },
+    rating?.let(Strings::starRating),
 )
 
 /** One line of the technical info: what it is, and what the file says. */

@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
@@ -261,11 +262,15 @@ private fun Hero(state: SeerrTitleUiState, centered: Boolean, viewModel: SeerrTi
                     if (state.sending && state.picker == null) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
                     } else if (primary.enabled) {
-                        // A plus, not words: the label is what a screen reader says
-                        Icon(Icons.Filled.Add, contentDescription = primary.label, modifier = Modifier.size(28.dp))
+                        // A plus and the words
+                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                        Text(primary.label, maxLines = 1)
                     } else {
-                        // Nothing to do: the state's own icon, quiet
-                        Icon(painterResource(stateIconOf(state.state)), contentDescription = primary.label, modifier = Modifier.size(24.dp))
+                        // Nothing to do: the state's own icon and its name, quiet
+                        Icon(painterResource(stateIconOf(state.state)), contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                        Text(primary.label, maxLines = 1)
                     }
                 }
                 state.trailerUrl?.let { url ->
@@ -279,7 +284,7 @@ private fun Hero(state: SeerrTitleUiState, centered: Boolean, viewModel: SeerrTi
         if (state.offer4k || state.cancelRequestId != null) {
             ActionRow(Modifier.fillMaxWidth()) {
                 if (state.offer4k) {
-                    ActionButton(Strings.seerr4k, Strings.seerrRequest4k, icon = { Icon(Icons.Filled.Add, null, tint = VibeyFinTokens.Colors.ink, modifier = it) }, onClick = viewModel::onRequest4k)
+                    ActionButton(Strings.seerrRequest4k, Strings.seerrRequest4k, icon = { Icon(Icons.Filled.Add, null, tint = VibeyFinTokens.Colors.ink, modifier = it) }, onClick = viewModel::onRequest4k)
                 }
                 if (state.cancelRequestId != null) {
                     ActionButton(Strings.seerrCancelRequest, Strings.seerrCancelRequest, icon = { Icon(Icons.Filled.Close, null, tint = VibeyFinTokens.Colors.ink, modifier = it) }, onClick = viewModel::onCancelRequest)

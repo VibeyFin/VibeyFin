@@ -135,17 +135,17 @@ struct SeerrTitleView: View {
                 // disabled, so the page doesn't jump.
                 HStack(spacing: Space.s3) {
                     PrimaryButton(action: { model.request() }) {
-                        // A plus, not words (the label is what VoiceOver says); with nothing to do, the state's own symbol.
+                        // A plus and the words; with nothing to do, the state's own symbol and its name.
                         if state.sending && state.picker == nil {
                             PrimaryButtonSpinner()
-                        } else if primary.enabled {
-                            Image(systemName: "plus").font(.title3.weight(.semibold))
                         } else {
-                            SeerrStateSymbol(state: state.state).font(.title3)
+                            HStack(spacing: Space.s2) {
+                                if primary.enabled { Image(systemName: "plus") } else { SeerrStateSymbol(state: state.state) }
+                                Text(primary.label.titleCased()).lineLimit(1)
+                            }
                         }
                     }
                     .disabled(!primary.enabled)
-                    .accessibilityLabel(primary.label)
                     if let trailer = state.trailerUrl, let url = URL(string: trailer) {
                         Button { openURL(url) } label: { Image(systemName: "play.rectangle").font(.title3) }
                             .buttonStyle(.bordered)
@@ -158,8 +158,7 @@ struct SeerrTitleView: View {
             }
             HStack(spacing: Space.s4) {
                 if state.offer4k {
-                    SeerrActionButton(title: Strings.shared.seerr4k, systemImage: "plus") { model.request4k() }
-                        .accessibilityLabel(Strings.shared.seerrRequest4k)
+                    SeerrActionButton(title: Strings.shared.seerrRequest4k, systemImage: "plus") { model.request4k() }
                 }
                 if state.cancelRequestId != nil {
                     SeerrActionButton(title: Strings.shared.seerrCancelRequest, systemImage: "xmark") { model.cancelRequest() }

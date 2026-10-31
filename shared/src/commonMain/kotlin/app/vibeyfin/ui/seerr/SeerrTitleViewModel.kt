@@ -438,7 +438,7 @@ class SeerrTitleViewModel(
         details.title.year?.toString(),
         details.certification,
         details.runtimeMinutes?.let(::runtimeText),
-        imdb?.let(Strings::imdbRating),
+        imdb?.let(Strings::starRating),
     )
 
     private fun primary(state: RequestState, mayRequest: Boolean, missing: Boolean): SeerrPrimary {

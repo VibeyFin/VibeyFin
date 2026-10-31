@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -172,8 +173,10 @@ private fun ColumnScope.SeasonPickerContent(
                 if (sending) {
                     CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
                 } else {
-                    // A plus, not words: what it will ask for ("Request 2 seasons") is what a screen reader says
-                    Icon(Icons.Filled.Add, contentDescription = picker.confirmLabel, modifier = Modifier.size(28.dp))
+                    // A plus and what it will ask for ("Request 2 seasons")
+                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text(picker.confirmLabel, maxLines = 1)
                 }
             }
         }
