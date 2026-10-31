@@ -28,6 +28,9 @@ import app.vibeyfin.domain.PlaybackRepository
 import app.vibeyfin.domain.ProfilePolicy
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SearchHistory
+import app.vibeyfin.domain.SeerrConnection
+import app.vibeyfin.domain.SeerrRepository
+import app.vibeyfin.domain.SeerrStore
 import app.vibeyfin.domain.ServerConnector
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.StartupRouter
@@ -89,6 +92,11 @@ class TestApp {
     val offlineSync = OfflineSync(pending, downloads, connection, watchChanges)
     val progressScheduler = FakeProgressSyncScheduler()
     val recovery = PlaybackRecovery(pending, connection)
+
+    // Lazy: it watches the connection from the moment it exists, and most tests have no Seerr.
+    val seerrStore by lazy { SeerrStore(database.serverDao(), database.accountDao(), vault) }
+    val seerr by lazy { SeerrConnection(connection, seerrStore, jellyfin.seerrFactory, scope) }
+    val seerrRepository by lazy { SeerrRepository(seerr) }
 
     /** The reporter a download plays with, wired like the app's, working on [scope], which the test cancels before closing the app. */
     fun localReporter(scope: CoroutineScope, interval: Duration = PROGRESS_INTERVAL) = LocalPlaybackReporter(connection, scope, offlineProgress, offlineSync, progressScheduler, watchChanges, interval)

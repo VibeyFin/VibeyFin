@@ -30,7 +30,7 @@ import org.koin.dsl.module
  * would hand the same instances to every Koin application that loads it, tests included.
  */
 fun appModule() = module {
-    includes(dataModule(), apiModule())
+    includes(dataModule(), apiModule(), seerrModule())
     viewModelOf(::ServersViewModel)
     viewModel { params -> AddServerViewModel(params.getOrNull(), get(), get()) }
     viewModel { params ->
