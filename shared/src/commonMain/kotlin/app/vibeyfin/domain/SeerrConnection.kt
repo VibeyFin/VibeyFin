@@ -11,6 +11,7 @@ import app.vibeyfin.domain.model.SeerrFeatures
 import app.vibeyfin.domain.model.SeerrUser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -147,7 +148,7 @@ class SeerrConnection(
         val settings = seerr.publicSettings()
         if (settings !is ApiResult.Success || !settings.value.initialized) return SeerrConnectResult.NotSeerr
         if (settings.value.mediaServerType != JELLYFIN_SERVER) return SeerrConnectResult.WrongServer
-        return lock.withLock {
+        return lock.lockedIn(scope) {
             val before = _state.value
             _state.value = SeerrState.Connecting(address)
             val (outcome, signIn) = signIn(key, address)
@@ -180,10 +181,10 @@ class SeerrConnection(
     }
 
     /** Signs the profile in with its Jellyfin password, when Quick Connect is off. The password is never kept. */
-    suspend fun signInWithPassword(password: String): SeerrPasswordResult = lock.withLock {
-        val key = currentKey()?.takeIf { !it.kids } ?: return@withLock SeerrPasswordResult.Failed
-        val connected = connection.state.value as? ConnectionState.Connected ?: return@withLock SeerrPasswordResult.Failed
-        val address = store.address(key.serverId) ?: return@withLock SeerrPasswordResult.Failed
+    suspend fun signInWithPassword(password: String): SeerrPasswordResult = lock.lockedIn(scope) {
+        val key = currentKey()?.takeIf { !it.kids } ?: return@lockedIn SeerrPasswordResult.Failed
+        val connected = connection.state.value as? ConnectionState.Connected ?: return@lockedIn SeerrPasswordResult.Failed
+        val address = store.address(key.serverId) ?: return@lockedIn SeerrPasswordResult.Failed
         when (val result = factory.create(address).signInWithPassword(connected.account.name, password)) {
             is ApiResult.Failure -> when (result.error) {
                 ApiError.Unauthorized, ApiError.Forbidden -> SeerrPasswordResult.WrongPassword
@@ -203,8 +204,8 @@ class SeerrConnection(
     }
 
     /** Turns Seerr off for this profile: ends its session and stops signing it in. Other profiles keep Seerr. */
-    suspend fun disconnect() = lock.withLock {
-        val key = currentKey() ?: return@withLock
+    suspend fun disconnect() = lock.lockedIn(scope) {
+        val key = currentKey() ?: return@lockedIn
         (_state.value as? SeerrState.Ready)?.api?.logout()
         store.clearSession(key.serverId, key.userId)
         store.setOff(key.serverId, key.userId, true)
@@ -212,14 +213,14 @@ class SeerrConnection(
     }
 
     /** Turns Seerr back on for a profile that turned it off, at the server's address, and signs it in. */
-    suspend fun reconnect() = lock.withLock {
-        val key = currentKey() ?: return@withLock
+    suspend fun reconnect() = lock.lockedIn(scope) {
+        val key = currentKey() ?: return@lockedIn
         store.setOff(key.serverId, key.userId, false)
         resolve(key)
     }
 
     /** Tries signing in again after [SeerrState.Unavailable]; does nothing in any other state. */
-    suspend fun retry() = lock.withLock {
+    suspend fun retry() = lock.lockedIn(scope) {
         if (_state.value is SeerrState.Unavailable) resolve(currentKey())
     }
 
@@ -235,14 +236,14 @@ class SeerrConnection(
         return block(renewed.api, renewed.user)
     }
 
-    // Signs in again after Seerr rejected [stale]'s session, unless another call already did.
-    private suspend fun renew(stale: SeerrState.Ready): SeerrState.Ready? = lock.withLock {
+    // Signs in again after Seerr rejected [stale]'s session, unless another call already did. The old Ready stays while it does,
+    // so the Seerr rows and groups aren't torn down for an internal renewal; calls that hit the same 401 wait here for the new one.
+    private suspend fun renew(stale: SeerrState.Ready): SeerrState.Ready? = lock.lockedIn(scope) {
         val now = _state.value
-        if (now !is SeerrState.Ready) return@withLock null
-        if (now.api !== stale.api) return@withLock now
+        if (now !is SeerrState.Ready) return@lockedIn null
+        if (now.api !== stale.api) return@lockedIn now
         val key = Key(now.serverId, now.userId, kids = false)
         store.clearSession(key.serverId, key.userId)
-        _state.value = SeerrState.Connecting(now.address)
         signInAndSettle(key, now.address)
         _state.value as? SeerrState.Ready
     }
@@ -281,7 +282,7 @@ class SeerrConnection(
             val api = factory.create(address, saved.session)
             when (val me = api.me()) {
                 is ApiResult.Success -> {
-                    _state.value = SeerrState.Ready(address, me.value.toUser(), features(api), saved.viaPassword, key.serverId, key.userId, api)
+                    if (connection.isSignedInAs(key.serverId, key.userId)) _state.value = SeerrState.Ready(address, me.value.toUser(), features(api), saved.viaPassword, key.serverId, key.userId, api)
                     return
                 }
 
@@ -372,6 +373,8 @@ class SeerrConnection(
     private suspend fun ready(key: Key, address: String, signIn: SeerrSignIn, viaPassword: Boolean = false) {
         store.saveSession(key.serverId, key.userId, signIn.session, signIn.user.id, viaPassword)
         val api = factory.create(address, signIn.session)
+        // The profile changed meanwhile: its own resolve comes next under the lock and sets the state
+        if (!connection.isSignedInAs(key.serverId, key.userId)) return
         _state.value = SeerrState.Ready(address, signIn.user.toUser(), features(api), viaPassword, key.serverId, key.userId, api)
     }
 
@@ -420,4 +423,14 @@ fun normalizeSeerrAddress(input: String): String? {
     address = address.removeSuffix(SeerrApi.API_PATH).trimEnd('/')
     val host = address.substringAfter("://").substringBefore('/').substringBefore(':')
     return address.takeIf { host.isNotEmpty() }
+}
+
+// Runs [block] under this lock in [scope], not the caller's: a screen closing (its scope cancelled) mid sign-in must not leave the
+// state at Connecting with nobody to finish it. The caller still waits for the result.
+private suspend fun <T> Mutex.lockedIn(scope: CoroutineScope, block: suspend () -> T): T = scope.async { withLock { block() } }.await()
+
+// Whether the signed-in profile is still this one: a sign-in that finishes after a profile switch mustn't publish its Ready.
+private fun ConnectionManager.isSignedInAs(serverId: String, userId: String): Boolean {
+    val connected = state.value as? ConnectionState.Connected ?: return false
+    return connected.account.serverId == serverId && connected.account.userId == userId
 }

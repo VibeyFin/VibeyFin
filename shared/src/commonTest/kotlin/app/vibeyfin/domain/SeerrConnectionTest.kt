@@ -9,7 +9,9 @@ import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.seerrUserJson
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -158,6 +160,41 @@ class SeerrConnectionTest {
 
         assertIs<ApiResult.Success<*>>(result)
         assertEquals(2, calls("/api/v1/auth/jellyfin/quickconnect/initiate"))
+        assertEquals("sess-2", app.seerrStore.session("srv-1", "u1")?.session)
+    }
+
+    @Test
+    fun renewingASessionKeepsSeerrReadyThroughout() = runTest {
+        val (_, seerr) = signedInWithSeerr()
+        seerr.onSignedIn("GET", "/api/v1/search") { Reply.json("""{"page":1,"totalPages":1,"totalResults":0,"results":[]}""") }
+        app.seerr.connect(seerrAddress)
+        seerr.expireSessions()
+        val seen = mutableListOf<SeerrState>()
+        val watching = launch(Dispatchers.Unconfined) { app.seerr.state.collect { seen += it } }
+
+        app.seerrRepository.search("harbour")
+        watching.cancel()
+
+        assertTrue(seen.all { it is SeerrState.Ready }, "states during renewal: $seen")
+    }
+
+    @Test
+    fun aCallerCancelledWhileTheSessionRenewsLeavesSeerrSignedInNotStuckConnecting() = runTest {
+        val (jellyfin, seerr) = signedInWithSeerr()
+        seerr.onSignedIn("GET", "/api/v1/search") { Reply.json("""{"page":1,"totalPages":1,"totalResults":0,"results":[]}""") }
+        app.seerr.connect(seerrAddress)
+        seerr.expireSessions()
+        // The screen that made the call closes while its renewal is approving the Quick Connect code.
+        var caller: Job? = null
+        val approve = jellyfin.handlerFor("POST", "/QuickConnect/Authorize")
+        jellyfin.on("POST", "/QuickConnect/Authorize") { request ->
+            caller?.cancel()
+            approve(request)
+        }
+        caller = launch(Dispatchers.Default) { app.seerrRepository.search("harbour") }
+        caller.join()
+
+        assertIs<SeerrState.Ready>(await { it is SeerrState.Ready || it is SeerrState.Unavailable })
         assertEquals("sess-2", app.seerrStore.session("srv-1", "u1")?.session)
     }
 

@@ -136,6 +136,9 @@ class FakeServer(val address: String) {
 
     fun on(method: String, path: String, reply: Reply) = on(method, path) { reply }
 
+    /** The handler set for [method] and [path], to wrap it; a 404 when there is none. */
+    fun handlerFor(method: String, path: String): (RecordedRequest) -> Reply = handlers["$method $path"] ?: { Reply.status(HttpStatusCode.NotFound) }
+
     /** Makes every call to this address fail as if nothing were listening; pass false to bring it back. */
     fun refuseConnections(refuse: Boolean = true) {
         refusing = refuse
