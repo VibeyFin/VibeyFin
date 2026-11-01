@@ -57,7 +57,6 @@ enum class SettingKey {
     NoLanguageMatch,
     Seerr,
     QuickConnect,
-    PlaybackEngine, // PoC: remove with poc/playback-engine
 }
 
 /**

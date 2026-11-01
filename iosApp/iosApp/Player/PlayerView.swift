@@ -21,6 +21,8 @@ struct PlayerView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var controlsVisible = true
+    /// Five taps on the title flip the playback stats from what the profile's setting says.
+    @State private var statsFlipped = false
     /// The second under the finger while the scrubber is dragged.
     @State private var scrubPosition: TimeInterval?
     @State private var hideTask: Task<Void, Never>?
@@ -103,7 +105,7 @@ struct PlayerView: View {
                     skipButton(offer)
                 }
                 // Stays up when the controls hide; an error fills the same part of the screen.
-                if state?.showDiagnostics == true, let diagnostics = state?.diagnostics {
+                if showsStats, let diagnostics = state?.diagnostics {
                     statsOverlay(diagnostics)
                 }
             }
@@ -192,7 +194,7 @@ struct PlayerView: View {
             updateTrickplay(state)
             controller.wantAudio(audioChoice(in: state))
             controller.wantSubtitle(subtitleChoice(in: state))
-            controller.wantDiagnostics(state?.showDiagnostics == true)
+            controller.wantDiagnostics(showsStats)
             controller.setSpeed(state?.speed ?? 1)
             applyStillWatching(state?.stillWatching == true)
             controller.setNowPlaying(title: state?.title, subtitle: state?.subtitle, artworkUrl: state?.artworkUrl)
@@ -202,8 +204,9 @@ struct PlayerView: View {
             )
             pip.allow(state?.pictureInPicture != false)
         }
+        .onChange(of: statsFlipped) { _, _ in controller.wantDiagnostics(showsStats) }
         // Over AirPlay the controls are the whole screen, so they stay up until it stops.
-        .onChange(of: controller.isExternalPlayback) { active in
+        .onChange(of: controller.isExternalPlayback) { _, active in
             if active {
                 hideTask?.cancel()
                 setControlsVisible(true)
@@ -310,6 +313,10 @@ struct PlayerView: View {
         .allowsHitTesting(false)
     }
 
+    private var showsStats: Bool {
+        (state?.showDiagnostics == true) != statsFlipped
+    }
+
     private var topBar: some View {
         HStack(alignment: .top, spacing: Space.s3) {
             PlayerIconButton(systemName: "xmark", label: Strings.shared.close, action: close)
@@ -319,6 +326,8 @@ struct PlayerView: View {
                         .font(.headline)
                         .foregroundStyle(.primary)
                         .lineLimit(1)
+                        .contentShape(Rectangle())
+                        .onTapGesture(count: 5) { statsFlipped.toggle() }
                 }
                 if !metaLine.isEmpty {
                     Text(metaLine)

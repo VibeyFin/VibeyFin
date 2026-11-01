@@ -17,11 +17,11 @@ final class SubtitleTrackModel: ObservableObject {
             var request = URLRequest(url: source.url)
             for (name, value) in source.headers { request.setValue(value, forHTTPHeaderField: name) }
             guard let (data, _) = try? await URLSession.shared.data(for: request), !Task.isCancelled else {
-                PocLog.write("subtitle fetch failed \(source.url.lastPathComponent)")
+                PlayerLog.write("subtitle fetch failed \(source.url.lastPathComponent)")
                 return
             }
             let parsed = SubtitleParser.parse(String(bytes: data, encoding: .utf8) ?? "")
-            PocLog.write("subtitle loaded bytes=\(data.count) cues=\(parsed.count) first=\(parsed.first.map { "\($0.start)" } ?? "-")")
+            PlayerLog.write("subtitle loaded bytes=\(data.count) cues=\(parsed.count) first=\(parsed.first.map { "\($0.start)" } ?? "-")")
             self?.cues = parsed
         }
     }
@@ -52,6 +52,6 @@ struct SubtitleOverlay: View {
         .allowsHitTesting(false)
         .accessibilityHidden(true)
         .onAppear { track.load(source) }
-        .onChange(of: source) { track.load($0) }
+        .onChange(of: source) { _, source in track.load(source) }
     }
 }

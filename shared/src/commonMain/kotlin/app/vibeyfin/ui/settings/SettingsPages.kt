@@ -5,7 +5,6 @@ import app.vibeyfin.domain.AccessDays
 import app.vibeyfin.domain.Language
 import app.vibeyfin.domain.LanguagePrefs
 import app.vibeyfin.domain.PinGates
-import app.vibeyfin.domain.PlaybackEngineChoice
 import app.vibeyfin.domain.PolicySummary
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SubtitleMode
@@ -67,8 +66,6 @@ data class SettingsValues(
     val swipeGestures: Boolean = true,
     /** The app uses only its downloads, even with a network (device-wide). */
     val offlineMode: Boolean = false,
-    // PoC: remove with poc/playback-engine
-    val playbackEngine: PlaybackEngineChoice = PlaybackEngineChoice.Native,
     /** Downloads may use mobile data; off, they wait for Wi-Fi. */
     val downloadOverMobile: Boolean = false,
     /** The most the profile's downloads may take, in gigabytes; 0 is no limit. */

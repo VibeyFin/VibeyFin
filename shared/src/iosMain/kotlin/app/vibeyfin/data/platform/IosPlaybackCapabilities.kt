@@ -4,22 +4,15 @@ import app.vibeyfin.domain.EngineCapabilities
 import app.vibeyfin.domain.PlaybackCapabilities
 import app.vibeyfin.domain.PlaybackCapabilitiesSource
 import app.vibeyfin.domain.PlaybackEngineChoice
-import app.vibeyfin.ios.PlaybackEngineChoiceStore
 
 class IosPlaybackCapabilities : PlaybackCapabilitiesSource {
-    // PoC: the list follows the engine that will play, so the server direct plays what that engine can decode.
-    override fun current() = candidates().first().capabilities
+    // The server direct plays what AVPlayer can decode, then what Aether can.
+    override fun current() = NATIVE
 
-    override fun candidates() = when (PlaybackEngineChoiceStore.current) {
-        PlaybackEngineChoice.Aether -> listOf(EngineCapabilities(PlaybackEngineChoice.Aether, AETHER))
-
-        PlaybackEngineChoice.Native -> listOf(EngineCapabilities(PlaybackEngineChoice.Native, NATIVE))
-
-        PlaybackEngineChoice.Auto -> listOf(
-            EngineCapabilities(PlaybackEngineChoice.Native, NATIVE),
-            EngineCapabilities(PlaybackEngineChoice.Aether, AETHER),
-        )
-    }
+    override fun candidates() = listOf(
+        EngineCapabilities(PlaybackEngineChoice.Native, NATIVE),
+        EngineCapabilities(PlaybackEngineChoice.Aether, AETHER),
+    )
 
     private companion object {
         val NATIVE = PlaybackCapabilities(

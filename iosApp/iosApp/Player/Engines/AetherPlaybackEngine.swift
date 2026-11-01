@@ -6,7 +6,7 @@ import Foundation
 import Shared
 import UIKit
 
-/// PoC: plays with Aether (FFmpeg demux, then AVPlayer through a loopback HLS stream or software decode). Its
+/// Plays with Aether (FFmpeg demux, then AVPlayer through a loopback HLS stream or software decode). Its
 /// headers option carries the token, so no address trick is needed. No picture-in-picture yet.
 /// All of it happens on the main thread.
 @MainActor
@@ -37,7 +37,7 @@ final class AetherPlaybackEngine: PlaybackEngine {
     init?() {
         guard let engine = try? AetherEngine() else { return nil }
         EngineLog.handler = { line in
-            if !line.contains("subtitle-delivery") { PocLog.write("engine \(line)") }
+            if !line.contains("subtitle-delivery") { PlayerLog.write("engine \(line)") }
         }
         self.engine = engine
         engine.bind(view: videoView)
@@ -139,7 +139,7 @@ final class AetherPlaybackEngine: PlaybackEngine {
         let start = TimeInterval(stream.startPositionMs) / 1000
         self.bufferAheadSeconds = bufferAheadSeconds
         videoInfo = nil
-        PocLog.write("aether open \(url.path) buffer=\(bufferAheadSeconds) s")
+        PlayerLog.write("aether open \(url.path) buffer=\(bufferAheadSeconds) s")
         loadTask = Task { @MainActor [weak self] in
             guard let self else { return }
             do {
@@ -150,8 +150,8 @@ final class AetherPlaybackEngine: PlaybackEngine {
                     codec: probe?.videoCodecName, width: probe?.videoWidth ?? 0, height: probe?.videoHeight ?? 0,
                     frameRate: probe?.videoFrameRate
                 )
-                PocLog.write("aether probe video=\(probe?.videoCodecName ?? "?") \(probe?.videoWidth ?? 0)x\(probe?.videoHeight ?? 0) dv=\(probe?.isDolbyVision ?? false) audio=\(audio) subs=\(self.engine.subtitleTracks.count)")
-                PocLog.write("aether loaded route=\(self.engine.videoRoute) audio=\(self.engine.audioDelivery) format=\(self.engine.videoFormat)")
+                PlayerLog.write("aether probe video=\(probe?.videoCodecName ?? "?") \(probe?.videoWidth ?? 0)x\(probe?.videoHeight ?? 0) dv=\(probe?.isDolbyVision ?? false) audio=\(audio) subs=\(self.engine.subtitleTracks.count)")
+                PlayerLog.write("aether loaded route=\(self.engine.videoRoute) audio=\(self.engine.audioDelivery) format=\(self.engine.videoFormat)")
                 self.engine.play()
                 self.attachPictureInPicture()
                 self.applyAudio()
@@ -161,7 +161,7 @@ final class AetherPlaybackEngine: PlaybackEngine {
                 return
             } catch {
                 guard self.generation == opened, self.isOpen else { return }
-                PocLog.write("aether load failed \(error)")
+                PlayerLog.write("aether load failed \(error)")
                 self.events.failed(Self.failure(of: error))
             }
         }
@@ -285,7 +285,7 @@ final class AetherPlaybackEngine: PlaybackEngine {
 
     private func phaseChanged(_ phase: PlaybackPhase) {
         guard isOpen else { return }
-        PocLog.write("aether phase \(phase)")
+        PlayerLog.write("aether phase \(phase)")
         switch phase {
         case .idle:
             break
@@ -303,7 +303,7 @@ final class AetherPlaybackEngine: PlaybackEngine {
             events.state(false, false)
             events.ended()
         case .error(let message):
-            PocLog.write("aether error \(message) info=\(String(describing: engine.errorInfo))")
+            PlayerLog.write("aether error \(message) info=\(String(describing: engine.errorInfo))")
             events.failed(Self.failure(of: engine.errorInfo))
         }
     }

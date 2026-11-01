@@ -20,6 +20,7 @@ struct PlaybackEngineEvents {
 
 /// The part of playback that differs between engines: decoding and the video surface. Controls, the shared
 /// model's events, Now Playing and the position clock stay in `PlayerController`, so every engine gets them alike.
+@MainActor
 protocol PlaybackEngine: AnyObject {
     var events: PlaybackEngineEvents { get set }
 

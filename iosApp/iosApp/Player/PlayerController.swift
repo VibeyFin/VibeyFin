@@ -18,6 +18,7 @@ struct PlayerEvents {
 /// Drives one playback screen: opens the stream the shared state names on its `PlaybackEngine`, keeps
 /// the position and duration the controls draw, and turns what the engine does into `PlayerEvents`.
 /// All of it happens on the main thread.
+@MainActor
 final class PlayerController: ObservableObject {
     let engine: PlaybackEngine
 
@@ -52,7 +53,6 @@ final class PlayerController: ObservableObject {
     private var lastPushedSecond = -1
     /// Where the opened stream should start, until the engine says it is ready.
     private var pendingStart: TimeInterval?
-    private let perf = PerfProbe()
     private var failureReported = false
     private var airPlayWatch: DispatchWorkItem?
     /// What the server says the item runs, in seconds.
@@ -65,7 +65,7 @@ final class PlayerController: ObservableObject {
         duration = max(seconds, serverRuntime)
     }
 
-    init(engine: PlaybackEngine = AVPlayerEngine()) {
+    init(engine: PlaybackEngine) {
         self.engine = engine
         engine.events = PlaybackEngineEvents(
             state: { [weak self] intendsToPlay, waiting in self?.stateChanged(intendsToPlay: intendsToPlay, waiting: waiting) },
@@ -116,7 +116,6 @@ final class PlayerController: ObservableObject {
         serverRuntime = TimeInterval(stream.runtimeMs?.int64Value ?? 0) / 1000
         duration = 0
         if start > 0 { pendingStart = start }
-        perf.start(engine: String(describing: type(of: engine)), title: url.path)
         engine.open(stream, url: url, bufferAheadSeconds: bufferAheadSeconds)
     }
 
@@ -138,7 +137,6 @@ final class PlayerController: ObservableObject {
         nowPlayingArtwork = nil
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         clear()
-        perf.stop()
         engine.shutdown()
         playerSubscriptions.removeAll()
         position = 0
@@ -179,7 +177,7 @@ final class PlayerController: ObservableObject {
     /// So with one showing, the title moves to the server's stream, which burns the subtitle in.
     private func burnInForAirPlay() {
         guard isExternalPlayback, wantedImageSubtitle, isPlaying else { return }
-        PocLog.write("airplay with an image subtitle, falling back to the server stream")
+        PlayerLog.write("airplay with an image subtitle, falling back to the server stream")
         wantedImageSubtitle = false
         reportFailure(.unsupported)
     }
@@ -242,7 +240,7 @@ final class PlayerController: ObservableObject {
         let watch = DispatchWorkItem { [weak self] in
             guard let self, self.isExternalPlayback, self.isPlaying, self.openedStreamId == stream,
                   (self.engine.currentSeconds ?? self.position) - startedAt < 1 else { return }
-            PocLog.write("airplay stalled for \(Int(Self.airPlayStallSeconds)) s, falling back to the server stream")
+            PlayerLog.write("airplay stalled for \(Int(Self.airPlayStallSeconds)) s, falling back to the server stream")
             self.reportFailure(.unsupported)
         }
         airPlayWatch = watch
@@ -254,7 +252,7 @@ final class PlayerController: ObservableObject {
     private func refreshExternalDevice() {
         let name = isExternalPlayback ? ExternalPlayback.deviceName(fromPortNames: ExternalPlayback.currentPortNames()) : nil
         let outputs = AVAudioSession.sharedInstance().currentRoute.outputs.map { "\($0.portType.rawValue)=\($0.portName)" }
-        PocLog.write("airplay external=\(isExternalPlayback) name=\(name ?? "nil") outputs=\(outputs)")
+        PlayerLog.write("airplay external=\(isExternalPlayback) name=\(name ?? "nil") outputs=\(outputs)")
         if name != externalDeviceName { externalDeviceName = name }
     }
 

@@ -13,7 +13,6 @@ import app.vibeyfin.domain.LanguagePreferences
 import app.vibeyfin.domain.LanguagePrefs
 import app.vibeyfin.domain.PinGates
 import app.vibeyfin.domain.PinLock
-import app.vibeyfin.domain.PlaybackEngineChoice
 import app.vibeyfin.domain.ProfilePolicy
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SeerrConnection
@@ -200,7 +199,6 @@ class SettingsViewModel(
         live(confirmPurgeDownloads),
         perProfile(profileSettings.swipeGestures),
         live(seerr?.state ?: MutableStateFlow<SeerrState>(SeerrState.Hidden)),
-        unread(preferences.playbackEngine), // PoC: remove with poc/playback-engine
     )
 
     /** Eager, so the reads start with the ViewModel and not when the screen first draws. */
@@ -255,7 +253,6 @@ class SettingsViewModel(
             pictureInPicture = read(PICTURE_IN_PICTURE, defaults.pictureInPicture),
             swipeGestures = read(SWIPE_GESTURES, defaults.swipeGestures),
             offlineMode = v[OFFLINE_MODE] as Boolean? ?: defaults.offlineMode,
-            playbackEngine = v[PLAYBACK_ENGINE] as PlaybackEngineChoice? ?: defaults.playbackEngine, // PoC: remove with poc/playback-engine
             downloadOverMobile = read(DOWNLOAD_OVER_MOBILE, defaults.downloadOverMobile),
             storageLimitGb = read<Long>(STORAGE_LIMIT)?.let { (it / MB_PER_GB).toInt() } ?: defaults.storageLimitGb,
             maxStreamingBitrate = read(QUALITY, defaults.maxStreamingBitrate),
@@ -393,11 +390,6 @@ class SettingsViewModel(
                 }
 
                 // In gigabytes; 0 is no limit.
-                SettingKey.PlaybackEngine -> { // PoC: remove with poc/playback-engine
-                    val choice = PlaybackEngineChoice.entries.getOrNull(value) ?: return@launch
-                    preferences.setPlaybackEngine(choice)
-                }
-
                 SettingKey.StorageLimit -> {
                     profileSettings.setStorageLimitMb(value * MB_PER_GB)
                     downloads.schedule()
@@ -638,6 +630,5 @@ private const val CLOSE_PAGE = 35
 private const val CONFIRM_PURGE_DOWNLOADS = 36
 private const val SWIPE_GESTURES = 37
 private const val SEERR = 38
-private const val PLAYBACK_ENGINE = 39 // PoC: remove with poc/playback-engine
 
 private const val MB_PER_GB = 1_000L

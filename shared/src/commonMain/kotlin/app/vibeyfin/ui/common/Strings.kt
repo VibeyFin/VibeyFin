@@ -1,7 +1,6 @@
 package app.vibeyfin.ui.common
 
 import app.vibeyfin.domain.PlayMethod
-import app.vibeyfin.domain.PlaybackEngineChoice // PoC: remove with poc/playback-engine
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SegmentType
 import app.vibeyfin.domain.SubtitleMode
@@ -709,17 +708,6 @@ object Strings {
     val settingsGroupAdvanced = "Advanced"
     val settingsKidsFooter = "Applies to this profile only."
     val settingsDeviceHelp = "Otherwise the last profile reopens."
-
-    // PoC: remove with poc/playback-engine
-    val playbackEngineSection = "Playback engine (debug)"
-    val playbackEngineTitle = "Playback engine"
-    val playbackEngineFooter = "Automatic plays each video in the native player when it can, and in Aether otherwise. It applies to the next video you play."
-
-    fun playbackEngineLabel(choice: PlaybackEngineChoice) = when (choice) {
-        PlaybackEngineChoice.Auto -> "Automatic"
-        PlaybackEngineChoice.Native -> "Native (AVPlayer)"
-        PlaybackEngineChoice.Aether -> "Aether"
-    }
 
     val settingsAbout = "About VibeyFin"
 

@@ -92,7 +92,7 @@ final class AVPlayerEngine: PlaybackEngine {
             forInterval: CMTime(seconds: 0.5, preferredTimescale: 600),
             queue: .main
         ) { [weak self] time in
-            self?.tick(time)
+            MainActor.assumeIsolated { self?.tick(time) }
         }
     }
 

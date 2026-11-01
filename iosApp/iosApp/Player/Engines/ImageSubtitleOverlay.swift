@@ -36,7 +36,6 @@ final class ImageSubtitleOverlay: UIView {
         let ids = active.map(\.id)
         guard ids != shownIDs else { return }
         shownIDs = ids
-        PocLog.write("subtitle overlay cues=\(ids.count) of \(all.count) at \(time) frame=\(bounds)")
         cues = active
         setNeedsLayout()
     }

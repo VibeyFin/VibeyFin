@@ -43,7 +43,7 @@ final class SwitchingEngine: PlaybackEngine {
             next.setSpeed(rate, applyNow: false)
             next.wantDiagnostics(diagnostics)
         }
-        PocLog.write("engine \(type(of: current)) for \(url.path)")
+        PlayerLog.write("engine \(type(of: current)) for \(url.path)")
         current.open(stream, url: url, bufferAheadSeconds: bufferAheadSeconds)
         current.wantAudio(audio)
         current.wantSubtitle(subtitle)
