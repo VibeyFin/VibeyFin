@@ -5,7 +5,6 @@ import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.parameter
 import io.ktor.client.request.prepareRequest
-import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.request.url
 import io.ktor.client.statement.HttpResponse
@@ -13,7 +12,6 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -107,6 +105,22 @@ class JellyfinApi(
         setBody(body)
     }
 
+    private val call = ApiCall(
+        http,
+        retries,
+        prepare = { token?.let { attributes.put(TokenAttribute, it) } },
+        onAnswer = ::answered,
+        onNoAnswer = { if (token != null) reachability?.failed() },
+    )
+
+    // Something answered: the server is there, whatever it said. And the one place a rejected token is noticed: a 401 on a call that
+    // carried one.
+    private fun answered(status: Int) {
+        if (token == null) return
+        reachability?.answered()
+        if (status == 401) unauthorized?.report(token)
+    }
+
     /**
      * Sends the request and turns the outcome into an [ApiResult]; [decode] reads a success body.
      * With [retry] a failure that may pass ([isRetryable]) is tried again, up to [retries] in all.
@@ -115,18 +129,7 @@ class JellyfinApi(
         decode: suspend (HttpResponse) -> T,
         retry: Boolean = false,
         configure: HttpRequestBuilder.() -> Unit,
-    ): ApiResult<T> {
-        var result = attempt(decode, configure)
-        if (!retry) return result
-        var wait = retries.backoff
-        repeat(retries.attempts - 1) {
-            if (!result.isRetryable()) return result
-            delay(wait)
-            wait *= 2
-            result = attempt(decode, configure)
-        }
-        return result
-    }
+    ): ApiResult<T> = call.execute(decode, retry, configure)
 
     /**
      * Like [execute] for a response too big to hold in memory: [read] consumes the body as it arrives, inside the call.
@@ -142,8 +145,7 @@ class JellyfinApi(
             token?.let { attributes.put(TokenAttribute, it) }
         }.execute { response ->
             val status = response.status.value
-            if (token != null) reachability?.answered()
-            if (status == 401) token?.let { unauthorized?.report(it) }
+            answered(status)
             if (status !in 200..299) ApiResult.Failure(errorFor(status)) else ApiResult.Success(read(response))
         }
     } catch (e: CancellationException) {
@@ -153,45 +155,6 @@ class JellyfinApi(
     } catch (_: Exception) {
         if (token != null) reachability?.failed()
         ApiResult.Failure(ApiError.Network)
-    }
-
-    private suspend fun <T> attempt(
-        decode: suspend (HttpResponse) -> T,
-        configure: HttpRequestBuilder.() -> Unit,
-    ): ApiResult<T> {
-        val response = try {
-            http.request {
-                // Not named `build`: inside this block that would call the builder's own build().
-                configure()
-                token?.let { attributes.put(TokenAttribute, it) }
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            if (token != null) reachability?.failed()
-            return ApiResult.Failure(ApiError.Network)
-        }
-        // Something answered: the server is there, whatever it said.
-        if (token != null) reachability?.answered()
-        val status = response.status.value
-        // The one place a rejected token is noticed: a 401 on a call that carried one.
-        if (status == 401) token?.let { unauthorized?.report(it) }
-        if (status !in 200..299) return ApiResult.Failure(errorFor(status))
-        return try {
-            ApiResult.Success(decode(response))
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            ApiResult.Failure(ApiError.BadResponse)
-        }
-    }
-
-    private fun errorFor(status: Int): ApiError = when {
-        status == 401 -> ApiError.Unauthorized
-        status == 403 -> ApiError.Forbidden
-        status == 404 -> ApiError.NotFound
-        status >= 500 -> ApiError.Server(status)
-        else -> ApiError.Unexpected(status)
     }
 }
 

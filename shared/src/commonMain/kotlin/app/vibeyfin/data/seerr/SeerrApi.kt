@@ -1,15 +1,14 @@
 package app.vibeyfin.data.seerr
 
+import app.vibeyfin.data.api.ApiCall
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.data.api.RetryPolicy
-import app.vibeyfin.data.api.isRetryable
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
-import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.request.url
 import io.ktor.client.statement.HttpResponse
@@ -17,8 +16,6 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
 
 /** A successful sign-in: the Seerr user and the session cookie's value, which every later call sends. */
 data class SeerrSignIn(val user: SeerrUserDto, val session: String)
@@ -104,6 +101,9 @@ class SeerrApi(
         setBody(body)
     }
 
+    // Seerr's session is a cookie, sent by hand. Nothing hears of a 401 or of reachability: a Seerr 401 can't lock a Jellyfin profile.
+    private val call = ApiCall(http, retries, prepare = { session?.let { header(HttpHeaders.Cookie, "$SESSION_COOKIE=$it") } })
+
     /**
      * Sends the request and turns the outcome into an [ApiResult]; [decode] reads a success body (and a failure to read it
      * is [ApiError.BadResponse]). With [retry] a failure that may pass is tried again, up to [retries] in all.
@@ -112,51 +112,7 @@ class SeerrApi(
         decode: suspend (HttpResponse) -> T,
         retry: Boolean = false,
         configure: HttpRequestBuilder.() -> Unit,
-    ): ApiResult<T> {
-        var result = attempt(decode, configure)
-        if (!retry) return result
-        var wait = retries.backoff
-        repeat(retries.attempts - 1) {
-            if (!result.isRetryable()) return result
-            delay(wait)
-            wait *= 2
-            result = attempt(decode, configure)
-        }
-        return result
-    }
-
-    private suspend fun <T> attempt(
-        decode: suspend (HttpResponse) -> T,
-        configure: HttpRequestBuilder.() -> Unit,
-    ): ApiResult<T> {
-        val response = try {
-            http.request {
-                configure()
-                session?.let { header(HttpHeaders.Cookie, "$SESSION_COOKIE=$it") }
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            return ApiResult.Failure(ApiError.Network)
-        }
-        val status = response.status.value
-        if (status !in 200..299) return ApiResult.Failure(errorFor(status))
-        return try {
-            ApiResult.Success(decode(response))
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            ApiResult.Failure(ApiError.BadResponse)
-        }
-    }
-
-    private fun errorFor(status: Int): ApiError = when {
-        status == 401 -> ApiError.Unauthorized
-        status == 403 -> ApiError.Forbidden
-        status == 404 -> ApiError.NotFound
-        status >= 500 -> ApiError.Server(status)
-        else -> ApiError.Unexpected(status)
-    }
+    ): ApiResult<T> = call.execute(decode, retry, configure)
 
     internal companion object {
         const val API_PATH = "/api/v1"
