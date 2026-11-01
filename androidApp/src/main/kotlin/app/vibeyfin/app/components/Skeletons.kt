@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalConfiguration
@@ -146,15 +148,18 @@ fun PosterSkeletonRow(
     aspectRatio: Float = 2f / 3f,
     captionLines: Int = 2,
 ) {
-    Row(
-        modifier = modifier.clearAndSetSemantics { contentDescription = Strings.loadingPage },
-        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-    ) {
-        repeat(skeletonCount(count)) {
-            Column(Modifier.width(tileWidth), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-                SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(aspectRatio))
-                repeat(captionLines) { line ->
-                    SkeletonLine(if (line == 0) 72.dp else 48.dp, MaterialTheme.typography.titleSmall)
+    // Wider than a phone, so the row measures its tiles unbounded and the box cuts it off at the edge: no tile is squeezed
+    Box(modifier.clipToBounds().clearAndSetSemantics { contentDescription = Strings.loadingPage }) {
+        Row(
+            modifier = Modifier.wrapContentWidth(Alignment.Start, unbounded = true),
+            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+        ) {
+            repeat(skeletonCount(count)) {
+                Column(Modifier.width(tileWidth), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
+                    SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(aspectRatio))
+                    repeat(captionLines) { line ->
+                        SkeletonLine(if (line == 0) 72.dp else 48.dp, MaterialTheme.typography.titleSmall)
+                    }
                 }
             }
         }

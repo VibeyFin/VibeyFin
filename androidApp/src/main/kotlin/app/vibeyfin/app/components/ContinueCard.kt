@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -22,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -142,22 +144,26 @@ private fun PlayDisc(modifier: Modifier = Modifier) {
  */
 @Composable
 fun ContinueSkeletonCards(modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.clearAndSetSemantics { contentDescription = Strings.loadingContinueWatching },
-        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-    ) {
-        repeat(skeletonCount(3)) {
-            Column(Modifier.width(VibeyFinTokens.Size.thumbWidth)) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(CARD_ASPECT)
-                        .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
-                        .background(VibeyFinTokens.Colors.surface2),
-                )
-                Column(Modifier.padding(top = VibeyFinTokens.Space.s2), verticalArrangement = Arrangement.spacedBy(CARD_LINE_GAP)) {
-                    SkeletonLine(140.dp, MaterialTheme.typography.titleSmall)
-                    SkeletonLine(72.dp, MaterialTheme.typography.bodySmall)
+    // The cards are wider than a phone, so the row measures them unbounded and the box cuts it off at the edge: every card keeps
+    // the real card's width, as in the loaded row, which scrolls
+    Box(modifier.clipToBounds().clearAndSetSemantics { contentDescription = Strings.loadingContinueWatching }) {
+        Row(
+            modifier = Modifier.wrapContentWidth(Alignment.Start, unbounded = true),
+            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+        ) {
+            repeat(skeletonCount(3)) {
+                Column(Modifier.width(VibeyFinTokens.Size.thumbWidth)) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(CARD_ASPECT)
+                            .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
+                            .background(VibeyFinTokens.Colors.surface2),
+                    )
+                    Column(Modifier.padding(top = VibeyFinTokens.Space.s2), verticalArrangement = Arrangement.spacedBy(CARD_LINE_GAP)) {
+                        SkeletonLine(140.dp, MaterialTheme.typography.titleSmall)
+                        SkeletonLine(72.dp, MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
         }
