@@ -160,10 +160,17 @@ class SeerrRepositoryTest {
             app.seerrRepository.request(SeerrMediaType.Movie, 605),
         )
 
+        // Forbidden for three seasons with one left: the quota too, not a missing permission.
+        seerr.onSignedIn("GET", "/api/v1/user/7/quota") { Reply.json("""{"movie":{"used":0},"tv":{"days":7,"limit":5,"used":4,"remaining":1,"restricted":false}}""") }
+        assertEquals(
+            RequestOutcome.QuotaReached(RequestQuota(movies = null, shows = QuotaLeft(limit = 5, remaining = 1, days = 7))),
+            app.seerrRepository.request(SeerrMediaType.Show, 1399, SeasonChoice.Only(listOf(1, 2, 3))),
+        )
+
         seerr.server.refuseConnections()
         assertEquals(RequestOutcome.Failed(ApiError.Network), app.seerrRepository.request(SeerrMediaType.Movie, 606))
         // A write is never repeated.
-        assertEquals(3, app.jellyfin.requestsTo("POST", "/api/v1/request").size)
+        assertEquals(4, app.jellyfin.requestsTo("POST", "/api/v1/request").size)
     }
 
     @Test

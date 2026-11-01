@@ -346,7 +346,12 @@ class SeerrTitleViewModel(
 
                 is RequestOutcome.QuotaReached -> {
                     val left = outcome.quota?.forType(type)
-                    SeerrNotice(SeerrMessages.quotaReached(left?.limit, left?.days, movies = type == SeerrMediaType.Movie), failure = true)
+                    val text = if (left != null && left.remaining > 0) {
+                        SeerrMessages.tooManySeasons(left.remaining)
+                    } else {
+                        SeerrMessages.quotaReached(left?.limit, left?.days, movies = type == SeerrMediaType.Movie)
+                    }
+                    SeerrNotice(text, failure = true)
                 }
 
                 RequestOutcome.AlreadyRequested -> SeerrNotice(SeerrMessages.ALREADY_REQUESTED, failure = true)

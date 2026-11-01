@@ -132,7 +132,13 @@ class SeerrRepository(private val seerr: SeerrConnection) {
                 ApiError.Forbidden -> {
                     val quota = quota().let { (it as? ApiResult.Success)?.value }
                     val left = quota?.forType(type)
-                    if (left != null && left.remaining <= 0) RequestOutcome.QuotaReached(quota) else RequestOutcome.NotAllowed
+                    // Seerr refuses too when a show asks for more seasons than are left; all seasons, an unknown number, is taken as that
+                    val asked = when (seasons) {
+                        is SeasonChoice.Only -> seasons.seasons.size
+                        SeasonChoice.All -> Int.MAX_VALUE
+                        null -> 1
+                    }
+                    if (left != null && left.remaining < asked) RequestOutcome.QuotaReached(quota) else RequestOutcome.NotAllowed
                 }
 
                 ApiError.Unexpected(CONFLICT) -> RequestOutcome.AlreadyRequested

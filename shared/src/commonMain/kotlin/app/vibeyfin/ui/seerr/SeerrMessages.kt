@@ -36,6 +36,9 @@ internal object SeerrMessages {
         return "Your request limit is reached. You can request $what$often."
     }
 
+    /** A show's request asked for more seasons than the limit has left. */
+    fun tooManySeasons(left: Int) = "You can request ${if (left == 1) "1 more season" else "$left more seasons"} for now. Pick fewer seasons."
+
     /** Why connecting failed; null when it didn't. */
     fun forConnect(result: SeerrConnectResult): String? = when (result) {
         SeerrConnectResult.Connected, SeerrConnectResult.NeedsPassword -> null
