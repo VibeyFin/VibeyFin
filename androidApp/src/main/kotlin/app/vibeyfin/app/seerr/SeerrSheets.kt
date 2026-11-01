@@ -78,6 +78,7 @@ import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import app.vibeyfin.R
 import app.vibeyfin.app.components.Artwork
 import app.vibeyfin.app.components.KeepAtListEnd
+import app.vibeyfin.app.components.MenuHeader
 import app.vibeyfin.app.components.SkeletonLine
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
@@ -297,23 +298,11 @@ fun SeerrMenuSheet(title: SeerrTitle, onDetails: () -> Unit, onTrailer: (String)
 @Composable
 private fun MenuContent(title: SeerrTitle, state: SeerrTitleUiState, viewModel: SeerrTitleViewModel, onDetails: () -> Unit, onTrailer: (String) -> Unit) {
     Column(Modifier.navigationBarsPadding().padding(bottom = VibeyFinTokens.Space.s4)) {
-        Row(
-            Modifier.padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s2),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-        ) {
-            Box(Modifier.width(40.dp).aspectRatio(2f / 3f).clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
-                Artwork(url = title.posterUrl, title = title.title, aspectRatio = 2f / 3f, modifier = Modifier.fillMaxWidth())
-            }
-            Column {
-                Text(title.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
-                Text(
-                    state.menuSubtitle.ifEmpty { Strings.seerrMenuSubtitle(Strings.seerrTitleMeta(title.year, title.type), title.state) },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
+        MenuHeader(
+            title = title.title,
+            subtitle = state.menuSubtitle.ifEmpty { Strings.seerrMenuSubtitle(Strings.seerrTitleMeta(title.year, title.type), title.state) },
+            imageUrl = title.posterUrl,
+        )
         HorizontalDivider(Modifier.padding(horizontal = VibeyFinTokens.Space.s4), color = MaterialTheme.colorScheme.outlineVariant)
 
         if (state.loading) {

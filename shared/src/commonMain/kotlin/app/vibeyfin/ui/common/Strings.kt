@@ -4,6 +4,7 @@ import app.vibeyfin.domain.PlayMethod
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SegmentType
 import app.vibeyfin.domain.SubtitleMode
+import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.RequestState
 import app.vibeyfin.domain.model.SeerrMediaType
 import kotlin.math.roundToInt
@@ -1192,6 +1193,14 @@ object Strings {
         val day = parts[2].take(2).toIntOrNull() ?: return null
         return "${monthNames[month - 1]} $day"
     }
+
+    /** The line under a title in a poster's menu: "Movie · 2022", "Show · 2019", "S1 E4 · The Show". */
+    fun tileMenuMeta(kind: ItemKind, year: Int?, seriesName: String?, season: Int?, episode: Int?): String? = when (kind) {
+        ItemKind.Movie -> listOfNotNull(heroMovie, year?.toString())
+        ItemKind.Series -> listOfNotNull(heroShow, year?.toString())
+        ItemKind.Episode -> listOfNotNull(episodeTag(season, episode), seriesName)
+        else -> listOfNotNull(year?.toString())
+    }.joinToString(" · ").ifEmpty { null }
 
     /** What a request is for: "Movie · 2022", "Show · Seasons 1–2", "Show · Season 3". */
     fun seerrRequestKind(type: SeerrMediaType, year: Int?, seasons: List<Int>): String = if (type == SeerrMediaType.Movie) {

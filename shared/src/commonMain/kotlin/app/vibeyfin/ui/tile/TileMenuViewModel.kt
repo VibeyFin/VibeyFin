@@ -60,6 +60,9 @@ data class TileMenuUiState(
 ) {
     private val isSeries: Boolean get() = item?.kind == ItemKind.Series
 
+    /** The line under the title in the menu's header. */
+    val subtitle: String? get() = item?.let { Strings.tileMenuMeta(it.kind, it.year, it.seriesName, it.seasonNumber, it.episodeNumber) }
+
     /** The tile's own movie or episode as a download, or null when it is not one. */
     val download: Download? get() = item?.let { downloads[it.id] }
 

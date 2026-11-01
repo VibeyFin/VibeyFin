@@ -2,6 +2,7 @@ package app.vibeyfin.ui.common
 
 import app.vibeyfin.domain.PlayMethod
 import app.vibeyfin.domain.SegmentType
+import app.vibeyfin.domain.model.ItemKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -179,5 +180,13 @@ class StringsTest {
         assertEquals("Playing on Living Room TV", Strings.playingOn("  Living Room TV "))
         assertEquals("Playing on AirPlay", Strings.playingOn(null))
         assertEquals("Playing on AirPlay", Strings.playingOn(" "))
+    }
+
+    @Test
+    fun tileMenuMetaSaysWhatTheTitleIs() {
+        assertEquals("Movie \u00b7 1995", Strings.tileMenuMeta(ItemKind.Movie, 1995, null, null, null))
+        assertEquals("Show \u00b7 2019", Strings.tileMenuMeta(ItemKind.Series, 2019, null, null, null))
+        assertEquals("S1 E4 \u00b7 The Show", Strings.tileMenuMeta(ItemKind.Episode, 2020, "The Show", 1, 4))
+        assertNull(Strings.tileMenuMeta(ItemKind.Collection, null, null, null, null))
     }
 }

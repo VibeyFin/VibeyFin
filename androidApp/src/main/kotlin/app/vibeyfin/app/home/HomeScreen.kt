@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -57,6 +58,7 @@ import app.vibeyfin.app.components.ContinueCard
 import app.vibeyfin.app.components.ContinueSkeletonCards
 import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.components.MediaRowSection
+import app.vibeyfin.app.components.MenuHeader
 import app.vibeyfin.app.components.PosterSkeletonRow
 import app.vibeyfin.app.components.ROW_FADE_MS
 import app.vibeyfin.app.components.RowPhase
@@ -240,12 +242,8 @@ fun HomeScreen(
     menuCard?.let { card ->
         ModalBottomSheet(onDismissRequest = { menuCard = null }) {
             Column(Modifier.padding(bottom = VibeyFinTokens.Space.s5)) {
-                Text(
-                    text = card.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(horizontal = margin, vertical = VibeyFinTokens.Space.s2),
-                )
+                MenuHeader(card.title, card.subtitle, card.imageUrl, aspectRatio = 16f / 9f, pictureWidth = 72.dp)
+                HorizontalDivider(Modifier.padding(horizontal = margin), color = MaterialTheme.colorScheme.outlineVariant)
                 SheetAction(Strings.details, Icons.Default.Info) {
                     menuCard = null
 
