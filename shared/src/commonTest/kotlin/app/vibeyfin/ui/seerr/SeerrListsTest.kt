@@ -154,6 +154,43 @@ class SeerrListsTest {
     }
 
     @Test
+    fun discoverRowsLeaveOutWhatTheLibraryHas() = runTest {
+        connected {
+            onSignedIn("GET", "/api/v1/discover/movies") {
+                Reply.json(
+                    page(
+                        movie(4, "Harbour Bridge"),
+                        movie(9, "In the library", extra = ""","mediaInfo":{"status":5,"jellyfinMediaId":"jf"}"""),
+                        movie(10, "Partly there", extra = ""","mediaInfo":{"status":4}"""),
+                        movie(11, "Asked for", extra = ""","mediaInfo":{"status":2}"""),
+                    ),
+                )
+            }
+        }
+        val home = viewModels.track(SeerrHomeViewModel(app.seerr, app.seerrRepository, app.clock))
+
+        val state = home.uiState.await { it.discover.isNotEmpty() && it.discover.none { row -> row.loading } }
+
+        assertEquals(listOf("Harbour Bridge", "Asked for"), state.discover.first { it.kind == SeerrListKind.PopularMovies }.titles.map { it.title })
+    }
+
+    @Test
+    fun seeAllSkipsAPageThatWasAllLibraryTitles() = runTest {
+        connected {
+            onSignedIn("GET", "/api/v1/discover/movies") { request ->
+                if (request.query["page"] == "2") {
+                    Reply.json(page(movie(8, "Northbound"), page = 2, pages = 2))
+                } else {
+                    Reply.json(page(movie(9, "In the library", extra = ""","mediaInfo":{"status":5,"jellyfinMediaId":"jf"}"""), pages = 2))
+                }
+            }
+        }
+        val list = viewModels.track(SeerrListViewModel(SeerrListKind.PopularMovies, app.seerrRepository))
+
+        assertEquals(listOf("Northbound"), list.uiState.await { !it.loading }.titles.map { it.title })
+    }
+
+    @Test
     fun seeAllPagesThroughTheListAndNarrowsItToOneKind() = runTest {
         connected {
             onSignedIn("GET", "/api/v1/discover/trending") { request ->

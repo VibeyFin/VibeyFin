@@ -12,6 +12,7 @@ import app.vibeyfin.domain.model.SeerrMediaType
 import app.vibeyfin.domain.model.SeerrPage
 import app.vibeyfin.domain.model.SeerrRequest
 import app.vibeyfin.domain.model.SeerrTitle
+import app.vibeyfin.domain.model.notInLibrary
 import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -67,8 +68,14 @@ internal fun SeerrListKind.title(): String = when (this) {
     SeerrListKind.ComingSoon -> Strings.seerrComingSoon
 }
 
-// One page of a list. Coming soon is two lists, movies and shows, put together by date.
-internal suspend fun SeerrRepository.page(kind: SeerrListKind, page: Int): ApiResult<SeerrPage> = when (kind) {
+// One page of a list, without what the library already has (those are found in the library, not through Seerr). Coming soon is
+// two lists, movies and shows, put together by date.
+internal suspend fun SeerrRepository.page(kind: SeerrListKind, page: Int): ApiResult<SeerrPage> = when (val result = anyPage(kind, page)) {
+    is ApiResult.Success -> ApiResult.Success(result.value.copy(titles = result.value.titles.filter { it.notInLibrary() }))
+    is ApiResult.Failure -> result
+}
+
+private suspend fun SeerrRepository.anyPage(kind: SeerrListKind, page: Int): ApiResult<SeerrPage> = when (kind) {
     SeerrListKind.Trending -> discover(DiscoverList.Trending, page)
 
     SeerrListKind.PopularMovies -> discover(DiscoverList.PopularMovies, page)
@@ -275,7 +282,13 @@ class SeerrListViewModel(
                 is ApiResult.Success -> {
                     page = result.value.page
                     pages = result.value.totalPages
+                    val before = all.value.size
                     all.value = (all.value + result.value.titles).distinctBy { it.type to it.tmdbId }
+                    // A page that was all library titles adds nothing to scroll to, so the next one comes at once
+                    if (all.value.size == before && page < pages) {
+                        loadMore()
+                        return@launch
+                    }
                     // The titles and the end of loading arrive together, so the page is never seen loaded and empty.
                     content.update { shown(it.copy(loading = false, loadingMore = false, message = null)) }
                 }
