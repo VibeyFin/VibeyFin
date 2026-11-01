@@ -68,7 +68,31 @@ build() {
   )
 }
 
+# The app also carries Aether's own FFmpeg (a dynamic framework), and this one's static libraries would answer its calls
+# first, with this build's missing encoders and decoders. So FFRemux and the libraries are joined into one object whose
+# only global symbols are the three ff_ entry points; every av_ and avcodec_ symbol in it turns local.
+isolate() {
+  sdk="$1"; target="$2"
+  prefix="$OUT/$sdk"
+  [ -f "$prefix/lib/libffremux.a" ] && [ "$prefix/lib/libffremux.a" -nt "$ROOT/scripts/ffmpeg/FFRemux.c" ] && { echo "$sdk: already isolated"; return; }
+  dir="$WORK/isolate/$sdk"
+  rm -rf "$dir"; mkdir -p "$dir"
+  sysroot="$(xcrun --sdk "$sdk" --show-sdk-path)"
+  printf '_ff_remux\n_ff_set_av1_playable\n_ff_can_play_video\n' > "$dir/exports.txt"
+  xcrun -sdk "$sdk" clang -target "$target" -isysroot "$sysroot" -Os -fPIC \
+    -I"$prefix/include" -I"$ROOT/iosApp/iosApp/Remux" -c "$ROOT/scripts/ffmpeg/FFRemux.c" -o "$dir/FFRemux.o"
+  xcrun -sdk "$sdk" clang -target "$target" -isysroot "$sysroot" -nostdlib -r \
+    "$dir/FFRemux.o" "$prefix/lib/libavformat.a" "$prefix/lib/libavcodec.a" "$prefix/lib/libswresample.a" "$prefix/lib/libavutil.a" \
+    -o "$dir/combined.o"
+  xcrun nmedit -s "$dir/exports.txt" "$dir/combined.o"
+  rm -f "$prefix/lib/libffremux.a"
+  xcrun -sdk "$sdk" ar rcs "$prefix/lib/libffremux.a" "$dir/combined.o"
+  xcrun -sdk "$sdk" ranlib "$prefix/lib/libffremux.a"
+}
+
 build iphoneos "arm64-apple-ios$MIN_IOS"
 build iphonesimulator "arm64-apple-ios$MIN_IOS-simulator"
+isolate iphoneos "arm64-apple-ios$MIN_IOS"
+isolate iphonesimulator "arm64-apple-ios$MIN_IOS-simulator"
 
 echo "FFmpeg $VERSION is in $OUT"

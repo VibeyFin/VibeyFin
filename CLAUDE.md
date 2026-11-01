@@ -40,7 +40,7 @@ Targets: `androidTarget`, `iosArm64`, `iosSimulatorArm64`.
   player is native and driven by the shared `PlaybackViewModel`; there is no shared player abstraction.
 - iOS download remux: a small LGPL FFmpeg (n9.0.2, no GPL parts, static) built from source by `scripts/ffmpeg/build-ios.sh` (an Xcode
   build phase runs it once; output in the git-ignored `iosApp/Vendor/`). It only rewrites a downloaded MKV and similar as MP4 for AVPlayer.
-  After rebuilding it by hand, `touch iosApp/iosApp/Remux/FFRemux.c` so Xcode relinks.
+  The script joins it with `scripts/ffmpeg/FFRemux.c` into `libffremux.a`, whose only global symbols are the `ff_` entry points, so it can't shadow another FFmpeg in the app (Aether's). Re-run the script after changing `FFRemux.c`.
 - Lint: ktlint and detekt for Kotlin (`./gradlew ktlintCheck detekt`, rules in `.editorconfig` and `config/detekt/`), SwiftLint for
   Swift (`swiftlint lint --strict`, rules in `.swiftlint.yml`). CI runs them in parallel jobs. No baselines: fix the finding.
 - Tests: `kotlin.test`, `kotlinx-coroutines-test`, Ktor `MockEngine`.
