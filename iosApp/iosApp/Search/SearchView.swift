@@ -65,7 +65,7 @@ struct SearchView: View {
                 }
             } else if state.message == nil && state.noResults == false && state.searched.isEmpty {
                 // The first answer for this text is on its way.
-                VStack(spacing: Space.s3) { chips(state); skeleton }
+                VStack(spacing: Space.s2) { chips(state); skeleton }
             } else if let message = state.message {
                 LoadErrorView(message: message, onRetry: { model.retry() }).screenMargin()
             } else if state.noResults {
@@ -263,17 +263,27 @@ struct SearchView: View {
         }
     }
 
+    /// Grey tiles, laid out as the results are (same spacing, padding and margins), so the first answer
+    /// replaces them without anything moving.
     private var skeleton: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
-            ForEach(0..<6, id: \.self) { _ in
-                VStack(alignment: .leading, spacing: Space.s2) {
-                    SkeletonBlock().aspectRatio(2.0 / 3.0, contentMode: .fit)
-                    SkeletonLine(font: .subheadline, width: 80)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: Space.s2) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s3,  alignment: .top)], alignment: .leading, spacing: Space.s4) {
+                    ForEach(0..<6, id: \.self) { _ in
+                        VStack(alignment: .leading, spacing: Space.s2) {
+                            SkeletonBlock().aspectRatio(2.0 / 3.0, contentMode: .fit)
+                            // A title and the line under it, as a result's tile has
+                            VStack(alignment: .leading, spacing: 2) {
+                                SkeletonLine(font: .subheadline, width: 80)
+                                SkeletonLine(font: .caption, width: 48)
+                            }
+                        }
+                    }
                 }
             }
+            .screenMargin()
+            .padding(.vertical, Space.s2)
         }
-        .screenMargin()
-        .padding(.top, Space.s2)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .scrollDisabled(true)
     }
 }
