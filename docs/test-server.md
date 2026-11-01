@@ -26,7 +26,7 @@ so its items have no trickplay:
 | --- | --- | --- |
 | Shows | `/media/shows` | "Test Show" S01E01 to S01E04 (3 min each, 640x360 H.264; four so "Are you still watching?" can be reached with the setting at After 2 episodes: two start by themselves, and the prompt replaces the countdown in the third because a fourth follows; about 8 minutes hands-off) with chapters `Scene 1` 0:00, `Intro` 0:10-0:40, `Episode` 0:40, `Credits` 2:30-end |
 | Movies | `/media/movies` | "HDR Sample (2026)": 20 s HEVC 10-bit, bt2020 / smpte2084 with mastering metadata |
-| Failures | `/media/failures` | 20 s clips, each with one thing a player may refuse (see the catalogue); no chapters, so no segments; no trickplay |
+| Failures | `/media/failures` | 20 s clips, each with one thing a player may refuse (see the catalogue); no chapters, so no segments; no trickplay. `uhd-load` is 10 minutes long; `dv-p8` is added by hand |
 
 `make-media.sh` creates these with the ffmpeg inside the Jellyfin image (no host ffmpeg). Jellyfin
 names the first episode "Episode 1" and the HDR movie "HDR" because there is no online metadata
@@ -53,6 +53,16 @@ this name; renaming or changing one is a reviewed change. All paths are under
 | `languages` | `failures/Languages (2026)/Languages (2026).mkv` | Same as `plain`, but two AAC audio tracks (`eng` "English" 440 Hz, flagged default; `ger` "Deutsch" 880 Hz) and three SubRip tracks (`eng` "English subtitle", `ger` "Deutscher Untertitel", and `eng` "Forced English subtitle" flagged forced), shown 1 s to 15 s | Preferred audio and subtitle languages (issue #28): which tracks a video starts with. Also the detail page's Technical info, whose Audio and Subtitles lines list these tracks |
 | `subs-image` | `failures/Image Subtitles (2026)/Image Subtitles (2026).mkv` | Same as `plain`, plus one PGS track (a white bar, 1 s to 15 s, hand-written because ffmpeg cannot encode PGS) | Image subtitles: burned in by a transcode |
 | `truncated` | `failures/Truncated (2026)/Truncated (2026).mp4` | An MP4 cut in half: no moov atom, so no streams and no duration. Jellyfin still lists it | A file that cannot play at all: the error path |
+| `truehd-hevc` | `failures/TrueHD HEVC (2026)/TrueHD HEVC (2026).mkv` | 20 s, 640x360 HEVC 10-bit (`libx265`, `yuv420p10le`), TrueHD audio (5.1 if the encoder accepts six channels, else stereo), 440 Hz, in MKV | Direct play of a lossless audio codec that AVPlayer and many Android devices cannot decode: the audio must not go silent |
+| `mpeg2-ts` | `failures/MPEG2 TS (2026)/MPEG2 TS (2026).ts` | 20 s, 640x360 MPEG-2 video (`mpeg2video`) and MP2 audio 440 Hz, in an MPEG transport stream | A container and video codec many devices have no decoder for (AVPlayer has none for MPEG-2 video): the fallback path, and an old container read by its extension |
+| `avi-divx` | `failures/AVI DivX (2026)/AVI DivX (2026).avi` | 20 s, 640x360 MPEG-4 part 2 video with the DivX tag (`mpeg4`, `-vtag DIVX`) and MP3 audio 440 Hz, in AVI | An AVI container and a codec most mobile hardware does not decode: the fallback path |
+| `subs-ass` | `failures/ASS Subtitles (2026)/ASS Subtitles (2026).mkv` | Same as `plain`, plus one ASS track with three styled lines shown 1 s to 19 s: bold (`eng`), coloured yellow, and positioned at the top left with an override tag | Styled subtitles: the track is listed, and its styles or its plain text show, but nothing disappears |
+| `uhd-load` | `failures/UHD Load (2026)/UHD Load (2026).mkv` | 10 minutes (600 s), 3840x2160 HEVC 10-bit with HDR10 flags (bt2020 / smpte2084, mastering metadata, as `movie-hdr`), 330 Hz AAC, `testsrc2` at 24 fps. Large, and slow to make: the 4K encode is CPU-bound and runs for a long time on a laptop, so it is made once | The 10-minute battery and thermal test: sustained 4K HDR10 direct play with no transcode. Not for quick checks |
+
+`dv-p8` (Dolby Vision Profile 8) is not generated: ffmpeg cannot encode Dolby Vision, and no free sample exists. Drop a licensed
+Profile 8 sample into `failures/DV Profile 8 (2026)/` by hand, named `DV Profile 8 (2026).mkv`. `make-media.sh`
+never writes or removes that folder. Profile 8 files usually carry an HDR10 or HLG base layer, so a device without Dolby
+Vision should play that base layer and not fail.
 
 Expected app behaviour for the failure fixtures (what to look for when playing them; these follow the
 negotiation rules in plan 03 and have not all been confirmed in the app yet):
@@ -65,6 +75,10 @@ negotiation rules in plan 03 and have not all been confirmed in the app yet):
   Audio language German and Subtitle language English (Always) it starts on the 880 Hz German track with "English subtitle".
 - `subs-image`: the track is in the picker; picking it needs a transcode that burns it in.
 - `truncated`: the player error screen with "Try again", not a crash and not an endless spinner.
+- `truehd-hevc`: the video plays directly; the audio plays, or is transcoded, but is never silent.
+- `mpeg2-ts`, `avi-divx`: play through a fallback transcode where the device cannot decode the codec, not an error screen.
+- `subs-ass`: the track is in the picker; the styled lines show their styles, or their text plainly, and none disappears.
+- `uhd-load`: plays at 4K without a transcode on a device that decodes HEVC 10-bit, for the full 10 minutes without stalling.
 
 ## Adding a fixture
 

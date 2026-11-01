@@ -11,8 +11,15 @@
 #   movies/Filler 01 (2003) ... Filler 24 (2026)   copies of one clip, genres in turn, to fill a category page
 #   movies/Kid Friendly (G), Grown Up Only (R), Tagged For Adults (G, tag no-kids) (2026)   rated clips for the kids user
 #   failures/<Name> (2026)/<Name> (2026).mkv         20 s clips with one thing a player may refuse: Plain Clip (the
-#                                                    baseline), DTS Audio, MKV VP9 Opus, Text Subtitles, Image Subtitles,
-#                                                    Languages (English and German audio, three text subtitles)
+#                                                    baseline), DTS Audio, MKV VP9 Opus, AV1 AC3, Text Subtitles, Image
+#                                                    Subtitles, Languages (English and German audio, three text subtitles),
+#                                                    TrueHD HEVC (10-bit HEVC, TrueHD 5.1), ASS Subtitles (styled ASS track)
+#   failures/MPEG2 TS (2026)/MPEG2 TS (2026).ts, failures/AVI DivX (2026)/AVI DivX (2026).avi
+#                                                    20 s clips in containers a player may not open: MPEG-2 video in TS,
+#                                                    MPEG-4 part 2 (DivX) in AVI
+#   failures/UHD Load (2026)/UHD Load (2026).mkv     10 minutes of 3840x2160 HEVC 10-bit HDR10: large and slow to make
+#   failures/DV Profile 8 (2026)/                    not generated (ffmpeg cannot encode Dolby Vision): a licensed
+#                                                    sample goes in there by hand (docs/test-server.md)
 #   failures/Truncated (2026)/Truncated (2026).mp4   an MP4 cut in half: no moov atom, nothing can be read from it
 #   Page fixtures (3 s, 320x180 clips, small artwork, .nfo with lockdata): shows/Saga Show (Specials, Season 1 with
 #     8 episodes, Season 2; backdrop and logo), shows/Solo Season (one season, poster only), movies/Starlit Crown
@@ -207,6 +214,49 @@ failure "Languages" mkv -f lavfi -i "sine=frequency=880:duration=20" \
   -disposition:a:0 default -disposition:a:1 0 \
   -metadata:s:s:0 language=eng -metadata:s:s:1 language=ger -metadata:s:s:2 language=eng -metadata:s:s:2 title=Forced \
   -disposition:s:0 0 -disposition:s:1 0 -disposition:s:2 forced
+# TrueHD: six channels (the mono tone upmixed to 5.1), or stereo when the encoder refuses six. TrueHD needs -strict -2.
+HEVC10=(-c:v libx265 -preset veryfast -pix_fmt yuv420p10le)
+TRUEHD_OUT="${MEDIA}/failures/TrueHD HEVC (2026)/TrueHD HEVC (2026).mkv"
+if [ ! -f "$TRUEHD_OUT" ]; then
+  failure "TrueHD HEVC" mkv "${HEVC10[@]}" -af "aformat=channel_layouts=5.1" -c:a truehd -strict -2 -ar 48000 ||
+    { rm -f "$TRUEHD_OUT"; failure "TrueHD HEVC" mkv "${HEVC10[@]}" -c:a truehd -strict -2 -ar 48000 -ac 2; }
+fi
+# Old containers and codecs: MPEG-2 video with MP2 audio in an MPEG transport stream, and MPEG-4 part 2 (DivX tag)
+# with MP3 audio in AVI.
+failure "MPEG2 TS" ts -c:v mpeg2video -pix_fmt yuv420p -b:v 2M -c:a mp2 -b:a 128k
+failure "AVI DivX" avi -c:v mpeg4 -vtag DIVX -pix_fmt yuv420p -b:v 2M -c:a libmp3lame -b:a 128k
+# ASS subtitles: one styled ASS track (bold, coloured, positioned), one line after another. Written by hand, like the .sup.
+cat > "${DATA}/work/styled.ass" <<'ASS'
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 640
+PlayResY: 360
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Plain,Arial,24,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2,1,2,20,20,20,1
+Style: Bold,Arial,28,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,2,1,2,20,20,20,1
+Style: Colour,Arial,28,&H0000FFFF,&H000000FF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2,1,2,20,20,20,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:01.00,0:00:07.00,Bold,,0,0,0,,Bold line
+Dialogue: 0,0:00:07.00,0:00:13.00,Colour,,0,0,0,,Coloured line
+Dialogue: 0,0:00:13.00,0:00:19.00,Plain,,0,0,0,,{\an7\pos(40,40)}Positioned line
+ASS
+failure "ASS Subtitles" mkv -i /data/work/styled.ass -map 0:v -map 1:a -map 2 "${H264[@]}" -c:a aac -b:a 64k \
+  -c:s ass -metadata:s:s:0 language=eng
+# UHD Load: 10 minutes of 4K HDR10 for the battery and thermal test. Large and slow to make (a CPU-bound 4K encode), so it
+# is made once. The HDR10 flags are the HDR Sample's; testsrc2 at 24 fps, the fastest preset, a modest CRF.
+UHD_OUT="${MEDIA}/failures/UHD Load (2026)/UHD Load (2026).mkv"
+if [ ! -f "$UHD_OUT" ]; then
+  mkdir -p "$(dirname "$UHD_OUT")"
+  ff -f lavfi -i "testsrc2=size=3840x2160:rate=24:duration=600,format=yuv420p10le,setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc:range=tv" \
+     -f lavfi -i "sine=frequency=330:duration=600" \
+     -c:v libx265 -preset ultrafast -crf 30 -pix_fmt yuv420p10le \
+     -x265-params "hdr10=1:repeat-headers=1:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1):max-cll=1000,400" \
+     -tag:v hvc1 -c:a aac -b:a 64k -shortest "/data/media/failures/UHD Load (2026)/UHD Load (2026).mkv"
+fi
 
 # An MP4 written normally (moov atom at the end) and cut in half: nothing can be read from it.
 TRUNCATED="${MEDIA}/failures/Truncated (2026)/Truncated (2026).mp4"
