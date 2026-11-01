@@ -108,6 +108,17 @@ data class SeerrPage(
     val hasMore: Boolean get() = page < totalPages
 }
 
+/** Which seasons of a show a request asks for. */
+sealed interface SeerrSeasons {
+    /** Every season not yet available or requested; Seerr works out which. */
+    data object All : SeerrSeasons
+
+    data class Only(val numbers: List<Int>) : SeerrSeasons
+}
+
+/** A quality profile on a Radarr or Sonarr server, chosen for a request. */
+data class SeerrQuality(val serverId: Int, val profileId: Int)
+
 /** An episode of a show on its Seerr page, from TMDB. */
 data class SeerrEpisode(
     val season: Int,

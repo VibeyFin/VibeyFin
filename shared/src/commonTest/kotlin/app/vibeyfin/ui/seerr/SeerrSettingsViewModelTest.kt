@@ -79,8 +79,7 @@ class SeerrSettingsViewModelTest {
         assertEquals(address, connected.savedAddress)
         assertEquals("3.5.1", connected.version)
         assertFalse(connected.signedInWithPassword)
-        assertEquals("3 movies, 2 seasons", connected.quotaLeft)
-        assertEquals("Every week", connected.quotaPeriod)
+        assertEquals("3 movies and 2 seasons this week", connected.quotaLeft)
         assertFalse(connected.connecting)
     }
 
@@ -111,7 +110,6 @@ class SeerrSettingsViewModelTest {
 
         val connected = await(viewModel) { it.layout == SeerrSettingsLayout.Connected && it.version != null }
         assertNull(connected.quotaLeft)
-        assertNull(connected.quotaPeriod)
     }
 
     @Test

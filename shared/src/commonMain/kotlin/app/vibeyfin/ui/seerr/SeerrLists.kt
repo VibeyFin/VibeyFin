@@ -2,6 +2,7 @@ package app.vibeyfin.ui.seerr
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.domain.DiscoverList
 import app.vibeyfin.domain.SeerrConnection
@@ -14,6 +15,7 @@ import app.vibeyfin.domain.model.SeerrRequest
 import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.domain.model.notInLibrary
 import app.vibeyfin.ui.common.Strings
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -222,6 +224,32 @@ class SeerrHomeViewModel(
     }
 }
 
+/** How far a See all page has read, and the load in flight; the two lists that page share it. */
+internal class PageCursor {
+    var page = 0
+        private set
+    var pages = 1
+        private set
+    private var job: Job? = null
+
+    val hasMore: Boolean get() = page < pages
+    private val busy: Boolean get() = job?.isActive == true
+
+    /** The next page may be asked for: there is one, nothing is loading, and the page isn't showing a failure ([blocked]). */
+    fun canLoadMore(blocked: Boolean): Boolean = hasMore && !busy && !blocked
+
+    fun reached(page: Int, pages: Int) {
+        this.page = page
+        this.pages = pages
+    }
+
+    /** Runs [block] as the load in flight, replacing one still running so a retry never leaves two. */
+    fun start(scope: CoroutineScope, block: suspend () -> Unit) {
+        job?.cancel()
+        job = scope.launch { block() }
+    }
+}
+
 /** A discover list's See all page: a grid of posters, Movies and Shows chips where the list holds both, more pages as it scrolls. */
 data class SeerrListUiState(
     val title: String = "",
@@ -230,6 +258,8 @@ data class SeerrListUiState(
     /** Why the first page didn't come; the page offers Try again. */
     val message: String? = null,
     val loadingMore: Boolean = false,
+    /** A later page didn't come: what is shown stays, and the end of the list offers Try again for that page alone. */
+    val loadMoreFailed: Boolean = false,
     /** Trending and Coming soon hold both kinds, so the page offers Movies and Shows chips; null for the others. */
     val typeFilter: SeerrMediaType? = null,
     val offersTypeFilter: Boolean = false,
@@ -250,23 +280,22 @@ class SeerrListViewModel(
     )
     val uiState: StateFlow<SeerrListUiState> = content.asStateFlow()
 
-    private var page = 0
-    private var pages = 1
-    private var loading: Job? = null
+    private val cursor = PageCursor()
 
     init {
-        loadMore()
+        load()
     }
 
+    /** Try again: the first page when it never came, otherwise the page that failed. */
     fun onRetry() {
-        content.update { it.copy(loading = true, message = null) }
-        loadMore()
+        if (cursor.page == 0) content.update { it.copy(loading = true, message = null) }
+        load()
     }
 
     /** The grid came near its end: the next page, if there is one. */
     fun onLoadMore() {
-        if (page >= pages || loading?.isActive == true || content.value.message != null) return
-        loadMore()
+        val state = content.value
+        if (cursor.canLoadMore(blocked = state.message != null || state.loadMoreFailed)) load()
     }
 
     /** A chip: only movies, only shows, or (tapping the chosen one again) both. */
@@ -275,30 +304,31 @@ class SeerrListViewModel(
         show()
     }
 
-    private fun loadMore() {
-        loading = viewModelScope.launch {
-            content.update { it.copy(loadingMore = page > 0) }
-            when (val result = repository.page(kind, page + 1)) {
-                is ApiResult.Success -> {
-                    page = result.value.page
-                    pages = result.value.totalPages
-                    val before = all.value.size
-                    all.value = (all.value + result.value.titles).distinctBy { it.type to it.tmdbId }
-                    // A page that was all library titles adds nothing to scroll to, so the next one comes at once
-                    if (all.value.size == before && page < pages) {
-                        loadMore()
-                        return@launch
-                    }
-                    // The titles and the end of loading arrive together, so the page is never seen loaded and empty.
-                    content.update { shown(it.copy(loading = false, loadingMore = false, message = null)) }
+    private fun load() {
+        cursor.start(viewModelScope) {
+            content.update { it.copy(loadingMore = cursor.page > 0, loadMoreFailed = false) }
+            do {
+                val result = repository.page(kind, cursor.page + 1)
+                if (result is ApiResult.Failure) {
+                    content.update { it.failed(cursor.page == 0, result.error) }
+                    return@start
                 }
-
-                is ApiResult.Failure -> content.update {
-                    // A later page failing leaves what is shown; the first one failing is the page's error state.
-                    if (page == 0) it.copy(loading = false, loadingMore = false, message = SeerrMessages.UNREACHABLE_NOW) else it.copy(loadingMore = false)
-                }
-            }
+                val page = (result as ApiResult.Success).value
+                cursor.reached(page.page, page.totalPages)
+                val before = all.value.size
+                all.value = (all.value + page.titles).distinctBy { it.type to it.tmdbId }
+                // A page that was all library titles adds nothing to scroll to, so the next one comes at once
+            } while (all.value.size == before && cursor.hasMore)
+            // The titles and the end of loading arrive together, so the page is never seen loaded and empty.
+            content.update { shown(it.copy(loading = false, loadingMore = false, message = null)) }
         }
+    }
+
+    // A later page failing leaves what is shown; the first one failing is the page's error state.
+    private fun SeerrListUiState.failed(first: Boolean, error: ApiError) = if (first) {
+        copy(loading = false, loadingMore = false, message = SeerrMessages.forError(error))
+    } else {
+        copy(loadingMore = false, loadMoreFailed = true)
     }
 
     private fun show() {
@@ -328,6 +358,8 @@ data class MyRequestsUiState(
     val filter: RequestFilter = RequestFilter.All,
     val loading: Boolean = true,
     val loadingMore: Boolean = false,
+    /** A later page didn't come: what is shown stays, and the end of the list offers Try again for that page alone. */
+    val loadMoreFailed: Boolean = false,
     val message: String? = null,
 ) {
     /** Nothing was ever requested: the page says how to start. */
@@ -344,12 +376,10 @@ class MyRequestsViewModel(
     private val content = MutableStateFlow(MyRequestsUiState())
     val uiState: StateFlow<MyRequestsUiState> = content.asStateFlow()
 
-    private var page = 0
-    private var pages = 1
-    private var loading: Job? = null
+    private val cursor = PageCursor()
 
     init {
-        loadMore()
+        load()
     }
 
     fun onFilter(filter: RequestFilter) {
@@ -358,22 +388,22 @@ class MyRequestsViewModel(
     }
 
     fun onLoadMore() {
-        if (page >= pages || loading?.isActive == true || content.value.message != null) return
-        loadMore()
+        val state = content.value
+        if (cursor.canLoadMore(blocked = state.message != null || state.loadMoreFailed)) load()
     }
 
+    /** Try again: the first page when it never came, otherwise the page that failed. */
     fun onRetry() {
-        content.update { it.copy(loading = true, message = null) }
-        loadMore()
+        if (cursor.page == 0) content.update { it.copy(loading = true, message = null) }
+        load()
     }
 
-    private fun loadMore() {
-        loading = viewModelScope.launch {
-            content.update { it.copy(loadingMore = page > 0) }
-            when (val result = repository.myRequests(page = page + 1)) {
+    private fun load() {
+        cursor.start(viewModelScope) {
+            content.update { it.copy(loadingMore = cursor.page > 0, loadMoreFailed = false) }
+            when (val result = repository.myRequests(page = cursor.page + 1)) {
                 is ApiResult.Success -> {
-                    page = result.value.page
-                    pages = result.value.pages
+                    cursor.reached(result.value.page, result.value.pages)
                     val items = titles.titlesOf(result.value.requests).map { (request, title) ->
                         RequestListItem(
                             request = request,
@@ -388,8 +418,13 @@ class MyRequestsViewModel(
                     content.update { shown(it.copy(loading = false, loadingMore = false, message = null)) }
                 }
 
+                // A later page failing leaves what is shown; the first one failing is the page's error state.
                 is ApiResult.Failure -> content.update {
-                    if (page == 0) it.copy(loading = false, loadingMore = false, message = SeerrMessages.UNREACHABLE_NOW) else it.copy(loadingMore = false)
+                    if (cursor.page == 0) {
+                        it.copy(loading = false, loadingMore = false, message = SeerrMessages.forError(result.error))
+                    } else {
+                        it.copy(loadingMore = false, loadMoreFailed = true)
+                    }
                 }
             }
         }

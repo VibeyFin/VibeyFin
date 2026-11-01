@@ -266,8 +266,8 @@ class SeerrConnection(
         // sign-out isn't caught here yet: the state changes before AccountRepository.expire wipes the session.
         val previous = _state.value as? SeerrState.Ready
         if (previous != null) {
-            val same = key?.serverId == previous.serverId && key?.userId == previous.userId
-            val dropped = if (same) key?.kids == true else store.session(previous.serverId, previous.userId) == null
+            val same = key?.serverId == previous.serverId && key.userId == previous.userId
+            val dropped = if (same) key.kids else store.session(previous.serverId, previous.userId) == null
             if (dropped) scope.launch { previous.api.logout() }
         }
         if (key == null) {

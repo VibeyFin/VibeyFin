@@ -46,7 +46,7 @@ class ItemViewModelTest {
         app.close()
     }
 
-    private fun viewModel(id: String = "m1") = viewModels.track(ItemViewModel(id, app.library, app.connection, app.watch, app.watchChanges, app.downloadRepository))
+    private fun viewModel(id: String = "m1") = viewModels.track(ItemViewModel(id, app.library, app.connection, app.watch, app.watchChanges, app.downloadRepository, app.seerrRepository, app.seerr))
 
     @Test
     fun showsTheItemWithItsFacts() = runTest {

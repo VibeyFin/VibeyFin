@@ -32,10 +32,11 @@ import app.vibeyfin.domain.model.RequestQuota
 import app.vibeyfin.domain.model.SeerrEpisode
 import app.vibeyfin.domain.model.SeerrMediaType
 import app.vibeyfin.domain.model.SeerrPage
+import app.vibeyfin.domain.model.SeerrQuality
 import app.vibeyfin.domain.model.SeerrRequest
 import app.vibeyfin.domain.model.SeerrRequestPage
+import app.vibeyfin.domain.model.SeerrSeasons
 import app.vibeyfin.domain.model.SeerrTitleDetails
-import app.vibeyfin.ui.common.Strings
 
 /** The discover lists Home shows as rows. */
 enum class DiscoverList { Trending, PopularMovies, PopularShows, UpcomingMovies, UpcomingShows }
@@ -82,14 +83,14 @@ class SeerrRepository(private val seerr: SeerrConnection) {
         }
     }
 
-    /** The episodes of [season] of the show [tmdbId]. */
-    suspend fun season(tmdbId: Int, season: Int): ApiResult<List<SeerrEpisode>> = seerr.call { api, _ ->
+    /** The episodes of [season] of the show [tmdbId]; one without a name is called what [untitled] makes of its number. */
+    suspend fun season(tmdbId: Int, season: Int, untitled: (episode: Int) -> String): ApiResult<List<SeerrEpisode>> = seerr.call { api, _ ->
         api.showSeason(tmdbId, season).map { details ->
             details.episodes.sortedBy { it.episodeNumber }.map { episode ->
                 SeerrEpisode(
                     season = episode.seasonNumber ?: season,
                     number = episode.episodeNumber,
-                    title = episode.name?.takeIf { it.isNotBlank() } ?: Strings.episodeNumber(episode.episodeNumber),
+                    title = episode.name?.takeIf { it.isNotBlank() } ?: untitled(episode.episodeNumber),
                     overview = episode.overview?.takeIf { it.isNotBlank() },
                     airDate = episode.airDate?.takeIf { it.isNotBlank() },
                     // Seerr sends a whole URL at TMDB's largest size; a card needs far less
@@ -118,11 +119,12 @@ class SeerrRepository(private val seerr: SeerrConnection) {
      * a request is a write. Seerr says only "forbidden" both for a quota that is used up and for a missing permission, so
      * the quota is read to tell them apart.
      */
-    suspend fun request(type: SeerrMediaType, tmdbId: Int, seasons: SeasonChoice? = null, is4k: Boolean = false, quality: QualityChoice? = null): RequestOutcome {
+    suspend fun request(type: SeerrMediaType, tmdbId: Int, seasons: SeerrSeasons? = null, is4k: Boolean = false, quality: SeerrQuality? = null): RequestOutcome {
+        val choice = quality?.let { QualityChoice(it.serverId, it.profileId) }
         val sent = seerr.call { api, me ->
             when (type) {
-                SeerrMediaType.Movie -> api.requestMovie(tmdbId, is4k, quality)
-                SeerrMediaType.Show -> api.requestShow(tmdbId, seasons ?: SeasonChoice.All, is4k, quality)
+                SeerrMediaType.Movie -> api.requestMovie(tmdbId, is4k, choice)
+                SeerrMediaType.Show -> api.requestShow(tmdbId, seasons?.toChoice() ?: SeasonChoice.All, is4k, choice)
             }.map { it?.toRequest(me.id, type) }
         }
         return when (sent) {
@@ -134,8 +136,8 @@ class SeerrRepository(private val seerr: SeerrConnection) {
                     val left = quota?.forType(type)
                     // Seerr refuses too when a show asks for more seasons than are left; all seasons, an unknown number, is taken as that
                     val asked = when (seasons) {
-                        is SeasonChoice.Only -> seasons.seasons.size
-                        SeasonChoice.All -> Int.MAX_VALUE
+                        is SeerrSeasons.Only -> seasons.numbers.size
+                        SeerrSeasons.All -> Int.MAX_VALUE
                         null -> 1
                     }
                     if (left != null && left.remaining < asked) RequestOutcome.QuotaReached(quota) else RequestOutcome.NotAllowed
@@ -200,4 +202,9 @@ class SeerrRepository(private val seerr: SeerrConnection) {
         const val CONFLICT = 409
         const val PAGE_SIZE = 20
     }
+}
+
+private fun SeerrSeasons.toChoice(): SeasonChoice = when (this) {
+    SeerrSeasons.All -> SeasonChoice.All
+    is SeerrSeasons.Only -> SeasonChoice.Only(numbers)
 }

@@ -2,11 +2,11 @@ package app.vibeyfin.domain
 
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
-import app.vibeyfin.data.seerr.SeasonChoice
 import app.vibeyfin.domain.model.QuotaLeft
 import app.vibeyfin.domain.model.RequestQuota
 import app.vibeyfin.domain.model.RequestState
 import app.vibeyfin.domain.model.SeerrMediaType
+import app.vibeyfin.domain.model.SeerrSeasons
 import app.vibeyfin.testing.FakeSeerr
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
@@ -124,9 +124,9 @@ class SeerrRepositoryTest {
     fun aShowRequestNamesItsSeasonsOrAllAndCanAskFor4k() = runTest {
         connected().onSignedIn("POST", "/api/v1/request") { Reply.json("""{"id":3,"status":1,"type":"tv","seasons":[{"seasonNumber":2},{"seasonNumber":3}]}""", HttpStatusCode.Created) }
 
-        app.seerrRepository.request(SeerrMediaType.Show, 19885, SeasonChoice.Only(listOf(2, 3)))
+        app.seerrRepository.request(SeerrMediaType.Show, 19885, SeerrSeasons.Only(listOf(2, 3)))
         app.seerrRepository.request(SeerrMediaType.Show, 19885)
-        app.seerrRepository.request(SeerrMediaType.Show, 19885, SeasonChoice.All, is4k = true)
+        app.seerrRepository.request(SeerrMediaType.Show, 19885, SeerrSeasons.All, is4k = true)
 
         assertEquals(
             listOf(
@@ -167,7 +167,7 @@ class SeerrRepositoryTest {
         seerr.onSignedIn("GET", "/api/v1/user/7/quota") { Reply.json("""{"movie":{"used":0},"tv":{"days":7,"limit":5,"used":4,"remaining":1,"restricted":false}}""") }
         assertEquals(
             RequestOutcome.QuotaReached(RequestQuota(movies = null, shows = QuotaLeft(limit = 5, remaining = 1, days = 7))),
-            app.seerrRepository.request(SeerrMediaType.Show, 1399, SeasonChoice.Only(listOf(1, 2, 3))),
+            app.seerrRepository.request(SeerrMediaType.Show, 1399, SeerrSeasons.Only(listOf(1, 2, 3))),
         )
 
         seerr.server.refuseConnections()

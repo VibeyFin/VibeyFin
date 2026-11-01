@@ -1,5 +1,6 @@
 package app.vibeyfin.ui.search
 
+import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.domain.SeerrConnectResult
 import app.vibeyfin.domain.SeerrState
 import app.vibeyfin.domain.model.RequestState
@@ -49,12 +50,8 @@ class SeerrSearchTest {
         app.close()
     }
 
-    private fun viewModel(withSeerr: Boolean = true) = viewModels.track(
-        if (withSeerr) {
-            SearchViewModel(app.library, app.searchHistory, app.connection, app.offline, app.offlineLibrary, app.seerr, app.seerrRepository)
-        } else {
-            SearchViewModel(app.library, app.searchHistory, app.connection, app.offline, app.offlineLibrary)
-        },
+    private fun viewModel() = viewModels.track(
+        SearchViewModel(app.library, app.searchHistory, app.connection, app.offline, app.offlineLibrary, app.seerr, app.seerrRepository),
     )
 
     private fun hints(vararg items: String) = """{"SearchHints":[${items.joinToString(",")}],"TotalRecordCount":${items.size}}"""
@@ -154,7 +151,7 @@ class SeerrSearchTest {
 
         val failed = viewModel.typed("harbour")
 
-        assertEquals(SeerrSearch.Failed(SeerrMessages.UNREACHABLE_NOW), failed.seerrGroup)
+        assertEquals(SeerrSearch.Failed(SeerrMessages.forError(ApiError.Server(500))), failed.seerrGroup)
         assertEquals(1, failed.visibleGroups.size)
         assertNull(failed.message)
 
@@ -191,7 +188,7 @@ class SeerrSearchTest {
     @Test
     fun withoutSeerrSearchIsAsBeforeWithNoGroupAndNoFilter() = runTest {
         app.signedIn().on("GET", "/Search/Hints", Reply.json(hints()))
-        val viewModel = viewModel(withSeerr = false)
+        val viewModel = viewModel()
 
         val state = viewModel.typed("harbour")
 

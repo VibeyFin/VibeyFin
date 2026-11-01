@@ -4,8 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
-import app.vibeyfin.data.seerr.QualityChoice
-import app.vibeyfin.data.seerr.SeasonChoice
 import app.vibeyfin.domain.RequestOutcome
 import app.vibeyfin.domain.SeerrConnection
 import app.vibeyfin.domain.SeerrRepository
@@ -15,8 +13,10 @@ import app.vibeyfin.domain.model.RequestState
 import app.vibeyfin.domain.model.SeerrCastMember
 import app.vibeyfin.domain.model.SeerrEpisode
 import app.vibeyfin.domain.model.SeerrMediaType
+import app.vibeyfin.domain.model.SeerrQuality
 import app.vibeyfin.domain.model.SeerrRequest
 import app.vibeyfin.domain.model.SeerrSeason
+import app.vibeyfin.domain.model.SeerrSeasons
 import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.domain.model.SeerrTitleDetails
 import app.vibeyfin.ui.common.Strings
@@ -29,6 +29,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
+
+/** What one request asked for, kept so Try again can send it once more: the [seasons] of a show (null for a movie), in 4K or not, at a [quality]. */
+private data class RequestAttempt(val seasons: SeerrSeasons?, val is4k: Boolean, val quality: SeerrQuality?)
 
 /** The page's one primary button. [enabled] false is the quiet button that holds the state, so the page doesn't jump. */
 data class SeerrPrimary(val label: String, val enabled: Boolean)
@@ -173,7 +176,7 @@ class SeerrTitleViewModel(
 
     // Whether Seerr answered the IMDb lookup, a "none" included, so a movie without a rating isn't looked up on every reload.
     private var imdbAsked = false
-    private var lastAttempt: Triple<SeasonChoice?, Boolean, QualityChoice?>? = null
+    private var lastAttempt: RequestAttempt? = null
 
     init {
         load(showSkeleton = true)
@@ -196,13 +199,13 @@ class SeerrTitleViewModel(
         episodesLoad?.cancel()
         content.update { it.copy(episodes = SeerrEpisodes(season)) }
         episodesLoad = viewModelScope.launch {
-            val result = repository.season(tmdbId, season)
+            val result = repository.season(tmdbId, season, Strings::episodeNumber)
             content.update { state ->
                 if (state.episodes?.season != season) return@update state
                 state.copy(
                     episodes = when (result) {
                         is ApiResult.Success -> SeerrEpisodes(season, result.value, loading = false)
-                        is ApiResult.Failure -> SeerrEpisodes(season, loading = false, message = SeerrMessages.UNREACHABLE_NOW)
+                        is ApiResult.Failure -> SeerrEpisodes(season, loading = false, message = SeerrMessages.forError(result.error))
                     },
                 )
             }
@@ -249,12 +252,12 @@ class SeerrTitleViewModel(
         val picker = content.value.picker ?: return
         val quality = qualityChoice(picker.is4k)
         if (!picker.showsSeasons) {
-            send(null, picker.is4k, quality)
+            send(RequestAttempt(null, picker.is4k, quality))
             return
         }
         val chosen = picker.seasons.filter { it.selected }.map { it.number }
         if (chosen.isEmpty()) return
-        send(SeasonChoice.Only(chosen), picker.is4k, quality)
+        send(RequestAttempt(SeerrSeasons.Only(chosen), picker.is4k, quality))
     }
 
     fun onPickerDismiss() {
@@ -280,8 +283,7 @@ class SeerrTitleViewModel(
 
     /** "Try again" on a request that couldn't reach Seerr: the same request once more. */
     fun onRetryRequest() {
-        val (seasons, is4k, quality) = lastAttempt ?: return
-        send(seasons, is4k, quality)
+        send(lastAttempt ?: return)
     }
 
     /** The notice was shown. */
@@ -298,7 +300,7 @@ class SeerrTitleViewModel(
         if (content.value.sending || details == null) return
         val choosesQuality = (seerr.state.value as? SeerrState.Ready)?.user?.permissions?.canChooseQuality == true
         if (type == SeerrMediaType.Movie && !choosesQuality) {
-            send(null, is4k, null)
+            send(RequestAttempt(null, is4k, null))
         } else {
             chosenProfile = null
             content.update { it.copy(picker = picker(is4k, defaultSeasons(is4k), allMissing = true)) }
@@ -332,18 +334,18 @@ class SeerrTitleViewModel(
     }
 
     // What the request asks for: the chosen profile, or the server's default, on that tier's server; null when there is nothing to choose.
-    private fun qualityChoice(is4k: Boolean): QualityChoice? {
+    private fun qualityChoice(is4k: Boolean): SeerrQuality? {
         val options = qualities[is4k] ?: return null
         val profile = chosenProfile ?: options.defaultProfileId ?: return null
-        return QualityChoice(options.serverId, profile)
+        return SeerrQuality(options.serverId, profile)
     }
 
-    private fun send(seasons: SeasonChoice?, is4k: Boolean, quality: QualityChoice?) {
+    private fun send(attempt: RequestAttempt) {
         if (content.value.sending) return
-        lastAttempt = Triple(seasons, is4k, quality)
+        lastAttempt = attempt
         content.update { it.copy(sending = true) }
         viewModelScope.launch {
-            val outcome = repository.request(type, tmdbId, seasons, is4k, quality)
+            val outcome = repository.request(type, tmdbId, attempt.seasons, attempt.is4k, attempt.quality)
             val name = content.value.title?.title.orEmpty()
             val notice = when (outcome) {
                 is RequestOutcome.Sent -> SeerrNotice(Strings.seerrRequested(name), SeerrNoticeAction.View, Strings.seerrView)
@@ -405,8 +407,7 @@ class SeerrTitleViewModel(
 
                 is ApiResult.Failure -> {
                     more.cancel()
-                    val message = if (result.error == ApiError.NotFound) SeerrMessages.TITLE_NOT_FOUND else SeerrMessages.UNREACHABLE_NOW
-                    content.update { it.copy(loading = false, message = message) }
+                    content.update { it.copy(loading = false, message = SeerrMessages.forError(result.error)) }
                 }
             }
         }

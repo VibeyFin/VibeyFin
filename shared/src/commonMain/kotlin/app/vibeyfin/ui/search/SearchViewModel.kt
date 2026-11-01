@@ -136,13 +136,13 @@ class SearchViewModel(
     private val connection: ConnectionManager,
     private val offlineMode: OfflineMode,
     private val offlineLibrary: OfflineLibrary,
-    private val seerr: SeerrConnection? = null,
-    private val seerrRepository: SeerrRepository? = null,
+    private val seerr: SeerrConnection,
+    private val seerrRepository: SeerrRepository,
 ) : ViewModel() {
     private val content = MutableStateFlow(SearchUiState())
     private var job: Job? = null
     private var seerrJob: Job? = null
-    private val seerrState: StateFlow<SeerrState> = seerr?.state ?: MutableStateFlow(SeerrState.Hidden)
+    private val seerrState: StateFlow<SeerrState> = seerr.state
 
     val uiState: StateFlow<SearchUiState> = combine(content, history.entries, connection.sessionEnded(), offlineMode.isOffline, seerrState) { content, history, exit, offline, seerr ->
         val ready = seerr is SeerrState.Ready && !offline
@@ -253,18 +253,17 @@ class SearchViewModel(
     }
 
     private suspend fun searchSeerr(term: String) {
-        val repository = seerrRepository
-        if (repository == null || seerrState.value !is SeerrState.Ready) {
+        if (seerrState.value !is SeerrState.Ready) {
             content.update { it.copy(seerr = null) }
             return
         }
         content.update { it.copy(seerr = SeerrSearch.Searching) }
-        val found = when (val result = repository.search(term)) {
+        val found = when (val result = seerrRepository.search(term)) {
             // A title Seerr knows is in the library is already among the library's groups.
             is ApiResult.Success -> SeerrSearch.Found(result.value.titles.filter { it.notInLibrary() }.distinctBy { it.type to it.tmdbId })
 
             // Signed out of Seerr meanwhile: the group goes, as Seerr does.
-            is ApiResult.Failure -> if (result.error == ApiError.Unauthorized) null else SeerrSearch.Failed(SeerrMessages.UNREACHABLE_NOW)
+            is ApiResult.Failure -> if (result.error == ApiError.Unauthorized) null else SeerrSearch.Failed(SeerrMessages.forError(result.error))
         }
         content.update { it.copy(seerr = found) }
     }

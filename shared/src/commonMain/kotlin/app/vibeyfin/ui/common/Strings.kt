@@ -1020,19 +1020,19 @@ object Strings {
     val seerrChangeAddress = "Change address"
     val seerrRequestsLeft = "Requests left"
 
-    /** What is left of the quota, for the kinds that have one: "3 movies, 2 seasons". Seerr counts a show's requests in seasons. */
-    fun seerrQuotaLeft(movies: Int?, seasons: Int?) = listOfNotNull(
-        movies?.let { if (it == 1) "1 movie" else "$it movies" },
-        seasons?.let { if (it == 1) "1 season" else "$it seasons" },
-    ).joinToString(", ")
-
-    /** How often the quota starts again, when Seerr says. */
-    fun seerrQuotaPeriod(days: Int) = if (days == 1) {
-        "Every day"
-    } else if (days == 7) {
-        "Every week"
-    } else {
-        "Every $days days"
+    /**
+     * What is left of the quota, for the kinds that have one, and how often it starts again when Seerr says: "3 movies and 2 seasons
+     * this week". Seerr counts a show's requests in seasons.
+     */
+    fun seerrQuotaLeft(movies: Int?, seasons: Int?, days: Int?): String {
+        val what = listOfNotNull(movies?.let(::collectionMovieCount), seasons?.let(::seasonCount)).joinToString(" and ")
+        val often = when (days) {
+            null -> ""
+            1 -> " a day"
+            7 -> " this week"
+            else -> " every $days days"
+        }
+        return what + often
     }
 
     val seerrDisconnect = "Disconnect Seerr"
@@ -1070,6 +1070,9 @@ object Strings {
     val seerrRequestSeasons = "Request seasons"
     val seerrRequestAgain = "Request again"
     val seerrRequest4k = "Request in 4K"
+
+    /** Under Request in 4K in the poster menu. */
+    val seerrRequest4kQuota = "Uses your 4K quota"
     val seerrCancelRequest = "Cancel request"
     val seerrMoreLikeThis = "More like this"
     val seerrSeasons = "Seasons"

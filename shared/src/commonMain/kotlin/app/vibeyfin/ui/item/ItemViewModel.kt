@@ -212,8 +212,8 @@ class ItemViewModel(
     private val watch: WatchRepository,
     changes: WatchChanges,
     private val downloads: DownloadRepository,
-    private val seerr: SeerrRepository? = null,
-    private val seerrConnection: SeerrConnection? = null,
+    private val seerr: SeerrRepository,
+    private val seerrConnection: SeerrConnection,
 ) : ViewModel() {
     // Seerr's recommendations for this title, not in the library; mixed into "More like this".
     private var seerrSimilar: List<SeerrTitle> = emptyList()
@@ -515,7 +515,6 @@ class ItemViewModel(
     // Seerr's recommendations for a movie or show, when Seerr is connected (never for a kids profile, which has no Seerr). A failure
     // just leaves them out: the row is the library's, as without Seerr.
     private suspend fun loadSeerrSimilar(item: MediaItem) {
-        val seerr = seerr ?: return
         val tmdbId = item.tmdbId ?: return
         val type = when (item.kind) {
             ItemKind.Movie -> SeerrMediaType.Movie
@@ -523,8 +522,7 @@ class ItemViewModel(
             else -> return
         }
         // Seerr may still be signing in as the app starts; wait a moment for it rather than leaving its titles out
-        val state = seerrConnection?.state ?: return
-        val settled = withTimeoutOrNull(SEERR_WAIT) { state.first { it !is SeerrState.Connecting } }
+        val settled = withTimeoutOrNull(SEERR_WAIT) { seerrConnection.state.first { it !is SeerrState.Connecting } }
         if (settled !is SeerrState.Ready) return
         val page = (seerr.recommendations(type, tmdbId) as? ApiResult.Success)?.value ?: return
         seerrSimilar = page.titles.filter { it.notInLibrary() }.take(SEERR_SIMILAR_LIMIT)

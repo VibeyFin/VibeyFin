@@ -78,10 +78,8 @@ data class SeerrSettingsUiState(
     /** The profile's name on Seerr, when signed in. */
     val userName: String = "",
     val signedInWithPassword: Boolean = false,
-    /** What is left of the request quota ("3 movies, 2 seasons"); null when there is no limit or it isn't known. */
+    /** What is left of the request quota and how often it starts again ("3 movies and 2 seasons this week"); null when there is no limit or it isn't known. */
     val quotaLeft: String? = null,
-    /** How often the quota starts again ("Every week"), with [quotaLeft]. */
-    val quotaPeriod: String? = null,
     /** On [SeerrSettingsLayout.NotSignedIn], why. */
     val problem: String? = null,
     val fix: SeerrFix = SeerrFix.None,
@@ -174,8 +172,7 @@ class SeerrSettingsViewModel(
                     version = page.version,
                     userName = state.user.name,
                     signedInWithPassword = state.signedInWithPassword,
-                    quotaLeft = if (movies == null && shows == null) null else Strings.seerrQuotaLeft(movies?.remaining, shows?.remaining),
-                    quotaPeriod = (movies?.days ?: shows?.days)?.let(Strings::seerrQuotaPeriod),
+                    quotaLeft = if (movies == null && shows == null) null else Strings.seerrQuotaLeft(movies?.remaining, shows?.remaining, movies?.days ?: shows?.days),
                 )
             }
 

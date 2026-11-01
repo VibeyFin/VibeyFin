@@ -215,6 +215,52 @@ class SeerrListsTest {
     }
 
     @Test
+    fun aLaterPageThatFailsKeepsTheListAndTryAgainAsksForThatPageAlone() = runTest {
+        var secondPageUp = false
+        connected {
+            onSignedIn("GET", "/api/v1/discover/trending") { request ->
+                when {
+                    request.query["page"] != "2" -> Reply.json(page(movie(1, "Low Tide"), page = 1, pages = 2))
+                    secondPageUp -> Reply.json(page(movie(8, "Northbound"), page = 2, pages = 2))
+                    else -> Reply.status(HttpStatusCode.InternalServerError)
+                }
+            }
+        }
+        val list = viewModels.track(SeerrListViewModel(SeerrListKind.Trending, app.seerrRepository))
+        list.uiState.await { !it.loading }
+
+        list.onLoadMore()
+        val failed = list.uiState.await { it.loadMoreFailed }
+
+        // What was shown stays, and scrolling does not ask again by itself.
+        assertEquals(listOf("Low Tide"), failed.titles.map { it.title })
+        assertNull(failed.message)
+        // The page was asked for again and again (a read is tried a few times), then given up on
+        val asked = app.jellyfin.requestsTo("GET", "/api/v1/discover/trending").size
+        list.onLoadMore()
+        assertEquals(asked, app.jellyfin.requestsTo("GET", "/api/v1/discover/trending").size)
+
+        secondPageUp = true
+        list.onRetry()
+
+        val retried = list.uiState.await { it.titles.size == 2 }
+        assertEquals(listOf("Low Tide", "Northbound"), retried.titles.map { it.title })
+        assertEquals(false, retried.loadMoreFailed)
+        // The first page was not read again: only the failed page was asked for.
+        assertEquals(asked + 1, app.jellyfin.requestsTo("GET", "/api/v1/discover/trending").size)
+    }
+
+    @Test
+    fun theFirstPageFailingSaysWhyInSeerrsWords() = runTest {
+        connected {
+            onSignedIn("GET", "/api/v1/discover/movies") { Reply.status(HttpStatusCode.Forbidden) }
+        }
+        val list = viewModels.track(SeerrListViewModel(SeerrListKind.PopularMovies, app.seerrRepository))
+
+        assertEquals(SeerrMessages.FORBIDDEN, list.uiState.await { !it.loading }.message)
+    }
+
+    @Test
     fun myRequestsPageNamesEachRequestAndFiltersByState() = runTest {
         connected {
             onSignedIn("GET", "/api/v1/request") {

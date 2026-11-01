@@ -131,6 +131,15 @@ class TileMenuViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TileMenuUiState())
 
+    /** A library title known only by its id, such as an available one on a Seerr poster: its menu opens once the server has sent it. */
+    fun onOpenById(itemId: String) {
+        lookup?.cancel()
+        lookup = viewModelScope.launch {
+            val item = (library.item(itemId) as? ApiResult.Success)?.value ?: return@launch
+            onOpen(item)
+        }
+    }
+
     /** A poster was long-pressed: the menu opens at once, and the trailer row fills in when the server has answered. */
     fun onOpen(item: MediaItem) {
         lookup?.cancel()
