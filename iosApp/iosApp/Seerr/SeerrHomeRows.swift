@@ -25,13 +25,10 @@ struct SeerrTileButton: View {
     let onOpen: (SeerrTitle) -> Void
     var meta: String?
     var plainInLibrary = false
-    @Environment(\.seerrMenu) private var seerrMenu
 
     var body: some View {
         Button { onOpen(title) } label: { SeerrPosterTile(title: title, meta: meta, plainInLibrary: plainInLibrary) }
-            .buttonStyle(PressableButtonStyle())
-            .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in seerrMenu?.open(title) })
-            .accessibilityAction(named: Strings.shared.showOptions) { seerrMenu?.open(title) }
+            .seerrTileButton(title)
     }
 }
 
@@ -77,7 +74,9 @@ struct SeerrRowView: View {
                         }
                     }
                     .screenMargin()
+                    .liftRoomInside()
                 }
+                .liftRoom()
             }
         }
     }
@@ -137,7 +136,11 @@ struct SeerrListView: View {
                                     .onAppear { if index >= state.titles.count - 6 { model.loadMore() } }
                             }
                         }
-                        if state.loadingMore { ProgressView().frame(maxWidth: .infinity) }
+                        if state.loadMoreFailed {
+                            LoadErrorView(message: Strings.shared.loadMoreFailed, onRetry: { model.retry() })
+                        } else if state.loadingMore {
+                            ProgressView().frame(maxWidth: .infinity)
+                        }
                     }
                 }
                 .screenMargin()
@@ -209,7 +212,11 @@ struct MyRequestsView: View {
                                     .onAppear { if index >= state.items.count - 6 { model.loadMore() } }
                             }
                         }
-                        if state.loadingMore { ProgressView().frame(maxWidth: .infinity) }
+                        if state.loadMoreFailed {
+                            LoadErrorView(message: Strings.shared.loadMoreFailed, onRetry: { model.retry() })
+                        } else if state.loadingMore {
+                            ProgressView().frame(maxWidth: .infinity)
+                        }
                     }
                 }
                 .screenMargin()

@@ -15,15 +15,25 @@ final class SeerrMarkerTests: XCTestCase {
     func testTheMenuOpenerHoldsOneTitleAtATime() {
         let opener = SeerrMenuOpener()
         XCTAssertNil(opener.title)
-        let title = SeerrTitle(
-            tmdbId: 603, type: .movie, title: "Harbour Bridge", year: KotlinInt(int: 2025), posterUrl: nil, backdropUrl: nil, overview: nil,
+        XCTAssertNil(opener.model)
+
+        opener.open(Self.title(603))
+        XCTAssertEqual(opener.title?.tmdbId, 603)
+        let first = opener.model
+        XCTAssertNotNil(first)
+
+        // The same title again keeps what was read; another one replaces it.
+        opener.open(Self.title(603))
+        XCTAssertTrue(opener.model === first)
+        opener.open(Self.title(604))
+        XCTAssertEqual(opener.title?.tmdbId, 604)
+        XCTAssertFalse(opener.model === first)
+    }
+
+    private static func title(_ tmdbId: Int32) -> SeerrTitle {
+        SeerrTitle(
+            tmdbId: tmdbId, type: .movie, title: "Harbour Bridge", year: KotlinInt(int: 2025), posterUrl: nil, backdropUrl: nil, overview: nil,
             state: .notrequested, jellyfinItemId: nil, releaseDate: nil
         )
-
-        opener.open(title)
-        XCTAssertEqual(opener.title?.tmdbId, 603)
-
-        opener.close()
-        XCTAssertNil(opener.title)
     }
 }

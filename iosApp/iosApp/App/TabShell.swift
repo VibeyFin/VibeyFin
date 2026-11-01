@@ -190,6 +190,12 @@ struct TabShell: View {
         .environment(\.tileMenu, tileMenu)
         .onAppear {
             tileMenu.start()
+            seerrMenu.handlers = SeerrMenuHandlers(
+                details: { openSeerrFromMenu($0) },
+                trailer: { trailer in
+                    if let url = URL(string: trailer) { openURL(url) }
+                }
+            )
             tileMenu.handlers = TileMenuHandlers(
                 details: { openFromMenu($0) },
                 trailer: { trailer in
@@ -220,35 +226,17 @@ struct TabShell: View {
             Button(Strings.shared.close.titleCased(), role: .cancel) {}
         }
         .environment(\.seerrMenu, seerrMenu)
-        // The long-press menu of a Seerr poster, wherever the poster is.
-        .sheet(isPresented: Binding(get: { seerrMenu.title != nil }, set: { if !$0 { seerrMenu.close() } })) {
-            if let title = seerrMenu.title {
-                SeerrMenuSheetView(
-                    title: title,
-                    onDetails: {
-                        seerrMenu.close()
-                        openSeerrFromMenu(title)
-                    },
-                    onTrailer: { trailer in
-                        seerrMenu.close()
-                        if let url = URL(string: trailer) { openURL(url) }
-                    },
-                    onNotice: { notice in
-                        seerrMenu.noticeTitle = title
-                        seerrMenu.notice = notice
-                    },
-                    onDismiss: { seerrMenu.close() }
-                )
-            }
+        // A show's Request from a Seerr poster's menu: the season picker, over whatever screen the menu was on.
+        .sheet(isPresented: Binding(get: { seerrMenu.showsPicker }, set: { if !$0 { seerrMenu.pickerDismiss() } })) {
+            if let model = seerrMenu.model { SeerrMenuPickerSheet(model: model) }
         }
         // What a request from a Seerr poster menu came to, over whatever screen the menu was on.
         .seerrNoticeBanner(
             seerrMenu.notice,
-            showsAction: seerrMenu.notice?.action != nil,
-            // View opens the title; Try again brings the menu back for it.
+            // View opens the title; Try again sends the request again.
             onAction: {
                 guard let title = seerrMenu.noticeTitle else { return }
-                if seerrMenu.notice?.action == .tryAgain { seerrMenu.open(title) } else { openSeerrFromMenu(title) }
+                if seerrMenu.notice?.action == .tryagain { seerrMenu.retryRequest() } else { openSeerrFromMenu(title) }
             },
             onDismiss: { seerrMenu.notice = nil }
         )

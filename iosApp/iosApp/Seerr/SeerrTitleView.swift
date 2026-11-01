@@ -12,7 +12,6 @@ struct SeerrTitleView: View {
     @State private var notice: SeerrNotice?
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.openURL) private var openURL
-    @Environment(\.seerrMenu) private var seerrMenu
 
     init(type: SeerrMediaType, tmdbId: Int32, onOpenItem: @escaping (String) -> Void, onOpenSeerr: @escaping (SeerrTitle) -> Void) {
         _model = StateObject(wrappedValue: SeerrTitleObservable(type: type, tmdbId: tmdbId))
@@ -20,11 +19,16 @@ struct SeerrTitleView: View {
         self.onOpenSeerr = onOpenSeerr
     }
 
+    private var wide: Bool { sizeClass == .regular }
+
+    /// The page's side margin, as `ItemView` sets it.
+    private var margin: CGFloat { wide ? Space.s6 : Space.s4 }
+
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
             if let state = model.state, let title = state.title {
-                if sizeClass == .regular {
+                if wide {
                     wideLayout(state, title)
                 } else {
                     phoneLayout(state, title)
@@ -33,10 +37,17 @@ struct SeerrTitleView: View {
                 LoadErrorView(message: message, onRetry: { model.retry() }).screenMargin().padding(.top, 96)
                     .frame(maxHeight: .infinity, alignment: .top)
             } else {
-                ProgressView().accessibilityLabel(Strings.shared.loadingPage)
+                // The grey page, in the shapes of the real one; it fades into it, as a library title does.
+                ItemSkeleton(wide: wide, margin: margin)
+                    .transition(.opacity)
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
+        .animation(.easeInOut(duration: 0.16), value: model.state?.title?.tmdbId)
+        .environment(\.screenMarginOverride, wide ? Space.s6 : nil)
+        .backMenuTitle(model.state?.title?.title ?? "")
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        // Only the chevron, no "Back" label. The swipe from the edge still goes back.
         .toolbarRole(.editor)
         .onAppear { model.start() }
         .onChange(of: model.state?.openItem) { _, itemId in
@@ -44,7 +55,6 @@ struct SeerrTitleView: View {
             model.itemOpened()
             onOpenItem(itemId)
         }
-        // On this page "View" would lead here, so only Try again is offered.
         .onChange(of: model.state?.notice) { _, shown in
             guard let shown else { return }
             notice = shown
@@ -52,6 +62,7 @@ struct SeerrTitleView: View {
         }
         .seerrNoticeBanner(
             notice,
+            // On this page "View" would lead here, so only Try again is offered.
             showsAction: notice?.action == .tryagain,
             onAction: { model.retryRequest() },
             onDismiss: { notice = nil }
@@ -95,7 +106,7 @@ struct SeerrTitleView: View {
                         Color.clear.frame(height: proxy.size.height * 0.3)
                         hero(state, title, centered: false)
                             .frame(maxWidth: min(proxy.size.width * 0.46, 520), alignment: .leading)
-                            .padding(.horizontal, Space.s6)
+                            .padding(.horizontal, margin)
                         sections(state)
                     }
                 }
@@ -109,6 +120,7 @@ struct SeerrTitleView: View {
         VStack(alignment: centered ? .center : .leading, spacing: Space.s3) {
             Text(title.title)
                 .font(.brandDisplay)
+                .tracking(-0.8)
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(centered ? .center : .leading)
                 .lineLimit(3)
@@ -123,102 +135,80 @@ struct SeerrTitleView: View {
             if !state.genres.isEmpty {
                 Text(Strings.shared.factsLine(facts: state.genres)).font(.subheadline).foregroundStyle(.secondary)
             }
-            if let overview = state.overview {
-                Text(overview).font(.subheadline).foregroundStyle(.primary).lineLimit(4)
-                    .multilineTextAlignment(centered ? .center : .leading)
-            }
+            if let overview = state.overview { ExpandableOverview(text: overview) }
             // Who asked and what is next, once someone did.
             if let detail = state.statusDetail { Text(detail).font(.footnote).foregroundStyle(.secondary) }
             if let status4k = state.status4k { SeerrStatusLine(text: status4k, state: state.state) }
-            if let primary = state.primary { primaryRow(state, primary) }
-            HStack(spacing: Space.s4) {
-                if state.offer4k {
-                    SeerrActionButton(title: Strings.shared.seerrRequest4k, systemImage: "plus") { model.request4k() }
-                }
-                if state.cancelRequestId != nil {
-                    SeerrActionButton(title: Strings.shared.seerrCancelRequest, systemImage: "xmark") { model.cancelRequest() }
-                }
-            }
+            if let primary = state.primary { primaryButton(state, primary, centered: centered) }
+            actions(state)
         }
         .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
     }
 
-    /// The one aqua button, with the trailer beside it as Play has Start over. With nothing to do it stays, quiet and disabled,
-    /// so the page doesn't jump.
-    private func primaryRow(_ state: SeerrTitleUiState, _ primary: SeerrPrimary) -> some View {
-        HStack(spacing: Space.s3) {
-            PrimaryButton(action: { model.request() }) {
-                // A plus and the words; with nothing to do, the state's own symbol and its name.
-                if state.sending && state.picker == nil {
-                    PrimaryButtonSpinner()
-                } else {
-                    HStack(spacing: Space.s2) {
-                        if primary.enabled { Image(systemName: "plus") } else { SeerrStateSymbol(state: state.state) }
-                        Text(primary.label.titleCased()).lineLimit(1)
-                    }
+    /// The one aqua button, sized as Play is. With nothing to do it stays, quiet and disabled, so the page doesn't jump.
+    private func primaryButton(_ state: SeerrTitleUiState, _ primary: SeerrPrimary, centered: Bool) -> some View {
+        PrimaryButton(action: { model.request() }) {
+            // A plus and the words; with nothing to do, the state's own symbol and its name.
+            if state.sending && state.picker == nil {
+                PrimaryButtonSpinner()
+            } else {
+                HStack(spacing: Space.s2) {
+                    if primary.enabled { Image(systemName: "plus") } else { SeerrStateSymbol(state: state.state) }
+                    Text(primary.label.titleCased()).lineLimit(1)
                 }
             }
-            .disabled(!primary.enabled)
+        }
+        .disabled(!primary.enabled)
+        .frame(maxWidth: centered ? .infinity : 260)
+    }
+
+    /// The actions under the primary button, in the library page's row: Trailer (only when there is one), Request in 4K and Cancel
+    /// request, each an icon over a label, in the same places.
+    private func actions(_ state: SeerrTitleUiState) -> some View {
+        ActionRowLayout {
             if let trailer = state.trailerUrl, let url = URL(string: trailer) {
-                Button { openURL(url) } label: { Image(systemName: "play.rectangle").font(.title3) }
-                    .buttonStyle(.bordered)
-                    .buttonBorderShape(.circle)
-                    .controlSize(.large)
-                    .tint(.primary)
-                    .accessibilityLabel(Strings.shared.trailer)
+                HeroActionButton(label: Strings.shared.trailer, description: Strings.shared.trailer, systemImage: "film") { openURL(url) }
+            }
+            if state.offer4k {
+                HeroActionButton(label: Strings.shared.seerrRequest4k, description: Strings.shared.seerrRequest4k, systemImage: "plus") { model.request4k() }
+            }
+            if state.cancelRequestId != nil {
+                HeroActionButton(label: Strings.shared.seerrCancelRequest, description: Strings.shared.seerrCancelRequest, systemImage: "xmark") { model.cancelRequest() }
             }
         }
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
     private func sections(_ state: SeerrTitleUiState) -> some View {
         VStack(alignment: .leading, spacing: Space.s5) {
-            if !state.seasons.isEmpty { SeerrSeasonsView(state: state, model: model) }
+            if !state.seasons.isEmpty { SeerrSeasonsView(state: state, wide: wide, margin: margin, model: model) }
             if !state.cast.isEmpty {
-                VStack(alignment: .leading, spacing: Space.s2) {
-                    Text(Strings.shared.cast.titleCased()).sectionTitle().accessibilityAddTraits(.isHeader)
-                    // Not tappable: these people have no page in the library.
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        // The library page's sizes: bigger circles at a regular width.
-                        let tile: CGFloat = sizeClass == .regular ? 112 : 88
-                        HStack(alignment: .top, spacing: Space.s3) {
-                            ForEach(state.cast, id: \.id) { person in
-                                VStack(spacing: Space.s1) {
-                                    PortraitView(name: person.name, imageUrl: person.photoUrl, size: tile, initialsFont: .headline)
-                                    // Names take two lines and parts one, always, so the row keeps one height.
-                                    Text(person.name)
-                                        .font(.caption.weight(.medium))
-                                        .multilineTextAlignment(.center)
-                                        .lineLimit(2, reservesSpace: true)
-                                    Text(person.character ?? "")
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                        .multilineTextAlignment(.center)
-                                        .lineLimit(1, reservesSpace: true)
-                                }
-                                .frame(width: tile)
-                                .accessibilityElement(children: .combine)
-                            }
-                        }
-                    }
-                }
+                // Not tappable: these people have no page in the library.
+                CastSectionView(
+                    cast: state.cast.map { CastPerson(id: String($0.id), name: $0.name, role: $0.character, imageUrl: $0.photoUrl) },
+                    tile: wide ? 112 : 88,
+                    margin: margin
+                )
             }
             if !state.moreLikeThis.isEmpty {
-                VStack(alignment: .leading, spacing: Space.s2) {
-                    Text(Strings.shared.seerrMoreLikeThis.titleCased()).sectionTitle().accessibilityAddTraits(.isHeader)
+                VStack(alignment: .leading, spacing: Space.s3) {
+                    Text(Strings.shared.seerrMoreLikeThis.titleCased()).sectionTitle().lineLimit(1).accessibilityAddTraits(.isHeader).screenMargin()
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(alignment: .top, spacing: Space.s3) {
+                        LazyHStack(alignment: .top, spacing: Space.s3) {
                             ForEach(state.moreLikeThis, id: \.self) { title in
                                 // A title the library has opens the library's page.
                                 Button { onOpenSeerr(title) } label: { SeerrPosterTile(title: title) }
-                                    .buttonStyle(PressableButtonStyle())
-                                    .frame(width: sizeClass == .regular ? 168 : 112)
-                                    .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in seerrMenu?.open(title) })
-                                    .accessibilityAction(named: Strings.shared.showOptions) { seerrMenu?.open(title) }
+                                    .seerrTileButton(title)
+                                    .frame(width: wide ? 168 : 112)
                             }
                         }
+                        .screenMargin()
+                        .liftRoomInside()
                     }
+                    .liftRoom()
                 }
+                .padding(.horizontal, -margin)
             }
         }
         .screenMargin()
@@ -241,25 +231,6 @@ struct SeerrStatusLine: View {
     }
 }
 
-/// One of the actions under the primary button: a symbol over a short label, as on the detail page.
-private struct SeerrActionButton: View {
-    let title: String
-    let systemImage: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: Space.s1) {
-                Image(systemName: systemImage).font(.title2)
-                Text(title.titleCased()).font(.caption.weight(.medium)).lineLimit(1)
-            }
-            .foregroundStyle(.primary)
-            .frame(minWidth: 64, minHeight: 64)
-        }
-        .buttonStyle(PressableButtonStyle())
-    }
-}
-
 /// The state as a tag: its symbol alone on a quiet round chip, in the primary colour (a failure in red); never aqua. `text` is what
 /// VoiceOver says.
 struct SeerrStateTag: View {
@@ -276,31 +247,25 @@ struct SeerrStateTag: View {
     }
 }
 
-/// As on a library show's page: season buttons, the chosen season's state, then its episodes as cards with their text on the
-/// still. Seerr's episodes don't play: they show what you'd be asking for.
+/// As on a library show's page: season buttons, then the chosen season's episodes, down the page on a phone and as cards in a row
+/// on a regular width. Seerr's episodes don't play: they show what you'd be asking for.
 private struct SeerrSeasonsView: View {
     let state: SeerrTitleUiState
+    let wide: Bool
+    let margin: CGFloat
     @ObservedObject var model: SeerrTitleObservable
 
+    /// Episode cards: 300 wide on a phone, 380 on a regular width.
+    private var cardWidth: CGFloat { wide ? 380 : 300 }
+
     var body: some View {
-        let chosen = state.episodes?.season
         VStack(alignment: .leading, spacing: Space.s3) {
-            Text(Strings.shared.seerrSeasons.titleCased()).sectionTitle().accessibilityAddTraits(.isHeader)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Space.s2) {
-                    ForEach(state.seasons, id: \.number) { season in
-                        let selected = season.number == chosen
-                        Button { model.selectSeason(season.number) } label: {
-                            Text(season.name).font(.subheadline.weight(.semibold)).lineLimit(1)
-                                .padding(.horizontal, Space.s4).padding(.vertical, Space.s2)
-                                .foregroundStyle(selected ? Brand.onAccentSoft : Color.secondary)
-                                .background(selected ? Brand.accentSoft : Color(.secondarySystemBackground), in: Capsule())
-                        }
-                        .buttonStyle(PressableButtonStyle())
-                        .accessibilityAddTraits(selected ? .isSelected : [])
-                    }
-                }
-            }
+            SeasonButtonsRow(
+                seasons: state.seasons.map { SeasonButton(id: $0.number, label: $0.name) },
+                selectedId: state.episodes?.season,
+                margin: margin,
+                onSelect: { model.selectSeason($0) }
+            )
             episodes
         }
     }
@@ -310,50 +275,50 @@ private struct SeerrSeasonsView: View {
         if let episodes = state.episodes, let message = episodes.message {
             LoadErrorView(message: message, onRetry: { model.retryEpisodes() })
         } else if let episodes = state.episodes, !episodes.loading || !episodes.episodes.isEmpty {
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: Space.s3) {
-                    ForEach(episodes.episodes, id: \.number) { episode in SeerrEpisodeCard(episode: episode) }
+            if wide {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: Space.s4) {
+                        ForEach(episodes.episodes, id: \.number) { SeerrEpisodeCardView(episode: $0, width: cardWidth) }
+                    }
+                    .padding(.horizontal, margin)
+                    .liftRoomInside()
+                }
+                .padding(.horizontal, -margin)
+                .liftRoom()
+            } else {
+                // A phone lists the episodes down the page.
+                VStack(spacing: Space.s4) {
+                    ForEach(episodes.episodes, id: \.number) { SeerrEpisodeRowView(episode: $0) }
                 }
             }
+        } else if wide {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Space.s4) {
+                    ForEach(0..<3, id: \.self) { _ in SkeletonBlock().frame(width: cardWidth).aspectRatio(1.6, contentMode: .fit) }
+                }
+                .padding(.horizontal, margin)
+            }
+            .padding(.horizontal, -margin)
+            .scrollDisabled(true)
         } else {
-            HStack(spacing: Space.s3) {
-                ForEach(0..<2, id: \.self) { _ in SkeletonBlock().frame(width: 300, height: 300 / 1.6) }
+            VStack(spacing: Space.s4) {
+                ForEach(0..<3, id: \.self) { _ in SeerrEpisodeRowSkeleton() }
             }
         }
     }
 }
 
-private struct SeerrEpisodeCard: View {
-    let episode: SeerrEpisode
-
+private struct SeerrEpisodeRowSkeleton: View {
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            Artwork(url: episode.stillUrl, title: episode.title, aspectRatio: 1.6, blurHash: nil)
-            LinearGradient(
-                stops: [.init(color: .clear, location: 0.4), .init(color: .black.opacity(0.55), location: 0.75), .init(color: .black.opacity(0.78), location: 1)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            VStack(alignment: .leading, spacing: Space.s1) {
-                if let tag = Strings.shared.episodeTag(season: KotlinInt(int: episode.season), episode: KotlinInt(int: episode.number)) {
-                    Text(tag).font(.caption2.weight(.semibold)).padding(.horizontal, 6).padding(.vertical, 2)
-                        .background(Brand.scrim, in: RoundedRectangle(cornerRadius: 6))
-                }
-                Text(episode.title).font(.headline).lineLimit(1)
-                // Two lines, always, so every card in the row is the same.
-                Text(episode.overview ?? "").font(.subheadline).lineLimit(2, reservesSpace: true)
-                HStack {
-                    if let rating = episode.rating { Text(Strings.shared.ratingTag(rating: rating.doubleValue)).font(.caption.weight(.semibold)) }
-                    Spacer()
-                    if let date = Strings.shared.releaseDate(iso: episode.airDate) { Text(date).font(.caption).foregroundStyle(.white.opacity(0.75)) }
-                }
+        HStack(alignment: .top, spacing: Space.s3) {
+            SkeletonBlock().frame(width: 148).aspectRatio(1.6, contentMode: .fit)
+            VStack(alignment: .leading, spacing: Space.s2) {
+                SkeletonLine(font: .headline, width: 140)
+                SkeletonLine(font: .caption, width: 90)
+                SkeletonLine(font: .subheadline, width: nil)
+                SkeletonLine(font: .subheadline, width: 120)
             }
-            .foregroundStyle(.white)
-            .padding(Space.s3)
         }
-        .frame(width: 300, height: 300 / 1.6)
-        .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
-        .accessibilityElement(children: .combine)
     }
 }
 

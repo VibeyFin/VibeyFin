@@ -99,7 +99,7 @@ struct SeerrSettingsView: View {
                 LabeledContent {
                     Text(left)
                 } label: {
-                    SeerrRowText(title: Strings.shared.seerrRequestsLeft, help: state.quotaPeriod)
+                    SeerrRowText(title: Strings.shared.seerrRequestsLeft, help: nil)
                 }
             }
         }

@@ -10,7 +10,6 @@ struct SearchView: View {
     var onOpenSeerr: (SeerrTitle) -> Void = { _ in }
     let onOpenResult: (SearchResult) -> Void
     let onExit: (HomeExit) -> Void
-    @Environment(\.seerrMenu) private var seerrMenu
 
     var body: some View {
         ZStack {
@@ -191,9 +190,7 @@ struct SearchView: View {
                             model.resultOpened()
                             onOpenSeerr(title)
                         } label: { SeerrPosterTile(title: title) }
-                            .buttonStyle(PressableButtonStyle())
-                            .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in seerrMenu?.open(title) })
-                            .accessibilityAction(named: Strings.shared.showOptions) { seerrMenu?.open(title) }
+                            .seerrTileButton(title)
                     }
                 } else {
                     ForEach(0..<3, id: \.self) { _ in SeerrPosterPlaceholder() }

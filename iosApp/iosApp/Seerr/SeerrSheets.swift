@@ -1,302 +1,132 @@
 import SwiftUI
 import Shared
 
-/// Opens the Seerr poster menu from a long press anywhere in the tabs. The tab shell owns it and presents the menu; a request from
-/// the menu leaves its message here for the shell's banner.
-final class SeerrMenuOpener: ObservableObject {
-    /// The title whose menu is open.
-    @Published var title: SeerrTitle?
-    /// What the last request from a menu came to, with the title it was for (for View).
-    @Published var notice: SeerrNotice?
-    @Published var noticeTitle: SeerrTitle?
-
-    func open(_ title: SeerrTitle) { self.title = title }
-
-    func close() { title = nil }
-}
-
-private struct SeerrMenuKey: EnvironmentKey {
-    static let defaultValue: SeerrMenuOpener? = nil
-}
-
-extension EnvironmentValues {
-    /// The Seerr poster menu the tab shell owns, so a Seerr poster anywhere can open it with a long press.
-    var seerrMenu: SeerrMenuOpener? {
-        get { self[SeerrMenuKey.self] }
-        set { self[SeerrMenuKey.self] = newValue }
-    }
-}
-
-/// The menu a long press on a Seerr poster opens: the status (once someone asked), Request, Request in 4K, Details, Trailer, Cancel
-/// request. It has its own model for as long as it is open. A show's Request swaps it for the season picker. A request ends it: its
-/// message goes to `onNotice`, which the shell shows.
-struct SeerrMenuSheetView: View {
-    let title: SeerrTitle
-    let onDetails: () -> Void
-    let onTrailer: (String) -> Void
-    let onNotice: (SeerrNotice) -> Void
-    let onDismiss: () -> Void
-    @StateObject private var model: SeerrTitleObservable
-
-    init(title: SeerrTitle, onDetails: @escaping () -> Void, onTrailer: @escaping (String) -> Void, onNotice: @escaping (SeerrNotice) -> Void, onDismiss: @escaping () -> Void) {
-        self.title = title
-        self.onDetails = onDetails
-        self.onTrailer = onTrailer
-        self.onNotice = onNotice
-        self.onDismiss = onDismiss
-        _model = StateObject(wrappedValue: SeerrTitleObservable(type: title.type, tmdbId: title.tmdbId))
-    }
-
-    var body: some View {
-        Group {
-            if let picker = model.state?.picker {
-                SeerrSeasonPickerView(picker: picker, sending: model.state?.sending == true, model: model)
-            } else {
-                menu
-            }
-        }
-        .onAppear { model.start() }
-        .onChange(of: model.state?.notice) { _, notice in
-            guard let notice else { return }
-            model.noticeShown()
-            onNotice(notice)
-            onDismiss()
-        }
-    }
-
-    private var menu: some View {
-        let state = model.state
-        return VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: Space.s3) {
-                Artwork(url: title.posterUrl, title: title.title, aspectRatio: 2.0 / 3.0, blurHash: nil)
-                    .frame(width: 40)
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title.title).font(.headline).lineLimit(2).accessibilityAddTraits(.isHeader)
-                    Text(state?.menuSubtitle.isEmpty == false ? state!.menuSubtitle : Strings.shared.seerrMenuSubtitle(meta: Strings.shared.seerrTitleMeta(year: title.year, type: title.type), state: title.state))
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            .padding(.horizontal, Space.s5)
-            .padding(.bottom, Space.s3)
-            Divider().padding(.horizontal, Space.s5)
-            if let state, !state.loading {
-                if let status = state.menuStatus {
-                    // Someone asked for it: where it stands is a row of its own, not a button.
-                    row(status, detail: state.menuStatusDetail, systemImage: SeerrMarker.symbol(state.state), action: nil)
-                }
-                if state.canRequest {
-                    row((state.primary?.label ?? Strings.shared.seerrRequest).titleCased(), systemImage: "plus") { model.request() }
-                    if state.offer4k { row(Strings.shared.seerrRequest4k.titleCased(), systemImage: "plus") { model.request4k() } }
-                }
-                row(Strings.shared.details.titleCased(), systemImage: "info.circle", action: onDetails)
-                if let trailer = state.trailerUrl {
-                    row(Strings.shared.trailer.titleCased(), systemImage: "play.rectangle") { onTrailer(trailer) }
-                }
-                if state.cancelRequestId != nil {
-                    row(Strings.shared.seerrCancelRequest.titleCased(), systemImage: "xmark") { model.cancelRequest() }
-                }
-            } else {
-                // Every row comes at once, so none appears late under a finger.
-                ForEach(0..<3, id: \.self) { _ in
-                    SkeletonLine(font: .body, width: 140).frame(minHeight: 52).padding(.horizontal, Space.s5)
-                }
-            }
-        }
-        .padding(.top, Space.s5)
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-    }
-
-    @ViewBuilder
-    private func row(_ title: String, detail: String? = nil, systemImage: String, action: (() -> Void)?) -> some View {
-        let label = HStack(spacing: Space.s4) {
-            Image(systemName: systemImage).frame(width: 24).foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).foregroundStyle(action == nil ? .secondary : .primary)
-                if let detail { Text(detail).font(.caption).foregroundStyle(.secondary) }
-            }
-            Spacer(minLength: 0)
-        }
-        .frame(minHeight: 52)
-        .padding(.horizontal, Space.s5)
-        .contentShape(Rectangle())
-        if let action {
-            Button(action: action) { label }.buttonStyle(PressableButtonStyle())
-        } else {
-            label.accessibilityElement(children: .combine)
-        }
-    }
-}
-
-/// The season picker a show's Request opens: 4K when allowed, All missing seasons, each season with a checkmark, and one aqua button.
+/// The request sheet a Request opens (a show's season picker, or a movie's quality choice): its title, the choices that apply (4K,
+/// quality, All missing seasons), one row per season with a tick, and one aqua button saying what will be asked for.
 struct SeerrSeasonPickerView: View {
     let picker: SeerrSeasonPicker
     let sending: Bool
     @ObservedObject var model: SeerrTitleObservable
 
     var body: some View {
-        NavigationStack {
-            List {
-                if picker.offer4k {
-                    Section {
-                        Picker(Strings.shared.seerrQuality, selection: Binding(get: { picker.is4k }, set: { model.pickerQuality($0) })) {
-                            Text(Strings.shared.seerrStandard).tag(false)
-                            Text(Strings.shared.seerr4k).tag(true)
-                        }
-                        .pickerStyle(.segmented)
-                    }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: Space.s1) {
+                    Text(picker.title.titleCased()).font(.headline).accessibilityAddTraits(.isHeader)
+                    Text(picker.subtitle).font(.subheadline).foregroundStyle(.secondary)
                 }
-                // The quality to ask for, for whoever may choose it: the server's quality profiles, its default picked.
-                if picker.qualitiesLoading || !picker.qualities.isEmpty {
-                    Section {
-                        if picker.qualitiesLoading {
-                            LabeledContent(Strings.shared.seerrQuality) { ProgressView() }
-                        } else {
-                            // A plain dropdown of the server's quality profiles, no search; the default is chosen to begin with.
-                            Picker(
-                                Strings.shared.seerrQuality,
-                                selection: Binding(
-                                    get: { picker.qualities.first(where: { $0.selected })?.id ?? -1 },
-                                    set: { model.pickerProfile($0) }
-                                )
-                            ) {
-                                ForEach(picker.qualities, id: \.id) { quality in Text(quality.name).tag(quality.id) }
-                            }
-                            .pickerStyle(.menu)
-                        }
-                    }
-                }
+                .padding(.horizontal, Space.s5)
+                .padding(.top, Space.s5)
+                .padding(.bottom, Space.s3)
+                choices
                 if picker.showsSeasons {
-                Section {
-                    Toggle(Strings.shared.seerrAllMissingSeasons, isOn: Binding(get: { picker.allMissing }, set: { model.pickerAllMissing($0) }))
-                        .tint(Color(.systemGray))
-                }
-                Section {
-                    // A grid of tiles, so twenty seasons fit on a screen.
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 60), spacing: Space.s2)], spacing: Space.s2) {
-                        ForEach(picker.seasons, id: \.number) { season in
-                            SeerrSeasonTile(season: season) { model.pickerSeason(season.number) }
-                        }
-                    }
-                    .padding(.vertical, Space.s2)
-                }
+                    ForEach(picker.seasons, id: \.number) { season in seasonRow(season) }
                 }
             }
-            .listStyle(.insetGrouped)
-            .safeAreaInset(edge: .bottom) {
-                // A plus and what it will ask for ("Request 2 seasons").
-                PrimaryButton(action: { model.pickerConfirm() }) {
-                    if sending {
-                        PrimaryButtonSpinner()
-                    } else {
-                        Label(picker.confirmLabel.titleCased(), systemImage: "plus").lineLimit(1)
-                    }
+            .padding(.bottom, Space.s3)
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .safeAreaInset(edge: .bottom) {
+            // A plus and what it will ask for ("Request 2 seasons").
+            PrimaryButton(action: { model.pickerConfirm() }) {
+                if sending {
+                    PrimaryButtonSpinner()
+                } else {
+                    Label(picker.confirmLabel.titleCased(), systemImage: "plus").lineLimit(1)
                 }
-                .disabled(!picker.canConfirm && !sending)
-                .padding(Space.s4)
-                .background(.bar)
             }
-            .navigationTitle(picker.title.titleCased())
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    VStack(spacing: 0) {
-                        Text(picker.title.titleCased()).font(.headline)
-                        Text(picker.subtitle).font(.caption).foregroundStyle(.secondary)
-                    }
+            .disabled(!picker.canConfirm && !sending)
+            .padding(.horizontal, Space.s5)
+            .padding(.vertical, Space.s3)
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    /// Standard or 4K, the server's quality profile (for whoever may choose), and All missing seasons, divided by hairlines.
+    @ViewBuilder
+    private var choices: some View {
+        if picker.offer4k {
+            Picker(Strings.shared.seerrQuality, selection: Binding(get: { picker.is4k }, set: { model.pickerQuality($0) })) {
+                Text(Strings.shared.seerrStandard).tag(false)
+                Text(Strings.shared.seerr4k).tag(true)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, Space.s5)
+            .padding(.vertical, Space.s2)
+        }
+        if picker.qualitiesLoading {
+            row { Text(Strings.shared.seerrQuality); Spacer(); ProgressView() }
+        } else if !picker.qualities.isEmpty {
+            row {
+                Text(Strings.shared.seerrQuality)
+                Spacer()
+                Picker(
+                    Strings.shared.seerrQuality,
+                    selection: Binding(get: { picker.qualities.first(where: { $0.selected })?.id ?? -1 }, set: { model.pickerProfile($0) })
+                ) {
+                    ForEach(picker.qualities, id: \.id) { quality in Text(quality.name).tag(quality.id) }
                 }
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(Strings.shared.cancel.titleCased()) { model.pickerDismiss() }
-                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .tint(.secondary)
             }
         }
-        .presentationDetents([.large])
-    }
-}
-
-/// What a request came to, at the bottom of the screen: the failure banner's capsule on the system material, with View or Try again
-/// when [showsAction]. Never a dialog; it goes by itself after a few seconds.
-private struct SeerrNoticeBanner: ViewModifier {
-    let notice: SeerrNotice?
-    let showsAction: Bool
-    let onAction: () -> Void
-    let onDismiss: () -> Void
-
-    func body(content: Content) -> some View {
-        content
-            .overlay(alignment: .bottom) {
-                if let notice {
-                    HStack(spacing: Space.s3) {
-                        Text(notice.text)
-                            .font(.subheadline)
-                            .foregroundStyle(.primary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        if showsAction, let label = notice.actionLabel {
-                            Button(label.titleCased()) {
-                                onDismiss()
-                                onAction()
-                            }
-                            .buttonStyle(PressableButtonStyle())
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                        }
-                    }
-                    .padding(Space.s4)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
-                    .padding(Space.s4)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .task(id: notice.text) {
-                        try? await Task.sleep(nanoseconds: 5_000_000_000)
-                        onDismiss()
-                    }
-                }
+        if picker.showsSeasons {
+            row {
+                Toggle(Strings.shared.seerrAllMissingSeasons, isOn: Binding(get: { picker.allMissing }, set: { model.pickerAllMissing($0) }))
+                    .tint(Brand.accent)
             }
-            .animation(.default, value: notice?.text)
+            Divider().padding(.horizontal, Space.s5)
+        }
+    }
+
+    /// A season: its name and episode count, and at the end a tick once chosen; one that can't be asked for (available, requested)
+    /// is muted and shows its state instead.
+    @ViewBuilder
+    private func seasonRow(_ season: SeerrPickerSeason) -> some View {
+        let content = HStack(spacing: Space.s4) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(season.name).foregroundStyle(season.locked ? Color.secondary : Color.primary)
+                Text(season.episodes).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+            if season.locked, let label = season.stateLabel {
+                Label { Text(label) } icon: { SeerrStateSymbol(state: season.state) }
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
+                Image(systemName: "checkmark")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 22)
+                    .opacity(season.selected ? 1 : 0)
+            }
+        }
+        .padding(.horizontal, Space.s5)
+        .frame(minHeight: 52)
+        .contentShape(Rectangle())
+        if season.locked {
+            content.accessibilityElement(children: .ignore).accessibilityLabel(season.description_)
+        } else {
+            Button { model.pickerSeason(season.number) } label: { content }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(season.description_)
+                .accessibilityAddTraits(season.selected ? [.isButton, .isSelected] : .isButton)
+        }
+    }
+
+    private func row<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        HStack(spacing: Space.s3) { content() }
+            .padding(.horizontal, Space.s5)
+            .frame(minHeight: 52)
     }
 }
 
 extension View {
-    func seerrNoticeBanner(_ notice: SeerrNotice?, showsAction: Bool, onAction: @escaping () -> Void, onDismiss: @escaping () -> Void) -> some View {
-        modifier(SeerrNoticeBanner(notice: notice, showsAction: showsAction, onAction: onAction, onDismiss: onDismiss))
-    }
-}
-
-/// A season in the request sheet: its number large, the episode count under it. A chosen one is filled with a tick; one that can't be
-/// asked for (available, requested) is dimmed and shows its state's symbol.
-struct SeerrSeasonTile: View {
-    let season: SeerrPickerSeason
-    let onToggle: () -> Void
-
-    var body: some View {
-        Button(action: onToggle) {
-            VStack(spacing: 2) {
-                Text(season.tile).font(.title3.weight(.semibold))
-                Text(season.tileEpisodes).font(.caption2)
-            }
-            .foregroundStyle(season.selected ? Color(.systemBackground) : (season.locked ? Color.secondary : Color.primary))
-            .frame(maxWidth: .infinity)
-            .aspectRatio(1, contentMode: .fit)
-            .background(
-                RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
-                    .fill(season.selected ? Color.primary : Color(.tertiarySystemFill))
-            )
-            .overlay(alignment: .topTrailing) {
-                Group {
-                    if season.selected {
-                        Image(systemName: "checkmark").foregroundStyle(Color(.systemBackground))
-                    } else if season.locked {
-                        SeerrStateSymbol(state: season.state).foregroundStyle(.secondary)
-                    }
-                }
-                .font(.caption2.weight(.bold))
-                .padding(6)
-            }
-        }
-        .buttonStyle(.plain)
-        .disabled(season.locked)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(season.description)
-        .accessibilityAddTraits(season.selected ? .isSelected : [])
+    /// What a request came to, as the failure banner: with View or Try again when the notice has an action, otherwise just the words.
+    func seerrNoticeBanner(_ notice: SeerrNotice?, showsAction: Bool = true, onAction: @escaping () -> Void, onDismiss: @escaping () -> Void) -> some View {
+        failureBanner(notice?.text, actionLabel: showsAction ? notice?.actionLabel : nil, onRetry: onAction, onDismiss: onDismiss)
     }
 }
