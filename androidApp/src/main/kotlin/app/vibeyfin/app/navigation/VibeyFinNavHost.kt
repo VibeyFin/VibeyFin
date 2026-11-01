@@ -226,7 +226,7 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
         val seerrNotices = remember { SnackbarHostState() }
 
         seerrMenu?.let { title ->
-            SeerrMenuHost(title, navController, seerrNotices, openTrailerUrl) { seerrMenu = null }
+            SeerrMenuHost(title, navController, seerrNotices, openTrailerUrl, onReopen = { seerrMenu = it }) { seerrMenu = null }
         }
 
         Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
@@ -401,7 +401,14 @@ internal fun NavHostController.openSeerr(title: SeerrTitle) {
 
 // The Seerr poster menu, over the whole app; what a request came to shows in the snackbar under it
 @Composable
-private fun SeerrMenuHost(title: SeerrTitle, navController: NavHostController, notices: SnackbarHostState, openTrailerUrl: (String) -> Unit, onClose: () -> Unit) {
+private fun SeerrMenuHost(
+    title: SeerrTitle,
+    navController: NavHostController,
+    notices: SnackbarHostState,
+    openTrailerUrl: (String) -> Unit,
+    onReopen: (SeerrTitle) -> Unit,
+    onClose: () -> Unit,
+) {
     val scope = rememberCoroutineScope()
 
     SeerrMenuSheet(
@@ -416,10 +423,16 @@ private fun SeerrMenuHost(title: SeerrTitle, navController: NavHostController, n
         },
         onNotice = { notice ->
             scope.launch {
-                val view = notice.action == SeerrNoticeAction.View
-                val result = notices.showSnackbar(notice.text, actionLabel = if (view) notice.actionLabel else null, duration = SnackbarDuration.Short)
+                val result = notices.showSnackbar(notice.text, actionLabel = notice.actionLabel, duration = SnackbarDuration.Short)
 
-                if (view && result == SnackbarResult.ActionPerformed) navController.openSeerr(title)
+                // View opens the title; Try again brings the menu back for it (the request is one tap away again)
+                if (result == SnackbarResult.ActionPerformed) {
+                    when (notice.action) {
+                        SeerrNoticeAction.View -> navController.openSeerr(title)
+                        SeerrNoticeAction.TryAgain -> onReopen(title)
+                        null -> Unit
+                    }
+                }
             }
         },
         onDismiss = onClose,

@@ -251,8 +251,12 @@ struct TabShell: View {
         // What a request from a Seerr poster menu came to, over whatever screen the menu was on.
         .seerrNoticeBanner(
             seerrMenu.notice,
-            showsAction: seerrMenu.notice?.action == .view,
-            onAction: { if let title = seerrMenu.noticeTitle { openSeerrFromMenu(title) } },
+            showsAction: seerrMenu.notice?.action != nil,
+            // View opens the title; Try again brings the menu back for it.
+            onAction: {
+                guard let title = seerrMenu.noticeTitle else { return }
+                if seerrMenu.notice?.action == .tryAgain { seerrMenu.open(title) } else { openSeerrFromMenu(title) }
+            },
             onDismiss: { seerrMenu.notice = nil }
         )
         .environment(\.playerSession, player)
