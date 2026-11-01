@@ -1,3 +1,5 @@
+import com.android.build.api.variant.HostTestBuilder
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -37,7 +39,11 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 shrinks and optimizes the app; Compose in particular runs noticeably smoother for it. The app has no reflection of
+            // its own, and the libraries bring their own keep rules.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
             signingConfigs.findByName("release")?.let { signingConfig = it }
         }
         // What to install to judge how smooth the app is: the release build (not debuggable, so Compose and the runtime skip their
@@ -50,10 +56,27 @@ android {
         }
     }
 
+    // Compose Preview reads the compiled resources through the unit test classpath
+    testOptions.unitTests.isIncludeAndroidResources = true
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+}
+
+@Suppress("UnstableApiUsage")
+androidComponents {
+    // The baseline profile plugin turns unit tests off for the release and benchmark build types, but Compose Preview needs them on
+    // every variant and fails IDE sync otherwise.
+    beforeVariants(selector().all()) {
+        it.hostTests[HostTestBuilder.UNIT_TEST_TYPE]?.enable = true
+    }
+}
+
+baselineProfile {
+    // One profile in src/main, so the benchmark build gets it as well as release
+    mergeIntoMain = true
 }
 
 dependencies {
