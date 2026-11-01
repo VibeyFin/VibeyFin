@@ -195,7 +195,7 @@ data class RequestQuota(
 }
 
 /** A quality a request can ask for: a Radarr or Sonarr quality profile ("HD-1080p"). */
-data class QualityProfile(val id: Int, val name: String)
+data class QualityProfile(val id: Int, val name: String?)
 
 /** The qualities offered for one kind and quality tier, on the server Seerr would use, and the one it uses by default. */
 data class QualityOptions(

@@ -474,7 +474,7 @@ class SeerrTitleViewModel(
     }
 
     private fun menuDetail(state: RequestState, latest: SeerrRequest?): String {
-        val days = latest?.createdAt?.let { ((clock.now() - it) / 1.days).toInt().coerceAtLeast(0) }
+        val days = daysSince(clock, latest?.createdAt)
         return Strings.seerrMenuStatusDetail(state, latest?.byMe == true, latest?.takeIf { !it.byMe }?.requestedBy, days)
     }
 
@@ -520,12 +520,12 @@ class SeerrTitleViewModel(
         return SeerrSeasonPicker(
             title = if (movie) Strings.seerrRequest else Strings.seerrRequestSeasons,
             subtitle = if (movie) {
-                details?.title?.let { Strings.seerrTitleMeta(it.year, it.type).let { meta -> "${it.title} \u00b7 $meta" } }.orEmpty()
+                details?.title?.let { Strings.seerrPickerMovieSubtitle(it.title, Strings.seerrTitleMeta(it.year, it.type)) }.orEmpty()
             } else {
                 Strings.seerrPickerSubtitle(details?.title?.title.orEmpty(), details?.seasons.orEmpty().count { it.number != 0 })
             },
             showsSeasons = !movie,
-            qualities = options?.profiles.orEmpty().map { SeerrQualityRow(it.id, it.name, selected = it.id == selectedProfile) },
+            qualities = options?.profiles.orEmpty().map { SeerrQualityRow(it.id, it.name ?: Strings.seerrQualityNumber(it.id), selected = it.id == selectedProfile) },
             qualitiesLoading = is4k in qualitiesLoading,
             allMissing = allMissing,
             offer4k = offer4k,

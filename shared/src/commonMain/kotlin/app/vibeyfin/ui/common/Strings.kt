@@ -1092,6 +1092,15 @@ object Strings {
 
     fun seerrPickerSubtitle(title: String, seasons: Int) = "$title \u00b7 ${seasonCount(seasons)}"
 
+    /** The request sheet's subtitle for a movie: "Low Tide · 2025 · Movie". */
+    fun seerrPickerMovieSubtitle(title: String, meta: String) = "$title \u00b7 $meta"
+
+    /** A quality profile Seerr sent without a name, by its number: "Profile 4". */
+    fun seerrQualityNumber(id: Int) = "Profile $id"
+
+    /** What a screen reader says for a Seerr page's state tag and facts: "Requested, 2025, PG-13, 1 h 36 min". */
+    fun seerrTagDescription(status: String?, facts: List<String>) = listOfNotNull(status, factsLine(facts).takeIf { facts.isNotEmpty() }).joinToString(", ")
+
     fun seerrRequested(title: String) = "Requested $title"
 
     /**

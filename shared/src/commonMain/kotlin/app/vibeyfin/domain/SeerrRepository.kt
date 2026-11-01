@@ -166,7 +166,7 @@ class SeerrRepository(private val seerr: SeerrConnection) {
                     api.service(movies, server.id).map { details ->
                         QualityOptions(
                             serverId = server.id,
-                            profiles = details.profiles.map { QualityProfile(it.id, it.name?.takeIf(String::isNotBlank) ?: "#${it.id}") },
+                            profiles = details.profiles.map { QualityProfile(it.id, it.name?.takeIf(String::isNotBlank)) },
                             defaultProfileId = details.server?.activeProfileId ?: server.activeProfileId,
                         )
                     }

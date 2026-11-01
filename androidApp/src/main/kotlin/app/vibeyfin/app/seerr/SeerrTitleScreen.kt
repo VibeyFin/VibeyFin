@@ -238,7 +238,7 @@ private fun Hero(state: SeerrTitleUiState, centered: Boolean, viewModel: SeerrTi
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3, if (centered) Alignment.CenterHorizontally else Alignment.Start),
-            modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = listOfNotNull(state.status, Strings.factsLine(state.facts)).joinToString(", ") },
+            modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = Strings.seerrTagDescription(state.status, state.facts) },
         ) {
             StateTag(state.tag, state.state)
             if (state.facts.isNotEmpty()) Text(Strings.factsLine(state.facts), style = MaterialTheme.typography.bodyMedium, color = VibeyFinTokens.Colors.inkMuted)
