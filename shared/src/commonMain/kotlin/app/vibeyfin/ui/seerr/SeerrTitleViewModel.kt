@@ -170,6 +170,9 @@ class SeerrTitleViewModel(
 
     // IMDb's rating, read beside the page (Seerr looks it up, which can be slow) and added to the facts when it comes.
     private var imdb: Double? = null
+
+    // Whether Seerr answered the IMDb lookup, a "none" included, so a movie without a rating isn't looked up on every reload.
+    private var imdbAsked = false
     private var lastAttempt: Triple<SeasonChoice?, Boolean, QualityChoice?>? = null
 
     init {
@@ -313,9 +316,10 @@ class SeerrTitleViewModel(
         qualitiesLoading += is4k
         refreshPicker()
         viewModelScope.launch {
-            val options = (repository.qualityOptions(type, is4k) as? ApiResult.Success)?.value
+            val result = repository.qualityOptions(type, is4k)
             qualitiesLoading -= is4k
-            qualities[is4k] = options
+            // Only an answer is kept: after a failure the next time the sheet opens asks again (this time Seerr's default is used)
+            if (result is ApiResult.Success) qualities[is4k] = result.value
             refreshPicker()
         }
     }
@@ -372,9 +376,11 @@ class SeerrTitleViewModel(
 
     private fun load(showSkeleton: Boolean) {
         if (showSkeleton) content.update { it.copy(loading = true, message = null) }
-        if (type == SeerrMediaType.Movie && imdb == null) {
+        if (type == SeerrMediaType.Movie && !imdbAsked) {
             viewModelScope.launch {
-                imdb = (repository.imdbRating(tmdbId) as? ApiResult.Success)?.value ?: return@launch
+                val rating = repository.imdbRating(tmdbId) as? ApiResult.Success ?: return@launch
+                imdbAsked = true
+                imdb = rating.value ?: return@launch
                 content.update { state -> details?.let { state.copy(facts = facts(it)) } ?: state }
             }
         }
@@ -383,8 +389,13 @@ class SeerrTitleViewModel(
             when (val result = repository.title(type, tmdbId)) {
                 is ApiResult.Success -> {
                     details = result.value
-                    val similar = (more.await() as? ApiResult.Success)?.value?.titles.orEmpty()
-                    content.update { show(it, result.value, similar) }
+                    // The page shows as soon as the title is read (keeping the More like this it had); the recommendations, slow at
+                    // times, follow on their own
+                    content.update { show(it, result.value, it.moreLikeThis) }
+                    launch {
+                        val similar = (more.await() as? ApiResult.Success)?.value?.titles ?: return@launch
+                        content.update { it.copy(moreLikeThis = similar) }
+                    }
                     // A show opens on its first season (Specials only when it has nothing else); a reload keeps the chosen one.
                     if (type == SeerrMediaType.Show && content.value.episodes == null) {
                         val numbers = result.value.seasons.map { it.number }

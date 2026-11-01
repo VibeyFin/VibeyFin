@@ -231,6 +231,26 @@ class SeerrTitleViewModelTest {
     }
 
     @Test
+    fun qualitiesThatFailedToLoadAreAskedForAgainNextTime() = runTest {
+        var up = false
+        connected {
+            user = seerrUserJson(permissions = 32 or 8192)
+            onSignedIn("GET", "/api/v1/service/radarr") { if (up) Reply.json("""[{"id":0,"name":"Radarr","is4k":false,"isDefault":true}]""") else Reply.status(HttpStatusCode.BadGateway) }
+            onSignedIn("GET", "/api/v1/service/radarr/0") { Reply.json("""{"server":{"id":0,"activeProfileId":4},"profiles":[{"id":4,"name":"HD-1080p"}]}""") }
+        }
+        val viewModel = viewModel(SeerrMediaType.Movie, 603)
+        viewModel.await { !it.loading }
+
+        viewModel.onRequest()
+        viewModel.await { it.picker?.qualitiesLoading == false }
+        viewModel.onPickerDismiss()
+        up = true
+        viewModel.onRequest()
+
+        assertEquals(listOf("HD-1080p"), viewModel.await { it.picker?.qualities?.isNotEmpty() == true }.picker!!.qualities.map { it.name })
+    }
+
+    @Test
     fun everyoneElsesMovieRequestGoesAtOnceWithTheDefaultQuality() = runTest {
         connected().onSignedIn("POST", "/api/v1/request") { Reply.json("""{"id":9,"status":1,"type":"movie"}""", HttpStatusCode.Created) }
         val viewModel = viewModel(SeerrMediaType.Movie, 603)
