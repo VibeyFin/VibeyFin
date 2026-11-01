@@ -74,26 +74,16 @@ struct HomeView: View {
                             }
                             // Recently added in each library, then a few genres: each loads and fails on its own, and an
                             // empty one is not here.
-                            ForEach(Array(state.rows.enumerated()), id: \.element.id) { index, row in
-                                // Seerr's discover rows go after the library's rows and before the genres.
-                                if index == Int(state.firstGenreRow) { seerrDiscover }
-                                MediaRowView(
-                                    row: row,
-                                    onOpen: onOpen,
-                                    onSeeAll: { seeAll in
-                                        if let library = seeAll as? SeeAllLibrary {
-                                            onOpen(library.library)
-                                        } else if let genre = seeAll as? SeeAllGenre {
-                                            onOpenList(genre.filter)
-                                        } else if seeAll is SeeAllMyList {
-                                            onOpenList(HomeFilterMyList.shared)
-                                        }
-                                    },
-                                    onRetry: { model.retryRow(row.id) }
-                                )
-                                .transition(.opacity)
+                            // Seerr's discover rows go after the library's rows and before the genres: outside the ForEach, so they
+                            // keep their own identity (and scroll position) when the genre rows change.
+                            let split = min(max(Int(state.firstGenreRow), 0), state.rows.count)
+                            ForEach(Array(state.rows.prefix(split)), id: \.id) { row in
+                                mediaRow(row)
                             }
-                            if Int(state.firstGenreRow) >= state.rows.count { seerrDiscover }
+                            seerrDiscover
+                            ForEach(Array(state.rows.dropFirst(split)), id: \.id) { row in
+                                mediaRow(row)
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.bottom, Space.s5)
@@ -183,6 +173,24 @@ struct HomeView: View {
                 )
             }
         }
+    }
+
+    private func mediaRow(_ row: MediaRow) -> some View {
+        MediaRowView(
+            row: row,
+            onOpen: onOpen,
+            onSeeAll: { seeAll in
+                if let library = seeAll as? SeeAllLibrary {
+                    onOpen(library.library)
+                } else if let genre = seeAll as? SeeAllGenre {
+                    onOpenList(genre.filter)
+                } else if seeAll is SeeAllMyList {
+                    onOpenList(HomeFilterMyList.shared)
+                }
+            },
+            onRetry: { model.retryRow(row.id) }
+        )
+        .transition(.opacity)
     }
 
     private var seerrDiscover: some View {
