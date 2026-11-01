@@ -15,9 +15,12 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
@@ -214,7 +217,13 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
 
     Scaffold(
         containerColor = if (onPlayer) Color.Black else MaterialTheme.colorScheme.background,
-        contentWindowInsets = if (onPlayer) WindowInsets(0, 0, 0, 0) else ScaffoldDefaults.contentWindowInsets,
+        // No top inset: each screen keeps clear of the status bar itself, so a detail page's artwork runs up behind it
+        // instead of under a strip of the page's color
+        contentWindowInsets = if (onPlayer) {
+            WindowInsets(0, 0, 0, 0)
+        } else {
+            ScaffoldDefaults.contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+        },
     ) { padding ->
         val tileMenu: TileMenuViewModel = koinViewModel()
         val uriHandler = LocalUriHandler.current
@@ -231,9 +240,12 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
 
         Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
             Column(Modifier.fillMaxSize()) {
-                if (!onPlayer) banner?.let { AppBanner(it, onAction = bannerModel::onAction) }
+                val shownBanner = banner.takeIf { !onPlayer }
 
-                SharedTransitionLayout(Modifier.weight(1f)) {
+                // The banner takes the status bar's space, so the screen under it doesn't leave room for it again
+                shownBanner?.let { AppBanner(it, onAction = bannerModel::onAction) }
+
+                SharedTransitionLayout(Modifier.weight(1f).then(if (shownBanner != null) Modifier.consumeWindowInsets(WindowInsets.statusBars) else Modifier)) {
                     CompositionLocalProvider(
                         LocalSharedTransitionScope provides this,
                         LocalBottomBarPadding provides if (currentTab != null) FLOATING_BAR_SPACE else 0.dp,
