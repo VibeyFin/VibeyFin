@@ -505,6 +505,9 @@ object Strings {
     /** The label of the video line in the collapsed technical info, and the long-press entry on an episode. */
     val technicalVideo = "Video"
 
+    /** The label of the line in the technical info that says how much storage the file takes. */
+    val technicalSize = "Size"
+
     /** What a screen reader says for a season button, and for the row of them. */
     fun seasonDescription(name: String, selected: Boolean) = if (selected) "$name, selected" else name
 

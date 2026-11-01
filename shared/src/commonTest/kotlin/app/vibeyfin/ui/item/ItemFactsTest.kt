@@ -18,11 +18,12 @@ class ItemFactsTest {
         seasonNumber: Int? = null,
         episodeNumber: Int? = null,
         videoFormat: VideoFormat? = null,
+        fileBytes: Long? = null,
     ) = MediaItem(
         id = "i", title = "T", kind = kind, isFolder = false, year = year, runtimeMinutes = runtimeMinutes,
         genres = emptyList(), overview = null, rating = rating, ageRating = ageRating, seriesName = null,
         seasonNumber = seasonNumber, episodeNumber = episodeNumber, posterAspectRatio = 1f, posterUrl = null,
-        backdropUrl = null, videoFormat = videoFormat,
+        backdropUrl = null, videoFormat = videoFormat, fileBytes = fileBytes,
     )
 
     private fun video(range: DynamicRange = DynamicRange.Sdr, width: Int = 1920, height: Int = 1080) = VideoFormat(codec = "hevc", width = width, height = height, dynamicRange = range, frameRate = 24f, bitrateKbps = null)
@@ -100,5 +101,15 @@ class ItemFactsTest {
         assertEquals(listOf("★ 7.3"), item(rating = 7.26).facts())
         assertEquals(listOf("★ 10.0"), item(rating = 10.0).facts())
         assertEquals(listOf("★ 0.5"), item(rating = 0.5).facts())
+    }
+
+    @Test
+    fun `technical info says how much storage the file takes`() {
+        assertEquals(
+            listOf(TechnicalLine("Video", "1920×1080 · HEVC · 24 fps"), TechnicalLine("Size", "4.2 GB")),
+            item(videoFormat = video(), fileBytes = 4_200_000_000).technicalLines(),
+        )
+        assertEquals(listOf(TechnicalLine("Size", "850 MB")), item(fileBytes = 850_000_000).technicalLines())
+        assertEquals(emptyList(), item().technicalLines())
     }
 }

@@ -64,6 +64,8 @@ data class MediaItem(
     val landscapeBlurHash: String? = null,
     /** The file's video picture; null when the server wasn't asked for streams or the item has no video. */
     val videoFormat: VideoFormat? = null,
+    /** How much storage the file takes on the server, in bytes; null when the server wasn't asked for its sources or doesn't know. */
+    val fileBytes: Long? = null,
     /** On a library: what it holds (`movies`, `tvshows`, `music`, ...); null for mixed content or anything that is not a library. */
     val collectionType: String? = null,
     /** The item's `Logo` image (its title as artwork), when it has one. */

@@ -1,7 +1,7 @@
 package app.vibeyfin.data.api
 
 // What an item's detail page needs beyond the list fields; the server leaves these out unless asked.
-private const val DETAIL_FIELDS = "Overview,Genres,MediaStreams,Trickplay,People,ChildCount,RemoteTrailers,LocalTrailerCount,ProviderIds"
+private const val DETAIL_FIELDS = "Overview,Genres,MediaStreams,Trickplay,People,ChildCount,RemoteTrailers,LocalTrailerCount,ProviderIds,MediaSources"
 
 /**
  * `GET /UserViews`: the libraries [userId] can see. These are items too, so a library opens like

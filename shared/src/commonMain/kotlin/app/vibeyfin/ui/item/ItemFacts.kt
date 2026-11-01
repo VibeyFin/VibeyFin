@@ -19,9 +19,17 @@ internal fun MediaItem.facts(): List<String> = listOfNotNull(
 /** One line of the technical info: what it is, and what the file says. */
 data class TechnicalLine(val label: String, val value: String)
 
-/** The file's video as one line: "3840×2160 · HEVC · HDR10 · 24 fps · 8.2 Mbps"; null when the server sent no video stream. */
-internal fun MediaItem.technicalLines(): List<TechnicalLine> {
-    val format = videoFormat ?: return emptyList()
+/**
+ * The file's video as one line ("3840×2160 · HEVC · HDR10 · 24 fps · 8.2 Mbps"), then how much storage it takes ("4.2 GB"); each
+ * only when the server sent it.
+ */
+internal fun MediaItem.technicalLines(): List<TechnicalLine> = listOfNotNull(
+    videoLine(),
+    fileBytes?.let { TechnicalLine(Strings.technicalSize, Strings.fileSize(it)) },
+)
+
+private fun MediaItem.videoLine(): TechnicalLine? {
+    val format = videoFormat ?: return null
     val parts = listOfNotNull(
         if (format.width != null && format.height != null) "${format.width}×${format.height}" else null,
         format.codec?.uppercase(),
@@ -34,7 +42,7 @@ internal fun MediaItem.technicalLines(): List<TechnicalLine> {
         format.frameRate?.let { "${oneDecimal(it.toDouble()).removeSuffix(".0")} fps" },
         format.bitrateKbps?.let { "${oneDecimal(it / 1000.0)} Mbps" },
     )
-    return if (parts.isEmpty()) emptyList() else listOf(TechnicalLine(Strings.technicalVideo, parts.joinToString(" · ")))
+    return if (parts.isEmpty()) null else TechnicalLine(Strings.technicalVideo, parts.joinToString(" · "))
 }
 
 /** What a season's button says: "Season 3" whatever the server calls it ("Series 3", "Season 3"), and "Specials" for 0. */
