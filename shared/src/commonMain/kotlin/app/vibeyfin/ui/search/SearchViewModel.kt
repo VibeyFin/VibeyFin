@@ -170,6 +170,8 @@ class SearchViewModel(
     /** The field changed: searches [text] once the user pauses, and drops any older search still out. */
     fun onQueryChange(text: String) {
         job?.cancel()
+        // A Try again still on its way belongs to the old text
+        seerrJob?.cancel()
         val term = text.trim()
         if (term.isEmpty()) {
             content.value = SearchUiState(query = text, filter = content.value.filter)

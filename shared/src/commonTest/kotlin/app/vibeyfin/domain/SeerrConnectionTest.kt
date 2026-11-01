@@ -78,9 +78,19 @@ class SeerrConnectionTest {
         assertEquals("https://requests.example.org", normalizeSeerrAddress(" requests.example.org/ "))
         assertEquals("http://10.0.2.2:5155", normalizeSeerrAddress("http://10.0.2.2:5155/api/v1"))
         assertEquals("https://example.org/seerr", normalizeSeerrAddress("https://example.org/seerr/"))
+        assertEquals("http://10.0.2.2:5155", normalizeSeerrAddress("HTTP://10.0.2.2:5155"))
         assertNull(normalizeSeerrAddress("not an address"))
         assertNull(normalizeSeerrAddress("ftp://example.org"))
         assertNull(normalizeSeerrAddress("   "))
+    }
+
+    @Test
+    fun anAddressTypedWithoutASchemeFallsBackToPlainHttpWhenHttpsDoesntAnswer() = runTest {
+        signedInWithSeerr()
+
+        assertEquals(SeerrConnectResult.Connected, app.seerr.connect("seerr:5055"))
+
+        assertEquals(seerrAddress, assertIs<SeerrState.Ready>(app.seerr.state.value).address)
     }
 
     @Test

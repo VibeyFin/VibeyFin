@@ -139,11 +139,21 @@ class SeerrConnection(
      */
     suspend fun connect(input: String): SeerrConnectResult {
         val key = currentKey()?.takeIf { !it.kids } ?: return SeerrConnectResult.Failed
-        val address = normalizeSeerrAddress(input) ?: return SeerrConnectResult.NotSeerr
-        val seerr = factory.create(address)
-        when (val status = seerr.status()) {
-            is ApiResult.Success -> Unit
-            is ApiResult.Failure -> return if (status.error == ApiError.Network || status.error is ApiError.Server) SeerrConnectResult.Unreachable else SeerrConnectResult.NotSeerr
+        var address = normalizeSeerrAddress(input) ?: return SeerrConnectResult.NotSeerr
+        var seerr = factory.create(address)
+        var status = seerr.status()
+        // Typed without a scheme and nothing answers on https: a stock Seerr on the LAN ("192.168.1.10:5055") speaks plain http
+        if (status is ApiResult.Failure && status.error == ApiError.Network && !input.contains("://")) {
+            val plain = "http://" + address.removePrefix("https://")
+            val second = factory.create(plain).status()
+            if (second is ApiResult.Success) {
+                address = plain
+                seerr = factory.create(plain)
+                status = second
+            }
+        }
+        if (status is ApiResult.Failure) {
+            return if (status.error == ApiError.Network || status.error is ApiError.Server) SeerrConnectResult.Unreachable else SeerrConnectResult.NotSeerr
         }
         val settings = seerr.publicSettings()
         if (settings !is ApiResult.Success || !settings.value.initialized) return SeerrConnectResult.NotSeerr
@@ -418,7 +428,8 @@ internal fun sameJellyfinId(a: String, b: String): Boolean = a.replace("-", "").
 fun normalizeSeerrAddress(input: String): String? {
     var address = input.trim().trimEnd('/')
     if (address.isEmpty() || address.any { it.isWhitespace() }) return null
-    if (!address.contains("://")) address = "https://$address"
+    // The scheme in any case ("HTTP://..."), as browsers take it
+    address = if (address.contains("://")) address.substringBefore("://").lowercase() + "://" + address.substringAfter("://") else "https://$address"
     if (!address.startsWith("http://") && !address.startsWith("https://")) return null
     address = address.removeSuffix(SeerrApi.API_PATH).trimEnd('/')
     val host = address.substringAfter("://").substringBefore('/').substringBefore(':')
