@@ -55,6 +55,7 @@ struct HomeHeroCarousel: View {
                             .accessibilityHidden(slot == 0 || slot == items.count + 1)
                         }
                         .padding(.horizontal, -Space.s2 / 2)
+                        .padding(.vertical, -Lift.room)
                     }
                 HeroPageControl(count: items.count, current: $page)
                     .frame(height: HomeHeroCarousel.dotsHeight)
@@ -64,7 +65,7 @@ struct HomeHeroCarousel: View {
                 swiped = false
             }
             .onDisappear { onScreen = false }
-            .onChange(of: slot) { newSlot in
+            .onChange(of: slot) { _, newSlot in
                 let landed = (newSlot + items.count - 1) % items.count
                 if newSlot == 0 || newSlot == items.count + 1 {
                     // On a copy at an end: once the move has finished, swap to the real item, which looks the same.
@@ -80,14 +81,14 @@ struct HomeHeroCarousel: View {
                 autoPage = nil
                 page = landed
             }
-            .onChange(of: page) { newPage in
+            .onChange(of: page) { _, newPage in
                 // The dots moved the item (a swipe or the timer moves the pager first): the pager follows, and it stops like a swipe.
                 if (slot + items.count - 1) % items.count != newPage {
                     swiped = true
                     slot = newPage + 1
                 }
             }
-            .onChange(of: items.map { $0.id }) { _ in
+            .onChange(of: items.map { $0.id }) {
                 // A new pick starts from its first item and may move on again.
                 page = 0
                 slot = 1

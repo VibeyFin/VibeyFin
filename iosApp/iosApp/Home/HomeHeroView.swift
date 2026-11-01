@@ -11,11 +11,9 @@ struct HomeHeroView: View {
     let onMyList: () -> Void
     /// What VoiceOver reads for the card; a carousel page says which of how many it is.
     var label: String?
-    /// Called when a long press opens the poster menu, so a carousel stops moving under it.
+    /// Called when the poster menu comes up, so a carousel stops moving: it would slide away under the menu as it closes.
     var onLongPressed: () -> Void = {}
 
-    // A long press opens the same menu as a poster's (Details, Trailer, My List).
-    @Environment(\.tileMenu) private var tileMenu
     @Environment(\.horizontalSizeClass) private var sizeClass
     private var wide: Bool { sizeClass == .regular }
 
@@ -35,11 +33,7 @@ struct HomeHeroView: View {
             .overlay(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous).stroke(Color(.tertiarySystemBackground), lineWidth: 1))
             .contentShape(Rectangle())
             .onTapGesture { onOpen(item.id) }
-            .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in
-                guard let tileMenu else { return }
-                onLongPressed()
-                tileMenu.open(item)
-            })
+            .heroMenu(item, onShown: onLongPressed)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(label ?? Strings.shared.featured(title: item.title))
     }

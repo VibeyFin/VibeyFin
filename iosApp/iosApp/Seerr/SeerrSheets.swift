@@ -56,7 +56,7 @@ struct SeerrMenuSheetView: View {
             }
         }
         .onAppear { model.start() }
-        .onChange(of: model.state?.notice) { notice in
+        .onChange(of: model.state?.notice) { _, notice in
             guard let notice else { return }
             model.noticeShown()
             onNotice(notice)

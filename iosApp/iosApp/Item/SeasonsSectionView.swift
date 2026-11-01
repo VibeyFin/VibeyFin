@@ -157,11 +157,13 @@ struct SeasonsSectionView: View {
                         }
                     }
                     .padding(.horizontal, margin)
+                    .liftRoomInside()
                 }
                 .padding(.horizontal, -margin)
+                .liftRoom()
                 // A season opens at the episode Play will start, so the one being watched is in view; another season at its first.
                 .onAppear { scrollToCurrent(proxy, list) }
-                .onChange(of: list.items.first?.id) { _ in scrollToCurrent(proxy, list) }
+                .onChange(of: list.items.first?.id) { scrollToCurrent(proxy, list) }
             }
             .opacity(list.loading ? 0.5 : 1)
         }

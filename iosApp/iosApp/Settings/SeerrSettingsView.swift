@@ -32,8 +32,8 @@ struct SeerrSettingsView: View {
             model.start()
             prefill()
         }
-        .onChange(of: model.state?.layout) { _ in prefill() }
-        .onChange(of: model.state?.leave == true) { leave in
+        .onChange(of: model.state?.layout) { prefill() }
+        .onChange(of: model.state?.leave == true) { _, leave in
             guard leave else { return }
             if let onLeave { onLeave() } else { dismiss() }
         }
@@ -120,7 +120,7 @@ struct SeerrSettingsView: View {
                 .autocorrectionDisabled()
                 .submitLabel(.go)
                 .onSubmit { model.connect() }
-                .onChange(of: address) { model.setAddress($0) }
+                .onChange(of: address) { _, new in model.setAddress(new) }
                 .disabled(state.connecting)
                 .accessibilityLabel(Strings.shared.seerrAddress)
                 .accessibilityHint(state.addressError ?? "")

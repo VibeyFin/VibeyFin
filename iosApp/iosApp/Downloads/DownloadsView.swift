@@ -43,7 +43,7 @@ struct DownloadsView: View {
         } message: {
             if let removal = model.state?.removal { Text(Strings.shared.removeConfirmBody(bytes: removal.bytes)) }
         }
-        .onChange(of: model.state?.exit != nil) { hasExit in
+        .onChange(of: model.state?.exit != nil) { _, hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
         }
     }

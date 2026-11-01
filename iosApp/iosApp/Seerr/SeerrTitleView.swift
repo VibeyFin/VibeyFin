@@ -39,13 +39,13 @@ struct SeerrTitleView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarRole(.editor)
         .onAppear { model.start() }
-        .onChange(of: model.state?.openItem) { itemId in
+        .onChange(of: model.state?.openItem) { _, itemId in
             guard let itemId else { return }
             model.itemOpened()
             onOpenItem(itemId)
         }
         // On this page "View" would lead here, so only Try again is offered.
-        .onChange(of: model.state?.notice) { shown in
+        .onChange(of: model.state?.notice) { _, shown in
             guard let shown else { return }
             notice = shown
             model.noticeShown()

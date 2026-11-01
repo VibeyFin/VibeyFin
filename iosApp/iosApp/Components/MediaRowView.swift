@@ -57,11 +57,13 @@ struct MediaRowView: View {
             LazyHStack(alignment: .top, spacing: Space.s3) {
                 ForEach(items, id: \.id) { item in
                     Button { onOpen(item) } label: { ArtworkTile(item: item, captionLines: 2).frame(width: width) }
-                        .buttonStyle(PressableButtonStyle())
+                        .tileButton(item)
                 }
             }
             .screenMargin()
+            .liftRoomInside()
         }
+        .liftRoom()
     }
 }
 

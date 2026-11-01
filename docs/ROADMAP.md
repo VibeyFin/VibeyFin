@@ -28,7 +28,7 @@ we approximate rather than fight it.
 
 ## Server prerequisites
 
-- **Jellyfin 10.10+** — required for Media Segments and fast Trickplay (10.11 is fine).
+- **Jellyfin 10.10+** — required for Media Segments and fast Trickplay (10.11 and 12 are fine; the test server runs 12).
 - **Plugins** — Intro Skipper or the official Chapter Segments Provider (Jellyfin won't
   detect segments itself); Trickplay enabled per library.
 - **Seerr** _(optional, Phases 8–9 only)_ — a [Seerr](https://docs.seerr.dev) instance linked to
@@ -173,7 +173,7 @@ _Starts after the state audit (see Cross-cutting)._
   items scroll below the hero. The bar over the hero is transparent (Android) or an inline title
   over the backdrop (iOS); text over the image always sits on the scrim
 - [x] Series detail page (Android built and run; iOS parsed): the same hero, then episode cards with all their text on the still (tag, title, synopsis, length, rating, air date; long press: View episode, watched mark), mark the whole series watched, Play holds its place while loading, a season slides in from the side it is on, and the row opens at the current episode. Before: a row of season buttons (about four visible at a time,
-  scrolling sideways when there are more), similar to the Nuvio player. The selected season is
+  scrolling sideways when there are more). The selected season is
   marked and its episodes list below (`GET /Shows/{id}/Seasons`, `GET /Shows/{id}/Episodes?seasonId=`);
   picking another button swaps the list in place. The row opens on the season of the episode Play /
   Resume will start, and Play / Resume on the hero starts that episode

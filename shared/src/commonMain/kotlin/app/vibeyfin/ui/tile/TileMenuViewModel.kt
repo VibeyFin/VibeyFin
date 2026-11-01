@@ -136,7 +136,13 @@ class TileMenuViewModel(
         lookup?.cancel()
         toggled = false
         readDownloadPermission()
-        content.value = TileMenuUiState(item = item, checkingTrailer = item.canHaveTrailer)
+        // The same poster again (iOS asks early) keeps what the first look-up found.
+        val kept = content.value.takeIf { it.item?.id == item.id }
+        content.value = TileMenuUiState(
+            item = kept?.item ?: item,
+            trailer = kept?.trailer,
+            checkingTrailer = kept == null && item.canHaveTrailer,
+        )
         lookup = viewModelScope.launch {
             val detail = (library.item(item.id) as? ApiResult.Success)?.value
             val trailer = detail?.takeIf { item.canHaveTrailer }?.let { findTrailer(it) }

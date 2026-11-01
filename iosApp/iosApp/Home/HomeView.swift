@@ -125,17 +125,17 @@ struct HomeView: View {
             onConfirmRemove: { model.confirmRemove() },
             onDismissRemoval: { model.dismissRemoval() }
         )
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 model.foreground()
                 seerr.foreground()
             }
         }
-        .onChange(of: model.state?.exit != nil) { hasExit in
+        .onChange(of: model.state?.exit != nil) { _, hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
         }
         // The hero's Play found what to play (an episode for a show): the player opens on it, or the page when none was found.
-        .onChange(of: model.state?.heroNav != nil) { has in
+        .onChange(of: model.state?.heroNav != nil) { _, has in
             guard has, let nav = model.state?.heroNav else { return }
             if let play = nav as? HeroNavPlay {
                 player.play(play.itemId)
@@ -144,7 +144,7 @@ struct HomeView: View {
             }
             model.heroNavHandled()
         }
-        .onChange(of: model.state?.openList != nil) { opened in
+        .onChange(of: model.state?.openList != nil) { _, opened in
             if opened, let filter = model.state?.openList {
                 onOpenList(filter)
                 model.listOpened()

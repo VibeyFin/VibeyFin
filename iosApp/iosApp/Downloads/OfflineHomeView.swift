@@ -77,7 +77,7 @@ struct OfflineHomeView: View {
         // There is no server to read a poster's menu from.
         .environment(\.tileMenu, nil)
         .onAppear { model.start() }
-        .onChange(of: model.state?.exit != nil) { hasExit in
+        .onChange(of: model.state?.exit != nil) { _, hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
         }
     }

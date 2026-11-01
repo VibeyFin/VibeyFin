@@ -172,4 +172,12 @@ class StringsTest {
         assertEquals("A", Strings.initials("  ada  "))
         assertEquals("", Strings.initials(""))
     }
+
+    @Test
+    fun playingOnNamesTheReceiverOrFallsBackToAirPlay() {
+        assertEquals("Playing on Living Room TV", Strings.playingOn("Living Room TV"))
+        assertEquals("Playing on Living Room TV", Strings.playingOn("  Living Room TV "))
+        assertEquals("Playing on AirPlay", Strings.playingOn(null))
+        assertEquals("Playing on AirPlay", Strings.playingOn(" "))
+    }
 }

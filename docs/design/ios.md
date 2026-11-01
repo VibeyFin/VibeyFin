@@ -29,7 +29,7 @@ Glass is the **navigation and controls layer** floating above content — never 
 | --- | --- |
 | Play / Resume | `Button` + `.buttonStyle(.borderedProminent)`, `.buttonBorderShape(.capsule)`, `.controlSize(.large)` |
 | Secondary action | `.bordered`; tertiary `.borderless` (tinted) |
-| Quick actions on a poster or the hero | A native `.sheet`, not `.contextMenu`: the Trailer row arrives after the server answers and the Download row shows live state, and a menu is static once open (see **Poster menu** in `screens.md`) |
+| Quick actions on a poster or the hero | A native `.contextMenu`, like Continue watching and the episodes: press, slide to a row, let go. Details, Trailer, My List, Download, in that order. SwiftUI fixes the rows as the finger lands, so they are built from what the poster knows and a greyed "Checking for trailer…" row holds the Trailer's place while the server is asked; the menu updates by itself when the answer comes. The menu goes on the poster's Button, not inside its label, with no gesture of ours beside it (either one stops the system's long press) |
 | Episode card actions | `.contextMenu` on the card (View episode, the watched mark); no swipe actions |
 | Audio / subtitles | `Menu` / `Picker` in a toolbar or a sheet with `.presentationDetents([.medium, .large])` |
 | Season buttons (series detail) | Horizontal `ScrollView` of capsule buttons, selected filled `ink`; `ScrollViewReader` scrolls to the next-up season on open |
@@ -44,7 +44,7 @@ Glass is the **navigation and controls layer** floating above content — never 
 | Settings on iPad | at regular width `NavigationSplitView`: the root as the sidebar (system selection following the tapped row), the page in the detail column capped at about 640 and centred; the back chevron is in the sidebar only. At compact width it is the phone's `NavigationStack` |
 | Skip intervals setting | a `Picker` with `.pickerStyle(.menu)` (Skip back 5 to 30 s, Skip forward 10 to 60 s), on the Skipping and autoplay page |
 | Buffer ahead setting | the same `Picker` row (Auto, 10 to 60 s, default 20 s), in its own group on Skipping and autoplay. Player: `AVPlayerItem.preferredForwardBufferDuration`; the scrubber's buffered segment is the end of the `loadedTimeRanges` range holding the current time |
-| Player | Custom SwiftUI controls over `AVPlayerLayer` (Jellyfin trickplay and skip segments need it); PiP via `AVPictureInPictureController`; Now Playing via `MPNowPlayingInfoCenter`; while AirPlay is active the PiP button is hidden and a "Playing on <device>" pill shows (`player.md`) |
+| Player | Custom SwiftUI controls over `AVPlayerLayer` (Jellyfin trickplay and skip segments need it); PiP via `AVPictureInPictureController`; Now Playing via `MPNowPlayingInfoCenter`; while video AirPlay is active the item's artwork shows blurred behind the controls, the PiP button is hidden and a "Playing on <device>" pill shows (`player.md`) |
 | Loading | `ProgressView` in the player only; skeletons elsewhere (`.redacted(reason: .placeholder)`) |
 
 ## Go

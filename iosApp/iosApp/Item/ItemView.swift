@@ -85,7 +85,7 @@ struct ItemView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
         // Only the chevron, no "Back" label. The swipe from the edge still goes back.
         .toolbarRole(.editor)
-        .onChange(of: model.state?.exit != nil) { hasExit in
+        .onChange(of: model.state?.exit != nil) { _, hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
         }
     }

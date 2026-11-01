@@ -276,6 +276,9 @@ object Strings {
     /** The player button that turns the video into a small window over other apps. */
     val pictureInPicture = "Picture in picture"
 
+    /** The player's status while the video plays on another screen over AirPlay: the receiver's [device] name, or a generic one when the system gave none. */
+    fun playingOn(device: String?): String = device?.trim()?.takeIf { it.isNotEmpty() }?.let { "Playing on $it" } ?: "Playing on AirPlay"
+
     /** The level a swipe on the player set, for the indicator's screen-reader text: "Volume 60%". */
     fun volumeLevel(percent: Int) = "Volume $percent%"
 
@@ -428,6 +431,9 @@ object Strings {
     fun myListAction(onList: Boolean) = if (onList) "Remove from My List" else "Add to My List"
 
     val trailer = "Trailer"
+
+    /** The poster menu's greyed row while the server is still asked whether the title has a trailer. */
+    val checkingTrailer = "Checking for trailer\u2026"
     val download = "Download"
 
     /** What a season's button says: always "Season 3"; the server's own names ("Series 3", "Season 3") are not used. 0 is Specials. */
