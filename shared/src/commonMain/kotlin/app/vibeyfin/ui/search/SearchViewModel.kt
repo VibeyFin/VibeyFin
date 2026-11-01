@@ -17,6 +17,7 @@ import app.vibeyfin.domain.model.SearchKind
 import app.vibeyfin.domain.model.SearchResult
 import app.vibeyfin.domain.model.SeerrMediaType
 import app.vibeyfin.domain.model.SeerrTitle
+import app.vibeyfin.domain.model.notInLibrary
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
@@ -291,5 +292,3 @@ private val SearchFilter.kind: SearchKind
         SearchFilter.Collections -> SearchKind.Collection
         SearchFilter.All, SearchFilter.NotInLibrary -> error("$this lists no one kind of the library's")
     }
-
-private fun SeerrTitle.notInLibrary() = jellyfinItemId == null && state != RequestState.Available && state != RequestState.PartlyAvailable

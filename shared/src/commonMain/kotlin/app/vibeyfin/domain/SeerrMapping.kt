@@ -85,6 +85,10 @@ internal fun requestState(status: Int, requests: List<SeerrRequestDto>, is4k: Bo
     }
 }
 
+// The Jellyfin item, only while Seerr says the title is (partly) in the library: Seerr keeps the id on media it later marks
+// deleted or unknown, and that item no longer opens.
+private fun SeerrMediaInfoDto?.libraryItemId(): String? = this?.jellyfinMediaId?.takeIf { status == MEDIA_AVAILABLE || status == MEDIA_PARTLY_AVAILABLE }
+
 private fun SeerrMediaInfoDto?.state(is4k: Boolean = false): RequestState = this?.let { requestState(if (is4k) it.status4k else it.status, it.requests, is4k) }
     ?: RequestState.NotRequested
 
@@ -102,7 +106,7 @@ internal fun SeerrResultDto.toTitle(): SeerrTitle? {
         backdropUrl = tmdbImage(backdropPath, BACKDROP_SIZE),
         overview = overview?.takeIf { it.isNotBlank() },
         state = mediaInfo.state(),
-        jellyfinItemId = mediaInfo?.jellyfinMediaId,
+        jellyfinItemId = mediaInfo.libraryItemId(),
         releaseDate = date?.takeIf { it.isNotBlank() },
     )
 }
@@ -166,7 +170,7 @@ internal fun SeerrMovieDto.toDetails(meId: Int?): SeerrTitleDetails {
             backdropUrl = tmdbImage(backdropPath, BACKDROP_SIZE),
             overview = overview?.takeIf { it.isNotBlank() },
             state = mediaInfo.state(),
-            jellyfinItemId = mediaInfo?.jellyfinMediaId,
+            jellyfinItemId = mediaInfo.libraryItemId(),
             releaseDate = releaseDate,
         ),
         state4k = mediaInfo.state(is4k = true),
@@ -195,7 +199,7 @@ internal fun SeerrTvDto.toDetails(meId: Int?): SeerrTitleDetails {
             backdropUrl = tmdbImage(backdropPath, BACKDROP_SIZE),
             overview = overview?.takeIf { it.isNotBlank() },
             state = mediaInfo.state(),
-            jellyfinItemId = mediaInfo?.jellyfinMediaId,
+            jellyfinItemId = mediaInfo.libraryItemId(),
             releaseDate = firstAirDate,
         ),
         state4k = mediaInfo.state(is4k = true),

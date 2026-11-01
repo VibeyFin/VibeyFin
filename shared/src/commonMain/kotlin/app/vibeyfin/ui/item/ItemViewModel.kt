@@ -19,6 +19,7 @@ import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.model.RequestState
 import app.vibeyfin.domain.model.SeerrMediaType
 import app.vibeyfin.domain.model.SeerrTitle
+import app.vibeyfin.domain.model.notInLibrary
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
@@ -526,7 +527,7 @@ class ItemViewModel(
         val settled = withTimeoutOrNull(SEERR_WAIT) { state.first { it !is SeerrState.Connecting } }
         if (settled !is SeerrState.Ready) return
         val page = (seerr.recommendations(type, tmdbId) as? ApiResult.Success)?.value ?: return
-        seerrSimilar = page.titles.filter { it.jellyfinItemId == null && it.state != RequestState.Available }.take(SEERR_SIMILAR_LIMIT)
+        seerrSimilar = page.titles.filter { it.notInLibrary() }.take(SEERR_SIMILAR_LIMIT)
         content.update { it.copy(similarTiles = mixSimilar(it.similar?.items.orEmpty(), seerrSimilar)) }
     }
 

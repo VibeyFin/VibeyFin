@@ -51,13 +51,14 @@ class SeerrRepositoryTest {
                  "mediaInfo":{"tmdbId":10331,"status":5,"status4k":1,"jellyfinMediaId":"jf-1"}},
                 {"id":19885,"mediaType":"tv","name":"Sherlock","firstAirDate":"2010-07-25","mediaInfo":{"status":4}},
                 {"id":3,"mediaType":"person","name":"Someone","profilePath":"/x.jpg"},
-                {"id":65522,"mediaType":"tv","name":"The Living and the Dead","firstAirDate":"2016-06-28","posterPath":null}]}""",
+                {"id":65522,"mediaType":"tv","name":"The Living and the Dead","firstAirDate":"2016-06-28","posterPath":null},
+                {"id":70000,"mediaType":"movie","title":"Living Gone","mediaInfo":{"status":7,"jellyfinMediaId":"jf-gone"}}]}""",
             )
         }
 
         val page = app.seerrRepository.search("living dead").value()
 
-        assertEquals(listOf(10331, 19885, 65522), page.titles.map { it.tmdbId })
+        assertEquals(listOf(10331, 19885, 65522, 70000), page.titles.map { it.tmdbId })
         val movie = page.titles[0]
         assertEquals(SeerrMediaType.Movie, movie.type)
         assertEquals(1968, movie.year)
@@ -67,6 +68,8 @@ class SeerrRepositoryTest {
         assertEquals(RequestState.PartlyAvailable, page.titles[1].state)
         assertEquals(RequestState.NotRequested, page.titles[2].state)
         assertNull(page.titles[2].posterUrl)
+        // Deleted from the library: Seerr still names the old item, which no longer opens.
+        assertNull(page.titles[3].jellyfinItemId)
         assertTrue(page.hasMore)
         // The term went out percent-encoded, as Seerr insists.
         assertEquals("query=living%20dead&page=1", app.jellyfin.requestsTo("GET", "/api/v1/search").single().encodedQuery)

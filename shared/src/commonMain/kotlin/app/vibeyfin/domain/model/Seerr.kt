@@ -93,6 +93,12 @@ data class SeerrTitle(
     val releaseDate: String? = null,
 )
 
+/**
+ * Whether the title is one to offer for requesting, beside the library's own: not linked to a library item and not (partly)
+ * available. "Not in your library" in search and Seerr's titles in "More like this" both use it.
+ */
+fun SeerrTitle.notInLibrary(): Boolean = jellyfinItemId == null && state != RequestState.Available && state != RequestState.PartlyAvailable
+
 /** One page of [SeerrTitle]s. */
 data class SeerrPage(
     val titles: List<SeerrTitle>,
