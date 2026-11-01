@@ -23,7 +23,7 @@ Targets: `androidTarget`, `iosArm64`, `iosSimulatorArm64`.
 ## Stack
 
 - Kotlin (latest stable 2.4.x).
-- UI is native per platform: Jetpack Compose with AndroidX Material 3 on Android, SwiftUI (iOS 16
+- UI is native per platform: Jetpack Compose with AndroidX Material 3 on Android, SwiftUI (iOS 18
   and up) on iOS. Shared code has no UI toolkit.
 - Navigation: AndroidX Navigation Compose with type-safe `@Serializable` routes on Android;
   `NavigationStack` on iOS.
@@ -36,8 +36,10 @@ Targets: `androidTarget`, `iosArm64`, `iosSimulatorArm64`.
 - Storage: Room KMP with the bundled SQLite driver; DataStore Preferences KMP for device-wide prefs.
 - Images: Coil 3 on Android. On iOS, SwiftUI's `AsyncImage` (`Components/Artwork.swift`); ask before adding an
   image-loading library.
-- Playback: Media3 ExoPlayer on Android (`exoplayer`, `exoplayer-hls`, `ui`, `session`), AVPlayer on iOS. The
-  player is native and driven by the shared `PlaybackViewModel`; there is no shared player abstraction.
+- Playback: Media3 ExoPlayer on Android (`exoplayer`, `exoplayer-hls`, `ui`, `session`), AVPlayer on iOS, with
+  AetherEngine (FFmpeg demux, pinned to an exact version) for what AVPlayer can't play. The player is native and driven by the
+  shared `PlaybackViewModel`; there is no shared player abstraction, but the shared model decides the iOS engine for each title
+  (`PlaybackRepository.negotiate`). How iOS behaves: `docs/ios-playback.md`.
 - iOS download remux: a small LGPL FFmpeg (n9.0.2, no GPL parts, static) built from source by `scripts/ffmpeg/build-ios.sh` (an Xcode
   build phase runs it once; output in the git-ignored `iosApp/Vendor/`). It only rewrites a downloaded MKV and similar as MP4 for AVPlayer.
   The script joins it with `scripts/ffmpeg/FFRemux.c` into `libffremux.a`, whose only global symbols are the `ff_` entry points, so it can't shadow another FFmpeg in the app (Aether's). Re-run the script after changing `FFRemux.c`.
