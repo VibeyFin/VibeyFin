@@ -10,6 +10,7 @@ import app.vibeyfin.testing.seerrUserJson
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
@@ -266,6 +267,8 @@ class SeerrConnectionTest {
         assertNull(app.seerrStore.session("srv-1", "u1"))
         assertEquals(SeerrConnectResult.Failed, app.seerr.connect(seerrAddress))
         assertEquals(1, calls("/api/v1/auth/jellyfin/quickconnect/initiate"))
+        // Its session is ended on Seerr too, not left valid there.
+        withContext(Dispatchers.Default) { withTimeout(5.seconds) { while (calls("/api/v1/auth/logout") == 0) delay(10) } }
     }
 
     @Test

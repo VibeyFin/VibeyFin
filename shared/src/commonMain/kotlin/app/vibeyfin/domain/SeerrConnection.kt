@@ -261,6 +261,15 @@ class SeerrConnection(
     // Works out the state for [key] from what is saved, signing in when there is no session. Runs under [lock].
     private suspend fun resolve(key: Key?) {
         lastKey = key
+        // The profile that was signed in to Seerr turned kids, or is gone with its saved session already wiped (a server removed):
+        // end that session on Seerr too, so it doesn't stay valid there. A switch to another profile keeps it. Best effort. A Jellyfin
+        // sign-out isn't caught here yet: the state changes before AccountRepository.expire wipes the session.
+        val previous = _state.value as? SeerrState.Ready
+        if (previous != null) {
+            val same = key?.serverId == previous.serverId && key?.userId == previous.userId
+            val dropped = if (same) key?.kids == true else store.session(previous.serverId, previous.userId) == null
+            if (dropped) scope.launch { previous.api.logout() }
+        }
         if (key == null) {
             _state.value = SeerrState.Hidden
             return
