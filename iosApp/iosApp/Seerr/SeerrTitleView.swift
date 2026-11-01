@@ -34,8 +34,11 @@ struct SeerrTitleView: View {
                     phoneLayout(state, title)
                 }
             } else if let message = model.state?.message {
-                LoadErrorView(message: message, onRetry: { model.retry() }).screenMargin().padding(.top, 96)
-                    .frame(maxHeight: .infinity, alignment: .top)
+                ScrollView {
+                    LoadErrorView(message: message, onRetry: { model.retry() })
+                        .screenMargin()
+                        .padding(.vertical, Space.s5)
+                }
             } else {
                 // The grey page, in the shapes of the real one; it fades into it, as a library title does.
                 ItemSkeleton(wide: wide, margin: margin)
@@ -133,7 +136,10 @@ struct SeerrTitleView: View {
             }
             .accessibilityElement(children: .combine)
             if !state.genres.isEmpty {
-                Text(Strings.shared.factsLine(facts: state.genres)).font(.subheadline).foregroundStyle(.secondary)
+                Text(Strings.shared.factsLine(facts: state.genres))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(centered ? .center : .leading)
             }
             if let overview = state.overview { ExpandableOverview(text: overview) }
             // Who asked and what is next, once someone did.
@@ -255,9 +261,6 @@ private struct SeerrSeasonsView: View {
     let margin: CGFloat
     @ObservedObject var model: SeerrTitleObservable
 
-    /// Episode cards: 300 wide on a phone, 380 on a regular width.
-    private var cardWidth: CGFloat { wide ? 380 : 300 }
-
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s3) {
             SeasonButtonsRow(
@@ -272,53 +275,18 @@ private struct SeerrSeasonsView: View {
 
     @ViewBuilder
     private var episodes: some View {
-        if let episodes = state.episodes, let message = episodes.message {
-            LoadErrorView(message: message, onRetry: { model.retryEpisodes() })
-        } else if let episodes = state.episodes, !episodes.loading || !episodes.episodes.isEmpty {
-            if wide {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: Space.s4) {
-                        ForEach(episodes.episodes, id: \.number) { SeerrEpisodeCardView(episode: $0, width: cardWidth) }
-                    }
-                    .padding(.horizontal, margin)
-                    .liftRoomInside()
-                }
-                .padding(.horizontal, -margin)
-                .liftRoom()
-            } else {
-                // A phone lists the episodes down the page.
-                VStack(spacing: Space.s4) {
-                    ForEach(episodes.episodes, id: \.number) { SeerrEpisodeRowView(episode: $0) }
-                }
-            }
-        } else if wide {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Space.s4) {
-                    ForEach(0..<3, id: \.self) { _ in SkeletonBlock().frame(width: cardWidth).aspectRatio(1.6, contentMode: .fit) }
-                }
-                .padding(.horizontal, margin)
-            }
-            .padding(.horizontal, -margin)
-            .scrollDisabled(true)
-        } else {
-            VStack(spacing: Space.s4) {
-                ForEach(0..<3, id: \.self) { _ in SeerrEpisodeRowSkeleton() }
-            }
-        }
-    }
-}
-
-private struct SeerrEpisodeRowSkeleton: View {
-    var body: some View {
-        HStack(alignment: .top, spacing: Space.s3) {
-            SkeletonBlock().frame(width: 148).aspectRatio(1.6, contentMode: .fit)
-            VStack(alignment: .leading, spacing: Space.s2) {
-                SkeletonLine(font: .headline, width: 140)
-                SkeletonLine(font: .caption, width: 90)
-                SkeletonLine(font: .subheadline, width: nil)
-                SkeletonLine(font: .subheadline, width: 120)
-            }
-        }
+        let list = state.episodes
+        EpisodeListArea(
+            episodes: list?.episodes ?? [],
+            id: \.number,
+            loading: list?.loading ?? true,
+            message: list?.message,
+            wide: wide,
+            margin: margin,
+            onRetry: { model.retryEpisodes() },
+            row: { SeerrEpisodeRowView(episode: $0) },
+            card: { SeerrEpisodeCardView(episode: $0, width: $1) }
+        )
     }
 }
 

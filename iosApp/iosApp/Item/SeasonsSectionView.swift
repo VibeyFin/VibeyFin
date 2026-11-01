@@ -21,10 +21,6 @@ struct SeasonsSectionView: View {
     var canDownload = false
     var downloadActions = DownloadActions()
 
-    /// The episode area keeps the height of the tallest list it has shown, so choosing a season swaps its content in place and
-    /// nothing below it moves.
-    @State private var tallest: CGFloat = 0
-
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s3) {
             if seasons.loading {
@@ -42,13 +38,6 @@ struct SeasonsSectionView: View {
             } else {
                 seasonButtons
                 episodes
-                    .frame(minHeight: tallest, alignment: .top)
-                    .background(GeometryReader { proxy in
-                        Color.clear.preference(key: EpisodeHeightKey.self, value: proxy.size.height)
-                    })
-                    .onPreferenceChange(EpisodeHeightKey.self) { height in
-                        if !seasons.episodes.loading && height > tallest { tallest = height }
-                    }
             }
         }
         .animation(.easeOut(duration: 0.25), value: seasons.loading)
@@ -63,103 +52,42 @@ struct SeasonsSectionView: View {
         )
     }
 
-    /// Episode cards: 300 wide on a phone, 380 on a regular width.
-    private var cardWidth: CGFloat { wide ? 380 : 300 }
-
-    private func scrollToCurrent(_ proxy: ScrollViewProxy, _ list: EpisodeList) {
-        let target = list.items.first(where: { $0.id == seasons.startEpisode?.id }) ?? list.items.first
-        if let id = target?.id { proxy.scrollTo(id, anchor: .leading) }
-    }
-
-    @ViewBuilder
     private var episodes: some View {
         let list = seasons.episodes
-        if let message = list.message {
-            LoadErrorView(message: message, onRetry: onRetryEpisodes)
-        } else if list.items.isEmpty && list.loading && !wide {
-            VStack(spacing: Space.s4) {
-                ForEach(0..<3, id: \.self) { _ in EpisodeRowSkeleton() }
+        return EpisodeListArea(
+            episodes: list.items,
+            id: \.id,
+            loading: list.loading,
+            message: list.message,
+            wide: wide,
+            margin: margin,
+            focusId: seasons.startEpisode?.id,
+            onRetry: onRetryEpisodes,
+            row: { episode in
+                EpisodeRowView(
+                    episode: episode,
+                    current: episode.id == seasons.startEpisode?.id,
+                    onPlay: { onPlay(episode.id) },
+                    onToggleWatched: { onToggleWatched(episode.id) },
+                    onView: { onViewEpisode(episode) },
+                    download: downloads[episode.id],
+                    canDownload: canDownload,
+                    downloadActions: downloadActions
+                )
+            },
+            card: { episode, width in
+                EpisodeCardView(
+                    episode: episode,
+                    width: width,
+                    current: episode.id == seasons.startEpisode?.id,
+                    onPlay: { onPlay(episode.id) },
+                    onToggleWatched: { onToggleWatched(episode.id) },
+                    onView: { onViewEpisode(episode) },
+                    download: downloads[episode.id],
+                    canDownload: canDownload,
+                    downloadActions: downloadActions
+                )
             }
-        } else if list.items.isEmpty && list.loading {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Space.s4) {
-                    ForEach(0..<3, id: \.self) { _ in
-                        SkeletonBlock().frame(width: cardWidth).aspectRatio(1.6, contentMode: .fit)
-                    }
-                }
-                .padding(.horizontal, margin)
-            }
-            .padding(.horizontal, -margin)
-            .scrollDisabled(true)
-        } else if list.items.isEmpty {
-            Text(Strings.shared.noEpisodes)
-                .font(.body)
-                .foregroundStyle(.secondary)
-        } else if !wide {
-            // A phone lists the episodes down the page; the one Play starts is marked.
-            VStack(spacing: Space.s4) {
-                ForEach(list.items, id: \.id) { episode in
-                    EpisodeRowView(
-                        episode: episode,
-                        current: episode.id == seasons.startEpisode?.id,
-                        onPlay: { onPlay(episode.id) },
-                        onToggleWatched: { onToggleWatched(episode.id) },
-                        onView: { onViewEpisode(episode) },
-                        download: downloads[episode.id],
-                        canDownload: canDownload,
-                        downloadActions: downloadActions
-                    )
-                }
-            }
-            .opacity(list.loading ? 0.5 : 1)
-        } else {
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: Space.s4) {
-                        ForEach(list.items, id: \.id) { episode in
-                            EpisodeCardView(
-                                episode: episode,
-                                width: cardWidth,
-                                current: episode.id == seasons.startEpisode?.id,
-                                onPlay: { onPlay(episode.id) },
-                                onToggleWatched: { onToggleWatched(episode.id) },
-                                onView: { onViewEpisode(episode) },
-                                download: downloads[episode.id],
-                                canDownload: canDownload,
-                                downloadActions: downloadActions
-                            )
-                            .id(episode.id)
-                        }
-                    }
-                    .padding(.horizontal, margin)
-                    .liftRoomInside()
-                }
-                .padding(.horizontal, -margin)
-                .liftRoom()
-                // A season opens at the episode Play will start, so the one being watched is in view; another season at its first.
-                .onAppear { scrollToCurrent(proxy, list) }
-                .onChange(of: list.items.first?.id) { scrollToCurrent(proxy, list) }
-            }
-            .opacity(list.loading ? 0.5 : 1)
-        }
-    }
-}
-
-private struct EpisodeHeightKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
-}
-
-private struct EpisodeRowSkeleton: View {
-    var body: some View {
-        HStack(alignment: .top, spacing: Space.s3) {
-            SkeletonBlock().frame(width: 148).aspectRatio(1.6, contentMode: .fit)
-            VStack(alignment: .leading, spacing: Space.s2) {
-                SkeletonLine(font: .headline, width: 140)
-                SkeletonLine(font: .caption, width: 90)
-                SkeletonLine(font: .subheadline, width: nil)
-                SkeletonLine(font: .subheadline, width: 120)
-            }
-        }
+        )
     }
 }

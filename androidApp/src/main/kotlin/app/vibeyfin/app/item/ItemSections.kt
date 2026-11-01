@@ -145,7 +145,7 @@ fun SeasonsSection(
                 RowPhase.Ready -> if (seasons.seasons.isEmpty()) {
                     Text(Strings.noSeasons, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
-                    SeasonButtons(seasons, margin, onSelect)
+                    SeasonChipsRow(seasons.seasons.map { SeasonChip(it.id, it.seasonLabel) }, seasons.selectedId, margin, onSelect)
                 }
             }
         }
@@ -164,54 +164,6 @@ private fun SeasonSkeleton(margin: Dp) {
 }
 
 @Composable
-private fun SeasonButtons(seasons: SeasonsState, margin: Dp, onSelect: (String) -> Unit) {
-    val listState = rememberLazyListState()
-
-    val opening = seasons.seasons.indexOfFirst { it.id == seasons.selectedId }.coerceAtLeast(0)
-
-    LaunchedEffect(seasons.seasons.size) { if (opening > 0) listState.scrollToItem(opening) }
-    LazyRow(
-        state = listState,
-        modifier = Modifier.bleed(margin).semantics { contentDescription = Strings.seasonsDescription(seasons.seasons.size) },
-        contentPadding = PaddingValues(horizontal = margin),
-        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
-    ) {
-        items(seasons.seasons, key = { it.id }) { season ->
-            val selected = season.id == seasons.selectedId
-
-            FilterChip(
-                selected = selected,
-                onClick = { onSelect(season.id) },
-                label = { Text(season.seasonLabel, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                colors = FilterChipDefaults.filterChipColors(
-                    containerColor = VibeyFinTokens.Colors.surface2,
-                    labelColor = VibeyFinTokens.Colors.inkMuted,
-                    selectedContainerColor = VibeyFinTokens.Colors.accentSoft,
-                    selectedLabelColor = VibeyFinTokens.Colors.onAccentSoft,
-                ),
-                border = null,
-                modifier = Modifier.semantics { contentDescription = Strings.seasonDescription(season.seasonLabel, selected) },
-            )
-        }
-    }
-}
-
-/**
- * What the episode area shows: loading cards, a failure, or the list. Two phases are equal when they show the same kind of
- * thing for the same season, so the area only animates on a real change; [snapshot] is what the phase showed when it was made,
- * kept so that a phase fading out keeps drawing its own content, not the next one's.
- */
-private class EpisodePhase(val seasonId: String?, val index: Int, val snapshot: EpisodeData) {
-    val failed: Boolean get() = snapshot.message != null
-    val loading: Boolean get() = snapshot.loading && snapshot.items.isEmpty()
-    private val empty: Boolean get() = snapshot.items.isEmpty()
-
-    override fun equals(other: Any?) = other is EpisodePhase && seasonId == other.seasonId && failed == other.failed && loading == other.loading && empty == other.empty
-
-    override fun hashCode() = listOf(seasonId, failed, loading, empty).hashCode()
-}
-
-@Composable
 private fun EpisodeList(
     seasons: SeasonsState,
     wide: Boolean,
@@ -225,99 +177,35 @@ private fun EpisodeList(
     downloadCallbacks: DownloadCallbacks,
 ) {
     val episodes = seasons.episodes
-    val cardWidth = if (wide) EPISODE_CARD_WIDE else EPISODE_CARD
-    val currentPhase = EpisodePhase(seasons.selectedId, seasons.seasons.indexOfFirst { it.id == seasons.selectedId }, episodes)
 
-    // The episode area keeps the height of the tallest list it has shown, so choosing a season swaps its content in place and
-    // nothing below it moves.
-    val density = LocalDensity.current
-    var tallest by remember { mutableStateOf(0.dp) }
-
-    Column(
-        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-        modifier = Modifier
-            .heightIn(min = tallest)
-            .onSizeChanged { size -> with(density) { if (!currentPhase.loading && size.height.toDp() > tallest) tallest = size.height.toDp() } },
-    ) {
-        AnimatedContent(
-            targetState = currentPhase,
-            transitionSpec = {
-                // A later season slides in from the right, an earlier one from the left; the same season only fades
-                val forward = targetState.index > initialState.index
-                if (targetState.index == initialState.index) {
-                    fadeIn(tween(ROW_FADE_MS)) togetherWith fadeOut(tween(ROW_FADE_MS))
-                } else {
-                    val sign = if (forward) 1 else -1
-                    (slideInHorizontally(tween(200)) { it * sign / 3 } + fadeIn(tween(200))) togetherWith
-                        (slideOutHorizontally(tween(200)) { -it * sign / 3 } + fadeOut(tween(140)))
-                }
-            },
-            label = "episodes",
-        ) { phase ->
-            // The phase on screen follows the live list (a watched mark changes a card, not the phase); one fading out keeps its own
-            val list = if (phase == currentPhase) episodes else phase.snapshot
-
-            when {
-                phase.failed -> LoadError(list.message ?: "", onRetry)
-
-                phase.loading && wide ->
-                    Row(Modifier.bleed(margin).padding(horizontal = margin), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
-                        repeat(3) { EpisodeCardSkeleton(cardWidth) }
-                    }
-
-                phase.loading ->
-                    Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
-                        repeat(3) { EpisodeRowSkeleton() }
-                    }
-
-                list.items.isEmpty() -> Text(Strings.noEpisodes, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-                !wide -> Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
-                    list.items.distinctBy { it.id }.forEach { episode ->
-                        key(episode.id) {
-                            EpisodeRow(
-                                episode,
-                                current = episode.id == seasons.startEpisode?.id,
-                                onPlay = { onPlay(episode.id) },
-                                onToggleWatched = { onToggleWatched(episode.id) },
-                                onView = { onViewEpisode(episode) },
-                                download = downloads[episode.id],
-                                canDownload = canDownload,
-                                downloadCallbacks = downloadCallbacks,
-                            )
-                        }
-                    }
-                }
-
-                else -> {
-                    val listState = rememberLazyListState()
-
-                    // A season opens at the episode Play will start, so the one being watched is in view; another season opens at its first
-                    val firstId = list.items.first().id
-
-                    LaunchedEffect(firstId) {
-                        val at = list.items.indexOfFirst { it.id == seasons.startEpisode?.id }
-
-                        listState.scrollToItem(if (at > 0) at else 0)
-                    }
-
-                    LazyRow(
-                        state = listState,
-                        modifier = Modifier.bleed(margin),
-                        contentPadding = PaddingValues(horizontal = margin),
-                        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
-                    ) {
-                        items(list.items.distinctBy { it.id }, key = { it.id }) { episode ->
-                            EpisodeCard(
-                                episode, cardWidth, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) }, onView = { onViewEpisode(episode) },
-                                download = downloads[episode.id], canDownload = canDownload, downloadCallbacks = downloadCallbacks,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
+    EpisodeListArea(
+        seasonKey = seasons.selectedId,
+        seasonIndex = seasons.seasons.indexOfFirst { it.id == seasons.selectedId },
+        episodes = EpisodeSnapshot(episodes.items, episodes.loading, episodes.message),
+        itemKey = { it.id },
+        wide = wide,
+        margin = margin,
+        focusKey = seasons.startEpisode?.id,
+        onRetry = onRetry,
+        row = { episode ->
+            EpisodeRow(
+                episode,
+                current = episode.id == seasons.startEpisode?.id,
+                onPlay = { onPlay(episode.id) },
+                onToggleWatched = { onToggleWatched(episode.id) },
+                onView = { onViewEpisode(episode) },
+                download = downloads[episode.id],
+                canDownload = canDownload,
+                downloadCallbacks = downloadCallbacks,
+            )
+        },
+        card = { episode, width ->
+            EpisodeCard(
+                episode, width, current = episode.id == seasons.startEpisode?.id, onPlay = { onPlay(episode.id) }, onToggleWatched = { onToggleWatched(episode.id) }, onView = { onViewEpisode(episode) },
+                download = downloads[episode.id], canDownload = canDownload, downloadCallbacks = downloadCallbacks,
+            )
+        },
+    )
 }
 
 internal val EPISODE_CARD = 300.dp

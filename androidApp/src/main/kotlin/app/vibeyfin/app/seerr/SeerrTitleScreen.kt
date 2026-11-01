@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -66,6 +67,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.R
 import app.vibeyfin.app.components.ActionSnackbar
 import app.vibeyfin.app.components.Artwork
+import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.ItemSkeleton
 import app.vibeyfin.app.components.LoadError
@@ -79,11 +81,15 @@ import app.vibeyfin.app.item.EPISODE_CARD_WIDE
 import app.vibeyfin.app.item.EPISODE_ROW_PICTURE
 import app.vibeyfin.app.item.EpisodeCardScrim
 import app.vibeyfin.app.item.EpisodeCardSkeleton
+import app.vibeyfin.app.item.EpisodeListArea
 import app.vibeyfin.app.item.EpisodeRowSkeleton
+import app.vibeyfin.app.item.EpisodeSnapshot
 import app.vibeyfin.app.item.EpisodeTag
 import app.vibeyfin.app.item.ItemBackdrop
 import app.vibeyfin.app.item.Overview
 import app.vibeyfin.app.item.PinnedBackdrop
+import app.vibeyfin.app.item.SeasonChip
+import app.vibeyfin.app.item.SeasonChipsRow
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.navigation.LocalOpenTrailerUrl
 import app.vibeyfin.app.navigation.LocalSeerrLongPress
@@ -145,7 +151,12 @@ fun SeerrTitleRoute(
 
             when {
                 state.loading && state.title == null -> ItemSkeleton(wide = wide, screenWidth = maxWidth, screenHeight = maxHeight, margin = margin)
-                state.title == null -> LoadError(state.message.orEmpty(), viewModel::onRetry, Modifier.padding(horizontal = margin).padding(top = 96.dp))
+
+                state.title == null -> Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+                    Spacer(Modifier.height(BackButtonSpace))
+                    LoadError(state.message.orEmpty(), viewModel::onRetry, Modifier.padding(horizontal = margin))
+                }
+
                 else -> SeerrTitlePage(state, wide, maxWidth, maxHeight, margin, viewModel, openTrailer, onOpenItem, onOpenSeerr)
             }
 
@@ -339,63 +350,23 @@ internal fun StatusLine(text: String, state: RequestState) {
 @Composable
 private fun SeasonsAndEpisodes(state: SeerrTitleUiState, wide: Boolean, margin: Dp, onSelect: (Int) -> Unit, onRetry: () -> Unit) {
     val chosen = state.episodes?.season
+    val episodes = state.episodes
 
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-        SectionTitle(Strings.seerrSeasons, modifier = Modifier.semantics { heading() })
-        LazyRow(
-            modifier = Modifier.bleed(margin).semantics { contentDescription = Strings.seasonsDescription(state.seasons.size) },
-            contentPadding = PaddingValues(horizontal = margin),
-            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
-        ) {
-            items(state.seasons, key = { it.number }) { row ->
-                val selected = row.number == chosen
-
-                FilterChip(
-                    selected = selected,
-                    onClick = { onSelect(row.number) },
-                    label = { Text(row.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        containerColor = VibeyFinTokens.Colors.surface2,
-                        labelColor = VibeyFinTokens.Colors.inkMuted,
-                        selectedContainerColor = VibeyFinTokens.Colors.accentSoft,
-                        selectedLabelColor = VibeyFinTokens.Colors.onAccentSoft,
-                    ),
-                    border = null,
-                    modifier = Modifier.semantics { contentDescription = Strings.seasonDescription(row.name, selected) },
-                )
-            }
-        }
-
-        val episodes = state.episodes
-        val cardWidth = if (wide) EPISODE_CARD_WIDE else EPISODE_CARD
-
-        // One height whatever is shown, so the page doesn't move as a season loads
-        Box(Modifier.fillMaxWidth()) {
-            when {
-                episodes == null || (episodes.loading && episodes.episodes.isEmpty()) -> if (wide) {
-                    Row(Modifier.bleed(margin).padding(horizontal = margin), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
-                        repeat(3) { EpisodeCardSkeleton(cardWidth) }
-                    }
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) { repeat(3) { EpisodeRowSkeleton() } }
-                }
-
-                episodes.message != null -> LoadError(episodes.message!!, onRetry)
-
-                // A phone lists the episodes down the page
-                !wide -> Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
-                    episodes.episodes.forEach { key("${it.season}-${it.number}") { SeerrEpisodeRow(it) } }
-                }
-
-                else -> LazyRow(
-                    modifier = Modifier.bleed(margin),
-                    contentPadding = PaddingValues(horizontal = margin),
-                    horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
-                ) {
-                    items(episodes.episodes, key = { "${it.season}-${it.number}" }) { SeerrEpisodeCard(it, cardWidth) }
-                }
-            }
-        }
+        SeasonChipsRow(state.seasons.map { SeasonChip(it.number, it.name) }, chosen, margin, onSelect)
+        EpisodeListArea(
+            seasonKey = chosen,
+            seasonIndex = state.seasons.indexOfFirst { it.number == chosen },
+            // Until the first answer the area is loading, as a library show's is
+            episodes = EpisodeSnapshot(episodes?.episodes.orEmpty(), episodes?.loading ?: true, episodes?.message),
+            itemKey = { "${it.season}-${it.number}" },
+            wide = wide,
+            margin = margin,
+            focusKey = null,
+            onRetry = onRetry,
+            row = { SeerrEpisodeRow(it) },
+            card = { episode, width -> SeerrEpisodeCard(episode, width) },
+        )
     }
 }
 
@@ -448,7 +419,7 @@ private fun SeerrEpisodeCard(episode: SeerrEpisode, width: Dp) {
             // Two lines, always, so every card in the row is the same
             Text(episode.overview.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = VibeyFinTokens.Colors.ink, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                episode.rating?.let { Text(Strings.ratingTag(it), style = MaterialTheme.typography.labelLarge, color = VibeyFinTokens.Colors.ink) }
+                episode.rating?.takeIf { it > 0 }?.let { Text(Strings.ratingTag(it), style = MaterialTheme.typography.labelLarge, color = VibeyFinTokens.Colors.ink) }
                 Spacer(Modifier.weight(1f))
                 Strings.releaseDate(episode.airDate)?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = VibeyFinTokens.Colors.inkMuted, maxLines = 1) }
             }
