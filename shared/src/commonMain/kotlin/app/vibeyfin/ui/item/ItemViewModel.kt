@@ -9,6 +9,8 @@ import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.DownloadTarget
 import app.vibeyfin.domain.LibraryRepository
+import app.vibeyfin.domain.PlaybackNegotiation
+import app.vibeyfin.domain.PlaybackRepository
 import app.vibeyfin.domain.SeerrConnection
 import app.vibeyfin.domain.SeerrRepository
 import app.vibeyfin.domain.SeerrState
@@ -16,7 +18,6 @@ import app.vibeyfin.domain.WatchChanges
 import app.vibeyfin.domain.WatchRepository
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
-import app.vibeyfin.domain.model.RequestState
 import app.vibeyfin.domain.model.SeerrMediaType
 import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.domain.model.notInLibrary
@@ -41,8 +42,11 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -123,6 +127,8 @@ data class ItemUiState(
     val downloadPrompt: DownloadPrompt? = null,
     /** The question before downloads are deleted; null when none is asked. */
     val removePrompt: RemovePrompt? = null,
+    /** How Play will deliver the title, asked of the server when the page opens; null until it answers or when it can't say. */
+    val playout: Playout? = null,
     /** Set when the session ended and the screen must be left. */
     val exit: HomeExit? = null,
 ) {
@@ -177,6 +183,9 @@ data class ItemUiState(
     /** What Play opens the player on: the item itself, or for a show the episode to watch next. */
     val playTarget: MediaItem? get() = if (isSeries) seasons.startEpisode else item?.takeIf { it.canPlay }
 
+    /** The line under Play. None for a download, which plays from the device without asking the server. */
+    val playoutLine: Playout? get() = playout?.takeUnless { playTarget?.let { downloads[it.id]?.badge == DownloadBadge.Done } == true }
+
     /** A show's Play is on its way: the page draws a grey button of the same size so Play does not pop in. */
     val playLoading: Boolean get() = isSeries && playTarget == null && !seasons.playSettled
 
@@ -212,6 +221,7 @@ class ItemViewModel(
     private val watch: WatchRepository,
     changes: WatchChanges,
     private val downloads: DownloadRepository,
+    private val playback: PlaybackRepository,
     private val seerr: SeerrRepository,
     private val seerrConnection: SeerrConnection,
 ) : ViewModel() {
@@ -244,9 +254,21 @@ class ItemViewModel(
         }
         // What was watched changed (playback ended): bring the Resume button and the marks up to date, quietly.
         viewModelScope.launch { changes.events.collect { refresh() } }
+        viewModelScope.launch { probePlayout() }
     }
 
     fun onRetry() = load()
+
+    // Asks the server how the title Play would start is delivered, again whenever that title changes (a show's next episode).
+    // No answer, an error or no way to play leaves the line out: it is a hint, not something to report.
+    private suspend fun probePlayout() {
+        content.map { it.playTarget?.id }.distinctUntilChanged().collectLatest { id ->
+            content.update { it.copy(playout = null) }
+            if (id == null) return@collectLatest
+            val ready = playback.negotiate(id) as? PlaybackNegotiation.Ready ?: return@collectLatest
+            content.update { it.copy(playout = ready.plan.toPlayout()) }
+        }
+    }
 
     /** "Try again" on "More like this". */
     fun onRetrySimilar() {

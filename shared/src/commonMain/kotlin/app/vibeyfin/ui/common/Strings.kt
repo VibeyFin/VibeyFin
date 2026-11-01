@@ -391,6 +391,26 @@ object Strings {
         PlayMethod.Transcode -> "Transcode"
     }
 
+    // The line under Play on the item screen
+    fun playoutDescription(method: PlayMethod, reason: String?) = "Plays as ${statsMethod(method).lowercase()}" + (reason?.let { ", ${it.replaceFirstChar(Char::lowercase)}" } ?: "")
+
+    /** The server's transcode reason in plain words; an unknown one is its name, split into words. */
+    fun transcodeReason(code: String) = when (code) {
+        "ContainerNotSupported" -> "The file type isn't supported"
+        "VideoCodecNotSupported" -> "The video format isn't supported"
+        "AudioCodecNotSupported" -> "The audio format isn't supported"
+        "SubtitleCodecNotSupported" -> "The subtitle format isn't supported"
+        "VideoProfileNotSupported", "VideoLevelNotSupported" -> "The video profile isn't supported"
+        "VideoRangeTypeNotSupported" -> "The HDR format isn't supported"
+        "VideoResolutionNotSupported" -> "The resolution is too high"
+        "VideoBitDepthNotSupported" -> "The video's bit depth isn't supported"
+        "VideoFramerateNotSupported" -> "The frame rate isn't supported"
+        "AudioChannelsNotSupported" -> "The audio has too many channels"
+        "AudioIsExternal", "SecondaryAudioNotSupported" -> "The audio track is separate"
+        "ContainerBitrateExceedsLimit", "VideoBitrateNotSupported", "AudioBitrateNotSupported" -> "The bitrate is above the limit"
+        else -> code.replace(Regex("(?<=[a-z])(?=[A-Z])"), " ").lowercase().replaceFirstChar(Char::uppercase)
+    }
+
     val statsLabelMethod = "Method"
     val statsLabelReasons = "Reasons"
     val statsLabelEngine = "Engine"

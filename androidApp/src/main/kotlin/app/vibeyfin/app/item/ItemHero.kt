@@ -82,6 +82,7 @@ import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.downloads.actions
 import app.vibeyfin.ui.item.ItemUiState
+import app.vibeyfin.ui.item.Playout
 import app.vibeyfin.ui.item.Trailer
 import app.vibeyfin.ui.item.seasonLabel
 import coil3.compose.AsyncImage
@@ -236,11 +237,41 @@ fun HeroDetails(
         // A show's Play waits for its next episode: a gray button of the same size holds its place, so it does not pop in
         if (state.canPlay) {
             PlayButtons(state.playLabel, state.canStartOver, onPlay, fullWidth = true)
+            PlayoutLine(state.playoutLine)
         } else if (state.playLoading) {
             SkeletonBlock(Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge), shape = RoundedCornerShape(50))
         }
 
         ActionButtons(state, onToggleFavorite, onPlayTrailer, onTogglePlayed, downloads)
+    }
+}
+
+// How the title will play, under Play: direct play, direct stream, or transcode with its reason. Its height is held from the
+// start, so the answer does not move the page; with no answer (a download, offline, an error) the space stays empty
+@Composable
+private fun PlayoutLine(playout: Playout?) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 24.dp)
+            .semantics(mergeDescendants = true) { contentDescription = playout?.description.orEmpty() },
+    ) {
+        if (playout == null) return@Row
+
+        Text(
+            text = Strings.statsMethod(playout.method),
+            style = MaterialTheme.typography.labelMedium,
+            color = VibeyFinTokens.Colors.inkMuted,
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .padding(horizontal = VibeyFinTokens.Space.s2, vertical = VibeyFinTokens.Space.s1),
+        )
+        playout.reason?.let {
+            Text(text = it, style = MaterialTheme.typography.bodySmall, color = VibeyFinTokens.Colors.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 

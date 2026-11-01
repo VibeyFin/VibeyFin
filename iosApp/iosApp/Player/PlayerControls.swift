@@ -211,6 +211,8 @@ private struct PlayerCapsuleStyle: ViewModifier {
 /// The picture's one badge ("4K", "HDR10"), on the scrim so it reads over any video.
 struct FormatBadge: View {
     let text: String
+    /// `Brand.scrim` over artwork; a plain surface fill where the badge sits on the page's own background.
+    var fill: Color = Brand.scrim
 
     var body: some View {
         Text(text)
@@ -218,7 +220,7 @@ struct FormatBadge: View {
             .foregroundStyle(.primary)
             .padding(.horizontal, Space.s2)
             .padding(.vertical, 2)
-            .background(Capsule().fill(Brand.scrim))
+            .background(Capsule().fill(fill))
             .accessibilityLabel(text)
     }
 }
