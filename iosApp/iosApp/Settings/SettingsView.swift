@@ -85,9 +85,19 @@ struct SettingsPageView: View {
     @ViewBuilder
     private func rows(of page: SettingsPage) -> some View {
         // A section has no id of its own: page and position are stable for a page that never reorders.
-        ForEach(page.sections.enumerated().map { (id: "\(page.id.name)-\($0.offset)", section: $0.element) }, id: \.id) { entry in
+        let sections = page.sections.enumerated().map { (id: "\(page.id.name)-\($0.offset)", section: $0.element) }
+        ForEach(sections.filter { showsSection($0.section) }, id: \.id) { entry in
             sectionView(entry.section, in: page)
         }
+    }
+
+    // PoC: remove with poc/playback-engine. The playback engine section is for debug builds only.
+    private func showsSection(_ section: SettingsSection) -> Bool {
+        #if DEBUG
+        return true
+        #else
+        return !section.items.contains { $0.key == SettingKey.playbackengine }
+        #endif
     }
 
     private var holdsPurgeDownloads: Bool {

@@ -6,7 +6,7 @@ import UIKit
 /// play and reporting to the server. Presented over the item's page.
 struct PlayerView: View {
     @StateObject private var model: PlaybackObservable
-    @StateObject private var controller = PlayerController()
+    @StateObject private var controller = PlayerController(engine: PlaybackEngineFactory.make())
     @StateObject private var pip = PlayerPictureInPicture()
     /// The volume and brightness a vertical swipe on the video changes.
     @StateObject private var swipe = PlayerSwipe()
@@ -55,7 +55,8 @@ struct PlayerView: View {
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
-            PlayerSurface(player: controller.player, onLayer: { pip.attach(to: $0) }).ignoresSafeArea()
+            PlayerSurface(controller: controller, pip: pip).ignoresSafeArea()
+            SubtitleOverlay(source: controller.isExternalPlayback ? nil : subtitleSource(in: state)) { controller.engine.currentSeconds }
             // The picture is on the other screen over AirPlay: the item's artwork, blurred, stands in for it.
             if controller.isExternalPlayback {
                 ExternalPlaybackBackdrop(artworkUrl: state?.artworkUrl)
@@ -190,6 +191,7 @@ struct PlayerView: View {
             }
             updateTrickplay(state)
             controller.wantAudio(audioChoice(in: state))
+            controller.wantSubtitle(subtitleChoice(in: state))
             controller.wantDiagnostics(state?.showDiagnostics == true)
             controller.setSpeed(state?.speed ?? 1)
             applyStillWatching(state?.stillWatching == true)
@@ -369,6 +371,7 @@ struct PlayerView: View {
                         },
                         onOpenChange: menuOpenChanged
                     )
+                    .equatable()
                 }
                 // Picture in picture doesn't apply to external playback; the button is back when AirPlay stops.
                 if pip.isSupported && state?.pictureInPicture != false && !controller.isExternalPlayback {
@@ -536,6 +539,26 @@ struct PlayerView: View {
         guard let state, state.stream?.audioInPlayer == true,
               let position = state.audioTracks.firstIndex(where: { $0.selected }) else { return nil }
         return AudioChoice(position: position, count: state.audioTracks.count)
+    }
+
+    /// The subtitle the player draws itself: an embedded image track, by its place among the file's subtitles.
+    /// Nil when the stream has no such track to show, so the player leaves subtitles alone.
+    private func subtitleChoice(in state: PlaybackUiState?) -> SubtitleChoice? {
+        guard let state, let stream = state.stream, !stream.embeddedSubtitles.isEmpty else { return nil }
+        let tracks = state.subtitleTracks.filter { $0.index >= 0 }
+        let selected = tracks.first { $0.selected }?.index
+        let embedded = stream.embeddedSubtitles.map(\.int32Value)
+        guard selected == nil || embedded.contains(selected ?? -1) else { return nil }
+        return SubtitleChoice(position: tracks.firstIndex { $0.selected }, count: tracks.count, index: selected.map(Int.init))
+    }
+
+    /// The subtitle the app paints itself: the selected track, when the server can send it as a file.
+    private func subtitleSource(in state: PlaybackUiState?) -> SubtitleSource? {
+        guard let state, let stream = state.stream,
+              let selected = state.subtitleTracks.first(where: { $0.selected && $0.index >= 0 })?.index,
+              let file = stream.subtitleFiles.first(where: { $0.index == selected }),
+              let url = URL(string: file.url) else { return nil }
+        return SubtitleSource(url: url, headers: stream.headers)
     }
 
     private func close() {

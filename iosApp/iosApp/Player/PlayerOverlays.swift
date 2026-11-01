@@ -12,6 +12,7 @@ struct StatsOverlay: View {
         var rows: [(label: String, value: String)] = [
             (strings.statsLabelMethod, diagnostics.method.map { strings.statsMethod(method: $0) } ?? none)
         ]
+        rows.append((strings.statsLabelEngine, diagnostics.engine ?? none))
         if !diagnostics.transcodeReasons.isEmpty {
             rows.append((strings.statsLabelReasons, diagnostics.transcodeReasons.joined(separator: "\n")))
         }

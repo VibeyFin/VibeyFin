@@ -17,7 +17,11 @@ final class PlayerPictureInPicture: NSObject, ObservableObject, AVPictureInPictu
     /// The window was announced with `entered` but never appeared: the video is still inline.
     var failedToStart: () -> Void = {}
 
+    /// The engine learns when the window is up or gone, for engines that keep their own state about it.
+    var activeChanged: (Bool) -> Void = { _ in }
+
     private var controller: AVPictureInPictureController?
+    private var playback: AnyObject?
     private var restoring = false
     private var silenced = false
     private var allowsStart = true
@@ -29,6 +33,28 @@ final class PlayerPictureInPicture: NSObject, ObservableObject, AVPictureInPictu
         pip?.delegate = self
         pip?.canStartPictureInPictureAutomaticallyFromInline = allowsStart
         controller = pip
+        isSupported = pip != nil
+    }
+
+    /// Ties picture-in-picture to a new layer, for an engine whose layer changes with each stream.
+    func replace(with layer: AVPlayerLayer) {
+        install(AVPictureInPictureController(playerLayer: layer), playback: nil)
+    }
+
+    /// Ties picture-in-picture to frames an engine draws itself. `playback` answers the window's transport and stays alive with it.
+    func replace(with layer: AVSampleBufferDisplayLayer, playback: AVPictureInPictureSampleBufferPlaybackDelegate & AnyObject) {
+        guard AVPictureInPictureController.isPictureInPictureSupported() else { return }
+        let source = AVPictureInPictureController.ContentSource(sampleBufferDisplayLayer: layer, playbackDelegate: playback)
+        install(AVPictureInPictureController(contentSource: source), playback: playback)
+    }
+
+    private func install(_ pip: AVPictureInPictureController?, playback: AnyObject?) {
+        guard AVPictureInPictureController.isPictureInPictureSupported() else { return }
+        controller?.delegate = nil
+        pip?.delegate = self
+        pip?.canStartPictureInPictureAutomaticallyFromInline = allowsStart
+        controller = pip
+        self.playback = playback
         isSupported = pip != nil
     }
 
@@ -66,6 +92,7 @@ final class PlayerPictureInPicture: NSObject, ObservableObject, AVPictureInPictu
         guard !silenced else { return }
         restoring = false
         isActive = true
+        activeChanged(true)
         entered()
     }
 
@@ -75,6 +102,7 @@ final class PlayerPictureInPicture: NSObject, ObservableObject, AVPictureInPictu
     ) {
         let announced = isActive && !silenced
         isActive = false
+        activeChanged(false)
         restoring = false
         if announced { failedToStart() }
     }
@@ -91,6 +119,7 @@ final class PlayerPictureInPicture: NSObject, ObservableObject, AVPictureInPictu
     func pictureInPictureControllerDidStopPictureInPicture(_ controller: AVPictureInPictureController) {
         let closed = !restoring
         restoring = false
+        activeChanged(false)
         guard !silenced else { return }
         isActive = false
         left(closed)

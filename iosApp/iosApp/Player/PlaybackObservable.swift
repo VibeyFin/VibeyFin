@@ -9,8 +9,11 @@ final class PlaybackObservable: ObservableObject {
 
     private let model: PlaybackModel
     private var started = false
+    private let itemId: String
+    private var named = false
 
     init(itemId: String, startOver: Bool) {
+        self.itemId = itemId
         model = PlaybackModel(itemId: itemId, startOver: startOver)
     }
 
@@ -20,7 +23,12 @@ final class PlaybackObservable: ObservableObject {
         guard !started else { return }
         started = true
         model.observe { [weak self] state in
-            self?.state = state
+            guard let self else { return }
+            if !self.named, state.stream != nil {
+                self.named = true
+                PocLog.write("now playing \(state.title)\(state.subtitle.map { " (\($0))" } ?? "") id=\(self.itemId)")
+            }
+            self.state = state
         }
     }
 
@@ -108,6 +116,9 @@ final class PlaybackObservable: ObservableObject {
 
     /// Shows the subtitle track with this `TrackOption.index`; the "Off" row's index turns them off.
     func selectSubtitle(_ index: Int32) {
+        let name = state?.subtitleTracks.first { $0.index == index }?.label ?? "-"
+        let hasFile = state?.stream?.subtitleFiles.contains { $0.index == index } == true
+        PocLog.write("select subtitle index=\(index) name=\(name) file=\(hasFile) method=\(state?.diagnostics?.method.map { "\($0)" } ?? "-")")
         model.onSelectSubtitle(index: index)
     }
 
