@@ -340,20 +340,53 @@ struct TabShell: View {
         path.wrappedValue.append(item.opensList ? .children(parentId: item.id, title: item.title) : .item(itemId: item.id))
     }
 
+    @ViewBuilder
+    private func settingsDestination(_ route: TabRoute, in path: Binding<[TabRoute]>) -> some View {
+        switch route {
+        case .settings:
+            if let model = settings.current { SettingsEntryView(model: model, onExit: onExit) }
+        case .settingsPage(let id):
+            if id == .seerr {
+                // Seerr has an address field, which the shared Settings rows don't draw.
+                SeerrSettingsView(onMyRequests: { path.wrappedValue.append(.myRequests) })
+            } else if let model = settings.current {
+                SettingsPageView(pageId: id, model: model, onExit: onExit)
+            }
+        default:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private func seerrDestination(_ route: TabRoute, in path: Binding<[TabRoute]>) -> some View {
+        switch route {
+        case .seerrTitle(let type, let tmdbId):
+            SeerrTitleView(
+                type: type,
+                tmdbId: tmdbId,
+                // The library has it: its own page takes this one's place.
+                onOpenItem: { itemId in
+                    if !path.wrappedValue.isEmpty { path.wrappedValue.removeLast() }
+                    path.wrappedValue.append(.item(itemId: itemId))
+                },
+                onOpenSeerr: { openSeerr($0, in: path) }
+            )
+        case .seerrList(let kind):
+            SeerrListView(kind: kind, onOpen: { openSeerr($0, in: path) })
+        case .myRequests:
+            MyRequestsView(onOpen: { openSeerr($0, in: path) })
+        default:
+            EmptyView()
+        }
+    }
+
     private func stack<Root: View>(_ path: Binding<[TabRoute]>, @ViewBuilder root: () -> Root) -> some View {
         NavigationStack(path: path) {
             root()
                 .navigationDestination(for: TabRoute.self) { route in
                     switch route {
-                    case .settings:
-                        if let model = settings.current { SettingsEntryView(model: model, onExit: onExit) }
-                    case .settingsPage(let id):
-                        if id == .seerr {
-                            // Seerr has an address field, which the shared Settings rows don't draw.
-                            SeerrSettingsView(onMyRequests: { path.wrappedValue.append(.myRequests) })
-                        } else if let model = settings.current {
-                            SettingsPageView(pageId: id, model: model, onExit: onExit)
-                        }
+                    case .settings, .settingsPage:
+                        settingsDestination(route, in: path)
                     case .children(let parentId, let title):
                         ChildrenView(parentId: parentId, title: title, onOpen: { open($0, in: path) }, onOpenSeries: { path.wrappedValue.append(.item(itemId: $0)) }, onExit: onExit)
                     case .item(let itemId):
@@ -366,21 +399,8 @@ struct TabShell: View {
                         if let filter = route.filter() {
                             FilteredListView(filter: filter, onOpen: { open($0, in: path) }, onExit: onExit)
                         }
-                    case .seerrTitle(let type, let tmdbId):
-                        SeerrTitleView(
-                            type: type,
-                            tmdbId: tmdbId,
-                            // The library has it: its own page takes this one's place.
-                            onOpenItem: { itemId in
-                                if !path.wrappedValue.isEmpty { path.wrappedValue.removeLast() }
-                                path.wrappedValue.append(.item(itemId: itemId))
-                            },
-                            onOpenSeerr: { openSeerr($0, in: path) }
-                        )
-                    case .seerrList(let kind):
-                        SeerrListView(kind: kind, onOpen: { openSeerr($0, in: path) })
-                    case .myRequests:
-                        MyRequestsView(onOpen: { openSeerr($0, in: path) })
+                    case .seerrTitle, .seerrList, .myRequests:
+                        seerrDestination(route, in: path)
                     }
                 }
         }

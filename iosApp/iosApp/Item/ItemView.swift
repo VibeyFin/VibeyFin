@@ -138,16 +138,7 @@ struct ItemView: View {
                 MediaRowView(row: collections, onOpen: onOpen, onSeeAll: { _ in }, onRetry: { model.retryCollections() }, tileWidth: wide ? 168 : 112)
                     .padding(.horizontal, -margin)
             }
-            // The library's titles with Seerr's mixed in, once read; the library's row while it loads or when it fails.
-            if let similar = state.similar, similar.isVisible || !state.similarTiles.isEmpty {
-                if !similar.loading, similar.message == nil, state.similarTiles.contains(where: { $0 is SimilarTileSeerr }) {
-                    SimilarRowView(title: similar.title, tiles: state.similarTiles, tileWidth: wide ? 168 : 112, onOpen: onOpen, onOpenSeerr: onOpenSeerr)
-                        .padding(.horizontal, -margin)
-                } else {
-                    MediaRowView(row: similar, onOpen: onOpen, onSeeAll: { _ in }, onRetry: { model.retrySimilar() }, tileWidth: wide ? 168 : 112)
-                        .padding(.horizontal, -margin)
-                }
-            }
+            similarSection(state)
             if !state.technical.isEmpty {
                 TechnicalInfoView(lines: state.technical)
             }
@@ -164,6 +155,20 @@ struct ItemView: View {
             }
         }
         .environment(\.screenMarginOverride, wide ? Space.s6 : nil)
+    }
+
+    /// More like this: the library's titles with Seerr's mixed in, once read; the library's row while it loads or when it fails.
+    @ViewBuilder
+    private func similarSection(_ state: ItemUiState) -> some View {
+        if let similar = state.similar, similar.isVisible || !state.similarTiles.isEmpty {
+            if !similar.loading, similar.message == nil, state.similarTiles.contains(where: { $0 is SimilarTileSeerr }) {
+                SimilarRowView(title: similar.title, tiles: state.similarTiles, tileWidth: wide ? 168 : 112, onOpen: onOpen, onOpenSeerr: onOpenSeerr)
+                    .padding(.horizontal, -margin)
+            } else {
+                MediaRowView(row: similar, onOpen: onOpen, onSeeAll: { _ in }, onRetry: { model.retrySimilar() }, tileWidth: wide ? 168 : 112)
+                    .padding(.horizontal, -margin)
+            }
+        }
     }
 
     /// The picture stays put behind the page and darkens; the text goes up over it, and the rest of the page covers it.

@@ -80,33 +80,39 @@ struct SeerrSettingsView: View {
             disconnectSection
         case .connected:
             serverSection(state)
-            Section(Strings.shared.seerrThisProfile) {
-                SeerrRowText(
-                    title: Strings.shared.seerrSignedInAs(name: state.userName),
-                    help: state.signedInWithPassword ? Strings.shared.seerrSignedInWithPassword : Strings.shared.seerrSignedInAutomatically
-                )
-                if let left = state.quotaLeft {
-                    LabeledContent {
-                        Text(left)
-                    } label: {
-                        SeerrRowText(title: Strings.shared.seerrRequestsLeft, help: state.quotaPeriod)
-                    }
-                }
-            }
-            if let onMyRequests {
-                Section {
-                    Button(action: onMyRequests) {
-                        HStack {
-                            Text(Strings.shared.seerrMyRequests.titleCased()).foregroundStyle(.primary)
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.tertiary)
-                        }
-                    }
-                }
-            }
+            connectedSections(state)
             disconnectSection
         default:
             EmptyView()
+        }
+    }
+
+    /// Signed in: who as, how, the requests left, and the way to My requests.
+    @ViewBuilder
+    private func connectedSections(_ state: SeerrSettingsUiState) -> some View {
+        Section(Strings.shared.seerrThisProfile) {
+            SeerrRowText(
+                title: Strings.shared.seerrSignedInAs(name: state.userName),
+                help: state.signedInWithPassword ? Strings.shared.seerrSignedInWithPassword : Strings.shared.seerrSignedInAutomatically
+            )
+            if let left = state.quotaLeft {
+                LabeledContent {
+                    Text(left)
+                } label: {
+                    SeerrRowText(title: Strings.shared.seerrRequestsLeft, help: state.quotaPeriod)
+                }
+            }
+        }
+        if let onMyRequests {
+            Section {
+                Button(action: onMyRequests) {
+                    HStack {
+                        Text(Strings.shared.seerrMyRequests.titleCased()).foregroundStyle(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.tertiary)
+                    }
+                }
+            }
         }
     }
 

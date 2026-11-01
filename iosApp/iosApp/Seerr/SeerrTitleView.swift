@@ -130,32 +130,7 @@ struct SeerrTitleView: View {
             // Who asked and what is next, once someone did.
             if let detail = state.statusDetail { Text(detail).font(.footnote).foregroundStyle(.secondary) }
             if let status4k = state.status4k { SeerrStatusLine(text: status4k, state: state.state) }
-            if let primary = state.primary {
-                // The one aqua button, with the trailer beside it as Play has Start over. With nothing to do it stays, quiet and
-                // disabled, so the page doesn't jump.
-                HStack(spacing: Space.s3) {
-                    PrimaryButton(action: { model.request() }) {
-                        // A plus and the words; with nothing to do, the state's own symbol and its name.
-                        if state.sending && state.picker == nil {
-                            PrimaryButtonSpinner()
-                        } else {
-                            HStack(spacing: Space.s2) {
-                                if primary.enabled { Image(systemName: "plus") } else { SeerrStateSymbol(state: state.state) }
-                                Text(primary.label.titleCased()).lineLimit(1)
-                            }
-                        }
-                    }
-                    .disabled(!primary.enabled)
-                    if let trailer = state.trailerUrl, let url = URL(string: trailer) {
-                        Button { openURL(url) } label: { Image(systemName: "play.rectangle").font(.title3) }
-                            .buttonStyle(.bordered)
-                            .buttonBorderShape(.circle)
-                            .controlSize(.large)
-                            .tint(.primary)
-                            .accessibilityLabel(Strings.shared.trailer)
-                    }
-                }
-            }
+            if let primary = state.primary { primaryRow(state, primary) }
             HStack(spacing: Space.s4) {
                 if state.offer4k {
                     SeerrActionButton(title: Strings.shared.seerrRequest4k, systemImage: "plus") { model.request4k() }
@@ -166,6 +141,33 @@ struct SeerrTitleView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
+    }
+
+    /// The one aqua button, with the trailer beside it as Play has Start over. With nothing to do it stays, quiet and disabled,
+    /// so the page doesn't jump.
+    private func primaryRow(_ state: SeerrTitleUiState, _ primary: SeerrPrimary) -> some View {
+        HStack(spacing: Space.s3) {
+            PrimaryButton(action: { model.request() }) {
+                // A plus and the words; with nothing to do, the state's own symbol and its name.
+                if state.sending && state.picker == nil {
+                    PrimaryButtonSpinner()
+                } else {
+                    HStack(spacing: Space.s2) {
+                        if primary.enabled { Image(systemName: "plus") } else { SeerrStateSymbol(state: state.state) }
+                        Text(primary.label.titleCased()).lineLimit(1)
+                    }
+                }
+            }
+            .disabled(!primary.enabled)
+            if let trailer = state.trailerUrl, let url = URL(string: trailer) {
+                Button { openURL(url) } label: { Image(systemName: "play.rectangle").font(.title3) }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.circle)
+                    .controlSize(.large)
+                    .tint(.primary)
+                    .accessibilityLabel(Strings.shared.trailer)
+            }
+        }
     }
 
     @ViewBuilder
@@ -377,4 +379,3 @@ struct SeerrStateSymbol: View {
         }
     }
 }
-
