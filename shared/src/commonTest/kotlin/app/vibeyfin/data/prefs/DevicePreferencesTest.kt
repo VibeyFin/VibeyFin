@@ -1,5 +1,6 @@
 package app.vibeyfin.data.prefs
 
+import app.vibeyfin.domain.PlaybackEngineChoice // PoC: remove with poc/playback-engine
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.testing.InMemoryPreferencesDataStore
 import kotlinx.coroutines.async
@@ -54,6 +55,25 @@ class DevicePreferencesTest {
 
         assertTrue(preferences.offlineMode.first())
         assertTrue(DataStoreDevicePreferences(dataStore).offlineMode.first(), "after a restart")
+    }
+
+    // PoC: remove with poc/playback-engine
+    @Test
+    fun playbackEngineIsAutomaticByDefaultAndIsKept() = runTest {
+        assertEquals(PlaybackEngineChoice.Auto, preferences.playbackEngine.first())
+
+        preferences.setPlaybackEngine(PlaybackEngineChoice.Aether)
+
+        assertEquals(PlaybackEngineChoice.Aether, preferences.playbackEngine.first())
+        assertEquals(PlaybackEngineChoice.Aether, DataStoreDevicePreferences(dataStore).playbackEngine.first(), "after a restart")
+    }
+
+    // PoC: remove with poc/playback-engine
+    @Test
+    fun playbackEngineKeysFallBackToAutomatic() {
+        assertEquals(PlaybackEngineChoice.Aether, PlaybackEngineChoice.fromKey("aether"))
+        assertEquals(PlaybackEngineChoice.Auto, PlaybackEngineChoice.fromKey("unknown"))
+        assertEquals(PlaybackEngineChoice.Auto, PlaybackEngineChoice.fromKey(null))
     }
 
     @Test

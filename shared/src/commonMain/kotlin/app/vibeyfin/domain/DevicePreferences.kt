@@ -16,6 +16,9 @@ interface DevicePreferences {
     /** When on, "Who's watching?" shows on every start instead of reopening the last profile. */
     val alwaysAskWhoIsWatching: Flow<Boolean>
 
+    /** Debug only: the player engine the iOS app uses for the next video. Native by default. */
+    val playbackEngine: Flow<PlaybackEngineChoice> // PoC: remove with poc/playback-engine
+
     /** The "Offline mode" switch: when on, the app uses only its downloads even with a network. Off by default. */
     val offlineMode: Flow<Boolean>
 
@@ -27,4 +30,7 @@ interface DevicePreferences {
     suspend fun setAlwaysAskWhoIsWatching(value: Boolean)
 
     suspend fun setOfflineMode(value: Boolean)
+
+    // PoC: remove with poc/playback-engine
+    suspend fun setPlaybackEngine(value: PlaybackEngineChoice)
 }

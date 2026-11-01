@@ -16,6 +16,7 @@ import app.vibeyfin.domain.OfflineMode
 import app.vibeyfin.domain.PlayMethod
 import app.vibeyfin.domain.PlayReporter
 import app.vibeyfin.domain.PlaybackDiagnostics
+import app.vibeyfin.domain.PlaybackEngineChoice
 import app.vibeyfin.domain.PlaybackNegotiation
 import app.vibeyfin.domain.PlaybackPlan
 import app.vibeyfin.domain.PlaybackReporter
@@ -61,6 +62,10 @@ data class PlaybackStream(
     val headers: Map<String, String>,
     /** Where to start, in milliseconds. */
     val startPositionMs: Long,
+    /** The length the server knows, in milliseconds; null when it has none. Some players report a shorter one. */
+    val runtimeMs: Long? = null,
+    /** The player this stream is for. */
+    val engine: PlaybackEngineChoice = PlaybackEngineChoice.Native,
     /**
      * Every subtitle the server sends as a file. The player loads them all with the video and shows
      * the one the state marks as selected (`PlaybackUiState.subtitleTracks`), so switching is instant.
@@ -72,6 +77,12 @@ data class PlaybackStream(
      * list, which is the file's order. When false, the server already chose the audio in the stream.
      */
     val audioInPlayer: Boolean = false,
+    /**
+     * The `TrackOption.index` of each subtitle inside the file that the player can show itself, in the
+     * file's order. The player shows the one the state marks as selected (its place in this list) and none
+     * when no such track is selected.
+     */
+    val embeddedSubtitles: List<Int> = emptyList(),
     /**
      * The picture's range as the server describes the file. A player that can draw HDR only through its
      * own surface (Android's `SurfaceView`) chooses that for anything but [DynamicRange.Sdr].
@@ -442,7 +453,11 @@ class PlaybackViewModel(
         val target = index.takeIf { it != SUBTITLES_OFF }
         if (target == subtitleNow) return
         // A subtitle in the video can't be taken out again, and one that isn't sent as a file can't be shown.
-        val inPlayer = !current.subtitleBurnedIn && (target == null || current.subtitleFiles.any { it.index == target })
+        val inPlayer = !current.subtitleBurnedIn && (
+            target == null ||
+                current.subtitleFiles.any { it.index == target } ||
+                (current.method == PlayMethod.DirectPlay && target in current.embeddedSubtitles)
+            )
         if (inPlayer) {
             subtitleNow = target
             applySelection(current)
@@ -1025,8 +1040,11 @@ class PlaybackViewModel(
                                 url = ready.url,
                                 headers = ready.headers,
                                 startPositionMs = startAtMs,
+                                runtimeMs = ready.runtimeMs,
+                                engine = ready.engine,
                                 subtitleFiles = ready.subtitleFiles,
                                 audioInPlayer = ready.method == PlayMethod.DirectPlay,
+                                embeddedSubtitles = ready.embeddedSubtitles.takeIf { ready.method == PlayMethod.DirectPlay }.orEmpty(),
                                 dynamicRange = ready.videoFormat?.dynamicRange ?: DynamicRange.Sdr,
                             ),
                             diagnostics = ready.toDiagnostics(audioNow),

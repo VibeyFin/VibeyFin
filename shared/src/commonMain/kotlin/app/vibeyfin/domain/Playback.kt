@@ -63,11 +63,15 @@ data class PlaybackPlan(
     val subtitleFiles: List<SubtitleFile> = emptyList(),
     /** The chosen subtitle is burned into the video by the server, so changing it means a new stream. */
     val subtitleBurnedIn: Boolean = false,
+    /** `MediaStream` indexes of the subtitles the server leaves inside the file (`Embed`), in the file's order. */
+    val embeddedSubtitles: List<Int> = emptyList(),
     /** The audio and subtitle tracks this stream plays, for the reports; null for none. */
     val audioStreamIndex: Int? = null,
     val subtitleStreamIndex: Int? = null,
     /** The picture of the file, for the player's format badges; null when the server doesn't describe a video stream. */
     val videoFormat: VideoFormat? = null,
+    /** The player the plan was made for. */
+    val engine: PlaybackEngineChoice = PlaybackEngineChoice.Native,
 )
 
 /** The outcome of asking the server how to play an item. */

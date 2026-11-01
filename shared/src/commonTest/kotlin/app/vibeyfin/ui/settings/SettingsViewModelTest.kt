@@ -391,7 +391,8 @@ class SettingsViewModelTest {
                 Strings.tabDownloads,
                 Strings.settingsGroupAdvanced,
             ),
-            root.sections.mapNotNull { it.title },
+            // PoC: remove with poc/playback-engine (the debug section is not one of the seven)
+            root.sections.mapNotNull { it.title }.filter { it != Strings.playbackEngineSection },
         )
         assertFalse(root.keys().contains(SettingKey.QuickConnect))
     }
@@ -463,7 +464,8 @@ class SettingsViewModelTest {
     fun `device settings show without a profile and profile settings do not`() = runTest {
         val signedOut = viewModel().uiState.first().page(SettingsPageId.Root)
         assertTrue(SettingKey.AlwaysAsk in signedOut.keys())
-        assertEquals(emptyList(), signedOut.keys() - setOf(SettingKey.AlwaysAsk, SettingKey.OfflineMode, SettingKey.About))
+        // PoC: remove with poc/playback-engine (the debug choice is device-wide, so it shows signed out too)
+        assertEquals(emptyList(), signedOut.keys() - setOf(SettingKey.AlwaysAsk, SettingKey.OfflineMode, SettingKey.About, SettingKey.PlaybackEngine))
 
         app.signedIn()
         val signedIn = viewModel().uiState.first { it.hasProfile }.page(SettingsPageId.Root)

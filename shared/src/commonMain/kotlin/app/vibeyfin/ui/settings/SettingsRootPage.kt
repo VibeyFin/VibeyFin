@@ -1,5 +1,6 @@
 package app.vibeyfin.ui.settings
 
+import app.vibeyfin.domain.PlaybackEngineChoice
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.ui.common.Strings
 
@@ -40,6 +41,7 @@ fun rootPage(v: SettingsValues): SettingsPage = SettingsPage(
         deviceSection(v),
         downloadsSection(v),
         advancedSection(v),
+        playbackEngineSection(v), // PoC: remove with poc/playback-engine
     ),
 )
 
@@ -173,3 +175,18 @@ private fun genreRowOptions() = ProfileSettings.HOME_GENRE_CHOICES.map { value -
     }
     SettingOption(value, label)
 }
+
+// PoC: remove with poc/playback-engine
+// Debug only: the iOS app hides this section in release builds (SettingsView.swift).
+private fun playbackEngineSection(v: SettingsValues) = SettingsSection(
+    Strings.playbackEngineSection,
+    footer = Strings.playbackEngineFooter,
+    items = listOf(
+        ChoiceItem(
+            SettingKey.PlaybackEngine,
+            Strings.playbackEngineTitle,
+            value = v.playbackEngine.ordinal,
+            options = PlaybackEngineChoice.entries.map { SettingOption(it.ordinal, Strings.playbackEngineLabel(it)) },
+        ),
+    ),
+)

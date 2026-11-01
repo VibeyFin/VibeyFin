@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import app.vibeyfin.domain.DevicePreferences
+import app.vibeyfin.domain.PlaybackEngineChoice
 import app.vibeyfin.domain.model.ProfileRef
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -39,6 +40,9 @@ class DataStoreDevicePreferences(
 
     override val offlineMode: Flow<Boolean> = dataStore.data.map { it[OFFLINE_MODE] ?: false }
 
+    // PoC: remove with poc/playback-engine
+    override val playbackEngine: Flow<PlaybackEngineChoice> = dataStore.data.map { PlaybackEngineChoice.fromKey(it[PLAYBACK_ENGINE]) }
+
     override suspend fun setLastServer(serverId: String?) {
         dataStore.edit { prefs ->
             if (prefs[LAST_SERVER_ID] != serverId) prefs.remove(LAST_USER_ID)
@@ -61,11 +65,18 @@ class DataStoreDevicePreferences(
         dataStore.edit { it[OFFLINE_MODE] = value }
     }
 
+    // PoC: remove with poc/playback-engine
+    override suspend fun setPlaybackEngine(value: PlaybackEngineChoice) {
+        dataStore.edit { it[PLAYBACK_ENGINE] = value.key }
+    }
+
     private companion object {
         val DEVICE_ID = stringPreferencesKey("device_id")
         val LAST_SERVER_ID = stringPreferencesKey("last_server_id")
         val LAST_USER_ID = stringPreferencesKey("last_user_id")
         val OFFLINE_MODE = booleanPreferencesKey("offline_mode")
         val ALWAYS_ASK = booleanPreferencesKey("always_ask_who_is_watching")
+
+        val PLAYBACK_ENGINE = stringPreferencesKey("poc_playback_engine") // PoC: remove with poc/playback-engine
     }
 }

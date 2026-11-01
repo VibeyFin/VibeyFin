@@ -43,6 +43,27 @@ class PlaybackRepository(
         audioStreamIndex: Int? = null,
         subtitleStreamIndex: Int? = null,
     ): PlaybackNegotiation {
+        // A player that can direct play the file wins, in order. When none can, the first one's answer stands: a server stream.
+        val candidates = capabilities.candidates().let { if (forceTranscode) it.take(1) else it }
+        var fallback: PlaybackNegotiation? = null
+        for (candidate in candidates) {
+            val result = negotiateFor(candidate, itemId, forceTranscode, mediaSourceId, audioStreamIndex, subtitleStreamIndex)
+            if (result !is PlaybackNegotiation.Ready) return result
+            if (result.plan.method == PlayMethod.DirectPlay) return result
+            if (fallback == null) fallback = result
+        }
+        return checkNotNull(fallback)
+    }
+
+    @Suppress("LongParameterList")
+    private suspend fun negotiateFor(
+        candidate: EngineCapabilities,
+        itemId: String,
+        forceTranscode: Boolean,
+        mediaSourceId: String?,
+        audioStreamIndex: Int?,
+        subtitleStreamIndex: Int?,
+    ): PlaybackNegotiation {
         val connected = connection.state.value as? ConnectionState.Connected
             ?: return PlaybackNegotiation.Failed(ApiError.Unauthorized)
         val api = connected.api
@@ -50,7 +71,7 @@ class PlaybackRepository(
         val maxBitrate = effectiveBitrate(profileSettings.maxStreamingBitrate.first() ?: 0)
         val request = PlaybackInfoRequestDto(
             userId = connected.account.userId,
-            deviceProfile = capabilities.current().toDeviceProfile(maxBitrate),
+            deviceProfile = candidate.capabilities.toDeviceProfile(maxBitrate),
             maxStreamingBitrate = maxBitrate,
             enableDirectPlay = !forceTranscode,
             enableDirectStream = !forceTranscode,
@@ -81,7 +102,7 @@ class PlaybackRepository(
         } else {
             serverUrl(api.baseUrl, checkNotNull(source.transcodingUrl))
         }
-        val tracks = source.tracks(api.baseUrl)
+        val tracks = source.tracks(api.baseUrl, itemId, candidate.capabilities)
         return PlaybackNegotiation.Ready(
             PlaybackPlan(
                 itemId = itemId,
@@ -96,9 +117,11 @@ class PlaybackRepository(
                 subtitleTracks = tracks.subtitles,
                 subtitleFiles = tracks.subtitleFiles,
                 subtitleBurnedIn = tracks.subtitleBurnedIn,
+                embeddedSubtitles = tracks.embeddedSubtitles,
                 audioStreamIndex = tracks.audio.firstOrNull { it.selected }?.index,
                 subtitleStreamIndex = tracks.subtitles.firstOrNull { it.selected }?.index,
                 videoFormat = source.mediaStreams.firstOrNull { it.type == "Video" }?.toVideoFormat(),
+                engine = candidate.engine,
             ),
         )
     }
@@ -141,6 +164,7 @@ internal class Tracks(
     val subtitles: List<PlaybackTrack>,
     val subtitleFiles: List<SubtitleFile>,
     val subtitleBurnedIn: Boolean,
+    val embeddedSubtitles: List<Int>,
 )
 
 /**
@@ -148,21 +172,35 @@ internal class Tracks(
  * choice if the request named this source, else what it picked from the user's settings.
  *
  * Each subtitle has a delivery method that says what would happen if it were shown: `External` is a
- * file for the player to load, `Encode` is burned into the video. So every file is listed, for
+ * file for the player to load, `Embed` stays inside the file for the player to read, `Encode` is burned into the video. So every file is listed, for
  * switching without asking again, and a selected subtitle that is `Encode` is a burn-in.
  */
-internal fun MediaSourceDto.tracks(baseUrl: String): Tracks {
+internal fun MediaSourceDto.tracks(baseUrl: String, itemId: String? = null, player: PlaybackCapabilities? = null): Tracks {
     val audio = mediaStreams.filter { it.type == "Audio" }
     val subtitles = mediaStreams.filter { it.type == "Subtitle" }
     val audioIndex = defaultAudioStreamIndex?.takeIf { it >= 0 } ?: audio.firstOrNull()?.index
     val subtitleIndex = defaultSubtitleStreamIndex?.takeIf { it >= 0 }
+    val serverFiles = subtitles.filter { it.deliveryMethod == "External" }.mapNotNull { it.toSubtitleFile(baseUrl) }
+    // The player's own say, not the server's delivery method: a direct play never burns anything in.
+    val inFile = subtitles.filter { !it.isExternal }
+    val embedded = inFile.filter { it.codec.isPlayerCodec(player?.embeddedSubtitleFormats) }.map { it.index }
+    val fetchedFiles = if (itemId == null) {
+        emptyList()
+    } else {
+        inFile.filter { it.codec.isPlayerCodec(player?.fetchedSubtitleCodecs) }.map {
+            SubtitleFile(it.index, serverUrl(baseUrl, "/Videos/$itemId/$id/Subtitles/${it.index}/0/Stream.srt"), "application/x-subrip", it.trackLanguage(), it.name())
+        }
+    }
     return Tracks(
         audio = audio.map { PlaybackTrack(it.index, it.name(), it.index == audioIndex, it.codec, it.trackLanguage(), it.isDefault) },
         subtitles = subtitles.map { PlaybackTrack(it.index, it.name(), it.index == subtitleIndex, language = it.trackLanguage(), default = it.isDefault, forced = it.isForced) },
-        subtitleFiles = subtitles.filter { it.deliveryMethod == "External" }.mapNotNull { it.toSubtitleFile(baseUrl) },
+        subtitleFiles = serverFiles + fetchedFiles.filter { fetched -> serverFiles.none { it.index == fetched.index } },
         subtitleBurnedIn = subtitles.firstOrNull { it.index == subtitleIndex }?.deliveryMethod == "Encode",
+        embeddedSubtitles = embedded,
     )
 }
+
+private fun String?.isPlayerCodec(codecs: List<String>?) = this != null && codecs?.any { it.equals(this, ignoreCase = true) } == true
 
 private fun MediaStreamDto.trackLanguage() = language?.takeIf { it.isNotBlank() && !it.equals("und", ignoreCase = true) }
 

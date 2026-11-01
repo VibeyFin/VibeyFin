@@ -216,6 +216,58 @@ class PlaybackRepositoryTest {
         assertEquals("http://nas:8096$HLS_PATH$reasons", plan.url)
     }
 
+    private fun twoPlayers() {
+        val native = PlaybackCapabilities(containers = listOf("mp4"), videoCodecs = listOf("h264"), audioCodecs = listOf("aac"))
+        val aether = native.copy(containers = listOf("mp4", "mkv"))
+        app.capabilities.engines = listOf(
+            EngineCapabilities(PlaybackEngineChoice.Native, native),
+            EngineCapabilities(PlaybackEngineChoice.Aether, aether),
+        )
+    }
+
+    @Test
+    fun `a file the first player direct plays does not ask the second`() = runTest {
+        twoPlayers()
+        answerWith(playbackInfoJson(mediaSourceJson(container = "mp4")))
+
+        val plan = ready()
+
+        assertEquals(PlaybackEngineChoice.Native, plan.engine)
+        assertEquals(1, app.jellyfin.requestsTo("POST", "/Items/m1/PlaybackInfo").size)
+    }
+
+    @Test
+    fun `a file only the second player direct plays goes to it`() = runTest {
+        twoPlayers()
+        var asked = 0
+        app.signedIn().on("POST", "/Items/m1/PlaybackInfo") {
+            asked++
+            Reply.json(
+                if (asked == 1) {
+                    playbackInfoJson(mediaSourceJson(directPlay = false, directStream = false, container = "mkv", transcodingUrl = HLS_PATH))
+                } else {
+                    playbackInfoJson(mediaSourceJson(container = "mkv"))
+                },
+            )
+        }
+
+        val plan = ready()
+
+        assertEquals(PlaybackEngineChoice.Aether, plan.engine)
+        assertEquals(PlayMethod.DirectPlay, plan.method)
+    }
+
+    @Test
+    fun `a file no player direct plays is a server stream for the first`() = runTest {
+        twoPlayers()
+        answerWith(playbackInfoJson(mediaSourceJson(directPlay = false, directStream = false, container = "mkv", transcodingUrl = HLS_PATH)))
+
+        val plan = ready()
+
+        assertEquals(PlaybackEngineChoice.Native, plan.engine)
+        assertEquals(PlayMethod.Transcode, plan.method)
+    }
+
     @Test
     fun `nothing the server can deliver is no compatible stream`() = runTest {
         answerWith(playbackInfoJson(mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = null)))
