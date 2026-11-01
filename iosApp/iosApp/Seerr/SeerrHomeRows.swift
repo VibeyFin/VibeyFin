@@ -53,12 +53,13 @@ struct SeerrRowView: View {
             }
             .screenMargin()
             if row.loading {
-                // Laid out like the real tiles, so nothing under the row moves when they arrive.
+                // Laid out like the real tiles, so nothing under the row moves when they arrive. The four tiles are wider than a
+                // phone: `minWidth: 0` keeps the row at the screen's width, or it widens Home's scroll view and the whole page with it.
                 HStack(alignment: .top, spacing: Space.s3) {
                     ForEach(0..<4, id: \.self) { _ in SeerrPosterPlaceholder().frame(width: 112) }
                 }
                 .screenMargin()
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                 .clipped()
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
