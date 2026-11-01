@@ -153,7 +153,6 @@ struct HeroDetailsView: View {
     let onTogglePlayed: () -> Void
     let downloads: DownloadActions
 
-    @State private var overviewExpanded = false
     @Environment(\.openURL) private var openURL
 
     var body: some View {
@@ -188,7 +187,7 @@ struct HeroDetailsView: View {
                     .multilineTextAlignment(centered ? .center : .leading)
             }
             if let overview = item.overview {
-                overviewText(overview)
+                ExpandableOverview(text: overview)
             }
             // A show's Play waits for its next episode: a grey button of the same size holds its place, so it does not pop in.
             if state.canPlay {
@@ -243,25 +242,6 @@ struct HeroDetailsView: View {
         }
     }
 
-    /// Three lines of the overview and "More" when it is long; "Less" folds it back.
-    private func overviewText(_ overview: String) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(overview)
-                .font(.subheadline)
-                .foregroundStyle(.primary)
-                .lineLimit(overviewExpanded ? nil : 3)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            // A rough test for "has more than three lines"; the text itself is cut by the line limit either way.
-            if overview.count > 140 {
-                Button((overviewExpanded ? Strings.shared.less : Strings.shared.more).titleCased()) {
-                    overviewExpanded.toggle()
-                }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            }
-        }
-    }
-
     /// The one filled action on the page: the aqua capsule, "Play", "Resume · 38m left" or for a show "Play S2 E4", with a round
     /// "start over" arrow beside it only when there is something to resume.
     /// The label in title case, but only up to the " · ": what follows is a time left ("1m left"), which stays as written.
@@ -290,7 +270,7 @@ struct HeroDetailsView: View {
     /// the fourth ending at its right, evenly spread; with fewer (an episode has no trailer) the last places stay empty.
     private var actions: some View {
         ActionRowLayout {
-            actionButton(
+            HeroActionButton(
                 label: Strings.shared.myList,
                 description: Strings.shared.myListAction(onList: state.isFavorite),
                 systemImage: state.isFavorite ? "heart.fill" : "heart",
@@ -298,7 +278,7 @@ struct HeroDetailsView: View {
                 action: onToggleFavorite
             )
             if let trailer = state.trailer {
-                actionButton(label: Strings.shared.trailer, description: Strings.shared.trailer, systemImage: "film") {
+                HeroActionButton(label: Strings.shared.trailer, description: Strings.shared.trailer, systemImage: "film") {
                     if let local = trailer as? TrailerLocal {
                         onPlayTrailer(local.itemId)
                     } else if let remote = trailer as? TrailerRemote, let url = URL(string: remote.url) {
@@ -307,7 +287,7 @@ struct HeroDetailsView: View {
                 }
             }
             if state.canMark {
-                actionButton(
+                HeroActionButton(
                     label: Strings.shared.watchedAction,
                     description: state.markLabel,
                     systemImage: state.watched ? "checkmark.circle.fill" : "checkmark.circle",
@@ -361,59 +341,6 @@ struct HeroDetailsView: View {
                 }
             } label: { face }
             .accessibilityLabel(state.downloadDescription)
-        }
-    }
-
-    private func actionButton(label: String, description: String, systemImage: String, pop: Bool? = nil, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: Space.s1) {
-                Image(systemName: systemImage)
-                    .font(.title2)
-                    // A toggle springs when it flips.
-                    .id(systemImage)
-                    .transition(.scale.combined(with: .opacity))
-                    .animation(.spring(response: 0.3, dampingFraction: 0.45), value: pop)
-                // Medium weight in the full ink: the labels read against the picture.
-                Text(label.titleCased()).font(.caption.weight(.medium))
-            }
-            .foregroundStyle(.primary)
-            .frame(minWidth: 64, maxWidth: .infinity, minHeight: 72)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableButtonStyle())
-        .accessibilityLabel(description)
-    }
-}
-
-/// The action row's places: four of one width, the widest action's, the first at the row's leading edge and the last ending at
-/// its trailing edge, evenly spread. Fewer actions keep the same places from the leading edge; the rest stay empty. Too narrow for
-/// that, the places share the width.
-private struct ActionRowLayout: Layout {
-    private let places = 4
-
-    private func placeWidth(_ width: CGFloat, _ subviews: Subviews) -> CGFloat {
-        let widest = subviews.map { $0.sizeThatFits(.unspecified).width }.max() ?? 0
-        return min(widest, width / CGFloat(places))
-    }
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        // Measured without a width (an ideal-size pass), the row is four of its widest button, never zero wide.
-        let widest = subviews.map { $0.sizeThatFits(.unspecified).width }.max() ?? 0
-        let width = proposal.width.flatMap { $0.isFinite ? $0 : nil } ?? widest * CGFloat(places)
-        let place = placeWidth(width, subviews)
-        let height = subviews.map { $0.sizeThatFits(ProposedViewSize(width: place, height: nil)).height }.max() ?? 0
-        return CGSize(width: width, height: height)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let place = placeWidth(bounds.width, subviews)
-        let gap = (bounds.width - place * CGFloat(places)) / CGFloat(places - 1)
-        for (index, subview) in subviews.enumerated() {
-            subview.place(
-                at: CGPoint(x: bounds.minX + CGFloat(index) * (place + gap), y: bounds.minY),
-                anchor: .topLeading,
-                proposal: ProposedViewSize(width: place, height: bounds.height)
-            )
         }
     }
 }

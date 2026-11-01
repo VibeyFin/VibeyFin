@@ -55,37 +55,12 @@ struct SeasonsSectionView: View {
     }
 
     private var seasonButtons: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Space.s2) {
-                    ForEach(seasons.seasons, id: \.id) { season in
-                        let selected = season.id == seasons.selectedId
-                        Button { onSelect(season.id) } label: {
-                            Text(season.seasonLabel)
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(selected ? Color(.systemBackground) : Color.primary)
-                                .padding(.horizontal, Space.s4)
-                                .frame(height: 36)
-                                .background(Capsule().fill(selected ? Color.primary : Color(.tertiarySystemBackground)))
-                                .frame(minHeight: 44)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(PressableButtonStyle())
-                        .id(season.id)
-                        .accessibilityLabel(Strings.shared.seasonDescription(name: season.seasonLabel, selected: selected))
-                        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
-                    }
-                }
-                .padding(.horizontal, margin)
-            }
-            .padding(.horizontal, -margin)
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel(Strings.shared.seasonsDescription(count: Int32(seasons.seasons.count)))
-            // Opens with the season Play starts in in view.
-            .onAppear {
-                if let id = seasons.selectedId { proxy.scrollTo(id, anchor: .center) }
-            }
-        }
+        SeasonButtonsRow(
+            seasons: seasons.seasons.map { SeasonButton(id: $0.id, label: $0.seasonLabel) },
+            selectedId: seasons.selectedId,
+            margin: margin,
+            onSelect: onSelect
+        )
     }
 
     /// Episode cards: 300 wide on a phone, 380 on a regular width.

@@ -25,7 +25,9 @@ struct SimilarRowView: View {
                     }
                 }
                 .screenMargin()
+                .liftRoomInside()
             }
+            .liftRoom()
         }
     }
 }

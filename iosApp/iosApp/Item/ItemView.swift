@@ -126,7 +126,7 @@ struct ItemView: View {
                 )
             }
             if !item.cast.isEmpty {
-                CastSectionView(cast: item.cast, tile: wide ? 112 : 88, margin: margin, onOpenPerson: onOpenPerson)
+                CastSectionView(cast: item.cast.map(CastPerson.init), tile: wide ? 112 : 88, margin: margin, onOpenPerson: onOpenPerson)
             }
             // Behind the scenes and the like.
             if let extras = state.extras, extras.isVisible {
