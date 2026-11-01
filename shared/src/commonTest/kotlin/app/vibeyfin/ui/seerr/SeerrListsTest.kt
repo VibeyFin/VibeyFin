@@ -117,6 +117,22 @@ class SeerrListsTest {
     }
 
     @Test
+    fun aTitleRequestedTwiceIsOnePosterInMyRequests() = runTest {
+        // The same movie asked for in standard and then in 4K: two requests, one title.
+        connected {
+            onSignedIn("GET", "/api/v1/request") {
+                Reply.json("""{"pageInfo":{"pages":1,"page":1,"results":3},"results":[${request(5, 1, 10)},${request(4, 1, 10)},${request(3, 2, 13, mediaStatus = 3)}]}""")
+            }
+        }
+        val home = viewModels.track(SeerrHomeViewModel(app.seerr, app.seerrRepository, app.clock))
+
+        val requests = home.uiState.await { it.requests?.loading == false }.requests!!
+
+        assertEquals(listOf("Waiting One", "Approved One"), requests.titles.map { it.title })
+        assertEquals(1, app.jellyfin.requests.count { it.path == "/api/v1/movie/10" })
+    }
+
+    @Test
     fun seerrSigningOutEmptiesHomesSeerrRows() = runTest {
         connected()
         val home = viewModels.track(SeerrHomeViewModel(app.seerr, app.seerrRepository, app.clock))

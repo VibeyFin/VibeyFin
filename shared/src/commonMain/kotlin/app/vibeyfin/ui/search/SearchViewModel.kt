@@ -258,7 +258,7 @@ class SearchViewModel(
         content.update { it.copy(seerr = SeerrSearch.Searching) }
         val found = when (val result = repository.search(term)) {
             // A title Seerr knows is in the library is already among the library's groups.
-            is ApiResult.Success -> SeerrSearch.Found(result.value.titles.filter { it.notInLibrary() })
+            is ApiResult.Success -> SeerrSearch.Found(result.value.titles.filter { it.notInLibrary() }.distinctBy { it.type to it.tmdbId })
 
             // Signed out of Seerr meanwhile: the group goes, as Seerr does.
             is ApiResult.Failure -> if (result.error == ApiError.Unauthorized) null else SeerrSearch.Failed(SeerrMessages.UNREACHABLE_NOW)

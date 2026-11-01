@@ -97,16 +97,17 @@ internal class RequestTitles(private val repository: SeerrRepository) {
 
     /** The title of each request (with the request's own state on it), in order; a request whose title can't be read is left out. */
     suspend fun titlesOf(requests: List<SeerrRequest>): List<Pair<SeerrRequest, SeerrTitle>> = coroutineScope {
-        requests.map { request ->
+        // Each title is read once, however many requests name it (a show asked for season by season, a movie in 4K too)
+        val keys = requests.mapNotNull { request -> request.tmdbId?.let { request.type to it } }.distinct()
+        val read = keys.map { key ->
             async {
-                val id = request.tmdbId ?: return@async null
-                val key = request.type to id
-                val title = known[key] ?: gate.withPermit {
-                    (repository.title(request.type, id) as? ApiResult.Success)?.value?.title?.also { known[key] = it }
-                }
-                title?.let { request to it.copy(state = request.state) }
+                key to (known[key] ?: gate.withPermit { (repository.title(key.first, key.second) as? ApiResult.Success)?.value?.title?.also { known[key] = it } })
             }
-        }.awaitAll().filterNotNull()
+        }.awaitAll().toMap()
+        requests.mapNotNull { request ->
+            val id = request.tmdbId ?: return@mapNotNull null
+            read[request.type to id]?.let { request to it.copy(state = request.state) }
+        }
     }
 
     private companion object {
@@ -148,8 +149,14 @@ class SeerrHomeViewModel(
     /** Home's pull to refresh: Seerr is asked again, signing in again first if it couldn't be reached. */
     fun onRefresh() {
         viewModelScope.launch {
+            val wasReady = seerr.state.value is SeerrState.Ready
             seerr.retry()
-            if (seerr.state.value is SeerrState.Ready) loadAll(quiet = true)
+            // Seerr coming back (Unavailable to Ready) reloads through the state collector; only an already signed-in Seerr is
+            // asked again here, as the tracked load so a session change cancels it
+            if (wasReady && seerr.state.value is SeerrState.Ready) {
+                load?.cancel()
+                load = viewModelScope.launch { loadAll(quiet = true) }
+            }
         }
     }
 
@@ -185,14 +192,16 @@ class SeerrHomeViewModel(
                 RequestState.NotRequested -> false
             }
         }.take(ROW_SIZE)
-        val tiles = titles.titlesOf(recent).map { it.second }
+        // One tile per title: a show asked for season by season, or a movie in standard and in 4K, is one poster (the newest
+        // request's), and the rows key their posters by title
+        val tiles = titles.titlesOf(recent).map { it.second }.distinctBy { it.type to it.tmdbId }
         content.update { it.copy(requests = SeerrRow(null, Strings.seerrMyRequests, tiles, loading = false).takeIf { row -> row.isVisible }) }
     }
 
     private fun row(kind: SeerrListKind, found: List<SeerrTitle>, loading: Boolean) = SeerrRow(
         kind = kind,
         title = kind.title(),
-        titles = found,
+        titles = found.distinctBy { it.type to it.tmdbId },
         loading = loading,
         showsDates = kind == SeerrListKind.ComingSoon,
     )
