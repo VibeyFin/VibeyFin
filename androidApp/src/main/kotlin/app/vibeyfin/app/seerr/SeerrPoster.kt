@@ -56,10 +56,10 @@ fun SeerrPosterTile(
     ) {
         Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
             Artwork(url = title.posterUrl, title = title.title, aspectRatio = 2f / 3f, modifier = Modifier.fillMaxWidth())
-            if (marked) SeerrMarker(title.state, Modifier.align(Alignment.TopStart).padding(6.dp))
+            if (marked) SeerrMarker(title.state, Modifier.align(Alignment.TopStart).padding(VibeyFinTokens.Space.s2))
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1 / 2)) {
             // Always two lines' room, so a short title and a long one make tiles of one height and rows never change size
             Text(title.title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(meta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -87,9 +87,9 @@ fun SeerrMarker(state: RequestState, modifier: Modifier = Modifier) {
     val color = if (state == RequestState.Failed) VibeyFinTokens.Colors.danger else VibeyFinTokens.Colors.ink
 
     Row(
-        modifier.height(22.dp).clip(RoundedCornerShape(8.dp)).background(VibeyFinTokens.Colors.scrim).padding(start = 6.dp, end = 8.dp),
+        modifier.height(22.dp).clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork)).background(VibeyFinTokens.Colors.scrim).padding(horizontal = VibeyFinTokens.Space.s2),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
     ) {
         Icon(painterResource(stateIconOf(state)), contentDescription = null, tint = color, modifier = Modifier.size(12.dp))
         Text(label, style = MaterialTheme.typography.labelSmall, color = color, maxLines = 1)
@@ -101,7 +101,7 @@ fun SeerrMarker(state: RequestState, modifier: Modifier = Modifier) {
 fun SeerrPosterPlaceholder(modifier: Modifier = Modifier) {
     Column(modifier.clearAndSetSemantics { }, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
         SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(2f / 3f))
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1 / 2)) {
             Text("", style = MaterialTheme.typography.titleSmall, minLines = 2, maxLines = 2)
             Text("", style = MaterialTheme.typography.bodySmall, minLines = 1, maxLines = 1)
         }

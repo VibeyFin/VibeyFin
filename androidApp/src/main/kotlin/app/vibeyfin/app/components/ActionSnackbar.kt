@@ -20,16 +20,23 @@ import app.vibeyfin.ui.common.Strings
 /**
  * Says that a change couldn't be saved, with "Try again", at the bottom of the screen: never a dialog
  * for something that doesn't block anything. [message] null shows nothing. Put it last in the [Box] that
- * fills the screen.
+ * fills the screen. A message that only informs passes a null [actionLabel] and a shorter [duration]; [onRetry]
+ * then never runs.
  */
 @Composable
-fun BoxScope.ActionSnackbar(message: String?, onRetry: () -> Unit, onDismiss: () -> Unit) {
+fun BoxScope.ActionSnackbar(
+    message: String?,
+    onRetry: () -> Unit,
+    onDismiss: () -> Unit,
+    actionLabel: String? = Strings.tryAgain,
+    duration: SnackbarDuration = SnackbarDuration.Long,
+) {
     val host = remember { SnackbarHostState() }
 
     LaunchedEffect(message) {
         val text = message ?: return@LaunchedEffect
 
-        when (host.showSnackbar(text, actionLabel = Strings.tryAgain, duration = SnackbarDuration.Long)) {
+        when (host.showSnackbar(text, actionLabel = actionLabel, duration = duration)) {
             SnackbarResult.ActionPerformed -> onRetry()
             SnackbarResult.Dismissed -> onDismiss()
         }

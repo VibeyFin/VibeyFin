@@ -32,21 +32,20 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,16 +64,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.R
+import app.vibeyfin.app.components.ActionSnackbar
 import app.vibeyfin.app.components.Artwork
 import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.ItemSkeleton
 import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.components.SectionTitle
-import app.vibeyfin.app.components.SkeletonBlock
 import app.vibeyfin.app.components.bleed
 import app.vibeyfin.app.item.ActionButton
 import app.vibeyfin.app.item.ActionRow
+import app.vibeyfin.app.item.EPISODE_ASPECT
+import app.vibeyfin.app.item.EPISODE_CARD
+import app.vibeyfin.app.item.EPISODE_CARD_WIDE
+import app.vibeyfin.app.item.EPISODE_ROW_PICTURE
 import app.vibeyfin.app.item.EpisodeCardScrim
+import app.vibeyfin.app.item.EpisodeCardSkeleton
+import app.vibeyfin.app.item.EpisodeRowSkeleton
 import app.vibeyfin.app.item.EpisodeTag
 import app.vibeyfin.app.item.ItemBackdrop
 import app.vibeyfin.app.item.Overview
@@ -92,6 +97,7 @@ import app.vibeyfin.domain.model.SeerrEpisode
 import app.vibeyfin.domain.model.SeerrMediaType
 import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.ui.common.Strings
+import app.vibeyfin.ui.seerr.SeerrNotice
 import app.vibeyfin.ui.seerr.SeerrNoticeAction
 import app.vibeyfin.ui.seerr.SeerrTitleUiState
 import app.vibeyfin.ui.seerr.SeerrTitleViewModel
@@ -113,7 +119,6 @@ fun SeerrTitleRoute(
     viewModel: SeerrTitleViewModel = koinViewModel(parameters = { parametersOf(type, tmdbId) }),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbars = remember { SnackbarHostState() }
     val openTrailer = LocalOpenTrailerUrl.current
 
     LaunchedEffect(state.openItem) {
@@ -124,15 +129,13 @@ fun SeerrTitleRoute(
     }
 
     // On this page "View" would lead here, so only Try again is offered
+    var notice by remember { mutableStateOf<SeerrNotice?>(null) }
+
     LaunchedEffect(state.notice) {
-        val notice = state.notice ?: return@LaunchedEffect
+        val shown = state.notice ?: return@LaunchedEffect
 
         viewModel.onNoticeShown()
-
-        val retry = notice.action == SeerrNoticeAction.TryAgain
-        val result = snackbars.showSnackbar(notice.text, actionLabel = if (retry) notice.actionLabel else null, duration = SnackbarDuration.Short)
-
-        if (retry && result == SnackbarResult.ActionPerformed) viewModel.onRetryRequest()
+        notice = shown
     }
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -147,7 +150,18 @@ fun SeerrTitleRoute(
             }
 
             FloatingBackButton(onBack)
-            SnackbarHost(snackbars, Modifier.align(Alignment.BottomCenter).padding(bottom = LocalBottomBarPadding.current))
+            val retry = notice?.takeIf { it.action == SeerrNoticeAction.TryAgain }
+
+            ActionSnackbar(
+                notice?.text,
+                onRetry = {
+                    notice = null
+                    viewModel.onRetryRequest()
+                },
+                onDismiss = { notice = null },
+                actionLabel = retry?.actionLabel,
+                duration = SnackbarDuration.Short,
+            )
         }
     }
 
@@ -182,9 +196,9 @@ private fun SeerrTitlePage(
     val picture = title.backdropUrl ?: title.posterUrl
     val sections: @Composable () -> Unit = {
         Column(Modifier.padding(horizontal = margin, vertical = VibeyFinTokens.Space.s5), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s5)) {
-            if (state.seasons.isNotEmpty()) SeasonsAndEpisodes(state, margin, viewModel::onSelectSeason, viewModel::onRetryEpisodes)
-            if (state.cast.isNotEmpty()) CastRow(state.cast)
-            if (state.moreLikeThis.isNotEmpty()) MoreLikeThis(state.moreLikeThis, onOpenItem, onOpenSeerr)
+            if (state.seasons.isNotEmpty()) SeasonsAndEpisodes(state, wide, margin, viewModel::onSelectSeason, viewModel::onRetryEpisodes)
+            if (state.cast.isNotEmpty()) CastRow(state.cast, margin)
+            if (state.moreLikeThis.isNotEmpty()) MoreLikeThis(state.moreLikeThis, margin, onOpenItem, onOpenSeerr)
             Spacer(Modifier.height(VibeyFinTokens.Space.s5))
         }
     }
@@ -252,38 +266,39 @@ private fun Hero(state: SeerrTitleUiState, centered: Boolean, viewModel: SeerrTi
         state.status4k?.let { StatusLine(it, state.state) }
 
         state.primary?.let { primary ->
-            // The one aqua button, with the trailer beside it as Play has Start over. With nothing to do it stays, quiet and
-            // disabled, so the page doesn't jump
-            Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3), modifier = Modifier.fillMaxWidth()) {
-                Button(
-                    onClick = viewModel::onRequest,
-                    enabled = primary.enabled,
-                    modifier = Modifier.weight(1f).height(VibeyFinTokens.Size.buttonLarge),
-                ) {
-                    if (state.sending && state.picker == null) {
-                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                    } else if (primary.enabled) {
-                        // A plus and the words
-                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                        Text(primary.label, maxLines = 1)
-                    } else {
-                        // Nothing to do: the state's own icon and its name, quiet
-                        Icon(painterResource(stateIconOf(state.state)), contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                        Text(primary.label, maxLines = 1)
-                    }
-                }
-                state.trailerUrl?.let { url ->
-                    FilledTonalIconButton(onClick = { openTrailer(url) }, modifier = Modifier.size(VibeyFinTokens.Size.buttonLarge)) {
-                        Icon(painterResource(R.drawable.ic_trailer), contentDescription = Strings.trailer)
-                    }
+            // The one aqua button, as Play is. With nothing to do it stays, quiet and disabled, so the page doesn't jump
+            Button(
+                onClick = viewModel::onRequest,
+                enabled = primary.enabled,
+                modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge),
+            ) {
+                if (state.sending && state.picker == null) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                } else if (primary.enabled) {
+                    // A plus and the words
+                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text(primary.label, maxLines = 1)
+                } else {
+                    // Nothing to do: the state's own icon and its name, quiet
+                    Icon(painterResource(stateIconOf(state.state)), contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text(primary.label, maxLines = 1)
                 }
             }
         }
 
-        if (state.offer4k || state.cancelRequestId != null) {
+        // Under it, as the library's actions: Trailer, then Request in 4K and Cancel request when they apply
+        if (state.trailerUrl != null || state.offer4k || state.cancelRequestId != null) {
             ActionRow(Modifier.fillMaxWidth()) {
+                state.trailerUrl?.let { url ->
+                    ActionButton(
+                        Strings.trailer,
+                        Strings.trailer,
+                        icon = { Icon(painterResource(R.drawable.ic_trailer), contentDescription = null, tint = VibeyFinTokens.Colors.ink, modifier = it) },
+                        onClick = { openTrailer(url) },
+                    )
+                }
                 if (state.offer4k) {
                     ActionButton(Strings.seerrRequest4k, Strings.seerrRequest4k, icon = { Icon(Icons.Filled.Add, null, tint = VibeyFinTokens.Colors.ink, modifier = it) }, onClick = viewModel::onRequest4k)
                 }
@@ -319,10 +334,10 @@ internal fun StatusLine(text: String, state: RequestState) {
     }
 }
 
-// As on a library show's page: a row of season buttons, the chosen season's state, then its episodes as cards with their text on
-// the still. Seerr's episodes don't play: these are for looking at what you'd be asking for.
+// As on a library show's page: a row of season buttons, the chosen season's state, then its episodes as the library lays them out: rows
+// down the page on a phone, cards with their text on the still in a row on a tablet. Seerr's episodes don't play: these are for looking at what you'd be asking for.
 @Composable
-private fun SeasonsAndEpisodes(state: SeerrTitleUiState, margin: Dp, onSelect: (Int) -> Unit, onRetry: () -> Unit) {
+private fun SeasonsAndEpisodes(state: SeerrTitleUiState, wide: Boolean, margin: Dp, onSelect: (Int) -> Unit, onRetry: () -> Unit) {
     val chosen = state.episodes?.season
 
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
@@ -352,33 +367,74 @@ private fun SeasonsAndEpisodes(state: SeerrTitleUiState, margin: Dp, onSelect: (
         }
 
         val episodes = state.episodes
+        val cardWidth = if (wide) EPISODE_CARD_WIDE else EPISODE_CARD
+
         // One height whatever is shown, so the page doesn't move as a season loads
         Box(Modifier.fillMaxWidth()) {
             when {
-                episodes == null || (episodes.loading && episodes.episodes.isEmpty()) -> Row(Modifier.bleed(margin).padding(horizontal = margin), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-                    repeat(2) { SkeletonBlock(Modifier.width(EPISODE_CARD).aspectRatio(EPISODE_ASPECT)) }
+                episodes == null || (episodes.loading && episodes.episodes.isEmpty()) -> if (wide) {
+                    Row(Modifier.bleed(margin).padding(horizontal = margin), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
+                        repeat(3) { EpisodeCardSkeleton(cardWidth) }
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) { repeat(3) { EpisodeRowSkeleton() } }
                 }
 
                 episodes.message != null -> LoadError(episodes.message!!, onRetry)
 
+                // A phone lists the episodes down the page
+                !wide -> Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
+                    episodes.episodes.forEach { key("${it.season}-${it.number}") { SeerrEpisodeRow(it) } }
+                }
+
                 else -> LazyRow(
                     modifier = Modifier.bleed(margin),
                     contentPadding = PaddingValues(horizontal = margin),
-                    horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+                    horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
                 ) {
-                    items(episodes.episodes, key = { "${it.season}-${it.number}" }) { SeerrEpisodeCard(it) }
+                    items(episodes.episodes, key = { "${it.season}-${it.number}" }) { SeerrEpisodeCard(it, cardWidth) }
                 }
             }
         }
     }
 }
 
+// An episode on a phone, laid out as the library's row: its still on the left, the tag, title, rating and air date, and two lines of
+// synopsis. It doesn't play
 @Composable
-private fun SeerrEpisodeCard(episode: SeerrEpisode) {
+private fun SeerrEpisodeRow(episode: SeerrEpisode) {
+    val shape = RoundedCornerShape(VibeyFinTokens.Radius.artwork)
+
+    Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) { }, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
+        Box(Modifier.width(EPISODE_ROW_PICTURE).aspectRatio(EPISODE_ASPECT).clip(shape).border(1.dp, VibeyFinTokens.Colors.surface3, shape)) {
+            Artwork(url = episode.stillUrl, title = episode.title, aspectRatio = EPISODE_ASPECT, modifier = Modifier.fillMaxSize())
+        }
+
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
+            Strings.episodeTag(episode.season, episode.number)?.let {
+                Text(it, style = MaterialTheme.typography.labelMedium, color = VibeyFinTokens.Colors.inkMuted, maxLines = 1)
+            }
+
+            Text(episode.title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = VibeyFinTokens.Colors.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+
+            val facts = listOfNotNull(episode.rating?.takeIf { it > 0 }?.let(Strings::ratingTag), Strings.releaseDate(episode.airDate))
+
+            if (facts.isNotEmpty()) {
+                Text(Strings.factsLine(facts), style = MaterialTheme.typography.labelMedium, color = VibeyFinTokens.Colors.inkMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+
+            // Two lines, always, so every row is the same height
+            Text(episode.overview.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = VibeyFinTokens.Colors.ink, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+private fun SeerrEpisodeCard(episode: SeerrEpisode, width: Dp) {
     val shape = RoundedCornerShape(VibeyFinTokens.Radius.artwork)
 
     Box(
-        Modifier.width(EPISODE_CARD).aspectRatio(EPISODE_ASPECT).clip(shape).border(1.dp, VibeyFinTokens.Colors.surface3, shape)
+        Modifier.width(width).aspectRatio(EPISODE_ASPECT).clip(shape).border(1.dp, VibeyFinTokens.Colors.surface3, shape)
             .semantics(mergeDescendants = true) { },
     ) {
         Artwork(url = episode.stillUrl, title = episode.title, aspectRatio = EPISODE_ASPECT, modifier = Modifier.fillMaxSize())
@@ -400,17 +456,18 @@ private fun SeerrEpisodeCard(episode: SeerrEpisode) {
     }
 }
 
-private val EPISODE_CARD = 300.dp
-private const val EPISODE_ASPECT = 1.6f
-
 @Composable
-private fun CastRow(cast: List<SeerrCastMember>) {
-    Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
+private fun CastRow(cast: List<SeerrCastMember>, margin: Dp) {
+    Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         SectionTitle(Strings.cast, modifier = Modifier.semantics { heading() })
         // Not tappable: these people have no page in the library
         // The library page's sizes: bigger circles on a tablet
         val tile = if (isTabletWidth()) CAST_TILE_WIDE else CAST_TILE
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
+        LazyRow(
+            modifier = Modifier.bleed(margin),
+            contentPadding = PaddingValues(horizontal = margin),
+            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+        ) {
             items(cast, key = { it.id }) { person ->
                 Column(Modifier.width(tile), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
                     Box(Modifier.size(tile).clip(CircleShape).background(VibeyFinTokens.Colors.surface2), contentAlignment = Alignment.Center) {
@@ -428,12 +485,16 @@ private fun CastRow(cast: List<SeerrCastMember>) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun MoreLikeThis(titles: List<SeerrTitle>, onOpenItem: (String) -> Unit, onOpenSeerr: (SeerrTitle) -> Unit) {
+private fun MoreLikeThis(titles: List<SeerrTitle>, margin: Dp, onOpenItem: (String) -> Unit, onOpenSeerr: (SeerrTitle) -> Unit) {
     val longPress = LocalSeerrLongPress.current
 
-    Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-        SectionTitle(Strings.seerrMoreLikeThis, modifier = Modifier.semantics { heading() })
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3), contentPadding = PaddingValues(0.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
+        SectionTitle(Strings.seerrMoreLikeThis, maxLines = 1, modifier = Modifier.semantics { heading() })
+        LazyRow(
+            modifier = Modifier.bleed(margin),
+            contentPadding = PaddingValues(horizontal = margin),
+            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+        ) {
             items(titles, key = { "${it.type}-${it.tmdbId}" }) { title ->
                 SeerrPosterTile(
                     title,

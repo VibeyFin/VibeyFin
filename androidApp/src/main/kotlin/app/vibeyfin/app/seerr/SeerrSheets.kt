@@ -32,6 +32,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -91,7 +93,7 @@ import app.vibeyfin.ui.seerr.SeerrTitleViewModel
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-/** The season picker a show's Request opens: All missing seasons, 4K when allowed, each season, and one aqua button. */
+/** The season picker a show's Request opens: 4K and quality when allowed, All missing seasons, a row for each season, and one aqua button. */
 @Composable
 fun SeerrSeasonPickerSheet(
     picker: SeerrSeasonPicker,
@@ -158,7 +160,7 @@ private fun ColumnScope.SeasonPickerContent(
                 }
                 HorizontalDivider(Modifier.padding(horizontal = VibeyFinTokens.Space.s5), color = MaterialTheme.colorScheme.outlineVariant)
 
-                SeasonGrid(picker.seasons, onSeason)
+                SeasonRows(picker.seasons, onSeason)
             }
 
             Button(
@@ -179,49 +181,43 @@ private fun ColumnScope.SeasonPickerContent(
     }
 }
 
-// The seasons as a grid of tiles, so twenty seasons fit on a screen: the number large, the episode count under it. A chosen one
-// is filled in ink with a tick; one that can't be asked for (available, requested) is dimmed and shows its state's icon.
+// One row per season: a checkbox at the start, the name with its episode count under it, and for a season that can't be asked for
+// (available, requested, approved) a muted row with the checkbox off and its state's icon and word at the end.
 @Composable
-private fun SeasonGrid(seasons: List<SeerrPickerSeason>, onSeason: (Int) -> Unit) {
-    BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s3)) {
-        val gap = VibeyFinTokens.Space.s2
-        val columns = ((maxWidth + gap) / (SEASON_TILE_MIN + gap)).toInt().coerceAtLeast(MIN_SEASON_COLUMNS)
-        val tile = (maxWidth - gap * (columns - 1)) / columns
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(gap)) {
-            seasons.forEach { season -> SeasonTile(season, Modifier.width(tile)) { onSeason(season.number) } }
+private fun SeasonRows(seasons: List<SeerrPickerSeason>, onSeason: (Int) -> Unit) {
+    seasons.forEach { season ->
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = ROW_HEIGHT)
+                .toggleable(value = season.selected, enabled = !season.locked, role = Role.Checkbox, onValueChange = { onSeason(season.number) })
+                .padding(horizontal = VibeyFinTokens.Space.s5)
+                .semantics(mergeDescendants = true) { contentDescription = season.description },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
+        ) {
+            Checkbox(
+                checked = season.selected,
+                onCheckedChange = null,
+                enabled = !season.locked,
+                colors = CheckboxDefaults.colors(
+                    checkedColor = VibeyFinTokens.Colors.ink,
+                    checkmarkColor = VibeyFinTokens.Colors.bg,
+                    uncheckedColor = VibeyFinTokens.Colors.inkMuted,
+                    disabledUncheckedColor = VibeyFinTokens.Colors.line,
+                ),
+            )
+            Column(Modifier.weight(1f)) {
+                Text(season.name, style = MaterialTheme.typography.bodyLarge, color = if (season.locked) VibeyFinTokens.Colors.inkMuted else MaterialTheme.colorScheme.onSurface)
+                Text(season.episodes, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            season.stateLabel?.takeIf { season.locked }?.let { label ->
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
+                    Icon(painterResource(stateIconOf(season.state)), contentDescription = null, tint = VibeyFinTokens.Colors.inkMuted, modifier = Modifier.size(14.dp))
+                    Text(label, style = MaterialTheme.typography.bodySmall, color = VibeyFinTokens.Colors.inkMuted)
+                }
+            }
         }
     }
 }
-
-@Composable
-private fun SeasonTile(season: SeerrPickerSeason, modifier: Modifier, onToggle: () -> Unit) {
-    val shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md)
-    val fill = if (season.selected) VibeyFinTokens.Colors.ink else VibeyFinTokens.Colors.surface2
-    val text = when {
-        season.selected -> VibeyFinTokens.Colors.bg
-        season.locked -> VibeyFinTokens.Colors.inkSubtle
-        else -> VibeyFinTokens.Colors.ink
-    }
-    Box(
-        modifier.aspectRatio(1f).clip(shape).background(fill)
-            .then(if (season.selected) Modifier else Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape))
-            .toggleable(value = season.selected, enabled = !season.locked, role = Role.Checkbox, onValueChange = { onToggle() })
-            .semantics(mergeDescendants = true) { contentDescription = season.description },
-    ) {
-        Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(season.tile, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = text, maxLines = 1)
-            Text(season.tileEpisodes, style = MaterialTheme.typography.labelSmall, color = text, maxLines = 1)
-        }
-        val corner = Modifier.align(Alignment.TopEnd).padding(VibeyFinTokens.Space.s1).size(16.dp)
-        when {
-            season.selected -> Icon(Icons.Filled.Check, contentDescription = null, tint = text, modifier = corner)
-            season.locked -> Icon(painterResource(stateIconOf(season.state)), contentDescription = null, tint = text, modifier = corner)
-        }
-    }
-}
-
-private val SEASON_TILE_MIN = 64.dp
-private const val MIN_SEASON_COLUMNS = 4
 
 // The quality to ask for: M3's exposed dropdown, a read-only field with the chosen profile that opens a plain list of the server's
 // profiles (no search) right under it, as wide as the field. The default is chosen to begin with.
@@ -306,7 +302,7 @@ private fun MenuContent(title: SeerrTitle, state: SeerrTitleUiState, viewModel: 
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         ) {
-            Box(Modifier.width(40.dp).aspectRatio(2f / 3f).clip(RoundedCornerShape(6.dp))) {
+            Box(Modifier.width(40.dp).aspectRatio(2f / 3f).clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
                 Artwork(url = title.posterUrl, title = title.title, aspectRatio = 2f / 3f, modifier = Modifier.fillMaxWidth())
             }
             Column {

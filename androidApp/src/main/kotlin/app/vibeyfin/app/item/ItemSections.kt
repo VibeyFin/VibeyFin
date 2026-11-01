@@ -320,20 +320,20 @@ private fun EpisodeList(
     }
 }
 
-private val EPISODE_CARD = 300.dp
-private val EPISODE_CARD_WIDE = 380.dp
+internal val EPISODE_CARD = 300.dp
+internal val EPISODE_CARD_WIDE = 380.dp
 
-private const val EPISODE_ASPECT = 1.6f
+internal const val EPISODE_ASPECT = 1.6f
 
 @Composable
-private fun EpisodeCardSkeleton(width: Dp) {
+internal fun EpisodeCardSkeleton(width: Dp) {
     SkeletonBlock(Modifier.width(width).aspectRatio(EPISODE_ASPECT))
 }
 
-private val EPISODE_ROW_PICTURE = 148.dp
+internal val EPISODE_ROW_PICTURE = 148.dp
 
 @Composable
-private fun EpisodeRowSkeleton() {
+internal fun EpisodeRowSkeleton() {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         SkeletonBlock(Modifier.width(EPISODE_ROW_PICTURE).aspectRatio(EPISODE_ASPECT))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {

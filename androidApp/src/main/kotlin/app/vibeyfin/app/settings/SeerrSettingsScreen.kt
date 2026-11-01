@@ -37,6 +37,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
@@ -46,6 +47,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.vibeyfin.R
 import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.VibeyFinSheet
@@ -159,8 +161,7 @@ private fun SeerrSettingsBody(state: SeerrSettingsUiState, viewModel: SeerrSetti
                     }
                     state.quotaLeft?.let { left ->
                         RowFrame {
-                            RowText(Strings.seerrRequestsLeft, state.quotaPeriod, Modifier.weight(1f))
-                            Text(left, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            RowText(Strings.seerrRequestsLeft, left, Modifier.weight(1f))
                         }
                     }
                 }
@@ -193,6 +194,8 @@ private fun AddressForm(state: SeerrSettingsUiState, onChange: (String) -> Unit,
         singleLine = true,
         enabled = !state.connecting,
         isError = error != null,
+        // An alert beside the reason, so it isn't told by colour alone
+        trailingIcon = error?.let { { Icon(painterResource(R.drawable.ic_seerr_failed), contentDescription = null) } },
         // The reason sits under the field it is about, and is read with it
         supportingText = { Text(error ?: if (state.addressShared) Strings.seerrAddressSharedHelp else Strings.seerrAddressHelp) },
         colors = vibeyFinTextFieldColors(),

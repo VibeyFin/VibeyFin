@@ -171,6 +171,7 @@ fun SeerrListRoute(kind: SeerrListKind, onBack: () -> Unit, onOpen: (SeerrTitle)
                     )
                 }
                 if (state.loadingMore) item(span = { GridItemSpan(maxLineSpan) }) { MoreSpinner() }
+                if (state.loadMoreFailed) item(span = { GridItemSpan(maxLineSpan) }, key = "load-more-failed") { LoadError(Strings.loadMoreFailed, viewModel::onRetry) }
             }
         }
     }
@@ -214,6 +215,7 @@ fun MyRequestsRoute(onBack: () -> Unit, onOpen: (SeerrTitle) -> Unit, viewModel:
                     SeerrTile(item.title, onOpen, Modifier.fillMaxWidth(), meta = item.changed)
                 }
                 if (state.loadingMore) item(span = { GridItemSpan(maxLineSpan) }) { MoreSpinner() }
+                if (state.loadMoreFailed) item(span = { GridItemSpan(maxLineSpan) }, key = "load-more-failed") { LoadError(Strings.loadMoreFailed, viewModel::onRetry) }
             }
         }
     }
