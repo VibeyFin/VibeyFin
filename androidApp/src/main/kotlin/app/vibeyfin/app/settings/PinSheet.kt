@@ -48,6 +48,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.vibeyfin.app.components.BusyButton
+import app.vibeyfin.app.components.PasswordField
+import app.vibeyfin.app.components.SheetColumn
+import app.vibeyfin.app.components.SheetTextButton
+import app.vibeyfin.app.components.SheetTitle
 import app.vibeyfin.app.components.VibeyFinSheet
 import app.vibeyfin.app.components.vibeyFinTextFieldColors
 import app.vibeyfin.app.theme.VibeyFinTokens
@@ -71,23 +76,15 @@ fun PinSheet(
     onDismiss: () -> Unit,
 ) {
     VibeyFinSheet(onDismiss) {
-        Column(
-            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s2),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
-        ) {
+        SheetColumn(onCancel = onDismiss, horizontalAlignment = Alignment.CenterHorizontally) {
             val choosing = prompt.reason == PinReason.ChoosePin && !prompt.forgot
 
-            Text(
-                text = if (prompt.forgot) {
-                    Strings.pinForgot
-                } else if (choosing) {
-                    prompt.message
-                } else {
-                    Strings.pinPromptEnter
+            SheetTitle(
+                when {
+                    prompt.forgot -> Strings.pinForgot
+                    choosing -> prompt.message
+                    else -> Strings.pinPromptEnter
                 },
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface,
             )
 
             if (!choosing) {
@@ -104,12 +101,6 @@ fun PinSheet(
             } else {
                 KeypadContent(prompt, onSubmitPin, onForgotPin, offerForgot = !choosing)
             }
-
-            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.touch)) {
-                Text(Strings.cancel, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-
-            Spacer(Modifier.height(VibeyFinTokens.Space.s2))
         }
     }
 }
@@ -169,11 +160,7 @@ private fun KeypadContent(prompt: PinPrompt, onSubmitPin: (String) -> Unit, onFo
         }
     }
 
-    if (offerForgot) {
-        TextButton(onClick = onForgotPin, modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.touch)) {
-            Text(Strings.pinForgot, color = MaterialTheme.colorScheme.onSurface)
-        }
-    }
+    if (offerForgot) SheetTextButton(Strings.pinForgot, onForgotPin)
 }
 
 private val KEY_SIZE = VibeyFinTokens.Size.buttonLarge + VibeyFinTokens.Space.s2
@@ -207,34 +194,6 @@ private fun ForgotContent(prompt: PinPrompt, onSubmitPassword: (String) -> Unit)
     var password by remember { mutableStateOf("") }
     val submit = { if (!prompt.checking) onSubmitPassword(password) }
 
-    OutlinedTextField(
-        value = password,
-        onValueChange = { password = it },
-        label = { Text(Strings.password) },
-        singleLine = true,
-        isError = prompt.error != null,
-        visualTransformation = PasswordVisualTransformation(),
-        colors = vibeyFinTextFieldColors(),
-        keyboardOptions = KeyboardOptions(
-            capitalization = KeyboardCapitalization.None,
-            autoCorrectEnabled = false,
-            keyboardType = KeyboardType.Password,
-            imeAction = ImeAction.Go,
-        ),
-        keyboardActions = KeyboardActions(onGo = { submit() }),
-        modifier = Modifier.fillMaxWidth(),
-    )
-    Text(
-        text = prompt.error.orEmpty(),
-        color = MaterialTheme.colorScheme.error,
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
-    )
-    Button(onClick = { submit() }, modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge)) {
-        if (prompt.checking) {
-            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-        } else {
-            Text(Strings.pinForgotSubmit)
-        }
-    }
+    PasswordField(password, { password = it }, onGo = submit, error = prompt.error)
+    BusyButton(Strings.pinForgotSubmit, submit, busy = prompt.checking)
 }

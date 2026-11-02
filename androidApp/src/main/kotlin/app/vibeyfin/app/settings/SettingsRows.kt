@@ -123,6 +123,31 @@ internal fun RowFrame(modifier: Modifier = Modifier, content: @Composable RowSco
     ) { content() }
 }
 
+/** A title with its value at the right, such as a server's version. */
+@Composable
+internal fun ValueRow(title: String, value: String) {
+    RowFrame {
+        RowText(title, null)
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f).padding(start = VibeyFinTokens.Space.s4),
+        )
+    }
+}
+
+/** A row that does one thing when tapped, in red when it can't be undone. */
+@Composable
+internal fun ButtonRow(title: String, onClick: () -> Unit, destructive: Boolean = false, leading: (@Composable () -> Unit)? = null) {
+    RowFrame(Modifier.clickable(role = Role.Button, onClick = onClick)) {
+        leading?.invoke()
+        RowText(title, null, Modifier.weight(1f), titleColor = if (destructive) VibeyFinTokens.Colors.danger else MaterialTheme.colorScheme.onSurface)
+    }
+}
+
 @Composable
 private fun IconCircle(icon: ImageVector) {
     Box(

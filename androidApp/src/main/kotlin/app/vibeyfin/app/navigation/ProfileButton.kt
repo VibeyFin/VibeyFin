@@ -1,14 +1,9 @@
 package app.vibeyfin.app.navigation
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -19,16 +14,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.vibeyfin.R
+import app.vibeyfin.app.components.HeaderButton
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.settings.PinSheet
@@ -62,25 +58,20 @@ fun ProfileButton(
     var open by remember { mutableStateOf(false) }
 
     Box {
-        Box(
-            modifier = Modifier
-                .size(VibeyFinTokens.Size.touch)
-                .clip(CircleShape)
-                .background(VibeyFinTokens.Colors.surface3)
-                .clickable(role = Role.Button, onClickLabel = Strings.showOptions) { open = true }
-                // Named for the person, as on iOS; the letter on it would only be read as "A"
-                .semantics {
-                    contentDescription = state.userName.orEmpty()
-                    if (!offline) {
-                        customActions = listOf(
-                            CustomAccessibilityAction(Strings.switchProfile) {
-                                viewModel.onSwitchProfile()
-                                true
-                            },
-                        )
-                    }
-                },
-            contentAlignment = Alignment.Center,
+        HeaderButton(
+            onClick = { open = true },
+            // Named for the person, as on iOS; the letter on it would only be read as "A"
+            modifier = Modifier.semantics {
+                contentDescription = state.userName.orEmpty()
+                if (!offline) {
+                    customActions = listOf(
+                        CustomAccessibilityAction(Strings.switchProfile) {
+                            viewModel.onSwitchProfile()
+                            true
+                        },
+                    )
+                }
+            },
         ) {
             Text(
                 text = state.userName?.take(1)?.uppercase().orEmpty(),
@@ -98,7 +89,7 @@ fun ProfileButton(
                     viewModel.onSwitchProfile()
                 }
 
-                VibeyFinMenuItem(Strings.switchServer, Icons.Filled.Refresh) {
+                VibeyFinMenuItem(Strings.switchServer, ImageVector.vectorResource(R.drawable.ic_server)) {
                     open = false
 
                     viewModel.onSwitchServer()
