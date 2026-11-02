@@ -142,33 +142,6 @@ struct Card<Content: View>: View {
     }
 }
 
-/// A labelled field on `surface-2`. The border turns red when `isError`; it is the control's edge, so it
-/// stays visible at rest.
-struct FormField<Content: View>: View {
-    let label: String
-    var isError = false
-    @ViewBuilder let content: () -> Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Space.s1) {
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(isError ? Color(.systemRed) : Color.secondary)
-            content()
-                .foregroundStyle(.primary)
-                .padding(Space.s4)
-                .background(
-                    RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous)
-                        .fill(Color(.tertiarySystemBackground))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous)
-                        .stroke(isError ? Color(.systemRed) : Color(.systemGray), lineWidth: 1)
-                )
-        }
-    }
-}
-
 /// Fields as one grouped card, as in a form: each `FieldRow` with its label at the left. The edge turns red when `isError`.
 struct FieldGroup<Content: View>: View {
     var isError = false

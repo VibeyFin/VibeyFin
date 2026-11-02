@@ -2,10 +2,12 @@ import SwiftUI
 import Shared
 
 enum Route: Hashable {
-    /// A non-nil address is checked as soon as the screen opens.
-    case addServer(address: String?)
+    /// A non-nil address is checked as soon as the screen opens. `backAfterSave` goes back once saved, for an address added from a
+    /// server's details, instead of on to the server's "Who's watching?".
+    case addServer(address: String?, backAfterSave: Bool = false)
     /// `pinUserId` is the profile whose PIN the screen asks for first.
     case whoIsWatching(serverId: String, pinUserId: String? = nil)
+    case serverDetails(serverId: String)
 }
 
 struct RootView: View {
@@ -35,20 +37,35 @@ struct RootView: View {
                 NavigationStack(path: $path) {
                     ServersView(
                         onOpenServer: { path.append(.whoIsWatching(serverId: $0.id)) },
+                        onServerDetails: { path.append(.serverDetails(serverId: $0.id)) },
                         onAddServer: { path.append(.addServer(address: nil)) },
                         onDiscoveredServer: { path.append(.addServer(address: $0.address)) }
                     )
                     .toolbar(.hidden, for: .navigationBar)
                     .navigationDestination(for: Route.self) { route in
                         switch route {
-                        case .addServer(let address):
-                            AddServerView(initialAddress: address)
+                        case .addServer(let address, let backAfterSave):
+                            AddServerView(initialAddress: address, showNext: !backAfterSave) { serverId in
+                                if backAfterSave {
+                                    path.removeLast()
+                                } else {
+                                    path = [.whoIsWatching(serverId: serverId)]
+                                }
+                            }
                         case .whoIsWatching(let serverId, let pinUserId):
-                            // The tabs become the only screens: back from them must not return to sign-in.
                             WhoIsWatchingView(
                                 serverId: serverId,
                                 pinFor: pinUserId.map { ProfileRef(serverId: serverId, userId: $0) },
+                                onSwitchServer: { path = [] },
+                                onServerDetails: { path.append(.serverDetails(serverId: serverId)) },
+                                // The tabs become the only screens: back from them must not return to sign-in.
                                 onSignedIn: { path = []; signedIn = true }
+                            )
+                        case .serverDetails(let serverId):
+                            ServerDetailsView(
+                                serverId: serverId,
+                                onAddAddress: { path.append(.addServer(address: nil, backAfterSave: true)) },
+                                onRemoved: { path = [] }
                             )
                         }
                     }

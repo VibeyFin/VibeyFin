@@ -37,7 +37,6 @@ object Strings {
     // Who's watching
     val whoIsWatching = "Who's watching?"
     val otherUser = "Other user"
-    val needsPassword = "Needs a password"
     val cantReachServerHelp = "Profiles saved on this device still show, but signing in needs the server."
     val username = "Username"
     val password = "Password"
@@ -105,7 +104,6 @@ object Strings {
     val servers = "Servers"
     val onYourNetwork = "On your network"
     val addToServers = "Add"
-    val noServersFound = "No servers found on your network."
     val noServersFoundHelp = "No servers found on your network. A server on another network or behind a VPN needs its address."
     val noNewServersFound = "No new servers found."
     val lookingForServers = "Looking for servers\u2026"
@@ -162,7 +160,6 @@ object Strings {
     val connect = "Connect"
     val connecting = "Connecting"
     val found = "Found"
-    val cantConnectTitle = "Can't connect"
     val saveAddress = "Save address"
     val done = "Done"
 
@@ -912,9 +909,6 @@ object Strings {
     val pinKeypadDelete = "Delete"
 
     fun pinDigitsEntered(count: Int) = if (count == 1) "1 of 4 digits entered" else "$count of 4 digits entered"
-
-    /** A tile's lock badge when the profile asks for its PIN to open. */
-    val needsPin = "Needs a PIN"
 
     // Notifications page
     val notificationsTitle = "Notifications"

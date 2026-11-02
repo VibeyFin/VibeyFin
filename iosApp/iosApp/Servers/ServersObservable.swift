@@ -23,6 +23,18 @@ final class ServersObservable: ObservableObject {
         model.searchAgain()
     }
 
+    func removeServer(_ serverId: String) {
+        model.removeServer(serverId: serverId)
+    }
+
+    func confirmRemove() {
+        model.confirmRemove()
+    }
+
+    func dismissRemove() {
+        model.dismissRemove()
+    }
+
     deinit {
         model.close()
     }
