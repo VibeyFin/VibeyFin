@@ -7,9 +7,15 @@ import kotlinx.serialization.Serializable
 @Serializable
 data object Servers
 
-/** [address] is filled in and checked straight away, e.g. for a server found by the search. */
+/**
+ * [address] is filled in and checked straight away, e.g. for a server found by the search. [backAfterSave] goes back once saved,
+ * for an address added from a server's details, instead of on to the server's "Who's watching?".
+ */
 @Serializable
-data class AddServer(val address: String? = null)
+data class AddServer(val address: String? = null, val backAfterSave: Boolean = false)
+
+@Serializable
+data class ServerDetails(val serverId: String)
 
 @Serializable
 data class WhoIsWatching(

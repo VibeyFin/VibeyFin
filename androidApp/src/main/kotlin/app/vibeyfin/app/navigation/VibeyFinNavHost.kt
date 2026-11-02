@@ -74,6 +74,7 @@ import app.vibeyfin.app.seerr.MyRequestsRoute
 import app.vibeyfin.app.seerr.SeerrListRoute
 import app.vibeyfin.app.seerr.SeerrMenuSheet
 import app.vibeyfin.app.seerr.SeerrTitleRoute
+import app.vibeyfin.app.servers.ServerDetailsRoute
 import app.vibeyfin.app.servers.ServersRoute
 import app.vibeyfin.app.settings.SeerrSettingsRoute
 import app.vibeyfin.app.settings.SettingsRoute
@@ -484,9 +485,15 @@ private fun NavGraphBuilder.entryScreens(navController: NavHostController) {
         )
     }
 
+    // Servers is underneath every sign-in page; it is put back if it somehow isn't
+    val backToServers = {
+        if (!navController.popBackStack(Servers, inclusive = false)) navController.navigate(Servers) { popUpTo(navController.graph.id) }
+    }
+
     composable<Servers> {
         ServersRoute(
             onOpenServer = { navController.navigate(WhoIsWatching(it.id)) },
+            onServerDetails = { navController.navigate(ServerDetails(it.id)) },
             onAddServer = { navController.navigate(AddServer()) },
             onDiscoveredServer = { navController.navigate(AddServer(address = it.address)) },
         )
@@ -498,17 +505,36 @@ private fun NavGraphBuilder.entryScreens(navController: NavHostController) {
         WhoIsWatchingRoute(
             serverId = route.serverId,
             pinFor = route.pinUserId?.let { ProfileRef(route.serverId, it) },
-            onBack = { navController.popBackStack() },
+            onSwitchServer = { backToServers() },
+            onServerDetails = { navController.navigate(ServerDetails(route.serverId)) },
             // Home becomes the root: back from it leaves the app instead of returning to sign-in
             onSignedIn = { navController.navigate(HomeTab) { popUpTo(Servers) { inclusive = true } } },
         )
     }
 
     composable<AddServer> { entry ->
+        val route = entry.toRoute<AddServer>()
+
         AddServerRoute(
-            initialAddress = entry.toRoute<AddServer>().address,
+            initialAddress = route.address,
+            showNext = !route.backAfterSave,
             onBack = { navController.popBackStack() },
-            onSaved = { navController.popBackStack() },
+            onSaved = { serverId ->
+                if (route.backAfterSave) {
+                    navController.popBackStack()
+                } else {
+                    navController.navigate(WhoIsWatching(serverId)) { popUpTo<AddServer> { inclusive = true } }
+                }
+            },
+        )
+    }
+
+    composable<ServerDetails> { entry ->
+        ServerDetailsRoute(
+            serverId = entry.toRoute<ServerDetails>().serverId,
+            onBack = { navController.popBackStack() },
+            onAddAddress = { navController.navigate(AddServer(backAfterSave = true)) },
+            onRemoved = { backToServers() },
         )
     }
 }
@@ -687,4 +713,4 @@ private fun NotificationRouteEffect(
     }
 }
 
-private fun NavDestination.isInProfile() = !(hasRoute<Startup>() || hasRoute<Servers>() || hasRoute<WhoIsWatching>() || hasRoute<AddServer>())
+private fun NavDestination.isInProfile() = !(hasRoute<Startup>() || hasRoute<Servers>() || hasRoute<WhoIsWatching>() || hasRoute<AddServer>() || hasRoute<ServerDetails>())

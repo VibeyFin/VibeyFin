@@ -64,6 +64,8 @@ object Strings {
 
     fun serverMenu(name: String) = "$name, server menu"
 
+    fun moreFor(name: String) = "More for $name"
+
     /** What a screen reader says for a profile's tile. */
     fun profileTile(name: String, needsPassword: Boolean, needsPin: Boolean, opening: Boolean) = when {
         opening -> "Opening $name"

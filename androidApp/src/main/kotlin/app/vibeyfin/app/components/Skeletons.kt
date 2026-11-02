@@ -125,7 +125,7 @@ fun ItemSkeleton(wide: Boolean, screenWidth: Dp, screenHeight: Dp, margin: Dp, m
     }
 }
 
-/** Round profile avatars with a name line, for "Who's watching?" while the profiles load. */
+/** Profile tiles with a name line, for "Who's watching?" while the profiles load. */
 fun LazyGridScope.skeletonProfiles(count: Int, avatarSize: Dp) {
     items(count, key = { "skeleton-profile-$it" }) {
         Column(
@@ -133,7 +133,7 @@ fun LazyGridScope.skeletonProfiles(count: Int, avatarSize: Dp) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
         ) {
-            SkeletonBlock(Modifier.size(avatarSize), CircleShape)
+            SkeletonBlock(Modifier.size(avatarSize), RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
             SkeletonLine(72.dp, MaterialTheme.typography.bodyMedium)
         }
     }
