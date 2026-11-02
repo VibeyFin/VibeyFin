@@ -83,41 +83,17 @@ struct OfflineBannerView: View {
     }
 }
 
-/// Says, once, that the app went offline: a small capsule on the system material at the bottom, above the tab bar. iOS has no
-/// toast, so this is one, in the shape of the failure banner: it never blocks anything, takes no tap, and goes by itself after a
-/// few seconds. VoiceOver reads it as it appears.
+extension View {
+    /// Says, once, that the app went offline, above the tab bar, which floats over the bottom of the screen.
+    func offlineToast(_ model: AppBannerObservable) -> some View {
+        modifier(OfflineToast(model: model))
+    }
+}
+
 private struct OfflineToast: ViewModifier {
     @ObservedObject var model: AppBannerObservable
 
     func body(content: Content) -> some View {
-        content
-            .overlay(alignment: .bottom) {
-                if let message = model.toast {
-                    Text(message)
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, Space.s4)
-                        .padding(.vertical, Space.s3)
-                        .background(.regularMaterial, in: Capsule())
-                        .padding(.horizontal, Space.s4)
-                        // Above the tab bar, which floats over the bottom of the screen.
-                        .padding(.bottom, 96)
-                        .allowsHitTesting(false)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .onAppear { UIAccessibility.post(notification: .announcement, argument: message) }
-                        .task(id: message) {
-                            try? await Task.sleep(nanoseconds: 3_500_000_000)
-                            model.dismissToast()
-                        }
-                }
-            }
-            .animation(.default, value: model.toast)
-    }
-}
-
-extension View {
-    func offlineToast(_ model: AppBannerObservable) -> some View {
-        modifier(OfflineToast(model: model))
+        content.toast(model.toast, bottom: 96) { model.dismissToast() }
     }
 }

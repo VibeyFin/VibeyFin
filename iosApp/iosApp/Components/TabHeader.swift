@@ -53,16 +53,31 @@ extension EnvironmentValues {
     }
 }
 
-/// The header of the four tabs on a phone, or an iPad in a narrow window: the page name at the left and the profile at the right, one line, the same size and in the same
-/// place on every tab, so it stays still when the tab changes. `horizontalMargin` is false inside a screen that already has the margin.
-struct TabHeader: View {
+/// The header of the four tabs on a phone, or an iPad in a narrow window, and of the sign-in pages: the page name at the left and
+/// `trailing` at the right (the profile on a tab, the server on "Who's watching?"), one line, the same size and in the same place on
+/// every page, so it stays still when the page changes. `horizontalMargin` is false inside a screen that already has the margin.
+struct TabHeader<Trailing: View>: View {
     let title: String
     var horizontalMargin = true
+    /// A tab root: on an iPad with the tab bar at the top the profile is in the system bar instead, so there is no row.
+    private let tabRoot: Bool
+    private let trailing: Trailing
     @Environment(\.horizontalSizeClass) private var sizeClass
+
+    init(title: String, horizontalMargin: Bool = true, @ViewBuilder trailing: () -> Trailing) {
+        self.init(title: title, horizontalMargin: horizontalMargin, tabRoot: false, trailing: trailing())
+    }
+
+    fileprivate init(title: String, horizontalMargin: Bool, tabRoot: Bool, trailing: Trailing) {
+        self.title = title
+        self.horizontalMargin = horizontalMargin
+        self.tabRoot = tabRoot
+        self.trailing = trailing
+    }
 
     var body: some View {
         // On an iPad with the tab bar at the top, the page is named by the selected tab and the profile sits in that row (TabShell).
-        if UIDevice.current.userInterfaceIdiom == .pad && sizeClass == .regular {
+        if tabRoot && UIDevice.current.userInterfaceIdiom == .pad && sizeClass == .regular {
             // The profile is in the navigation bar next to the tab bar (`tabRootBar`), so there is no row of ours.
             EmptyView()
         } else {
@@ -78,10 +93,16 @@ struct TabHeader: View {
                 .lineLimit(1)
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 0)
-            ProfileButton()
+            trailing.frame(minWidth: 44, minHeight: 44)
         }
         .padding(.vertical, Space.s2)
         .modifier(OptionalScreenMargin(enabled: horizontalMargin))
+    }
+}
+
+extension TabHeader where Trailing == ProfileButton {
+    init(title: String, horizontalMargin: Bool = true) {
+        self.init(title: title, horizontalMargin: horizontalMargin, tabRoot: true, trailing: ProfileButton())
     }
 }
 
@@ -99,7 +120,7 @@ struct ProfileButton: View {
     @Environment(\.profileButtonContext) private var context
 
     var body: some View {
-        ProfileMenuButton(
+        HeaderMenuButton(
             letter: String((model.state?.userName ?? "").prefix(1)).uppercased(),
             name: model.state?.userName ?? "",
             items: items
@@ -107,28 +128,37 @@ struct ProfileButton: View {
         .frame(width: 44, height: 44)
     }
 
-    private var items: [(String, () -> Void)] {
-        var items: [(String, () -> Void)] = []
+    private var items: [HeaderMenuItem] {
+        var items: [HeaderMenuItem] = []
         if !context.offline {
-            items.append((Strings.shared.switchProfile.titleCased(), { model.switchProfile() }))
-            items.append((Strings.shared.switchServer.titleCased(), { model.switchServer() }))
+            items.append(HeaderMenuItem(title: Strings.shared.switchProfile) { model.switchProfile() })
+            items.append(HeaderMenuItem(title: Strings.shared.switchServer) { model.switchServer() })
         }
-        items.append((Strings.shared.settings.titleCased(), context.onSettings))
+        items.append(HeaderMenuItem(title: Strings.shared.settings, action: context.onSettings))
         // A kids profile cannot sign out; the view model ignores it too.
         if !context.offline && model.state?.kidsProfile != true {
-            items.append((Strings.shared.signOut.titleCased(), { model.signOut() }))
+            items.append(HeaderMenuItem(title: Strings.shared.signOut) { model.signOut() })
         }
         return items
     }
 }
 
-/// UIKit's button with its menu as the primary action: the menu opens as the finger touches down. SwiftUI's `Menu` with a custom
-/// label waits for the finger to lift and then animates in, which felt slow on a button pressed this often.
-private struct ProfileMenuButton: UIViewRepresentable {
-    let letter: String
+/// One row of a `HeaderMenuButton`'s menu.
+struct HeaderMenuItem {
+    let title: String
+    var systemImage: String?
+    let action: () -> Void
+}
+
+/// The round button at the right of the header, with its menu as the primary action: the profile's letter, or a symbol such as
+/// the server's. UIKit's button, because the menu opens as the finger touches down. SwiftUI's `Menu` with a custom label waits for
+/// the finger to lift and then animates in, which felt slow on a button pressed this often.
+struct HeaderMenuButton: UIViewRepresentable {
+    var letter = ""
+    var systemImage: String?
     /// Read by VoiceOver: the letter alone would only be read as "A".
     let name: String
-    let items: [(String, () -> Void)]
+    let items: [HeaderMenuItem]
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -146,19 +176,25 @@ private struct ProfileMenuButton: UIViewRepresentable {
     }
 
     func updateUIView(_ button: UIButton, context: Context) {
-        var title = AttributedString(letter)
-        title.font = UIFont.preferredFont(forTextStyle: .headline)
-        button.configuration?.attributedTitle = title
+        if let systemImage {
+            button.configuration?.image = UIImage(systemName: systemImage, withConfiguration: UIImage.SymbolConfiguration(textStyle: .body))
+        } else {
+            var title = AttributedString(letter)
+            title.font = UIFont.preferredFont(forTextStyle: .headline)
+            button.configuration?.attributedTitle = title
+        }
         button.accessibilityLabel = name
         let coordinator = context.coordinator
         // The actions always run the latest closures, but the menu itself is only rebuilt when its rows change: Home refreshes often
         // (the hero moves on, the lists load), and a new menu put in while this one is open blinks it and loses the finger's selection.
-        coordinator.actions = items.map { $0.1 }
-        let titles = items.map { $0.0 }
+        coordinator.actions = items.map { $0.action }
+        let titles = items.map { $0.title }
         guard titles != coordinator.titles else { return }
         coordinator.titles = titles
-        button.menu = UIMenu(children: titles.enumerated().map { index, title in
-            UIAction(title: title) { [weak coordinator] _ in coordinator?.actions[index]() }
+        button.menu = UIMenu(children: items.enumerated().map { index, item in
+            UIAction(title: item.title.titleCased(), image: item.systemImage.flatMap { UIImage(systemName: $0) }) { [weak coordinator] _ in
+                coordinator?.actions[index]()
+            }
         })
     }
 

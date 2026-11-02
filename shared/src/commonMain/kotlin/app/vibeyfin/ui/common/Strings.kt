@@ -43,6 +43,7 @@ object Strings {
     val password = "Password"
     val signInAsAnotherUser = "Sign in as another user"
     val passwordNotKept = "VibeyFin doesn\u2019t keep your password."
+    val required = "Required"
     val showPassword = "Show password"
     val hidePassword = "Hide password"
     val useQuickConnectInstead = "Use Quick Connect instead"

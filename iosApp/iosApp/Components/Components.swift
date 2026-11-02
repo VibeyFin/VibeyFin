@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import Shared
 
 /// The one filled primary action on a screen: an aqua capsule, full width. Native `.borderedProminent`
@@ -35,6 +36,29 @@ struct PrimaryButtonSpinner: View {
 extension PrimaryButton where Label == Text {
     init(_ title: String, action: @escaping () -> Void) {
         self.init(action: action) { Text(title.titleCased()) }
+    }
+}
+
+/// A primary button's label that turns into a spinner and `busyTitle` while the action runs.
+struct BusyLabel: View {
+    let title: String
+    let busyTitle: String?
+    let busy: Bool
+
+    var body: some View {
+        HStack(spacing: Space.s3) {
+            if busy { PrimaryButtonSpinner() }
+            if !busy || busyTitle != nil {
+                Text((busy ? busyTitle ?? title : title).titleCased())
+            }
+        }
+    }
+}
+
+extension PrimaryButton where Label == BusyLabel {
+    /// Stays aqua while `busy`, and a second tap does nothing then.
+    init(_ title: String, busyTitle: String? = nil, busy: Bool, action: @escaping () -> Void) {
+        self.init(action: { if !busy { action() } }) { BusyLabel(title: title, busyTitle: busyTitle, busy: busy) }
     }
 }
 
@@ -145,13 +169,245 @@ struct FormField<Content: View>: View {
     }
 }
 
+/// Fields as one grouped card, as in a form: each `FieldRow` with its label at the left. The edge turns red when `isError`.
+struct FieldGroup<Content: View>: View {
+    var isError = false
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(spacing: 0) { content() }
+            .background(RoundedRectangle(cornerRadius: Radius.card / 1.5, style: .continuous).fill(Color(.tertiarySystemBackground)))
+            .overlay(
+                RoundedRectangle(cornerRadius: Radius.card / 1.5, style: .continuous)
+                    .stroke(isError ? Color(.systemRed) : Color.clear, lineWidth: 1)
+            )
+    }
+}
+
+/// One field in a `FieldGroup`: its label, then the control.
+struct FieldRow<Field: View>: View {
+    let label: String
+    @ViewBuilder let field: () -> Field
+
+    var body: some View {
+        HStack(spacing: Space.s3) {
+            Text(label)
+                .foregroundStyle(.primary)
+                .frame(minWidth: 88, alignment: .leading)
+                .accessibilityHidden(true)
+            field()
+                .accessibilityLabel(label)
+        }
+        .padding(.horizontal, Space.s4)
+        .frame(minHeight: 48)
+    }
+}
+
+/// A Jellyfin username, offered by AutoFill.
+struct UsernameField: View {
+    @Binding var text: String
+
+    var body: some View {
+        FieldRow(label: Strings.shared.username) {
+            TextField("", text: $text, prompt: Text(Strings.shared.required))
+                .textContentType(.username)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.next)
+        }
+    }
+}
+
+/// A password, hidden until the eye shows it, offered by AutoFill.
+struct PasswordField: View {
+    @Binding var text: String
+    let onSubmit: () -> Void
+    @State private var shown = false
+
+    var body: some View {
+        FieldRow(label: Strings.shared.password) {
+            HStack(spacing: Space.s2) {
+                Group {
+                    if shown {
+                        TextField("", text: $text, prompt: Text(Strings.shared.required))
+                    } else {
+                        SecureField("", text: $text, prompt: Text(Strings.shared.required))
+                    }
+                }
+                .textContentType(.password)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.go)
+                .onSubmit(onSubmit)
+                Button { shown.toggle() } label: {
+                    Image(systemName: shown ? "eye.slash" : "eye")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(shown ? Strings.shared.hidePassword : Strings.shared.showPassword)
+            }
+        }
+    }
+}
+
+/// The reason under a field, with the alert beside it so it isn't told by colour alone.
+struct FieldError: View {
+    let message: String
+
+    var body: some View {
+        Label(message, systemImage: "exclamationmark.circle")
+            .font(.footnote)
+            .foregroundStyle(Color(.systemRed))
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// A server's address in a grouped list: the field in its own row, the reason it failed (or `help`) under it.
+struct AddressSection<Header: View>: View {
+    let label: String
+    let placeholder: String
+    @Binding var address: String
+    var help: String?
+    var error: String?
+    var disabled = false
+    var focusOnAppear = false
+    let onSubmit: () -> Void
+    @ViewBuilder var header: () -> Header
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        Section {
+            FieldRow(label: label) {
+                TextField("", text: $address, prompt: Text(placeholder))
+                    .keyboardType(.URL)
+                    .textContentType(.URL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.go)
+                    .onSubmit(onSubmit)
+                    .disabled(disabled)
+                    .focused($focused)
+            }
+            .listRowInsets(EdgeInsets())
+        } header: {
+            header()
+        } footer: {
+            if let error {
+                FieldError(message: error)
+            } else if let help {
+                Text(help)
+            }
+        }
+        .onAppear {
+            guard focusOnAppear else { return }
+            // The push has to settle before the keyboard can come up.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { focused = true }
+        }
+    }
+}
+
+/// A sheet's frame: its title (with `leading`, such as the profile's picture), the close button, the content, and `footnote` at
+/// the foot.
+struct SheetScaffold<Leading: View, Content: View>: View {
+    let title: String
+    var footnote: String?
+    var detents: Set<PresentationDetent> = [.medium, .large]
+    let onClose: (() -> Void)?
+    @ViewBuilder var leading: () -> Leading
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        ZStack {
+            Color(.secondarySystemBackground).ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: Space.s4) {
+                    HStack(spacing: Space.s3) {
+                        leading()
+                        Text(title.titleCased()).sheetTitle()
+                        Spacer(minLength: Space.s2)
+                        if let onClose {
+                            IconSecondaryButton(systemImage: "xmark", label: Strings.shared.close, action: onClose)
+                        }
+                    }
+                    content()
+                    if let footnote {
+                        Text(footnote)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                .padding(Space.s5)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+        .presentationDetents(detents)
+        .presentationDragIndicator(.visible)
+    }
+}
+
+extension SheetScaffold where Leading == EmptyView {
+    init(
+        title: String,
+        footnote: String? = nil,
+        detents: Set<PresentationDetent> = [.medium, .large],
+        onClose: (() -> Void)?,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.init(title: title, footnote: footnote, detents: detents, onClose: onClose, leading: { EmptyView() }, content: content)
+    }
+}
+
+/// A short note in a capsule at the bottom that goes by itself after a few seconds, read by VoiceOver as it appears. iOS has no
+/// toast, so this is one: it never blocks anything and takes no tap. `bottom` keeps it above a tab bar.
+private struct Toast: ViewModifier {
+    let message: String?
+    var bottom: CGFloat
+    let onDismiss: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .overlay(alignment: .bottom) {
+                if let message {
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, Space.s4)
+                        .padding(.vertical, Space.s3)
+                        .background(.regularMaterial, in: Capsule())
+                        .padding(.horizontal, Space.s4)
+                        .padding(.bottom, bottom)
+                        .allowsHitTesting(false)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .onAppear { UIAccessibility.post(notification: .announcement, argument: message) }
+                        .task(id: message) {
+                            try? await Task.sleep(nanoseconds: 3_500_000_000)
+                            onDismiss()
+                        }
+                }
+            }
+            .animation(.default, value: message)
+    }
+}
+
+extension View {
+    func toast(_ message: String?, bottom: CGFloat = Space.s4, onDismiss: @escaping () -> Void) -> some View {
+        modifier(Toast(message: message, bottom: bottom, onDismiss: onDismiss))
+    }
+}
+
 struct SearchingLabel: View {
+    var text = Strings.shared.searching
+
     var body: some View {
         HStack(spacing: Space.s2) {
             ProgressView()
                 .progressViewStyle(.circular)
                 .scaleEffect(0.8)
-            Text(Strings.shared.searching)
+            Text(text)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }

@@ -155,26 +155,14 @@ struct PinSheet: View {
 
     private var forgotBody: some View {
         VStack(spacing: Space.s4) {
-            FormField(label: Strings.shared.password, isError: prompt.error != nil) {
-                SecureField(Strings.shared.password, text: $password)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .submitLabel(.go)
-                    .onSubmit { submitPassword() }
+            FieldGroup(isError: prompt.error != nil) {
+                PasswordField(text: $password, onSubmit: submitPassword)
             }
             if let error = prompt.error {
-                Text(error)
-                    .font(.subheadline)
-                    .foregroundStyle(Color(.systemRed))
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                FieldError(message: error)
             }
-            PrimaryButton(action: { submitPassword() }) {
-                HStack(spacing: Space.s3) {
-                    if prompt.checking { PrimaryButtonSpinner() }
-                    Text(Strings.shared.pinForgotSubmit.titleCased())
-                }
-            }
-            .disabled(password.isEmpty && !prompt.checking)
+            PrimaryButton(Strings.shared.pinForgotSubmit, busy: prompt.checking) { submitPassword() }
+                .disabled(password.isEmpty && !prompt.checking)
             GhostButton(title: Strings.shared.cancel, action: onDismiss)
                 .frame(minHeight: 44)
             Spacer(minLength: 0)
