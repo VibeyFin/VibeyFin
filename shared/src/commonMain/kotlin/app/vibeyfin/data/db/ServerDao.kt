@@ -33,6 +33,9 @@ abstract class ServerDao {
     @Query("DELETE FROM servers WHERE id = :id")
     abstract suspend fun delete(id: String)
 
+    @Query("DELETE FROM server_addresses WHERE serverId = :serverId AND url = :url")
+    abstract suspend fun deleteAddress(serverId: String, url: String)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract suspend fun insertServer(server: ServerEntity): Long
 

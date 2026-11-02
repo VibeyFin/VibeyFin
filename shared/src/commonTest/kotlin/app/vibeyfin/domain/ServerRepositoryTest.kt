@@ -12,7 +12,9 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.minutes
 
 class ServerRepositoryTest {
@@ -178,5 +180,16 @@ class ServerRepositoryTest {
         servers.delete("srv")
 
         assertEquals(listOf("sealed:token-1"), vault.discarded)
+    }
+
+    @Test
+    fun anAddressCanBeRemovedButNotTheLastOne() = runTest {
+        servers.save("srv-1", "Home", "10.10.7", "https://nas", otherAddresses = listOf("http://nas:8096"))
+
+        assertTrue(servers.removeAddress("srv-1", "https://nas"))
+        assertEquals(listOf("http://nas:8096"), servers.get("srv-1")!!.addresses)
+
+        assertFalse(servers.removeAddress("srv-1", "http://nas:8096"))
+        assertEquals(listOf("http://nas:8096"), servers.get("srv-1")!!.addresses)
     }
 }

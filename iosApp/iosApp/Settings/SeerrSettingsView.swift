@@ -214,7 +214,7 @@ struct SeerrPasswordSheetView: View {
             Color(.secondarySystemBackground).ignoresSafeArea()
             VStack(alignment: .leading, spacing: Space.s4) {
                 Text(Strings.shared.seerrPasswordTitle.titleCased()).sheetTitle()
-                Text("\(Strings.shared.seerrPasswordReason) \(Strings.shared.seerrPasswordNotKept)")
+                Text("\(Strings.shared.seerrPasswordReason) \(Strings.shared.passwordNotKept)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 FormField(label: Strings.shared.seerrUser) {

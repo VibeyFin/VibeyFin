@@ -23,18 +23,26 @@ import app.vibeyfin.domain.PlaybackCapabilitiesSource
 import app.vibeyfin.domain.ProgressSyncScheduler
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.test.TestScope
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
+
+/** A clock that moves with the test's virtual time, from [start]. */
+@OptIn(ExperimentalCoroutinesApi::class)
+fun TestScope.virtualClock(start: Instant = Instant.fromEpochMilliseconds(1_700_000_000_000)): Clock = object : Clock {
+    override fun now(): Instant = start + testScheduler.currentTime.milliseconds
+}
 
 /** A clock that only moves when the test says so. */
 class FakeClock(private var current: Instant = Instant.fromEpochMilliseconds(1_700_000_000_000)) : Clock {

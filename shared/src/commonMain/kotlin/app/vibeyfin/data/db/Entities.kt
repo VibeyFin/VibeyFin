@@ -82,6 +82,12 @@ class SeerrProfileRow(
     val seerrPasswordSignIn: Boolean,
 )
 
+/** What [AccountDao.observeProfileCounts] reads: how many profiles a server has on this device. */
+class ProfileCountRow(
+    val serverId: String,
+    val count: Int,
+)
+
 /** Per-profile settings. Each option becomes one column here as it is added. */
 @Entity(
     tableName = "account_settings",

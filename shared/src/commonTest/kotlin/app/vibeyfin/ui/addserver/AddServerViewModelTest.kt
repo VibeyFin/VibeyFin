@@ -126,7 +126,7 @@ class AddServerViewModelTest {
         viewModel.connect("nas")
 
         viewModel.onConfirm()
-        viewModel.uiState.first { it.saved }
+        assertEquals("srv-1", viewModel.uiState.first { it.savedServerId != null }.savedServerId)
 
         val saved = servers.get("srv-1")!!
         assertEquals("Home", saved.name)
@@ -139,7 +139,7 @@ class AddServerViewModelTest {
 
         viewModel.onConfirm()
 
-        assertFalse(viewModel.uiState.value.saved)
+        assertNull(viewModel.uiState.value.savedServerId)
         assertNull(servers.get("srv-1"))
     }
 
@@ -154,7 +154,7 @@ class AddServerViewModelTest {
         assertTrue(step.addressIsNew)
 
         viewModel.onConfirm()
-        viewModel.uiState.first { it.saved }
+        viewModel.uiState.first { it.savedServerId != null }
 
         val all = servers.servers.first()
         assertEquals(1, all.size)
@@ -210,7 +210,7 @@ class AddServerViewModelTest {
 
         viewModel.connect("http://other:8096")
         viewModel.onConfirm()
-        viewModel.uiState.first { it.saved }
+        viewModel.uiState.first { it.savedServerId != null }
 
         assertEquals(listOf("srv-1", "srv-2"), servers.servers.first().map { it.id })
     }

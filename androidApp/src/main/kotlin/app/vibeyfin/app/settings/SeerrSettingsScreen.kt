@@ -279,7 +279,7 @@ private fun SeerrPasswordSheetView(sheet: SeerrPasswordSheet, onSubmit: (String)
         ) {
             Text(Strings.seerrPasswordTitle, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
             Text(
-                "${Strings.seerrPasswordReason} ${Strings.seerrPasswordNotKept}",
+                "${Strings.seerrPasswordReason} ${Strings.passwordNotKept}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

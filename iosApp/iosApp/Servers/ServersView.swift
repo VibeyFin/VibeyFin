@@ -56,9 +56,9 @@ struct ServersView: View {
                 .padding(.bottom, Space.s5)
             ScrollView {
                 LazyVStack(spacing: Space.s3) {
-                    ForEach(state.servers, id: \.id) { server in
-                        Button { onOpenServer(server) } label: {
-                            ServerRow(server: server)
+                    ForEach(state.servers, id: \.server.id) { row in
+                        Button { onOpenServer(row.server) } label: {
+                            ServerRow(server: row.server)
                         }
                         .buttonStyle(PressableButtonStyle())
                     }

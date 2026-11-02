@@ -5,12 +5,18 @@ import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.data.api.AuthenticationResultDto
 import app.vibeyfin.data.api.JellyfinApi
 import app.vibeyfin.data.api.valueOrNull
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 sealed interface SignInResult {
     /** Signed in; the session is saved and is now the current connection. */
@@ -29,8 +35,11 @@ sealed interface SignInResult {
 sealed interface QuickConnectState {
     data object Starting : QuickConnectState
 
-    /** Show [code]; someone signed in on another device enters it to approve this sign-in. */
-    data class Waiting(val code: String) : QuickConnectState
+    /** Show [code]; someone signed in on another device enters it to approve this sign-in before [expiresAt]. */
+    data class Waiting(val code: String, val expiresAt: Instant) : QuickConnectState
+
+    /** Another device approved the code; signing in. */
+    data object Approved : QuickConnectState
 
     data object SignedIn : QuickConnectState
 
@@ -50,6 +59,7 @@ class AuthRepository(
     private val connector: ServerConnector,
     private val accounts: AccountRepository,
     private val connection: ConnectionManager,
+    private val clock: Clock = Clock.System,
     private val pollInterval: Duration = 3.seconds,
     private val quickConnectTimeout: Duration = 5.minutes,
 ) {
@@ -78,10 +88,10 @@ class AuthRepository(
 
     /**
      * Quick Connect: asks the server for a code, then polls every few seconds until another device
-     * approves it, and signs in. Stops with [QuickConnectState.TimedOut] after the timeout. Cancel
-     * the collector to give up.
+     * approves it, and signs in. Stops with [QuickConnectState.TimedOut] after the timeout. Each
+     * [pollNow] asks at once instead of waiting. Cancel the collector to give up.
      */
-    fun quickConnect(serverId: String): Flow<QuickConnectState> = flow {
+    fun quickConnect(serverId: String, pollNow: Flow<Unit> = emptyFlow()): Flow<QuickConnectState> = flow {
         emit(QuickConnectState.Starting)
         val started = connector.firstAnswer(serverId) { it.quickConnectInitiate() }
         if (started == null) {
@@ -97,15 +107,17 @@ class AuthRepository(
                 return@flow
             }
         }
-        emit(QuickConnectState.Waiting(code.code))
+        val expiresAt = clock.now() + quickConnectTimeout
+        emit(QuickConnectState.Waiting(code.code, expiresAt))
 
         val api = started.api
-        var waited = Duration.ZERO
-        while (waited < quickConnectTimeout) {
-            delay(pollInterval)
-            waited += pollInterval
+        val poke = merge(pollNow, flow { awaitCancellation() })
+        while (true) {
+            withTimeoutOrNull(pollInterval) { poke.first() }
+            if (clock.now() >= expiresAt) break
             when (val status = api.quickConnectStatus(code.secret)) {
                 is ApiResult.Success -> if (status.value.authenticated) {
+                    emit(QuickConnectState.Approved)
                     emit(signInWithQuickConnect(serverId, code.secret))
                     return@flow
                 }

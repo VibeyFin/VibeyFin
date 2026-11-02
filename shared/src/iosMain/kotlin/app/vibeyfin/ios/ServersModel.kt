@@ -11,5 +11,11 @@ class ServersModel {
 
     fun searchAgain() = host.viewModel.onSearchAgain()
 
+    fun removeServer(serverId: String) = host.viewModel.onRemoveServer(serverId)
+
+    fun confirmRemove() = host.viewModel.onConfirmRemove()
+
+    fun dismissRemove() = host.viewModel.onDismissRemove()
+
     fun close() = host.close()
 }

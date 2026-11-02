@@ -6,6 +6,7 @@ import app.vibeyfin.domain.AccountRepository
 import app.vibeyfin.domain.ActivateResult
 import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.ConnectionManager
+import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.PublicProfiles
 import app.vibeyfin.domain.QuickConnectState
@@ -18,7 +19,10 @@ import app.vibeyfin.domain.model.Server
 import app.vibeyfin.ui.common.PinGate
 import app.vibeyfin.ui.common.PinPrompt
 import app.vibeyfin.ui.common.PinReason
+import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +30,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 /** The sheet open over the profile grid, if any. */
 sealed interface SignInSheet {
@@ -36,11 +44,23 @@ sealed interface SignInSheet {
     data object OtherUser : SignInSheet
 
     /**
-     * Quick Connect. Shows [code] while waiting for another device to approve it; [message] says
-     * why it stopped (expired, not allowed, no connection). Neither is set while the code is requested.
+     * Quick Connect: no code while it is asked for, then [code] and the time left until it expires, then [approved] while
+     * signing in. [stop] says why it ended; an expired code stays on screen, crossed out.
      */
-    data class QuickConnect(val code: String?, val message: String?) : SignInSheet
+    data class QuickConnect(
+        val code: String? = null,
+        val expiresIn: Duration? = null,
+        val approved: Boolean = false,
+        val stop: QuickConnectStop? = null,
+    ) : SignInSheet {
+        val shownCode: String? get() = code?.let(Strings::quickConnectCode)
+        val spokenCode: String? get() = code?.let(Strings::quickConnectSpokenCode)
+        val status: String? get() = expiresIn?.takeIf { stop == null && !approved }?.let(Strings::quickConnectWaiting)
+        val message: String? get() = stop?.let(SignInMessages::forQuickConnect)
+    }
 }
+
+enum class QuickConnectStop { Expired, Off, Unreachable, Failed }
 
 data class WhoIsWatchingUiState(
     /** True until the server has answered or failed to, so the grid doesn't jump. */
@@ -49,17 +69,29 @@ data class WhoIsWatchingUiState(
     val profiles: List<Profile> = emptyList(),
     /** False when the server couldn't be reached; saved profiles still show. */
     val serverReachable: Boolean = true,
+    /** The saved addresses, best first, as tried when the server couldn't be reached. */
+    val triedAddresses: List<String> = emptyList(),
+    /** False when the server lists none of its users, so only Quick Connect and Other user are left. */
+    val listsUsers: Boolean = true,
     /** The server allows Quick Connect, so the grid offers it. */
     val quickConnectAvailable: Boolean = false,
     val sheet: SignInSheet? = null,
     val signingIn: Boolean = false,
+    /** The profile whose tile was tapped and is opening; the other tiles wait. */
+    val openingUserId: String? = null,
+    /** A note above the grid, such as whose session ended. Not an error. */
+    val notice: String? = null,
+    /** A note at the top of the open sheet. Not an error. */
+    val sheetNotice: String? = null,
     /** Shown inside the open sheet, or on the grid when no sheet is open. */
     val error: String? = null,
     /** Signed in; the screen moves on. */
     val signedIn: Boolean = false,
     /** The PIN sheet, over the grid and any sign-in sheet, while one is open. */
     val pinPrompt: PinPrompt? = null,
-)
+) {
+    val busy: Boolean get() = signingIn || openingUserId != null
+}
 
 /**
  * "Who's watching?" on [serverId]. A tile whose profile asks for its PIN to open asks for it before signing in. With
@@ -73,32 +105,46 @@ class WhoIsWatchingViewModel(
     private val auth: AuthRepository,
     private val connection: ConnectionManager,
     private val pins: PinLock,
+    private val clock: Clock,
     private val pinFor: ProfileRef? = null,
 ) : ViewModel() {
     private data class Local(
         val server: Server? = null,
         val loaded: Boolean = false,
         val public: PublicProfiles? = null,
+        val quickConnectOff: Boolean = false,
         val sheet: SignInSheet? = null,
         val signingIn: Boolean = false,
+        val openingUserId: String? = null,
+        val sheetNotice: String? = null,
         val error: String? = null,
         val signedIn: Boolean = false,
-    )
+    ) {
+        val busy get() = signingIn || openingUserId != null
+    }
 
     private val local = MutableStateFlow(Local())
+    private val pollNow = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     private var quickConnectJob: Job? = null
+    private var countdownJob: Job? = null
     private val pin = PinGate(pins, auth, viewModelScope)
 
     val uiState: StateFlow<WhoIsWatchingUiState> =
-        combine(accounts.observeAccounts(serverId), local, pin.prompt) { saved, local, pinPrompt ->
+        combine(accounts.observeAccounts(serverId), local, pin.prompt, connection.state) { saved, local, pinPrompt, connected ->
+            val profiles = mergeProfiles(saved, local.public, local.server?.addresses?.firstOrNull())
             WhoIsWatchingUiState(
                 loading = !local.loaded,
                 serverName = local.server?.name,
-                profiles = mergeProfiles(saved, local.public, local.server?.addresses?.firstOrNull()),
+                profiles = profiles,
                 serverReachable = !local.loaded || local.public != null,
-                quickConnectAvailable = local.public?.quickConnectEnabled == true,
+                triedAddresses = local.server?.addresses.orEmpty(),
+                listsUsers = local.public?.users?.isNotEmpty() ?: true,
+                quickConnectAvailable = local.public?.quickConnectEnabled == true && !local.quickConnectOff,
                 sheet = local.sheet,
                 signingIn = local.signingIn,
+                openingUserId = local.openingUserId,
+                notice = expiredUserId(connected)?.let { id -> profiles.find { it.userId == id } }?.name?.let(Strings::sessionEndedFor),
+                sheetNotice = local.sheetNotice,
                 error = local.error,
                 signedIn = local.signedIn,
                 pinPrompt = pinPrompt,
@@ -126,7 +172,7 @@ class WhoIsWatchingViewModel(
     }
 
     fun onProfileTapped(profile: Profile) {
-        if (local.value.signingIn) return
+        if (local.value.busy) return
         if (profile.pinRequiredToOpen) {
             pin.ask(PinReason.OpenProfile, serverId, profile.userId, profile.name) { open(profile) }
         } else {
@@ -163,26 +209,30 @@ class WhoIsWatchingViewModel(
     }
 
     private fun open(profile: Profile) {
-        if (local.value.signingIn) return
+        if (local.value.busy) return
         viewModelScope.launch {
-            if (!profile.hasSession) return@launch withoutSession(profile, notice = null)
-            local.update { it.copy(signingIn = true, error = null) }
+            if (!profile.hasSession) {
+                val ended = profile.userId == expiredUserId(connection.state.value)
+                return@launch withoutSession(profile, notice = SignInMessages.SESSION_ENDED.takeIf { ended })
+            }
+            local.update { it.copy(openingUserId = profile.userId, error = null) }
             when (connection.activate(serverId, profile.userId)) {
-                ActivateResult.Activated -> local.update { it.copy(signingIn = false, signedIn = true) }
+                ActivateResult.Activated -> local.update { it.copy(openingUserId = null, signedIn = true) }
 
                 ActivateResult.Expired, ActivateResult.Unknown -> {
-                    local.update { it.copy(signingIn = false) }
+                    local.update { it.copy(openingUserId = null) }
                     withoutSession(profile, notice = SignInMessages.SESSION_ENDED)
                 }
 
                 ActivateResult.Unreachable ->
-                    local.update { it.copy(signingIn = false, error = SignInMessages.UNREACHABLE) }
+                    local.update { it.copy(openingUserId = null, error = SignInMessages.UNREACHABLE) }
             }
         }
     }
 
     fun onOtherUserTapped() {
-        local.update { it.copy(sheet = SignInSheet.OtherUser, error = null) }
+        stopQuickConnect()
+        local.update { it.copy(sheet = SignInSheet.OtherUser, error = null, sheetNotice = null) }
     }
 
     /** Signs in with [password] for the profile in the open password sheet, or checks it after "Forgot PIN?". */
@@ -197,35 +247,90 @@ class WhoIsWatchingViewModel(
         signIn(username.trim(), password, passwordOnly = false)
     }
 
-    /** Starts Quick Connect, or starts it over after it stopped. */
+    /** Starts Quick Connect, from the grid or a password sheet, or starts it over after it stopped. */
     fun onQuickConnectTapped() {
-        quickConnectJob?.cancel()
-        local.update { it.copy(sheet = SignInSheet.QuickConnect(code = null, message = null), error = null) }
+        stopQuickConnect()
+        local.update { it.copy(sheet = SignInSheet.QuickConnect(), error = null, sheetNotice = null) }
         quickConnectJob = viewModelScope.launch {
-            auth.quickConnect(serverId).collect { state ->
-                local.update {
-                    when (state) {
-                        QuickConnectState.Starting -> it
-                        is QuickConnectState.Waiting -> it.copy(sheet = SignInSheet.QuickConnect(state.code, null))
-                        QuickConnectState.SignedIn -> it.copy(sheet = null, signedIn = true)
-                        else -> it.copy(sheet = SignInSheet.QuickConnect(null, SignInMessages.forQuickConnect(state)))
-                    }
-                }
+            auth.quickConnect(serverId, pollNow).collect(::onQuickConnect)
+        }
+    }
+
+    /** The app is in front again: a code approved meanwhile on this device is picked up at once. */
+    fun onAppResumed() {
+        pollNow.tryEmit(Unit)
+    }
+
+    fun onDismissSheet() {
+        stopQuickConnect()
+        local.update { it.copy(sheet = null, error = null, sheetNotice = null) }
+    }
+
+    private fun onQuickConnect(state: QuickConnectState) {
+        when (state) {
+            QuickConnectState.Starting -> Unit
+
+            is QuickConnectState.Waiting -> {
+                updateQuickConnect { it.copy(code = state.code, expiresIn = state.expiresAt - clock.now()) }
+                countDown(state.expiresAt)
+            }
+
+            QuickConnectState.Approved -> {
+                countdownJob?.cancel()
+                updateQuickConnect { it.copy(approved = true) }
+            }
+
+            QuickConnectState.SignedIn -> local.update { it.copy(sheet = null, signedIn = true) }
+
+            QuickConnectState.TimedOut -> stopQuickConnectWith(QuickConnectStop.Expired)
+
+            QuickConnectState.Unavailable -> {
+                stopQuickConnectWith(QuickConnectStop.Off)
+                local.update { it.copy(quickConnectOff = true) }
+            }
+
+            QuickConnectState.Unreachable -> stopQuickConnectWith(QuickConnectStop.Unreachable)
+
+            is QuickConnectState.Failed -> stopQuickConnectWith(QuickConnectStop.Failed)
+        }
+    }
+
+    private fun countDown(expiresAt: Instant) {
+        countdownJob?.cancel()
+        countdownJob = viewModelScope.launch {
+            while (true) {
+                val left = (expiresAt - clock.now()).coerceAtLeast(Duration.ZERO)
+                updateQuickConnect { it.copy(expiresIn = left) }
+                if (left == Duration.ZERO) break
+                delay(1.seconds)
             }
         }
     }
 
-    fun onDismissSheet() {
-        quickConnectJob?.cancel()
-        local.update { it.copy(sheet = null, error = null) }
+    private fun updateQuickConnect(change: (SignInSheet.QuickConnect) -> SignInSheet.QuickConnect) {
+        local.update { current -> (current.sheet as? SignInSheet.QuickConnect)?.let { current.copy(sheet = change(it)) } ?: current }
     }
+
+    private fun stopQuickConnectWith(stop: QuickConnectStop) {
+        countdownJob?.cancel()
+        updateQuickConnect { it.copy(code = it.code.takeIf { stop == QuickConnectStop.Expired }, expiresIn = null, approved = false, stop = stop) }
+    }
+
+    private fun stopQuickConnect() {
+        quickConnectJob?.cancel()
+        countdownJob?.cancel()
+    }
+
+    private fun expiredUserId(state: ConnectionState): String? = (state as? ConnectionState.Expired)?.takeIf { it.serverId == serverId }?.userId
 
     // A profile with no usable session: sign in without a password if it has none, else ask.
     private suspend fun withoutSession(profile: Profile, notice: String?) {
         if (!profile.needsPassword) {
+            local.update { it.copy(openingUserId = profile.userId) }
             signInNow(profile.name, "", passwordOnly = true)
+            local.update { it.copy(openingUserId = null) }
         } else {
-            local.update { it.copy(sheet = SignInSheet.Password(profile), error = notice) }
+            local.update { it.copy(sheet = SignInSheet.Password(profile), sheetNotice = notice, error = null) }
         }
     }
 
@@ -237,7 +342,7 @@ class WhoIsWatchingViewModel(
     private suspend fun signInNow(username: String, password: String, passwordOnly: Boolean) {
         local.update { it.copy(signingIn = true, error = null) }
         when (val result = auth.signIn(serverId, username, password)) {
-            SignInResult.SignedIn -> local.update { it.copy(signingIn = false, sheet = null, signedIn = true) }
+            SignInResult.SignedIn -> local.update { it.copy(signingIn = false, sheet = null, sheetNotice = null, signedIn = true) }
 
             else -> local.update {
                 it.copy(signingIn = false, error = SignInMessages.forFailure(result, passwordOnly))

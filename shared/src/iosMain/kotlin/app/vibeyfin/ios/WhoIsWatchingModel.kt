@@ -43,5 +43,7 @@ class WhoIsWatchingModel(serverId: String, pinFor: ProfileRef?) {
 
     fun refresh() = host.viewModel.refresh()
 
+    fun onAppResumed() = host.viewModel.onAppResumed()
+
     fun close() = host.close()
 }

@@ -127,7 +127,7 @@ private fun ServerList(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         ) {
-            items(state.servers, key = { "saved-${it.id}" }) { server -> ServerRow(server) { onOpenServer(server) } }
+            items(state.servers, key = { "saved-${it.server.id}" }) { row -> ServerRow(row.server) { onOpenServer(row.server) } }
 
             if (state.canSearch) {
                 item(key = "nearby-header") { NearbyHeader(state.searching, onSearchAgain) }

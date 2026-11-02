@@ -72,7 +72,7 @@ fun apiModule() = module {
     factory { LocalPlaybackReporter(get(), get(ApplicationScope), get(), get(), get(), get()) }
     single { DownloadRepository(get(), get(), get(), get(), get(), get(), get(), get()) }
     single { DownloadRunner(get(), get(), get(), get(), get(), get(), get(), speeds = get(), external = getOrNull(), converter = getOrNull()) }
-    single { AuthRepository(get(), get(), get()) }
+    single { AuthRepository(get(), get(), get(), get()) }
     single { StartupRouter(get(), get(), get(), get(), get()) }
     single { LibraryRepository(get()) }
     single { WatchRepository(get(), get()) }

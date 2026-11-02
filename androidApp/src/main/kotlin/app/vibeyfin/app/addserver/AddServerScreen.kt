@@ -57,8 +57,8 @@ fun AddServerRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(state.saved) {
-        if (state.saved) onSaved()
+    LaunchedEffect(state.savedServerId) {
+        if (state.savedServerId != null) onSaved()
     }
 
     AddServerScreen(

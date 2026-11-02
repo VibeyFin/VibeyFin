@@ -72,7 +72,7 @@ struct WhoIsWatchingView: View {
                     Text(Strings.shared.whoIsWatching.titleCased()).screenTitle()
                 }
                 if !state.loading && !state.serverReachable {
-                    UnreachableBanner(onRetry: { model.refresh() })
+                    UnreachableBanner(serverName: state.serverName ?? "", onRetry: { model.refresh() })
                 }
                 if state.sheet == nil, let error = state.error {
                     Text(error)
@@ -98,31 +98,32 @@ struct WhoIsWatchingView: View {
                     ProfileTile(profile: profile)
                 }
                 .buttonStyle(PressableButtonStyle())
-                .disabled(state.signingIn)
+                .disabled(state.busy)
             }
             if state.quickConnectAvailable {
                 Button { model.quickConnectTapped() } label: {
                     ActionTile(label: Strings.shared.quickConnect, symbol: "#")
                 }
                 .buttonStyle(PressableButtonStyle())
-                .disabled(state.signingIn)
+                .disabled(state.busy)
             }
             Button { model.otherUserTapped() } label: {
                 ActionTile(label: Strings.shared.otherUser, symbol: "+")
             }
             .buttonStyle(PressableButtonStyle())
-            .disabled(state.signingIn)
+            .disabled(state.busy)
         }
     }
 }
 
 private struct UnreachableBanner: View {
+    let serverName: String
     let onRetry: () -> Void
 
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: Space.s1) {
-                Text(Strings.shared.cantReachServerTitle)
+                Text(Strings.shared.cantReachServer(name: serverName))
                     .font(.subheadline.bold())
                     .foregroundStyle(Color(.systemRed))
                 Text(Strings.shared.cantReachServerHelp)
@@ -329,8 +330,8 @@ private struct QuickConnectSheetView: View {
                         .font(.subheadline)
                         .foregroundStyle(Color(.systemRed))
                     SecondaryButton(title: Strings.shared.tryAgain, action: onRetry)
-                } else if let code = sheet.code {
-                    Text(Strings.shared.quickConnectHelp)
+                } else if let code = sheet.shownCode {
+                    Text(Strings.shared.quickConnectLead)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     Text(code)
@@ -338,7 +339,7 @@ private struct QuickConnectSheetView: View {
                         .monospacedDigit()
                         .tracking(2)
                         .foregroundStyle(.primary)
-                    waiting(Strings.shared.quickConnectWaiting)
+                    waiting(sheet.status ?? "")
                 } else {
                     waiting(Strings.shared.quickConnectGettingCode)
                 }

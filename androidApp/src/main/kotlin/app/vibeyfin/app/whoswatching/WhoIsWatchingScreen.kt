@@ -138,17 +138,17 @@ fun WhoIsWatchingScreen(
                     ) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "header") { Header(state, onRetry) }
                         items(state.profiles, key = { it.userId }) { profile ->
-                            ProfileTile(profile, enabled = !state.signingIn) { onProfile(profile) }
+                            ProfileTile(profile, enabled = !state.busy) { onProfile(profile) }
                         }
 
                         if (state.quickConnectAvailable) {
                             item(key = "quick-connect") {
-                                ActionTile(Strings.quickConnect, symbol = "#", enabled = !state.signingIn, onClick = onQuickConnect)
+                                ActionTile(Strings.quickConnect, symbol = "#", enabled = !state.busy, onClick = onQuickConnect)
                             }
                         }
 
                         item(key = "other-user") {
-                            ActionTile(Strings.otherUser, symbol = "+", enabled = !state.signingIn, onClick = onOtherUser)
+                            ActionTile(Strings.otherUser, symbol = "+", enabled = !state.busy, onClick = onOtherUser)
                         }
 
                         item(span = { GridItemSpan(maxLineSpan) }, key = "bottom-space") { Spacer(Modifier.height(VibeyFinTokens.Space.s5)) }
@@ -203,7 +203,7 @@ private fun Header(state: WhoIsWatchingUiState, onRetry: () -> Unit) {
 
         if (!state.loading && !state.serverReachable) {
             Spacer(Modifier.height(VibeyFinTokens.Space.s4))
-            UnreachableBanner(onRetry)
+            UnreachableBanner(state.serverName.orEmpty(), onRetry)
         }
 
         state.error.takeIf { state.sheet == null }?.let {
@@ -214,7 +214,7 @@ private fun Header(state: WhoIsWatchingUiState, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun UnreachableBanner(onRetry: () -> Unit) {
+private fun UnreachableBanner(serverName: String, onRetry: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth().padding(bottom = VibeyFinTokens.Space.s4),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -222,7 +222,7 @@ private fun UnreachableBanner(onRetry: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(VibeyFinTokens.Space.s4), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
             Text(
-                text = Strings.cantReachServerTitle,
+                text = Strings.cantReachServer(serverName),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.error,
             )
@@ -373,17 +373,17 @@ private fun QuickConnectContent(sheet: SignInSheet.QuickConnect, onRetry: () -> 
 
             sheet.code != null -> {
                 Text(
-                    text = Strings.quickConnectHelp,
+                    text = Strings.quickConnectLead,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = sheet.code!!,
+                    text = sheet.shownCode!!,
                     style = MaterialTheme.typography.displayMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                WaitingLabel(Strings.quickConnectWaiting)
+                WaitingLabel(sheet.status.orEmpty())
             }
 
             else -> WaitingLabel(Strings.quickConnectGettingCode)

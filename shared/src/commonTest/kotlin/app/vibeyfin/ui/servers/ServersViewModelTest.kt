@@ -1,13 +1,9 @@
 package app.vibeyfin.ui.servers
 
-import app.vibeyfin.data.db.VibeyFinDatabase
 import app.vibeyfin.domain.DiscoveredServer
-import app.vibeyfin.domain.ServerRepository
-import app.vibeyfin.testing.FakeClock
 import app.vibeyfin.testing.FakeLanDiscovery
-import app.vibeyfin.testing.FakeTokenVault
+import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.ViewModelTracker
-import app.vibeyfin.testing.inMemoryDatabase
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -25,8 +21,8 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ServersViewModelTest {
-    private lateinit var database: VibeyFinDatabase
-    private lateinit var servers: ServerRepository
+    private val app = TestApp()
+    private val servers = app.servers
     private val discovery = FakeLanDiscovery()
 
     private val home = DiscoveredServer("srv-1", "Home", "http://192.168.1.20:8096")
@@ -35,8 +31,6 @@ class ServersViewModelTest {
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        database = inMemoryDatabase()
-        servers = ServerRepository(database.serverDao(), database.accountDao(), FakeTokenVault(), FakeClock())
     }
 
     private val viewModels = ViewModelTracker()
@@ -45,10 +39,10 @@ class ServersViewModelTest {
     fun tearDown() = runTest {
         viewModels.stopAll()
         Dispatchers.resetMain()
-        database.close()
+        app.close()
     }
 
-    private fun viewModel() = viewModels.track(ServersViewModel(servers, discovery))
+    private fun viewModel() = viewModels.track(ServersViewModel(servers, app.accounts, discovery, app.serverRemoval))
 
     @Test
     fun startsLoadingSoTheEmptyStateDoesNotFlash() {
@@ -70,8 +64,8 @@ class ServersViewModelTest {
 
         val state = viewModel.uiState.first { !it.loading }
 
-        assertEquals(listOf("Home"), state.servers.map { it.name })
-        assertEquals(listOf("https://nas", "http://nas:8096"), state.servers.single().addresses)
+        assertEquals(listOf("Home"), state.servers.map { it.server.name })
+        assertEquals(listOf("https://nas", "http://nas:8096"), state.servers.single().server.addresses)
     }
 
     @Test
@@ -82,7 +76,7 @@ class ServersViewModelTest {
         servers.save("srv-1", "Home", "10.10.7", "http://nas:8096")
 
         val state = viewModel.uiState.first { it.servers.isNotEmpty() }
-        assertEquals("Home", state.servers.single().name)
+        assertEquals("Home", state.servers.single().server.name)
     }
 
     // Discovery
@@ -121,7 +115,7 @@ class ServersViewModelTest {
         val state = viewModel().uiState.first { !it.loading && !it.searching }
 
         assertEquals(listOf(office), state.discovered)
-        assertEquals(listOf("srv-1"), state.servers.map { it.id })
+        assertEquals(listOf("srv-1"), state.servers.map { it.server.id })
     }
 
     @Test
@@ -163,7 +157,7 @@ class ServersViewModelTest {
     fun whereSearchingIsNotSupportedTheScreenNeverSearches() = runTest {
         val unsupported = FakeLanDiscovery(servers = listOf(home), isSupported = false)
 
-        val state = viewModels.track(ServersViewModel(servers, unsupported)).uiState.first { !it.loading }
+        val state = viewModels.track(ServersViewModel(servers, app.accounts, unsupported, app.serverRemoval)).uiState.first { !it.loading }
 
         assertEquals(0, unsupported.searches)
         assertFalse(state.canSearch)
@@ -178,5 +172,48 @@ class ServersViewModelTest {
         val state = viewModel().uiState.first { !it.loading && !it.searching }
 
         assertEquals(emptyList(), state.discovered)
+    }
+
+    // Saved servers and removing one
+
+    @Test
+    fun eachServerSaysHowManyAddressesAndProfilesItHas() = runTest {
+        servers.save("srv-1", "Home", "10.11.2", "https://nas", otherAddresses = listOf("http://nas:8096"))
+        app.accounts.saveSession("srv-1", "u1", "Alex", null, "t1")
+        app.accounts.saveSession("srv-1", "u2", "Kim", null, "t2")
+
+        val row = viewModel().uiState.first { it.servers.isNotEmpty() }.servers.single()
+
+        assertEquals(2, row.profileCount)
+        assertEquals("Jellyfin 10.11.2 \u00b7 2 addresses \u00b7 2 profiles", row.meta)
+    }
+
+    @Test
+    fun removingAServerAsksFirstThenForgetsItAndItsProfiles() = runTest {
+        servers.save("srv-1", "Home", "10.11.2", "http://nas:8096")
+        app.accounts.saveSession("srv-1", "u1", "Alex", null, "t1")
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.servers.isNotEmpty() }
+
+        viewModel.onRemoveServer("srv-1")
+        assertEquals("srv-1", viewModel.uiState.first { it.confirmRemove != null }.confirmRemove!!.server.id)
+        viewModel.onConfirmRemove()
+
+        val state = viewModel.uiState.first { it.servers.isEmpty() }
+        assertEquals(null, state.confirmRemove)
+        assertEquals(null, app.accounts.account("srv-1", "u1"))
+    }
+
+    @Test
+    fun dismissingTheQuestionKeepsTheServer() = runTest {
+        servers.save("srv-1", "Home", "10.11.2", "http://nas:8096")
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.servers.isNotEmpty() }
+
+        viewModel.onRemoveServer("srv-1")
+        viewModel.onDismissRemove()
+
+        assertEquals(null, viewModel.uiState.value.confirmRemove)
+        assertEquals("Home", servers.get("srv-1")?.name)
     }
 }
