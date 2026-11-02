@@ -15,17 +15,27 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -60,7 +70,12 @@ import app.vibeyfin.app.item.ItemRoute
 import app.vibeyfin.app.person.PersonRoute
 import app.vibeyfin.app.player.PlayerRoute
 import app.vibeyfin.app.search.SearchRoute
+import app.vibeyfin.app.seerr.MyRequestsRoute
+import app.vibeyfin.app.seerr.SeerrListRoute
+import app.vibeyfin.app.seerr.SeerrMenuSheet
+import app.vibeyfin.app.seerr.SeerrTitleRoute
 import app.vibeyfin.app.servers.ServersRoute
+import app.vibeyfin.app.settings.SeerrSettingsRoute
 import app.vibeyfin.app.settings.SettingsRoute
 import app.vibeyfin.app.settings.pageIdOrRoot
 import app.vibeyfin.app.startup.StartupRoute
@@ -73,13 +88,18 @@ import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.domain.model.SearchKind
+import app.vibeyfin.domain.model.SeerrMediaType
+import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.ui.banner.AppBannerViewModel
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.item.Trailer
 import app.vibeyfin.ui.notifications.NotificationOpenViewModel
 import app.vibeyfin.ui.notifications.NotificationRoute
+import app.vibeyfin.ui.seerr.SeerrListKind
+import app.vibeyfin.ui.seerr.SeerrNoticeAction
 import app.vibeyfin.ui.settings.SettingsPageId
 import app.vibeyfin.ui.tile.TileMenuViewModel
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
@@ -197,7 +217,13 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
 
     Scaffold(
         containerColor = if (onPlayer) Color.Black else MaterialTheme.colorScheme.background,
-        contentWindowInsets = if (onPlayer) WindowInsets(0, 0, 0, 0) else ScaffoldDefaults.contentWindowInsets,
+        // No top inset: each screen keeps clear of the status bar itself, so a detail page's artwork runs up behind it
+        // instead of under a strip of the page's color
+        contentWindowInsets = if (onPlayer) {
+            WindowInsets(0, 0, 0, 0)
+        } else {
+            ScaffoldDefaults.contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+        },
     ) { padding ->
         val tileMenu: TileMenuViewModel = koinViewModel()
         val uriHandler = LocalUriHandler.current
@@ -205,16 +231,28 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
 
         TileMenuHost(tileMenu, navController, openTrailerUrl)
 
+        var seerrMenu by remember { mutableStateOf<SeerrTitle?>(null) }
+        val seerrNotices = remember { SnackbarHostState() }
+
+        seerrMenu?.let { title ->
+            SeerrMenuHost(title, navController, seerrNotices, openTrailerUrl, onReopen = { seerrMenu = it }) { seerrMenu = null }
+        }
+
         Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
             Column(Modifier.fillMaxSize()) {
-                if (!onPlayer) banner?.let { AppBanner(it, onAction = bannerModel::onAction) }
+                val shownBanner = banner.takeIf { !onPlayer }
 
-                SharedTransitionLayout(Modifier.weight(1f)) {
+                // The banner takes the status bar's space, so the screen under it doesn't leave room for it again
+                shownBanner?.let { AppBanner(it, onAction = bannerModel::onAction) }
+
+                SharedTransitionLayout(Modifier.weight(1f).then(if (shownBanner != null) Modifier.consumeWindowInsets(WindowInsets.statusBars) else Modifier)) {
                     CompositionLocalProvider(
                         LocalSharedTransitionScope provides this,
                         LocalBottomBarPadding provides if (currentTab != null) FLOATING_BAR_SPACE else 0.dp,
                         LocalProfileButton provides { ProfileButton(offline, onSettings = { navController.navigate(Settings) }, onExit = leave) },
                         LocalTileLongPress provides { item -> tileMenu.onOpen(item) },
+                        // A title the library has gets the library's own menu; the Seerr one is for what can still be requested
+                        LocalSeerrLongPress provides { title -> title.jellyfinItemId?.let(tileMenu::onOpenById) ?: run { seerrMenu = title } },
                         LocalOpenTrailerUrl provides openTrailerUrl,
                     ) {
                         NavHost(
@@ -235,6 +273,9 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
                     }
                 }
             }
+
+            // What a request from a Seerr poster menu came to, over whatever screen the menu was on
+            SnackbarHost(seerrNotices, Modifier.align(Alignment.BottomCenter).padding(bottom = if (currentTab != null) FLOATING_BAR_SPACE else 0.dp))
 
             if (currentTab != null) {
                 FloatingNavigationBar(
@@ -286,7 +327,31 @@ private fun NavGraphBuilder.details(navController: NavHostController, leave: (Ho
             onOpenSeries = { seriesId -> navController.navigate(Item(seriesId)) },
             onOpenPerson = { personId -> navController.navigate(Person(personId)) },
             onExit = leave,
+            onOpenSeerr = navController::openSeerr,
         )
+    }
+
+    sharedComposable<SeerrPage> { entry ->
+        val route = entry.toRoute<SeerrPage>()
+
+        SeerrTitleRoute(
+            type = if (route.mediaType == "tv") SeerrMediaType.Show else SeerrMediaType.Movie,
+            tmdbId = route.tmdbId,
+            onBack = { navController.popBackStack() },
+            // The library has it: its own page takes this one's place
+            onOpenItem = { itemId -> navController.navigate(Item(itemId)) { popUpTo<SeerrPage> { inclusive = true } } },
+            onOpenSeerr = navController::openSeerr,
+        )
+    }
+
+    sharedComposable<SeerrList> { entry ->
+        val kind = SeerrListKind.entries.firstOrNull { it.name == entry.toRoute<SeerrList>().kind } ?: SeerrListKind.Trending
+
+        SeerrListRoute(kind, onBack = { navController.popBackStack() }, onOpen = navController::openSeerr)
+    }
+
+    sharedComposable<MyRequests> {
+        MyRequestsRoute(onBack = { navController.popBackStack() }, onOpen = navController::openSeerr)
     }
 
     sharedComposable<Person> { entry ->
@@ -340,6 +405,51 @@ private fun TileMenuHost(tileMenu: TileMenuViewModel, navController: NavHostCont
     }
 
     menu.removePrompt?.let { RemoveConfirmDialog(it, onConfirm = tileMenu::onConfirmRemove, onDismiss = tileMenu::onDismissRemoval) }
+}
+
+/** A Seerr title: the library's page when the library has it, otherwise Seerr's. */
+internal fun NavHostController.openSeerr(title: SeerrTitle) {
+    title.jellyfinItemId?.let { navigate(Item(it)) } ?: navigate(SeerrPage(title.tmdbId, if (title.type == SeerrMediaType.Show) "tv" else "movie"))
+}
+
+// The Seerr poster menu, over the whole app; what a request came to shows in the snackbar under it
+@Composable
+private fun SeerrMenuHost(
+    title: SeerrTitle,
+    navController: NavHostController,
+    notices: SnackbarHostState,
+    openTrailerUrl: (String) -> Unit,
+    onReopen: (SeerrTitle) -> Unit,
+    onClose: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+
+    SeerrMenuSheet(
+        title = title,
+        onDetails = {
+            onClose()
+            navController.openSeerr(title)
+        },
+        onTrailer = { url ->
+            onClose()
+            openTrailerUrl(url)
+        },
+        onNotice = { notice ->
+            scope.launch {
+                val result = notices.showSnackbar(notice.text, actionLabel = notice.actionLabel, duration = SnackbarDuration.Short)
+
+                // View opens the title; Try again brings the menu back for it (the request is one tap away again)
+                if (result == SnackbarResult.ActionPerformed) {
+                    when (notice.action) {
+                        SeerrNoticeAction.View -> navController.openSeerr(title)
+                        SeerrNoticeAction.TryAgain -> onReopen(title)
+                        null -> Unit
+                    }
+                }
+            }
+        },
+        onDismiss = onClose,
+    )
 }
 
 private fun NavHostController.openItem(item: MediaItem) {
@@ -420,6 +530,9 @@ private fun NavGraphBuilder.tabGraphs(navController: NavHostController, offline:
                 HomeRoute(
                     onExit = leave,
                     onOpen = open,
+                    onOpenSeerr = navController::openSeerr,
+                    onSeerrSeeAll = { kind -> navController.navigate(SeerrList(kind.name)) },
+                    onMyRequests = { navController.navigate(MyRequests) },
                     onPlay = { itemId -> navController.navigate(Player(itemId)) },
                     onDetails = { itemId -> navController.navigate(Item(itemId)) },
                     onOpenList = { navController.navigate(it.toRoute()) },
@@ -433,6 +546,7 @@ private fun NavGraphBuilder.tabGraphs(navController: NavHostController, offline:
     navigation<SearchTab>(startDestination = Search) {
         sharedComposable<Search> {
             SearchRoute(
+                onOpenSeerr = navController::openSeerr,
                 onOpenResult = { result ->
                     navController.navigate(
                         when {
@@ -499,6 +613,10 @@ private fun NavGraphBuilder.appScreens(navController: NavHostController, leave: 
         )
     }
 
+    composable<SettingsMyRequests> {
+        MyRequestsRoute(onBack = { navController.popBackStack() }, onOpen = navController::openSeerr)
+    }
+
     composable<SettingsPageRoute> { entry ->
         // An id this build does not know opens the root page instead of crashing
         val id = pageIdOrRoot(entry.toRoute<SettingsPageRoute>().id)
@@ -506,6 +624,12 @@ private fun NavGraphBuilder.appScreens(navController: NavHostController, leave: 
         // One SettingsViewModel for the whole Settings flow, kept by the root entry: the PIN is asked once and
         // leaving Settings discards it. Without a root entry on the stack (deep link, restored state) the page keeps its own.
         val settingsRoot = remember(entry) { runCatching { navController.getBackStackEntry<Settings>() }.getOrNull() }
+
+        // Seerr has an address field, which the shared Settings rows don't draw: it is a screen of its own
+        if (id == SettingsPageId.Seerr) {
+            SeerrSettingsRoute(onBack = { navController.popBackStack() }, onMyRequests = { navController.navigate(SettingsMyRequests) })
+            return@composable
+        }
 
         SettingsRoute(
             pageId = id,

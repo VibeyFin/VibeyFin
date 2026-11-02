@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -71,14 +72,8 @@ fun TileMenuSheet(
     VibeyFinSheet(onDismiss) {
         WithMenuPress {
             Column(Modifier.navigationBarsPadding().padding(bottom = VibeyFinTokens.Space.s4)) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s2).semantics { heading() },
-                )
+                MenuHeader(item.title, state.subtitle, item.posterUrl, item.posterAspectRatio.coerceIn(2f / 3f, 16f / 9f), if (item.posterAspectRatio > 1f) 72.dp else 40.dp)
+                HorizontalDivider(Modifier.padding(horizontal = VibeyFinTokens.Space.s4), color = MaterialTheme.colorScheme.outlineVariant)
                 MenuRow(Strings.details, rememberIcon(Icons.Filled.Info), onDetails)
 
                 // The trailer row has a slot of its own, the height of a row, kept while the server answers: a gray line fades into the row,

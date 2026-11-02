@@ -178,7 +178,7 @@ _Starts after the state audit (see Cross-cutting)._
   picking another button swaps the list in place. The row opens on the season of the episode Play /
   Resume will start, and Play / Resume on the hero starts that episode
 - [x] Unified search (Android built and run, iOS parsed; plan 13): `/Search/Hints` on one screen, with filter buttons (All, Movies, Shows, Episodes, People, Collections), results grouped into Movies, Shows, Episodes,
-  People and Collections, and a per-profile history kept on the device; a person opens their page. Seerr adds a "not in your library" section in Phase 8
+  People and Collections, and a per-profile history kept on the device; a person opens their page. Seerr adds a "Not in your library" group (Phase 8)
 - [x] Person page (Android built, iOS parsed; plan 12): the biography (`Overview`, when the server's metadata providers supply one) and what
   they appear in within the library (`GET /Items?PersonIds=`); cast on the detail page opens it
 - [x] Special features (behind the scenes, extras; plan 12; Android built, iOS parsed) on the detail page (`GET /Items/{id}/SpecialFeatures`)
@@ -313,31 +313,45 @@ promised by accident.
 - [ ] Software-decode fallback for what the device can't decode — a heavy dependency (and licence) to
   add, and the server's transcode already covers the case
 
-### Phase 8 — Seerr integration _(later)_
+### Phase 8 — Seerr integration _(built; plan 20. Shared code tested and checked against the test server's Seerr; Android built, iOS compiled to klibs and parsed only; no device pass yet)_
 
 Search, discover and request titles that are not in the library yet, from inside the app.
-_Depends on Phase 4 (search and detail page)._ First part: connect,
-search, request, all in native screens; it settles the sign-in question below.
+_Depends on Phase 4 (search and detail page)._ Issue #14 (Seerr results when search finds nothing) is part of it.
 
-- [ ] Connect a Seerr instance (base URL, optional, saved per profile): check it with `GET /status`
-- [ ] Sign in to Seerr as the Jellyfin user: `POST /auth/jellyfin` sets a `connect.sid` session
-  cookie, checked with `GET /auth/me`. **Open question:** passwords are never stored, so when that
-  cookie expires the user would be asked again; decide between that and a Seerr API key
-  (`X-Api-Key`), and store whichever we keep encrypted in the token vault
-- [ ] Search beyond the library: `GET /search?query=`, with results marked in library or not
-- [ ] Discover rows: `GET /discover/movies`, `/discover/tv`, `/discover/trending`, `/discover/movies/upcoming`, `/discover/tv/upcoming`
-- [ ] Title page for something not in the library (`GET /movie/{id}`, `/tv/{id}`) showing request
-  state from `mediaInfo.status`: 1 unknown, 2 pending, 3 processing, 4 partially available,
-  5 available, 6 deleted. Teal marks available, as everywhere else
-- [ ] Request a movie or a series: `POST /request` (`mediaType`, `mediaId`, `seasons` for TV,
-  `is4k`), with a season picker; list the user's requests with `GET /request` and their state
-- [ ] Join the two worlds: a Seerr title that is available opens the Jellyfin item, matched by
-  TMDB id through the item's `ProviderIds`
-- [ ] Failure is local: quota reached, already requested, awaiting approval, or Seerr down each say
-  so and never get in the way of browsing or playing from Jellyfin
+- [x] Connect a Seerr instance: _decided: one address per Jellyfin server, a session per profile._ Settings › Requests › Seerr
+  (its own screen on both platforms, since it has a text field) checks the address with `GET /status` and `/settings/public`,
+  refuses a Seerr linked to another server, and saves the address only once it works. Disconnect is per profile: the server
+  keeps the address for the others, and the profile is remembered as off. Kids profiles get no Seerr at all (they can't request)
+- [x] Sign in without a password. _Decided: silent Quick Connect._ The app starts a Quick Connect on Seerr
+  (`POST /auth/jellyfin/quickconnect/initiate`), approves the code itself on Jellyfin with the profile's token
+  (`POST /QuickConnect/Authorize?code=&userId=`), and finishes it (`.../authenticate`). Only the `connect.sid` cookie is kept,
+  sealed in the token vault; when Seerr ends it (401) the app signs in again the same way, once, and a Seerr 401 never locks the
+  Jellyfin profile. When Quick Connect is off on Jellyfin, a sheet asks for the password once (`POST /auth/jellyfin`); it is
+  never stored. A Jellyfin sign-out or 401 drops the Seerr session too. `/auth/me`'s `jellyfinUserId` must be the profile's
+- [x] Search beyond the library: `GET /search?query=` (the query strictly percent-encoded, as Seerr insists) alongside
+  `/Search/Hints`. A "Not in your library" group, always last, leaves out people and titles Seerr knows are in the library;
+  when the library finds nothing a line says so above it (#14). A "Not in library" filter; the library never waits for Seerr
+- [x] Discover rows on Home: Trending, Popular movies, Popular shows, Coming soon (upcoming movies and shows together, by date),
+  after the library's rows and before the genre rows. Titles the library has look like library tiles. See all pages them
+- [x] Title page for something not in the library (`GET /movie/{id}`, `/tv/{id}`, `/recommendations`), on the detail page's
+  layout, with the request state from `mediaInfo.status` (1 unknown, 2 pending, 3 processing, 4 partly available, 5 available;
+  a decline or failure comes from the latest request). _Decided: status is `ink` with an icon, never aqua_
+- [x] Request a movie or a series: `POST /request` (`mediaType`, `mediaId`, `seasons`, `is4k`), with a season picker (All
+  missing seasons on, Specials off) and 4K only when the profile may; Cancel request while it waits for approval
+  (`DELETE /request/{id}`). The poster menu (long press) offers the same. My requests: a Home row after Continue watching and
+  a page with filters (`GET /request?requestedBy=`), each title read from Seerr since the list carries none
+- [x] Join the two worlds: a title Seerr says is in the library opens the Jellyfin item, through `mediaInfo.jellyfinMediaId`
+  (sent by Seerr though missing from its spec), so no lookup by TMDB id is needed
+- [x] Failure is local: quota reached (with the limit), already requested, not allowed, or Seerr down each say so in a
+  snackbar (Android) or the banner capsule (iOS); a failing Seerr row or group hides or says so alone, and browsing and playing
+  from Jellyfin never wait for Seerr
+
+Left for later: requesting the missing seasons of a show that is partly in the library (its library page has no Seerr action),
+admin actions (approve, decline), issues, and the Seerr watchlist (Phase 9). Artwork comes straight from TMDB's image server,
+as Seerr's own web app loads it.
 
 _Exit: search for a title that isn't in the library, request it, watch its status change, and
-open it from the app once it is available._
+open it from the app once it is available._ Checked against the test server's Seerr from shared code; the device passes are owed.
 
 ### Phase 9 — Seerr-based recommendations _(later)_
 

@@ -1,0 +1,210 @@
+package app.vibeyfin.domain
+
+import app.vibeyfin.data.api.ApiError
+import app.vibeyfin.data.api.ApiResult
+import app.vibeyfin.data.api.map
+import app.vibeyfin.data.seerr.QualityChoice
+import app.vibeyfin.data.seerr.SeasonChoice
+import app.vibeyfin.data.seerr.SeerrPageDto
+import app.vibeyfin.data.seerr.SeerrResultDto
+import app.vibeyfin.data.seerr.deleteRequest
+import app.vibeyfin.data.seerr.movie
+import app.vibeyfin.data.seerr.movieRatings
+import app.vibeyfin.data.seerr.movieRecommendations
+import app.vibeyfin.data.seerr.popularMovies
+import app.vibeyfin.data.seerr.popularShows
+import app.vibeyfin.data.seerr.quota
+import app.vibeyfin.data.seerr.requestMovie
+import app.vibeyfin.data.seerr.requestShow
+import app.vibeyfin.data.seerr.requests
+import app.vibeyfin.data.seerr.search
+import app.vibeyfin.data.seerr.service
+import app.vibeyfin.data.seerr.services
+import app.vibeyfin.data.seerr.show
+import app.vibeyfin.data.seerr.showRecommendations
+import app.vibeyfin.data.seerr.showSeason
+import app.vibeyfin.data.seerr.trending
+import app.vibeyfin.data.seerr.upcomingMovies
+import app.vibeyfin.data.seerr.upcomingShows
+import app.vibeyfin.domain.model.QualityOptions
+import app.vibeyfin.domain.model.QualityProfile
+import app.vibeyfin.domain.model.RequestQuota
+import app.vibeyfin.domain.model.SeerrEpisode
+import app.vibeyfin.domain.model.SeerrMediaType
+import app.vibeyfin.domain.model.SeerrPage
+import app.vibeyfin.domain.model.SeerrQuality
+import app.vibeyfin.domain.model.SeerrRequest
+import app.vibeyfin.domain.model.SeerrRequestPage
+import app.vibeyfin.domain.model.SeerrSeasons
+import app.vibeyfin.domain.model.SeerrTitleDetails
+
+/** The discover lists Home shows as rows. */
+enum class DiscoverList { Trending, PopularMovies, PopularShows, UpcomingMovies, UpcomingShows }
+
+/** How asking for a title went. */
+sealed interface RequestOutcome {
+    /** Sent; [request] is null when Seerr found nothing left to ask for, which leaves the title as it was. */
+    data class Sent(val request: SeerrRequest?) : RequestOutcome
+
+    /** The profile has used up its requests of this kind for now; [quota] says how many it gets, when Seerr told. */
+    data class QuotaReached(val quota: RequestQuota?) : RequestOutcome
+
+    /** Someone already asked for it. */
+    data object AlreadyRequested : RequestOutcome
+
+    /** The profile may not request this, or not in this quality. */
+    data object NotAllowed : RequestOutcome
+
+    data class Failed(val error: ApiError) : RequestOutcome
+}
+
+/**
+ * What features ask of Seerr, as the signed-in profile, through [SeerrConnection.call]. Not signed in to Seerr is
+ * [ApiError.Unauthorized]. Lists hold movies and shows only: people can't be requested.
+ */
+class SeerrRepository(private val seerr: SeerrConnection) {
+    suspend fun search(term: String, page: Int = 1): ApiResult<SeerrPage> = seerr.call { api, _ -> api.search(term, page).map { it.toPage() } }
+
+    suspend fun discover(list: DiscoverList, page: Int = 1): ApiResult<SeerrPage> = seerr.call { api, _ ->
+        when (list) {
+            DiscoverList.Trending -> api.trending(page)
+            DiscoverList.PopularMovies -> api.popularMovies(page)
+            DiscoverList.PopularShows -> api.popularShows(page)
+            DiscoverList.UpcomingMovies -> api.upcomingMovies(page)
+            DiscoverList.UpcomingShows -> api.upcomingShows(page)
+        }.map { it.toPage() }
+    }
+
+    /** Everything the Seerr page of a title shows. */
+    suspend fun title(type: SeerrMediaType, tmdbId: Int): ApiResult<SeerrTitleDetails> = seerr.call { api, me ->
+        when (type) {
+            SeerrMediaType.Movie -> api.movie(tmdbId).map { it.toDetails(me.id) }
+            SeerrMediaType.Show -> api.show(tmdbId).map { it.toDetails(me.id) }
+        }
+    }
+
+    /** The episodes of [season] of the show [tmdbId]; one without a name is called what [untitled] makes of its number. */
+    suspend fun season(tmdbId: Int, season: Int, untitled: (episode: Int) -> String): ApiResult<List<SeerrEpisode>> = seerr.call { api, _ ->
+        api.showSeason(tmdbId, season).map { details ->
+            details.episodes.sortedBy { it.episodeNumber }.map { episode ->
+                SeerrEpisode(
+                    season = episode.seasonNumber ?: season,
+                    number = episode.episodeNumber,
+                    title = episode.name?.takeIf { it.isNotBlank() } ?: untitled(episode.episodeNumber),
+                    overview = episode.overview?.takeIf { it.isNotBlank() },
+                    airDate = episode.airDate?.takeIf { it.isNotBlank() },
+                    // Seerr sends a whole URL at TMDB's largest size; a card needs far less
+                    stillUrl = episode.stillPath?.takeIf { it.isNotBlank() }?.let { path ->
+                        if (path.startsWith("http")) path.replace("/t/p/original/", "/t/p/w500/") else tmdbImage(path, "w500")
+                    },
+                    rating = episode.voteAverage?.takeIf { it > 0 },
+                )
+            }
+        }
+    }
+
+    /** A movie's IMDb rating out of 10; null when IMDb has none. Shows have none on Seerr. */
+    suspend fun imdbRating(tmdbId: Int): ApiResult<Double?> = seerr.call { api, _ -> api.movieRatings(tmdbId).map { it.imdb?.criticsScore?.takeIf { score -> score > 0 } } }
+
+    /** What TMDB suggests for a title, for "More like this". */
+    suspend fun recommendations(type: SeerrMediaType, tmdbId: Int): ApiResult<SeerrPage> = seerr.call { api, _ ->
+        when (type) {
+            SeerrMediaType.Movie -> api.movieRecommendations(tmdbId)
+            SeerrMediaType.Show -> api.showRecommendations(tmdbId)
+        }.map { it.toPage() }
+    }
+
+    /**
+     * Asks for a movie, or for [seasons] of a show (every missing season when left out), in 4K when [is4k]. Never repeated:
+     * a request is a write. Seerr says only "forbidden" both for a quota that is used up and for a missing permission, so
+     * the quota is read to tell them apart.
+     */
+    suspend fun request(type: SeerrMediaType, tmdbId: Int, seasons: SeerrSeasons? = null, is4k: Boolean = false, quality: SeerrQuality? = null): RequestOutcome {
+        val choice = quality?.let { QualityChoice(it.serverId, it.profileId) }
+        val sent = seerr.call { api, me ->
+            when (type) {
+                SeerrMediaType.Movie -> api.requestMovie(tmdbId, is4k, choice)
+                SeerrMediaType.Show -> api.requestShow(tmdbId, seasons?.toChoice() ?: SeasonChoice.All, is4k, choice)
+            }.map { it?.toRequest(me.id, type) }
+        }
+        return when (sent) {
+            is ApiResult.Success -> RequestOutcome.Sent(sent.value)
+
+            is ApiResult.Failure -> when (val error = sent.error) {
+                ApiError.Forbidden -> {
+                    val quota = quota().let { (it as? ApiResult.Success)?.value }
+                    val left = quota?.forType(type)
+                    // Seerr refuses too when a show asks for more seasons than are left; all seasons, an unknown number, is taken as that
+                    val asked = when (seasons) {
+                        is SeerrSeasons.Only -> seasons.numbers.size
+                        SeerrSeasons.All -> Int.MAX_VALUE
+                        null -> 1
+                    }
+                    if (left != null && left.remaining < asked) RequestOutcome.QuotaReached(quota) else RequestOutcome.NotAllowed
+                }
+
+                ApiError.Unexpected(CONFLICT) -> RequestOutcome.AlreadyRequested
+
+                else -> RequestOutcome.Failed(error)
+            }
+        }
+    }
+
+    /**
+     * The quality profiles a request for [type] (in 4K when [is4k]) could ask for, on the server Seerr would send it to: the default
+     * one of that tier, else the first. Null when Seerr has no such server.
+     */
+    suspend fun qualityOptions(type: SeerrMediaType, is4k: Boolean): ApiResult<QualityOptions?> = seerr.call { api, _ ->
+        val movies = type == SeerrMediaType.Movie
+        when (val servers = api.services(movies)) {
+            is ApiResult.Failure -> servers
+
+            is ApiResult.Success -> {
+                val tier = servers.value.filter { it.is4k == is4k }
+                val server = tier.firstOrNull { it.isDefault } ?: tier.firstOrNull()
+                if (server == null) {
+                    ApiResult.Success(null)
+                } else {
+                    api.service(movies, server.id).map { details ->
+                        QualityOptions(
+                            serverId = server.id,
+                            profiles = details.profiles.map { QualityProfile(it.id, it.name?.takeIf(String::isNotBlank)) },
+                            defaultProfileId = details.server?.activeProfileId ?: server.activeProfileId,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /** Withdraws a request that still waits for approval. */
+    suspend fun cancel(requestId: Int): ApiResult<Unit> = seerr.call { api, _ -> api.deleteRequest(requestId) }
+
+    /** The profile's own requests, most recently changed first; [page] counts from 1. */
+    suspend fun myRequests(page: Int = 1, pageSize: Int = PAGE_SIZE): ApiResult<SeerrRequestPage> = seerr.call { api, me ->
+        api.requests(requestedBy = me.id, take = pageSize, skip = (page - 1) * pageSize).map { result ->
+            SeerrRequestPage(
+                requests = result.results.mapNotNull { it.toRequest(me.id) },
+                page = page,
+                pages = result.pageInfo.pages,
+            )
+        }
+    }
+
+    suspend fun quota(): ApiResult<RequestQuota> = seerr.call { api, me -> api.quota(me.id).map { it.toQuota() } }
+
+    /** The Seerr's version, as Settings shows it; null when it doesn't say. */
+    suspend fun version(): ApiResult<String?> = seerr.call { api, _ -> api.status().map { it.version } }
+
+    private fun SeerrPageDto<SeerrResultDto>.toPage() = SeerrPage(titles = results.mapNotNull { it.toTitle() }, page = page, totalPages = totalPages)
+
+    private companion object {
+        const val CONFLICT = 409
+        const val PAGE_SIZE = 20
+    }
+}
+
+private fun SeerrSeasons.toChoice(): SeasonChoice = when (this) {
+    SeerrSeasons.All -> SeasonChoice.All
+    is SeerrSeasons.Only -> SeasonChoice.Only(numbers)
+}

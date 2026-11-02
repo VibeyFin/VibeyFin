@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -72,17 +73,22 @@ import app.vibeyfin.app.components.SkeletonBlock
 import app.vibeyfin.app.components.SkeletonLine
 import app.vibeyfin.app.components.TabHeader
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
+import app.vibeyfin.app.navigation.LocalSeerrLongPress
 import app.vibeyfin.app.navigation.LocalTileLongPress
+import app.vibeyfin.app.seerr.SeerrPosterPlaceholder
+import app.vibeyfin.app.seerr.SeerrPosterTile
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.SearchKind
 import app.vibeyfin.domain.model.SearchResult
+import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.domain.model.asMediaItem
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.search.SearchFilter
 import app.vibeyfin.ui.search.SearchUiState
 import app.vibeyfin.ui.search.SearchViewModel
+import app.vibeyfin.ui.search.SeerrSearch
 import coil3.compose.AsyncImage
 import org.koin.androidx.compose.koinViewModel
 import androidx.compose.foundation.lazy.grid.items as gridItems
@@ -91,6 +97,7 @@ import androidx.compose.foundation.lazy.grid.items as gridItems
 fun SearchRoute(
     onOpenResult: (SearchResult) -> Unit,
     onExit: (HomeExit) -> Unit,
+    onOpenSeerr: (SeerrTitle) -> Unit = {},
     viewModel: SearchViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -104,6 +111,7 @@ fun SearchRoute(
         onQueryChange = viewModel::onQueryChange,
         onClear = viewModel::onClear,
         onRetry = viewModel::onRetry,
+        onSeerrRetry = viewModel::onSeerrRetry,
         onFilter = viewModel::onFilter,
         onSubmit = viewModel::onSubmit,
         onHistoryPicked = viewModel::onHistoryPicked,
@@ -112,6 +120,10 @@ fun SearchRoute(
         onOpenResult = { result ->
             viewModel.onResultOpened()
             onOpenResult(result)
+        },
+        onOpenSeerr = { title ->
+            viewModel.onResultOpened()
+            onOpenSeerr(title)
         },
     )
 }
@@ -125,6 +137,8 @@ fun SearchScreen(
     onRetry: () -> Unit,
     onFilter: (SearchFilter) -> Unit,
     onSubmit: () -> Unit,
+    onSeerrRetry: () -> Unit = {},
+    onOpenSeerr: (SeerrTitle) -> Unit = {},
     onHistoryPicked: (String) -> Unit,
     onHistoryRemoved: (String) -> Unit,
     onHistoryCleared: () -> Unit,
@@ -186,11 +200,17 @@ fun SearchScreen(
 
                 when {
                     state.showsPrompt && state.history.isNotEmpty() -> History(state.history, margin, onHistoryPicked, onHistoryRemoved, onHistoryCleared)
+
                     state.showsPrompt -> if (state.offline) Prompt(Strings.offlineSearchPrompt, Strings.offlineBannerHelp, margin) else Prompt(Strings.searchPrompt, Strings.searchPromptHelp, margin)
+
                     state.message != null -> LoadError(state.message!!, onRetry, modifier = Modifier.padding(horizontal = margin))
+
                     state.noResults -> Prompt(Strings.noSearchResults(state.searched), if (state.offline) Strings.offlineSearchEmpty else Strings.noSearchResultsHelp, margin)
-                    state.groups.isEmpty() -> ResultSkeleton(margin)
-                    else -> Results(state, margin, onOpenResult)
+
+                    // The first answer for this text is on its way
+                    state.searched.isEmpty() -> ResultSkeleton(margin)
+
+                    else -> Results(state, margin, onOpenResult, onSeerrRetry, onOpenSeerr)
                 }
             }
         }
@@ -244,7 +264,9 @@ private fun History(history: List<String>, margin: Dp, onPick: (String) -> Unit,
 }
 
 @Composable
-private fun Results(state: SearchUiState, margin: Dp, onOpen: (SearchResult) -> Unit) {
+private fun Results(state: SearchUiState, margin: Dp, onOpen: (SearchResult) -> Unit, onSeerrRetry: () -> Unit, onOpenSeerr: (SeerrTitle) -> Unit) {
+    val seerrLongPress = LocalSeerrLongPress.current
+
     // Each group is a grid under its heading: poster tiles, round portraits for people, and rows for episodes.
     // The older answer stays while the next one is on its way, dimmed.
     LazyVerticalGrid(
@@ -254,6 +276,18 @@ private fun Results(state: SearchUiState, margin: Dp, onOpen: (SearchResult) -> 
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
     ) {
+        // The library had nothing, but Seerr's group follows: say so above it (issue #14)
+        if (state.libraryNoMatch) {
+            item(key = "library-no-match", span = { GridItemSpan(maxLineSpan) }) {
+                Text(
+                    Strings.libraryNoMatch(state.searched),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = VibeyFinTokens.Space.s3),
+                )
+            }
+        }
+
         state.visibleGroups.forEach { group ->
             item(key = "heading-${group.kind}", span = { GridItemSpan(maxLineSpan) }) {
                 SectionTitle(group.title, modifier = Modifier.padding(top = VibeyFinTokens.Space.s3).semantics { heading() })
@@ -264,7 +298,39 @@ private fun Results(state: SearchUiState, margin: Dp, onOpen: (SearchResult) -> 
             }
         }
 
+        state.seerrGroup?.let { seerr -> seerrGroup(seerr, titled = state.filter != SearchFilter.NotInLibrary, onSeerrRetry, onOpenSeerr, seerrLongPress) }
+
         item(key = "bottom", span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(VibeyFinTokens.Space.s5)) }
+    }
+}
+
+// Seerr's titles that aren't in the library, always last: the heading (left out when the filter shows nothing else), then the
+// tiles, three grey tiles while Seerr answers, or why it didn't
+@OptIn(ExperimentalFoundationApi::class)
+private fun LazyGridScope.seerrGroup(seerr: SeerrSearch, titled: Boolean, onRetry: () -> Unit, onOpen: (SeerrTitle) -> Unit, onLongPress: ((SeerrTitle) -> Unit)?) {
+    if (titled) {
+        item(key = "seerr-heading", span = { GridItemSpan(maxLineSpan) }) {
+            SectionTitle(Strings.seerrNotInLibrary, modifier = Modifier.padding(top = VibeyFinTokens.Space.s3).semantics { heading() })
+        }
+    }
+
+    when (seerr) {
+        SeerrSearch.Searching -> items(SEERR_SKELETON_TILES, key = { "seerr-skeleton-$it" }) { SeerrPosterPlaceholder(Modifier.fillMaxWidth()) }
+
+        is SeerrSearch.Found -> gridItems(seerr.titles, key = { "seerr-${it.type}-${it.tmdbId}" }) { title ->
+            // A tap opens its Seerr page; a long press its Seerr menu (Request, Details, Trailer)
+            SeerrPosterTile(
+                title,
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).combinedClickable(
+                    role = Role.Button,
+                    onLongClickLabel = if (onLongPress != null) Strings.showOptions else null,
+                    onLongClick = onLongPress?.let { press -> { press(title) } },
+                    onClick = { onOpen(title) },
+                ),
+            )
+        }
+
+        is SeerrSearch.Failed -> item(key = "seerr-failed", span = { GridItemSpan(maxLineSpan) }) { LoadError(seerr.message, onRetry) }
     }
 }
 
@@ -351,6 +417,8 @@ private fun ResultSkeleton(margin: Dp) {
 }
 
 private val GRID_MIN_WIDTH = 110.dp
+
+private const val SEERR_SKELETON_TILES = 3
 
 // About 350 dp, so a phone shows one per line and a wide tablet three
 private const val EPISODE_COLUMNS = 3

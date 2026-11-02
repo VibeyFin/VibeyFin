@@ -60,6 +60,9 @@ data class TileMenuUiState(
 ) {
     private val isSeries: Boolean get() = item?.kind == ItemKind.Series
 
+    /** The line under the title in the menu's header. */
+    val subtitle: String? get() = item?.let { Strings.tileMenuMeta(it.kind, it.year, it.seriesName, it.seasonNumber, it.episodeNumber) }
+
     /** The tile's own movie or episode as a download, or null when it is not one. */
     val download: Download? get() = item?.let { downloads[it.id] }
 
@@ -130,6 +133,15 @@ class TileMenuViewModel(
             removePrompt = parts.removal,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TileMenuUiState())
+
+    /** A library title known only by its id, such as an available one on a Seerr poster: its menu opens once the server has sent it. */
+    fun onOpenById(itemId: String) {
+        lookup?.cancel()
+        lookup = viewModelScope.launch {
+            val item = (library.item(itemId) as? ApiResult.Success)?.value ?: return@launch
+            onOpen(item)
+        }
+    }
 
     /** A poster was long-pressed: the menu opens at once, and the trailer row fills in when the server has answered. */
     fun onOpen(item: MediaItem) {

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Library tab's icon as an outline (Material "video_library", outlined) with one diagonal line through it: a title that isn't
+     in the library. The clip cuts a gap either side of the line, as Material's "_off" icons do, so the line reads at small sizes. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <group>
+        <clip-path android:pathData="M3.2,0H24V20.8ZM0,3.2V24H20.8Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M4,6H2v14c0,1.1 0.9,2 2,2h14v-2H4V6zM20,2H8c-1.1,0 -2,0.9 -2,2v12c0,1.1 0.9,2 2,2h12c1.1,0 2,-0.9 2,-2V4c0,-1.1 -0.9,-2 -2,-2zM20,16H8V4h12v12zM12,5.5v9l6,-4.5z" />
+    </group>
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M3,3L21,21" />
+</vector>

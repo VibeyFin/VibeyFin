@@ -19,14 +19,24 @@ struct ItemView: View {
     let onOpenPerson: (String) -> Void
     /// Called when the session ended and the screen must be left.
     let onExit: (HomeExit) -> Void
+    /// A Seerr title in "More like this" opens its Seerr page.
+    let onOpenSeerr: (SeerrTitle) -> Void
 
-    init(itemId: String, onOpen: @escaping (MediaItem) -> Void, onOpenSeries: @escaping (String) -> Void, onOpenPerson: @escaping (String) -> Void, onExit: @escaping (HomeExit) -> Void) {
+    init(
+        itemId: String,
+        onOpen: @escaping (MediaItem) -> Void,
+        onOpenSeries: @escaping (String) -> Void,
+        onOpenPerson: @escaping (String) -> Void,
+        onExit: @escaping (HomeExit) -> Void,
+        onOpenSeerr: @escaping (SeerrTitle) -> Void = { _ in }
+    ) {
         _model = StateObject(wrappedValue: ItemObservable(itemId: itemId))
         self.itemId = itemId
         self.onOpen = onOpen
         self.onOpenSeries = onOpenSeries
         self.onOpenPerson = onOpenPerson
         self.onExit = onExit
+        self.onOpenSeerr = onOpenSeerr
     }
 
     private var wide: Bool { sizeClass == .regular }
@@ -116,7 +126,7 @@ struct ItemView: View {
                 )
             }
             if !item.cast.isEmpty {
-                CastSectionView(cast: item.cast, tile: wide ? 112 : 88, margin: margin, onOpenPerson: onOpenPerson)
+                CastSectionView(cast: item.cast.map(CastPerson.init), tile: wide ? 112 : 88, margin: margin, onOpenPerson: onOpenPerson)
             }
             // Behind the scenes and the like.
             if let extras = state.extras, extras.isVisible {
@@ -128,10 +138,7 @@ struct ItemView: View {
                 MediaRowView(row: collections, onOpen: onOpen, onSeeAll: { _ in }, onRetry: { model.retryCollections() }, tileWidth: wide ? 168 : 112)
                     .padding(.horizontal, -margin)
             }
-            if let similar = state.similar, similar.isVisible {
-                MediaRowView(row: similar, onOpen: onOpen, onSeeAll: { _ in }, onRetry: { model.retrySimilar() }, tileWidth: wide ? 168 : 112)
-                    .padding(.horizontal, -margin)
-            }
+            similarSection(state)
             if !state.technical.isEmpty {
                 TechnicalInfoView(lines: state.technical)
             }
@@ -148,6 +155,20 @@ struct ItemView: View {
             }
         }
         .environment(\.screenMarginOverride, wide ? Space.s6 : nil)
+    }
+
+    /// More like this: the library's titles with Seerr's mixed in, once read; the library's row while it loads or when it fails.
+    @ViewBuilder
+    private func similarSection(_ state: ItemUiState) -> some View {
+        if let similar = state.similar, similar.isVisible || !state.similarTiles.isEmpty {
+            if !similar.loading, similar.message == nil, state.similarTiles.contains(where: { $0 is SimilarTileSeerr }) {
+                SimilarRowView(title: similar.title, tiles: state.similarTiles, tileWidth: wide ? 168 : 112, onOpen: onOpen, onOpenSeerr: onOpenSeerr)
+                    .padding(.horizontal, -margin)
+            } else {
+                MediaRowView(row: similar, onOpen: onOpen, onSeeAll: { _ in }, onRetry: { model.retrySimilar() }, tileWidth: wide ? 168 : 112)
+                    .padding(.horizontal, -margin)
+            }
+        }
     }
 
     /// The picture stays put behind the page and darkens; the text goes up over it, and the rest of the page covers it.
@@ -235,7 +256,7 @@ struct ItemView: View {
 
 /// How far the scroll view around it has scrolled, read from the `UIScrollView` itself: SwiftUI's own geometry preferences don't
 /// report a scroll that is under way. Put inside a `ScrollView`'s content; 0 at the top, growing as the page scrolls up.
-private struct ScrollOffsetReader: UIViewRepresentable {
+struct ScrollOffsetReader: UIViewRepresentable {
     let onChange: (CGFloat) -> Void
 
     func makeUIView(context: Context) -> ReaderView { ReaderView() }

@@ -14,6 +14,11 @@ import app.vibeyfin.ui.person.PersonViewModel
 import app.vibeyfin.ui.playback.PlaybackViewModel
 import app.vibeyfin.ui.profile.ProfileMenuViewModel
 import app.vibeyfin.ui.search.SearchViewModel
+import app.vibeyfin.ui.seerr.MyRequestsViewModel
+import app.vibeyfin.ui.seerr.SeerrHomeViewModel
+import app.vibeyfin.ui.seerr.SeerrListViewModel
+import app.vibeyfin.ui.seerr.SeerrSettingsViewModel
+import app.vibeyfin.ui.seerr.SeerrTitleViewModel
 import app.vibeyfin.ui.servers.ServersViewModel
 import app.vibeyfin.ui.settings.SettingsViewModel
 import app.vibeyfin.ui.startup.StartupViewModel
@@ -30,7 +35,7 @@ import org.koin.dsl.module
  * would hand the same instances to every Koin application that loads it, tests included.
  */
 fun appModule() = module {
-    includes(dataModule(), apiModule())
+    includes(dataModule(), apiModule(), seerrModule())
     viewModelOf(::ServersViewModel)
     viewModel { params -> AddServerViewModel(params.getOrNull(), get(), get()) }
     viewModel { params ->
@@ -41,17 +46,22 @@ fun appModule() = module {
     viewModelOf(::ProfileMenuViewModel)
     viewModel { params -> ChildrenViewModel(params.get(), get(), get(), get()) }
     viewModel { params -> PersonViewModel(params.get(), get(), get()) }
-    viewModelOf(::SearchViewModel)
+    viewModel { SearchViewModel(get(), get(), get(), get(), get(), seerr = get(), seerrRepository = get()) }
     viewModelOf(::TileMenuViewModel)
     viewModel { params -> FilteredListViewModel(params.get(), get(), get()) }
-    viewModel { params -> ItemViewModel(params.get(), get(), get(), get(), get(), get()) }
+    viewModel { params -> ItemViewModel(params.get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { params -> PlaybackViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), startOver = params.getOrNull() ?: false) }
     viewModelOf(::StartupViewModel)
     viewModelOf(::NotificationOpenViewModel)
     viewModel {
         val device = get<DeviceInfo>()
-        SettingsViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(ApplicationScope), device.appVersion, device.subtitleStyleApplies)
+        SettingsViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(ApplicationScope), device.appVersion, device.subtitleStyleApplies, seerr = get())
     }
     viewModelOf(::AppBannerViewModel)
     viewModelOf(::DownloadsViewModel)
+    viewModel { SeerrSettingsViewModel(get(), get(), get(), get(ApplicationScope)) }
+    viewModel { params -> SeerrTitleViewModel(params.get(), params.get(), get(), get(), get()) }
+    viewModel { SeerrHomeViewModel(get(), get(), get()) }
+    viewModel { params -> SeerrListViewModel(params.get(), get()) }
+    viewModel { MyRequestsViewModel(get(), get()) }
 }

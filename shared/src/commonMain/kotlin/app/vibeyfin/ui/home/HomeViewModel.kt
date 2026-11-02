@@ -89,6 +89,8 @@ data class HomeUiState(
      * showing (loading, failed or with items) are here.
      */
     val rows: List<MediaRow> = emptyList(),
+    /** Where in [rows] the genre rows begin (its size when there are none): Seerr's discover rows go just before them. */
+    val firstGenreRow: Int = 0,
     /** The featured items above Continue watching, in the order they page; empty until they are picked, and when nothing qualifies. */
     val heroes: List<MediaItem> = emptyList(),
     /** The hero is switched on and being picked: a grey card holds its place, so it does not just appear. */
@@ -244,6 +246,7 @@ class HomeViewModel(
             openList = categories.openList,
             heroNav = categories.heroNav,
             rows = rows,
+            firstGenreRow = rows.indexOfFirst { it.seeAll is SeeAll.Genre }.let { if (it < 0) rows.size else it },
         )
     }
 

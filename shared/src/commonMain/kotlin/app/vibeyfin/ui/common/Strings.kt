@@ -4,6 +4,9 @@ import app.vibeyfin.domain.PlayMethod
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SegmentType
 import app.vibeyfin.domain.SubtitleMode
+import app.vibeyfin.domain.model.ItemKind
+import app.vibeyfin.domain.model.RequestState
+import app.vibeyfin.domain.model.SeerrMediaType
 import kotlin.math.roundToInt
 
 /**
@@ -173,6 +176,11 @@ object Strings {
     val viewEpisode = "View episode"
 
     /** "S1 E4" on an episode's card; "E4" when the season is not known. */
+    fun episodeNumber(number: Int) = "Episode $number"
+
+    /** The tag at the start of a Seerr page's facts: where the title stands in one or two words. */
+    fun seerrTag(state: RequestState): String = seerrStateLabel(state) ?: "Not in your library"
+
     fun episodeTag(season: Int?, episode: Int?): String? = when {
         season != null && episode != null -> "S$season E$episode"
         episode != null -> "E$episode"
@@ -503,6 +511,9 @@ object Strings {
 
     /** The label of the video line in the collapsed technical info, and the long-press entry on an episode. */
     val technicalVideo = "Video"
+
+    /** The label of the line in the technical info that says how much storage the file takes. */
+    val technicalSize = "Size"
 
     /** What a screen reader says for a season button, and for the row of them. */
     fun seasonDescription(name: String, selected: Boolean) = if (selected) "$name, selected" else name
@@ -981,4 +992,250 @@ object Strings {
     fun downloadDescription(title: String) = "Download $title"
 
     fun storageLimitGb(gb: Int) = "$gb GB"
+
+    // Seerr: connecting it in Settings. Errors are in SeerrMessages.
+    val requestsSection = "Requests"
+    val seerr = "Seerr"
+    val seerrRowHelp = "Find and request titles that aren\u2019t in your library."
+    val seerrNotSetUp = "Not set up"
+    val seerrConnected = "Connected"
+    val seerrOff = "Off"
+    val seerrNotSignedIn = "Not signed in"
+    val seerrLead = "Connect Seerr to find and request titles that aren\u2019t in your library yet."
+    val seerrAddress = "Seerr address"
+    val seerrAddressPlaceholder = "requests.example.org"
+    val seerrAddressHelp = "Set up once for this server. Every profile signs in by itself, with no password."
+    val seerrAddressSharedHelp = "Other profiles on this server use this address. Changing it changes it for them too."
+    val seerrConnecting = "Connecting\u2026"
+    val seerrSigningIn = "Signing in\u2026"
+    val seerrServerSection = "Seerr"
+    val seerrAddressRow = "Address"
+    val seerrVersion = "Version"
+    val seerrThisProfile = "This profile"
+
+    fun seerrSignedInAs(name: String) = "Signed in as $name"
+
+    val seerrSignedInAutomatically = "Signed in automatically"
+    val seerrSignedInWithPassword = "Signed in with your password"
+    val seerrSignInWithPassword = "Sign in with password"
+    val seerrChangeAddress = "Change address"
+    val seerrRequestsLeft = "Requests left"
+
+    /**
+     * What is left of the quota, for the kinds that have one, and how often it starts again when Seerr says: "3 movies and 2 seasons
+     * this week". Seerr counts a show's requests in seasons.
+     */
+    fun seerrQuotaLeft(movies: Int?, seasons: Int?, days: Int?): String {
+        val what = listOfNotNull(movies?.let(::collectionMovieCount), seasons?.let(::seasonCount)).joinToString(" and ")
+        val often = when (days) {
+            null -> ""
+            1 -> " a day"
+            7 -> " this week"
+            else -> " every $days days"
+        }
+        return what + often
+    }
+
+    val seerrDisconnect = "Disconnect Seerr"
+    val seerrDisconnectHelp = "Signs this profile out of Seerr and hides it here. Other profiles on this server keep it. Your requests stay in Seerr."
+    val seerrDisconnectConfirmTitle = "Disconnect Seerr?"
+    val seerrDisconnectConfirmMessage = "This profile is signed out of Seerr and stops seeing it. Other profiles on this server keep it."
+    val seerrDisconnectConfirm = "Disconnect"
+    val seerrPasswordTitle = "Sign in to Seerr"
+    val seerrPasswordReason = "Quick Connect is off on your Jellyfin server, so Seerr needs your Jellyfin password once."
+    val seerrPasswordNotKept = "VibeyFin doesn\u2019t keep your password."
+    val seerrUser = "User"
+
+    // Seerr titles in search, and Seerr posters anywhere
+    val seerrNotInLibrary = "Not in your library"
+    val seerrNotInLibraryChip = "Not in library"
+
+    fun libraryNoMatch(query: String) = "Nothing in your library matches \u201c$query\u201d."
+
+    /** The line under a Seerr poster: "2025 · Movie". */
+    fun seerrTitleMeta(year: Int?, type: SeerrMediaType) = listOfNotNull(year?.toString(), if (type == SeerrMediaType.Movie) "Movie" else "Show").joinToString(" \u00b7 ")
+
+    /** The word on a Seerr poster's pill; null for a title nobody asked for, which shows the + disc instead. */
+    fun seerrStateLabel(state: RequestState): String? = when (state) {
+        RequestState.NotRequested -> null
+        RequestState.Requested -> "Requested"
+        RequestState.Approved -> "Approved"
+        RequestState.PartlyAvailable -> "Partly available"
+        RequestState.Available -> "Available"
+        RequestState.Declined -> "Declined"
+        RequestState.Failed -> "Failed"
+    }
+
+    // The Seerr page of a title, its poster menu and requesting. Errors are in SeerrMessages.
+    val seerrRequest = "Request"
+    val seerrRequestSeasons = "Request seasons"
+    val seerrRequestAgain = "Request again"
+    val seerrRequest4k = "Request in 4K"
+
+    /** Under Request in 4K in the poster menu. */
+    val seerrRequest4kQuota = "Uses your 4K quota"
+    val seerrCancelRequest = "Cancel request"
+    val seerrMoreLikeThis = "More like this"
+    val seerrSeasons = "Seasons"
+    val seerrAllMissingSeasons = "All missing seasons"
+    val seerrQuality = "Quality"
+    val seerrStandard = "Standard"
+    val seerr4k = "4K"
+    val seerrView = "View"
+    val seerrRequestCancelled = "Request cancelled"
+
+    /** A rating out of 10 in a facts line, the library's and Seerr's alike: "★ 8.7". */
+    fun starRating(score: Double): String {
+        val tenths = (score * 10 + 0.5).toInt()
+        return "\u2605 ${tenths / 10}.${tenths % 10}"
+    }
+
+    fun seerrEpisodeCount(count: Int) = if (count == 1) "1 episode" else "$count episodes"
+
+    /** A season's tile in the request sheet: its number, "SP" for Specials. */
+    fun seerrSeasonTile(number: Int) = if (number == 0) "SP" else number.toString()
+
+    /** The episode count under a season's tile: "10 ep". */
+    fun seerrEpisodeCountShort(count: Int) = "$count ep"
+
+    /** What a screen reader says for a season's tile: "Season 3, 10 episodes, Available". */
+    fun seerrSeasonTileDescription(name: String, episodes: String, state: String?) = listOfNotNull(name, episodes, state).joinToString(", ")
+
+    fun seerrRequestSeasonCount(count: Int) = if (count == 1) "Request 1 season" else "Request $count seasons"
+
+    fun seerrPickerSubtitle(title: String, seasons: Int) = "$title \u00b7 ${seasonCount(seasons)}"
+
+    /** The request sheet's subtitle for a movie: "Low Tide · 2025 · Movie". */
+    fun seerrPickerMovieSubtitle(title: String, meta: String) = "$title \u00b7 $meta"
+
+    /** A quality profile Seerr sent without a name, by its number: "Profile 4". */
+    fun seerrQualityNumber(id: Int) = "Profile $id"
+
+    /** What a screen reader says for a Seerr page's state tag and facts: "Requested, 2025, PG-13, 1 h 36 min". */
+    fun seerrTagDescription(status: String?, facts: List<String>) = listOfNotNull(status, factsLine(facts).takeIf { facts.isNotEmpty() }).joinToString(", ")
+
+    fun seerrRequested(title: String) = "Requested $title"
+
+    /**
+     * The line under a title's overview: where it stands, and who asked when someone did. [requestedBy] is the requester's name, or
+     * null when it is the profile itself or not known; [byMe] says it is the profile.
+     */
+    fun seerrStatusLine(state: RequestState, byMe: Boolean, requestedBy: String?): String = when (state) {
+        RequestState.NotRequested -> "Not in your library"
+
+        RequestState.Requested -> when {
+            byMe -> "Requested by you \u00b7 Waiting for approval"
+            requestedBy != null -> "Requested by $requestedBy \u00b7 Waiting for approval"
+            else -> "Requested \u00b7 Waiting for approval"
+        }
+
+        RequestState.Approved -> "Approved \u00b7 Added when the download finishes"
+
+        RequestState.PartlyAvailable -> "Some seasons are in your library"
+
+        RequestState.Available -> "In your library"
+
+        RequestState.Declined -> "Declined \u00b7 You can ask again"
+
+        RequestState.Failed -> "The download failed \u00b7 Seerr will try again"
+    }
+
+    /** The second status line, for a 4K request: "4K · Requested by you · Waiting for approval". */
+    fun seerr4kLine(line: String) = "4K \u00b7 $line"
+
+    /** Under a Seerr poster menu's title: "2025 · Movie · Not in your library", or the state's word. */
+    fun seerrMenuSubtitle(meta: String, state: RequestState) = "$meta \u00b7 ${seerrStateLabel(state) ?: "Not in your library"}"
+
+    /** Under the status row of a Seerr poster menu: "By you, 2 days ago · Waiting for approval". */
+    fun seerrMenuStatusDetail(state: RequestState, byMe: Boolean, requestedBy: String?, daysAgo: Int?): String {
+        val who = when {
+            byMe -> "By you"
+            requestedBy != null -> "By $requestedBy"
+            else -> null
+        }
+        val whenAsked = daysAgo?.let {
+            when (it) {
+                0 -> "today"
+                1 -> "yesterday"
+                else -> "$it days ago"
+            }
+        }
+        val asked = listOfNotNull(who, whenAsked).joinToString(", ").takeIf { it.isNotEmpty() }
+        val next = when (state) {
+            RequestState.Requested -> "Waiting for approval"
+            RequestState.Approved -> "Added when the download finishes"
+            RequestState.Failed -> "Seerr will try again"
+            RequestState.Declined -> "You can ask again"
+            RequestState.PartlyAvailable -> "Some seasons are in your library"
+            RequestState.NotRequested, RequestState.Available -> null
+        }
+        return listOfNotNull(asked, next).joinToString(" \u00b7 ")
+    }
+
+    // Seerr on Home: My requests and the discover rows, and their pages
+    val seerrMyRequests = "My requests"
+    val seerrTrending = "Trending"
+    val seerrPopularMovies = "Popular movies"
+    val seerrPopularShows = "Popular shows"
+    val seerrComingSoon = "Coming soon"
+    val seerrNoRequests = "You haven\u2019t requested anything yet. Search for a title that isn\u2019t in your library to request it."
+    val seerrFilterWaiting = "Waiting"
+    val seerrFilterApproved = "Approved"
+    val seerrFilterAvailable = "Available"
+    val seerrFilterDeclined = "Declined"
+
+    private val monthNames = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+    /** A release date ("2026-12-12") as Coming soon shows it: "Dec 12". Null when it can't be read. */
+    fun seerrReleaseDay(date: String?): String? {
+        val parts = date?.split("-")?.takeIf { it.size >= 3 } ?: return null
+        val month = parts[1].toIntOrNull()?.takeIf { it in 1..12 } ?: return null
+        val day = parts[2].take(2).toIntOrNull() ?: return null
+        return "${monthNames[month - 1]} $day"
+    }
+
+    /** The line under a title in a poster's menu: "Movie · 2022", "Show · 2019", "S1 E4 · The Show". */
+    fun tileMenuMeta(kind: ItemKind, year: Int?, seriesName: String?, season: Int?, episode: Int?): String? = when (kind) {
+        ItemKind.Movie -> listOfNotNull(heroMovie, year?.toString())
+        ItemKind.Series -> listOfNotNull(heroShow, year?.toString())
+        ItemKind.Episode -> listOfNotNull(episodeTag(season, episode), seriesName)
+        else -> listOfNotNull(year?.toString())
+    }.joinToString(" · ").ifEmpty { null }
+
+    /** What a request is for: "Movie · 2022", "Show · Seasons 1–2", "Show · Season 3". */
+    fun seerrRequestKind(type: SeerrMediaType, year: Int?, seasons: List<Int>): String = if (type == SeerrMediaType.Movie) {
+        listOfNotNull("Movie", year?.toString()).joinToString(" \u00b7 ")
+    } else {
+        val sorted = seasons.sorted()
+        val which = when {
+            sorted.isEmpty() -> null
+            sorted.size == 1 -> "Season ${sorted.first()}"
+            sorted == (sorted.first()..sorted.last()).toList() -> "Seasons ${sorted.first()}\u2013${sorted.last()}"
+            else -> "Seasons " + sorted.joinToString(", ")
+        }
+        listOfNotNull("Show", which).joinToString(" \u00b7 ")
+    }
+
+    /** When a request last changed, said as what happened: "Requested 2 days ago", "Approved yesterday", "Added to your library today". */
+    fun seerrRequestWhen(state: RequestState, daysAgo: Int?): String {
+        val what = when (state) {
+            RequestState.Available, RequestState.PartlyAvailable -> "Added to your library"
+            RequestState.Approved -> "Approved"
+            RequestState.Declined -> "Declined"
+            RequestState.Failed -> "Failed"
+            RequestState.Requested, RequestState.NotRequested -> "Requested"
+        }
+        val whenText = when (daysAgo) {
+            null -> null
+            0 -> "today"
+            1 -> "yesterday"
+            in 2..6 -> "$daysAgo days ago"
+            in 7..13 -> "last week"
+            else -> "${daysAgo / 7} weeks ago"
+        }
+        return listOfNotNull(what, whenText).joinToString(" ")
+    }
+
+    /** What a screen reader says for a Seerr poster: "Harbour Bridge, 2025 · Movie, not in your library, can be requested". */
+    fun seerrTitleDescription(title: String, meta: String, state: RequestState) = "$title, $meta, ${seerrStateLabel(state)?.lowercase() ?: "not in your library, can be requested"}"
 }

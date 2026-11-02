@@ -38,7 +38,7 @@ class OfflineSearchTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(SearchViewModel(app.library, app.searchHistory, app.connection, app.offline, app.offlineLibrary))
+    private fun viewModel() = viewModels.track(SearchViewModel(app.library, app.searchHistory, app.connection, app.offline, app.offlineLibrary, app.seerr, app.seerrRepository))
 
     private suspend fun offlineWithDownloads() {
         val server = app.signedIn()

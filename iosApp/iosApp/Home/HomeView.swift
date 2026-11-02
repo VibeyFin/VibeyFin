@@ -3,6 +3,7 @@ import Shared
 
 struct HomeView: View {
     @StateObject private var model = HomeObservable()
+    @StateObject private var seerr = SeerrHomeObservable()
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.playerSession) private var player
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -14,6 +15,12 @@ struct HomeView: View {
     let onDetails: (String) -> Void
     /// A category button or a genre in the Categories list was chosen: its page opens over Home.
     let onOpenList: (HomeFilter) -> Void
+    /// A Seerr poster: its Seerr page, or the library's when the library has it.
+    var onOpenSeerr: (SeerrTitle) -> Void = { _ in }
+    /// A Seerr discover row's See all.
+    var onSeerrSeeAll: (SeerrListKind) -> Void = { _ in }
+    /// My requests' See all.
+    var onMyRequests: () -> Void = {}
 
     var body: some View {
         ZStack {
@@ -55,6 +62,10 @@ struct HomeView: View {
                                 onDownload: { model.download($0) },
                                 onDownloadAction: { model.act($0, $1) }
                             )
+                            // The profile's own Seerr news sits with resume, above discovery.
+                            if let requests = seerr.state?.requests {
+                                SeerrRowView(row: requests, onOpen: onOpenSeerr, onSeeAll: onMyRequests).transition(.opacity)
+                            }
                             // Until the libraries are known two grey rows hold the place, so the rows that replace
                             // them don't push the genre rows down from under the user's eyes.
                             if state.loadingLibraries && state.rows.isEmpty {
@@ -63,22 +74,15 @@ struct HomeView: View {
                             }
                             // Recently added in each library, then a few genres: each loads and fails on its own, and an
                             // empty one is not here.
-                            ForEach(state.rows, id: \.id) { row in
-                                MediaRowView(
-                                    row: row,
-                                    onOpen: onOpen,
-                                    onSeeAll: { seeAll in
-                                        if let library = seeAll as? SeeAllLibrary {
-                                            onOpen(library.library)
-                                        } else if let genre = seeAll as? SeeAllGenre {
-                                            onOpenList(genre.filter)
-                                        } else if seeAll is SeeAllMyList {
-                                            onOpenList(HomeFilterMyList.shared)
-                                        }
-                                    },
-                                    onRetry: { model.retryRow(row.id) }
-                                )
-                                .transition(.opacity)
+                            // Seerr's discover rows go after the library's rows and before the genres: outside the ForEach, so they
+                            // keep their own identity (and scroll position) when the genre rows change.
+                            let split = min(max(Int(state.firstGenreRow), 0), state.rows.count)
+                            ForEach(Array(state.rows.prefix(split)), id: \.id) { row in
+                                mediaRow(row)
+                            }
+                            seerrDiscover
+                            ForEach(Array(state.rows.dropFirst(split)), id: \.id) { row in
+                                mediaRow(row)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -93,7 +97,10 @@ struct HomeView: View {
                         .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: state.continueRow.loading)
                         .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: state.loadingLibraries)
                     }
-                    .refreshable { await model.refresh() }
+                    .refreshable {
+                        seerr.refresh()
+                        await model.refresh()
+                    }
                 }
                 Spacer(minLength: 0)
             }
@@ -104,7 +111,10 @@ struct HomeView: View {
             onRetry: { model.retryAction() },
             onDismiss: { model.dismissMessage() }
         )
-        .onAppear { model.start() }
+        .onAppear {
+            model.start()
+            seerr.start()
+        }
         // The question before a Continue watching card's download is deleted.
         .downloadPrompts(
             prompt: nil,
@@ -116,7 +126,10 @@ struct HomeView: View {
             onDismissRemoval: { model.dismissRemoval() }
         )
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { model.foreground() }
+            if phase == .active {
+                model.foreground()
+                seerr.foreground()
+            }
         }
         .onChange(of: model.state?.exit != nil) { _, hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
@@ -159,6 +172,31 @@ struct HomeView: View {
                     onRetry: { model.retrySheet() }
                 )
             }
+        }
+    }
+
+    private func mediaRow(_ row: MediaRow) -> some View {
+        MediaRowView(
+            row: row,
+            onOpen: onOpen,
+            onSeeAll: { seeAll in
+                if let library = seeAll as? SeeAllLibrary {
+                    onOpen(library.library)
+                } else if let genre = seeAll as? SeeAllGenre {
+                    onOpenList(genre.filter)
+                } else if seeAll is SeeAllMyList {
+                    onOpenList(HomeFilterMyList.shared)
+                }
+            },
+            onRetry: { model.retryRow(row.id) }
+        )
+        .transition(.opacity)
+    }
+
+    private var seerrDiscover: some View {
+        ForEach(seerr.state?.discover ?? [], id: \.title) { row in
+            SeerrRowView(row: row, onOpen: onOpenSeerr, onSeeAll: { if let kind = row.kind { onSeerrSeeAll(kind) } })
+                .transition(.opacity)
         }
     }
 }

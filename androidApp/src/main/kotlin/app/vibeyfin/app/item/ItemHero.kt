@@ -93,16 +93,26 @@ import coil3.compose.AsyncImage
  * it. A scrim from the left sits behind the first screen's column of text, and a band at the top behind the back button.
  */
 @Composable
-fun ItemBackdrop(item: MediaItem, screenWidth: Dp, screenHeight: Dp, progress: Float, modifier: Modifier = Modifier) {
-    Box(modifier) {
-        val picture = item.backdropUrl ?: item.posterUrl
+fun ItemBackdrop(item: MediaItem, screenWidth: Dp, screenHeight: Dp, progress: Float, modifier: Modifier = Modifier) = ItemBackdrop(
+    item.title,
+    item.backdropUrl ?: item.posterUrl,
+    if (item.backdropUrl != null) item.backdropBlurHash else item.posterBlurHash,
+    screenWidth,
+    screenHeight,
+    progress,
+    modifier,
+)
 
+/** [ItemBackdrop] for a [picture] that isn't a library item's, such as a Seerr title's. */
+@Composable
+fun ItemBackdrop(title: String, picture: String?, blurHash: String?, screenWidth: Dp, screenHeight: Dp, progress: Float, modifier: Modifier = Modifier) {
+    Box(modifier) {
         if (picture != null) {
             Artwork(
                 url = picture,
-                title = item.title,
+                title = title,
                 aspectRatio = screenWidth.value / screenHeight.value,
-                blurHash = if (item.backdropUrl != null) item.backdropBlurHash else item.posterBlurHash,
+                blurHash = blurHash,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
@@ -124,19 +134,28 @@ fun ItemBackdrop(item: MediaItem, screenWidth: Dp, screenHeight: Dp, progress: F
  * darkens ([scroll] against [height]) so what scrolls over it reads. A scrim under the text fades it into the page.
  */
 @Composable
-fun PinnedBackdrop(item: MediaItem, height: Dp, scroll: ScrollState, modifier: Modifier = Modifier) {
+fun PinnedBackdrop(item: MediaItem, height: Dp, scroll: ScrollState, modifier: Modifier = Modifier) = PinnedBackdrop(
+    item.title,
+    item.backdropUrl ?: item.posterUrl,
+    if (item.backdropUrl != null) item.backdropBlurHash else item.posterBlurHash,
+    height,
+    scroll,
+    modifier,
+)
+
+/** [PinnedBackdrop] for a [picture] that isn't a library item's, such as a Seerr title's. */
+@Composable
+fun PinnedBackdrop(title: String, picture: String?, blurHash: String?, height: Dp, scroll: ScrollState, modifier: Modifier = Modifier) {
     // Fully dark after about half the picture has scrolled by, so the page reads well before the picture is gone
     val darkenOverPx = with(LocalDensity.current) { height.toPx() } * DARKEN_OVER
 
     Box(modifier.fillMaxWidth().height(height)) {
-        val picture = item.backdropUrl ?: item.posterUrl
-
         if (picture != null) {
             Artwork(
                 url = picture,
-                title = item.title,
+                title = title,
                 aspectRatio = 2f / 3f,
-                blurHash = if (item.backdropUrl != null) item.backdropBlurHash else item.posterBlurHash,
+                blurHash = blurHash,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
@@ -325,7 +344,7 @@ private fun painterVector(id: Int) = ImageVector.vectorResource(id)
 private const val ACTION_PLACES = 4
 
 @Composable
-private fun ActionRow(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+internal fun ActionRow(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Layout(content, modifier) { measurables, constraints ->
         val total = constraints.maxWidth
         val widest = measurables.maxOfOrNull { it.maxIntrinsicWidth(constraints.maxHeight) } ?: 0
@@ -341,7 +360,7 @@ private fun ActionRow(modifier: Modifier = Modifier, content: @Composable () -> 
 }
 
 @Composable
-private fun ActionButton(label: String, description: String, icon: @Composable (Modifier) -> Unit, popKey: Boolean? = null, menu: @Composable () -> Unit = {}, onClick: () -> Unit) {
+internal fun ActionButton(label: String, description: String, icon: @Composable (Modifier) -> Unit, popKey: Boolean? = null, menu: @Composable () -> Unit = {}, onClick: () -> Unit) {
     val pop = remember { Animatable(1f) }
     var first by remember { mutableStateOf(true) }
 
@@ -447,7 +466,7 @@ private fun FactsLine(state: ItemUiState, centered: Boolean) {
 }
 
 @Composable
-private fun Overview(text: String) {
+internal fun Overview(text: String) {
     var expanded by remember { mutableStateOf(false) }
     var overflows by remember { mutableStateOf(false) }
 

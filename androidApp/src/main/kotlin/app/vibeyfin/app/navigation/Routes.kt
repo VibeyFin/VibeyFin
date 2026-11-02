@@ -95,3 +95,19 @@ internal fun FilteredList.toFilter(): HomeFilter = when (kind) {
     "library" -> HomeFilter.Library
     else -> HomeFilter.Genre(id.orEmpty(), name.orEmpty())
 }
+
+/** The page of a title that isn't in the library, from Seerr: TMDB's [tmdbId], and [mediaType] `movie` or `tv`. */
+@Serializable
+data class SeerrPage(val tmdbId: Int, val mediaType: String)
+
+/** A Seerr discover list's See all page; [kind] is a `SeerrListKind` name. */
+@Serializable
+data class SeerrList(val kind: String)
+
+/** The profile's Seerr requests, opened from Home's My requests row. */
+@Serializable
+data object MyRequests
+
+/** The same page opened from Settings › Seerr, which sits outside the tabs. */
+@Serializable
+data object SettingsMyRequests

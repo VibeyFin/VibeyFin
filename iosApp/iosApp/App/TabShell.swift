@@ -13,6 +13,12 @@ enum TabRoute: Hashable {
     case person(personId: String)
     /// A category page: `kind` is `shows`, `movies`, `new` or `genre`; `id` and `name` are the genre's own.
     case filtered(kind: String, id: String?, name: String?)
+    /// The Seerr page of a title that isn't in the library, by TMDB id.
+    case seerrTitle(type: SeerrMediaType, tmdbId: Int32)
+    /// A Seerr discover list's See all.
+    case seerrList(kind: SeerrListKind)
+    /// The profile's Seerr requests.
+    case myRequests
 }
 
 private extension TabRoute {
@@ -61,6 +67,7 @@ struct TabShell: View {
     @State private var selection: MainTab = .home
     @Namespace private var zoomNamespace
     @StateObject private var tileMenu = TileMenuObservable()
+    @StateObject private var seerrMenu = SeerrMenuOpener()
     /// One shared Settings ViewModel for the whole page tree, made again each time Settings opens so the PIN to open it is asked every time.
     @State private var settings = SettingsSession()
     @StateObject private var player = PlayerSession()
@@ -126,7 +133,10 @@ struct TabShell: View {
                         onExit: onExit,
                         onOpen: { open($0, in: $homePath) },
                         onDetails: { homePath.append(.item(itemId: $0)) },
-                        onOpenList: { homePath.append(TabRoute.opening($0)) }
+                        onOpenList: { homePath.append(TabRoute.opening($0)) },
+                        onOpenSeerr: { openSeerr($0, in: $homePath) },
+                        onSeerrSeeAll: { homePath.append(.seerrList(kind: $0)) },
+                        onMyRequests: { homePath.append(.myRequests) }
                     )
                     .navigationBarBackButtonHidden(true)
                     .backMenuTitle(Strings.shared.tabHome.titleCased())
@@ -139,6 +149,7 @@ struct TabShell: View {
 
             stack($searchPath) {
                 SearchView(
+                    onOpenSeerr: { openSeerr($0, in: $searchPath) },
                     onOpenResult: { result in
                         // Offline there is no page to open: what was found is on the device, so it plays (a show opens its downloads).
                         if offline {
@@ -179,6 +190,12 @@ struct TabShell: View {
         .environment(\.tileMenu, tileMenu)
         .onAppear {
             tileMenu.start()
+            seerrMenu.handlers = SeerrMenuHandlers(
+                details: { openSeerrFromMenu($0) },
+                trailer: { trailer in
+                    if let url = URL(string: trailer) { openURL(url) }
+                }
+            )
             tileMenu.handlers = TileMenuHandlers(
                 details: { openFromMenu($0) },
                 trailer: { trailer in
@@ -208,6 +225,21 @@ struct TabShell: View {
         ) {
             Button(Strings.shared.close.titleCased(), role: .cancel) {}
         }
+        .environment(\.seerrMenu, seerrMenu)
+        // A show's Request from a Seerr poster's menu: the season picker, over whatever screen the menu was on.
+        .sheet(isPresented: Binding(get: { seerrMenu.showsPicker }, set: { if !$0 { seerrMenu.pickerDismiss() } })) {
+            if let model = seerrMenu.model { SeerrMenuPickerSheet(model: model) }
+        }
+        // What a request from a Seerr poster menu came to, over whatever screen the menu was on.
+        .seerrNoticeBanner(
+            seerrMenu.notice,
+            // View opens the title; Try again sends the request again.
+            onAction: {
+                guard let title = seerrMenu.noticeTitle else { return }
+                if seerrMenu.notice?.action == .tryagain { seerrMenu.retryRequest() } else { openSeerrFromMenu(title) }
+            },
+            onDismiss: { seerrMenu.notice = nil }
+        )
         .environment(\.playerSession, player)
         // Playback covers the tabs, and goes out of sight while picture-in-picture plays, so the page it was opened from shows.
         .overlay {
@@ -272,9 +304,68 @@ struct TabShell: View {
         }
     }
 
+    /// A Seerr title: the library's page when the library has it, otherwise Seerr's.
+    private func openSeerr(_ title: SeerrTitle, in path: Binding<[TabRoute]>) {
+        if let itemId = title.jellyfinItemId {
+            path.wrappedValue.append(.item(itemId: itemId))
+        } else {
+            path.wrappedValue.append(.seerrTitle(type: title.type, tmdbId: title.tmdbId))
+        }
+    }
+
+    /// Details (or View) from a Seerr poster's menu: opens in the tab on screen.
+    private func openSeerrFromMenu(_ title: SeerrTitle) {
+        switch selection {
+        case .home: openSeerr(title, in: $homePath)
+        case .search: openSeerr(title, in: $searchPath)
+        case .library: openSeerr(title, in: $libraryPath)
+        case .downloads: openSeerr(title, in: $downloadsPath)
+        }
+    }
+
     /// A folder opens its list; anything else opens its page.
     private func open(_ item: MediaItem, in path: Binding<[TabRoute]>) {
         path.wrappedValue.append(item.opensList ? .children(parentId: item.id, title: item.title) : .item(itemId: item.id))
+    }
+
+    @ViewBuilder
+    private func settingsDestination(_ route: TabRoute, in path: Binding<[TabRoute]>) -> some View {
+        switch route {
+        case .settings:
+            if let model = settings.current { SettingsEntryView(model: model, onExit: onExit) }
+        case .settingsPage(let id):
+            if id == .seerr {
+                // Seerr has an address field, which the shared Settings rows don't draw.
+                SeerrSettingsView(onMyRequests: { path.wrappedValue.append(.myRequests) })
+            } else if let model = settings.current {
+                SettingsPageView(pageId: id, model: model, onExit: onExit)
+            }
+        default:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private func seerrDestination(_ route: TabRoute, in path: Binding<[TabRoute]>) -> some View {
+        switch route {
+        case .seerrTitle(let type, let tmdbId):
+            SeerrTitleView(
+                type: type,
+                tmdbId: tmdbId,
+                // The library has it: its own page takes this one's place.
+                onOpenItem: { itemId in
+                    if !path.wrappedValue.isEmpty { path.wrappedValue.removeLast() }
+                    path.wrappedValue.append(.item(itemId: itemId))
+                },
+                onOpenSeerr: { openSeerr($0, in: path) }
+            )
+        case .seerrList(let kind):
+            SeerrListView(kind: kind, onOpen: { openSeerr($0, in: path) })
+        case .myRequests:
+            MyRequestsView(onOpen: { openSeerr($0, in: path) })
+        default:
+            EmptyView()
+        }
     }
 
     private func stack<Root: View>(_ path: Binding<[TabRoute]>, @ViewBuilder root: () -> Root) -> some View {
@@ -282,15 +373,13 @@ struct TabShell: View {
             root()
                 .navigationDestination(for: TabRoute.self) { route in
                     switch route {
-                    case .settings:
-                        if let model = settings.current { SettingsEntryView(model: model, onExit: onExit) }
-                    case .settingsPage(let id):
-                        if let model = settings.current { SettingsPageView(pageId: id, model: model, onExit: onExit) }
+                    case .settings, .settingsPage:
+                        settingsDestination(route, in: path)
                     case .children(let parentId, let title):
                         ChildrenView(parentId: parentId, title: title, onOpen: { open($0, in: path) }, onOpenSeries: { path.wrappedValue.append(.item(itemId: $0)) }, onExit: onExit)
                     case .item(let itemId):
                         // On iOS 18 the page zooms out of the poster that was tapped.
-                        ItemView(itemId: itemId, onOpen: { open($0, in: path) }, onOpenSeries: { path.wrappedValue.append(.item(itemId: $0)) }, onOpenPerson: { path.wrappedValue.append(.person(personId: $0)) }, onExit: onExit)
+                        ItemView(itemId: itemId, onOpen: { open($0, in: path) }, onOpenSeries: { path.wrappedValue.append(.item(itemId: $0)) }, onOpenPerson: { path.wrappedValue.append(.person(personId: $0)) }, onExit: onExit, onOpenSeerr: { openSeerr($0, in: path) })
                             .zoomDestination(itemId)
                     case .person(let personId):
                         PersonView(personId: personId, onOpen: { open($0, in: path) }, onExit: onExit)
@@ -298,6 +387,8 @@ struct TabShell: View {
                         if let filter = route.filter() {
                             FilteredListView(filter: filter, onOpen: { open($0, in: path) }, onExit: onExit)
                         }
+                    case .seerrTitle, .seerrList, .myRequests:
+                        seerrDestination(route, in: path)
                     }
                 }
         }

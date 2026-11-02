@@ -299,6 +299,7 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
         backdropBlurHash = backdropTag?.let { blurHash("Backdrop", it) },
         landscapeBlurHash = landscape?.let { (type, tag) -> blurHash(type, tag) },
         videoFormat = mediaStreams.firstOrNull { it.type == "Video" }?.toVideoFormat(),
+        fileBytes = mediaSources.firstOrNull()?.size?.takeIf { it > 0 },
         collectionType = collectionType?.takeIf { it.isNotBlank() },
         logoUrl = imageTags["Logo"]?.let { itemImageUrl(baseUrl, id, "Logo", it, LOGO_WIDTH) },
         cast = castMembers(baseUrl),
@@ -306,6 +307,7 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
         isFavorite = userData?.isFavorite == true,
         localTrailerCount = localTrailerCount ?: 0,
         remoteTrailerUrl = remoteTrailers.firstNotNullOfOrNull { trailer -> trailer.url?.takeIf { it.startsWith("https://") || it.startsWith("http://") } },
+        tmdbId = providerIds.entries.firstOrNull { it.key.equals("Tmdb", ignoreCase = true) }?.value?.toIntOrNull(),
     )
 }
 

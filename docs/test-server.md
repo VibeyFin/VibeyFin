@@ -13,6 +13,7 @@ scripts/test-server/start.sh   # idempotent: generates media, starts, completes 
   build, so a fresh pull can move to a newer one; it was 12.2.0 when this was written)
 - User `admin`, password `vibeyfin-test` (throwaway value for this local server only)
 - Stop with `podman stop vibeyfin-jellyfin`. Reset with `podman rm -f vibeyfin-jellyfin && rm -rf scripts/test-server/data/config scripts/test-server/data/cache`.
+- A Seerr linked to it starts as well, at `http://localhost:5155` ("Seerr" below).
 
 ## What `start.sh` sets up
 
@@ -240,6 +241,44 @@ speed. On the emulator add `http://10.0.2.2:8197` as the server's address (the a
 other when the proxy is stopped). Use it to turn the screen off, force Doze (`adb shell dumpsys deviceidle force-idle`), drop Wi-Fi
 (`adb shell svc wifi disable`; reconnect with `adb shell cmd wifi connect-network AndroidWifi open`) or kill the process
 (`adb shell run-as app.vibeyfin kill -9 <pid>`) in the middle of a download, and compare the file with the source (`md5sum`).
+
+## Seerr: a request server linked to the test Jellyfin
+
+Added for the Seerr integration (plan 20, roadmap Phase 8). `start.sh` runs `seerr.sh` once Jellyfin is up (`SEERR=0 scripts/test-server/start.sh`
+skips it; `scripts/test-server/seerr.sh` runs it alone). It is idempotent.
+
+- URL: `http://localhost:5155` (from the Android emulator `http://10.0.2.2:5155`). Port 5155, not Seerr's usual 5055, so a real Seerr can run next to it
+- Container: `vibeyfin-seerr`, image `ghcr.io/seerr-team/seerr:v3.5.1`, run as root inside the container so it can write its mounted
+  folder; state in `scripts/test-server/data/seerr`
+- Setup, through Seerr's API: the first sign-in as the Jellyfin `admin` links Seerr to `http://host.containers.internal:8196` (the host's
+  Jellyfin, as the container sees it) and makes `admin` Seerr's administrator; the Shows and Movies libraries are enabled; a full library scan
+  matches the library to TMDB
+- **Needs an internet connection:** Seerr looks every title up on TMDB (search, discover, details), and so does its scan
+- Sign in with any Jellyfin user. A user signing in for the first time gets Seerr's default permission, Request (no 4K, no quota). Quick Connect
+  is on in the test Jellyfin, so the app signs in without a password
+- Stop with `podman stop vibeyfin-seerr`. Reset with `podman rm -f vibeyfin-seerr && rm -rf scripts/test-server/data/seerr`
+
+Seerr can only match titles that carry a TMDB id, and the other fixtures have none (Seerr logs "Unable to find TMDb ID" for each). These two do,
+with `lockdata` so Jellyfin never looks anything up:
+
+| Fixture | Path under `media/` | What it is | Needed by |
+| --- | --- | --- | --- |
+| `seerr-movie` | `movies/Night of the Living Dead (1968)/` | 3 s clip, `<tmdbid>10331</tmdbid>` (public domain). Seerr shows it as available (`mediaInfo.status` 5, `jellyfinMediaId` the Jellyfin item) | A Seerr title that is in the library: it opens the Jellyfin item, and search leaves it out of "Not in your library" |
+| `seerr-show-e01` to `-e03` | `shows/Sherlock/Season 01/Sherlock S01E01.mkv` to `E03` | 3 s clips, the show with `<tmdbid>19885</tmdbid>`, only season 1 (all three of its episodes) | A partly available show: season 1 available, seasons 2 to 4 requestable, Specials off |
+
+What Seerr 3.5.1 was seen to do (checked while writing plan 20):
+
+- The silent sign-in works: `POST /api/v1/auth/jellyfin/quickconnect/initiate` gives `{code, secret}`; the app approves the code with
+  `POST /QuickConnect/Authorize?code=&userId=` on Jellyfin with the user's token; `POST .../quickconnect/authenticate {secret}` answers `200` with
+  the user and `Set-Cookie: connect.sid=...; Expires=<30 days>`. A code Jellyfin never issued answers `404` there, which is how a Seerr linked to
+  another Jellyfin shows up.
+- `/auth/me` and the sign-ins carry `jellyfinUserId` (32 hex digits, as Jellyfin writes it) and `displayName`, though the spec leaves them out.
+- `GET /api/v1/search?query=` refuses (`400`) any reserved character in the query, even `+` for a space or a bare `'`: it must be percent-encoded.
+- `POST /api/v1/request`: `201` with the request; a movie already requested `409`; a show whose asked-for seasons are all requested or
+  available `202` `{"message":"No seasons available to request"}`; 4K without the permission `403`. An available movie can still be requested
+  (`201`), so the app never offers it.
+- A request the requester deletes (`DELETE /api/v1/request/{id}`, `204`) takes the title back to `mediaInfo.status` 1.
+- `GET /api/v1/user/{id}/quota` without a limit is `{"movie":{"used":0,"restricted":false},"tv":{...}}` (no `limit`, no `remaining`).
 
 ## Checking it
 

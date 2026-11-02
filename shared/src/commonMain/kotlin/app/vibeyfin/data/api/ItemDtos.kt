@@ -57,6 +57,8 @@ data class BaseItemDto(
     @SerialName("MediaSources") val mediaSources: List<MediaSourceDto> = emptyList(),
     /** Trickplay thumbnails by media source id, then by width in pixels; only sent when asked for. */
     @SerialName("Trickplay") val trickplay: Map<String, Map<String, TrickplayInfoDto>> = emptyMap(),
+    /** Ids on other sites by name (`Tmdb`, `Imdb`, ...); only sent when asked for (`fields=ProviderIds`). */
+    @SerialName("ProviderIds") val providerIds: Map<String, String?> = emptyMap(),
 )
 
 /** A trailer on the web: [url] is a page to open. */

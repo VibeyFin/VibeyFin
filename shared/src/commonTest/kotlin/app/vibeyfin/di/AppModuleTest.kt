@@ -26,6 +26,9 @@ import app.vibeyfin.domain.NewTitlesPoller
 import app.vibeyfin.domain.OfflineMode
 import app.vibeyfin.domain.PlaybackCapabilitiesSource
 import app.vibeyfin.domain.ProgressSyncScheduler
+import app.vibeyfin.domain.SeerrConnection
+import app.vibeyfin.domain.SeerrRepository
+import app.vibeyfin.domain.SeerrState
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.ServerResolver
 import app.vibeyfin.testing.FakeDeviceInfo
@@ -147,6 +150,8 @@ class AppModuleTest {
         koin.get<DownloadRepository>()
         koin.get<DownloadRunner>()
         assertEquals(ConnectionState.Disconnected, koin.get<ConnectionManager>().state.value)
+        koin.get<SeerrRepository>()
+        assertEquals(SeerrState.Hidden, koin.get<SeerrConnection>().state.value)
         val info = koin.get<ClientInfoProvider>().current()
 
         assertEquals("Test phone", info.deviceName)

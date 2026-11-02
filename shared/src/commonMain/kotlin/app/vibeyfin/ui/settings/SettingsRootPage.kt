@@ -18,6 +18,19 @@ fun rootPage(v: SettingsValues): SettingsPage = SettingsPage(
             ),
         ),
         SettingsSection(
+            Strings.requestsSection,
+            Strings.seerrRowHelp,
+            items = listOf(
+                LinkItem(
+                    SettingKey.Seerr,
+                    Strings.seerr,
+                    target = SettingsPageId.Seerr,
+                    value = v.seerrStatus,
+                    visible = v.hasProfile && !v.kidsProfile && v.seerrStatus != null,
+                ),
+            ),
+        ),
+        SettingsSection(
             Strings.settingsGroupKids,
             Strings.settingsKidsFooter,
             items = listOf(

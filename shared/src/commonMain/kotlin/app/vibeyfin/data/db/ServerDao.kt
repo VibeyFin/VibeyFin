@@ -24,6 +24,12 @@ abstract class ServerDao {
     @Query("UPDATE server_addresses SET lastSuccessAt = :at WHERE serverId = :serverId AND url = :url")
     abstract suspend fun markAddressWorked(serverId: String, url: String, at: Long)
 
+    @Query("SELECT seerrUrl FROM servers WHERE id = :id")
+    abstract suspend fun getSeerrUrl(id: String): String?
+
+    @Query("UPDATE servers SET seerrUrl = :url WHERE id = :id")
+    abstract suspend fun setSeerrUrl(id: String, url: String?)
+
     @Query("DELETE FROM servers WHERE id = :id")
     abstract suspend fun delete(id: String)
 

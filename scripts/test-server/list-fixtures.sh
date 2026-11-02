@@ -48,6 +48,9 @@ FIXTURES = {
                       dict(CLIP, seconds=3, subtitles=["subrip", "subrip"])),  # external .srt files; too short for trickplay
     "download-languages": ("movies/Download Languages (2026)/Download Languages (2026).mkv",
                            dict(CLIP, seconds=10, audio=["aac", "aac"], subtitles=["subrip", "subrip", "subrip"], trickplay=True)),  # external .srt files
+    "seerr-movie": ("movies/Night of the Living Dead (1968)/Night of the Living Dead (1968).mkv",
+                    dict(CLIP, seconds=3)),  # TMDB 10331, for Seerr; too short for trickplay
+    "seerr-show-e01": ("shows/Sherlock/Season 01/Sherlock S01E01.mkv", dict(CLIP, seconds=3)),  # TMDB 19885, for Seerr
     "truncated": ("failures/Truncated (2026)/Truncated (2026).mp4",
                   dict(container="mp4", video=None, audio=[], subtitles=[], seconds=0, chapters=0,
                        segments=[], trickplay=False)),  # in the library, but nothing can be read from it

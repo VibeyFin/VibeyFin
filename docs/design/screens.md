@@ -307,6 +307,24 @@ backdrop with the details in a left column over it, then the same rows as on the
 - Portrait iPad keeps this layout when the width is regular; split-screen at compact width falls back to
   the phone layout.
 
+## Seerr
+
+Only once the profile is signed in to Seerr, never on a kids profile. The reference screens are in the design system's
+"Screens · Seerr" group: `SeerrSettingsPhone`, `SeerrSearchPhone`, `SeerrRequestPhone`, `SeerrRequestSheet`, `HomeRequestsPhone`,
+`HomeDiscoverPhone`.
+
+- **Search:** "Not in your library" is the last group, with a "Not in library" filter chip. When the library has nothing, a line says so above it.
+- **Home:** My requests right after Continue watching; Trending, Popular movies, Popular shows and Coming soon after the
+  library's rows and before the genres. Each loads on its own and is hidden when empty or failing.
+- **Title page:** the detail page's hero and layout. Status line in ink with its icon (danger for a failure). One aqua button:
+  Request, Request seasons, Request again; a quiet disabled one when there is nothing to do. Trailer, Request in 4K and Cancel
+  request beside it. Seasons, Cast (not tappable), More like this.
+- **Poster menu and season picker:** a long press on a Seerr poster anywhere. A movie's Request sends at once; a show's opens the
+  picker (All missing seasons on, Specials off, Standard / 4K when allowed). What a request came to: a snackbar on Android, the
+  banner capsule on iOS, never a dialog.
+- **Settings › Seerr:** the address field and Connect; then the address, version, "Signed in as …", requests left, My requests
+  and Disconnect (this profile only). The password sheet only when Quick Connect is off on the Jellyfin server.
+
 ## Settings
 
 Settings sits under the profile avatar on Home, never in a tab. The same pages, rows and rules on both

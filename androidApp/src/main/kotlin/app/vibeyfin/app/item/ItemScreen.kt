@@ -44,6 +44,7 @@ import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
+import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.item.ItemUiState
 import app.vibeyfin.ui.item.ItemViewModel
@@ -62,6 +63,8 @@ fun ItemRoute(
     /** A cast member's picture or name opens their page. */
     onOpenPerson: (String) -> Unit,
     onExit: (HomeExit) -> Unit,
+    /** A Seerr title in "More like this" opens its Seerr page. */
+    onOpenSeerr: (SeerrTitle) -> Unit = {},
     viewModel: ItemViewModel = koinViewModel(parameters = { parametersOf(itemId) }),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -100,6 +103,7 @@ fun ItemRoute(
             onDownloadSeason = viewModel::onDownloadSeason,
             onRemoveSeries = viewModel::onRemoveSeriesDownloads,
         ),
+        onOpenSeerr = onOpenSeerr,
     )
 
     state.downloadPrompt?.let { prompt ->
@@ -139,6 +143,7 @@ fun ItemScreen(
     onRetryAction: () -> Unit,
     onDismissMessage: () -> Unit,
     downloads: DownloadCallbacks = DownloadCallbacks.None,
+    onOpenSeerr: (SeerrTitle) -> Unit = {},
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
@@ -171,6 +176,7 @@ fun ItemScreen(
                                 item, state, wide = maxWidth >= WIDE_FROM, screenWidth = maxWidth, screenHeight = maxHeight,
                                 onPlay, onPlayEpisode, onOpen, onOpenSeries, onToggleFavorite, onTogglePlayed, onToggleEpisodePlayed, onSelectSeason, onRetrySimilar, onRetryCollections, onRetrySeasons, onRetryEpisodes, onOpenPerson, onRetryExtras,
                                 downloads = downloads,
+                                onOpenSeerr = onOpenSeerr,
                             )
                         }
                     }
@@ -218,6 +224,7 @@ private fun ItemPage(
     onOpenPerson: (String) -> Unit,
     onRetryExtras: () -> Unit,
     downloads: DownloadCallbacks,
+    onOpenSeerr: (SeerrTitle) -> Unit,
 ) {
     val margin = if (wide) VibeyFinTokens.Space.s6 else screenMargin()
     val sections: @Composable () -> Unit = {
@@ -239,8 +246,8 @@ private fun ItemPage(
                 MediaRowSection(row, margin, onOpen, onSeeAll = null, onRetry = onRetryCollections, tileWidth = if (wide) POSTER_WIDE else VibeyFinTokens.Size.posterWidth)
             }
 
-            state.similar?.takeIf { it.isVisible }?.let { row ->
-                MediaRowSection(row, margin, onOpen, onSeeAll = null, onRetry = onRetrySimilar, tileWidth = if (wide) POSTER_WIDE else VibeyFinTokens.Size.posterWidth)
+            state.similar?.takeIf { it.isVisible || state.similarTiles.isNotEmpty() }?.let { row ->
+                SimilarSection(row, state.similarTiles, margin, onOpen, onOpenSeerr, onRetry = onRetrySimilar, tileWidth = if (wide) POSTER_WIDE else VibeyFinTokens.Size.posterWidth)
             }
 
             if (state.technical.isNotEmpty()) TechnicalInfo(state.technical)

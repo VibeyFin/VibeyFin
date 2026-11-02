@@ -6,6 +6,8 @@ struct SearchView: View {
     @StateObject private var model = SearchObservable()
     @State private var text = ""
 
+    /// A Seerr title was tapped: its Seerr page, or the library's when the library has it.
+    var onOpenSeerr: (SeerrTitle) -> Void = { _ in }
     let onOpenResult: (SearchResult) -> Void
     let onExit: (HomeExit) -> Void
 
@@ -61,13 +63,14 @@ struct SearchView: View {
                 } else {
                     prompt(Strings.shared.searchPrompt, Strings.shared.searchPromptHelp)
                 }
-            } else if state.message == nil && state.noResults == false && state.groups.isEmpty {
-                VStack(spacing: Space.s3) { chips(state); skeleton }
+            } else if state.message == nil && state.noResults == false && state.searched.isEmpty {
+                // The first answer for this text is on its way.
+                VStack(spacing: Space.s2) { chips(state); skeleton }
             } else if let message = state.message {
                 LoadErrorView(message: message, onRetry: { model.retry() }).screenMargin()
             } else if state.noResults {
                 VStack(spacing: 0) { chips(state); prompt(Strings.shared.noSearchResults(query: state.searched), state.offline ? Strings.shared.offlineSearchEmpty : Strings.shared.noSearchResultsHelp) }
-            } else if state.groups.isEmpty {
+            } else if state.searched.isEmpty {
                 skeleton
             } else {
                 results(state)
@@ -129,6 +132,13 @@ struct SearchView: View {
         chips(state)
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Space.s2) {
+                // The library had nothing, but Seerr's group follows: say so above it (issue #14).
+                if state.libraryNoMatch {
+                    Text(Strings.shared.libraryNoMatch(query: state.searched))
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, Space.s3)
+                }
                 ForEach(state.visibleGroups, id: \.kind) { group in
                     Text(group.title.titleCased())
                         .sectionTitle()
@@ -147,12 +157,45 @@ struct SearchView: View {
                         }
                     }
                 }
+                if let seerr = state.seerrGroup {
+                    seerrGroup(seerr, titled: state.filter != .notinlibrary)
+                }
             }
             .screenMargin()
             .padding(.vertical, Space.s2)
             // The older answer stays while the next one is on its way, dimmed.
             .opacity(state.loading ? 0.5 : 1)
         }
+        }
+    }
+
+    /// Seerr's titles that aren't in the library, always last: the heading (left out when the filter shows nothing else), then the
+    /// tiles, three grey tiles while Seerr answers, or why it didn't.
+    @ViewBuilder
+    private func seerrGroup(_ seerr: SeerrSearch, titled: Bool) -> some View {
+        if titled {
+            Text(Strings.shared.seerrNotInLibrary.titleCased())
+                .sectionTitle()
+                .accessibilityAddTraits(.isHeader)
+                .padding(.top, Space.s3)
+        }
+        if let failed = seerr as? SeerrSearchFailed {
+            LoadErrorView(message: failed.message, onRetry: { model.retrySeerr() })
+        } else {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
+                if let found = seerr as? SeerrSearchFound {
+                    ForEach(found.titles, id: \.self) { title in
+                        // A tap opens its Seerr page; a long press its Seerr menu (Request, Details, Trailer).
+                        Button {
+                            model.resultOpened()
+                            onOpenSeerr(title)
+                        } label: { SeerrPosterTile(title: title) }
+                            .seerrTileButton(title)
+                    }
+                } else {
+                    ForEach(0..<3, id: \.self) { _ in SeerrPosterPlaceholder() }
+                }
+            }
         }
     }
 
@@ -220,17 +263,27 @@ struct SearchView: View {
         }
     }
 
+    /// Grey tiles, laid out as the results are (same spacing, padding and margins), so the first answer
+    /// replaces them without anything moving.
     private var skeleton: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
-            ForEach(0..<6, id: \.self) { _ in
-                VStack(alignment: .leading, spacing: Space.s2) {
-                    SkeletonBlock().aspectRatio(2.0 / 3.0, contentMode: .fit)
-                    SkeletonLine(font: .subheadline, width: 80)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: Space.s2) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
+                    ForEach(0..<6, id: \.self) { _ in
+                        VStack(alignment: .leading, spacing: Space.s2) {
+                            SkeletonBlock().aspectRatio(2.0 / 3.0, contentMode: .fit)
+                            // A title and the line under it, as a result's tile has
+                            VStack(alignment: .leading, spacing: 2) {
+                                SkeletonLine(font: .subheadline, width: 80)
+                                SkeletonLine(font: .caption, width: 48)
+                            }
+                        }
+                    }
                 }
             }
+            .screenMargin()
+            .padding(.vertical, Space.s2)
         }
-        .screenMargin()
-        .padding(.top, Space.s2)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .scrollDisabled(true)
     }
 }

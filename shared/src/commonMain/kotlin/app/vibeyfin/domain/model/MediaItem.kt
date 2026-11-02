@@ -64,6 +64,8 @@ data class MediaItem(
     val landscapeBlurHash: String? = null,
     /** The file's video picture; null when the server wasn't asked for streams or the item has no video. */
     val videoFormat: VideoFormat? = null,
+    /** How much storage the file takes on the server, in bytes; null when the server wasn't asked for its sources or doesn't know. */
+    val fileBytes: Long? = null,
     /** On a library: what it holds (`movies`, `tvshows`, `music`, ...); null for mixed content or anything that is not a library. */
     val collectionType: String? = null,
     /** The item's `Logo` image (its title as artwork), when it has one. */
@@ -78,6 +80,8 @@ data class MediaItem(
     val localTrailerCount: Int = 0,
     /** The first trailer on the web, a page to open; null when the server knows none. */
     val remoteTrailerUrl: String? = null,
+    /** TMDB's id for it, when the server knows it (detail pages only): what Seerr names it by. */
+    val tmdbId: Int? = null,
 ) {
     /** How far in the user is, from 0 to 1; null when they haven't started or the length isn't known. */
     val progress: Float?

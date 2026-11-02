@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
@@ -105,7 +106,7 @@ fun SectionCard(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun RowText(title: String, help: String?, modifier: Modifier = Modifier, titleColor: Color = MaterialTheme.colorScheme.onSurface) {
+internal fun RowText(title: String, help: String?, modifier: Modifier = Modifier, titleColor: Color = MaterialTheme.colorScheme.onSurface) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1 / 2)) {
         Text(text = title, style = MaterialTheme.typography.titleMedium, color = titleColor)
 
@@ -114,7 +115,7 @@ private fun RowText(title: String, help: String?, modifier: Modifier = Modifier,
 }
 
 @Composable
-private fun RowFrame(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
+internal fun RowFrame(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
     Row(
         modifier = modifier.fillMaxWidth().heightIn(min = VibeyFinTokens.Size.touch + VibeyFinTokens.Space.s2).padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s3),
         verticalAlignment = Alignment.CenterVertically,
@@ -142,6 +143,7 @@ private fun iconFor(key: SettingKey): ImageVector? = when (key) {
     SettingKey.HomeGenreRows, SettingKey.HomeHeroItems -> Icons.Filled.Home
     SettingKey.Notifications -> Icons.Filled.Notifications
     SettingKey.KidsProfile, SettingKey.Pin -> Icons.Filled.Lock
+    SettingKey.Seerr -> Icons.Filled.Add
     else -> Icons.Filled.Info
 }
 

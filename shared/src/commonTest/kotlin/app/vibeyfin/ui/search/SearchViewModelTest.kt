@@ -40,7 +40,7 @@ class SearchViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(SearchViewModel(app.library, app.searchHistory, app.connection, app.offline, app.offlineLibrary))
+    private fun viewModel() = viewModels.track(SearchViewModel(app.library, app.searchHistory, app.connection, app.offline, app.offlineLibrary, app.seerr, app.seerrRepository))
 
     private fun hints(vararg items: String) = """{"SearchHints":[${items.joinToString(",")}],"TotalRecordCount":${items.size}}"""
 

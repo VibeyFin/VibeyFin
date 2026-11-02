@@ -364,4 +364,18 @@ printf '1\n00:00:00,500 --> 00:00:09,500\nDeutscher Untertitel\n' > "${LANGS}/Do
 printf '1\n00:00:00,500 --> 00:00:09,500\nForced English subtitle\n' > "${LANGS}/Download Languages (2026).en.forced.srt"
 echo "<movie><title>Download Languages</title><lockdata>true</lockdata><year>2026</year></movie>" > "${LANGS}/movie.nfo"
 
+# ---- Seerr fixtures (docs/test-server.md "Seerr"): real TMDB ids, so Seerr matches them to its catalogue ----
+# Night of the Living Dead (1968, public domain, TMDB 10331): a whole movie, which Seerr shows as available.
+NOTLD="${MEDIA}/movies/Night of the Living Dead (1968)"
+clip "${NOTLD}/Night of the Living Dead (1968).mkv"
+echo '<movie><title>Night of the Living Dead</title><lockdata>true</lockdata><year>1968</year><tmdbid>10331</tmdbid><uniqueid type="tmdb" default="true">10331</uniqueid><genre>Horror</genre></movie>' > "${NOTLD}/movie.nfo"
+# Sherlock (2010, TMDB 19885): season 1 only (its three episodes), so Seerr shows the series as partly available.
+SHERLOCK="${MEDIA}/shows/Sherlock"
+mkdir -p "$SHERLOCK"
+echo '<tvshow><title>Sherlock</title><lockdata>true</lockdata><year>2010</year><tmdbid>19885</tmdbid><uniqueid type="tmdb" default="true">19885</uniqueid><genre>Crime</genre></tvshow>' > "${SHERLOCK}/tvshow.nfo"
+for n in 1 2 3; do
+  clip "${SHERLOCK}/Season 01/Sherlock S01E0${n}.mkv"
+  episode_nfo "${SHERLOCK}/Season 01/Sherlock S01E0${n}" "Episode ${n}" 1 "$n" ""
+done
+
 echo "Media ready under ${MEDIA}"

@@ -15,6 +15,8 @@ class ServerEntity(
     val name: String,
     val version: String?,
     val addedAt: Long,
+    /** The Seerr linked to this server (its root URL), shared by every profile on it; null when none is set up. */
+    val seerrUrl: String? = null,
 )
 
 /** One way to reach a server. [lastSuccessAt] is null until the address has worked once. */
@@ -60,6 +62,24 @@ class AccountEntity(
     val imageTag: String?,
     val sealedToken: ByteArray?,
     val lastUsedAt: Long,
+    /** The profile's Seerr session cookie, sealed like [sealedToken]; null when it isn't signed in to Seerr. */
+    val sealedSeerrSession: ByteArray? = null,
+    /** The profile's user id on Seerr, while [sealedSeerrSession] is set. */
+    val seerrUserId: Int? = null,
+    /** The profile disconnected Seerr: it isn't signed in to it again by itself, though the server keeps its address. */
+    @ColumnInfo(defaultValue = "0")
+    val seerrOff: Boolean = false,
+    /** The Seerr session came from the Jellyfin password (Quick Connect was off), so it is asked again when it ends. */
+    @ColumnInfo(defaultValue = "0")
+    val seerrPasswordSignIn: Boolean = false,
+)
+
+/** What [AccountDao.getSeerrProfile] reads: a profile's Seerr session and whether it turned Seerr off. */
+class SeerrProfileRow(
+    val sealedSeerrSession: ByteArray?,
+    val seerrUserId: Int?,
+    val seerrOff: Boolean,
+    val seerrPasswordSignIn: Boolean,
 )
 
 /** Per-profile settings. Each option becomes one column here as it is added. */

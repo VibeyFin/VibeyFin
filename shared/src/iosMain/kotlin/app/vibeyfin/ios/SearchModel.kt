@@ -28,5 +28,7 @@ class SearchModel {
 
     fun onRetry() = host.viewModel.onRetry()
 
+    fun onSeerrRetry() = host.viewModel.onSeerrRetry()
+
     fun close() = host.close()
 }

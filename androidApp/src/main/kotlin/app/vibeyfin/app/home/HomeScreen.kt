@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -57,6 +58,7 @@ import app.vibeyfin.app.components.ContinueCard
 import app.vibeyfin.app.components.ContinueSkeletonCards
 import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.components.MediaRowSection
+import app.vibeyfin.app.components.MenuHeader
 import app.vibeyfin.app.components.PosterSkeletonRow
 import app.vibeyfin.app.components.ROW_FADE_MS
 import app.vibeyfin.app.components.RowPhase
@@ -70,11 +72,13 @@ import app.vibeyfin.app.downloads.DownloadBadgeIcon
 import app.vibeyfin.app.downloads.RemoveConfirmDialog
 import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
+import app.vibeyfin.app.seerr.SeerrRowSection
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.model.MediaItem
+import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.downloads.DownloadAction
 import app.vibeyfin.ui.downloads.DownloadBadge
@@ -88,6 +92,9 @@ import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.home.HomeUiState
 import app.vibeyfin.ui.home.HomeViewModel
 import app.vibeyfin.ui.home.SeeAll
+import app.vibeyfin.ui.seerr.SeerrHomeUiState
+import app.vibeyfin.ui.seerr.SeerrHomeViewModel
+import app.vibeyfin.ui.seerr.SeerrListKind
 import org.koin.androidx.compose.koinViewModel
 import app.vibeyfin.ui.home.ContinueCard as ContinueCardState
 
@@ -100,16 +107,24 @@ fun HomeRoute(
     onPlay: (String) -> Unit,
     onDetails: (String) -> Unit,
     onOpenList: (HomeFilter) -> Unit,
+    onOpenSeerr: (SeerrTitle) -> Unit = {},
+    onSeerrSeeAll: (SeerrListKind) -> Unit = {},
+    onMyRequests: () -> Unit = {},
     viewModel: HomeViewModel = koinViewModel(),
+    seerrModel: SeerrHomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val seerr by seerrModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.exit) {
         state.exit?.let(onExit)
     }
 
     // Back from another screen, or from the background: something may have been watched elsewhere
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onForeground() }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        viewModel.onForeground()
+        seerrModel.onForeground()
+    }
 
     LaunchedEffect(state.openList) {
         state.openList?.let {
@@ -142,7 +157,14 @@ fun HomeRoute(
         onDismissRemoval = viewModel::onDismissRemoval,
         onRetryAction = viewModel::onRetryAction,
         onDismissMessage = viewModel::onDismissMessage,
-        onRefresh = viewModel::onRefresh,
+        onRefresh = {
+            viewModel.onRefresh()
+            seerrModel.onRefresh()
+        },
+        seerr = seerr,
+        onOpenSeerr = onOpenSeerr,
+        onSeerrSeeAll = onSeerrSeeAll,
+        onMyRequests = onMyRequests,
         onRetryContinue = viewModel::onRetryContinue,
         onRetryRow = viewModel::onRetryRow,
         onSeeAll = { target ->
@@ -183,6 +205,10 @@ fun HomeScreen(
     onPickOption: (String) -> Unit,
     onDismissSheet: () -> Unit,
     onRetrySheet: () -> Unit,
+    seerr: SeerrHomeUiState = SeerrHomeUiState(),
+    onOpenSeerr: (SeerrTitle) -> Unit = {},
+    onSeerrSeeAll: (SeerrListKind) -> Unit = {},
+    onMyRequests: () -> Unit = {},
 ) {
     val margin = screenMargin()
 
@@ -202,6 +228,7 @@ fun HomeScreen(
                 )
                 Content(
                     state, margin, onOpen, onPlay, onDetails, onHeroMyList, onHeroPlay, { menuCard = it }, onRefresh, onRetryContinue, onRetryRow, onSeeAll,
+                    seerr, onOpenSeerr, onSeerrSeeAll, onMyRequests,
                 )
             }
         }
@@ -215,12 +242,8 @@ fun HomeScreen(
     menuCard?.let { card ->
         ModalBottomSheet(onDismissRequest = { menuCard = null }) {
             Column(Modifier.padding(bottom = VibeyFinTokens.Space.s5)) {
-                Text(
-                    text = card.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(horizontal = margin, vertical = VibeyFinTokens.Space.s2),
-                )
+                MenuHeader(card.title, card.subtitle, card.imageUrl, aspectRatio = 16f / 9f, pictureWidth = 72.dp)
+                HorizontalDivider(Modifier.padding(horizontal = margin), color = MaterialTheme.colorScheme.outlineVariant)
                 SheetAction(Strings.details, Icons.Default.Info) {
                     menuCard = null
 
@@ -324,6 +347,10 @@ private fun Content(
     onRetryContinue: () -> Unit,
     onRetryRow: (String) -> Unit,
     onSeeAll: (SeeAll) -> Unit,
+    seerr: SeerrHomeUiState,
+    onOpenSeerr: (SeerrTitle) -> Unit,
+    onSeerrSeeAll: (SeerrListKind) -> Unit,
+    onMyRequests: () -> Unit,
 ) {
     val refreshState = rememberPullToRefreshState()
 
@@ -370,23 +397,39 @@ private fun Content(
 
             fullWidth(key = "continue") { ContinueWatching(state.continueRow, margin, onPlay, onDetails, onLongPress, onRetryContinue) }
 
+            // The profile's own Seerr news sits with resume, above discovery
+            seerr.requests?.let { row -> fullWidth(key = "seerr-requests", contentType = SEERR_ROW) { SeerrRowSection(row, margin, onOpenSeerr, onSeeAll = onMyRequests) } }
+
             if (state.loadingLibraries && state.rows.isEmpty()) {
                 repeat(PLACEHOLDER_ROWS) { index ->
-                    fullWidth(key = "placeholder-$index") { RowPlaceholder(margin) }
+                    fullWidth(key = "placeholder-$index", contentType = PLACEHOLDER_ROW) { RowPlaceholder(margin) }
                 }
             }
 
-            state.rows.forEach { row ->
-                fullWidth(key = row.id) { MediaRowSection(row, margin, onOpen, onSeeAll, onRetry = { onRetryRow(row.id) }) }
+            // The library's rows, then Seerr's discover rows, then the genres
+            state.rows.forEachIndexed { index, row ->
+                if (index == state.firstGenreRow) seerrDiscover(seerr, margin, onOpenSeerr, onSeerrSeeAll)
+                fullWidth(key = row.id, contentType = MEDIA_ROW) { MediaRowSection(row, margin, onOpen, onSeeAll, onRetry = { onRetryRow(row.id) }) }
             }
+            if (state.firstGenreRow >= state.rows.size) seerrDiscover(seerr, margin, onOpenSeerr, onSeerrSeeAll)
         }
     }
 }
 
-private fun LazyGridScope.fullWidth(key: String, animate: Boolean = true, content: @Composable () -> Unit) {
+private fun LazyGridScope.seerrDiscover(seerr: SeerrHomeUiState, margin: Dp, onOpen: (SeerrTitle) -> Unit, onSeeAll: (SeerrListKind) -> Unit) {
+    seerr.discover.forEach { row ->
+        val kind = row.kind ?: return@forEach
+
+        fullWidth(key = "seerr-${kind.name}", contentType = SEERR_ROW) { SeerrRowSection(row, margin, onOpen, onSeeAll = { onSeeAll(kind) }) }
+    }
+}
+
+private fun LazyGridScope.fullWidth(key: String, animate: Boolean = true, contentType: String = key, content: @Composable () -> Unit) {
     // Rows that arrive, leave or change height slide and fade into place instead of snapping, so nothing jumps. The hero does not:
     // its gray card is simply there, and the hero fades into it in place.
-    item(key = key, span = { GridItemSpan(maxLineSpan) }, contentType = "row") { Box(if (animate) Modifier.animateItem() else Modifier) { content() } }
+    // One content type per kind of row, so a row scrolled away is reused only for a row drawn the same way (a library row for a
+    // library row, a Seerr row for a Seerr row), instead of being torn down and rebuilt as a different one mid-fling.
+    item(key = key, span = { GridItemSpan(maxLineSpan) }, contentType = contentType) { Box(if (animate) Modifier.animateItem() else Modifier) { content() } }
 }
 
 /** The row of what the user is in the middle of. Its cards run past the grid's margins to the screen edge. */
@@ -446,3 +489,7 @@ private fun RowPlaceholder(margin: Dp) {
         PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin))
     }
 }
+
+private const val MEDIA_ROW = "media-row"
+private const val SEERR_ROW = "seerr-row"
+private const val PLACEHOLDER_ROW = "placeholder-row"

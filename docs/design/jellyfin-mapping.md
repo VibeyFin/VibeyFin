@@ -74,3 +74,21 @@ time. Home's own rows (Continue watching, Recently added, genres) are not filter
 - My List: `POST` / `DELETE /UserFavoriteItems/{id}`.
 - Like (thumbs, cut from the roadmap): `POST` / `DELETE /UserItems/{id}/Rating`, read from `UserData.Likes`.
 - Sign-in: `POST /Users/AuthenticateByName`, or Quick Connect (`/QuickConnect/Initiate` → poll → authenticate with the secret).
+
+## Seerr
+
+Seerr is optional: nothing below shows until the profile is signed in to one (Settings › Requests › Seerr), and never on a kids
+profile. Base path `/api/v1`; the session is the `connect.sid` cookie (see roadmap Phase 8).
+
+| UI | Seerr field / endpoint | Notes |
+| --- | --- | --- |
+| "Not in your library" in Search | `GET /search?query=` (percent-encode everything but `A–Z a–z 0–9 - . _ ~`) | Movies and shows only. Leave out a result whose `mediaInfo.jellyfinMediaId` is set or whose `mediaInfo.status` is 4 or 5: the library's own groups have it. |
+| Poster marker | `mediaInfo.status` (+ latest request's `status`) | 2 Requested, 3 Approved (Failed when the latest request is 4), 4 Partly available, 5 Available; nothing: the + disc; latest request 3 Declined. Ink on `scrim`, never aqua; one badge per card. |
+| Opens the library's page | `mediaInfo.jellyfinMediaId` | Missing from Seerr's spec but sent; when set (and the title is available or partly available) the Seerr page gives way to the Jellyfin item. |
+| Title page | `GET /movie/{id}`, `GET /tv/{id}`, `.../recommendations` | Facts: year, US certification (`releases` / `contentRatings`), `runtime` or `episodeRunTime[0]`. Trailer: first `relatedVideos` with `site` YouTube and `type` Trailer. Seasons' state: `mediaInfo.seasons[].status`, else an open request for that season. |
+| Request | `POST /request` | `seasons` a list of numbers (never `all` from the picker, so Specials stay out unless picked); `is4k` only with the permission (bits 1024/2048/4096, or admin 2) and `movie4kEnabled` / `series4kEnabled`. `202` "No seasons available" means nothing was left to ask for; `409` already requested; `403` quota or permission (read `/user/{id}/quota` to tell them apart). |
+| Cancel request | `DELETE /request/{id}` | Only the requester's own, while it waits for approval (`status` 1). |
+| My requests | `GET /request?requestedBy={me}&sort=modified` | The list has no titles or posters: each is read with `/movie/{id}` or `/tv/{id}`, a few at a time, once per session. Home's row: on their way, or arrived / declined in the last 7 days. |
+| Discover rows | `/discover/trending`, `/discover/movies`, `/discover/tv`, `/discover/movies/upcoming` + `/discover/tv/upcoming` | 20 each; Coming soon merges the two upcoming lists by `releaseDate` / `firstAirDate` and shows the day. People are left out. |
+| Artwork | TMDB: `https://image.tmdb.org/t/p/w342{posterPath}`, `w1280{backdropPath}`, `w185{profilePath}` | As Seerr's own web app loads it. |
+

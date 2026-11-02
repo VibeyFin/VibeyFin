@@ -54,6 +54,7 @@ class ServerRepository(
     /** Removes the server with its addresses and profiles, and releases their stored tokens. */
     suspend fun delete(id: String) {
         accountDao.getSealedTokens(id).forEach(vault::discard)
+        accountDao.getSealedSeerrSessions(id).forEach(vault::discard)
         // The rows go first: that ends any download of the server still coming in, before its folder is deleted.
         serverDao.delete(id)
         files.delete(id)
