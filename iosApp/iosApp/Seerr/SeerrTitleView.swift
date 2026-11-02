@@ -290,25 +290,46 @@ private struct SeerrSeasonsView: View {
     }
 }
 
-/// A state's symbol. Not in your library is the Library tab's symbol with one diagonal line through it (SF Symbols has no
-/// such symbol); the others are `SeerrMarker`'s.
+/// A state's symbol. Not in your library is the Library tab's symbol as an outline with one diagonal line through it (SF Symbols
+/// has no such symbol); the others are `SeerrMarker`'s. A gap is cut either side of the line, as SF Symbols' slashed symbols do,
+/// so it reads at small sizes.
 struct SeerrStateSymbol: View {
     let state: RequestState
 
     var body: some View {
         if state == .notrequested {
             Image(systemName: "play.rectangle.on.rectangle")
+                .symbolVariant(.none)
+                .mask {
+                    GeometryReader { proxy in
+                        Rectangle()
+                            .overlay {
+                                Self.slash(in: proxy.size)
+                                    .stroke(style: StrokeStyle(lineWidth: Self.lineWidth(proxy.size) * 2.5, lineCap: .round))
+                                    .blendMode(.destinationOut)
+                            }
+                            .compositingGroup()
+                    }
+                }
                 .overlay {
                     GeometryReader { proxy in
-                        Path { path in
-                            path.move(to: CGPoint(x: proxy.size.width * 0.08, y: proxy.size.height * 0.08))
-                            path.addLine(to: CGPoint(x: proxy.size.width * 0.92, y: proxy.size.height * 0.92))
-                        }
-                        .stroke(style: StrokeStyle(lineWidth: max(1.5, proxy.size.width / 12), lineCap: .round))
+                        Self.slash(in: proxy.size)
+                            .stroke(style: StrokeStyle(lineWidth: Self.lineWidth(proxy.size), lineCap: .round))
                     }
                 }
         } else {
             Image(systemName: SeerrMarker.symbol(state))
+        }
+    }
+
+    private static func lineWidth(_ size: CGSize) -> CGFloat {
+        max(1.5, size.width / 12)
+    }
+
+    private static func slash(in size: CGSize) -> Path {
+        Path { path in
+            path.move(to: CGPoint(x: size.width * 0.08, y: size.height * 0.08))
+            path.addLine(to: CGPoint(x: size.width * 0.92, y: size.height * 0.92))
         }
     }
 }
