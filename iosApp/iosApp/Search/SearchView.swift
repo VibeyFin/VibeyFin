@@ -268,7 +268,7 @@ struct SearchView: View {
     private var skeleton: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Space.s2) {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s3,  alignment: .top)], alignment: .leading, spacing: Space.s4) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
                     ForEach(0..<6, id: \.self) { _ in
                         VStack(alignment: .leading, spacing: Space.s2) {
                             SkeletonBlock().aspectRatio(2.0 / 3.0, contentMode: .fit)
