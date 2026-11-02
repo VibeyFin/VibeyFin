@@ -411,3 +411,29 @@ the left, the chosen page on the right.
 - Android: a plain two-column layout at the existing 600dp breakpoint (not `material3-adaptive`), the selected
   row in an `accent-soft` pill.
 - At compact width (Split View, a folded device) it collapses to the phone's push navigation.
+
+## Sign-in
+
+From first launch to Home, and back out. The mockups are **SignInFlow** (the map), **ServersPhone**, **AddServerPhone**,
+**WhoIsWatchingPhone**, **SignInSheetPhone**, **QuickConnectPhone** and **SignInTablet**; their READMEs hold the details.
+
+- **Headers:** the app's header row on every page (`TabHeader`: the title at the left, a round button in the profile's place;
+  on Who's watching? that is the server button, with Switch server and Server details), at the tab header's size (iOS `.title2`
+  bold, Android `headlineSmall`). Pushed pages add the platform's back button above it; sub-pages match Settings; sheets match
+  the app's sheets.
+- **First launch:** the wordmark, "Connect to your Jellyfin server to start watching." and **Add server** (aqua). Android searches
+  the network and lists what answers; iOS can't search (no multicast entitlement) and says where to find the address instead.
+- **Servers:** a card per saved server (name, the address that worked last, version, how many addresses and profiles), a menu with
+  **Server details** (its addresses, add or remove one) and **Remove server** (asks first; signs out its profiles on this device and
+  deletes their downloads). Android adds "On your network".
+- **Add a server:** a labelled field with help under it, focused on open; Connect → Found (or "you already have this server") →
+  **Add server**, which goes straight to that server's Who's watching?. A failure is said under the field, which keeps the text.
+- **Who's watching?:** the server's name over the title, a tile per profile (lock badge when it needs a password or a PIN), then
+  **Quick Connect** (only when the server allows it) and **Other user**. Grey tiles while loading; the tapped tile shows a spinner;
+  a 401 lands here with a note naming the profile; an unreachable server says which addresses were tried.
+- **Password sheets:** focused on open, show/hide, autofill and paste allowed, the error under the field, **Use Quick Connect
+  instead** when it is on. The password is never stored.
+- **Quick Connect:** steps, the code in two groups with copy, "Waiting for approval · code expires in 4:32", then Approved →
+  Home. Expired: **Get a new code**. Off: **Sign in with password**. The polling resumes when the app comes back to the front.
+- **Tablets:** Who's watching? centred with 140 tiles; sheets as an iPad form sheet or Android's centred bottom sheet; forms in one
+  480-wide column.

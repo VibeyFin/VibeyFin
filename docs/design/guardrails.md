@@ -71,6 +71,12 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 ## Sign-in and profiles
 
 - Server discovery on the local network first, manual URL second. Offer Quick Connect alongside username / password.
+- iOS has no network search until VibeyFin holds Apple's multicast entitlement; its first screen asks for the address and never shows an empty "On your network".
+- Quick Connect shows only when the server says it is on (`/QuickConnect/Enabled`), on the grid and in the password sheets. It signs in whoever approves the code. Closing its sheet stops the polling; coming back to the app resumes it.
+- Password fields allow paste, password managers and show/hide. The password is sent once and dropped; only the token is kept.
+- A sign-in error is said under its field, in `danger` with an icon, the text kept. A session that ended (401) is a note in `ink-muted`, not an error.
+- A saved address that now answers as a different server (another server ID from `/System/Info/Public`) is skipped as if it didn't answer, and a 401 from it never locks a profile.
+- Removing a server asks first, then signs out its profiles on this device (their tokens and downloads go); nothing changes on the server. A server's last address can't be removed on its own.
 - Multiple users on the server → profile picker on launch, remembered per device.
 - A tapped notification never signs a profile in and never bypasses a PIN: it opens its title only for the profile signed in now. For another profile the app either does nothing (iOS) or goes to "Who's watching?" (Android, only when the signed-in profile's PIN doesn't guard switching), where that profile is picked the usual way.
 
