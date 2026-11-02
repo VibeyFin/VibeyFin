@@ -60,7 +60,7 @@ class ServerConnectorTest {
         val reached = app.connector.firstAnswer("srv-1", token = "t") { it.me() }
 
         assertEquals(ApiError.Unauthorized, (reached!!.result as ApiResult.Failure).error)
-        assertEquals(1, app.jellyfin.requests.size)
+        assertEquals(1, app.jellyfin.requestsTo("GET", "/Users/Me").size)
     }
 
     @Test
@@ -84,5 +84,37 @@ class ServerConnectorTest {
 
         assertEquals("https://jelly.example.com", api!!.baseUrl)
         assertEquals(emptyList(), app.jellyfin.requests)
+    }
+
+    @Test
+    fun anAddressNowAnsweringAsAnotherServerIsSkippedForTheRun() = runTest {
+        saveWithTwoAddresses()
+        app.jellyfin.server("https://jelly.example.com").apply {
+            on("GET", "/Users/Me", Reply.status(HttpStatusCode.Unauthorized))
+            on("GET", "/System/Info/Public", Reply.json("""{"Id":"someone-else"}"""))
+        }
+        app.jellyfin.server("http://lan:8096").on("GET", "/Users/Me", Reply.json("""{"Id":"u1"}"""))
+
+        val reached = app.connector.firstAnswer("srv-1", token = "t") { it.me() }
+        app.connector.firstAnswer("srv-1", token = "t") { it.me() }
+
+        assertEquals("http://lan:8096", reached!!.api.baseUrl)
+        assertIs<ApiResult.Success<*>>(reached.result)
+        assertEquals(1, app.jellyfin.requestsTo("GET", "/Users/Me").count { it.address == "https://jelly.example.com" })
+        assertEquals("http://lan:8096", app.connector.apiFor("srv-1", null)!!.baseUrl)
+    }
+
+    @Test
+    fun aRejectionFromTheSameServerStillCounts() = runTest {
+        saveWithTwoAddresses()
+        app.jellyfin.server("https://jelly.example.com").apply {
+            on("GET", "/Users/Me", Reply.status(HttpStatusCode.Unauthorized))
+            on("GET", "/System/Info/Public", Reply.json("""{"Id":"srv-1"}"""))
+        }
+
+        val reached = app.connector.firstAnswer("srv-1", token = "t") { it.me() }
+
+        assertEquals("https://jelly.example.com", reached!!.api.baseUrl)
+        assertEquals(ApiError.Unauthorized, (reached.result as ApiResult.Failure).error)
     }
 }

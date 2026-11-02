@@ -9,8 +9,10 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.AttributeKey
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -43,13 +45,16 @@ internal val TokenAttribute = AttributeKey<String>("VibeyFinToken")
  * report it in [JellyfinApi], which every authenticated request goes through.
  */
 class UnauthorizedEvents {
-    private val events = MutableSharedFlow<String>(extraBufferCapacity = 16)
+    data class Rejection(val token: String, val baseUrl: String)
 
-    /** The rejected tokens. */
-    val tokens: SharedFlow<String> get() = events
+    private val events = MutableSharedFlow<Rejection>(extraBufferCapacity = 16)
 
-    internal fun report(token: String) {
-        events.tryEmit(token)
+    val rejections: SharedFlow<Rejection> get() = events
+
+    val tokens: Flow<String> get() = events.map { it.token }
+
+    internal fun report(token: String, baseUrl: String) {
+        events.tryEmit(Rejection(token, baseUrl))
     }
 }
 

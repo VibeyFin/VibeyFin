@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -118,6 +119,24 @@ class ConnectionManagerTest {
         server.on("GET", "/Users/Me", Reply.status(HttpStatusCode.Unauthorized))
 
         app.jellyfin.api(address, token = "an-old-token").me()
+
+        assertIs<ConnectionState.Connected>(app.connection.state.value)
+        assertEquals("token-1", app.accounts.sessionToken("srv-1", "u1"))
+    }
+
+    @Test
+    fun aRejectionFromAnotherServerNowAtTheAddressKeepsTheSession() = runTest {
+        val server = signedInProfile()
+        server.on("GET", "/Users/Me", Reply.json("""{"Id":"u1"}"""))
+        app.connection.activate("srv-1", "u1")
+        val api = assertIs<ConnectionState.Connected>(app.connection.state.value).api
+        server.on("GET", "/Users/Me", Reply.status(HttpStatusCode.Unauthorized))
+        server.on("GET", "/System/Info/Public", Reply.json("""{"Id":"someone-else"}"""))
+
+        api.me()
+        repeat(10) { yield() }
+
+        assertEquals(1, app.jellyfin.requestsTo("GET", "/System/Info/Public").size)
 
         assertIs<ConnectionState.Connected>(app.connection.state.value)
         assertEquals("token-1", app.accounts.sessionToken("srv-1", "u1"))

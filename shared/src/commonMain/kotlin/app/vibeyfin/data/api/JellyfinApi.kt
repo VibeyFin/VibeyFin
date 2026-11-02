@@ -34,6 +34,9 @@ class JellyfinApi(
     /** The same server, signed in with [token]. */
     fun withToken(token: String?) = JellyfinApi(http, baseUrl, token, unauthorized, retries, reachability)
 
+    /** `GET /System/Info/Public`: which server answers at this address. */
+    suspend fun publicSystemInfo(): ApiResult<PublicSystemInfoDto> = get("/System/Info/Public")
+
     /** `GET /Users/Public`: the users the server lists on its sign-in screen. Needs no sign-in. */
     suspend fun publicUsers(): ApiResult<List<UserDto>> = get("/Users/Public")
 
@@ -118,7 +121,7 @@ class JellyfinApi(
     private fun answered(status: Int) {
         if (token == null) return
         reachability?.answered()
-        if (status == 401) unauthorized?.report(token)
+        if (status == 401) unauthorized?.report(token, baseUrl)
     }
 
     /**
