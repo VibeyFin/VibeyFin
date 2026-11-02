@@ -242,6 +242,22 @@ other when the proxy is stopped). Use it to turn the screen off, force Doze (`ad
 (`adb shell svc wifi disable`; reconnect with `adb shell cmd wifi connect-network AndroidWifi open`) or kill the process
 (`adb shell run-as app.vibeyfin kill -9 <pid>`) in the middle of a download, and compare the file with the source (`md5sum`).
 
+## Sign-in fixtures: who is listed, a user without a password, a hidden user, Quick Connect
+
+Added for the sign-in pass (#52). `seed-userdata.sh` creates the users; `quick-connect.sh` drives Quick Connect.
+
+| Fixture | What it is | Needed by |
+| --- | --- | --- |
+| who is listed | Jellyfin hides new users from the sign-in screen, so every seed run lists `admin`, `kids`, `nodownload` and `nopassword` (`Policy.IsHidden` false) and hides `hidden` | "Who's watching?" tiles from `GET /Users/Public` |
+| user `nopassword` | Created without a password. Jellyfin 12 still reports `HasPassword: true` for every user, so the app shows its lock and the password sheet; an empty password signs in | The empty-password sign-in |
+| user `hidden` | Password `vibeyfin-test`, `IsHidden` true: not in `/Users/Public` | Signing in with "Other user" |
+| `quick-connect.sh approve <code> [user]` | Approves a code the app shows (`POST /QuickConnect/Authorize?code=&userId=` as admin), as `[user]` (default `admin`) | Quick Connect sign-in without a second device |
+| `quick-connect.sh on` / `off` | Sets `QuickConnectAvailable` in `/System/Configuration` | The Quick Connect tile, and "turned off meanwhile" |
+
+What the server was seen to do (Jellyfin 12.2): with Quick Connect off, `GET /QuickConnect/Enabled` is `false` and `POST /QuickConnect/Initiate`
+answers `401`; an approved code makes `GET /QuickConnect/Connect?secret=` report `Authenticated: true`, and
+`POST /Users/AuthenticateWithQuickConnect` then signs in as the user who approved it.
+
 ## Seerr: a request server linked to the test Jellyfin
 
 Added for the Seerr integration (plan 20, roadmap Phase 8). `start.sh` runs `seerr.sh` once Jellyfin is up (`SEERR=0 scripts/test-server/start.sh`
