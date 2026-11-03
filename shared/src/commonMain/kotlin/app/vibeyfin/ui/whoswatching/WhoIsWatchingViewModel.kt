@@ -131,9 +131,15 @@ class WhoIsWatchingViewModel(
     private var countdownJob: Job? = null
     private val pin = PinGate(pins, auth, viewModelScope)
 
+    // The grid as last shown. Opening a profile makes it the most recently used, which would move it to the front under the zoom.
+    private var shownProfiles: List<Profile> = emptyList()
+
     val uiState: StateFlow<WhoIsWatchingUiState> =
         combine(accounts.observeAccounts(serverId), local, pin.prompt, connection.state) { saved, local, pinPrompt, connected ->
-            val profiles = mergeProfiles(saved, local.public, local.server?.addresses?.firstOrNull())
+            val merged = mergeProfiles(saved, local.public, local.server?.addresses?.firstOrNull())
+            // While a profile opens the tiles keep their places, so the zoom starts from the one that was tapped
+            val profiles = if (local.busy) merged.inOrderOf(shownProfiles) else merged
+            shownProfiles = profiles
             WhoIsWatchingUiState(
                 loading = !local.loaded,
                 serverName = local.server?.name,
@@ -356,4 +362,10 @@ class WhoIsWatchingViewModel(
             }
         }
     }
+}
+
+/** These profiles in the order of [shown], with any that weren't shown after them. */
+internal fun List<Profile>.inOrderOf(shown: List<Profile>): List<Profile> {
+    val place = shown.withIndex().associate { (index, profile) -> profile.userId to index }
+    return sortedBy { place[it.userId] ?: Int.MAX_VALUE }
 }
