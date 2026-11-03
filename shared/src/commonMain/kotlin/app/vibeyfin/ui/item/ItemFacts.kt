@@ -1,6 +1,7 @@
 package app.vibeyfin.ui.item
 
 import app.vibeyfin.domain.DynamicRange
+import app.vibeyfin.domain.StreamTrack
 import app.vibeyfin.domain.VideoFormat
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
@@ -20,13 +21,32 @@ internal fun MediaItem.facts(): List<String> = listOfNotNull(
 data class TechnicalLine(val label: String, val value: String)
 
 /**
- * The file's video as one line ("3840×2160 · HEVC · HDR10 · 24 fps · 8.2 Mbps"), then how much storage it takes ("4.2 GB"); each
- * only when the server sent it.
+ * The file's video as one line ("3840×2160 · HEVC · HDR10 · 24 fps · 8.2 Mbps"), its audio and subtitle tracks (one per text line under
+ * one label), then how much storage it takes ("4.2 GB"); each only when the server sent it.
  */
 internal fun MediaItem.technicalLines(): List<TechnicalLine> = listOfNotNull(
     videoLine(),
+    tracksLine(Strings.technicalAudio, audioTracks),
+    tracksLine(Strings.technicalSubtitles, subtitleTracks),
     fileBytes?.let { TechnicalLine(Strings.technicalSize, Strings.fileSize(it)) },
 )
+
+private fun tracksLine(label: String, tracks: List<StreamTrack>): TechnicalLine? {
+    val names = tracks.mapNotNull { it.name() }
+    return if (names.isEmpty()) null else TechnicalLine(label, names.joinToString("\n"))
+}
+
+// The server's name with the video line's separator ("English · Dolby Digital · 5.1 · Default"), else what is known of it
+private fun StreamTrack.name(): String? {
+    displayTitle?.let { return it.replace(" - ", " · ") }
+    val parts = listOfNotNull(
+        title ?: language,
+        codec?.uppercase(),
+        Strings.trackForced.takeIf { forced },
+        Strings.trackExternal.takeIf { external },
+    )
+    return if (parts.isEmpty()) null else parts.joinToString(" · ")
+}
 
 private fun MediaItem.videoLine(): TechnicalLine? {
     val format = videoFormat ?: return null

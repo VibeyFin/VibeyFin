@@ -1,5 +1,6 @@
 package app.vibeyfin.domain.model
 
+import app.vibeyfin.domain.StreamTrack
 import app.vibeyfin.domain.VideoFormat
 import kotlinx.serialization.Serializable
 
@@ -64,6 +65,10 @@ data class MediaItem(
     val landscapeBlurHash: String? = null,
     /** The file's video picture; null when the server wasn't asked for streams or the item has no video. */
     val videoFormat: VideoFormat? = null,
+    /** The file's audio tracks, in the file's order; empty when the server wasn't asked for streams. */
+    val audioTracks: List<StreamTrack> = emptyList(),
+    /** The file's subtitle tracks, inside it and beside it; empty when it has none or the server wasn't asked. */
+    val subtitleTracks: List<StreamTrack> = emptyList(),
     /** How much storage the file takes on the server, in bytes; null when the server wasn't asked for its sources or doesn't know. */
     val fileBytes: Long? = null,
     /** On a library: what it holds (`movies`, `tvshows`, `music`, ...); null for mixed content or anything that is not a library. */

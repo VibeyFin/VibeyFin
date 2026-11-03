@@ -617,6 +617,12 @@ object Strings {
     /** The label of the line in the technical info that says how much storage the file takes. */
     val technicalSize = "Size"
 
+    /** The labels of the technical info's track lines; each track sits on a line of its own under it. */
+    val technicalAudio = "Audio"
+    val technicalSubtitles = "Subtitles"
+    val trackForced = "Forced"
+    val trackExternal = "External"
+
     /** What a screen reader says for a season button, and for the row of them. */
     fun seasonDescription(name: String, selected: Boolean) = if (selected) "$name, selected" else name
 

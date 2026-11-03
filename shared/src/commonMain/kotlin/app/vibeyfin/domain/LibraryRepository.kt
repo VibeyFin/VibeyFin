@@ -299,6 +299,8 @@ internal fun BaseItemDto.toMediaItem(baseUrl: String): MediaItem {
         backdropBlurHash = backdropTag?.let { blurHash("Backdrop", it) },
         landscapeBlurHash = landscape?.let { (type, tag) -> blurHash(type, tag) },
         videoFormat = mediaStreams.firstOrNull { it.type == "Video" }?.toVideoFormat(),
+        audioTracks = mediaStreams.filter { it.type == "Audio" }.map { it.toStreamTrack() },
+        subtitleTracks = mediaStreams.filter { it.type == "Subtitle" }.map { it.toStreamTrack() },
         fileBytes = mediaSources.firstOrNull()?.size?.takeIf { it > 0 },
         collectionType = collectionType?.takeIf { it.isNotBlank() },
         logoUrl = imageTags["Logo"]?.let { itemImageUrl(baseUrl, id, "Logo", it, LOGO_WIDTH) },
