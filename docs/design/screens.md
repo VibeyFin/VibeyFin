@@ -341,7 +341,7 @@ the scope is clear from position and from the footers.
   on Skipping and autoplay.
 - **Home**: Featured title, Genre rows.
 - **Notifications**: opens its page (below).
-- **Other devices**: **Quick Connect**, which opens its page: "On the other device, choose Quick Connect. Type the code it shows
+- **Other devices**: **Quick Connect**, which opens its page (mockup **QuickConnectApprovePhone**): "On the other device, choose Quick Connect. Type the code it shows
   here to sign it in as Alex.", a Code field (number pad, digits only, six) and **Approve** (aqua, the page's one primary action;
   "Approving…" while busy). Approved says so under the field with a check in the text colour and clears it; a code the server never
   gave out, Quick Connect off on the server and an unreachable server are said under the field, which keeps the code. Not on a kids
