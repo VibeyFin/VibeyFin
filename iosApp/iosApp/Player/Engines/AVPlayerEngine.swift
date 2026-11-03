@@ -398,7 +398,7 @@ final class AVPlayerEngine: PlaybackEngine {
         }
     }
 
-    static func needsStartSeek(start: TimeInterval, current: TimeInterval, external: Bool) -> Bool {
+    nonisolated static func needsStartSeek(start: TimeInterval, current: TimeInterval, external: Bool) -> Bool {
         guard external, start > 0 else { return false }
         return !current.isFinite || abs(current - start) > 1
     }
