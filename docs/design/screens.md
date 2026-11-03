@@ -182,7 +182,7 @@ scrolls over it (fully dark after about half the picture has gone by).
 - Cast: a row of people from `People` (round `Primary` image, name, role); a missing image is a
   `surface-2` disc with initials.
 - More like this: a row of posters from `/Items/{id}/Similar`.
-- Technical info (video, audio, subtitles, file) collapsed at the bottom.
+- Technical info (video, audio, subtitles, file) collapsed at the bottom. **Audio** and **Subtitles** list every track, one per line, by the server's own name with ` · ` between the parts ("English · Dolby Digital · 5.1 · Default", "English · SUBRIP · External"); a line is left out when the file has no such track.
 
 ## Series detail
 
