@@ -93,18 +93,6 @@ private const val DIMMED_ALPHA = 0.38f
 private const val WIDE_FROM_DP = 600
 private val SmallAvatar = 64.dp
 
-private const val ZOOM_MS = 520
-private const val ZOOM_SCALE = 1.8f
-
-// Then up into the profile button, where Home's will be: the header row is the same on every page. It sets off gently and speeds
-// up into the corner (M3's emphasized accelerate), as if pulled away, rather than easing out to a stop
-private const val FLY_MS = 420
-private val FlyEasing = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
-
-// The tile's rounded square, as a share of its side, and the button's circle
-private const val TILE_CORNER_PERCENT = 12
-private const val CIRCLE_PERCENT = 50
-
 @Composable
 fun WhoIsWatchingRoute(
     serverId: String,
@@ -112,25 +100,28 @@ fun WhoIsWatchingRoute(
     onServerDetails: () -> Unit,
     onSignedIn: () -> Unit,
     pinFor: ProfileRef? = null,
-    /** Signed in, before the zoom: Home can start loading under it. */
     onSigningIn: () -> Unit = {},
+    flight: SignInFlight,
     viewModel: WhoIsWatchingViewModel = koinViewModel(parameters = { parametersOf(serverId, pinFor) }),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val zoom = remember { Animatable(0f) }
+    val geometry = remember { ZoomGeometry() }
+    val tile = if (LocalConfiguration.current.screenWidthDp >= WIDE_FROM_DP) 140.dp else 104.dp
     val animate = animationsEnabled()
 
-    // The profile that opened grows into the middle as the rest fades, then Home fades in over it
     LaunchedEffect(state.signedIn) {
         if (!state.signedIn) return@LaunchedEffect
         onSigningIn()
-        if (animate && state.openedUserId != null) {
-            zoom.animateTo(1f, tween(ZOOM_MS, easing = FastOutSlowInEasing))
-            zoom.animateTo(2f, tween(FLY_MS, easing = FlyEasing))
+
+        val profile = state.profiles.find { it.userId == state.openedUserId }
+        val from = profile?.let { geometry.tiles[it.userId] }
+
+        if (animate && profile != null && from != null) {
+            flight.start(profile, from, tile, geometry.screen, geometry.button, onSignedIn)
+        } else {
+            onSignedIn()
         }
-        onSignedIn()
     }
-    // Back from approving the code in a browser on this phone: the approval is picked up at once
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onAppResumed() }
 
     WhoIsWatchingScreen(
@@ -141,7 +132,9 @@ fun WhoIsWatchingRoute(
         onOtherUser = viewModel::onOtherUserTapped,
         onQuickConnect = viewModel::onQuickConnectTapped,
         onRetry = viewModel::refresh,
-        zoom = { zoom.value },
+        tile = tile,
+        geometry = geometry,
+        zoom = { flight.grow.value },
     )
 
     state.pinPrompt?.let { prompt ->
@@ -162,7 +155,7 @@ fun WhoIsWatchingRoute(
 }
 
 @Composable
-fun WhoIsWatchingScreen(
+private fun WhoIsWatchingScreen(
     state: WhoIsWatchingUiState,
     onSwitchServer: () -> Unit,
     onServerDetails: () -> Unit,
@@ -170,12 +163,10 @@ fun WhoIsWatchingScreen(
     onOtherUser: () -> Unit,
     onQuickConnect: () -> Unit,
     onRetry: () -> Unit,
+    tile: Dp,
+    geometry: ZoomGeometry,
     zoom: () -> Float = { 0f },
 ) {
-    val tile = if (LocalConfiguration.current.screenWidthDp >= WIDE_FROM_DP) 140.dp else 104.dp
-    val geometry = remember { ZoomGeometry() }
-    val zoomInto = state.profiles.find { it.userId == state.openedUserId }?.takeIf { state.signedIn }
-
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize().onGloballyPositioned { geometry.screen = it.rootBounds() }) {
             Column(
@@ -217,13 +208,10 @@ fun WhoIsWatchingScreen(
                     }
                 }
             }
-
-            zoomInto?.let { profile -> geometry.tiles[profile.userId]?.let { ZoomedAvatar(profile, tile, it, geometry, zoom) } }
         }
     }
 }
 
-/** Where each profile's picture, the header's button and the screen sit on screen, kept as they are laid out, for the zoom. */
 private class ZoomGeometry {
     var screen = Rect.Zero
     var button = Rect.Zero
@@ -231,34 +219,6 @@ private class ZoomGeometry {
 }
 
 private fun LayoutCoordinates.rootBounds() = Rect(positionInRoot(), size.toSize())
-
-// [progress] runs 0 to 2. To 1: lifted over the fading grid at [from], it moves to the middle as it grows. To 2: up into the header's
-// button, shrinking to its size and rounding into its circle; without a button it stays in the middle.
-@Composable
-private fun ZoomedAvatar(profile: Profile, size: Dp, from: Rect, geometry: ZoomGeometry, progress: () -> Float) {
-    val screen = geometry.screen
-    val button = geometry.button.takeIf { it != Rect.Zero } ?: Rect(screen.center, 0f)
-
-    Box(
-        Modifier
-            .offset { IntOffset((from.left - screen.left).roundToInt(), (from.top - screen.top).roundToInt()) }
-            .graphicsLayer {
-                val grow = progress().coerceIn(0f, 1f)
-                val fly = (progress() - 1f).coerceIn(0f, 1f)
-                val middle = screen.center - from.center
-                val end = button.center - from.center
-                val endScale = if (button.width > 0f) button.width / from.width else ZOOM_SCALE
-                translationX = lerp(middle.x * grow, end.x, fly)
-                translationY = lerp(middle.y * grow, end.y, fly)
-                scaleX = lerp(lerp(1f, ZOOM_SCALE, grow), endScale, fly)
-                scaleY = scaleX
-                shape = RoundedCornerShape(lerp(TILE_CORNER_PERCENT.toFloat(), CIRCLE_PERCENT.toFloat(), fly).roundToInt())
-                clip = true
-            },
-    ) {
-        Avatar(profile, size)
-    }
-}
 
 private fun LazyGridScope.fullWidth(key: String, content: @Composable () -> Unit) {
     item(key = key, span = { GridItemSpan(maxLineSpan) }) { content() }
@@ -338,7 +298,6 @@ private fun ServerButton(name: String, onSwitchServer: () -> Unit, onServerDetai
     }
 }
 
-/** A note, not an error, such as whose session ended. */
 @Composable
 internal fun Note(text: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2), verticalAlignment = Alignment.Top) {
@@ -422,7 +381,6 @@ private fun BoxScope.BusyOverlay() {
     }
 }
 
-/** The profile's first letter on its own color. */
 @Composable
 internal fun Avatar(profile: Profile, size: Dp, modifier: Modifier = Modifier) {
     val small = size < SmallAvatar

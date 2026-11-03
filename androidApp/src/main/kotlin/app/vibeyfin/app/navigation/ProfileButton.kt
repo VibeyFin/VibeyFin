@@ -26,16 +26,19 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
 import app.vibeyfin.R
 import app.vibeyfin.app.components.HeaderButton
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.settings.PinSheet
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.whoswatching.SignInFlight
 import app.vibeyfin.ui.common.AvatarTint
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.profile.ProfileMenuViewModel
+import app.vibeyfin.ui.settings.SettingsPageId
 import coil3.compose.AsyncImage
 import org.koin.androidx.compose.koinViewModel
 
@@ -44,7 +47,7 @@ val LocalProfileButton = staticCompositionLocalOf<@Composable () -> Unit> { {} }
 
 /**
  * The profile's letter at the top right of every tab. A tap opens the menu at once. TalkBack gets Switch profile as a custom action too.
- * Offline there is no server to sign in to: the menu has Settings only. Quick Connect opens Settings › Quick Connect, not on a kids profile.
+ * Offline there is no server to sign in to: the menu has Settings only.
  */
 @Composable
 fun ProfileButton(
@@ -52,6 +55,7 @@ fun ProfileButton(
     onSettings: () -> Unit,
     onQuickConnect: () -> Unit,
     onExit: (HomeExit) -> Unit,
+    modifier: Modifier = Modifier,
     viewModel: ProfileMenuViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -69,10 +73,9 @@ fun ProfileButton(
 
     var open by remember { mutableStateOf(false) }
 
-    Box {
+    Box(modifier) {
         HeaderButton(
             onClick = { open = true },
-            // The profile's own tint, as on its tile in "Who's watching?"
             background = state.userName?.let { VibeyFinTokens.Colors.avatars[AvatarTint.of(it)] } ?: VibeyFinTokens.Colors.surface3,
             // Named for the person, as on iOS; the letter on it would only be read as "A"
             modifier = Modifier.semantics {
@@ -134,4 +137,19 @@ fun ProfileButton(
             }
         }
     }
+}
+
+fun profileButtonSlot(
+    navController: NavHostController,
+    offline: Boolean,
+    onExit: (HomeExit) -> Unit,
+    signInFlight: SignInFlight,
+): @Composable () -> Unit = {
+    ProfileButton(
+        offline,
+        onSettings = { navController.navigate(Settings) },
+        onQuickConnect = { navController.navigate(SettingsPageRoute(SettingsPageId.QuickConnect.name)) },
+        onExit = onExit,
+        modifier = signInFlight.profileButtonModifier(),
+    )
 }

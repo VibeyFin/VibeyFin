@@ -7,36 +7,34 @@ struct WhoIsWatchingView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// Where each profile's picture sits, for the zoom to start from.
     @State private var tileFrames: [String: CGRect] = [:]
-    @State private var zoomingInto: Profile?
-    /// 0 before, 1 grown in the middle, 2 in the header's button.
-    @State private var zoomStep = 0
-    /// The header's round button, where Home's profile button will be: the header row is the same on every page.
-    @State private var buttonFrame: CGRect = .zero
+    @Binding var flight: ProfileFlight?
+    @Binding var buttonFrame: CGRect
 
     let onSwitchServer: () -> Void
     let onServerDetails: () -> Void
     let onSignedIn: () -> Void
-    /// Signed in, before the zoom: Home can start loading under it.
     let onSigningIn: () -> Void
 
     init(
         serverId: String,
         pinFor: ProfileRef? = nil,
+        flight: Binding<ProfileFlight?>,
+        buttonFrame: Binding<CGRect>,
         onSwitchServer: @escaping () -> Void,
         onServerDetails: @escaping () -> Void,
         onSigningIn: @escaping () -> Void = {},
         onSignedIn: @escaping () -> Void
     ) {
         _model = StateObject(wrappedValue: WhoIsWatchingObservable(serverId: serverId, pinFor: pinFor))
+        _flight = flight
+        _buttonFrame = buttonFrame
         self.onSwitchServer = onSwitchServer
         self.onServerDetails = onServerDetails
         self.onSignedIn = onSignedIn
         self.onSigningIn = onSigningIn
     }
 
-    /// The side of a profile's square, and of the Quick Connect and Other user tiles beside it.
     private var tileSize: CGFloat { sizeClass == .regular ? 140 : 104 }
 
     var body: some View {
@@ -44,21 +42,17 @@ struct WhoIsWatchingView: View {
             Color(.systemBackground).ignoresSafeArea()
             if let state = model.state {
                 content(state)
-                    .opacity(zoomStep > 0 ? 0 : 1)
-                    .allowsHitTesting(zoomingInto == nil)
+                    .opacity(flight.map { $0.step > 0 } == true ? 0 : 1)
+                    .allowsHitTesting(flight == nil)
             }
-            zoomedAvatar
         }
-        .coordinateSpace(name: zoomSpace)
         .onAppear { model.start() }
         .toolbar(.hidden, for: .navigationBar)
-        // Back from approving the code in Safari on this phone: the approval is picked up at once.
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { model.appResumed() }
         }
         .onChange(of: model.state?.signedIn) { _, signedIn in
             guard signedIn == true else { return }
-            onSigningIn()
             zoomThenLeave()
         }
         // One sheet: the PIN question replaces a sign-in sheet that is open under it and gives it back once answered.
@@ -91,40 +85,25 @@ struct WhoIsWatchingView: View {
         }
     }
 
-    /// The profile that opened grows into the middle as the rest fades, moves up into the header's button, then the tabs fade in
-    /// with the same picture in that place. Straight on with Reduce Motion, or
-    /// after Other user and Quick Connect, which have no tile.
     private func zoomThenLeave() {
         guard !reduceMotion,
               let id = model.state?.openedUserId,
               let profile = model.state?.profiles.first(where: { $0.userId == id }),
               tileFrames[id] != nil else {
+            onSigningIn()
             onSignedIn()
             return
         }
-        zoomingInto = profile
-        withAnimation(.easeInOut(duration: 0.52)) { zoomStep = 1 } completion: {
-            guard buttonFrame != .zero else { return onSignedIn() }
-            // Sets off gently and speeds up into the corner (M3's emphasized accelerate), as if pulled away.
-            withAnimation(.timingCurve(0.3, 0, 0.8, 0.15, duration: 0.42)) { zoomStep = 2 } completion: { onSignedIn() }
-        }
-    }
-
-    @ViewBuilder
-    private var zoomedAvatar: some View {
-        if let profile = zoomingInto, let frame = tileFrames[profile.userId] {
-            GeometryReader { proxy in
-                let middle = CGPoint(x: proxy.size.width / 2, y: proxy.size.height / 2)
-                // Grows in the middle, then shrinks into the button and rounds into its circle.
-                Avatar(profile: profile, size: tileSize)
-                    .clipShape(RoundedRectangle(cornerRadius: zoomStep == 2 ? tileSize / 2 : Radius.card, style: .continuous))
-                    .scaleEffect(zoomStep == 2 ? buttonFrame.width / tileSize : zoomStep == 1 ? 1.8 : 1)
-                    .position(
-                        zoomStep == 2 ? CGPoint(x: buttonFrame.midX, y: buttonFrame.midY) : zoomStep == 1 ? middle : CGPoint(x: frame.midX, y: frame.midY)
-                    )
+        flight = ProfileFlight(profile: profile, from: tileFrames[id] ?? .zero, size: tileSize)
+        withAnimation(.spring(duration: 0.45, bounce: 0.4)) { flight?.step = 1 }
+        // At the spring's peak, not once it has settled, so the picture doesn't hang before it leaves.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.timingCurve(0.6, 0, 0.2, 1, duration: 0.45)) { flight?.step = 2 } completion: {
+                onSignedIn()
             }
-            .allowsHitTesting(false)
         }
+        // Later, so making Home's model doesn't delay the first frames.
+        DispatchQueue.main.async { onSigningIn() }
     }
 
     private var sheetBinding: Binding<Bool> {
@@ -151,7 +130,7 @@ struct WhoIsWatchingView: View {
                             ]
                         )
                         .frame(width: 44, height: 44)
-                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(zoomSpace)) } action: { buttonFrame = $0 }
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { buttonFrame = $0 }
                     }
                     if let serverName = state.serverName {
                         Text(serverName)
@@ -229,7 +208,6 @@ struct WhoIsWatchingView: View {
     }
 }
 
-/// A note, not an error, such as whose session ended.
 private struct Note: View {
     let text: String
 
@@ -266,8 +244,6 @@ private struct UnreachableCard: View {
     }
 }
 
-private let zoomSpace = "whoIsWatching"
-
 private struct ProfileTile: View {
     let profile: Profile
     let size: CGFloat
@@ -278,7 +254,7 @@ private struct ProfileTile: View {
         VStack(spacing: Space.s2) {
             ZStack(alignment: .bottomTrailing) {
                 Avatar(profile: profile, size: size)
-                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(zoomSpace)) } action: { onFrame($0) }
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { onFrame($0) }
                 if profile.locked || profile.pinRequiredToOpen {
                     Image(systemName: "lock.fill")
                         .font(.caption.bold())
@@ -304,8 +280,7 @@ private struct ProfileTile: View {
     }
 }
 
-/// The profile's picture, or its first letter on a square tinted from the name while there is none or it loads.
-private struct Avatar: View {
+struct Avatar: View {
     let profile: Profile
     let size: CGFloat
 
@@ -327,7 +302,6 @@ private struct Avatar: View {
             .foregroundStyle(.primary)
     }
 
-    /// A muted, stable colour per name (the `avatar-1` to `avatar-6` tokens), picked in shared code so Android agrees.
     private var tint: Color { Brand.avatars[Int(AvatarTint.shared.of(name: profile.name))] }
 }
 
@@ -391,7 +365,6 @@ private struct SignInSheetView: View {
     }
 }
 
-/// Sign in with a code approved on another device: the steps, the code and the time left, or why it stopped.
 private struct QuickConnectSheetView: View {
     let sheet: SignInSheetQuickConnect
     let onQuickConnect: () -> Void

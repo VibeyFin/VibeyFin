@@ -46,20 +46,37 @@ struct ProfileButtonContext {
     var onSettings: () -> Void = {}
 }
 
+private struct ProfileButtonFrameKey: EnvironmentKey {
+    static let defaultValue: (CGRect) -> Void = { _ in }
+}
+
+private struct ProfileButtonHiddenKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
 private struct ProfileButtonContextKey: EnvironmentKey {
     static let defaultValue = ProfileButtonContext()
 }
 
 extension EnvironmentValues {
+    /// Told where the profile button sits on screen, for the sign-in zoom to land on.
+    var profileButtonFrame: (CGRect) -> Void {
+        get { self[ProfileButtonFrameKey.self] }
+        set { self[ProfileButtonFrameKey.self] = newValue }
+    }
+
+    /// True while the sign-in zoom's picture is on its way to the profile button, so there aren't two.
+    var profileButtonHidden: Bool {
+        get { self[ProfileButtonHiddenKey.self] }
+        set { self[ProfileButtonHiddenKey.self] = newValue }
+    }
+
     var profileButtonContext: ProfileButtonContext {
         get { self[ProfileButtonContextKey.self] }
         set { self[ProfileButtonContextKey.self] = newValue }
     }
 }
 
-/// The header of the four tabs on a phone, or an iPad in a narrow window, and of the sign-in pages: the page name at the left and
-/// `trailing` at the right (the profile on a tab, the server on "Who's watching?"), one line, the same size and in the same place on
-/// every page, so it stays still when the page changes. `horizontalMargin` is false inside a screen that already has the margin.
 struct TabHeader<Trailing: View>: View {
     let title: String
     var horizontalMargin = true
@@ -122,16 +139,19 @@ private struct OptionalScreenMargin: ViewModifier {
 struct ProfileButton: View {
     @EnvironmentObject private var model: ProfileMenuObservable
     @Environment(\.profileButtonContext) private var context
+    @Environment(\.profileButtonFrame) private var reportFrame
+    @Environment(\.profileButtonHidden) private var hidden
 
     var body: some View {
         HeaderMenuButton(
             letter: String((model.state?.userName ?? "").prefix(1)).uppercased(),
             name: model.state?.userName ?? "",
             items: items,
-            // The profile's own tint, as on its tile in "Who's watching?".
             background: model.state?.userName.map { Brand.avatars[Int(AvatarTint.shared.of(name: $0))] }
         )
         .frame(width: 44, height: 44)
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { reportFrame($0) }
+        .opacity(hidden ? 0 : 1)
     }
 
     private var items: [HeaderMenuItem] {
@@ -152,7 +172,6 @@ struct ProfileButton: View {
     }
 }
 
-/// One row of a `HeaderMenuButton`'s menu.
 struct HeaderMenuItem {
     let title: String
     var systemImage: String?
@@ -168,7 +187,6 @@ struct HeaderMenuButton: UIViewRepresentable {
     /// Read by VoiceOver: the letter alone would only be read as "A".
     let name: String
     let items: [HeaderMenuItem]
-    /// The fill; the system grey unless given, as the profile's own tint is.
     var background: Color?
 
     func makeCoordinator() -> Coordinator { Coordinator() }

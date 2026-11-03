@@ -2,8 +2,6 @@ import SwiftUI
 import Shared
 
 enum Route: Hashable {
-    /// A non-nil address is checked as soon as the screen opens. `backAfterSave` goes back once saved, for an address added from a
-    /// server's details, instead of on to the server's "Who's watching?".
     case addServer(address: String?, backAfterSave: Bool = false)
     /// `pinUserId` is the profile whose PIN the screen asks for first.
     case whoIsWatching(serverId: String, pinUserId: String? = nil)
@@ -14,8 +12,10 @@ struct RootView: View {
     /// The screens before sign-in. Once signed in the tabs replace them.
     @State private var path: [Route] = []
     @State private var signedIn = false
-    /// Home's model for the signed-in session: made as soon as a profile signs in, so Home loads while "Who's watching?" zooms.
     @State private var home: HomeObservable?
+    @State private var flight: ProfileFlight?
+    @State private var buttonFrame: CGRect = .zero
+    @State private var homeButtonFrame: CGRect = .zero
     @State private var ready = false
     @StateObject private var startup = StartupObservable()
     @ObservedObject private var taps = NotificationTaps.shared
@@ -24,6 +24,8 @@ struct RootView: View {
     /// watching?" has somewhere to go.
     private func leave(_ exit: HomeExit) {
         signedIn = false
+        flight = nil
+        homeButtonFrame = .zero
         home = nil
         if let who = exit as? HomeExitWhoIsWatching {
             path = [.whoIsWatching(serverId: who.serverId)]
@@ -33,11 +35,8 @@ struct RootView: View {
     }
 
     var body: some View {
-        Group {
-            if signedIn, let home {
-                TabShell(onExit: leave, home: home)
-                    .transition(.opacity)
-            } else {
+        ZStack {
+            if !signedIn {
                 NavigationStack(path: $path) {
                     ServersView(
                         onOpenServer: { path.append(.whoIsWatching(serverId: $0.id)) },
@@ -60,13 +59,20 @@ struct RootView: View {
                             WhoIsWatchingView(
                                 serverId: serverId,
                                 pinFor: pinUserId.map { ProfileRef(serverId: serverId, userId: $0) },
+                                flight: $flight,
+                                buttonFrame: $buttonFrame,
                                 onSwitchServer: { path = [] },
                                 onServerDetails: { path.append(.serverDetails(serverId: serverId)) },
                                 onSigningIn: { home = HomeObservable() },
-                                // The tabs become the only screens, faded in over the zoom. `leave` sets the path again on the way out.
+                                // The tabs become the only screens. `leave` sets the path again on the way out.
                                 onSignedIn: {
                                     if home == nil { home = HomeObservable() }
-                                    withAnimation(.easeOut(duration: 0.2)) { signedIn = true }
+                                    if flight == nil {
+                                        withAnimation(.easeOut(duration: 0.2)) { signedIn = true }
+                                    } else {
+                                        flight = nil
+                                        signedIn = true
+                                    }
                                 }
                             )
                         case .serverDetails(let serverId):
@@ -79,6 +85,19 @@ struct RootView: View {
                     }
                 }
                 .transition(.opacity)
+            }
+            if signedIn || flight != nil, let home {
+                TabShell(onExit: leave, home: home)
+                    .opacity(signedIn || flight?.step == 2 ? 1 : 0)
+                    .allowsHitTesting(signedIn)
+                    .environment(\.profileButtonHidden, flight != nil)
+                    .environment(\.profileButtonFrame) { frame in
+                        if UIScreen.main.bounds.intersects(frame) { homeButtonFrame = frame }
+                    }
+                    .transition(.opacity)
+            }
+            if let flight {
+                ProfileFlightView(flight: flight, button: homeButtonFrame == .zero ? buttonFrame : homeButtonFrame)
             }
         }
         .tint(Brand.accent)

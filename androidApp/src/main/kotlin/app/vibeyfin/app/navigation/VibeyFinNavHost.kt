@@ -38,10 +38,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toSize
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
@@ -84,7 +89,9 @@ import app.vibeyfin.app.settings.SettingsRoute
 import app.vibeyfin.app.settings.pageIdOrRoot
 import app.vibeyfin.app.startup.StartupRoute
 import app.vibeyfin.app.theme.isTabletWidth
+import app.vibeyfin.app.whoswatching.SignInFlight
 import app.vibeyfin.app.whoswatching.WhoIsWatchingRoute
+import app.vibeyfin.app.whoswatching.rememberSignInFlight
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.OfflineMode
 import app.vibeyfin.domain.StartDestination
@@ -115,6 +122,9 @@ private const val DETAIL_FADE_MS = 300
 // Quicker than the page fades in, so it dims first and the page rises out of the dark
 private const val DETAIL_UNDER_FADE_MS = 200
 
+// Home rising under the profile's picture as it flies to the button
+private const val SIGN_IN_FADE_MS = 400
+
 // A switch, not an opening: cross-fade with no scale
 private const val TAB_FADE_MS = 110
 
@@ -133,7 +143,9 @@ private fun NavBackStackEntry.isTabRoot() = destination.hasRoute<Home>() || dest
 
 private fun NavBackStackEntry.isDetail() = destination.hasRoute<Item>()
 
-private fun enter(target: NavBackStackEntry) = if (target.isDetail()) {
+private fun enter(target: NavBackStackEntry, from: NavBackStackEntry) = if (from.destination.hasRoute<WhoIsWatching>() && target.isTabRoot()) {
+    fadeIn(tween(SIGN_IN_FADE_MS))
+} else if (target.isDetail()) {
     // The poster grows into the page's picture (a shared element), so the page itself only fades in under it
     fadeIn(tween(DETAIL_FADE_MS))
 } else if (target.isTabRoot()) {
@@ -144,9 +156,11 @@ private fun enter(target: NavBackStackEntry) = if (target.isDetail()) {
     scaleIn(tween(SLIDE_MS), initialScale = OPEN_START_SCALE) + fadeIn(tween(SLIDE_MS))
 }
 
-private fun exit(target: NavBackStackEntry) = fadeOut(
+private fun exit(target: NavBackStackEntry, from: NavBackStackEntry) = fadeOut(
     tween(
-        if (target.isDetail()) {
+        if (from.destination.hasRoute<WhoIsWatching>() && target.isTabRoot()) {
+            SIGN_IN_FADE_MS
+        } else if (target.isDetail()) {
             DETAIL_UNDER_FADE_MS
         } else if (target.isTabRoot()) {
             TAB_FADE_MS
@@ -166,6 +180,7 @@ private fun popExit(leaving: NavBackStackEntry) = if (leaving.isDetail()) fadeOu
 fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
     val navController = rememberNavController()
     val homeSession: HomeSession = viewModel()
+    val signInFlight = rememberSignInFlight()
 
     val open: (MediaItem) -> Unit = navController::openItem
 
@@ -255,14 +270,7 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
                     CompositionLocalProvider(
                         LocalSharedTransitionScope provides this,
                         LocalBottomBarPadding provides if (currentTab != null) FLOATING_BAR_SPACE else 0.dp,
-                        LocalProfileButton provides {
-                            ProfileButton(
-                                offline,
-                                onSettings = { navController.navigate(Settings) },
-                                onQuickConnect = { navController.navigate(SettingsPageRoute(SettingsPageId.QuickConnect.name)) },
-                                onExit = leave,
-                            )
-                        },
+                        LocalProfileButton provides profileButtonSlot(navController, offline, leave, signInFlight),
                         LocalTileLongPress provides { item -> tileMenu.onOpen(item) },
                         // A title the library has gets the library's own menu; the Seerr one is for what can still be requested
                         LocalSeerrLongPress provides { title -> title.jellyfinItemId?.let(tileMenu::onOpenById) ?: run { seerrMenu = title } },
@@ -272,8 +280,8 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
                             navController = navController,
                             modifier = Modifier,
                             startDestination = Startup,
-                            enterTransition = { enter(targetState) },
-                            exitTransition = { exit(targetState) },
+                            enterTransition = { enter(targetState, initialState) },
+                            exitTransition = { exit(targetState, initialState) },
                             popEnterTransition = { popEnter(initialState) },
                             popExitTransition = { popExit(initialState) },
                             // The back gesture scrubs these two. Left alone they are the library's own scale-down, which
@@ -281,12 +289,13 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
                             predictivePopEnterTransition = { popEnter(initialState) },
                             predictivePopExitTransition = { popExit(initialState) },
                         ) {
-                            appGraph(navController, offline, select, leave, homeSession)
+                            appGraph(navController, offline, select, leave, homeSession, signInFlight)
                         }
                     }
                 }
             }
 
+            signInFlight.Overlay()
             // What a request from a Seerr poster menu came to, over whatever screen the menu was on
             SnackbarHost(seerrNotices, Modifier.align(Alignment.BottomCenter).padding(bottom = if (currentTab != null) FLOATING_BAR_SPACE else 0.dp))
 
@@ -475,14 +484,15 @@ private fun NavGraphBuilder.appGraph(
     select: (Tab) -> Unit,
     leave: (HomeExit) -> Unit,
     homeSession: HomeSession,
+    signInFlight: SignInFlight,
 ) {
-    entryScreens(navController, homeSession)
+    entryScreens(navController, homeSession, signInFlight)
     tabGraphs(navController, offline, select, leave, homeSession)
     appScreens(navController, leave)
 }
 
 // Startup and signing in: everything before the tabs
-private fun NavGraphBuilder.entryScreens(navController: NavHostController, homeSession: HomeSession) {
+private fun NavGraphBuilder.entryScreens(navController: NavHostController, homeSession: HomeSession, signInFlight: SignInFlight) {
     composable<Startup> {
         StartupRoute(
             onDecided = { destination ->
@@ -503,7 +513,6 @@ private fun NavGraphBuilder.entryScreens(navController: NavHostController, homeS
         )
     }
 
-    // Servers is underneath every sign-in page; it is put back if it somehow isn't
     val backToServers = {
         if (!navController.popBackStack(Servers, inclusive = false)) navController.navigate(Servers) { popUpTo(navController.graph.id) }
     }
@@ -521,7 +530,6 @@ private fun NavGraphBuilder.entryScreens(navController: NavHostController, homeS
         val route = entry.toRoute<WhoIsWatching>()
         var homeStarted by remember { mutableStateOf(false) }
 
-        // Signed in: Home's ViewModel is made now and starts loading under the zoom; Home's page picks up the same one
         if (homeStarted) koinViewModel<HomeViewModel>(viewModelStoreOwner = homeSession.owner)
 
         WhoIsWatchingRoute(
@@ -529,6 +537,7 @@ private fun NavGraphBuilder.entryScreens(navController: NavHostController, homeS
             pinFor = route.pinUserId?.let { ProfileRef(route.serverId, it) },
             onSwitchServer = { backToServers() },
             onServerDetails = { navController.navigate(ServerDetails(route.serverId)) },
+            flight = signInFlight,
             onSigningIn = {
                 homeSession.renew()
                 homeStarted = true
