@@ -29,6 +29,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Duration
 
 /** A request as the fake server saw it. [path] is relative to the server's address, without the query. */
@@ -227,10 +228,11 @@ class FakeJellyfin(
         engine = engine,
     )
 
-    val apiFactory = JellyfinApiFactory(http, unauthorized, retries, reachability)
+    // Bodies decode in the test's own context, so virtual time covers them
+    val apiFactory = JellyfinApiFactory(http, unauthorized, retries, reachability, decodeOn = EmptyCoroutineContext)
 
     /** Seerr's client on the same pretend network: a Seerr is just another [server] address. */
-    val seerrFactory = SeerrApiFactory(SeerrHttpClient.create(engine = engine), retries)
+    val seerrFactory = SeerrApiFactory(SeerrHttpClient.create(engine = engine), retries, decodeOn = EmptyCoroutineContext)
 
     fun api(address: String, token: String? = null): JellyfinApi = apiFactory.create(address, token)
 

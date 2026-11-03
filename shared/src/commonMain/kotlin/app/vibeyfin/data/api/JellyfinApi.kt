@@ -12,7 +12,9 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonObject
+import kotlin.coroutines.CoroutineContext
 
 /**
  * The calls we make to one Jellyfin server at [baseUrl]. With a [token] they are signed in.
@@ -30,9 +32,10 @@ class JellyfinApi(
     private val unauthorized: UnauthorizedEvents? = null,
     private val retries: RetryPolicy = RetryPolicy.Default,
     private val reachability: ServerReachability? = null,
+    private val decodeOn: CoroutineContext = Dispatchers.Default,
 ) {
     /** The same server, signed in with [token]. */
-    fun withToken(token: String?) = JellyfinApi(http, baseUrl, token, unauthorized, retries, reachability)
+    fun withToken(token: String?) = JellyfinApi(http, baseUrl, token, unauthorized, retries, reachability, decodeOn)
 
     /** `GET /System/Info/Public`: which server answers at this address. */
     suspend fun publicSystemInfo(): ApiResult<PublicSystemInfoDto> = get("/System/Info/Public")
@@ -77,6 +80,7 @@ class JellyfinApi(
     }
 
     /** The URL of a user's avatar, for an image loader. */
+
     fun userImageUrl(userId: String, imageTag: String, maxWidth: Int = 256): String = userImageUrl(baseUrl, userId, imageTag, maxWidth)
 
     internal suspend inline fun <reified T> get(
@@ -114,6 +118,7 @@ class JellyfinApi(
         prepare = { token?.let { attributes.put(TokenAttribute, it) } },
         onAnswer = ::answered,
         onNoAnswer = { if (token != null) reachability?.failed() },
+        decodeOn = decodeOn,
     )
 
     // Something answered: the server is there, whatever it said. And the one place a rejected token is noticed: a 401 on a call that
@@ -170,6 +175,7 @@ class JellyfinApiFactory(
     private val unauthorized: UnauthorizedEvents? = null,
     private val retries: RetryPolicy = RetryPolicy.Default,
     private val reachability: ServerReachability? = null,
+    private val decodeOn: CoroutineContext = Dispatchers.Default,
 ) {
-    fun create(baseUrl: String, token: String? = null) = JellyfinApi(http, baseUrl, token, unauthorized, retries, reachability)
+    fun create(baseUrl: String, token: String? = null) = JellyfinApi(http, baseUrl, token, unauthorized, retries, reachability, decodeOn)
 }

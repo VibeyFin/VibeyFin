@@ -16,6 +16,8 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
+import kotlinx.coroutines.Dispatchers
+import kotlin.coroutines.CoroutineContext
 
 /** A successful sign-in: the Seerr user and the session cookie's value, which every later call sends. */
 data class SeerrSignIn(val user: SeerrUserDto, val session: String)
@@ -33,9 +35,10 @@ class SeerrApi(
     val baseUrl: String,
     internal val session: String? = null,
     private val retries: RetryPolicy = RetryPolicy.Default,
+    private val decodeOn: CoroutineContext = Dispatchers.Default,
 ) {
     /** The same Seerr, signed in with [session]. */
-    fun withSession(session: String?) = SeerrApi(http, baseUrl, session, retries)
+    fun withSession(session: String?) = SeerrApi(http, baseUrl, session, retries, decodeOn)
 
     /** `GET /status`: answers on any Seerr, signed in or not. */
     suspend fun status(): ApiResult<SeerrStatusDto> = get("/status")
@@ -102,7 +105,7 @@ class SeerrApi(
     }
 
     // Seerr's session is a cookie, sent by hand. Nothing hears of a 401 or of reachability: a Seerr 401 can't lock a Jellyfin profile.
-    private val call = ApiCall(http, retries, prepare = { session?.let { header(HttpHeaders.Cookie, "$SESSION_COOKIE=$it") } })
+    private val call = ApiCall(http, retries, prepare = { session?.let { header(HttpHeaders.Cookie, "$SESSION_COOKIE=$it") } }, decodeOn = decodeOn)
 
     /**
      * Sends the request and turns the outcome into an [ApiResult]; [decode] reads a success body (and a failure to read it
@@ -131,6 +134,7 @@ class SeerrApi(
 class SeerrApiFactory(
     private val http: HttpClient,
     private val retries: RetryPolicy = RetryPolicy.Default,
+    private val decodeOn: CoroutineContext = Dispatchers.Default,
 ) {
-    fun create(baseUrl: String, session: String? = null) = SeerrApi(http, baseUrl, session, retries)
+    fun create(baseUrl: String, session: String? = null) = SeerrApi(http, baseUrl, session, retries, decodeOn)
 }

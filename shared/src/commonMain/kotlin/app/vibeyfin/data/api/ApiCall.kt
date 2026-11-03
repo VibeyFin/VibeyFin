@@ -5,7 +5,10 @@ import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.request
 import io.ktor.client.statement.HttpResponse
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Sends requests for one backend's API and turns each outcome into an [ApiResult]: the part Jellyfin's and Seerr's clients share.
@@ -18,6 +21,8 @@ internal class ApiCall(
     private val prepare: HttpRequestBuilder.() -> Unit = {},
     private val onAnswer: (status: Int) -> Unit = {},
     private val onNoAnswer: () -> Unit = {},
+    /** Where a success body is decoded: off the main thread, so a screen loading many rows at once doesn't stall an animation. */
+    private val decodeOn: CoroutineContext = Dispatchers.Default,
 ) {
     /**
      * Sends the request and turns the outcome into an [ApiResult]; [decode] reads a success body (a failure to read it is
@@ -60,7 +65,7 @@ internal class ApiCall(
         onAnswer(status)
         if (status !in 200..299) return ApiResult.Failure(errorFor(status))
         return try {
-            ApiResult.Success(decode(response))
+            ApiResult.Success(withContext(decodeOn) { decode(response) })
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
