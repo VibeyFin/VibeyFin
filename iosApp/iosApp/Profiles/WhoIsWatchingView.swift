@@ -335,13 +335,8 @@ private struct Avatar: View {
             .foregroundStyle(.primary)
     }
 
-    /// A muted, stable colour per name (the `avatar-1` to `avatar-6` tokens). Swift's own hashing
-    /// changes on every launch, so this adds up the characters instead.
-    private var tint: Color {
-        let tints = Brand.avatars
-        let sum = profile.name.lowercased().unicodeScalars.reduce(0) { ($0 &* 31) &+ Int($1.value) }
-        return tints[abs(sum) % tints.count]
-    }
+    /// A muted, stable colour per name (the `avatar-1` to `avatar-6` tokens), picked in shared code so Android agrees.
+    private var tint: Color { Brand.avatars[Int(AvatarTint.shared.of(name: profile.name))] }
 }
 
 /// Asks for a password, or for a username and password. What was typed stays when a sign-in fails.

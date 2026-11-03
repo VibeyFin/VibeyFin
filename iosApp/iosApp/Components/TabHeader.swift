@@ -127,7 +127,9 @@ struct ProfileButton: View {
         HeaderMenuButton(
             letter: String((model.state?.userName ?? "").prefix(1)).uppercased(),
             name: model.state?.userName ?? "",
-            items: items
+            items: items,
+            // The profile's own tint, as on its tile in "Who's watching?".
+            background: model.state?.userName.map { Brand.avatars[Int(AvatarTint.shared.of(name: $0))] }
         )
         .frame(width: 44, height: 44)
         // The Jellyfin picture over the letter, which shows while it loads or when there is none. Taps go through to the button.
@@ -178,6 +180,8 @@ struct HeaderMenuButton: UIViewRepresentable {
     /// Read by VoiceOver: the letter alone would only be read as "A".
     let name: String
     let items: [HeaderMenuItem]
+    /// The fill; the system grey unless given, as the profile's own tint is.
+    var background: Color?
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -195,6 +199,7 @@ struct HeaderMenuButton: UIViewRepresentable {
     }
 
     func updateUIView(_ button: UIButton, context: Context) {
+        button.configuration?.baseBackgroundColor = background.map(UIColor.init) ?? .systemGray4
         if let systemImage {
             button.configuration?.image = UIImage(systemName: systemImage, withConfiguration: UIImage.SymbolConfiguration(textStyle: .body))
         } else {

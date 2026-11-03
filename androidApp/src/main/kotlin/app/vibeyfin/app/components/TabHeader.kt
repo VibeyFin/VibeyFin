@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -64,12 +65,17 @@ fun TabHeader(
 
 /** The round button at the right of the header that opens a menu: the profile's letter, or the server. [modifier] names it. */
 @Composable
-fun HeaderButton(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
+fun HeaderButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    background: Color = VibeyFinTokens.Colors.surface3,
+    content: @Composable BoxScope.() -> Unit,
+) {
     Box(
         modifier = Modifier
             .size(VibeyFinTokens.Size.touch)
             .clip(CircleShape)
-            .background(VibeyFinTokens.Colors.surface3)
+            .background(background)
             .clickable(role = Role.Button, onClickLabel = Strings.showOptions, onClick = onClick)
             .then(modifier),
         contentAlignment = Alignment.Center,

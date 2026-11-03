@@ -61,6 +61,7 @@ import app.vibeyfin.app.player.SUBTITLE_SHADOW
 import app.vibeyfin.app.player.SUBTITLE_WHITE
 import app.vibeyfin.app.player.SubtitleViewStyle
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.ui.common.AvatarTint
 import app.vibeyfin.ui.settings.ActionItem
 import app.vibeyfin.ui.settings.ChoiceItem
 import app.vibeyfin.ui.settings.InfoItem
@@ -332,10 +333,8 @@ fun InfoRow(item: InfoItem) {
 @Composable
 fun ProfileHeaderRow(name: String, server: String?) {
     RowFrame {
-        val tints = VibeyFinTokens.Colors.avatars
-
         Box(
-            modifier = Modifier.size(VibeyFinTokens.Size.buttonLarge).clip(CircleShape).background(tints[(name.lowercase().hashCode() and 0x7FFFFFFF) % tints.size]),
+            modifier = Modifier.size(VibeyFinTokens.Size.buttonLarge).clip(CircleShape).background(VibeyFinTokens.Colors.avatars[AvatarTint.of(name)]),
             contentAlignment = Alignment.Center,
         ) {
             Text(name.take(1).uppercase(), style = MaterialTheme.typography.titleLarge, color = VibeyFinTokens.Colors.ink)

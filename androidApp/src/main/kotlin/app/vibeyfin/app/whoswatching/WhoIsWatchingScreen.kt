@@ -79,6 +79,7 @@ import app.vibeyfin.app.theme.animationsEnabled
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.Profile
 import app.vibeyfin.domain.model.ProfileRef
+import app.vibeyfin.ui.common.AvatarTint
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.whoswatching.WhoIsWatchingUiState
 import app.vibeyfin.ui.whoswatching.WhoIsWatchingViewModel
@@ -431,7 +432,7 @@ internal fun Avatar(profile: Profile, size: Dp, modifier: Modifier = Modifier) {
         modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(if (small) VibeyFinTokens.Radius.m3Xs else VibeyFinTokens.Radius.m3Md))
-            .background(tintFor(profile.name)),
+            .background(VibeyFinTokens.Colors.avatars[AvatarTint.of(profile.name)]),
         contentAlignment = Alignment.Center,
     ) {
         // The letter goes once the picture is there; pictures with transparent areas would show it through
@@ -453,11 +454,4 @@ internal fun Avatar(profile: Profile, size: Dp, modifier: Modifier = Modifier) {
             )
         }
     }
-}
-
-// Stable per name, so the same person always gets the same color
-private fun tintFor(name: String): Color {
-    val tints = VibeyFinTokens.Colors.avatars
-
-    return tints[(name.lowercase().hashCode() and 0x7FFFFFFF) % tints.size]
 }

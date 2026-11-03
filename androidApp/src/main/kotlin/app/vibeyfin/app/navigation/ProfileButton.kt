@@ -32,6 +32,7 @@ import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.settings.PinSheet
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.ui.common.AvatarTint
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.profile.ProfileMenuViewModel
@@ -71,6 +72,8 @@ fun ProfileButton(
     Box {
         HeaderButton(
             onClick = { open = true },
+            // The profile's own tint, as on its tile in "Who's watching?"
+            background = state.userName?.let { VibeyFinTokens.Colors.avatars[AvatarTint.of(it)] } ?: VibeyFinTokens.Colors.surface3,
             // Named for the person, as on iOS; the letter on it would only be read as "A"
             modifier = Modifier.semantics {
                 contentDescription = state.userName.orEmpty()
