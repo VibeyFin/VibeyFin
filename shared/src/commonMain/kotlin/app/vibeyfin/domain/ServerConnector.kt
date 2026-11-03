@@ -49,7 +49,6 @@ class ServerConnector(
         return apis.create(address, token)
     }
 
-    /** Whether [address] now belongs to a server other than [serverId]. An answer that can't tell counts as no. */
     suspend fun answersAsAnotherServer(serverId: String, address: String): Boolean {
         val id = apis.create(address).publicSystemInfo().valueOrNull()?.id ?: return false
         val other = id != serverId

@@ -30,9 +30,9 @@ import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.ui.common.Strings
 
 /**
- * The header of the four tabs and the sign-in pages: the page name at the left and the profile at the right, one line, the same
- * size and in the same place on every page, so it stays still when the page changes. [actions] sit before [trailing], which is the
- * profile on a tab and the server on "Who's watching?". [horizontalPadding] is 0 inside a screen that already has the margin.
+ * The header of the four tabs: the page name at the left and the profile at the right, one line, the same size and in the same
+ * place on every tab, so it stays still when the tab changes. [actions] sit before the profile. [horizontalPadding] is 0 inside a
+ * screen that already has the margin.
  */
 @Composable
 fun TabHeader(
@@ -63,7 +63,6 @@ fun TabHeader(
     }
 }
 
-/** The round button at the right of the header that opens a menu: the profile's letter, or the server. [modifier] names it. */
 @Composable
 fun HeaderButton(
     onClick: () -> Unit,

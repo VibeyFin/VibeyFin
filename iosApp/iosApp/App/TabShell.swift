@@ -63,7 +63,6 @@ private enum MainTab: Hashable {
 struct TabShell: View {
     /// Called when the tabs should be left: the user chose to, or the session ended.
     let onExit: (HomeExit) -> Void
-    /// Home's model for this session, made at sign-in so it is already loading.
     let home: HomeObservable
 
     @State private var selection: MainTab = .home

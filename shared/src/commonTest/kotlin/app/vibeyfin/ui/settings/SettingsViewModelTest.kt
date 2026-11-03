@@ -393,7 +393,6 @@ class SettingsViewModelTest {
             ),
             root.sections.mapNotNull { it.title },
         )
-        // Quick Connect is on the Profile page, beside Switch profile, not a group of its own
         assertFalse(root.keys().contains(SettingKey.QuickConnect))
     }
 

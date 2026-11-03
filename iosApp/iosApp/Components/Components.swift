@@ -39,7 +39,6 @@ extension PrimaryButton where Label == Text {
     }
 }
 
-/// A primary button's label that turns into a spinner and `busyTitle` while the action runs.
 struct BusyLabel: View {
     let title: String
     let busyTitle: String?
@@ -56,13 +55,11 @@ struct BusyLabel: View {
 }
 
 extension PrimaryButton where Label == BusyLabel {
-    /// Stays aqua while `busy`, and a second tap does nothing then.
     init(_ title: String, busyTitle: String? = nil, busy: Bool, action: @escaping () -> Void) {
         self.init(action: { if !busy { action() } }) { BusyLabel(title: title, busyTitle: busyTitle, busy: busy) }
     }
 }
 
-/// A secondary action: the system's `.bordered` capsule with a grey fill, full width, with `systemImage` before the title when given.
 struct SecondaryButton: View {
     let title: String
     var systemImage: String?
@@ -149,7 +146,6 @@ struct Card<Content: View>: View {
     }
 }
 
-/// Fields as one grouped card, as in a form: each `FieldRow` with its label at the left. The edge turns red when `isError`.
 struct FieldGroup<Content: View>: View {
     var isError = false
     @ViewBuilder let content: () -> Content
@@ -164,7 +160,6 @@ struct FieldGroup<Content: View>: View {
     }
 }
 
-/// One field in a `FieldGroup`: its label, then the control.
 struct FieldRow<Field: View>: View {
     let label: String
     @ViewBuilder let field: () -> Field
@@ -183,7 +178,6 @@ struct FieldRow<Field: View>: View {
     }
 }
 
-/// A Jellyfin username, offered by AutoFill.
 struct UsernameField: View {
     @Binding var text: String
 
@@ -198,7 +192,6 @@ struct UsernameField: View {
     }
 }
 
-/// A password, hidden until the eye shows it, offered by AutoFill.
 struct PasswordField: View {
     @Binding var text: String
     let onSubmit: () -> Void
@@ -231,7 +224,6 @@ struct PasswordField: View {
     }
 }
 
-/// The reason under a field, with the alert beside it so it isn't told by colour alone.
 struct FieldError: View {
     let message: String
 
@@ -243,7 +235,6 @@ struct FieldError: View {
     }
 }
 
-/// A server's address in a grouped list: the field in its own row, the reason it failed (or `help`) under it.
 struct AddressSection<Header: View>: View {
     let label: String
     let placeholder: String
@@ -294,8 +285,6 @@ struct AddressSection<Header: View>: View {
     }
 }
 
-/// A sheet's frame: its title (with `leading`, such as the profile's picture), the close button, the content, and `footnote` at
-/// the foot.
 struct SheetScaffold<Leading: View, Content: View>: View {
     let title: String
     var footnote: String?
@@ -347,8 +336,6 @@ extension SheetScaffold where Leading == EmptyView {
     }
 }
 
-/// A short note in a capsule at the bottom that goes by itself after a few seconds, read by VoiceOver as it appears. iOS has no
-/// toast, so this is one: it never blocks anything and takes no tap. `bottom` keeps it above a tab bar.
 private struct Toast: ViewModifier {
     let message: String?
     var bottom: CGFloat

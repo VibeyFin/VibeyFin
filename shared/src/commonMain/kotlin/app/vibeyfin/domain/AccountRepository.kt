@@ -22,7 +22,6 @@ class AccountRepository(
 
     suspend fun account(serverId: String, userId: String): Account? = dao.getAccount(serverId, userId)?.toAccount()
 
-    /** How many profiles each server has on this device, by server ID. */
     fun observeProfileCounts(): Flow<Map<String, Int>> = dao.observeProfileCounts().map { rows -> rows.associate { it.serverId to it.count } }
 
     /** Stores the token from a successful sign-in, creating the profile or refreshing it. */

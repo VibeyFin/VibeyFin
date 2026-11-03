@@ -60,7 +60,6 @@ object Strings {
 
     fun moreFor(name: String) = "More for $name"
 
-    /** What a screen reader says for a profile's tile. */
     fun profileTile(name: String, needsPassword: Boolean, needsPin: Boolean, opening: Boolean) = when {
         opening -> "Opening $name"
         needsPassword -> "$name, needs a password"
@@ -95,7 +94,6 @@ object Strings {
     val copyCode = "Copy code"
     val codeCopied = "Code copied"
 
-    /** "482 915": the code in two groups, easier to read out and type. */
     fun quickConnectCode(code: String) = if (code.length == 6) code.take(3) + " " + code.drop(3) else code
 
     fun quickConnectSpokenCode(code: String) = "Code " + code.toList().joinToString(" ")
@@ -129,7 +127,6 @@ object Strings {
 
     fun jellyfinVersion(version: String) = "Jellyfin $version"
 
-    /** "Jellyfin 10.11.2 · 2 addresses · 3 profiles" under a saved server's name. */
     fun serverMeta(version: String?, addresses: Int, profiles: Int) = listOfNotNull(
         version?.let(::jellyfinVersion),
         "$addresses addresses".takeIf { addresses > 1 },
@@ -611,7 +608,6 @@ object Strings {
     /** The label of the line in the technical info that says how much storage the file takes. */
     val technicalSize = "Size"
 
-    /** The labels of the technical info's track lines; each track sits on a line of its own under it. */
     val technicalAudio = "Audio"
     val technicalSubtitles = "Subtitles"
     val trackForced = "Forced"

@@ -21,8 +21,8 @@ internal fun MediaItem.facts(): List<String> = listOfNotNull(
 data class TechnicalLine(val label: String, val value: String)
 
 /**
- * The file's video as one line ("3840×2160 · HEVC · HDR10 · 24 fps · 8.2 Mbps"), its audio and subtitle tracks (one per text line under
- * one label), then how much storage it takes ("4.2 GB"); each only when the server sent it.
+ * The file's video as one line ("3840×2160 · HEVC · HDR10 · 24 fps · 8.2 Mbps"), then how much storage it takes ("4.2 GB"); each
+ * only when the server sent it.
  */
 internal fun MediaItem.technicalLines(): List<TechnicalLine> = listOfNotNull(
     videoLine(),
@@ -36,7 +36,6 @@ private fun tracksLine(label: String, tracks: List<StreamTrack>): TechnicalLine?
     return if (names.isEmpty()) null else TechnicalLine(label, names.joinToString("\n"))
 }
 
-// The server's name with the video line's separator ("English · Dolby Digital · 5.1 · Default"), else what is known of it
 private fun StreamTrack.name(): String? {
     displayTitle?.let { return it.replace(" - ", " · ") }
     val parts = listOfNotNull(

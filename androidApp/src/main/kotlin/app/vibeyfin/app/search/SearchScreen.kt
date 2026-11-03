@@ -161,7 +161,6 @@ fun SearchScreen(
         onClear()
     }
 
-    // A past search is put in whole, with the keyboard away to show its results
     val pickHistory: (String) -> Unit = { term ->
         field = TextFieldValue(term, TextRange(term.length))
         onHistoryPicked(term)

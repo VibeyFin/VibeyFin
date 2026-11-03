@@ -35,10 +35,8 @@ sealed interface SignInResult {
 sealed interface QuickConnectState {
     data object Starting : QuickConnectState
 
-    /** Show [code]; someone signed in on another device enters it to approve this sign-in before [expiresAt]. */
     data class Waiting(val code: String, val expiresAt: Instant) : QuickConnectState
 
-    /** Another device approved the code; signing in. */
     data object Approved : QuickConnectState
 
     data object SignedIn : QuickConnectState

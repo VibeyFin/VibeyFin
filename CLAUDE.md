@@ -93,6 +93,9 @@ Device ID: generate a UUID once per install and persist it.
   without moving the signed-in state.
 - Platform code only behind `expect`/`actual` or interfaces injected by Koin: token vault,
   Wi-Fi multicast lock (Android), device name.
+- Comments: write few. Add one only for a reason the code can't show (a platform quirk, an ordering that matters, a
+  product decision), in one short line. Don't narrate what the code does or explain a tweak; that belongs in the commit.
+  Don't add comments to code you didn't change.
 - Time: inject a clock (`kotlin.time.Clock`) so repositories are testable.
 
 ## Design language

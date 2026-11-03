@@ -1,7 +1,6 @@
 import SwiftUI
 import Shared
 
-/// `showNext` says where saving leads: on to the server's "Who's watching?", unless an address is being added from its details.
 struct AddServerView: View {
     @StateObject private var model: AddServerObservable
     private let focusOnAppear: Bool
@@ -72,7 +71,6 @@ struct AddServerView: View {
             }
         } else {
             Section {
-                // Disabled only while the address is blank; while checking it stays aqua with its spinner.
                 PrimaryButton(Strings.shared.connect, busyTitle: Strings.shared.connecting, busy: state.step is AddServerStepChecking) { model.connect() }
                     .disabled(!state.canConnect && !(state.step is AddServerStepChecking))
                     .listRowBackground(Color.clear)
@@ -93,7 +91,6 @@ private struct FoundCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s1) {
             HStack(spacing: Space.s2) {
-                // The server answered: a check and the word, in the text colour. Aqua is for the primary action.
                 Image(systemName: "checkmark")
                     .font(.caption.bold())
                 Text(Strings.shared.found)

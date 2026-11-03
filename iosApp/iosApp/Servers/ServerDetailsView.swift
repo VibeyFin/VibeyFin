@@ -1,7 +1,6 @@
 import SwiftUI
 import Shared
 
-/// A saved server: its addresses, best first, its version and profiles on this device, and Remove server.
 struct ServerDetailsView: View {
     @StateObject private var model: ServerDetailsObservable
     let onAddAddress: () -> Void

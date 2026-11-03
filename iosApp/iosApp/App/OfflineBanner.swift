@@ -84,7 +84,6 @@ struct OfflineBannerView: View {
 }
 
 extension View {
-    /// Says, once, that the app went offline, above the tab bar, which floats over the bottom of the screen.
     func offlineToast(_ model: AppBannerObservable) -> some View {
         modifier(OfflineToast(model: model))
     }

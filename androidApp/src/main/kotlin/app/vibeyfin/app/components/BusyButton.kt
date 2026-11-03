@@ -13,10 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.vibeyfin.app.theme.VibeyFinTokens
 
-/**
- * A page's one primary action, full width. While [busy] it keeps its colors and shows a spinner with [busyLabel],
- * and a second tap does nothing.
- */
 @Composable
 fun BusyButton(
     label: String,

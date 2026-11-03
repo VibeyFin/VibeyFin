@@ -82,7 +82,6 @@ class SeerrProfileRow(
     val seerrPasswordSignIn: Boolean,
 )
 
-/** What [AccountDao.observeProfileCounts] reads: how many profiles a server has on this device. */
 class ProfileCountRow(
     val serverId: String,
     val count: Int,

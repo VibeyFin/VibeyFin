@@ -47,9 +47,6 @@ private const val WIDE_FROM_DP = 600
 /**
  * A collection's header: its picture full-bleed under the status bar, fading into the page, with the title, how many titles it
  * holds and the overview centered over the lower half. The members follow below as a poster grid.
- *
- * As on an item's page, the picture stays put while the page scrolls ([scrolled], in pixels): the text goes up over it, it darkens,
- * and the rest of the page covers it from below.
  */
 @Composable
 fun CollectionHeader(title: String, collection: MediaItem?, facts: List<String>, margin: Dp, imageHint: String? = null, scrolled: () -> Int = { 0 }) {
@@ -58,7 +55,6 @@ fun CollectionHeader(title: String, collection: MediaItem?, facts: List<String>,
     val aspect = if (wide) COLLECTION_HERO_ASPECT_WIDE else COLLECTION_HERO_ASPECT
 
     Box(Modifier.fillMaxWidth().clipToBounds()) {
-        // Moved down as far as the header has gone up, so it holds still; the clip lets the page below cover it
         Box(Modifier.fillMaxWidth().graphicsLayer { translationY = scrolled().toFloat() }) {
             CollectionBackdrop(title, collection, imageHint, aspect, wide, scrolled)
         }
@@ -156,6 +152,5 @@ private fun BoxScope.CollectionBackdrop(title: String, collection: MediaItem?, i
         ),
     )
 
-    // The darkening as the page scrolls; read in the draw step, so scrolling redraws this layer and nothing else
     Box(Modifier.matchParentSize().graphicsLayer { alpha = scrollDarkening(scrolled().toFloat(), size.height) }.background(VibeyFinTokens.Colors.bg))
 }

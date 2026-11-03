@@ -4,7 +4,6 @@ import app.vibeyfin.ui.servers.ServerDetailsUiState
 import app.vibeyfin.ui.servers.ServerDetailsViewModel
 import org.koin.core.parameter.parametersOf
 
-/** The Server details screen's [ServerDetailsViewModel] as SwiftUI needs it. */
 class ServerDetailsModel(serverId: String) {
     private val host = ViewModelHost(ServerDetailsViewModel::class) {
         it.get<ServerDetailsViewModel> { parametersOf(serverId) }

@@ -124,7 +124,6 @@ class ItemFactsTest {
             audioTracks = listOf(StreamTrack(displayTitle = "English - Dolby Digital - 5.1 - Default"), StreamTrack(displayTitle = "Italiano - AAC - Stereo")),
             subtitleTracks = listOf(
                 StreamTrack(displayTitle = "English - SUBRIP - External"),
-                // An older server sends no display title: what is known stands in
                 StreamTrack(language = "fre", codec = "pgssub", forced = true),
             ),
         ).technicalLines()

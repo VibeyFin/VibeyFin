@@ -87,7 +87,6 @@ private fun PasswordContent(
     onQuickConnect: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    // The fields keep what was typed when a sign-in fails, so a typo is a small fix
     var username by rememberSaveable(sheet) { mutableStateOf("") }
     var password by rememberSaveable(sheet) { mutableStateOf("") }
     val profile = (sheet as? SignInSheet.Password)?.profile

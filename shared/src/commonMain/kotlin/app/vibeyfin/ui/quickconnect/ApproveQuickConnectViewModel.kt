@@ -20,12 +20,9 @@ import kotlinx.coroutines.launch
 const val QUICK_CONNECT_CODE_LENGTH = 6
 
 data class ApproveQuickConnectUiState(
-    /** What is typed: digits only, at most [QUICK_CONNECT_CODE_LENGTH]. */
     val code: String = "",
-    /** The signed-in profile, whom the other device signs in as. */
     val profileName: String = "",
     val approving: Boolean = false,
-    /** Said under the field once a code was approved, until another is typed. */
     val done: String? = null,
     val error: String? = null,
 ) {
@@ -52,7 +49,6 @@ class ApproveQuickConnectViewModel(private val connection: ConnectionManager) : 
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ApproveQuickConnectUiState())
 
-    /** Keeps the digits, so a pasted "123 456" works, and drops what was said about the last code. */
     fun onCodeChange(code: String) {
         val digits = code.filter { it.isDigit() }.take(QUICK_CONNECT_CODE_LENGTH)
         local.update { if (it.approving) it else it.copy(code = digits, done = null, error = null) }
@@ -75,7 +71,6 @@ class ApproveQuickConnectViewModel(private val connection: ConnectionManager) : 
         }
     }
 
-    // Null when approved, else what to tell the user
     private suspend fun approve(connected: ConnectionState.Connected, code: String): String? {
         val api = connected.api
         when (val enabled = api.quickConnectEnabled()) {

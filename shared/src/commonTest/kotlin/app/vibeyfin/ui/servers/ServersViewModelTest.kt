@@ -174,8 +174,6 @@ class ServersViewModelTest {
         assertEquals(emptyList(), state.discovered)
     }
 
-    // Saved servers and removing one
-
     @Test
     fun eachServerSaysHowManyAddressesAndProfilesItHas() = runTest {
         servers.save("srv-1", "Home", "10.11.2", "https://nas", otherAddresses = listOf("http://nas:8096"))

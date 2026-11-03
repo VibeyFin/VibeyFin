@@ -58,7 +58,6 @@ fun vibeyFinTextFieldColors(): TextFieldColors {
     )
 }
 
-/** A server's address: no capitals or corrections, the URL keyboard, and the reason it failed (or [help]) under it. */
 @Composable
 fun AddressField(
     value: String,
@@ -85,7 +84,6 @@ fun AddressField(
     )
 }
 
-/** A short numeric code, such as Quick Connect's: the number keyboard, with the reason it failed under it. */
 @Composable
 fun CodeField(
     value: String,
@@ -110,7 +108,6 @@ fun CodeField(
     )
 }
 
-/** A Jellyfin username, offered by autofill. [marked] outlines it in red when the password field under it says why. */
 @Composable
 fun UsernameField(value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier, marked: Boolean = false) {
     FormField(
@@ -123,7 +120,6 @@ fun UsernameField(value: String, onValueChange: (String) -> Unit, modifier: Modi
     )
 }
 
-/** A password, hidden until the eye shows it, offered by autofill, with the reason it failed under it. */
 @Composable
 fun PasswordField(
     value: String,
@@ -204,7 +200,6 @@ private fun FormField(
             keyboardType = keyboardType,
             imeAction = if (onGo != null) ImeAction.Go else ImeAction.Next,
         ),
-        // Go (or Enter on a keyboard) puts the keyboard away as it submits
         keyboardActions = if (onGo != null) {
             KeyboardActions(onGo = {
                 focusManager.clearFocus()

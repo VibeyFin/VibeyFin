@@ -12,7 +12,6 @@ struct ServersView: View {
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
-            // Nothing is drawn until the saved servers have been read, so the first-launch page never flashes.
             if let state = model.state, !state.loading {
                 Group {
                     if state.servers.isEmpty {
@@ -169,7 +168,6 @@ private struct ServerText: View {
     }
 }
 
-/// A saved server: a tap opens its "Who's watching?", the "…" its details and Remove.
 private struct SavedRow: View {
     let row: ServerRow
     let onOpen: () -> Void

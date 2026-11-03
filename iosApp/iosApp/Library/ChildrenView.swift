@@ -65,7 +65,6 @@ struct ChildrenView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .screenMargin()
                 .padding(.vertical, Space.s5)
-                // Reports how far the page has scrolled, so a collection's picture can hold still.
                 .background(alignment: .top) { ScrollOffsetReader { scrollOffset = max($0, 0) }.frame(height: 0) }
                 // A collection's header and a season's link to its show arrive with the data: they ease in instead of snapping.
                 .animation(.easeOut(duration: 0.25), value: model.state?.collection != nil)

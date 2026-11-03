@@ -37,7 +37,6 @@ fun VibeyFinSheet(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> 
     )
 }
 
-/** A form sheet's column: its content spaced out, then Cancel at the foot when [onCancel] is given, and [footnote] under it. */
 @Composable
 fun SheetColumn(
     onCancel: (() -> Unit)?,
@@ -65,7 +64,6 @@ fun SheetColumn(
     }
 }
 
-/** A quiet full-width choice in a sheet, such as Cancel or "Use Quick Connect instead". */
 @Composable
 fun SheetTextButton(label: String, onClick: () -> Unit, color: Color = MaterialTheme.colorScheme.onSurface) {
     TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.touch)) {

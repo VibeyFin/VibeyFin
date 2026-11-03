@@ -37,7 +37,6 @@ class JellyfinApi(
     /** The same server, signed in with [token]. */
     fun withToken(token: String?) = JellyfinApi(http, baseUrl, token, unauthorized, retries, reachability, decodeOn)
 
-    /** `GET /System/Info/Public`: which server answers at this address. */
     suspend fun publicSystemInfo(): ApiResult<PublicSystemInfoDto> = get("/System/Info/Public")
 
     /** `GET /Users/Public`: the users the server lists on its sign-in screen. Needs no sign-in. */

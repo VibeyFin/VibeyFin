@@ -92,7 +92,6 @@ struct SettingsSplitView: View {
                         }
                             .navigationDestination(for: TabRoute.self) { route in
                                 if case .settingsPage(let id) = route {
-                                    // Quick Connect is linked from the Profile page and has its own view.
                                     if id == .quickconnect {
                                         ApproveQuickConnectView()
                                     } else {

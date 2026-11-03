@@ -1,9 +1,7 @@
 import Foundation
 import Shared
 
-/// Lets SwiftUI watch a saved server's details and send it events. `ServerDetailsModel` calls back on the main thread.
 final class ServerDetailsObservable: ObservableObject {
-    /// Nil until the shared ViewModel reports its first state.
     @Published private(set) var state: ServerDetailsUiState?
 
     private let model: ServerDetailsModel

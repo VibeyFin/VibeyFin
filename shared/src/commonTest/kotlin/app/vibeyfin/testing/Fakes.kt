@@ -38,7 +38,6 @@ import kotlin.time.Instant
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 
-/** A clock that moves with the test's virtual time, from [start]. */
 @OptIn(ExperimentalCoroutinesApi::class)
 fun TestScope.virtualClock(start: Instant = Instant.fromEpochMilliseconds(1_700_000_000_000)): Clock = object : Clock {
     override fun now(): Instant = start + testScheduler.currentTime.milliseconds

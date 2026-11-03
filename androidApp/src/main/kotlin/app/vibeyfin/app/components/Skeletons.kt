@@ -125,7 +125,6 @@ fun ItemSkeleton(wide: Boolean, screenWidth: Dp, screenHeight: Dp, margin: Dp, m
     }
 }
 
-/** Profile tiles with a name line, for "Who's watching?" while the profiles load. */
 fun LazyGridScope.skeletonProfiles(count: Int, avatarSize: Dp) {
     items(count, key = { "skeleton-profile-$it" }) {
         Column(

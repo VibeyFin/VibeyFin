@@ -94,7 +94,6 @@ class ApproveQuickConnectViewModelTest {
 
     @Test
     fun quickConnectOffIsSaidWithoutAskingToApprove() = runTest {
-        // Jellyfin answers an approval with 401 while Quick Connect is off, which would end the session
         server.on("GET", "/QuickConnect/Enabled", Reply.json("false"))
         val viewModel = viewModel()
         viewModel.onCodeChange("123456")

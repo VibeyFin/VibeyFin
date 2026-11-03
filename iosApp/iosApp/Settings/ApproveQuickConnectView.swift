@@ -2,8 +2,6 @@ import SwiftUI
 import UIKit
 import Shared
 
-/// Settings › Quick Connect: type the code another device shows to sign it in as this profile. Its own view, not a shared
-/// `SettingsPage`, because it has a text field; the shared `ApproveQuickConnectViewModel` decides what it says.
 struct ApproveQuickConnectView: View {
     @StateObject private var model = ApproveQuickConnectObservable()
     @FocusState private var focused: Bool
@@ -53,7 +51,6 @@ struct ApproveQuickConnectView: View {
             if let error = state.error {
                 FieldError(message: error)
             } else if let done = state.done {
-                // A check and the words in the text colour: aqua never says how something went.
                 Label(done, systemImage: "checkmark")
                     .font(.footnote)
                     .foregroundStyle(.primary)

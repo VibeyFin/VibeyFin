@@ -41,7 +41,6 @@ import app.vibeyfin.ui.quickconnect.ApproveQuickConnectUiState
 import app.vibeyfin.ui.quickconnect.ApproveQuickConnectViewModel
 import org.koin.androidx.compose.koinViewModel
 
-/** Settings › Quick Connect on a phone: its own page, because it has the code field the shared Settings rows don't. */
 @Composable
 fun QuickConnectApproveRoute(onBack: () -> Unit, viewModel: ApproveQuickConnectViewModel = koinViewModel()) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -59,7 +58,6 @@ fun QuickConnectApproveRoute(onBack: () -> Unit, viewModel: ApproveQuickConnectV
     }
 }
 
-/** The page's content; the phone's page and the tablet's right pane both draw it. */
 @Composable
 internal fun QuickConnectApproveContent(viewModel: ApproveQuickConnectViewModel, modifier: Modifier) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -96,7 +94,6 @@ private fun QuickConnectApproveBody(state: ApproveQuickConnectUiState, onCodeCha
     }
 }
 
-// A check and the words in the text color: aqua never says how something went
 @Composable
 private fun Done(text: String) {
     Row(

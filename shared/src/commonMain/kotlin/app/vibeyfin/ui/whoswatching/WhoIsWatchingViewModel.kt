@@ -69,17 +69,13 @@ data class WhoIsWatchingUiState(
     val profiles: List<Profile> = emptyList(),
     /** False when the server couldn't be reached; saved profiles still show. */
     val serverReachable: Boolean = true,
-    /** The saved addresses, best first, as tried when the server couldn't be reached. */
     val triedAddresses: List<String> = emptyList(),
     /** The server allows Quick Connect, so the grid offers it. */
     val quickConnectAvailable: Boolean = false,
     val sheet: SignInSheet? = null,
     val signingIn: Boolean = false,
-    /** The profile whose tile was tapped and is opening; the other tiles wait. */
     val openingUserId: String? = null,
-    /** A note above the grid, such as whose session ended. Not an error. */
     val notice: String? = null,
-    /** A note at the top of the open sheet. Not an error. */
     val sheetNotice: String? = null,
     /** Shown inside the open sheet, or on the grid when no sheet is open. */
     val error: String? = null,
@@ -121,7 +117,6 @@ class WhoIsWatchingViewModel(
         val signedIn: Boolean = false,
         val openedUserId: String? = null,
     ) {
-        // Signed in counts: nothing else opens while the screen zooms out
         val busy get() = signingIn || openingUserId != null || signedIn
     }
 
@@ -256,7 +251,6 @@ class WhoIsWatchingViewModel(
         signIn(username.trim(), password, passwordOnly = false)
     }
 
-    /** Starts Quick Connect, from the grid or a password sheet, or starts it over after it stopped. */
     fun onQuickConnectTapped() {
         if (local.value.signedIn) return
         stopQuickConnect()
@@ -266,7 +260,6 @@ class WhoIsWatchingViewModel(
         }
     }
 
-    /** The app is in front again: a code approved meanwhile on this device is picked up at once. */
     fun onAppResumed() {
         pollNow.tryEmit(Unit)
     }
@@ -344,7 +337,6 @@ class WhoIsWatchingViewModel(
         }
     }
 
-    // [userId] is the tile signing in, when it is one
     private fun signIn(username: String, password: String, passwordOnly: Boolean, userId: String? = null) {
         if (local.value.busy) return
         viewModelScope.launch { signInNow(username, password, passwordOnly, userId) }
@@ -364,7 +356,6 @@ class WhoIsWatchingViewModel(
     }
 }
 
-/** These profiles in the order of [shown], with any that weren't shown after them. */
 internal fun List<Profile>.inOrderOf(shown: List<Profile>): List<Profile> {
     val place = shown.withIndex().associate { (index, profile) -> profile.userId to index }
     return sortedBy { place[it.userId] ?: Int.MAX_VALUE }

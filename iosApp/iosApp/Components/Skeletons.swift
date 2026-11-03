@@ -162,7 +162,6 @@ private struct HeroDetailsSkeleton: View {
     }
 }
 
-/// Profile tiles with a name line, for "Who's watching?" while the profiles load.
 struct ProfileSkeletonGrid: View {
     var count: Int = 4
     let avatarSize: CGFloat

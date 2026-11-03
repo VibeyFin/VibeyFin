@@ -3,8 +3,6 @@ import Shared
 
 /// A collection's header: its picture full-bleed with the title, how many titles it holds and the overview over the lower part,
 /// fading into the page. A regular width shows a wide picture with the text in a column on the left.
-/// As on an item's page, the picture stays put while the page scrolls (`scrollOffset`): the text goes up over it, it darkens, and the
-/// rest of the page covers it from below.
 struct CollectionHeaderView: View {
     let collection: MediaItem
     let count: Int
@@ -16,7 +14,6 @@ struct CollectionHeaderView: View {
     var body: some View {
         ZStack(alignment: wide ? .bottomLeading : .bottom) {
             backdrop
-                // Moved down as far as the header has gone up, so it holds still; the clip lets the page below cover it.
                 .offset(y: scrollOffset)
             VStack(alignment: wide ? .leading : .center, spacing: Space.s2) {
                 Text(collection.title)
@@ -77,7 +74,6 @@ struct CollectionHeaderView: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
-            // The darkening as the page scrolls, as on an item's page.
             GeometryReader { proxy in
                 Color(.systemBackground).opacity(ScrollDarkening.opacity(scrolled: scrollOffset, height: proxy.size.height))
             }

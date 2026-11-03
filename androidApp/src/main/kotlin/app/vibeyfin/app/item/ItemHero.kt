@@ -174,7 +174,6 @@ fun PinnedBackdrop(title: String, picture: String?, blurHash: String?, height: D
     }
 }
 
-/** How dark a pinned picture [heightPx] tall is once the page has scrolled [scrolledPx]: fully dark after about half of it has gone by. */
 internal fun scrollDarkening(scrolledPx: Float, heightPx: Float): Float = if (heightPx > 0f) (scrolledPx / (heightPx * DARKEN_OVER)).coerceIn(0f, 1f) * MAX_DARKEN else 0f
 
 private const val DARKEN_OVER = 0.55f

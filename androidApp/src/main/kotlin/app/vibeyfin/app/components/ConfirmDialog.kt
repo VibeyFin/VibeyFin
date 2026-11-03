@@ -9,7 +9,6 @@ import androidx.compose.runtime.Composable
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 
-/** The question before something that can't be undone: [confirmLabel] in red, and Cancel. */
 @Composable
 fun DangerConfirmDialog(title: String, message: String, confirmLabel: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(

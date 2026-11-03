@@ -15,7 +15,6 @@ class HomeSession : ViewModel() {
     var owner: ViewModelStoreOwner by mutableStateOf(newOwner())
         private set
 
-    /** A profile signed in: the last session's Home is dropped and a fresh one is made from [owner]. */
     fun renew() {
         owner.viewModelStore.clear()
         owner = newOwner()

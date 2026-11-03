@@ -212,7 +212,6 @@ class WhoIsWatchingViewModelTest {
         assertIs<SignInSheet.OtherUser>(viewModel.uiState.first { it.sheet != null }.sheet)
         viewModel.onSubmitOtherUser("  alex ", "right")
 
-        // Not a tile, so nothing to zoom into
         assertNull(viewModel.uiState.first { it.signedIn }.openedUserId)
         assertTrue(app.jellyfin.requestsTo("POST", "/Users/AuthenticateByName").single().body.contains(""""Username":"alex""""))
     }
@@ -478,8 +477,6 @@ class WhoIsWatchingViewModelTest {
         assertEquals(true, app.database.accountDao().observeKidsProfile("srv-1", "u1").first())
     }
 
-    // The grid's own notes
-
     @Test
     fun aSessionThatEndedIsNamedAboveTheGridAndInItsSheet() = runTest {
         app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-u1")
@@ -519,8 +516,6 @@ class WhoIsWatchingViewModelTest {
         assertNull(state.openingUserId)
         assertFalse(state.busy)
     }
-
-    // Quick Connect, finished
 
     @Test
     fun theCodeCountsDownToItsExpiry() = runTest {

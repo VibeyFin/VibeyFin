@@ -30,7 +30,6 @@ data class ProfileMenuUiState(
     val openQuickConnect: Boolean = false,
 )
 
-/** The profile button at the top of every tab: who is signed in, and the menu's switch profile, switch server, Quick Connect and sign out. */
 class ProfileMenuViewModel(
     connection: ConnectionManager,
     profileSettings: ProfileSettings,
@@ -64,7 +63,6 @@ class ProfileMenuViewModel(
 
     fun onSignOut() = profile.signOut()
 
-    /** Quick Connect in the menu: approve another device's code, after the PIN to open Settings when the profile has one. */
     fun onQuickConnect() = profile.quickConnect()
 
     fun onQuickConnectOpened() = profile.quickConnectOpened()

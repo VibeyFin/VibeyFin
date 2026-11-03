@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** A saved server and how many of its profiles are saved on this device. */
 data class ServerRow(val server: Server, val profileCount: Int) {
     val meta: String get() = Strings.serverMeta(server.version, server.addresses.size, profileCount)
 }
@@ -33,7 +32,6 @@ data class ServersUiState(
     val searching: Boolean = false,
     /** False where the platform can't search, so the screen shows no search at all. */
     val canSearch: Boolean = false,
-    /** The server whose removal waits for a yes. */
     val confirmRemove: ServerRow? = null,
 )
 

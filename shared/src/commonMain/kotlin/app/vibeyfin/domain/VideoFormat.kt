@@ -17,10 +17,6 @@ data class VideoFormat(
     val bitrateKbps: Int?,
 )
 
-/**
- * An audio or subtitle track of a file, for the technical info. [displayTitle] is the server's own name for it
- * ("English - Dolby Digital - 5.1 - Default"); the rest is what is known when it sends none.
- */
 @Serializable
 data class StreamTrack(
     val displayTitle: String? = null,

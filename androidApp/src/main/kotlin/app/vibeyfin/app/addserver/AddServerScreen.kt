@@ -47,7 +47,6 @@ import app.vibeyfin.ui.common.Strings
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-/** [showNext] says where saving leads: to the server's "Who's watching?", unless an address is being added from its details. */
 @Composable
 fun AddServerRoute(
     initialAddress: String?,
@@ -152,7 +151,6 @@ private fun FoundCard(found: AddServerStep.Found) {
         shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md),
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
-            // The server answered: a check and the word, in the text color. Aqua is for the primary action.
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
                 Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(16.dp))
                 Text(Strings.found, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)

@@ -1,10 +1,7 @@
 import Foundation
 import Shared
 
-/// Lets SwiftUI watch Settings › Quick Connect's shared state and send it events. `ApproveQuickConnectModel` calls back on the main
-/// thread.
 final class ApproveQuickConnectObservable: ObservableObject {
-    /// Nil until the shared ViewModel reports its first state.
     @Published private(set) var state: ApproveQuickConnectUiState?
 
     private let model = ApproveQuickConnectModel()

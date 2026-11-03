@@ -36,7 +36,6 @@ data class AddServerUiState(
     val address: String = "",
     val step: AddServerStep = AddServerStep.Idle,
     val saving: Boolean = false,
-    /** The server just added or given a new address; the app goes on to its "Who's watching?". */
     val savedServerId: String? = null,
 ) {
     val canConnect get() = address.isNotBlank() && step !is AddServerStep.Checking && !saving

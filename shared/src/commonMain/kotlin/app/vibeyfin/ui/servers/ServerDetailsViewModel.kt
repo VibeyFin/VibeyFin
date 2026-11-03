@@ -20,12 +20,9 @@ data class ServerDetailsUiState(
     val loading: Boolean = true,
     val name: String = "",
     val version: String? = null,
-    /** Best first: the one that worked last leads. */
     val addresses: List<ServerAddressRow> = emptyList(),
     val profileCount: Int = 0,
-    /** Removing the server waits for a yes. */
     val confirmRemove: Boolean = false,
-    /** The server is gone; the screen closes. */
     val removed: Boolean = false,
 ) {
     /** A server keeps at least one address; remove the server instead. */
@@ -35,7 +32,6 @@ data class ServerDetailsUiState(
     val removeMessage: String get() = Strings.removeServerMessage(profileCount)
 }
 
-/** A saved server's addresses and profiles on this device, and removing it. */
 class ServerDetailsViewModel(
     private val serverId: String,
     private val servers: ServerRepository,

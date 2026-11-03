@@ -34,16 +34,12 @@ struct ItemHeroView: View {
     }
 }
 
-/// How dark a pinned picture gets as the page scrolls over it: nearly the page's own colour, with a hint of the picture left.
 enum ScrollDarkening {
-    /// The share of the picture that has to scroll by for it to be fully dark.
     static let darkenOver: CGFloat = 0.55
     static let maxDarken = 0.94
 
-    /// `progress` runs from 0 at the top to 1 once fully dark.
     static func opacity(progress: CGFloat) -> Double { maxDarken * Double(min(max(progress, 0), 1)) }
 
-    /// For a picture `height` tall once the page has scrolled `scrolled`.
     static func opacity(scrolled: CGFloat, height: CGFloat) -> Double {
         height > 0 ? opacity(progress: scrolled / (height * darkenOver)) : 0
     }

@@ -124,7 +124,6 @@ internal fun RowFrame(modifier: Modifier = Modifier, content: @Composable RowSco
     ) { content() }
 }
 
-/** A title with its value at the right, such as a server's version. */
 @Composable
 internal fun ValueRow(title: String, value: String) {
     RowFrame {
@@ -140,7 +139,6 @@ internal fun ValueRow(title: String, value: String) {
     }
 }
 
-/** A row that does one thing when tapped, in red when it can't be undone. */
 @Composable
 internal fun ButtonRow(title: String, onClick: () -> Unit, destructive: Boolean = false, leading: (@Composable () -> Unit)? = null) {
     RowFrame(Modifier.clickable(role = Role.Button, onClick = onClick)) {
@@ -161,28 +159,16 @@ private fun IconCircle(icon: ImageVector) {
 
 private fun iconFor(key: SettingKey): ImageVector? = when (key) {
     SettingKey.ProfileCard -> Icons.Filled.Person
-
     SettingKey.Quality -> Icons.Filled.Star
-
     SettingKey.AudioSubtitles -> Icons.Filled.Face
-
     SettingKey.AudioLanguage, SettingKey.SubtitleLanguage -> null
-
     SettingKey.Skipping -> Icons.Filled.PlayArrow
-
     SettingKey.BufferAhead -> Icons.Filled.Settings
-
     SettingKey.HomeGenreRows, SettingKey.HomeHeroItems -> Icons.Filled.Home
-
     SettingKey.Notifications -> Icons.Filled.Notifications
-
     SettingKey.KidsProfile, SettingKey.Pin -> Icons.Filled.Lock
-
     SettingKey.Seerr -> Icons.Filled.Add
-
-    // Its icon is the menu's; on the Profile page it sits under Switch profile, which has none
     SettingKey.QuickConnect -> null
-
     else -> Icons.Filled.Info
 }
 

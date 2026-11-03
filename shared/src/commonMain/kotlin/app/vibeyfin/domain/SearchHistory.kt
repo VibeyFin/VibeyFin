@@ -47,7 +47,6 @@ class SearchHistory(
         dataStore.edit { it.remove(key) }
     }
 
-    /** Forgets what [userId] on [serverId] searched for, signed in or not. */
     suspend fun clear(serverId: String, userId: String) {
         dataStore.edit { it.remove(keyFor(serverId, userId)) }
     }
