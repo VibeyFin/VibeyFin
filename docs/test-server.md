@@ -48,7 +48,7 @@ this name; renaming or changing one is a reviewed change. All paths are under
 | `plain` | `failures/Plain Clip (2026)/Plain Clip (2026).mkv` | 20 s, 640x360 H.264 (`testsrc2`), 440 Hz AAC, no chapters, no subtitles | The baseline for the failure fixtures; "no segments, no trickplay": no skip button, no scrub thumbnails |
 | `dts-audio` | `failures/DTS Audio (2026)/DTS Audio (2026).mkv` | Same as `plain`, with DTS audio instead of AAC | An audio codec a device may not decode: negotiation |
 | `mkv-vp9-opus` | `failures/MKV VP9 Opus (2026)/MKV VP9 Opus (2026).mkv` | Same as `plain`, VP9 video and Opus audio in MKV | A file AVPlayer cannot open: negotiation |
-| `av1-ac3` | `failures/AV1 AC3 (2026)/AV1 AC3 (2026).mkv` | Same as `plain`, AV1 10-bit (SVT-AV1, `yuv420p10le`) video and AC-3 audio in MKV, like the web rips many libraries hold | iOS download: the remux copies AV1 into MP4 where the device has an AV1 hardware decoder, and refuses it where not |
+| `av1-ac3` | `failures/AV1 AC3 (2026)/AV1 AC3 (2026).mkv` | Same as `plain`, AV1 10-bit (SVT-AV1, `yuv420p10le`) video and AC-3 audio in MKV, like the web rips many libraries hold | iOS download: kept as sent and played in Aether, which decodes AV1 in software where the device has no hardware decoder |
 | `subs-text` | `failures/Text Subtitles (2026)/Text Subtitles (2026).mkv` | Same as `plain`, plus two SubRip tracks (`eng` "English subtitle", `deu` "Deutscher Untertitel"), shown 1 s to 15 s | Text subtitle tracks and the picker |
 | `languages` | `failures/Languages (2026)/Languages (2026).mkv` | Same as `plain`, but two AAC audio tracks (`eng` "English" 440 Hz, flagged default; `ger` "Deutsch" 880 Hz) and three SubRip tracks (`eng` "English subtitle", `ger` "Deutscher Untertitel", and `eng` "Forced English subtitle" flagged forced), shown 1 s to 15 s | Preferred audio and subtitle languages (issue #28): which tracks a video starts with. Also the detail page's Technical info, whose Audio and Subtitles lines list these tracks |
 | `subs-image` | `failures/Image Subtitles (2026)/Image Subtitles (2026).mkv` | Same as `plain`, plus one PGS track (a white bar, 1 s to 15 s, hand-written because ffmpeg cannot encode PGS) | Image subtitles: burned in by a transcode |
@@ -69,7 +69,7 @@ negotiation rules in plan 03 and have not all been confirmed in the app yet):
 
 - `plain`: plays directly, with no skip button and no thumbnails while scrubbing.
 - `dts-audio`: direct stream or transcode of the audio if the device cannot decode DTS; never silent playback.
-- `mkv-vp9-opus`: direct play where the player supports MKV, VP9 and Opus (Android); on iOS a transcode (or the device remux, plan 05).
+- `mkv-vp9-opus`: direct play where the player supports MKV, VP9 and Opus (Android); on iOS it plays in Aether, also from a download.
 - `subs-text`: both tracks are in the picker with their languages; picking one shows the text.
 - `languages`: with no language preference it starts on English audio (the default flag) and no subtitles. With
   Audio language German and Subtitle language English (Always) it starts on the 880 Hz German track with "English subtitle".

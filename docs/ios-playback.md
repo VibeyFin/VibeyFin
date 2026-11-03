@@ -21,6 +21,14 @@ The choice is made per title, in shared code, with no setting:
 
 The stats overlay shows the method, the engine and the codecs. Five taps on the title in the player toggle it. The item screen shows the same method under Play before playback (`PlayoutLine`, `docs/design` mockups).
 
+## Downloads
+
+A download is kept exactly as the server sent it (`GET /Items/{id}/Download`); nothing is converted on the device. When it is played, `OfflineLibrary.playable` makes the plan with the same rule as streaming, without the server: the first engine whose lists include the file's container, its video codec and every audio codec (AVPlayer, then Aether). A file no engine lists goes to the last engine, Aether, which tries it.
+
+- A download is refused before it is fetched when no engine lists its video codec (`IosPlayableVideo`, `DownloadFailure.Unplayable`).
+- Offline there is no server to fall back to: a file the chosen engine cannot open ends in the playback error.
+- Only subtitles that came as separate files are offered offline. Embedded and image subtitles are not, even on Aether.
+
 ## Subtitles
 
 - **Text** (SRT, ASS, VTT): the app fetches the file from the server and paints it (`SubtitleOverlay`), on both engines.
