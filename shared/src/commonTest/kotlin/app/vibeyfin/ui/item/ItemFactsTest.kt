@@ -117,7 +117,7 @@ class ItemFactsTest {
     }
 
     @Test
-    fun `technical info lists the audio and subtitle tracks, one per line, between the video and the size`() {
+    fun `technical info lists the audio and subtitle tracks one per line between the video and the size`() {
         val lines = item(
             videoFormat = video(),
             fileBytes = 850_000_000,
