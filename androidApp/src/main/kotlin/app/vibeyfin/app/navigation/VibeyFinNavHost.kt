@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -65,6 +66,7 @@ import app.vibeyfin.app.downloads.RemoveConfirmDialog
 import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
 import app.vibeyfin.app.filtered.FilteredListRoute
 import app.vibeyfin.app.home.HomeRoute
+import app.vibeyfin.app.home.HomeSession
 import app.vibeyfin.app.home.OfflineHomeRoute
 import app.vibeyfin.app.item.ItemRoute
 import app.vibeyfin.app.person.PersonRoute
@@ -94,6 +96,7 @@ import app.vibeyfin.domain.model.SeerrMediaType
 import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.ui.banner.AppBannerViewModel
 import app.vibeyfin.ui.home.HomeExit
+import app.vibeyfin.ui.home.HomeViewModel
 import app.vibeyfin.ui.item.Trailer
 import app.vibeyfin.ui.notifications.NotificationOpenViewModel
 import app.vibeyfin.ui.notifications.NotificationRoute
@@ -162,6 +165,7 @@ private fun popExit(leaving: NavBackStackEntry) = if (leaving.isDetail()) fadeOu
 @Composable
 fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
     val navController = rememberNavController()
+    val homeSession: HomeSession = viewModel()
 
     val open: (MediaItem) -> Unit = navController::openItem
 
@@ -277,7 +281,7 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
                             predictivePopEnterTransition = { popEnter(initialState) },
                             predictivePopExitTransition = { popExit(initialState) },
                         ) {
-                            appGraph(navController, offline, select, leave)
+                            appGraph(navController, offline, select, leave, homeSession)
                         }
                     }
                 }
@@ -465,14 +469,20 @@ private fun NavHostController.openItem(item: MediaItem) {
     navigate(if (item.opensList) Children(item.id, item.title, item.kind == ItemKind.Collection, item.backdropUrl ?: item.posterUrl) else Item(item.id))
 }
 
-private fun NavGraphBuilder.appGraph(navController: NavHostController, offline: Boolean, select: (Tab) -> Unit, leave: (HomeExit) -> Unit) {
-    entryScreens(navController)
-    tabGraphs(navController, offline, select, leave)
+private fun NavGraphBuilder.appGraph(
+    navController: NavHostController,
+    offline: Boolean,
+    select: (Tab) -> Unit,
+    leave: (HomeExit) -> Unit,
+    homeSession: HomeSession,
+) {
+    entryScreens(navController, homeSession)
+    tabGraphs(navController, offline, select, leave, homeSession)
     appScreens(navController, leave)
 }
 
 // Startup and signing in: everything before the tabs
-private fun NavGraphBuilder.entryScreens(navController: NavHostController) {
+private fun NavGraphBuilder.entryScreens(navController: NavHostController, homeSession: HomeSession) {
     composable<Startup> {
         StartupRoute(
             onDecided = { destination ->
@@ -509,12 +519,20 @@ private fun NavGraphBuilder.entryScreens(navController: NavHostController) {
 
     composable<WhoIsWatching> { entry ->
         val route = entry.toRoute<WhoIsWatching>()
+        var homeStarted by remember { mutableStateOf(false) }
+
+        // Signed in: Home's ViewModel is made now and starts loading under the zoom; Home's page picks up the same one
+        if (homeStarted) koinViewModel<HomeViewModel>(viewModelStoreOwner = homeSession.owner)
 
         WhoIsWatchingRoute(
             serverId = route.serverId,
             pinFor = route.pinUserId?.let { ProfileRef(route.serverId, it) },
             onSwitchServer = { backToServers() },
             onServerDetails = { navController.navigate(ServerDetails(route.serverId)) },
+            onSigningIn = {
+                homeSession.renew()
+                homeStarted = true
+            },
             // Home becomes the root: back from it leaves the app instead of returning to sign-in
             onSignedIn = { navController.navigate(HomeTab) { popUpTo(Servers) { inclusive = true } } },
         )
@@ -547,7 +565,13 @@ private fun NavGraphBuilder.entryScreens(navController: NavHostController) {
     }
 }
 
-private fun NavGraphBuilder.tabGraphs(navController: NavHostController, offline: Boolean, select: (Tab) -> Unit, leave: (HomeExit) -> Unit) {
+private fun NavGraphBuilder.tabGraphs(
+    navController: NavHostController,
+    offline: Boolean,
+    select: (Tab) -> Unit,
+    leave: (HomeExit) -> Unit,
+    homeSession: HomeSession,
+) {
     val open: (MediaItem) -> Unit = navController::openItem
 
     // One graph per tab, each with the screens that open inside it: the same Item and Children
@@ -562,6 +586,7 @@ private fun NavGraphBuilder.tabGraphs(navController: NavHostController, offline:
                 )
             } else {
                 HomeRoute(
+                    viewModel = koinViewModel(viewModelStoreOwner = homeSession.owner),
                     onExit = leave,
                     onOpen = open,
                     onOpenSeerr = navController::openSeerr,

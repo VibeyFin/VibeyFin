@@ -2,7 +2,8 @@ import SwiftUI
 import Shared
 
 struct HomeView: View {
-    @StateObject private var model = HomeObservable()
+    /// Made when the profile signed in, so Home is already loading while "Who's watching?" zooms.
+    @ObservedObject var model: HomeObservable
     @StateObject private var seerr = SeerrHomeObservable()
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.playerSession) private var player

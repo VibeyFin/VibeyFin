@@ -63,6 +63,8 @@ private enum MainTab: Hashable {
 struct TabShell: View {
     /// Called when the tabs should be left: the user chose to, or the session ended.
     let onExit: (HomeExit) -> Void
+    /// Home's model for this session, made at sign-in so it is already loading.
+    let home: HomeObservable
 
     @State private var selection: MainTab = .home
     @Namespace private var zoomNamespace
@@ -133,6 +135,7 @@ struct TabShell: View {
                     .tabRootBar()
                 } else {
                     HomeView(
+                        model: home,
                         onExit: onExit,
                         onOpen: { open($0, in: $homePath) },
                         onDetails: { homePath.append(.item(itemId: $0)) },

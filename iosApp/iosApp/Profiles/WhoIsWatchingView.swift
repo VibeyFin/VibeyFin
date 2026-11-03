@@ -18,18 +18,22 @@ struct WhoIsWatchingView: View {
     let onSwitchServer: () -> Void
     let onServerDetails: () -> Void
     let onSignedIn: () -> Void
+    /// Signed in, before the zoom: Home can start loading under it.
+    let onSigningIn: () -> Void
 
     init(
         serverId: String,
         pinFor: ProfileRef? = nil,
         onSwitchServer: @escaping () -> Void,
         onServerDetails: @escaping () -> Void,
+        onSigningIn: @escaping () -> Void = {},
         onSignedIn: @escaping () -> Void
     ) {
         _model = StateObject(wrappedValue: WhoIsWatchingObservable(serverId: serverId, pinFor: pinFor))
         self.onSwitchServer = onSwitchServer
         self.onServerDetails = onServerDetails
         self.onSignedIn = onSignedIn
+        self.onSigningIn = onSigningIn
     }
 
     /// The side of a profile's square, and of the Quick Connect and Other user tiles beside it.
@@ -53,7 +57,9 @@ struct WhoIsWatchingView: View {
             if phase == .active { model.appResumed() }
         }
         .onChange(of: model.state?.signedIn) { _, signedIn in
-            if signedIn == true { zoomThenLeave() }
+            guard signedIn == true else { return }
+            onSigningIn()
+            zoomThenLeave()
         }
         // One sheet: the PIN question replaces a sign-in sheet that is open under it and gives it back once answered.
         .sheet(isPresented: sheetBinding) {

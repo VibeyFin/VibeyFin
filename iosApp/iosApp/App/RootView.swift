@@ -14,6 +14,8 @@ struct RootView: View {
     /// The screens before sign-in. Once signed in the tabs replace them.
     @State private var path: [Route] = []
     @State private var signedIn = false
+    /// Home's model for the signed-in session: made as soon as a profile signs in, so Home loads while "Who's watching?" zooms.
+    @State private var home: HomeObservable?
     @State private var ready = false
     @StateObject private var startup = StartupObservable()
     @ObservedObject private var taps = NotificationTaps.shared
@@ -22,6 +24,7 @@ struct RootView: View {
     /// watching?" has somewhere to go.
     private func leave(_ exit: HomeExit) {
         signedIn = false
+        home = nil
         if let who = exit as? HomeExitWhoIsWatching {
             path = [.whoIsWatching(serverId: who.serverId)]
         } else {
@@ -31,8 +34,8 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if signedIn {
-                TabShell(onExit: leave)
+            if signedIn, let home {
+                TabShell(onExit: leave, home: home)
                     .transition(.opacity)
             } else {
                 NavigationStack(path: $path) {
@@ -59,8 +62,12 @@ struct RootView: View {
                                 pinFor: pinUserId.map { ProfileRef(serverId: serverId, userId: $0) },
                                 onSwitchServer: { path = [] },
                                 onServerDetails: { path.append(.serverDetails(serverId: serverId)) },
+                                onSigningIn: { home = HomeObservable() },
                                 // The tabs become the only screens, faded in over the zoom. `leave` sets the path again on the way out.
-                                onSignedIn: { withAnimation(.easeOut(duration: 0.2)) { signedIn = true } }
+                                onSignedIn: {
+                                    if home == nil { home = HomeObservable() }
+                                    withAnimation(.easeOut(duration: 0.2)) { signedIn = true }
+                                }
                             )
                         case .serverDetails(let serverId):
                             ServerDetailsView(
@@ -82,6 +89,7 @@ struct RootView: View {
         .onAppear {
             startup.start { destination in
                 if destination is StartDestinationHome {
+                    home = HomeObservable()
                     signedIn = true
                 } else if let who = destination as? StartDestinationWhoIsWatching {
                     path = [.whoIsWatching(serverId: who.serverId, pinUserId: who.pinFor?.userId)]

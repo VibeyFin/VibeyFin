@@ -112,6 +112,8 @@ fun WhoIsWatchingRoute(
     onServerDetails: () -> Unit,
     onSignedIn: () -> Unit,
     pinFor: ProfileRef? = null,
+    /** Signed in, before the zoom: Home can start loading under it. */
+    onSigningIn: () -> Unit = {},
     viewModel: WhoIsWatchingViewModel = koinViewModel(parameters = { parametersOf(serverId, pinFor) }),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -121,6 +123,7 @@ fun WhoIsWatchingRoute(
     // The profile that opened grows into the middle as the rest fades, then Home fades in over it
     LaunchedEffect(state.signedIn) {
         if (!state.signedIn) return@LaunchedEffect
+        onSigningIn()
         if (animate && state.openedUserId != null) {
             zoom.animateTo(1f, tween(ZOOM_MS, easing = FastOutSlowInEasing))
             zoom.animateTo(2f, tween(FLY_MS, easing = FlyEasing))
