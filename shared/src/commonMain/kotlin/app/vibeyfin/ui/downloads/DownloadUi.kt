@@ -88,7 +88,7 @@ val Download.bytes: Long get() = bytesTotal ?: bytesDone
 fun Download.statusLine(waiting: DownloadRunner.Waiting): String = when (state) {
     DownloadState.Done -> Strings.downloadedWithSize(bytes)
 
-    DownloadState.Running -> if (conversion != null) Strings.downloadConverting((conversion * 100).toInt()) else listOfNotNull(Strings.downloading, Strings.downloadProgress(bytesDone, bytesTotal), timeLeft?.let { Strings.downloadTimeLeft(it.inWholeSeconds) }).joinToString(" · ")
+    DownloadState.Running -> listOfNotNull(Strings.downloading, Strings.downloadProgress(bytesDone, bytesTotal), timeLeft?.let { Strings.downloadTimeLeft(it.inWholeSeconds) }).joinToString(" · ")
 
     DownloadState.Queued -> Strings.downloadQueued
 
@@ -110,7 +110,7 @@ val Download.failureMessage: String? get() = if (state == DownloadState.Failed) 
 val Download.stateWord: String
     get() = when (state) {
         DownloadState.Done -> Strings.downloaded
-        DownloadState.Running -> if (conversion != null) Strings.converting else Strings.downloading
+        DownloadState.Running -> Strings.downloading
         DownloadState.Queued, DownloadState.WaitingForNetwork -> Strings.downloadQueued
         DownloadState.Paused -> Strings.downloadPaused
         DownloadState.Failed -> Strings.downloadFailed

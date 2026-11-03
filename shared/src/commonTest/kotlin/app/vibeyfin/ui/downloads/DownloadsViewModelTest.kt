@@ -92,14 +92,6 @@ class DownloadsViewModelTest {
         val running = viewModel.uiState.first { it.movies.singleOrNull()?.state == DownloadState.Running && it.movies.single().bytesDone == 20L }.movies.single()
         assertEquals("Downloading · 20 B of 50 B", running.statusLine(DownloadRunner.Waiting.Network))
 
-        // The finished video is being made playable on the device: the line says so, and the ring follows the conversion.
-        app.speeds.setConverting("srv-1/u1/m1", 0.4f)
-        val converting = viewModel.uiState.first { it.movies.singleOrNull()?.conversion != null }.movies.single()
-        assertEquals("Converting for this device · 40%", converting.statusLine(DownloadRunner.Waiting.Network))
-        assertEquals(Strings.converting, converting.stateWord)
-        assertEquals(0.4f, converting.progress)
-        app.speeds.clearConverting("srv-1/u1/m1")
-
         app.downloads.complete("srv-1", "u1", "m1", 50, "srv-1/u1/m1/video.mkv", 3)
         val done = viewModel.uiState.first { it.movies.singleOrNull()?.state == DownloadState.Done }.movies.single()
         assertEquals("Downloaded · 50 B", done.statusLine(DownloadRunner.Waiting.Network))
