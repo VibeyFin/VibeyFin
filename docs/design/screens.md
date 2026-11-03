@@ -341,11 +341,6 @@ the scope is clear from position and from the footers.
   on Skipping and autoplay.
 - **Home**: Featured title, Genre rows.
 - **Notifications**: opens its page (below).
-- **Other devices**: **Quick Connect**, which opens its page (mockup **QuickConnectApprovePhone**): "On the other device, choose Quick Connect. Type the code it shows
-  here to sign it in as Alex.", a Code field (number pad, digits only, six) and **Approve** (aqua, the page's one primary action;
-  "Approving…" while busy). Approved says so under the field with a check in the text colour and clears it; a code the server never
-  gave out, Quick Connect off on the server and an unreachable server are said under the field, which keeps the code. Not on a kids
-  profile.
 - **Kids and PIN** (the group): one row, **Kids profile**, which opens the Kids and PIN page (below). It stays on a kids profile too, since turning kids mode off asks for the PIN on that page.
 - **This device**: Always ask who's watching.
 - **Advanced**: Playback stats overlay, About.
@@ -356,10 +351,12 @@ A link row opens a sub-page.
 
 ### Profile
 
-Avatar, name and server; **Switch profile** (to "Who's watching?"); a read-only Server group (name and
+Avatar, name and server; **Switch profile** (to "Who's watching?") and **Quick Connect** (below); a read-only Server group (name and
 addresses); **Sign out** in `danger` text with a confirmation. Sign out clears the token, deletes the profile's
 downloads from the device and keeps the profile's tile in "Who's watching?", locked (the explicit sign-out the session rules allow). Name and avatar
 are edited in Jellyfin, not here. A kids profile has no Sign out _(planned with kids mode)_.
+
+**Quick Connect** (mockup **QuickConnectApprovePhone**) is reached from the profile menu (after the PIN to open Settings when that is on) and from the Profile page, under Switch profile. Its page: "On the other device, choose Quick Connect. Type the code it shows here to sign it in as Alex.", a Code field (number pad, digits only, six) and **Approve** (aqua, the page's one primary action; "Approving…" while busy). Approved says so under the field with a check in the text colour and clears it; a code the server never gave out, Quick Connect off on the server and an unreachable server are said under the field, which keeps the code. Not on a kids profile.
 
 ### Quality
 
