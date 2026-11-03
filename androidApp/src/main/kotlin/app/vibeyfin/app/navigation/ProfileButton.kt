@@ -1,6 +1,7 @@
 package app.vibeyfin.app.navigation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Person
@@ -15,7 +16,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -32,6 +35,7 @@ import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.profile.ProfileMenuViewModel
+import coil3.compose.AsyncImage
 import org.koin.androidx.compose.koinViewModel
 
 /** The profile button the shell hands to the tab roots' headers; nothing outside the tabs draws one. */
@@ -86,6 +90,15 @@ fun ProfileButton(
                 color = VibeyFinTokens.Colors.ink,
                 modifier = Modifier.clearAndSetSemantics { },
             )
+            // The Jellyfin picture over the letter, which shows while it loads or when there is none
+            state.avatarUrl?.let { url ->
+                AsyncImage(
+                    model = url,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.matchParentSize().clip(CircleShape),
+                )
+            }
         }
 
         VibeyFinMenu(expanded = open, onDismiss = { open = false }) {

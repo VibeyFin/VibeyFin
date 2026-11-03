@@ -74,6 +74,17 @@ class ProfileMenuViewModelTest {
     }
 
     @Test
+    fun `the button shows the profile's Jellyfin picture when it has one`() = runTest {
+        signedIn()
+        assertNull(viewModel().uiState.first { it.userName != null }.avatarUrl)
+
+        app.accounts.saveSession("srv-1", "u1", "Alex", "tag-1", "token-1")
+        app.connection.activate("srv-1", "u1")
+
+        assertEquals("http://nas:8096/Users/u1/Images/Primary?tag=tag-1&maxWidth=256", viewModel().uiState.first { it.avatarUrl != null }.avatarUrl)
+    }
+
+    @Test
     fun `Quick Connect opens straight away without a PIN to open Settings`() = runTest {
         signedIn()
         val viewModel = viewModel()

@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.stateIn
 data class ProfileMenuUiState(
     /** The signed-in profile; null while nobody is. */
     val userName: String? = null,
+    /** The profile's Jellyfin picture, drawn in the button in place of its letter; null when it has none. */
+    val avatarUrl: String? = null,
     /** A kids profile: the menu has no Sign out. */
     val kidsProfile: Boolean = false,
     /** The PIN sheet, while switching profile or server waits for the profile's PIN. */
@@ -48,8 +50,10 @@ class ProfileMenuViewModel(
         profile.exit,
         profile.openQuickConnect,
     ) { state, kids, prompt, exit, quickConnect ->
+        val connected = state as? ConnectionState.Connected
         ProfileMenuUiState(
-            userName = (state as? ConnectionState.Connected)?.account?.name,
+            userName = connected?.account?.name,
+            avatarUrl = connected?.let { c -> c.account.imageTag?.let { c.api.userImageUrl(c.account.userId, it) } },
             kidsProfile = kids == true,
             pinPrompt = prompt,
             exit = exit,

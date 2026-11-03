@@ -94,6 +94,13 @@ private val SmallAvatar = 64.dp
 private const val ZOOM_MS = 520
 private const val ZOOM_SCALE = 1.8f
 
+// Then up into the profile button, where Home's will be: the header row is the same on every page
+private const val FLY_MS = 420
+
+// The tile's rounded square, as a share of its side, and the button's circle
+private const val TILE_CORNER_PERCENT = 12
+private const val CIRCLE_PERCENT = 50
+
 @Composable
 fun WhoIsWatchingRoute(
     serverId: String,
@@ -110,7 +117,10 @@ fun WhoIsWatchingRoute(
     // The profile that opened grows into the middle as the rest fades, then Home fades in over it
     LaunchedEffect(state.signedIn) {
         if (!state.signedIn) return@LaunchedEffect
-        if (animate && state.openedUserId != null) zoom.animateTo(1f, tween(ZOOM_MS, easing = FastOutSlowInEasing))
+        if (animate && state.openedUserId != null) {
+            zoom.animateTo(1f, tween(ZOOM_MS, easing = FastOutSlowInEasing))
+            zoom.animateTo(2f, tween(FLY_MS, easing = FastOutSlowInEasing))
+        }
         onSignedIn()
     }
     // Back from approving the code in a browser on this phone: the approval is picked up at once
@@ -164,14 +174,21 @@ fun WhoIsWatchingScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer { alpha = 1f - zoom() }
+                    .graphicsLayer { alpha = 1f - zoom().coerceAtMost(1f) }
                     .safeDrawingPadding()
                     .padding(horizontal = screenMargin()),
             ) {
                 TabHeader(
                     title = Strings.whoIsWatching,
                     horizontalPadding = 0.dp,
-                    trailing = { ServerButton(state.serverName.orEmpty(), onSwitchServer, onServerDetails) },
+                    trailing = {
+                        ServerButton(
+                            state.serverName.orEmpty(),
+                            onSwitchServer,
+                            onServerDetails,
+                            Modifier.onGloballyPositioned { geometry.button = it.rootBounds() },
+                        )
+                    },
                 )
                 state.serverName?.let {
                     Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -194,31 +211,42 @@ fun WhoIsWatchingScreen(
                 }
             }
 
-            zoomInto?.let { profile -> geometry.tiles[profile.userId]?.let { ZoomedAvatar(profile, tile, it, geometry.screen, zoom) } }
+            zoomInto?.let { profile -> geometry.tiles[profile.userId]?.let { ZoomedAvatar(profile, tile, it, geometry, zoom) } }
         }
     }
 }
 
-/** Where each profile's picture and the screen sit on screen, kept as they are laid out, for the zoom to start from. */
+/** Where each profile's picture, the header's button and the screen sit on screen, kept as they are laid out, for the zoom. */
 private class ZoomGeometry {
     var screen = Rect.Zero
+    var button = Rect.Zero
     val tiles = mutableMapOf<String, Rect>()
 }
 
 private fun LayoutCoordinates.rootBounds() = Rect(positionInRoot(), size.toSize())
 
-// Lifted over the fading grid at [from], it moves to the middle of [screen] as it grows
+// [progress] runs 0 to 2. To 1: lifted over the fading grid at [from], it moves to the middle as it grows. To 2: up into the header's
+// button, shrinking to its size and rounding into its circle; without a button it stays in the middle.
 @Composable
-private fun ZoomedAvatar(profile: Profile, size: Dp, from: Rect, screen: Rect, progress: () -> Float) {
+private fun ZoomedAvatar(profile: Profile, size: Dp, from: Rect, geometry: ZoomGeometry, progress: () -> Float) {
+    val screen = geometry.screen
+    val button = geometry.button.takeIf { it != Rect.Zero } ?: Rect(screen.center, 0f)
+
     Box(
         Modifier
             .offset { IntOffset((from.left - screen.left).roundToInt(), (from.top - screen.top).roundToInt()) }
             .graphicsLayer {
-                val p = progress()
-                translationX = (screen.center.x - from.center.x) * p
-                translationY = (screen.center.y - from.center.y) * p
-                scaleX = lerp(1f, ZOOM_SCALE, p)
+                val grow = progress().coerceIn(0f, 1f)
+                val fly = (progress() - 1f).coerceIn(0f, 1f)
+                val middle = screen.center - from.center
+                val end = button.center - from.center
+                val endScale = if (button.width > 0f) button.width / from.width else ZOOM_SCALE
+                translationX = lerp(middle.x * grow, end.x, fly)
+                translationY = lerp(middle.y * grow, end.y, fly)
+                scaleX = lerp(lerp(1f, ZOOM_SCALE, grow), endScale, fly)
                 scaleY = scaleX
+                shape = RoundedCornerShape(lerp(TILE_CORNER_PERCENT.toFloat(), CIRCLE_PERCENT.toFloat(), fly).roundToInt())
+                clip = true
             },
     ) {
         Avatar(profile, size)
@@ -282,10 +310,10 @@ private fun LazyGridScope.tiles(
 }
 
 @Composable
-private fun ServerButton(name: String, onSwitchServer: () -> Unit, onServerDetails: () -> Unit) {
+private fun ServerButton(name: String, onSwitchServer: () -> Unit, onServerDetails: () -> Unit, modifier: Modifier = Modifier) {
     var open by remember { mutableStateOf(false) }
 
-    Box {
+    Box(modifier) {
         HeaderButton(
             onClick = { open = true },
             modifier = Modifier.clearAndSetSemantics {

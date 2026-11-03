@@ -10,7 +10,10 @@ struct WhoIsWatchingView: View {
     /// Where each profile's picture sits, for the zoom to start from.
     @State private var tileFrames: [String: CGRect] = [:]
     @State private var zoomingInto: Profile?
-    @State private var zoomed = false
+    /// 0 before, 1 grown in the middle, 2 in the header's button.
+    @State private var zoomStep = 0
+    /// The header's round button, where Home's profile button will be: the header row is the same on every page.
+    @State private var buttonFrame: CGRect = .zero
 
     let onSwitchServer: () -> Void
     let onServerDetails: () -> Void
@@ -37,7 +40,7 @@ struct WhoIsWatchingView: View {
             Color(.systemBackground).ignoresSafeArea()
             if let state = model.state {
                 content(state)
-                    .opacity(zoomed ? 0 : 1)
+                    .opacity(zoomStep > 0 ? 0 : 1)
                     .allowsHitTesting(zoomingInto == nil)
             }
             zoomedAvatar
@@ -82,7 +85,8 @@ struct WhoIsWatchingView: View {
         }
     }
 
-    /// The profile that opened grows into the middle as the rest fades, then the tabs fade in. Straight on with Reduce Motion, or
+    /// The profile that opened grows into the middle as the rest fades, moves up into the header's button, then the tabs fade in
+    /// with the same picture in that place. Straight on with Reduce Motion, or
     /// after Other user and Quick Connect, which have no tile.
     private func zoomThenLeave() {
         guard !reduceMotion,
@@ -93,16 +97,24 @@ struct WhoIsWatchingView: View {
             return
         }
         zoomingInto = profile
-        withAnimation(.easeInOut(duration: 0.52)) { zoomed = true } completion: { onSignedIn() }
+        withAnimation(.easeInOut(duration: 0.52)) { zoomStep = 1 } completion: {
+            guard buttonFrame != .zero else { return onSignedIn() }
+            withAnimation(.easeInOut(duration: 0.42)) { zoomStep = 2 } completion: { onSignedIn() }
+        }
     }
 
     @ViewBuilder
     private var zoomedAvatar: some View {
         if let profile = zoomingInto, let frame = tileFrames[profile.userId] {
             GeometryReader { proxy in
+                let middle = CGPoint(x: proxy.size.width / 2, y: proxy.size.height / 2)
+                // Grows in the middle, then shrinks into the button and rounds into its circle.
                 Avatar(profile: profile, size: tileSize)
-                    .scaleEffect(zoomed ? 1.8 : 1)
-                    .position(zoomed ? CGPoint(x: proxy.size.width / 2, y: proxy.size.height / 2) : CGPoint(x: frame.midX, y: frame.midY))
+                    .clipShape(RoundedRectangle(cornerRadius: zoomStep == 2 ? tileSize / 2 : Radius.card, style: .continuous))
+                    .scaleEffect(zoomStep == 2 ? buttonFrame.width / tileSize : zoomStep == 1 ? 1.8 : 1)
+                    .position(
+                        zoomStep == 2 ? CGPoint(x: buttonFrame.midX, y: buttonFrame.midY) : zoomStep == 1 ? middle : CGPoint(x: frame.midX, y: frame.midY)
+                    )
             }
             .allowsHitTesting(false)
         }
@@ -132,6 +144,7 @@ struct WhoIsWatchingView: View {
                             ]
                         )
                         .frame(width: 44, height: 44)
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(zoomSpace)) } action: { buttonFrame = $0 }
                     }
                     if let serverName = state.serverName {
                         Text(serverName)
