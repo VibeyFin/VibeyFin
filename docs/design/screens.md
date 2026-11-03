@@ -341,6 +341,11 @@ the scope is clear from position and from the footers.
   on Skipping and autoplay.
 - **Home**: Featured title, Genre rows.
 - **Notifications**: opens its page (below).
+- **Other devices**: **Quick Connect**, which opens its page: "On the other device, choose Quick Connect. Type the code it shows
+  here to sign it in as Alex.", a Code field (number pad, digits only, six) and **Approve** (aqua, the page's one primary action;
+  "Approving…" while busy). Approved says so under the field with a check in the text colour and clears it; a code the server never
+  gave out, Quick Connect off on the server and an unreachable server are said under the field, which keeps the code. Not on a kids
+  profile.
 - **Kids and PIN** (the group): one row, **Kids profile**, which opens the Kids and PIN page (below). It stays on a kids profile too, since turning kids mode off asks for the PIN on that page.
 - **This device**: Always ask who's watching.
 - **Advanced**: Playback stats overlay, About.
@@ -425,12 +430,16 @@ From first launch to Home, and back out. The mockups are **SignInFlow** (the map
   the network and lists what answers; iOS can't search (no multicast entitlement) and says where to find the address instead.
 - **Servers:** a card per saved server (name, the address that worked last, version, how many addresses and profiles), a menu with
   **Server details** (its addresses, add or remove one) and **Remove server** (asks first; signs out its profiles on this device and
-  deletes their downloads). Android adds "On your network".
-- **Add a server:** a labelled field with help under it, focused on open; Connect → Found (or "you already have this server") →
+  deletes their downloads). Android adds "On your network". **Add server** at the foot is the secondary button with a leading +
+  (Android: tonal, its label in `ink`, since `on-accent-soft` on `accent-soft` reads too faintly; iOS: the grey bordered button).
+- **Add a server:** a labelled field with help under it, focused on open; Go on the keyboard connects and puts the keyboard away; Connect → Found (or "you already have this server") →
   **Add server**, which goes straight to that server's Who's watching?. A failure is said under the field, which keeps the text.
 - **Who's watching?:** the server's name over the title, a tile per profile (lock badge when it needs a password or a PIN), then
   **Quick Connect** (only when the server allows it) and **Other user**. Grey tiles while loading; the tapped tile shows a spinner;
-  a 401 lands here with a note naming the profile; an unreachable server says which addresses were tried.
+  a 401 lands here with a note naming the profile; an unreachable server says which addresses were tried. Once a tile's profile
+  is signed in, its picture lifts out, moves to the middle and grows to 1.8× over about half a second while everything else fades,
+  then Home fades in over it (as Netflix does). Straight to Home with Reduce Motion / Remove animations, and after Other user or
+  Quick Connect, which have no tile.
 - **Password sheets:** focused on open, show/hide, autofill and paste allowed, the error under the field, **Use Quick Connect
   instead** when it is on. The password is never stored.
 - **Quick Connect:** steps, the code in two groups with copy, "Waiting for approval · code expires in 4:32", then Approved →
