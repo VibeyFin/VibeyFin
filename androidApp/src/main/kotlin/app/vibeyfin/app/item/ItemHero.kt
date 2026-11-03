@@ -54,7 +54,6 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
@@ -146,9 +145,6 @@ fun PinnedBackdrop(item: MediaItem, height: Dp, scroll: ScrollState, modifier: M
 /** [PinnedBackdrop] for a [picture] that isn't a library item's, such as a Seerr title's. */
 @Composable
 fun PinnedBackdrop(title: String, picture: String?, blurHash: String?, height: Dp, scroll: ScrollState, modifier: Modifier = Modifier) {
-    // Fully dark after about half the picture has scrolled by, so the page reads well before the picture is gone
-    val darkenOverPx = with(LocalDensity.current) { height.toPx() } * DARKEN_OVER
-
     Box(modifier.fillMaxWidth().height(height)) {
         if (picture != null) {
             Artwork(
@@ -173,10 +169,13 @@ fun PinnedBackdrop(title: String, picture: String?, blurHash: String?, height: D
 
         // The darkening as the page scrolls; read in the draw step, so scrolling redraws this layer and nothing else
         Box(
-            Modifier.matchParentSize().graphicsLayer { alpha = (scroll.value / darkenOverPx).coerceIn(0f, 1f) * MAX_DARKEN }.background(VibeyFinTokens.Colors.bg),
+            Modifier.matchParentSize().graphicsLayer { alpha = scrollDarkening(scroll.value.toFloat(), size.height) }.background(VibeyFinTokens.Colors.bg),
         )
     }
 }
+
+/** How dark a pinned picture [heightPx] tall is once the page has scrolled [scrolledPx]: fully dark after about half of it has gone by. */
+internal fun scrollDarkening(scrolledPx: Float, heightPx: Float): Float = if (heightPx > 0f) (scrolledPx / (heightPx * DARKEN_OVER)).coerceIn(0f, 1f) * MAX_DARKEN else 0f
 
 private const val DARKEN_OVER = 0.55f
 

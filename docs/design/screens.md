@@ -114,7 +114,8 @@ Movies and Shows in the library as poster rows, newest first. A person with noth
 ## Collection page
 
 A boxset opens its own page: a header with the collection's picture and name (the text fades in with the picture, with no jump), then
-Movies and Shows rows. On a tablet the header is wide (21:9) with the details in a left column.
+Movies and Shows rows. On a tablet the header is wide (21:9) with the details in a left column. As on a title's page, the picture stays
+put while the page scrolls: the text goes up over it, it darkens, and the rows below cover it.
 
 ## Poster menu
 
