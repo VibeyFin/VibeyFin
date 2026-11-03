@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +56,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.ui.CaptionStyleCompat
+import app.vibeyfin.R
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.player.SUBTITLE_SHADOW
@@ -158,6 +160,7 @@ private fun IconCircle(icon: ImageVector) {
     }
 }
 
+@Composable
 private fun iconFor(key: SettingKey): ImageVector? = when (key) {
     SettingKey.ProfileCard -> Icons.Filled.Person
     SettingKey.Quality -> Icons.Filled.Star
@@ -169,6 +172,7 @@ private fun iconFor(key: SettingKey): ImageVector? = when (key) {
     SettingKey.Notifications -> Icons.Filled.Notifications
     SettingKey.KidsProfile, SettingKey.Pin -> Icons.Filled.Lock
     SettingKey.Seerr -> Icons.Filled.Add
+    SettingKey.QuickConnect -> ImageVector.vectorResource(R.drawable.ic_devices)
     else -> Icons.Filled.Info
 }
 

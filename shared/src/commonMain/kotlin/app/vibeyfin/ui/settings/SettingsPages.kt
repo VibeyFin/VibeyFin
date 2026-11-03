@@ -102,6 +102,7 @@ fun settingsPages(values: SettingsValues): Map<SettingsPageId, SettingsPage> = l
     kidsAndPinPage(values),
     notificationsPage(values),
     seerrPage(),
+    SettingsPage(SettingsPageId.QuickConnect, Strings.quickConnect, emptyList()),
 ).associateBy { it.id }
 
 /** The Seerr page's place in the tree. Its content is each app's own Seerr screen ([app.vibeyfin.ui.seerr.SeerrSettingsViewModel]). */

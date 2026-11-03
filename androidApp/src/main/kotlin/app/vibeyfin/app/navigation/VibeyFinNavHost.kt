@@ -76,6 +76,7 @@ import app.vibeyfin.app.seerr.SeerrMenuSheet
 import app.vibeyfin.app.seerr.SeerrTitleRoute
 import app.vibeyfin.app.servers.ServerDetailsRoute
 import app.vibeyfin.app.servers.ServersRoute
+import app.vibeyfin.app.settings.QuickConnectApproveRoute
 import app.vibeyfin.app.settings.SeerrSettingsRoute
 import app.vibeyfin.app.settings.SettingsRoute
 import app.vibeyfin.app.settings.pageIdOrRoot
@@ -654,6 +655,11 @@ private fun NavGraphBuilder.appScreens(navController: NavHostController, leave: 
         // Seerr has an address field, which the shared Settings rows don't draw: it is a screen of its own
         if (id == SettingsPageId.Seerr) {
             SeerrSettingsRoute(onBack = { navController.popBackStack() }, onMyRequests = { navController.navigate(SettingsMyRequests) })
+            return@composable
+        }
+
+        if (id == SettingsPageId.QuickConnect) {
+            QuickConnectApproveRoute(onBack = { navController.popBackStack() })
             return@composable
         }
 

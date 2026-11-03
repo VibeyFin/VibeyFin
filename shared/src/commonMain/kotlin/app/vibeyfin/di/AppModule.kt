@@ -14,6 +14,7 @@ import app.vibeyfin.ui.notifications.NotificationOpenViewModel
 import app.vibeyfin.ui.person.PersonViewModel
 import app.vibeyfin.ui.playback.PlaybackViewModel
 import app.vibeyfin.ui.profile.ProfileMenuViewModel
+import app.vibeyfin.ui.quickconnect.ApproveQuickConnectViewModel
 import app.vibeyfin.ui.search.SearchViewModel
 import app.vibeyfin.ui.seerr.MyRequestsViewModel
 import app.vibeyfin.ui.seerr.SeerrHomeViewModel
@@ -64,6 +65,7 @@ fun appModule() = module {
     viewModelOf(::AppBannerViewModel)
     viewModelOf(::DownloadsViewModel)
     viewModel { SeerrSettingsViewModel(get(), get(), get(), get(ApplicationScope)) }
+    viewModel { ApproveQuickConnectViewModel(get()) }
     viewModel { params -> SeerrTitleViewModel(params.get(), params.get(), get(), get(), get()) }
     viewModel { SeerrHomeViewModel(get(), get(), get()) }
     viewModel { params -> SeerrListViewModel(params.get(), get()) }

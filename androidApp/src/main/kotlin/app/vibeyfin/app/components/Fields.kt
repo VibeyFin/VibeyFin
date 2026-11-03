@@ -85,6 +85,31 @@ fun AddressField(
     )
 }
 
+/** A short numeric code, such as Quick Connect's: the number keyboard, with the reason it failed under it. */
+@Composable
+fun CodeField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    onGo: () -> Unit,
+    modifier: Modifier = Modifier,
+    placeholder: String? = null,
+    error: String? = null,
+    enabled: Boolean = true,
+) {
+    FormField(
+        value = value,
+        onValueChange = onValueChange,
+        label = label,
+        modifier = modifier,
+        keyboardType = KeyboardType.Number,
+        onGo = onGo,
+        placeholder = placeholder,
+        error = error,
+        enabled = enabled,
+    )
+}
+
 /** A Jellyfin username, offered by autofill. [marked] outlines it in red when the password field under it says why. */
 @Composable
 fun UsernameField(value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier, marked: Boolean = false) {

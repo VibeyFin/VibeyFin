@@ -84,6 +84,8 @@ struct SettingsSplitView: View {
                         Group {
                             if link.target == .seerr {
                                 SeerrSettingsView(onLeave: { storedRow = "" })
+                            } else if link.target == .quickconnect {
+                                ApproveQuickConnectView()
                             } else {
                                 SettingsPageView(pageId: link.target, model: model, onExit: onExit)
                             }

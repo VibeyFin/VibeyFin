@@ -337,6 +337,8 @@ struct TabShell: View {
             if id == .seerr {
                 // Seerr has an address field, which the shared Settings rows don't draw.
                 SeerrSettingsView(onMyRequests: { path.wrappedValue.append(.myRequests) })
+            } else if id == .quickconnect {
+                ApproveQuickConnectView()
             } else if let model = settings.current {
                 SettingsPageView(pageId: id, model: model, onExit: onExit)
             }

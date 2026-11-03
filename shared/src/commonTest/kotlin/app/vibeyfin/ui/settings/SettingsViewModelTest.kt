@@ -105,7 +105,7 @@ class SettingsViewModelTest {
         assertTrue(SettingsPageId.Seerr in viewModel.uiState.value.pages)
         // Its group, Requests, sits between Notifications and Kids and PIN.
         val titles = viewModel.uiState.value.page(SettingsPageId.Root).sections.mapNotNull { it.title }
-        assertEquals(listOf(Strings.notificationsTitle, Strings.requestsSection, Strings.settingsGroupKids), titles.subList(2, 5))
+        assertEquals(listOf(Strings.notificationsTitle, Strings.requestsSection, Strings.otherDevicesSection, Strings.settingsGroupKids), titles.subList(2, 6))
     }
 
     @Test
@@ -117,6 +117,7 @@ class SettingsViewModelTest {
         app.profileSettings.setKidsProfile(true)
 
         assertFalse(viewModel.uiState.first { it.kidsProfile }.rootKeys().contains(SettingKey.Seerr))
+        assertFalse(viewModel.uiState.first { it.kidsProfile }.rootKeys().contains(SettingKey.QuickConnect))
     }
 
     @Test
@@ -385,6 +386,7 @@ class SettingsViewModelTest {
                 Strings.playbackSection,
                 Strings.settingsGroupHome,
                 Strings.notificationsTitle,
+                Strings.otherDevicesSection,
                 Strings.settingsGroupKids,
                 Strings.settingsGroupDevice,
                 Strings.tabDownloads,
@@ -392,6 +394,7 @@ class SettingsViewModelTest {
             ),
             root.sections.mapNotNull { it.title },
         )
+        assertTrue(root.keys().contains(SettingKey.QuickConnect))
     }
 
     @Test

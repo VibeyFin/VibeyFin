@@ -1,7 +1,7 @@
 package app.vibeyfin.ui.settings
 
-/** The pages of the Settings tree. [Seerr] is drawn by each app's own Seerr screen, since it has a text field; its shared page is empty. */
-enum class SettingsPageId { Root, Profile, Quality, AudioSubtitles, Skipping, KidsAndPin, Notifications, AudioLanguage, SubtitleLanguage, Seerr }
+/** The pages of the Settings tree. [Seerr] and [QuickConnect] are drawn by each app's own screen, since they have a text field; their shared pages are empty. */
+enum class SettingsPageId { Root, Profile, Quality, AudioSubtitles, Skipping, KidsAndPin, Notifications, AudioLanguage, SubtitleLanguage, Seerr, QuickConnect }
 
 /** One entry per setting, so each platform can tell its rows apart. */
 enum class SettingKey {
@@ -56,6 +56,7 @@ enum class SettingKey {
     RememberTracks,
     NoLanguageMatch,
     Seerr,
+    QuickConnect,
 }
 
 /**

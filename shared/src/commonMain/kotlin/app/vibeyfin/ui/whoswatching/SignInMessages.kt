@@ -15,6 +15,9 @@ internal object SignInMessages {
     const val QUICK_CONNECT_OFF =
         "This server doesn't allow Quick Connect. Sign in with a password instead, or ask the server's admin to turn Quick Connect on."
     const val QUICK_CONNECT_FAILED = "Quick Connect didn't work. Try again."
+    const val QUICK_CONNECT_CODE_UNKNOWN = "This server didn't give out that code. Check it on the other device, or get a new one there."
+    const val QUICK_CONNECT_APPROVE_OFF = "Quick Connect is off on this server. The server's admin can turn it on in the Jellyfin dashboard."
+    const val QUICK_CONNECT_APPROVE_FAILED = "Couldn't approve that code. Try again."
 
     fun forQuickConnect(stop: QuickConnectStop): String = when (stop) {
         QuickConnectStop.Expired -> QUICK_CONNECT_EXPIRED
