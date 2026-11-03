@@ -253,10 +253,14 @@ Added for the sign-in pass (#52). `seed-userdata.sh` creates the users; `quick-c
 | user `hidden` | Password `vibeyfin-test`, `IsHidden` true: not in `/Users/Public` | Signing in with "Other user" |
 | `quick-connect.sh approve <code> [user]` | Approves a code the app shows (`POST /QuickConnect/Authorize?code=&userId=` as admin), as `[user]` (default `admin`) | Quick Connect sign-in without a second device |
 | `quick-connect.sh on` / `off` | Sets `QuickConnectAvailable` in `/System/Configuration` | The Quick Connect tile, and "turned off meanwhile" |
+| `quick-connect.sh start` | Plays another device: starts a Quick Connect, prints its code and waits up to 5 minutes, then says who it signed in as | Settings › Quick Connect (approving a code from the app) |
 
 What the server was seen to do (Jellyfin 12.2): with Quick Connect off, `GET /QuickConnect/Enabled` is `false` and `POST /QuickConnect/Initiate`
 answers `401`; an approved code makes `GET /QuickConnect/Connect?secret=` report `Authenticated: true`, and
-`POST /Users/AuthenticateWithQuickConnect` then signs in as the user who approved it.
+`POST /Users/AuthenticateWithQuickConnect` then signs in as the user who approved it. Approving from the app
+(`POST /QuickConnect/Authorize?code=&userId=` with the profile's own id) works for a user who is not an admin; a code the
+server never gave out answers `404`, and with Quick Connect off the approval answers `401`, which is why the app asks
+`GET /QuickConnect/Enabled` first instead of letting that 401 end the profile's session.
 
 ## Seerr: a request server linked to the test Jellyfin
 
