@@ -20,7 +20,7 @@ internal object LoadMessages {
         "This account isn't allowed to download. Ask the server's admin to turn downloads on for it."
     const val DOWNLOAD_NO_SPACE = "There isn't enough space on this device. Remove a download or free some space, then try again."
     const val DOWNLOAD_STORAGE_LIMIT = "This would go over your storage limit for downloads. Remove a download or raise the limit in Settings."
-    const val DOWNLOAD_INTERRUPTED = "The download stopped. Check your connection and try again."
+    const val DOWNLOAD_INTERRUPTED = "The download failed. Remove it and try again."
     const val DOWNLOAD_SIGN_IN = "Sign in again to go on with this download."
     const val DOWNLOAD_NOT_ON_SERVER = "This is no longer on the server, so it can't be downloaded."
     const val DOWNLOAD_UNPLAYABLE = "This video is in a format this device can't play, so it can't be downloaded here."
