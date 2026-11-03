@@ -71,8 +71,6 @@ data class WhoIsWatchingUiState(
     val serverReachable: Boolean = true,
     /** The saved addresses, best first, as tried when the server couldn't be reached. */
     val triedAddresses: List<String> = emptyList(),
-    /** False when the server lists none of its users, so only Quick Connect and Other user are left. */
-    val listsUsers: Boolean = true,
     /** The server allows Quick Connect, so the grid offers it. */
     val quickConnectAvailable: Boolean = false,
     val sheet: SignInSheet? = null,
@@ -142,7 +140,6 @@ class WhoIsWatchingViewModel(
                 profiles = profiles,
                 serverReachable = !local.loaded || local.public != null,
                 triedAddresses = local.server?.addresses.orEmpty(),
-                listsUsers = local.public?.users?.isNotEmpty() ?: true,
                 quickConnectAvailable = local.public?.quickConnectEnabled == true && !local.quickConnectOff,
                 sheet = local.sheet,
                 signingIn = local.signingIn,

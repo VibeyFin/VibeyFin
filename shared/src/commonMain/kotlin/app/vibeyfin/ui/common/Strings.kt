@@ -54,12 +54,6 @@ object Strings {
 
     fun triedAddresses(addresses: List<String>) = "Tried " + addresses.joinToStringAnd() + "."
 
-    fun noListedUsers(quickConnect: Boolean) = if (quickConnect) {
-        "This server doesn't list its users. Sign in with your username, or with Quick Connect."
-    } else {
-        "This server doesn't list its users. Sign in with your username."
-    }
-
     fun sessionEndedFor(name: String) = "$name's session ended. Sign in again to keep watching."
 
     fun serverMenu(name: String) = "$name, server menu"

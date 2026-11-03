@@ -172,10 +172,6 @@ struct WhoIsWatchingView: View {
         }
         if !state.serverReachable {
             UnreachableCard(state: state, onRetry: { model.refresh() })
-        } else if !state.listsUsers {
-            Text(Strings.shared.noListedUsers(quickConnect: state.quickConnectAvailable))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
         }
         if state.sheet == nil, let error = state.error {
             Text(error)

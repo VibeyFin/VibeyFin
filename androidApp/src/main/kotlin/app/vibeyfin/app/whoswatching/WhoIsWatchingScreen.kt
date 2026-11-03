@@ -264,13 +264,7 @@ private fun LazyGridScope.fullWidth(key: String, content: @Composable () -> Unit
 private fun LazyGridScope.notes(state: WhoIsWatchingUiState, onRetry: () -> Unit) {
     state.notice?.let { notice -> fullWidth("notice") { Note(notice) } }
 
-    if (!state.serverReachable) {
-        fullWidth("unreachable") { UnreachableCard(state, onRetry) }
-    } else if (!state.listsUsers) {
-        fullWidth("no-users") {
-            Text(Strings.noListedUsers(state.quickConnectAvailable), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
+    if (!state.serverReachable) fullWidth("unreachable") { UnreachableCard(state, onRetry) }
 
     state.error.takeIf { state.sheet == null }?.let { error ->
         fullWidth("error") { Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }

@@ -507,13 +507,6 @@ class WhoIsWatchingViewModelTest {
     }
 
     @Test
-    fun aServerThatListsNoUsersSaysSo() = runTest {
-        server.on("GET", "/Users/Public", Reply.json("[]"))
-
-        assertFalse(viewModel().loaded().listsUsers)
-    }
-
-    @Test
     fun theOpeningTileIsClearedWhenOpeningFails() = runTest {
         app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-u1")
         val viewModel = viewModel()
