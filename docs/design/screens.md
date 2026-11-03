@@ -420,7 +420,8 @@ From first launch to Home, and back out. The mockups are **SignInFlow** (the map
 **WhoIsWatchingPhone**, **SignInSheetPhone**, **QuickConnectPhone** and **SignInTablet**; their READMEs hold the details.
 
 - **Headers:** the app's header row on every page (`TabHeader`: the title at the left, a round button in the profile's place;
-  on Who's watching? that is the server button, with Switch server and Server details), at the tab header's size (iOS `.title2`
+  on Who's watching? that is the server button, with Switch server and Server details; on a tab the profile's Jellyfin picture in a
+  circle, its first letter while it loads or when it has none), at the tab header's size (iOS `.title2`
   bold, Android `headlineSmall`). Pushed pages add the platform's back button above it; sub-pages match Settings; sheets match
   the app's sheets.
 - **First launch:** the wordmark, "Connect to your Jellyfin server to start watching." and **Add server** (aqua). Android searches
@@ -435,7 +436,8 @@ From first launch to Home, and back out. The mockups are **SignInFlow** (the map
   **Quick Connect** (only when the server allows it) and **Other user**. Grey tiles while loading; the tapped tile shows a spinner;
   a 401 lands here with a note naming the profile; an unreachable server says which addresses were tried. Once a tile's profile
   is signed in, its picture lifts out, moves to the middle and grows to 1.8× over about half a second while everything else fades,
-  then Home fades in over it (as Netflix does). Straight to Home with Reduce Motion / Remove animations, and after Other user or
+  then moves up into the round button at the top right, shrinking to its size and rounding into its circle (about 0.4 s), and Home
+  fades in with the profile button in that place (as Netflix does). Straight to Home with Reduce Motion / Remove animations, and after Other user or
   Quick Connect, which have no tile.
 - **Password sheets:** focused on open, show/hide, autofill and paste allowed, the error under the field, **Use Quick Connect
   instead** when it is on. The password is never stored.
