@@ -63,7 +63,7 @@ struct ServersView: View {
             if state.discovered.isEmpty {
                 PrimaryButton(Strings.shared.addServer, action: onAddServer)
             } else {
-                SecondaryButton(title: Strings.shared.addServerByAddress, action: onAddServer)
+                SecondaryButton(title: Strings.shared.addServerByAddress, systemImage: "plus", action: onAddServer)
             }
         }
         .padding(.bottom, Space.s5)
@@ -93,7 +93,7 @@ struct ServersView: View {
                 }
                 .padding(.top, Space.s1)
             }
-            SecondaryButton(title: Strings.shared.addServer, action: onAddServer)
+            SecondaryButton(title: Strings.shared.addServer, systemImage: "plus", action: onAddServer)
                 .padding(.vertical, Space.s4)
         }
         .screenMargin()

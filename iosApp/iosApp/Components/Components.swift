@@ -62,15 +62,22 @@ extension PrimaryButton where Label == BusyLabel {
     }
 }
 
-/// A secondary action: the system's `.bordered` capsule with a grey fill, full width.
+/// A secondary action: the system's `.bordered` capsule with a grey fill, full width, with `systemImage` before the title when given.
 struct SecondaryButton: View {
     let title: String
+    var systemImage: String?
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Text(title.titleCased())
-                .frame(maxWidth: .infinity)
+            Group {
+                if let systemImage {
+                    Label(title.titleCased(), systemImage: systemImage)
+                } else {
+                    Text(title.titleCased())
+                }
+            }
+            .frame(maxWidth: .infinity)
         }
         .buttonStyle(.bordered)
         .buttonBorderShape(.capsule)
@@ -248,6 +255,7 @@ struct AddressSection<Header: View>: View {
     let onSubmit: () -> Void
     @ViewBuilder var header: () -> Header
     @FocusState private var focused: Bool
+    @State private var focusedOnce = false
 
     var body: some View {
         Section {
@@ -258,9 +266,20 @@ struct AddressSection<Header: View>: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .submitLabel(.go)
-                    .onSubmit(onSubmit)
+                    .onSubmit {
+                        focused = false
+                        onSubmit()
+                    }
                     .disabled(disabled)
                     .focused($focused)
+                    // Only the first time: a list row appears again as the footer under it changes, and that must not bring the
+                    // keyboard back after Go put it away.
+                    .onAppear {
+                        guard focusOnAppear, !focusedOnce else { return }
+                        focusedOnce = true
+                        // The push has to settle before the keyboard can come up.
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { focused = true }
+                    }
             }
             .listRowInsets(EdgeInsets())
         } header: {
@@ -271,11 +290,6 @@ struct AddressSection<Header: View>: View {
             } else if let help {
                 Text(help)
             }
-        }
-        .onAppear {
-            guard focusOnAppear else { return }
-            // The push has to settle before the keyboard can come up.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { focused = true }
         }
     }
 }

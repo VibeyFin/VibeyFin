@@ -17,9 +17,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -146,7 +148,7 @@ private fun Welcome(
             if (state.discovered.isEmpty()) {
                 BusyButton(Strings.addServer, onAddServer)
             } else {
-                SecondaryButton(Strings.addServerByAddress, onAddServer)
+                AddServerButton(Strings.addServerByAddress, onAddServer)
             }
         }
     }
@@ -184,7 +186,7 @@ private fun ServerList(
             }
         }
 
-        SecondaryButton(Strings.addServer, onAddServer, Modifier.padding(vertical = VibeyFinTokens.Space.s4))
+        AddServerButton(Strings.addServer, onAddServer, Modifier.padding(vertical = VibeyFinTokens.Space.s4))
     }
 }
 
@@ -199,9 +201,17 @@ private fun Lead(text: String, align: TextAlign = TextAlign.Start) {
     )
 }
 
+// The label is ink: the muted teal of onSecondaryContainer sits too close to the tonal fill to read well
 @Composable
-private fun SecondaryButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    FilledTonalButton(onClick = onClick, modifier = modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge)) {
+private fun AddServerButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    FilledTonalButton(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge),
+        colors = ButtonDefaults.filledTonalButtonColors(contentColor = VibeyFinTokens.Colors.ink),
+        contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+    ) {
+        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
         Text(label)
     }
 }

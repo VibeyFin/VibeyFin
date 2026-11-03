@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentType
@@ -148,6 +149,8 @@ private fun FormField(
     visualTransformation: VisualTransformation = VisualTransformation.None,
     trailingIcon: (@Composable () -> Unit)? = null,
 ) {
+    val focusManager = LocalFocusManager.current
+
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -176,7 +179,15 @@ private fun FormField(
             keyboardType = keyboardType,
             imeAction = if (onGo != null) ImeAction.Go else ImeAction.Next,
         ),
-        keyboardActions = if (onGo != null) KeyboardActions(onGo = { onGo() }) else KeyboardActions.Default,
+        // Go (or Enter on a keyboard) puts the keyboard away as it submits
+        keyboardActions = if (onGo != null) {
+            KeyboardActions(onGo = {
+                focusManager.clearFocus()
+                onGo()
+            })
+        } else {
+            KeyboardActions.Default
+        },
         modifier = modifier.fillMaxWidth().semantics {
             contentType?.let { this.contentType = it }
             if (error != null) error(error)
