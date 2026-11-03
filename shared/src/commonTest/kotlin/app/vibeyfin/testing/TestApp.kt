@@ -89,7 +89,7 @@ class TestApp {
     val runner = DownloadRunner(downloads, database.accountDao(), connection, files, network, wake, clock, speeds = speeds)
 
     val pending = PendingReports(database.pendingReportDao(), clock)
-    val offlineLibrary = OfflineLibrary(downloads, files, languages)
+    val offlineLibrary = OfflineLibrary(downloads, files, languages, capabilities)
     val offlineProgress = OfflineProgress(downloads, pending, clock)
     val offlineSync = OfflineSync(pending, downloads, connection, watchChanges)
     val progressScheduler = FakeProgressSyncScheduler()

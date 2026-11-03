@@ -65,7 +65,7 @@ fun apiModule() = module {
     single { OfflineMode(get(), get(), get(ApplicationScope)) }
     single { DownloadWake() }
     single { DownloadSpeeds() }
-    single { OfflineLibrary(get(), get(), get()) }
+    single { OfflineLibrary(get(), get(), get(), get()) }
     single { OfflineProgress(get(), get(), get()) }
     single { OfflineSync(get(), get(), get(), get()) }
     // One per player, like PlaybackReporter: it holds where this playback is.

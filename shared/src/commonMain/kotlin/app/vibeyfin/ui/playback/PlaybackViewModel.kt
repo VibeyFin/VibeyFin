@@ -999,6 +999,7 @@ class PlaybackViewModel(
                     url = ready.url,
                     headers = emptyMap(),
                     startPositionMs = startAtMs,
+                    engine = ready.engine,
                     subtitleFiles = ready.subtitleFiles,
                     audioInPlayer = true,
                     dynamicRange = ready.videoFormat?.dynamicRange ?: DynamicRange.Sdr,

@@ -27,6 +27,7 @@ class OfflineLibrary(
     private val dao: DownloadDao,
     private val files: DownloadFiles,
     private val languages: LanguagePreferences,
+    private val capabilities: PlaybackCapabilitiesSource,
 ) {
     /** The downloaded [itemId] ready to play, or null when it is not (fully) on the device. */
     suspend fun playable(profile: ProfileRef, itemId: String): LocalPlayable? {
@@ -56,8 +57,23 @@ class OfflineLibrary(
             audioStreamIndex = choice.audioIndex,
             subtitleStreamIndex = choice.subtitleIndex,
             videoFormat = item.videoFormat,
+            engine = engineFor(row.filePath, snapshot),
         )
         return LocalPlayable(item, plan)
+    }
+
+    // The first player that opens the stored file, in the order the platform lists them (AVPlayer before Aether). The file is as the
+    // server sent it, so its container is the one in its name and its codecs are the ones the item lists; a file no player lists goes
+    // to the last, the widest, which tries it and fails the normal way.
+    private fun engineFor(path: String, snapshot: OfflineSnapshot): PlaybackEngineChoice {
+        val container = path.substringAfterLast('.', "").lowercase()
+        val video = snapshot.videoCodec
+        val audio = snapshot.audioTracks.mapNotNull { it.codec?.lowercase() }
+        val players = capabilities.candidates()
+        val opens = players.firstOrNull { (_, can) ->
+            container in can.containers && (video == null || video in can.videoCodecs) && audio.all { it in can.audioCodecs }
+        }
+        return (opens ?: players.last()).engine
     }
 
     /** The episode downloaded after [current] in its show, by season and episode number; null when there is none. */

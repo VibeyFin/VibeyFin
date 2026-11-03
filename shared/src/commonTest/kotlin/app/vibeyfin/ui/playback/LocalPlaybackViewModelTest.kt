@@ -1,6 +1,9 @@
 package app.vibeyfin.ui.playback
 
+import app.vibeyfin.domain.EngineCapabilities
 import app.vibeyfin.domain.NetworkState
+import app.vibeyfin.domain.PlaybackCapabilities
+import app.vibeyfin.domain.PlaybackEngineChoice
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.testing.FakeServer
 import app.vibeyfin.testing.Reply
@@ -102,6 +105,19 @@ class LocalPlaybackViewModelTest {
         assertEquals(listOf("English", "German"), state.audioTracks.map { it.label })
         assertEquals(listOf(SUBTITLES_OFF, 3), state.subtitleTracks.map { it.index })
         assertEquals(emptyList(), requests(), "not one request (server ${server.address})")
+    }
+
+    @Test
+    fun aDownloadOnlyTheSecondPlayerOpensPlaysInIt() = runTest {
+        signedIn(offline = true)
+        val avPlayer = PlaybackCapabilities(containers = listOf("mp4"), videoCodecs = listOf("h264"), audioCodecs = listOf("aac"))
+        val aether = PlaybackCapabilities(containers = listOf("mp4", "mkv"), videoCodecs = listOf("h264"), audioCodecs = listOf("aac"))
+        app.capabilities.engines = listOf(EngineCapabilities(PlaybackEngineChoice.Native, avPlayer), EngineCapabilities(PlaybackEngineChoice.Aether, aether))
+        app.downloaded("m1")
+
+        val stream = viewModel().uiState.first { it.stream != null }.stream!!
+
+        assertEquals(PlaybackEngineChoice.Aether, stream.engine)
     }
 
     @Test

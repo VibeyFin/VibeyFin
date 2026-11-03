@@ -46,6 +46,36 @@ class OfflineLibraryTest {
         assertTrue(playable.plan.playSessionId.startsWith(LOCAL_SESSION_PREFIX))
     }
 
+    private val avPlayer = PlaybackCapabilities(containers = listOf("mp4"), videoCodecs = listOf("h264"), audioCodecs = listOf("aac"))
+    private val aether = PlaybackCapabilities(containers = listOf("mp4", "mkv"), videoCodecs = listOf("h264"), audioCodecs = listOf("aac"))
+
+    @Test
+    fun aFileOnlyTheSecondPlayerOpensPlaysInIt() = runTest {
+        account()
+        app.capabilities.engines = listOf(EngineCapabilities(PlaybackEngineChoice.Native, avPlayer), EngineCapabilities(PlaybackEngineChoice.Aether, aether))
+        app.downloaded("m1")
+
+        assertEquals(PlaybackEngineChoice.Aether, assertNotNull(library.playable(alex, "m1")).plan.engine)
+    }
+
+    @Test
+    fun aFileTheFirstPlayerOpensStaysInIt() = runTest {
+        account()
+        app.capabilities.engines = listOf(EngineCapabilities(PlaybackEngineChoice.Native, aether), EngineCapabilities(PlaybackEngineChoice.Aether, aether))
+        app.downloaded("m1")
+
+        assertEquals(PlaybackEngineChoice.Native, assertNotNull(library.playable(alex, "m1")).plan.engine)
+    }
+
+    @Test
+    fun aFileNoPlayerListsGoesToTheLastOne() = runTest {
+        account()
+        app.capabilities.engines = listOf(EngineCapabilities(PlaybackEngineChoice.Native, avPlayer), EngineCapabilities(PlaybackEngineChoice.Aether, avPlayer))
+        app.downloaded("m1")
+
+        assertEquals(PlaybackEngineChoice.Aether, assertNotNull(library.playable(alex, "m1")).plan.engine)
+    }
+
     @Test
     fun aDownloadStartsWithTheTracksTheLanguagePreferencesPick() = runTest {
         account()
