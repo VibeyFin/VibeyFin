@@ -19,7 +19,11 @@ struct SearchBar: UIViewRepresentable {
 
     func updateUIView(_ bar: UISearchBar, context: Context) {
         context.coordinator.parent = self
-        if bar.text != text { bar.text = text }
+        // Text set from outside, such as a past search picked: it is put in whole, with the keyboard away to show the results.
+        if bar.text != text {
+            bar.text = text
+            bar.resignFirstResponder()
+        }
         bar.placeholder = prompt
     }
 
