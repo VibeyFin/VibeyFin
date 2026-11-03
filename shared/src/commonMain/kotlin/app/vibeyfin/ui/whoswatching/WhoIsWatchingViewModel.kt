@@ -87,6 +87,8 @@ data class WhoIsWatchingUiState(
     val error: String? = null,
     /** Signed in; the screen moves on. */
     val signedIn: Boolean = false,
+    /** The profile whose tile signed in, so the screen zooms into it on the way out. Null after Other user or Quick Connect. */
+    val openedUserId: String? = null,
     /** The PIN sheet, over the grid and any sign-in sheet, while one is open. */
     val pinPrompt: PinPrompt? = null,
 ) {
@@ -119,8 +121,10 @@ class WhoIsWatchingViewModel(
         val sheetNotice: String? = null,
         val error: String? = null,
         val signedIn: Boolean = false,
+        val openedUserId: String? = null,
     ) {
-        val busy get() = signingIn || openingUserId != null
+        // Signed in counts: nothing else opens while the screen zooms out
+        val busy get() = signingIn || openingUserId != null || signedIn
     }
 
     private val local = MutableStateFlow(Local())
@@ -147,6 +151,7 @@ class WhoIsWatchingViewModel(
                 sheetNotice = local.sheetNotice,
                 error = local.error,
                 signedIn = local.signedIn,
+                openedUserId = local.openedUserId,
                 pinPrompt = pinPrompt,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WhoIsWatchingUiState())
@@ -217,7 +222,7 @@ class WhoIsWatchingViewModel(
             }
             local.update { it.copy(openingUserId = profile.userId, error = null) }
             when (connection.activate(serverId, profile.userId)) {
-                ActivateResult.Activated -> local.update { it.copy(openingUserId = null, signedIn = true) }
+                ActivateResult.Activated -> local.update { it.copy(openingUserId = null, signedIn = true, openedUserId = profile.userId) }
 
                 ActivateResult.Expired, ActivateResult.Unknown -> {
                     local.update { it.copy(openingUserId = null) }
@@ -231,6 +236,7 @@ class WhoIsWatchingViewModel(
     }
 
     fun onOtherUserTapped() {
+        if (local.value.signedIn) return
         stopQuickConnect()
         local.update { it.copy(sheet = SignInSheet.OtherUser, error = null, sheetNotice = null) }
     }
@@ -239,7 +245,7 @@ class WhoIsWatchingViewModel(
     fun onSubmitPassword(password: String) {
         if (pin.prompt.value?.forgot == true) return pin.submitPassword(password)
         val sheet = local.value.sheet as? SignInSheet.Password ?: return
-        signIn(sheet.profile.name, password, passwordOnly = true)
+        signIn(sheet.profile.name, password, passwordOnly = true, userId = sheet.profile.userId)
     }
 
     fun onSubmitOtherUser(username: String, password: String) {
@@ -249,6 +255,7 @@ class WhoIsWatchingViewModel(
 
     /** Starts Quick Connect, from the grid or a password sheet, or starts it over after it stopped. */
     fun onQuickConnectTapped() {
+        if (local.value.signedIn) return
         stopQuickConnect()
         local.update { it.copy(sheet = SignInSheet.QuickConnect(), error = null, sheetNotice = null) }
         quickConnectJob = viewModelScope.launch {
@@ -327,22 +334,25 @@ class WhoIsWatchingViewModel(
     private suspend fun withoutSession(profile: Profile, notice: String?) {
         if (!profile.needsPassword) {
             local.update { it.copy(openingUserId = profile.userId) }
-            signInNow(profile.name, "", passwordOnly = true)
+            signInNow(profile.name, "", passwordOnly = true, userId = profile.userId)
             local.update { it.copy(openingUserId = null) }
         } else {
             local.update { it.copy(sheet = SignInSheet.Password(profile), sheetNotice = notice, error = null) }
         }
     }
 
-    private fun signIn(username: String, password: String, passwordOnly: Boolean) {
-        if (local.value.signingIn) return
-        viewModelScope.launch { signInNow(username, password, passwordOnly) }
+    // [userId] is the tile signing in, when it is one
+    private fun signIn(username: String, password: String, passwordOnly: Boolean, userId: String? = null) {
+        if (local.value.busy) return
+        viewModelScope.launch { signInNow(username, password, passwordOnly, userId) }
     }
 
-    private suspend fun signInNow(username: String, password: String, passwordOnly: Boolean) {
+    private suspend fun signInNow(username: String, password: String, passwordOnly: Boolean, userId: String? = null) {
         local.update { it.copy(signingIn = true, error = null) }
         when (val result = auth.signIn(serverId, username, password)) {
-            SignInResult.SignedIn -> local.update { it.copy(signingIn = false, sheet = null, sheetNotice = null, signedIn = true) }
+            SignInResult.SignedIn -> local.update {
+                it.copy(signingIn = false, sheet = null, sheetNotice = null, signedIn = true, openedUserId = userId)
+            }
 
             else -> local.update {
                 it.copy(signingIn = false, error = SignInMessages.forFailure(result, passwordOnly))

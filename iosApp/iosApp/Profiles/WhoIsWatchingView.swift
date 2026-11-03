@@ -6,6 +6,11 @@ struct WhoIsWatchingView: View {
     @StateObject private var model: WhoIsWatchingObservable
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Where each profile's picture sits, for the zoom to start from.
+    @State private var tileFrames: [String: CGRect] = [:]
+    @State private var zoomingInto: Profile?
+    @State private var zoomed = false
 
     let onSwitchServer: () -> Void
     let onServerDetails: () -> Void
@@ -32,8 +37,12 @@ struct WhoIsWatchingView: View {
             Color(.systemBackground).ignoresSafeArea()
             if let state = model.state {
                 content(state)
+                    .opacity(zoomed ? 0 : 1)
+                    .allowsHitTesting(zoomingInto == nil)
             }
+            zoomedAvatar
         }
+        .coordinateSpace(name: zoomSpace)
         .onAppear { model.start() }
         .toolbar(.hidden, for: .navigationBar)
         // Back from approving the code in Safari on this phone: the approval is picked up at once.
@@ -41,7 +50,7 @@ struct WhoIsWatchingView: View {
             if phase == .active { model.appResumed() }
         }
         .onChange(of: model.state?.signedIn) { _, signedIn in
-            if signedIn == true { onSignedIn() }
+            if signedIn == true { zoomThenLeave() }
         }
         // One sheet: the PIN question replaces a sign-in sheet that is open under it and gives it back once answered.
         .sheet(isPresented: sheetBinding) {
@@ -70,6 +79,32 @@ struct WhoIsWatchingView: View {
                     onDismiss: { model.dismissSheet() }
                 )
             }
+        }
+    }
+
+    /// The profile that opened grows into the middle as the rest fades, then the tabs fade in. Straight on with Reduce Motion, or
+    /// after Other user and Quick Connect, which have no tile.
+    private func zoomThenLeave() {
+        guard !reduceMotion,
+              let id = model.state?.openedUserId,
+              let profile = model.state?.profiles.first(where: { $0.userId == id }),
+              tileFrames[id] != nil else {
+            onSignedIn()
+            return
+        }
+        zoomingInto = profile
+        withAnimation(.easeInOut(duration: 0.52)) { zoomed = true } completion: { onSignedIn() }
+    }
+
+    @ViewBuilder
+    private var zoomedAvatar: some View {
+        if let profile = zoomingInto, let frame = tileFrames[profile.userId] {
+            GeometryReader { proxy in
+                Avatar(profile: profile, size: tileSize)
+                    .scaleEffect(zoomed ? 1.8 : 1)
+                    .position(zoomed ? CGPoint(x: proxy.size.width / 2, y: proxy.size.height / 2) : CGPoint(x: frame.midX, y: frame.midY))
+            }
+            .allowsHitTesting(false)
         }
     }
 
@@ -140,7 +175,7 @@ struct WhoIsWatchingView: View {
             ForEach(state.profiles, id: \.userId) { profile in
                 let opening = state.openingUserId == profile.userId
                 Button { model.profileTapped(profile) } label: {
-                    ProfileTile(profile: profile, size: tileSize, opening: opening)
+                    ProfileTile(profile: profile, size: tileSize, opening: opening) { tileFrames[profile.userId] = $0 }
                 }
                 .buttonStyle(PressableButtonStyle())
                 .disabled(state.busy)
@@ -215,15 +250,19 @@ private struct UnreachableCard: View {
     }
 }
 
+private let zoomSpace = "whoIsWatching"
+
 private struct ProfileTile: View {
     let profile: Profile
     let size: CGFloat
     let opening: Bool
+    let onFrame: (CGRect) -> Void
 
     var body: some View {
         VStack(spacing: Space.s2) {
             ZStack(alignment: .bottomTrailing) {
                 Avatar(profile: profile, size: size)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(zoomSpace)) } action: { onFrame($0) }
                 if profile.locked || profile.pinRequiredToOpen {
                     Image(systemName: "lock.fill")
                         .font(.caption.bold())

@@ -33,6 +33,7 @@ struct RootView: View {
         Group {
             if signedIn {
                 TabShell(onExit: leave)
+                    .transition(.opacity)
             } else {
                 NavigationStack(path: $path) {
                     ServersView(
@@ -58,8 +59,8 @@ struct RootView: View {
                                 pinFor: pinUserId.map { ProfileRef(serverId: serverId, userId: $0) },
                                 onSwitchServer: { path = [] },
                                 onServerDetails: { path.append(.serverDetails(serverId: serverId)) },
-                                // The tabs become the only screens: back from them must not return to sign-in.
-                                onSignedIn: { path = []; signedIn = true }
+                                // The tabs become the only screens, faded in over the zoom. `leave` sets the path again on the way out.
+                                onSignedIn: { withAnimation(.easeOut(duration: 0.2)) { signedIn = true } }
                             )
                         case .serverDetails(let serverId):
                             ServerDetailsView(
@@ -70,6 +71,7 @@ struct RootView: View {
                         }
                     }
                 }
+                .transition(.opacity)
             }
         }
         .tint(Brand.accent)

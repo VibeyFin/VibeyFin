@@ -1,5 +1,8 @@
 package app.vibeyfin.app.whoswatching
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -40,9 +44,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
@@ -51,7 +60,10 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.util.lerp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -63,6 +75,7 @@ import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.components.skeletonProfiles
 import app.vibeyfin.app.settings.PinSheet
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.animationsEnabled
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.Profile
 import app.vibeyfin.domain.model.ProfileRef
@@ -72,10 +85,14 @@ import app.vibeyfin.ui.whoswatching.WhoIsWatchingViewModel
 import coil3.compose.AsyncImage
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
+import kotlin.math.roundToInt
 
 private const val DIMMED_ALPHA = 0.38f
 private const val WIDE_FROM_DP = 600
 private val SmallAvatar = 64.dp
+
+private const val ZOOM_MS = 520
+private const val ZOOM_SCALE = 1.8f
 
 @Composable
 fun WhoIsWatchingRoute(
@@ -87,8 +104,15 @@ fun WhoIsWatchingRoute(
     viewModel: WhoIsWatchingViewModel = koinViewModel(parameters = { parametersOf(serverId, pinFor) }),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val zoom = remember { Animatable(0f) }
+    val animate = animationsEnabled()
 
-    LaunchedEffect(state.signedIn) { if (state.signedIn) onSignedIn() }
+    // The profile that opened grows into the middle as the rest fades, then Home fades in over it
+    LaunchedEffect(state.signedIn) {
+        if (!state.signedIn) return@LaunchedEffect
+        if (animate && state.openedUserId != null) zoom.animateTo(1f, tween(ZOOM_MS, easing = FastOutSlowInEasing))
+        onSignedIn()
+    }
     // Back from approving the code in a browser on this phone: the approval is picked up at once
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onAppResumed() }
 
@@ -100,6 +124,7 @@ fun WhoIsWatchingRoute(
         onOtherUser = viewModel::onOtherUserTapped,
         onQuickConnect = viewModel::onQuickConnectTapped,
         onRetry = viewModel::refresh,
+        zoom = { zoom.value },
     )
 
     state.pinPrompt?.let { prompt ->
@@ -128,36 +153,75 @@ fun WhoIsWatchingScreen(
     onOtherUser: () -> Unit,
     onQuickConnect: () -> Unit,
     onRetry: () -> Unit,
+    zoom: () -> Float = { 0f },
 ) {
     val tile = if (LocalConfiguration.current.screenWidthDp >= WIDE_FROM_DP) 140.dp else 104.dp
+    val geometry = remember { ZoomGeometry() }
+    val zoomInto = state.profiles.find { it.userId == state.openedUserId }?.takeIf { state.signedIn }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = screenMargin())) {
-            TabHeader(
-                title = Strings.whoIsWatching,
-                horizontalPadding = 0.dp,
-                trailing = { ServerButton(state.serverName.orEmpty(), onSwitchServer, onServerDetails) },
-            )
-            state.serverName?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Spacer(Modifier.height(VibeyFinTokens.Space.s4))
-
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(tile + VibeyFinTokens.Space.s4),
-                verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s5),
-                horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
-                userScrollEnabled = !state.loading,
-                modifier = Modifier.fillMaxSize(),
+        Box(Modifier.fillMaxSize().onGloballyPositioned { geometry.screen = it.rootBounds() }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = 1f - zoom() }
+                    .safeDrawingPadding()
+                    .padding(horizontal = screenMargin()),
             ) {
-                if (state.loading) {
-                    skeletonProfiles(count = 4, avatarSize = tile)
-                } else {
-                    notes(state, onRetry)
-                    tiles(state, tile, onProfile, onQuickConnect, onOtherUser)
+                TabHeader(
+                    title = Strings.whoIsWatching,
+                    horizontalPadding = 0.dp,
+                    trailing = { ServerButton(state.serverName.orEmpty(), onSwitchServer, onServerDetails) },
+                )
+                state.serverName?.let {
+                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Spacer(Modifier.height(VibeyFinTokens.Space.s4))
+
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(tile + VibeyFinTokens.Space.s4),
+                    verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s5),
+                    horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
+                    userScrollEnabled = !state.loading,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    if (state.loading) {
+                        skeletonProfiles(count = 4, avatarSize = tile)
+                    } else {
+                        notes(state, onRetry)
+                        tiles(state, tile, geometry, onProfile, onQuickConnect, onOtherUser)
+                    }
                 }
             }
+
+            zoomInto?.let { profile -> geometry.tiles[profile.userId]?.let { ZoomedAvatar(profile, tile, it, geometry.screen, zoom) } }
         }
+    }
+}
+
+/** Where each profile's picture and the screen sit on screen, kept as they are laid out, for the zoom to start from. */
+private class ZoomGeometry {
+    var screen = Rect.Zero
+    val tiles = mutableMapOf<String, Rect>()
+}
+
+private fun LayoutCoordinates.rootBounds() = Rect(positionInRoot(), size.toSize())
+
+// Lifted over the fading grid at [from], it moves to the middle of [screen] as it grows
+@Composable
+private fun ZoomedAvatar(profile: Profile, size: Dp, from: Rect, screen: Rect, progress: () -> Float) {
+    Box(
+        Modifier
+            .offset { IntOffset((from.left - screen.left).roundToInt(), (from.top - screen.top).roundToInt()) }
+            .graphicsLayer {
+                val p = progress()
+                translationX = (screen.center.x - from.center.x) * p
+                translationY = (screen.center.y - from.center.y) * p
+                scaleX = lerp(1f, ZOOM_SCALE, p)
+                scaleY = scaleX
+            },
+    ) {
+        Avatar(profile, size)
     }
 }
 
@@ -181,7 +245,14 @@ private fun LazyGridScope.notes(state: WhoIsWatchingUiState, onRetry: () -> Unit
     }
 }
 
-private fun LazyGridScope.tiles(state: WhoIsWatchingUiState, size: Dp, onProfile: (Profile) -> Unit, onQuickConnect: () -> Unit, onOtherUser: () -> Unit) {
+private fun LazyGridScope.tiles(
+    state: WhoIsWatchingUiState,
+    size: Dp,
+    geometry: ZoomGeometry,
+    onProfile: (Profile) -> Unit,
+    onQuickConnect: () -> Unit,
+    onOtherUser: () -> Unit,
+) {
     items(state.profiles, key = { it.userId }) { profile ->
         val opening = state.openingUserId == profile.userId
         Tile(
@@ -191,7 +262,7 @@ private fun LazyGridScope.tiles(state: WhoIsWatchingUiState, size: Dp, onProfile
             enabled = !state.busy,
             onClick = { onProfile(profile) },
         ) {
-            Avatar(profile, size)
+            Avatar(profile, size, Modifier.onGloballyPositioned { geometry.tiles[profile.userId] = it.rootBounds() })
             if (profile.locked || profile.pinRequiredToOpen) LockBadge()
             if (opening) BusyOverlay()
         }
@@ -324,12 +395,12 @@ private fun BoxScope.BusyOverlay() {
 
 /** The profile's picture, or its first letter on its own color while there is none. */
 @Composable
-internal fun Avatar(profile: Profile, size: Dp) {
+internal fun Avatar(profile: Profile, size: Dp, modifier: Modifier = Modifier) {
     var pictureShown by remember(profile.avatarUrl) { mutableStateOf(false) }
     val small = size < SmallAvatar
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(if (small) VibeyFinTokens.Radius.m3Xs else VibeyFinTokens.Radius.m3Md))
             .background(tintFor(profile.name)),

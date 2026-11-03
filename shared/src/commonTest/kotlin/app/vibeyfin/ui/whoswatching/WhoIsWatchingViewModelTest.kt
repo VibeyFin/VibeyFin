@@ -115,7 +115,23 @@ class WhoIsWatchingViewModelTest {
 
         val state = viewModel.uiState.first { it.signedIn }
         assertNull(state.sheet)
+        assertEquals("u1", state.openedUserId)
         assertIs<ConnectionState.Connected>(app.connection.state.value)
+        assertEquals(0, app.jellyfin.requestsTo("POST", "/Users/AuthenticateByName").size)
+    }
+
+    @Test
+    fun onceSignedInAnotherTileDoesNotOpen() = runTest {
+        app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-u1")
+        server.on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex"}"""))
+        val viewModel = viewModel()
+        val profiles = viewModel.loaded().profiles
+        viewModel.onProfileTapped(profiles.first { it.name == "Alex" })
+        viewModel.uiState.first { it.signedIn }
+
+        viewModel.onProfileTapped(profiles.first { it.name == "Kim" })
+
+        assertEquals("u1", viewModel.uiState.value.openedUserId)
         assertEquals(0, app.jellyfin.requestsTo("POST", "/Users/AuthenticateByName").size)
     }
 
@@ -141,7 +157,7 @@ class WhoIsWatchingViewModelTest {
 
         viewModel.onProfileTapped(viewModel.loaded().profiles.first { it.name == "Kim" })
 
-        assertTrue(viewModel.uiState.first { it.signedIn }.signedIn)
+        assertEquals("u2", viewModel.uiState.first { it.signedIn }.openedUserId)
         assertTrue(app.jellyfin.requestsTo("POST", "/Users/AuthenticateByName").single().body.contains(""""Pw":"""""))
         assertEquals("token-u2", app.accounts.sessionToken("srv-1", "u2"))
     }
@@ -183,6 +199,7 @@ class WhoIsWatchingViewModelTest {
         val state = viewModel.uiState.first { it.signedIn }
         assertNull(state.sheet)
         assertNull(state.error)
+        assertEquals("u3", state.openedUserId)
         assertEquals("token-u3", app.accounts.sessionToken("srv-1", "u3"))
     }
 
@@ -195,7 +212,8 @@ class WhoIsWatchingViewModelTest {
         assertIs<SignInSheet.OtherUser>(viewModel.uiState.first { it.sheet != null }.sheet)
         viewModel.onSubmitOtherUser("  alex ", "right")
 
-        assertTrue(viewModel.uiState.first { it.signedIn }.signedIn)
+        // Not a tile, so nothing to zoom into
+        assertNull(viewModel.uiState.first { it.signedIn }.openedUserId)
         assertTrue(app.jellyfin.requestsTo("POST", "/Users/AuthenticateByName").single().body.contains(""""Username":"alex""""))
     }
 
