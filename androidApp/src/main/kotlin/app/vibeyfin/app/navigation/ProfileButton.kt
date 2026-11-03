@@ -39,18 +39,25 @@ val LocalProfileButton = staticCompositionLocalOf<@Composable () -> Unit> { {} }
 
 /**
  * The profile's letter at the top right of every tab. A tap opens the menu at once. TalkBack gets Switch profile as a custom action too.
- * Offline there is no server to sign in to: the menu has Settings only.
+ * Offline there is no server to sign in to: the menu has Settings only. Quick Connect opens Settings › Quick Connect, not on a kids profile.
  */
 @Composable
 fun ProfileButton(
     offline: Boolean,
     onSettings: () -> Unit,
+    onQuickConnect: () -> Unit,
     onExit: (HomeExit) -> Unit,
     viewModel: ProfileMenuViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.exit) { state.exit?.let(onExit) }
+    LaunchedEffect(state.openQuickConnect) {
+        if (state.openQuickConnect) {
+            onQuickConnect()
+            viewModel.onQuickConnectOpened()
+        }
+    }
     state.pinPrompt?.let { prompt ->
         PinSheet(prompt, viewModel::onSubmitPin, viewModel::onForgotPin, viewModel::onSubmitPassword, viewModel::onDismissPin)
     }
@@ -93,6 +100,14 @@ fun ProfileButton(
                     open = false
 
                     viewModel.onSwitchServer()
+                }
+            }
+
+            if (!offline && !state.kidsProfile) {
+                VibeyFinMenuItem(Strings.quickConnect, ImageVector.vectorResource(R.drawable.ic_devices)) {
+                    open = false
+
+                    viewModel.onQuickConnect()
                 }
             }
 

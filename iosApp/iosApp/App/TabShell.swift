@@ -116,6 +116,9 @@ struct TabShell: View {
             }
         }
         // Library needs the server: going offline while on it moves to Home, which the bar still offers.
+        .onChange(of: profileMenu.state?.openQuickConnect == true) { _, open in
+            if open { openQuickConnect() }
+        }
         .onChange(of: offline) { _, isOffline in
             if isOffline && selection == .library { selection = .home }
         }
@@ -292,6 +295,18 @@ struct TabShell: View {
         case .library: libraryPath.append(.settings)
         case .downloads: downloadsPath.append(.settings)
         }
+    }
+
+    /// Settings › Quick Connect from the profile button, once the shared state says so (after the PIN to open Settings, if any).
+    /// Watched here, not by each tab's button, so it opens once.
+    private func openQuickConnect() {
+        switch selection {
+        case .home: homePath.append(.settingsPage(.quickconnect))
+        case .search: searchPath.append(.settingsPage(.quickconnect))
+        case .library: libraryPath.append(.settingsPage(.quickconnect))
+        case .downloads: downloadsPath.append(.settingsPage(.quickconnect))
+        }
+        profileMenu.quickConnectOpened()
     }
 
     /// Details from a poster's menu: opens in the tab on screen.

@@ -251,7 +251,14 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
                     CompositionLocalProvider(
                         LocalSharedTransitionScope provides this,
                         LocalBottomBarPadding provides if (currentTab != null) FLOATING_BAR_SPACE else 0.dp,
-                        LocalProfileButton provides { ProfileButton(offline, onSettings = { navController.navigate(Settings) }, onExit = leave) },
+                        LocalProfileButton provides {
+                            ProfileButton(
+                                offline,
+                                onSettings = { navController.navigate(Settings) },
+                                onQuickConnect = { navController.navigate(SettingsPageRoute(SettingsPageId.QuickConnect.name)) },
+                                onExit = leave,
+                            )
+                        },
                         LocalTileLongPress provides { item -> tileMenu.onOpen(item) },
                         // A title the library has gets the library's own menu; the Seerr one is for what can still be requested
                         LocalSeerrLongPress provides { title -> title.jellyfinItemId?.let(tileMenu::onOpenById) ?: run { seerrMenu = title } },

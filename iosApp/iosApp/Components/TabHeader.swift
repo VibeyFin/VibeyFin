@@ -23,6 +23,10 @@ final class ProfileMenuObservable: ObservableObject {
 
     func signOut() { model.onSignOut() }
 
+    func quickConnect() { model.onQuickConnect() }
+
+    func quickConnectOpened() { model.onQuickConnectOpened() }
+
     func submitPin(_ pin: String) { model.onSubmitPin(pin: pin) }
 
     func forgotPin() { model.onForgotPin() }
@@ -133,6 +137,9 @@ struct ProfileButton: View {
         if !context.offline {
             items.append(HeaderMenuItem(title: Strings.shared.switchProfile) { model.switchProfile() })
             items.append(HeaderMenuItem(title: Strings.shared.switchServer) { model.switchServer() })
+        }
+        if !context.offline && model.state?.kidsProfile != true {
+            items.append(HeaderMenuItem(title: Strings.shared.quickConnect) { model.quickConnect() })
         }
         items.append(HeaderMenuItem(title: Strings.shared.settings, action: context.onSettings))
         // A kids profile cannot sign out; the view model ignores it too.

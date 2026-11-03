@@ -36,6 +36,32 @@ class ProfileActions(
     /** The PIN sheet, while switching profile or server waits for the profile's PIN. */
     val pinPrompt: StateFlow<PinPrompt?> = pin.prompt
 
+    private val _openQuickConnect = MutableStateFlow(false)
+
+    /** One-shot: the app opens Settings › Quick Connect, then calls [quickConnectOpened]. */
+    val openQuickConnect: StateFlow<Boolean> = _openQuickConnect.asStateFlow()
+
+    /**
+     * Settings › Quick Connect straight from the menu, behind the PIN to open Settings as Settings itself is: signing another device in
+     * as this profile is no less than changing its settings. Never on a kids profile.
+     */
+    fun quickConnect() {
+        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
+        scope.launch {
+            if (profileSettings.kidsProfile.first() == true) return@launch
+            val open: suspend () -> Unit = { _openQuickConnect.value = true }
+            if (pins.gates(account.serverId, account.userId).openSettings) {
+                pin.ask(PinReason.OpenSettings, account.serverId, account.userId, account.name, onPass = open)
+            } else {
+                open()
+            }
+        }
+    }
+
+    fun quickConnectOpened() {
+        _openQuickConnect.value = false
+    }
+
     /** Leaves this profile signed in and goes back to "Who's watching?" on the same server, after its PIN if it asks. */
     fun switchProfile() {
         val serverId = currentServerId() ?: return

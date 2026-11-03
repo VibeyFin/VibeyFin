@@ -105,7 +105,7 @@ class SettingsViewModelTest {
         assertTrue(SettingsPageId.Seerr in viewModel.uiState.value.pages)
         // Its group, Requests, sits between Notifications and Kids and PIN.
         val titles = viewModel.uiState.value.page(SettingsPageId.Root).sections.mapNotNull { it.title }
-        assertEquals(listOf(Strings.notificationsTitle, Strings.requestsSection, Strings.otherDevicesSection, Strings.settingsGroupKids), titles.subList(2, 6))
+        assertEquals(listOf(Strings.notificationsTitle, Strings.requestsSection, Strings.settingsGroupKids), titles.subList(2, 5))
     }
 
     @Test
@@ -117,7 +117,7 @@ class SettingsViewModelTest {
         app.profileSettings.setKidsProfile(true)
 
         assertFalse(viewModel.uiState.first { it.kidsProfile }.rootKeys().contains(SettingKey.Seerr))
-        assertFalse(viewModel.uiState.first { it.kidsProfile }.rootKeys().contains(SettingKey.QuickConnect))
+        assertFalse(viewModel.uiState.first { it.kidsProfile }.page(SettingsPageId.Profile).keys().contains(SettingKey.QuickConnect))
     }
 
     @Test
@@ -386,7 +386,6 @@ class SettingsViewModelTest {
                 Strings.playbackSection,
                 Strings.settingsGroupHome,
                 Strings.notificationsTitle,
-                Strings.otherDevicesSection,
                 Strings.settingsGroupKids,
                 Strings.settingsGroupDevice,
                 Strings.tabDownloads,
@@ -394,7 +393,8 @@ class SettingsViewModelTest {
             ),
             root.sections.mapNotNull { it.title },
         )
-        assertTrue(root.keys().contains(SettingKey.QuickConnect))
+        // Quick Connect is on the Profile page, beside Switch profile, not a group of its own
+        assertFalse(root.keys().contains(SettingKey.QuickConnect))
     }
 
     @Test
@@ -492,6 +492,7 @@ class SettingsViewModelTest {
         assertEquals("http://nas:8096", (items.getValue(SettingKey.ServerAddress) as InfoItem).value)
         assertEquals("http://192.168.1.20:8096", (items.getValue(SettingKey.ServerAlsoAt) as InfoItem).value)
         assertTrue(SettingKey.SwitchProfile in items)
+        assertEquals(SettingsPageId.QuickConnect, (items.getValue(SettingKey.QuickConnect) as LinkItem).target)
         assertTrue((items.getValue(SettingKey.SignOut) as ActionItem).destructive)
     }
 

@@ -131,7 +131,16 @@ fun profilePage(v: SettingsValues): SettingsPage {
             SettingsSection(
                 Strings.profileAccountGroup,
                 footer = null,
-                items = listOf(ActionItem(SettingKey.SwitchProfile, Strings.switchProfile, Strings.switchProfileHelp, visible = profile)),
+                items = listOf(
+                    ActionItem(SettingKey.SwitchProfile, Strings.switchProfile, Strings.switchProfileHelp, visible = profile),
+                    LinkItem(
+                        SettingKey.QuickConnect,
+                        Strings.quickConnect,
+                        Strings.quickConnectApproveHelp,
+                        target = SettingsPageId.QuickConnect,
+                        visible = profile && !v.kidsProfile,
+                    ),
+                ),
             ),
             SettingsSection(
                 Strings.profileServerGroup,

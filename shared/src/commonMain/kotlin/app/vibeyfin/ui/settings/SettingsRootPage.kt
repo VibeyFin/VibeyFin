@@ -31,19 +31,6 @@ fun rootPage(v: SettingsValues): SettingsPage = SettingsPage(
             ),
         ),
         SettingsSection(
-            Strings.otherDevicesSection,
-            footer = null,
-            items = listOf(
-                LinkItem(
-                    SettingKey.QuickConnect,
-                    Strings.quickConnect,
-                    Strings.quickConnectApproveHelp,
-                    target = SettingsPageId.QuickConnect,
-                    visible = v.hasProfile && !v.kidsProfile,
-                ),
-            ),
-        ),
-        SettingsSection(
             Strings.settingsGroupKids,
             Strings.settingsKidsFooter,
             items = listOf(

@@ -87,7 +87,6 @@ object Strings {
     val quickConnectApproved = "Approved"
     val quickConnectSigningIn = "Signing in\u2026"
     val quickConnectNewCode = "Get a new code"
-    val otherDevicesSection = "Other devices"
     val quickConnectApproveHelp = "Sign in on another device with the code it shows."
 
     fun quickConnectApproveLead(name: String) = "On the other device, choose Quick Connect. Type the code it shows here to sign it in as $name."
