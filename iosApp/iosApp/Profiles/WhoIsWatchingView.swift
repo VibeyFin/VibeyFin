@@ -99,7 +99,8 @@ struct WhoIsWatchingView: View {
         zoomingInto = profile
         withAnimation(.easeInOut(duration: 0.52)) { zoomStep = 1 } completion: {
             guard buttonFrame != .zero else { return onSignedIn() }
-            withAnimation(.easeInOut(duration: 0.42)) { zoomStep = 2 } completion: { onSignedIn() }
+            // Sets off gently and speeds up into the corner (M3's emphasized accelerate), as if pulled away.
+            withAnimation(.timingCurve(0.3, 0, 0.8, 0.15, duration: 0.42)) { zoomStep = 2 } completion: { onSignedIn() }
         }
     }
 

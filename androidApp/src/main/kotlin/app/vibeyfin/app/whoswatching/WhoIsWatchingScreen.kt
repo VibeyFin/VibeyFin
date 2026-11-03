@@ -1,6 +1,7 @@
 package app.vibeyfin.app.whoswatching
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -95,8 +96,10 @@ private val SmallAvatar = 64.dp
 private const val ZOOM_MS = 520
 private const val ZOOM_SCALE = 1.8f
 
-// Then up into the profile button, where Home's will be: the header row is the same on every page
+// Then up into the profile button, where Home's will be: the header row is the same on every page. It sets off gently and speeds
+// up into the corner (M3's emphasized accelerate), as if pulled away, rather than easing out to a stop
 private const val FLY_MS = 420
+private val FlyEasing = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
 
 // The tile's rounded square, as a share of its side, and the button's circle
 private const val TILE_CORNER_PERCENT = 12
@@ -120,7 +123,7 @@ fun WhoIsWatchingRoute(
         if (!state.signedIn) return@LaunchedEffect
         if (animate && state.openedUserId != null) {
             zoom.animateTo(1f, tween(ZOOM_MS, easing = FastOutSlowInEasing))
-            zoom.animateTo(2f, tween(FLY_MS, easing = FastOutSlowInEasing))
+            zoom.animateTo(2f, tween(FLY_MS, easing = FlyEasing))
         }
         onSignedIn()
     }
