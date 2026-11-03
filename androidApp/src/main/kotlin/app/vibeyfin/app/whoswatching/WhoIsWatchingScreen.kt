@@ -422,10 +422,9 @@ private fun BoxScope.BusyOverlay() {
     }
 }
 
-/** The profile's picture, or its first letter on its own color while there is none. */
+/** The profile's first letter on its own color. */
 @Composable
 internal fun Avatar(profile: Profile, size: Dp, modifier: Modifier = Modifier) {
-    var pictureShown by remember(profile.avatarUrl) { mutableStateOf(false) }
     val small = size < SmallAvatar
 
     Box(
@@ -435,23 +434,10 @@ internal fun Avatar(profile: Profile, size: Dp, modifier: Modifier = Modifier) {
             .background(VibeyFinTokens.Colors.avatars[AvatarTint.of(profile.name)]),
         contentAlignment = Alignment.Center,
     ) {
-        // The letter goes once the picture is there; pictures with transparent areas would show it through
-        if (!pictureShown) {
-            Text(
-                text = profile.name.take(1).uppercase(),
-                style = if (small) MaterialTheme.typography.titleLarge else MaterialTheme.typography.displaySmall,
-                color = VibeyFinTokens.Colors.ink,
-            )
-        }
-
-        profile.avatarUrl?.let { url ->
-            AsyncImage(
-                model = url,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                onSuccess = { pictureShown = true },
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
+        Text(
+            text = profile.name.take(1).uppercase(),
+            style = if (small) MaterialTheme.typography.titleLarge else MaterialTheme.typography.displaySmall,
+            color = VibeyFinTokens.Colors.ink,
+        )
     }
 }

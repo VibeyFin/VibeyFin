@@ -132,18 +132,6 @@ struct ProfileButton: View {
             background: model.state?.userName.map { Brand.avatars[Int(AvatarTint.shared.of(name: $0))] }
         )
         .frame(width: 44, height: 44)
-        // The Jellyfin picture over the letter, which shows while it loads or when there is none. Taps go through to the button.
-        .overlay {
-            if let urlString = model.state?.avatarUrl, let url = URL(string: urlString) {
-                AsyncImage(url: url) { phase in
-                    if case .success(let image) = phase { image.resizable().scaledToFill() }
-                }
-                .frame(width: 44, height: 44)
-                .clipShape(Circle())
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-            }
-        }
     }
 
     private var items: [HeaderMenuItem] {

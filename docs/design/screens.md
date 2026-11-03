@@ -421,8 +421,8 @@ From first launch to Home, and back out. The mockups are **SignInFlow** (the map
 **WhoIsWatchingPhone**, **SignInSheetPhone**, **QuickConnectPhone** and **SignInTablet**; their READMEs hold the details.
 
 - **Headers:** the app's header row on every page (`TabHeader`: the title at the left, a round button in the profile's place;
-  on Who's watching? that is the server button, with Switch server and Server details; on a tab the profile's Jellyfin picture in a
-  circle, its first letter on the profile's tint while it loads or when it has none, the same tint as its tile), at the tab header's size (iOS `.title2`
+  on Who's watching? that is the server button, with Switch server and Server details; on a tab the profile's first letter in a
+  circle on the profile's tint, the same as its tile; Jellyfin profile pictures aren't shown), at the tab header's size (iOS `.title2`
   bold, Android `headlineSmall`). Pushed pages add the platform's back button above it; sub-pages match Settings; sheets match
   the app's sheets.
 - **First launch:** the wordmark, "Connect to your Jellyfin server to start watching." and **Add server** (aqua). Android searches

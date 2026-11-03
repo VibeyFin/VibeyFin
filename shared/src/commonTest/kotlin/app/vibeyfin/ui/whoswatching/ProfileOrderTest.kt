@@ -5,7 +5,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ProfileOrderTest {
-    private fun profile(id: String) = Profile(userId = id, name = id, avatarUrl = null, hasSession = true, needsPassword = false)
+    private fun profile(id: String) = Profile(userId = id, name = id, hasSession = true, needsPassword = false)
 
     @Test
     fun theOpenedProfileKeepsItsPlace() {

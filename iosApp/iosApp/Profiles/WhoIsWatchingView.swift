@@ -314,18 +314,7 @@ private struct Avatar: View {
     var body: some View {
         ZStack {
             Rectangle().fill(tint)
-            if let urlString = profile.avatarUrl, let url = URL(string: urlString) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().scaledToFill()
-                    default:
-                        initial
-                    }
-                }
-            } else {
-                initial
-            }
+            initial
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: small ? Radius.artwork : Radius.card, style: .continuous))

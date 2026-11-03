@@ -4,7 +4,6 @@ import app.vibeyfin.domain.model.Account
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
@@ -18,7 +17,6 @@ class ProfilesTest {
         val profiles = mergeProfiles(
             saved = listOf(saved("u2", "Sam"), saved("u1", "Alex")),
             public = public(PublicUser("u1", "Alex", null, true), PublicUser("u3", "Kim", null, false), PublicUser("u2", "Sam", null, true)),
-            fallbackBaseUrl = null,
         )
 
         assertEquals(listOf("u2", "u1", "u3"), profiles.map { it.userId })
@@ -29,17 +27,15 @@ class ProfilesTest {
         val profiles = mergeProfiles(
             saved = listOf(saved("u1", "Old name")),
             public = public(PublicUser("u1", "New name", "tag", true)),
-            fallbackBaseUrl = null,
         )
 
         assertEquals(1, profiles.size)
         assertEquals("New name", profiles.single().name)
-        assertEquals("http://nas:8096/Users/u1/Images/Primary?tag=tag&maxWidth=256", profiles.single().avatarUrl)
     }
 
     @Test
     fun aSavedSessionMeansNoPasswordIsAsked() {
-        val tile = mergeProfiles(listOf(saved("u1", "Alex", session = true)), public(PublicUser("u1", "Alex", null, true)), null).single()
+        val tile = mergeProfiles(listOf(saved("u1", "Alex", session = true)), public(PublicUser("u1", "Alex", null, true))).single()
 
         assertTrue(tile.hasSession)
         assertFalse(tile.locked)
@@ -47,14 +43,14 @@ class ProfilesTest {
 
     @Test
     fun anExpiredProfileKeepsItsTileAndIsLocked() {
-        val tile = mergeProfiles(listOf(saved("u1", "Alex", session = false)), public(PublicUser("u1", "Alex", null, true)), null).single()
+        val tile = mergeProfiles(listOf(saved("u1", "Alex", session = false)), public(PublicUser("u1", "Alex", null, true))).single()
 
         assertTrue(tile.locked)
     }
 
     @Test
     fun aUserWithoutAPasswordIsNeverLocked() {
-        val tile = mergeProfiles(emptyList(), public(PublicUser("u3", "Kim", null, hasPassword = false)), null).single()
+        val tile = mergeProfiles(emptyList(), public(PublicUser("u3", "Kim", null, hasPassword = false))).single()
 
         assertFalse(tile.needsPassword)
         assertFalse(tile.locked)
@@ -62,7 +58,7 @@ class ProfilesTest {
 
     @Test
     fun aSavedProfileTheServerDoesNotListStillShowsAndNeedsAPassword() {
-        val tile = mergeProfiles(listOf(saved("hidden", "Hidden", session = false)), public(PublicUser("u1", "Alex", null, true)), null)
+        val tile = mergeProfiles(listOf(saved("hidden", "Hidden", session = false)), public(PublicUser("u1", "Alex", null, true)))
             .first { it.userId == "hidden" }
 
         assertTrue(tile.needsPassword)
@@ -70,16 +66,9 @@ class ProfilesTest {
     }
 
     @Test
-    fun whenTheServerCannotBeReachedSavedProfilesStillShowWithAvatarsFromTheFallbackAddress() {
-        val profiles = mergeProfiles(listOf(saved("u1", "Alex", tag = "abc")), public = null, fallbackBaseUrl = "https://jelly.example.com")
+    fun whenTheServerCannotBeReachedSavedProfilesStillShow() {
+        val profiles = mergeProfiles(listOf(saved("u1", "Alex", tag = "abc")), public = null)
 
         assertEquals("Alex", profiles.single().name)
-        assertEquals("https://jelly.example.com/Users/u1/Images/Primary?tag=abc&maxWidth=256", profiles.single().avatarUrl)
-    }
-
-    @Test
-    fun noImageTagOrNoAddressMeansNoAvatarUrl() {
-        assertNull(mergeProfiles(listOf(saved("u1", "Alex", tag = null)), null, "http://nas").single().avatarUrl)
-        assertNull(mergeProfiles(listOf(saved("u1", "Alex", tag = "abc")), null, null).single().avatarUrl)
     }
 }

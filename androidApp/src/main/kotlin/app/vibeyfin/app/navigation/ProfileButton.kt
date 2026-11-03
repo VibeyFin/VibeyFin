@@ -93,15 +93,6 @@ fun ProfileButton(
                 color = VibeyFinTokens.Colors.ink,
                 modifier = Modifier.clearAndSetSemantics { },
             )
-            // The Jellyfin picture over the letter, which shows while it loads or when there is none
-            state.avatarUrl?.let { url ->
-                AsyncImage(
-                    model = url,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.matchParentSize().clip(CircleShape),
-                )
-            }
         }
 
         VibeyFinMenu(expanded = open, onDismiss = { open = false }) {

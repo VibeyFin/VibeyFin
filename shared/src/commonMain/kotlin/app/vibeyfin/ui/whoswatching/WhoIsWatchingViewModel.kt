@@ -136,7 +136,7 @@ class WhoIsWatchingViewModel(
 
     val uiState: StateFlow<WhoIsWatchingUiState> =
         combine(accounts.observeAccounts(serverId), local, pin.prompt, connection.state) { saved, local, pinPrompt, connected ->
-            val merged = mergeProfiles(saved, local.public, local.server?.addresses?.firstOrNull())
+            val merged = mergeProfiles(saved, local.public)
             // While a profile opens the tiles keep their places, so the zoom starts from the one that was tapped
             val profiles = if (local.busy) merged.inOrderOf(shownProfiles) else merged
             shownProfiles = profiles
@@ -200,7 +200,7 @@ class WhoIsWatchingViewModel(
         viewModelScope.launch {
             val account = accounts.account(ref.serverId, ref.userId) ?: return@launch
             // The picker does not know yet whether the server wants a password; asking for one is the safe guess.
-            val profile = Profile(account.userId, account.name, null, account.hasSession, needsPassword = true)
+            val profile = Profile(account.userId, account.name, account.hasSession, needsPassword = true)
             pin.ask(PinReason.SwitchProfile, ref.serverId, ref.userId, account.name, onDismiss = { goBackTo(profile) }) {}
         }
     }

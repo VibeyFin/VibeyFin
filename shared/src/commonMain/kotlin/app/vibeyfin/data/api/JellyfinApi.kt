@@ -81,8 +81,6 @@ class JellyfinApi(
 
     /** The URL of a user's avatar, for an image loader. */
 
-    fun userImageUrl(userId: String, imageTag: String, maxWidth: Int = 256): String = userImageUrl(baseUrl, userId, imageTag, maxWidth)
-
     internal suspend inline fun <reified T> get(
         path: String,
         query: Map<String, String> = emptyMap(),
@@ -165,9 +163,6 @@ class JellyfinApi(
         ApiResult.Failure(ApiError.Network)
     }
 }
-
-/** The URL of a user's avatar on the server at [baseUrl], for an image loader. */
-fun userImageUrl(baseUrl: String, userId: String, imageTag: String, maxWidth: Int = 256): String = "$baseUrl/Users/$userId/Images/Primary?tag=$imageTag&maxWidth=$maxWidth"
 
 /** Builds [JellyfinApi] instances that share one HTTP client (and so its connections). */
 class JellyfinApiFactory(
