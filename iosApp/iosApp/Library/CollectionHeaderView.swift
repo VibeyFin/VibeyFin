@@ -6,12 +6,45 @@ import Shared
 struct CollectionHeaderView: View {
     let collection: MediaItem
     let count: Int
+    var scrollOffset: CGFloat = 0
 
     @Environment(\.horizontalSizeClass) private var sizeClass
     private var wide: Bool { sizeClass == .regular }
 
     var body: some View {
         ZStack(alignment: wide ? .bottomLeading : .bottom) {
+            backdrop
+                .offset(y: scrollOffset)
+            VStack(alignment: wide ? .leading : .center, spacing: Space.s2) {
+                Text(collection.title)
+                    .font(.brandDisplay)
+                    .tracking(-0.8)
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(wide ? .leading : .center)
+                    .lineLimit(3)
+                if count > 0 {
+                    Text(Strings.shared.collectionTitles(count: Int32(count)))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                if let overview = collection.overview {
+                    Text(overview)
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(wide ? .leading : .center)
+                        .lineLimit(4)
+                }
+            }
+            .frame(maxWidth: wide ? 520 : .infinity, alignment: wide ? .leading : .center)
+            .padding(.horizontal, Space.s4)
+            .padding(.bottom, Space.s4)
+        }
+        .frame(maxWidth: .infinity)
+        .clipped()
+    }
+
+    private var backdrop: some View {
+        ZStack {
             if let url = collection.backdropUrl ?? collection.posterUrl {
                 Artwork(
                     url: url,
@@ -41,31 +74,9 @@ struct CollectionHeaderView: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
-            VStack(alignment: wide ? .leading : .center, spacing: Space.s2) {
-                Text(collection.title)
-                    .font(.brandDisplay)
-                    .tracking(-0.8)
-                    .foregroundStyle(.primary)
-                    .multilineTextAlignment(wide ? .leading : .center)
-                    .lineLimit(3)
-                if count > 0 {
-                    Text(Strings.shared.collectionTitles(count: Int32(count)))
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-                if let overview = collection.overview {
-                    Text(overview)
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
-                        .multilineTextAlignment(wide ? .leading : .center)
-                        .lineLimit(4)
-                }
+            GeometryReader { proxy in
+                Color(.systemBackground).opacity(ScrollDarkening.opacity(scrolled: scrollOffset, height: proxy.size.height))
             }
-            .frame(maxWidth: wide ? 520 : .infinity, alignment: wide ? .leading : .center)
-            .padding(.horizontal, Space.s4)
-            .padding(.bottom, Space.s4)
         }
-        .frame(maxWidth: .infinity)
-        .clipped()
     }
 }

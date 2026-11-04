@@ -63,6 +63,7 @@ private enum MainTab: Hashable {
 struct TabShell: View {
     /// Called when the tabs should be left: the user chose to, or the session ended.
     let onExit: (HomeExit) -> Void
+    let home: HomeObservable
 
     @State private var selection: MainTab = .home
     @Namespace private var zoomNamespace
@@ -116,6 +117,9 @@ struct TabShell: View {
             }
         }
         // Library needs the server: going offline while on it moves to Home, which the bar still offers.
+        .onChange(of: profileMenu.state?.openQuickConnect == true) { _, open in
+            if open { openQuickConnect() }
+        }
         .onChange(of: offline) { _, isOffline in
             if isOffline && selection == .library { selection = .home }
         }
@@ -130,6 +134,7 @@ struct TabShell: View {
                     .tabRootBar()
                 } else {
                     HomeView(
+                        model: home,
                         onExit: onExit,
                         onOpen: { open($0, in: $homePath) },
                         onDetails: { homePath.append(.item(itemId: $0)) },
@@ -294,6 +299,18 @@ struct TabShell: View {
         }
     }
 
+    /// Settings › Quick Connect from the profile button, once the shared state says so (after the PIN to open Settings, if any).
+    /// Watched here, not by each tab's button, so it opens once.
+    private func openQuickConnect() {
+        switch selection {
+        case .home: homePath.append(.settingsPage(.quickconnect))
+        case .search: searchPath.append(.settingsPage(.quickconnect))
+        case .library: libraryPath.append(.settingsPage(.quickconnect))
+        case .downloads: downloadsPath.append(.settingsPage(.quickconnect))
+        }
+        profileMenu.quickConnectOpened()
+    }
+
     /// Details from a poster's menu: opens in the tab on screen.
     private func openFromMenu(_ item: MediaItem) {
         switch selection {
@@ -337,6 +354,8 @@ struct TabShell: View {
             if id == .seerr {
                 // Seerr has an address field, which the shared Settings rows don't draw.
                 SeerrSettingsView(onMyRequests: { path.wrappedValue.append(.myRequests) })
+            } else if id == .quickconnect {
+                ApproveQuickConnectView()
             } else if let model = settings.current {
                 SettingsPageView(pageId: id, model: model, onExit: onExit)
             }

@@ -162,16 +162,17 @@ private struct HeroDetailsSkeleton: View {
     }
 }
 
-/// Round avatars with a name line, for "Who's watching?" while the profiles load.
 struct ProfileSkeletonGrid: View {
     var count: Int = 4
     let avatarSize: CGFloat
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s4, alignment: .top)], spacing: Space.s5) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: avatarSize + Space.s2), spacing: Space.s4, alignment: .top)], spacing: Space.s5) {
             ForEach(0..<count, id: \.self) { _ in
                 VStack(spacing: Space.s2) {
-                    Circle().fill(Color(.tertiarySystemBackground)).frame(width: avatarSize, height: avatarSize)
+                    RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+                        .fill(Color(.tertiarySystemBackground))
+                        .frame(width: avatarSize, height: avatarSize)
                     SkeletonLine(font: .subheadline, width: 72)
                 }
             }

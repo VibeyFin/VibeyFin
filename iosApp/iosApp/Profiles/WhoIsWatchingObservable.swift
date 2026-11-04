@@ -59,6 +59,10 @@ final class WhoIsWatchingObservable: ObservableObject {
         model.refresh()
     }
 
+    func appResumed() {
+        model.onAppResumed()
+    }
+
     deinit {
         model.close()
     }

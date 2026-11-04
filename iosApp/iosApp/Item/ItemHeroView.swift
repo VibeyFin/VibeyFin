@@ -34,6 +34,17 @@ struct ItemHeroView: View {
     }
 }
 
+enum ScrollDarkening {
+    static let darkenOver: CGFloat = 0.55
+    static let maxDarken = 0.94
+
+    static func opacity(progress: CGFloat) -> Double { maxDarken * Double(min(max(progress, 0), 1)) }
+
+    static func opacity(scrolled: CGFloat, height: CGFloat) -> Double {
+        height > 0 ? opacity(progress: scrolled / (height * darkenOver)) : 0
+    }
+}
+
 /// A phone's picture: pinned at the top, `height` tall (2:3), and staying put while the page scrolls: the text goes up over it, and it
 /// darkens (`progress`, 0 at the top to 1 once about half of it has scrolled by) so what scrolls over it reads. The scrim is a band at
 /// the top for the bar, clear through the middle so the picture reads, then darker towards the text, ending in the page's own colour.
@@ -78,7 +89,7 @@ struct PinnedItemBackdrop: View {
                 endPoint: .bottom
             )
             // The darkening: from the picture as it is to nearly the page's own colour.
-            Color(.systemBackground).opacity(0.94 * Double(min(max(progress, 0), 1)))
+            Color(.systemBackground).opacity(ScrollDarkening.opacity(progress: progress))
         }
         .frame(maxWidth: .infinity)
         .frame(height: height)
@@ -131,7 +142,7 @@ struct WideItemBackdrop: View {
                     endPoint: .bottom
                 )
                 // The darkening: from the picture as it is to nearly the page's own colour, as the page scrolls up over it.
-                Color(.systemBackground).opacity(0.94 * Double(min(max(progress, 0), 1)))
+                Color(.systemBackground).opacity(ScrollDarkening.opacity(progress: progress))
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()

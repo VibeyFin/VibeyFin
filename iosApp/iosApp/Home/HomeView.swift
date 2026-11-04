@@ -2,7 +2,7 @@ import SwiftUI
 import Shared
 
 struct HomeView: View {
-    @StateObject private var model = HomeObservable()
+    @ObservedObject var model: HomeObservable
     @StateObject private var seerr = SeerrHomeObservable()
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.playerSession) private var player

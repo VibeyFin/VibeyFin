@@ -43,7 +43,9 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -52,14 +54,17 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -147,6 +152,21 @@ fun SearchScreen(
     val margin = screenMargin()
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
+    // The field keeps its own cursor; text put in from here (a past search picked, Clear) gets the cursor at its end
+    var field by remember { mutableStateOf(TextFieldValue(state.query, TextRange(state.query.length))) }
+    val clear = {
+        field = TextFieldValue()
+        onClear()
+    }
+
+    val pickHistory: (String) -> Unit = { term ->
+        field = TextFieldValue(term, TextRange(term.length))
+        onHistoryPicked(term)
+        focusManager.clearFocus()
+        keyboard?.hide()
+    }
 
     LaunchedEffect(Unit) { if (state.query.isEmpty()) focus.requestFocus() }
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -155,14 +175,18 @@ fun SearchScreen(
             Column(Modifier.fillMaxSize()) {
                 TabHeader(Strings.tabSearch)
                 TextField(
-                    value = state.query,
-                    onValueChange = onQueryChange,
+                    value = field,
+                    onValueChange = {
+                        val changed = it.text != field.text
+                        field = it
+                        if (changed) onQueryChange(it.text)
+                    },
                     singleLine = true,
                     placeholder = { Text(if (state.offline) Strings.offlineSearchHint else Strings.searchHint) },
                     leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                     trailingIcon = {
                         if (state.query.isNotEmpty()) {
-                            IconButton(onClick = onClear) { Icon(Icons.Filled.Clear, contentDescription = Strings.clearSearch) }
+                            IconButton(onClick = clear) { Icon(Icons.Filled.Clear, contentDescription = Strings.clearSearch) }
                         }
                     },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, keyboardType = KeyboardType.Text),
@@ -199,7 +223,7 @@ fun SearchScreen(
                 }
 
                 when {
-                    state.showsPrompt && state.history.isNotEmpty() -> History(state.history, margin, onHistoryPicked, onHistoryRemoved, onHistoryCleared)
+                    state.showsPrompt && state.history.isNotEmpty() -> History(state.history, margin, pickHistory, onHistoryRemoved, onHistoryCleared)
 
                     state.showsPrompt -> if (state.offline) Prompt(Strings.offlineSearchPrompt, Strings.offlineBannerHelp, margin) else Prompt(Strings.searchPrompt, Strings.searchPromptHelp, margin)
 

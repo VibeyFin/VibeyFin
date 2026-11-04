@@ -117,6 +117,7 @@ class SettingsViewModelTest {
         app.profileSettings.setKidsProfile(true)
 
         assertFalse(viewModel.uiState.first { it.kidsProfile }.rootKeys().contains(SettingKey.Seerr))
+        assertFalse(viewModel.uiState.first { it.kidsProfile }.page(SettingsPageId.Profile).keys().contains(SettingKey.QuickConnect))
     }
 
     @Test
@@ -392,6 +393,7 @@ class SettingsViewModelTest {
             ),
             root.sections.mapNotNull { it.title },
         )
+        assertFalse(root.keys().contains(SettingKey.QuickConnect))
     }
 
     @Test
@@ -489,6 +491,7 @@ class SettingsViewModelTest {
         assertEquals("http://nas:8096", (items.getValue(SettingKey.ServerAddress) as InfoItem).value)
         assertEquals("http://192.168.1.20:8096", (items.getValue(SettingKey.ServerAlsoAt) as InfoItem).value)
         assertTrue(SettingKey.SwitchProfile in items)
+        assertEquals(SettingsPageId.QuickConnect, (items.getValue(SettingKey.QuickConnect) as LinkItem).target)
         assertTrue((items.getValue(SettingKey.SignOut) as ActionItem).destructive)
     }
 

@@ -164,4 +164,14 @@ class AccountRepositoryTest {
     }
 
     private suspend fun AccountRepository.userIds() = observeAccounts("srv").first().map { it.userId }
+
+    @Test
+    fun countsTheProfilesSavedForEachServer() = runTest {
+        ServerRepository(database.serverDao(), database.accountDao(), vault, clock).save("srv-2", "Cabin", "10.10.7", "http://cabin:8096")
+        accounts.saveSession("srv", "u1", "Alex", null, "t1")
+        accounts.saveSession("srv", "u2", "Kim", null, "t2")
+        accounts.saveSession("srv-2", "u1", "Alex", null, "t3")
+
+        assertEquals(mapOf("srv" to 2, "srv-2" to 1), accounts.observeProfileCounts().first())
+    }
 }

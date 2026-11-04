@@ -26,9 +26,10 @@ data class ProfileMenuUiState(
     val pinPrompt: PinPrompt? = null,
     /** Where to go once the profile has been left. */
     val exit: HomeExit? = null,
+    /** One-shot: open Settings › Quick Connect, then call [ProfileMenuViewModel.onQuickConnectOpened]. */
+    val openQuickConnect: Boolean = false,
 )
 
-/** The profile button at the top of every tab: who is signed in, and the menu's switch profile, switch server and sign out. */
 class ProfileMenuViewModel(
     connection: ConnectionManager,
     profileSettings: ProfileSettings,
@@ -44,12 +45,15 @@ class ProfileMenuViewModel(
         profileSettings.kidsProfile,
         profile.pinPrompt,
         profile.exit,
-    ) { state, kids, prompt, exit ->
+        profile.openQuickConnect,
+    ) { state, kids, prompt, exit, quickConnect ->
+        val connected = state as? ConnectionState.Connected
         ProfileMenuUiState(
-            userName = (state as? ConnectionState.Connected)?.account?.name,
+            userName = connected?.account?.name,
             kidsProfile = kids == true,
             pinPrompt = prompt,
             exit = exit,
+            openQuickConnect = quickConnect,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProfileMenuUiState())
 
@@ -58,6 +62,10 @@ class ProfileMenuViewModel(
     fun onSwitchServer() = profile.switchServer()
 
     fun onSignOut() = profile.signOut()
+
+    fun onQuickConnect() = profile.quickConnect()
+
+    fun onQuickConnectOpened() = profile.quickConnectOpened()
 
     fun onSubmitPin(pin: String) = profile.submitPin(pin)
 

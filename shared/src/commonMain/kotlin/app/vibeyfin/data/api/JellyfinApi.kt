@@ -12,7 +12,9 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonObject
+import kotlin.coroutines.CoroutineContext
 
 /**
  * The calls we make to one Jellyfin server at [baseUrl]. With a [token] they are signed in.
@@ -30,9 +32,12 @@ class JellyfinApi(
     private val unauthorized: UnauthorizedEvents? = null,
     private val retries: RetryPolicy = RetryPolicy.Default,
     private val reachability: ServerReachability? = null,
+    private val decodeOn: CoroutineContext = Dispatchers.Default,
 ) {
     /** The same server, signed in with [token]. */
-    fun withToken(token: String?) = JellyfinApi(http, baseUrl, token, unauthorized, retries, reachability)
+    fun withToken(token: String?) = JellyfinApi(http, baseUrl, token, unauthorized, retries, reachability, decodeOn)
+
+    suspend fun publicSystemInfo(): ApiResult<PublicSystemInfoDto> = get("/System/Info/Public")
 
     /** `GET /Users/Public`: the users the server lists on its sign-in screen. Needs no sign-in. */
     suspend fun publicUsers(): ApiResult<List<UserDto>> = get("/Users/Public")
@@ -74,7 +79,6 @@ class JellyfinApi(
     }
 
     /** The URL of a user's avatar, for an image loader. */
-    fun userImageUrl(userId: String, imageTag: String, maxWidth: Int = 256): String = userImageUrl(baseUrl, userId, imageTag, maxWidth)
 
     internal suspend inline fun <reified T> get(
         path: String,
@@ -111,6 +115,7 @@ class JellyfinApi(
         prepare = { token?.let { attributes.put(TokenAttribute, it) } },
         onAnswer = ::answered,
         onNoAnswer = { if (token != null) reachability?.failed() },
+        decodeOn = decodeOn,
     )
 
     // Something answered: the server is there, whatever it said. And the one place a rejected token is noticed: a 401 on a call that
@@ -118,7 +123,7 @@ class JellyfinApi(
     private fun answered(status: Int) {
         if (token == null) return
         reachability?.answered()
-        if (status == 401) unauthorized?.report(token)
+        if (status == 401) unauthorized?.report(token, baseUrl)
     }
 
     /**
@@ -158,15 +163,13 @@ class JellyfinApi(
     }
 }
 
-/** The URL of a user's avatar on the server at [baseUrl], for an image loader. */
-fun userImageUrl(baseUrl: String, userId: String, imageTag: String, maxWidth: Int = 256): String = "$baseUrl/Users/$userId/Images/Primary?tag=$imageTag&maxWidth=$maxWidth"
-
 /** Builds [JellyfinApi] instances that share one HTTP client (and so its connections). */
 class JellyfinApiFactory(
     private val http: HttpClient,
     private val unauthorized: UnauthorizedEvents? = null,
     private val retries: RetryPolicy = RetryPolicy.Default,
     private val reachability: ServerReachability? = null,
+    private val decodeOn: CoroutineContext = Dispatchers.Default,
 ) {
-    fun create(baseUrl: String, token: String? = null) = JellyfinApi(http, baseUrl, token, unauthorized, retries, reachability)
+    fun create(baseUrl: String, token: String? = null) = JellyfinApi(http, baseUrl, token, unauthorized, retries, reachability, decodeOn)
 }

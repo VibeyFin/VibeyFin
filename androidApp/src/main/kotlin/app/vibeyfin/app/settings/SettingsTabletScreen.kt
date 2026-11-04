@@ -98,6 +98,8 @@ fun SettingsTabletScreen(
                             Modifier.widthIn(max = DetailMaxWidth).fillMaxWidth().padding(horizontal = margin),
                             onLeave = { saved = null },
                         )
+                    } else if (detail?.id == SettingsPageId.QuickConnect) {
+                        QuickConnectApproveContent(koinViewModel(), Modifier.widthIn(max = DetailMaxWidth).fillMaxWidth().padding(horizontal = margin))
                     } else if (detail != null) {
                         // Keyed by page so scroll and menus do not carry over from the page before
                         key(detail.id) {

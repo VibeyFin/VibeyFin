@@ -50,7 +50,7 @@ this name; renaming or changing one is a reviewed change. All paths are under
 | `mkv-vp9-opus` | `failures/MKV VP9 Opus (2026)/MKV VP9 Opus (2026).mkv` | Same as `plain`, VP9 video and Opus audio in MKV | A file AVPlayer cannot open: negotiation |
 | `av1-ac3` | `failures/AV1 AC3 (2026)/AV1 AC3 (2026).mkv` | Same as `plain`, AV1 10-bit (SVT-AV1, `yuv420p10le`) video and AC-3 audio in MKV, like the web rips many libraries hold | iOS download: the remux copies AV1 into MP4 where the device has an AV1 hardware decoder, and refuses it where not |
 | `subs-text` | `failures/Text Subtitles (2026)/Text Subtitles (2026).mkv` | Same as `plain`, plus two SubRip tracks (`eng` "English subtitle", `deu` "Deutscher Untertitel"), shown 1 s to 15 s | Text subtitle tracks and the picker |
-| `languages` | `failures/Languages (2026)/Languages (2026).mkv` | Same as `plain`, but two AAC audio tracks (`eng` "English" 440 Hz, flagged default; `ger` "Deutsch" 880 Hz) and three SubRip tracks (`eng` "English subtitle", `ger` "Deutscher Untertitel", and `eng` "Forced English subtitle" flagged forced), shown 1 s to 15 s | Preferred audio and subtitle languages (issue #28): which tracks a video starts with |
+| `languages` | `failures/Languages (2026)/Languages (2026).mkv` | Same as `plain`, but two AAC audio tracks (`eng` "English" 440 Hz, flagged default; `ger` "Deutsch" 880 Hz) and three SubRip tracks (`eng` "English subtitle", `ger` "Deutscher Untertitel", and `eng` "Forced English subtitle" flagged forced), shown 1 s to 15 s | Preferred audio and subtitle languages (issue #28): which tracks a video starts with. Also the detail page's Technical info, whose Audio and Subtitles lines list these tracks |
 | `subs-image` | `failures/Image Subtitles (2026)/Image Subtitles (2026).mkv` | Same as `plain`, plus one PGS track (a white bar, 1 s to 15 s, hand-written because ffmpeg cannot encode PGS) | Image subtitles: burned in by a transcode |
 | `truncated` | `failures/Truncated (2026)/Truncated (2026).mp4` | An MP4 cut in half: no moov atom, so no streams and no duration. Jellyfin still lists it | A file that cannot play at all: the error path |
 
@@ -222,7 +222,7 @@ Added for downloads and offline mode (plan 14). `make-media.sh` creates the medi
 | --- | --- | --- | --- |
 | `big-download` | `movies/Big Download (2026)/` | 60 s of random noise, 640x360 H.264 at a very high quality, 700 Hz AAC, about 283 MB (283,037,992 bytes). The server answers `Range` requests with `206` and a `Content-Range` | A download long enough to pause, kill the app, switch the screen off and resume. The emulator's own `network speed` does not slow traffic to the host, so use `throttle-proxy.py` (below) |
 | `download-subs` | `movies/Download Subs (2026)/` | 3 s clip with poster, backdrop, logo and one cast member, and two external subtitle files next to it (`.en.srt` "English subtitle", `.de.srt` "Deutscher Untertitel") | That a download keeps the artwork, the cast and the external subtitles, which are separate files on the server (`DeliveryUrl`) |
-| `download-languages` | `movies/Download Languages (2026)/` | 10 s 320x180 clip with two audio tracks told apart by pitch (`eng` "English" 440 Hz, the default; `ger` "Deutsch" 880 Hz) and three external subtitle files (`.en.srt` "English subtitle", `.de.srt` "Deutscher Untertitel", `.en.forced.srt` "Forced English subtitle") | That a download plays offline with the tracks the preferred audio and subtitle languages pick (plan 19). Only subtitle files come along with a download, so the Languages fixture's embedded ones can't show this |
+| `download-languages` | `movies/Download Languages (2026)/` | 10 s 320x180 clip with two audio tracks told apart by pitch (`eng` "English" 440 Hz, the default; `ger` "Deutsch" 880 Hz) and three external subtitle files (`.en.srt` "English subtitle", `.de.srt` "Deutscher Untertitel", `.en.forced.srt` "Forced English subtitle") | That a download plays offline with the tracks the preferred audio and subtitle languages pick (plan 19). Only subtitle files come along with a download, so the Languages fixture's embedded ones can't show this. Its Technical info shows the external files as "English · SUBRIP · External" |
 | user `nodownload` | (not a file; created by `seed-userdata.sh`) | A second user, password `vibeyfin-test`, with `EnableContentDownloading` off | `GET /Items/{id}/Download` answers 403 for it; `GET /Users/Me` has `Policy.EnableContentDownloading: false`, so the Download button is hidden |
 
 What the server was seen to do (Jellyfin 12.2, checked while writing plan 14):
@@ -241,6 +241,26 @@ speed. On the emulator add `http://10.0.2.2:8197` as the server's address (the a
 other when the proxy is stopped). Use it to turn the screen off, force Doze (`adb shell dumpsys deviceidle force-idle`), drop Wi-Fi
 (`adb shell svc wifi disable`; reconnect with `adb shell cmd wifi connect-network AndroidWifi open`) or kill the process
 (`adb shell run-as app.vibeyfin kill -9 <pid>`) in the middle of a download, and compare the file with the source (`md5sum`).
+
+## Sign-in fixtures: who is listed, a user without a password, a hidden user, Quick Connect
+
+Added for the sign-in pass (#52). `seed-userdata.sh` creates the users; `quick-connect.sh` drives Quick Connect.
+
+| Fixture | What it is | Needed by |
+| --- | --- | --- |
+| who is listed | Jellyfin hides new users from the sign-in screen, so every seed run lists `admin`, `kids`, `nodownload` and `nopassword` (`Policy.IsHidden` false) and hides `hidden` | "Who's watching?" tiles from `GET /Users/Public` |
+| user `nopassword` | Created without a password. Jellyfin 12 still reports `HasPassword: true` for every user, so the app shows its lock and the password sheet; an empty password signs in | The empty-password sign-in |
+| user `hidden` | Password `vibeyfin-test`, `IsHidden` true: not in `/Users/Public` | Signing in with "Other user" |
+| `quick-connect.sh approve <code> [user]` | Approves a code the app shows (`POST /QuickConnect/Authorize?code=&userId=` as admin), as `[user]` (default `admin`) | Quick Connect sign-in without a second device |
+| `quick-connect.sh on` / `off` | Sets `QuickConnectAvailable` in `/System/Configuration` | The Quick Connect tile, and "turned off meanwhile" |
+| `quick-connect.sh start` | Plays another device: starts a Quick Connect, prints its code and waits up to 5 minutes, then says who it signed in as | Settings › Quick Connect (approving a code from the app) |
+
+What the server was seen to do (Jellyfin 12.2): with Quick Connect off, `GET /QuickConnect/Enabled` is `false` and `POST /QuickConnect/Initiate`
+answers `401`; an approved code makes `GET /QuickConnect/Connect?secret=` report `Authenticated: true`, and
+`POST /Users/AuthenticateWithQuickConnect` then signs in as the user who approved it. Approving from the app
+(`POST /QuickConnect/Authorize?code=&userId=` with the profile's own id) works for a user who is not an admin; a code the
+server never gave out answers `404`, and with Quick Connect off the approval answers `401`, which is why the app asks
+`GET /QuickConnect/Enabled` first instead of letting that 401 end the profile's session.
 
 ## Seerr: a request server linked to the test Jellyfin
 

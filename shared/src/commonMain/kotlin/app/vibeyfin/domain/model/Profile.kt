@@ -4,7 +4,6 @@ package app.vibeyfin.domain.model
 data class Profile(
     val userId: String,
     val name: String,
-    val avatarUrl: String?,
     /** This device holds a token for the profile, so tapping it signs in without a password. */
     val hasSession: Boolean,
     /** Signing in needs a password; false for a user the server says has none. */

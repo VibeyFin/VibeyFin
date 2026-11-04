@@ -226,10 +226,7 @@ private struct ProfileHeaderRow: View {
     }
 
     /// The same muted, stable colour per name as the "Who's watching?" tile.
-    private var tint: Color {
-        let sum = name.lowercased().unicodeScalars.reduce(0) { ($0 &* 31) &+ Int($1.value) }
-        return Brand.avatars[abs(sum) % Brand.avatars.count]
-    }
+    private var tint: Color { Brand.avatars[Int(AvatarTint.shared.of(name: name))] }
 }
 
 /// The indexes of the subtitle rows: size 0 to 3, colour 0 to 2, background 0 to 2.

@@ -15,6 +15,10 @@ class ProfileMenuModel {
 
     fun onSignOut() = host.viewModel.onSignOut()
 
+    fun onQuickConnect() = host.viewModel.onQuickConnect()
+
+    fun onQuickConnectOpened() = host.viewModel.onQuickConnectOpened()
+
     /** A PIN was entered in the open PIN sheet. */
     fun onSubmitPin(pin: String) = host.viewModel.onSubmitPin(pin)
 

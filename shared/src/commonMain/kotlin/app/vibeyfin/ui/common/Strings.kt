@@ -8,6 +8,7 @@ import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.RequestState
 import app.vibeyfin.domain.model.SeerrMediaType
 import kotlin.math.roundToInt
+import kotlin.time.Duration
 
 /**
  * Every piece of text the apps show: titles, labels, buttons, help text, empty states and
@@ -36,39 +37,131 @@ object Strings {
     // Who's watching
     val whoIsWatching = "Who's watching?"
     val otherUser = "Other user"
-    val needsPassword = "Needs a password"
-    val cantReachServerTitle = "Can't reach this server"
     val cantReachServerHelp = "Profiles saved on this device still show, but signing in needs the server."
     val username = "Username"
     val password = "Password"
     val signInAsAnotherUser = "Sign in as another user"
+    val passwordNotKept = "VibeyFin doesn\u2019t keep your password."
+    val required = "Required"
+    val showPassword = "Show password"
+    val hidePassword = "Hide password"
+    val useQuickConnectInstead = "Use Quick Connect instead"
+    val signInWithPassword = "Sign in with password"
 
     fun signInAs(name: String) = "Sign in as $name"
 
+    fun cantReachServer(name: String) = "Can't reach $name"
+
+    fun triedAddresses(addresses: List<String>) = "Tried " + addresses.joinToStringAnd() + "."
+
+    fun sessionEndedFor(name: String) = "$name's session ended. Sign in again to keep watching."
+
+    fun serverMenu(name: String) = "$name, server menu"
+
+    fun moreFor(name: String) = "More for $name"
+
+    fun profileTile(name: String, needsPassword: Boolean, needsPin: Boolean, opening: Boolean) = when {
+        opening -> "Opening $name"
+        needsPassword -> "$name, needs a password"
+        needsPin -> "$name, asks for a PIN"
+        else -> name
+    }
+
     // Quick Connect
     val quickConnect = "Quick Connect"
-    val quickConnectHelp =
-        "On a device that's signed in to Jellyfin, open your user menu, choose Quick Connect and enter this code."
-    val quickConnectWaiting = "Waiting for approval"
-    val quickConnectGettingCode = "Getting a code"
+    val quickConnectTile = "Quick Connect, sign in with a code"
+    val quickConnectLead = "Sign in with a code instead of a password."
+    val quickConnectSteps = listOf(
+        "On a phone, computer or TV that's signed in to Jellyfin, open your profile.",
+        "Choose Quick Connect.",
+        "Enter this code.",
+    )
+    val quickConnectGettingCode = "Getting a code\u2026"
+    val quickConnectApproved = "Approved"
+    val quickConnectSigningIn = "Signing in\u2026"
+    val quickConnectNewCode = "Get a new code"
+    val quickConnectApproveHelp = "Sign in on another device with the code it shows."
+
+    fun quickConnectApproveLead(name: String) = "On the other device, choose Quick Connect. Type the code it shows here to sign it in as $name."
+
+    val quickConnectCodeLabel = "Code"
+    val quickConnectCodePlaceholder = "6 digits"
+    val quickConnectApprove = "Approve"
+    val quickConnectApproving = "Approving\u2026"
+
+    fun quickConnectApprovedFor(name: String) = "Approved. The other device is signing in as $name."
+
+    val copyCode = "Copy code"
+    val codeCopied = "Code copied"
+
+    fun quickConnectCode(code: String) = if (code.length == 6) code.take(3) + " " + code.drop(3) else code
+
+    fun quickConnectSpokenCode(code: String) = "Code " + code.toList().joinToString(" ")
+
+    fun quickConnectWaiting(expiresIn: Duration): String {
+        val seconds = expiresIn.inWholeSeconds.coerceAtLeast(0)
+        return "Waiting for approval \u00b7 code expires in ${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"
+    }
 
     // Servers
     val servers = "Servers"
     val onYourNetwork = "On your network"
     val addToServers = "Add"
-    val noServersFound = "No servers found on your network."
+    val noServersFoundHelp = "No servers found on your network. A server on another network or behind a VPN needs its address."
     val noNewServersFound = "No new servers found."
+    val lookingForServers = "Looking for servers\u2026"
+    val welcomeLead = "Connect to your Jellyfin server to start watching."
+    val welcomeAddressHelp = "Use the address you open Jellyfin with in a browser, like 192.168.1.20:8096 or jellyfin.example.com."
+    val addServerByAddress = "Add server by address"
+    val serverDetails = "Server details"
+    val removeServer = "Remove server"
+    val addresses = "Addresses"
+    val addAddress = "Add address"
+    val removeAddress = "Remove address"
+    val lastWorked = "Last worked"
+    val addressesHelp = "VibeyFin tries the address that worked last first, then the others in order."
+    val addressesSwipeHelp = "Swipe an address to remove it."
+    val serverSection = "Server"
+    val version = "Version"
+    val profilesOnDevice = "Profiles on this device"
 
     fun jellyfinVersion(version: String) = "Jellyfin $version"
+
+    fun serverMeta(version: String?, addresses: Int, profiles: Int) = listOfNotNull(
+        version?.let(::jellyfinVersion),
+        "$addresses addresses".takeIf { addresses > 1 },
+        when (profiles) {
+            0 -> null
+            1 -> "1 profile"
+            else -> "$profiles profiles"
+        },
+    ).joinToString(" \u00b7 ")
+
+    fun removeServerTitle(name: String) = "Remove $name?"
+
+    fun removeServerMessage(profiles: Int) = when (profiles) {
+        0 -> "Nothing changes on the server."
+        1 -> "1 profile is signed out on this device and its downloads are deleted. Nothing changes on the server."
+        else -> "$profiles profiles are signed out on this device and their downloads are deleted. Nothing changes on the server."
+    }
+
+    fun removeServerHelp(profiles: Int) = when (profiles) {
+        0 -> "Nothing changes on the server."
+        1 -> "Signs out its profile on this device and deletes its downloads. Nothing changes on the server."
+        else -> "Signs out its $profiles profiles on this device and deletes their downloads. Nothing changes on the server."
+    }
 
     // Add server
     val addAServer = "Add a server"
     val serverAddress = "Server address"
     val serverAddressExample = "192.168.1.20:8096"
+    val serverAddressHelp = "Without http:// or a port, VibeyFin tries https, then http, on the usual ports."
+
+    fun addServerNext(name: String) = "Next: choose who's watching on $name."
+
     val connect = "Connect"
     val connecting = "Connecting"
     val found = "Found"
-    val cantConnectTitle = "Can't connect"
     val saveAddress = "Save address"
     val done = "Done"
 
@@ -515,6 +608,11 @@ object Strings {
     /** The label of the line in the technical info that says how much storage the file takes. */
     val technicalSize = "Size"
 
+    val technicalAudio = "Audio"
+    val technicalSubtitles = "Subtitles"
+    val trackForced = "Forced"
+    val trackExternal = "External"
+
     /** What a screen reader says for a season button, and for the row of them. */
     fun seasonDescription(name: String, selected: Boolean) = if (selected) "$name, selected" else name
 
@@ -819,9 +917,6 @@ object Strings {
 
     fun pinDigitsEntered(count: Int) = if (count == 1) "1 of 4 digits entered" else "$count of 4 digits entered"
 
-    /** A tile's lock badge when the profile asks for its PIN to open. */
-    val needsPin = "Needs a PIN"
-
     // Notifications page
     val notificationsTitle = "Notifications"
     val notificationsOn = "On"
@@ -1043,7 +1138,6 @@ object Strings {
     val seerrDisconnectConfirm = "Disconnect"
     val seerrPasswordTitle = "Sign in to Seerr"
     val seerrPasswordReason = "Quick Connect is off on your Jellyfin server, so Seerr needs your Jellyfin password once."
-    val seerrPasswordNotKept = "VibeyFin doesn\u2019t keep your password."
     val seerrUser = "User"
 
     // Seerr titles in search, and Seerr posters anywhere
@@ -1239,3 +1333,5 @@ object Strings {
     /** What a screen reader says for a Seerr poster: "Harbour Bridge, 2025 · Movie, not in your library, can be requested". */
     fun seerrTitleDescription(title: String, meta: String, state: RequestState) = "$title, $meta, ${seerrStateLabel(state)?.lowercase() ?: "not in your library, can be requested"}"
 }
+
+private fun List<String>.joinToStringAnd() = if (size < 2) joinToString() else dropLast(1).joinToString(", ") + " and " + last()

@@ -17,6 +17,25 @@ data class VideoFormat(
     val bitrateKbps: Int?,
 )
 
+@Serializable
+data class StreamTrack(
+    val displayTitle: String? = null,
+    val title: String? = null,
+    val language: String? = null,
+    val codec: String? = null,
+    val forced: Boolean = false,
+    val external: Boolean = false,
+)
+
+internal fun MediaStreamDto.toStreamTrack(): StreamTrack = StreamTrack(
+    displayTitle = displayTitle?.takeIf { it.isNotBlank() },
+    title = title?.takeIf { it.isNotBlank() },
+    language = language?.takeIf { it.isNotBlank() },
+    codec = codec?.takeIf { it.isNotBlank() },
+    forced = isForced,
+    external = isExternal,
+)
+
 internal fun MediaStreamDto.toVideoFormat(): VideoFormat = VideoFormat(
     codec = codec,
     width = width,

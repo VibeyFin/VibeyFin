@@ -114,7 +114,8 @@ Movies and Shows in the library as poster rows, newest first. A person with noth
 ## Collection page
 
 A boxset opens its own page: a header with the collection's picture and name (the text fades in with the picture, with no jump), then
-Movies and Shows rows. On a tablet the header is wide (21:9) with the details in a left column.
+Movies and Shows rows. On a tablet the header is wide (21:9) with the details in a left column. As on a title's page, the picture stays
+put while the page scrolls: the text goes up over it, it darkens, and the rows below cover it.
 
 ## Poster menu
 
@@ -182,7 +183,7 @@ scrolls over it (fully dark after about half the picture has gone by).
 - Cast: a row of people from `People` (round `Primary` image, name, role); a missing image is a
   `surface-2` disc with initials.
 - More like this: a row of posters from `/Items/{id}/Similar`.
-- Technical info (video, audio, subtitles, file) collapsed at the bottom.
+- Technical info (video, audio, subtitles, file) collapsed at the bottom. **Audio** and **Subtitles** list every track, one per line, by the server's own name with ` · ` between the parts ("English · Dolby Digital · 5.1 · Default", "English · SUBRIP · External"); a line is left out when the file has no such track.
 
 ## Series detail
 
@@ -351,10 +352,12 @@ A link row opens a sub-page.
 
 ### Profile
 
-Avatar, name and server; **Switch profile** (to "Who's watching?"); a read-only Server group (name and
+Avatar, name and server; **Switch profile** (to "Who's watching?") and **Quick Connect** (below); a read-only Server group (name and
 addresses); **Sign out** in `danger` text with a confirmation. Sign out clears the token, deletes the profile's
 downloads from the device and keeps the profile's tile in "Who's watching?", locked (the explicit sign-out the session rules allow). Name and avatar
 are edited in Jellyfin, not here. A kids profile has no Sign out _(planned with kids mode)_.
+
+**Quick Connect** (mockup **QuickConnectApprovePhone**) is reached from the profile menu (after the PIN to open Settings when that is on) and from the Profile page, under Switch profile. Its page: "On the other device, choose Quick Connect. Type the code it shows here to sign it in as Alex.", a Code field (number pad, digits only, six) and **Approve** (aqua, the page's one primary action; "Approving…" while busy). Approved says so under the field with a check in the text colour and clears it; a code the server never gave out, Quick Connect off on the server and an unreachable server are said under the field, which keeps the code. Not on a kids profile.
 
 ### Quality
 
@@ -411,3 +414,35 @@ the left, the chosen page on the right.
 - Android: a plain two-column layout at the existing 600dp breakpoint (not `material3-adaptive`), the selected
   row in an `accent-soft` pill.
 - At compact width (Split View, a folded device) it collapses to the phone's push navigation.
+
+## Sign-in
+
+From first launch to Home, and back out. The mockups are **SignInFlow** (the map), **ServersPhone**, **AddServerPhone**,
+**WhoIsWatchingPhone**, **SignInSheetPhone**, **QuickConnectPhone** and **SignInTablet**; their READMEs hold the details.
+
+- **Headers:** the app's header row on every page (`TabHeader`: the title at the left, a round button in the profile's place;
+  on Who's watching? that is the server button, with Switch server and Server details; on a tab the profile's first letter in a
+  circle on the profile's tint, the same as its tile; Jellyfin profile pictures aren't shown), at the tab header's size (iOS `.title2`
+  bold, Android `headlineSmall`). Pushed pages add the platform's back button above it; sub-pages match Settings; sheets match
+  the app's sheets.
+- **First launch:** the wordmark, "Connect to your Jellyfin server to start watching." and **Add server** (aqua). Android searches
+  the network and lists what answers; iOS can't search (no multicast entitlement) and says where to find the address instead.
+- **Servers:** a card per saved server (name, the address that worked last, version, how many addresses and profiles), a menu with
+  **Server details** (its addresses, add or remove one) and **Remove server** (asks first; signs out its profiles on this device and
+  deletes their downloads). Android adds "On your network". **Add server** at the foot is the secondary button with a leading +
+  (Android: tonal, its label in `ink`, since `on-accent-soft` on `accent-soft` reads too faintly; iOS: the grey bordered button).
+- **Add a server:** a labelled field with help under it, focused on open; Go on the keyboard or Connect connects and puts the keyboard away; Connect → Found (or "you already have this server") →
+  **Add server**, which goes straight to that server's Who's watching?. A failure is said under the field, which keeps the text.
+- **Who's watching?:** the server's name over the title, a tile per profile (lock badge when it needs a password or a PIN), then
+  **Quick Connect** (only when the server allows it) and **Other user**. Grey tiles while loading; the tapped tile shows a spinner;
+  a 401 lands here with a note naming the profile; an unreachable server says which addresses were tried. Once a tile's profile
+  is signed in, its picture lifts out, moves to the middle and grows to 1.8× over about half a second while everything else fades,
+  then moves up into the round button at the top right, shrinking to its size and rounding into its circle (about 0.4 s), and Home
+  fades in with the profile button in that place (as Netflix does). Straight to Home with Reduce Motion / Remove animations, and after Other user or
+  Quick Connect, which have no tile.
+- **Password sheets:** focused on open, show/hide, autofill and paste allowed, the error under the field, **Use Quick Connect
+  instead** when it is on. The password is never stored.
+- **Quick Connect:** steps, the code in two groups with copy, "Waiting for approval · code expires in 4:32", then Approved →
+  Home. Expired: **Get a new code**. Off: **Sign in with password**. The polling resumes when the app comes back to the front.
+- **Tablets:** Who's watching? centred with 140 tiles; sheets as an iPad form sheet or Android's centred bottom sheet; forms in one
+  480-wide column.

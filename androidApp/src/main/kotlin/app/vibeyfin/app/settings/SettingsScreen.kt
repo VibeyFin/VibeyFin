@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.components.BackButtonSpace
+import app.vibeyfin.app.components.DangerConfirmDialog
 import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.OptionRow
 import app.vibeyfin.app.components.PickerSearch
@@ -152,22 +153,22 @@ fun SettingsRoute(
     }
 
     if (state.confirmPurgeDownloads) {
-        AlertDialog(
-            onDismissRequest = viewModel::onDismissPurgeDownloads,
-            title = { Text(Strings.purgeDownloadsConfirmTitle) },
-            text = { Text(Strings.purgeDownloadsConfirmMessage) },
-            confirmButton = { TextButton(viewModel::onConfirmPurgeDownloads) { Text(Strings.deleteFiles, color = VibeyFinTokens.Colors.danger) } },
-            dismissButton = { TextButton(viewModel::onDismissPurgeDownloads, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)) { Text(Strings.cancel) } },
+        DangerConfirmDialog(
+            title = Strings.purgeDownloadsConfirmTitle,
+            message = Strings.purgeDownloadsConfirmMessage,
+            confirmLabel = Strings.deleteFiles,
+            onConfirm = viewModel::onConfirmPurgeDownloads,
+            onDismiss = viewModel::onDismissPurgeDownloads,
         )
     }
 
     if (state.confirmSignOut) {
-        AlertDialog(
-            onDismissRequest = viewModel::onDismissSignOut,
-            title = { Text(Strings.signOutConfirmTitle) },
-            text = { Text(Strings.signOutConfirmMessage) },
-            confirmButton = { TextButton(viewModel::onConfirmSignOut) { Text(Strings.signOut, color = VibeyFinTokens.Colors.danger) } },
-            dismissButton = { TextButton(viewModel::onDismissSignOut, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)) { Text(Strings.cancel) } },
+        DangerConfirmDialog(
+            title = Strings.signOutConfirmTitle,
+            message = Strings.signOutConfirmMessage,
+            confirmLabel = Strings.signOut,
+            onConfirm = viewModel::onConfirmSignOut,
+            onDismiss = viewModel::onDismissSignOut,
         )
     }
 }

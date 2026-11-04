@@ -36,7 +36,7 @@ data class AddServerUiState(
     val address: String = "",
     val step: AddServerStep = AddServerStep.Idle,
     val saving: Boolean = false,
-    val saved: Boolean = false,
+    val savedServerId: String? = null,
 ) {
     val canConnect get() = address.isNotBlank() && step !is AddServerStep.Checking && !saving
 }
@@ -84,7 +84,7 @@ class AddServerViewModel(
         viewModelScope.launch {
             val server = found.server
             servers.save(server.id, server.name, server.version, server.address, server.otherAddresses)
-            _uiState.update { it.copy(saving = false, saved = true) }
+            _uiState.update { it.copy(saving = false, savedServerId = server.id) }
         }
     }
 }

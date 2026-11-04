@@ -17,6 +17,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 
@@ -70,6 +71,48 @@ class ProfileMenuViewModelTest {
         assertEquals(HomeExit.WhoIsWatching("srv-1"), viewModel.uiState.first { it.exit != null }.exit)
         assertEquals(ConnectionState.Disconnected, app.connection.state.value)
         assertEquals("token-1", app.accounts.sessionToken("srv-1", "u1"))
+    }
+
+    @Test
+    fun `Quick Connect opens straight away without a PIN to open Settings`() = runTest {
+        signedIn()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.userName != null }
+
+        viewModel.onQuickConnect()
+        viewModel.uiState.first { it.openQuickConnect }
+
+        viewModel.onQuickConnectOpened()
+        assertFalse(viewModel.uiState.first { !it.openQuickConnect }.openQuickConnect)
+    }
+
+    @Test
+    fun `Quick Connect asks for the PIN to open Settings when that is on`() = runTest {
+        signedIn()
+        app.setPin("u1", "1234")
+        app.database.accountDao().setPinOpenSettings("srv-1", "u1", true)
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.userName != null }
+
+        viewModel.onQuickConnect()
+        val asked = viewModel.uiState.first { it.pinPrompt != null }
+        assertEquals(PinReason.OpenSettings, asked.pinPrompt!!.reason)
+        assertFalse(asked.openQuickConnect)
+
+        viewModel.onSubmitPin("1234")
+        viewModel.uiState.first { it.openQuickConnect }
+    }
+
+    @Test
+    fun `a kids profile gets no Quick Connect`() = runTest {
+        signedIn()
+        app.profileSettings.setKidsProfile(true)
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.kidsProfile }
+
+        viewModel.onQuickConnect()
+
+        assertFalse(viewModel.uiState.value.openQuickConnect)
     }
 
     @Test

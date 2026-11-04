@@ -4,6 +4,7 @@ import Shared
 /// What is inside a library, folder, series or season. `title` shows while it loads.
 struct ChildrenView: View {
     @StateObject private var model: ChildrenObservable
+    @State private var scrollOffset: CGFloat = 0
     @Environment(\.horizontalSizeClass) private var sizeClass
     private var wide: Bool { sizeClass == .regular }
 
@@ -35,7 +36,7 @@ struct ChildrenView: View {
                 VStack(alignment: .leading, spacing: Space.s4) {
                     // A collection opens on its own header instead of the plain title.
                     if let collection = model.state?.collection {
-                        CollectionHeaderView(collection: collection, count: Int(model.state?.items.count ?? 0))
+                        CollectionHeaderView(collection: collection, count: Int(model.state?.items.count ?? 0), scrollOffset: scrollOffset)
                             .padding(.horizontal, -Space.s4)
                     } else {
                         Text(title).screenTitle()
@@ -64,6 +65,7 @@ struct ChildrenView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .screenMargin()
                 .padding(.vertical, Space.s5)
+                .background(alignment: .top) { ScrollOffsetReader { scrollOffset = max($0, 0) }.frame(height: 0) }
                 // A collection's header and a season's link to its show arrive with the data: they ease in instead of snapping.
                 .animation(.easeOut(duration: 0.25), value: model.state?.collection != nil)
                 .animation(.easeOut(duration: 0.25), value: model.state?.series != nil)

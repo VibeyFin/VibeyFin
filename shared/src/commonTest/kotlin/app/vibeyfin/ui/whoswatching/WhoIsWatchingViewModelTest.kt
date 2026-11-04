@@ -1,5 +1,6 @@
 package app.vibeyfin.ui.whoswatching
 
+import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.testing.FakeServer
@@ -9,12 +10,15 @@ import app.vibeyfin.testing.ViewModelTracker
 import app.vibeyfin.testing.authJson
 import app.vibeyfin.testing.publicUsersJson
 import app.vibeyfin.testing.quickConnectJson
+import app.vibeyfin.testing.virtualClock
 import app.vibeyfin.ui.common.PinReason
 import app.vibeyfin.ui.common.Strings
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -27,6 +31,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WhoIsWatchingViewModelTest {
@@ -62,9 +68,11 @@ class WhoIsWatchingViewModelTest {
         app.close()
     }
 
-    private fun viewModel(pinFor: ProfileRef? = null) = viewModels.track(
-        WhoIsWatchingViewModel("srv-1", app.servers, app.accounts, app.auth, app.connection, app.pins, pinFor),
-    )
+    private fun TestScope.viewModel(pinFor: ProfileRef? = null): WhoIsWatchingViewModel {
+        val clock = virtualClock()
+        val auth = AuthRepository(app.connector, app.accounts, app.connection, clock)
+        return viewModels.track(WhoIsWatchingViewModel("srv-1", app.servers, app.accounts, auth, app.connection, app.pins, clock, pinFor))
+    }
 
     private suspend fun WhoIsWatchingViewModel.loaded() = uiState.first { !it.loading }
 
@@ -107,7 +115,23 @@ class WhoIsWatchingViewModelTest {
 
         val state = viewModel.uiState.first { it.signedIn }
         assertNull(state.sheet)
+        assertEquals("u1", state.openedUserId)
         assertIs<ConnectionState.Connected>(app.connection.state.value)
+        assertEquals(0, app.jellyfin.requestsTo("POST", "/Users/AuthenticateByName").size)
+    }
+
+    @Test
+    fun onceSignedInAnotherTileDoesNotOpen() = runTest {
+        app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-u1")
+        server.on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex"}"""))
+        val viewModel = viewModel()
+        val profiles = viewModel.loaded().profiles
+        viewModel.onProfileTapped(profiles.first { it.name == "Alex" })
+        viewModel.uiState.first { it.signedIn }
+
+        viewModel.onProfileTapped(profiles.first { it.name == "Kim" })
+
+        assertEquals("u1", viewModel.uiState.value.openedUserId)
         assertEquals(0, app.jellyfin.requestsTo("POST", "/Users/AuthenticateByName").size)
     }
 
@@ -122,7 +146,8 @@ class WhoIsWatchingViewModelTest {
         // The tile locks a moment after the sheet opens, once the saved list reports the cleared token.
         val state = viewModel.uiState.first { it.sheet != null && it.profiles.first { p -> p.name == "Alex" }.locked }
         assertEquals("Alex", assertIs<SignInSheet.Password>(state.sheet).profile.name)
-        assertEquals(SignInMessages.SESSION_ENDED, state.error)
+        assertEquals(SignInMessages.SESSION_ENDED, state.sheetNotice)
+        assertNull(state.error)
         assertFalse(state.signedIn)
     }
 
@@ -132,7 +157,7 @@ class WhoIsWatchingViewModelTest {
 
         viewModel.onProfileTapped(viewModel.loaded().profiles.first { it.name == "Kim" })
 
-        assertTrue(viewModel.uiState.first { it.signedIn }.signedIn)
+        assertEquals("u2", viewModel.uiState.first { it.signedIn }.openedUserId)
         assertTrue(app.jellyfin.requestsTo("POST", "/Users/AuthenticateByName").single().body.contains(""""Pw":"""""))
         assertEquals("token-u2", app.accounts.sessionToken("srv-1", "u2"))
     }
@@ -174,6 +199,7 @@ class WhoIsWatchingViewModelTest {
         val state = viewModel.uiState.first { it.signedIn }
         assertNull(state.sheet)
         assertNull(state.error)
+        assertEquals("u3", state.openedUserId)
         assertEquals("token-u3", app.accounts.sessionToken("srv-1", "u3"))
     }
 
@@ -186,7 +212,7 @@ class WhoIsWatchingViewModelTest {
         assertIs<SignInSheet.OtherUser>(viewModel.uiState.first { it.sheet != null }.sheet)
         viewModel.onSubmitOtherUser("  alex ", "right")
 
-        assertTrue(viewModel.uiState.first { it.signedIn }.signedIn)
+        assertNull(viewModel.uiState.first { it.signedIn }.openedUserId)
         assertTrue(app.jellyfin.requestsTo("POST", "/Users/AuthenticateByName").single().body.contains(""""Username":"alex""""))
     }
 
@@ -296,10 +322,14 @@ class WhoIsWatchingViewModelTest {
 
         viewModel.onQuickConnectTapped()
         val expired = viewModel.uiState.first { (it.sheet as? SignInSheet.QuickConnect)?.message != null }
-        assertEquals(SignInMessages.QUICK_CONNECT_TIMED_OUT, assertIs<SignInSheet.QuickConnect>(expired.sheet).message)
+        val stopped = assertIs<SignInSheet.QuickConnect>(expired.sheet)
+        assertEquals(SignInMessages.QUICK_CONNECT_EXPIRED, stopped.message)
+        assertEquals(QuickConnectStop.Expired, stopped.stop)
+        assertEquals("123 456", stopped.shownCode)
 
         viewModel.onQuickConnectTapped()
-        assertEquals("123456", assertIs<SignInSheet.QuickConnect>(viewModel.uiState.first { (it.sheet as? SignInSheet.QuickConnect)?.code != null }.sheet).code)
+        val again = viewModel.uiState.first { (it.sheet as? SignInSheet.QuickConnect)?.let { qc -> qc.code != null && qc.stop == null } == true }
+        assertEquals("123456", assertIs<SignInSheet.QuickConnect>(again.sheet).code)
     }
 
     @Test
@@ -311,7 +341,7 @@ class WhoIsWatchingViewModelTest {
         viewModel.onQuickConnectTapped()
 
         val sheet = viewModel.uiState.first { (it.sheet as? SignInSheet.QuickConnect)?.message != null }.sheet
-        assertEquals(SignInMessages.QUICK_CONNECT_UNAVAILABLE, assertIs<SignInSheet.QuickConnect>(sheet).message)
+        assertEquals(SignInMessages.QUICK_CONNECT_OFF, assertIs<SignInSheet.QuickConnect>(sheet).message)
     }
 
     @Test
@@ -445,5 +475,110 @@ class WhoIsWatchingViewModelTest {
         assertEquals("u1", assertIs<ConnectionState.Connected>(app.connection.state.value).account.userId)
         assertFalse(app.pins.hasPin("srv-1", "u1"))
         assertEquals(true, app.database.accountDao().observeKidsProfile("srv-1", "u1").first())
+    }
+
+    @Test
+    fun aSessionThatEndedIsNamedAboveTheGridAndInItsSheet() = runTest {
+        app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-u1")
+        server.on("GET", "/Users/Me", Reply.status(HttpStatusCode.Unauthorized))
+        app.connection.activate("srv-1", "u1")
+        val viewModel = viewModel()
+
+        val state = viewModel.uiState.first { !it.loading && it.notice != null }
+        assertEquals(Strings.sessionEndedFor("Alex"), state.notice)
+
+        viewModel.onProfileTapped(state.profiles.first { it.name == "Alex" })
+        val sheet = viewModel.uiState.first { it.sheet != null }
+        assertEquals("Alex", assertIs<SignInSheet.Password>(sheet.sheet).profile.name)
+        assertEquals(SignInMessages.SESSION_ENDED, sheet.sheetNotice)
+    }
+
+    @Test
+    fun anUnreachableServerSaysWhichAddressesWereTried() = runTest {
+        server.refuseConnections()
+
+        val state = viewModel().loaded()
+
+        assertEquals(listOf(address), state.triedAddresses)
+        assertEquals("Can't reach Home", Strings.cantReachServer(state.serverName!!))
+    }
+
+    @Test
+    fun theOpeningTileIsClearedWhenOpeningFails() = runTest {
+        app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-u1")
+        val viewModel = viewModel()
+        val alex = viewModel.loaded().profiles.first { it.name == "Alex" }
+        server.refuseConnections()
+
+        viewModel.onProfileTapped(alex)
+
+        val state = viewModel.uiState.first { it.error != null }
+        assertNull(state.openingUserId)
+        assertFalse(state.busy)
+    }
+
+    @Test
+    fun theCodeCountsDownToItsExpiry() = runTest {
+        quickConnectOn(approveOnPoll = Int.MAX_VALUE)
+        val viewModel = viewModel()
+        viewModel.loaded()
+
+        viewModel.onQuickConnectTapped()
+        val first = assertIs<SignInSheet.QuickConnect>(viewModel.uiState.first { (it.sheet as? SignInSheet.QuickConnect)?.code != null }.sheet)
+        assertEquals(5.minutes, first.expiresIn)
+        assertEquals("123 456", first.shownCode)
+        assertEquals("Code 1 2 3 4 5 6", first.spokenCode)
+
+        delay(10.seconds)
+
+        val expected = "Waiting for approval \u00b7 code expires in 4:50"
+        assertEquals(expected, viewModel.uiState.first { (it.sheet as? SignInSheet.QuickConnect)?.status == expected }.let { (it.sheet as SignInSheet.QuickConnect).status })
+        viewModel.onDismissSheet()
+    }
+
+    @Test
+    fun comingBackToTheAppAsksAtOnce() = runTest {
+        quickConnectOn(approveOnPoll = 1)
+        val viewModel = viewModel()
+        viewModel.loaded()
+        viewModel.onQuickConnectTapped()
+        viewModel.uiState.first { (it.sheet as? SignInSheet.QuickConnect)?.code != null }
+
+        viewModel.onAppResumed()
+
+        assertTrue(viewModel.uiState.first { it.signedIn }.signedIn)
+        assertTrue(testScheduler.currentTime < 3_000L)
+    }
+
+    @Test
+    fun quickConnectTurnedOffMeanwhileTakesTheTileAway() = runTest {
+        quickConnectOn()
+        server.on("POST", "/QuickConnect/Initiate", Reply.status(HttpStatusCode.Unauthorized))
+        val viewModel = viewModel()
+        assertTrue(viewModel.loaded().quickConnectAvailable)
+
+        viewModel.onQuickConnectTapped()
+
+        val state = viewModel.uiState.first { (it.sheet as? SignInSheet.QuickConnect)?.stop != null }
+        assertEquals(QuickConnectStop.Off, assertIs<SignInSheet.QuickConnect>(state.sheet).stop)
+        assertNull(assertIs<SignInSheet.QuickConnect>(state.sheet).code)
+        assertFalse(state.quickConnectAvailable)
+    }
+
+    @Test
+    fun aPasswordSheetCanSwitchToQuickConnectAndBack() = runTest {
+        quickConnectOn(approveOnPoll = Int.MAX_VALUE)
+        val viewModel = viewModel()
+        viewModel.onProfileTapped(viewModel.loaded().profiles.first { it.name == "Sam" })
+        viewModel.uiState.first { it.sheet is SignInSheet.Password }
+
+        viewModel.onQuickConnectTapped()
+        viewModel.uiState.first { (it.sheet as? SignInSheet.QuickConnect)?.code != null }
+        viewModel.onOtherUserTapped()
+        val pollsAtSwitch = app.jellyfin.requestsTo("GET", "/QuickConnect/Connect").size
+
+        assertIs<SignInSheet.OtherUser>(viewModel.uiState.value.sheet)
+        delay(10.seconds)
+        assertEquals(pollsAtSwitch, app.jellyfin.requestsTo("GET", "/QuickConnect/Connect").size)
     }
 }

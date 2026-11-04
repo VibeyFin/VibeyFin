@@ -340,7 +340,14 @@ private fun ItemGrid(
         if (collectionPage) {
             item(span = { GridItemSpan(maxLineSpan) }, key = "collection") {
                 Box(Modifier.bleed(margin)) {
-                    CollectionHeader(title, state.collection, facts = state.collectionFacts, margin = margin, imageHint = imageHint)
+                    CollectionHeader(
+                        title,
+                        state.collection,
+                        facts = state.collectionFacts,
+                        margin = margin,
+                        imageHint = imageHint,
+                        scrolled = { if (gridState.firstVisibleItemIndex == 0) gridState.firstVisibleItemScrollOffset else 0 },
+                    )
                 }
             }
         }

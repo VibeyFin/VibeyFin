@@ -61,6 +61,7 @@ import app.vibeyfin.app.player.SUBTITLE_SHADOW
 import app.vibeyfin.app.player.SUBTITLE_WHITE
 import app.vibeyfin.app.player.SubtitleViewStyle
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.ui.common.AvatarTint
 import app.vibeyfin.ui.settings.ActionItem
 import app.vibeyfin.ui.settings.ChoiceItem
 import app.vibeyfin.ui.settings.InfoItem
@@ -124,6 +125,29 @@ internal fun RowFrame(modifier: Modifier = Modifier, content: @Composable RowSco
 }
 
 @Composable
+internal fun ValueRow(title: String, value: String) {
+    RowFrame {
+        RowText(title, null)
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f).padding(start = VibeyFinTokens.Space.s4),
+        )
+    }
+}
+
+@Composable
+internal fun ButtonRow(title: String, onClick: () -> Unit, destructive: Boolean = false, leading: (@Composable () -> Unit)? = null) {
+    RowFrame(Modifier.clickable(role = Role.Button, onClick = onClick)) {
+        leading?.invoke()
+        RowText(title, null, Modifier.weight(1f), titleColor = if (destructive) VibeyFinTokens.Colors.danger else MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+@Composable
 private fun IconCircle(icon: ImageVector) {
     Box(
         modifier = Modifier.size(VibeyFinTokens.Size.button).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer),
@@ -144,6 +168,7 @@ private fun iconFor(key: SettingKey): ImageVector? = when (key) {
     SettingKey.Notifications -> Icons.Filled.Notifications
     SettingKey.KidsProfile, SettingKey.Pin -> Icons.Filled.Lock
     SettingKey.Seerr -> Icons.Filled.Add
+    SettingKey.QuickConnect -> null
     else -> Icons.Filled.Info
 }
 
@@ -294,10 +319,8 @@ fun InfoRow(item: InfoItem) {
 @Composable
 fun ProfileHeaderRow(name: String, server: String?) {
     RowFrame {
-        val tints = VibeyFinTokens.Colors.avatars
-
         Box(
-            modifier = Modifier.size(VibeyFinTokens.Size.buttonLarge).clip(CircleShape).background(tints[(name.lowercase().hashCode() and 0x7FFFFFFF) % tints.size]),
+            modifier = Modifier.size(VibeyFinTokens.Size.buttonLarge).clip(CircleShape).background(VibeyFinTokens.Colors.avatars[AvatarTint.of(name)]),
             contentAlignment = Alignment.Center,
         ) {
             Text(name.take(1).uppercase(), style = MaterialTheme.typography.titleLarge, color = VibeyFinTokens.Colors.ink)

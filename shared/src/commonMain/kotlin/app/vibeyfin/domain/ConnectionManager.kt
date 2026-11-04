@@ -72,7 +72,7 @@ class ConnectionManager(
     private var session: Session? = null
 
     init {
-        scope.launch { unauthorized.tokens.collect { onTokenRejected(it) } }
+        scope.launch { unauthorized.rejections.collect { onTokenRejected(it.token, it.baseUrl) } }
     }
 
     /**
@@ -173,8 +173,10 @@ class ConnectionManager(
         _state.value = ConnectionState.Connected(server, account, api)
     }
 
-    private suspend fun onTokenRejected(token: String) {
+    private suspend fun onTokenRejected(token: String, baseUrl: String) {
         val current = session?.takeIf { it.token == token } ?: return
+        if (connector.answersAsAnotherServer(current.serverId, baseUrl)) return verify(current.serverId, token)
+        if (session?.token != token) return
         session = null
         expireSession(current.serverId, current.userId)
     }

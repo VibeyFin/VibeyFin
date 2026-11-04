@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.vibeyfin.app.components.Artwork
+import app.vibeyfin.app.item.scrollDarkening
 import app.vibeyfin.app.theme.BrandDisplay
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.model.MediaItem
@@ -47,13 +49,16 @@ private const val WIDE_FROM_DP = 600
  * holds and the overview centered over the lower half. The members follow below as a poster grid.
  */
 @Composable
-fun CollectionHeader(title: String, collection: MediaItem?, facts: List<String>, margin: Dp, imageHint: String? = null) {
+fun CollectionHeader(title: String, collection: MediaItem?, facts: List<String>, margin: Dp, imageHint: String? = null, scrolled: () -> Int = { 0 }) {
     var expanded by remember { mutableStateOf(false) }
+    var overflows by remember { mutableStateOf(false) }
     val wide = LocalConfiguration.current.screenWidthDp >= WIDE_FROM_DP
     val aspect = if (wide) COLLECTION_HERO_ASPECT_WIDE else COLLECTION_HERO_ASPECT
 
-    Box(Modifier.fillMaxWidth()) {
-        CollectionBackdrop(title, collection, imageHint, aspect, wide)
+    Box(Modifier.fillMaxWidth().clipToBounds()) {
+        Box(Modifier.fillMaxWidth().graphicsLayer { translationY = scrolled().toFloat() }) {
+            CollectionBackdrop(title, collection, imageHint, aspect, wide, scrolled)
+        }
 
         // The title, facts and overview come in together once the collection is read, so the title never jumps as the rest arrives
         val textAlpha by animateFloatAsState(if (collection != null) 1f else 0f, tween(250), label = "header text")
@@ -94,10 +99,11 @@ fun CollectionHeader(title: String, collection: MediaItem?, facts: List<String>,
                     textAlign = if (wide) TextAlign.Start else TextAlign.Center,
                     maxLines = if (expanded) Int.MAX_VALUE else 3,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.clickable { expanded = !expanded }.animateContentSize(),
+                    onTextLayout = { layout -> if (!expanded) overflows = layout.hasVisualOverflow },
+                    modifier = Modifier.clickable(enabled = overflows || expanded) { expanded = !expanded }.animateContentSize(),
                 )
 
-                if (it.length > 140) {
+                if (overflows || expanded) {
                     Text(
                         text = if (expanded) Strings.less else Strings.more,
                         style = MaterialTheme.typography.labelLarge,
@@ -112,7 +118,7 @@ fun CollectionHeader(title: String, collection: MediaItem?, facts: List<String>,
 
 // The picture with its scrims: the collection's own once it is read, until then the one from the tile or result that was opened
 @Composable
-private fun BoxScope.CollectionBackdrop(title: String, collection: MediaItem?, imageHint: String?, aspect: Float, wide: Boolean) {
+private fun BoxScope.CollectionBackdrop(title: String, collection: MediaItem?, imageHint: String?, aspect: Float, wide: Boolean, scrolled: () -> Int) {
     val picture = collection?.let { it.backdropUrl ?: it.posterUrl } ?: imageHint
 
     if (picture != null) {
@@ -147,4 +153,6 @@ private fun BoxScope.CollectionBackdrop(title: String, collection: MediaItem?, i
             ),
         ),
     )
+
+    Box(Modifier.matchParentSize().graphicsLayer { alpha = scrollDarkening(scrolled().toFloat(), size.height) }.background(VibeyFinTokens.Colors.bg))
 }

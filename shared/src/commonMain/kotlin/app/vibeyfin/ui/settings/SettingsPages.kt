@@ -102,6 +102,7 @@ fun settingsPages(values: SettingsValues): Map<SettingsPageId, SettingsPage> = l
     kidsAndPinPage(values),
     notificationsPage(values),
     seerrPage(),
+    SettingsPage(SettingsPageId.QuickConnect, Strings.quickConnect, emptyList()),
 ).associateBy { it.id }
 
 /** The Seerr page's place in the tree. Its content is each app's own Seerr screen ([app.vibeyfin.ui.seerr.SeerrSettingsViewModel]). */
@@ -130,7 +131,16 @@ fun profilePage(v: SettingsValues): SettingsPage {
             SettingsSection(
                 Strings.profileAccountGroup,
                 footer = null,
-                items = listOf(ActionItem(SettingKey.SwitchProfile, Strings.switchProfile, Strings.switchProfileHelp, visible = profile)),
+                items = listOf(
+                    ActionItem(SettingKey.SwitchProfile, Strings.switchProfile, Strings.switchProfileHelp, visible = profile),
+                    LinkItem(
+                        SettingKey.QuickConnect,
+                        Strings.quickConnect,
+                        Strings.quickConnectApproveHelp,
+                        target = SettingsPageId.QuickConnect,
+                        visible = profile && !v.kidsProfile,
+                    ),
+                ),
             ),
             SettingsSection(
                 Strings.profileServerGroup,

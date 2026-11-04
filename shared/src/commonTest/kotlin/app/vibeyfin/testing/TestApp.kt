@@ -32,6 +32,7 @@ import app.vibeyfin.domain.SeerrConnection
 import app.vibeyfin.domain.SeerrRepository
 import app.vibeyfin.domain.SeerrStore
 import app.vibeyfin.domain.ServerConnector
+import app.vibeyfin.domain.ServerRemoval
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.StartupRouter
 import app.vibeyfin.domain.WatchChanges
@@ -69,6 +70,7 @@ class TestApp {
     val router = StartupRouter(servers, accounts, preferences, connection, pins)
     val library = LibraryRepository(connection)
     val searchHistory = SearchHistory(InMemoryPreferencesDataStore(), connection)
+    val serverRemoval = ServerRemoval(servers, accounts, searchHistory, preferences, connection)
     val watchChanges = WatchChanges()
     val watch = WatchRepository(connection, watchChanges)
     val capabilities = FakePlaybackCapabilities()

@@ -19,7 +19,10 @@ struct SearchBar: UIViewRepresentable {
 
     func updateUIView(_ bar: UISearchBar, context: Context) {
         context.coordinator.parent = self
-        if bar.text != text { bar.text = text }
+        if bar.text != text {
+            bar.text = text
+            bar.resignFirstResponder()
+        }
         bar.placeholder = prompt
     }
 

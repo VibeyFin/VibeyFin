@@ -82,6 +82,11 @@ class SeerrProfileRow(
     val seerrPasswordSignIn: Boolean,
 )
 
+class ProfileCountRow(
+    val serverId: String,
+    val count: Int,
+)
+
 /** Per-profile settings. Each option becomes one column here as it is added. */
 @Entity(
     tableName = "account_settings",

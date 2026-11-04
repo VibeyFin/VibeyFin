@@ -37,6 +37,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.error
@@ -48,8 +49,14 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.R
+import app.vibeyfin.app.components.AddressField
 import app.vibeyfin.app.components.BackButtonSpace
+import app.vibeyfin.app.components.BusyButton
+import app.vibeyfin.app.components.DangerConfirmDialog
 import app.vibeyfin.app.components.FloatingBackButton
+import app.vibeyfin.app.components.PasswordField
+import app.vibeyfin.app.components.SheetColumn
+import app.vibeyfin.app.components.SheetTitle
 import app.vibeyfin.app.components.VibeyFinSheet
 import app.vibeyfin.app.components.vibeyFinTextFieldColors
 import app.vibeyfin.app.theme.ContentMaxWidth
@@ -97,14 +104,12 @@ internal fun SeerrSettingsContent(viewModel: SeerrSettingsViewModel, modifier: M
     state.passwordSheet?.let { sheet -> SeerrPasswordSheetView(sheet, viewModel::onSubmitPassword, viewModel::onDismissPassword) }
 
     if (state.confirmDisconnect) {
-        AlertDialog(
-            onDismissRequest = viewModel::onDismissDisconnect,
-            title = { Text(Strings.seerrDisconnectConfirmTitle) },
-            text = { Text(Strings.seerrDisconnectConfirmMessage) },
-            confirmButton = { TextButton(viewModel::onConfirmDisconnect) { Text(Strings.seerrDisconnectConfirm, color = VibeyFinTokens.Colors.danger) } },
-            dismissButton = {
-                TextButton(viewModel::onDismissDisconnect, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)) { Text(Strings.cancel) }
-            },
+        DangerConfirmDialog(
+            title = Strings.seerrDisconnectConfirmTitle,
+            message = Strings.seerrDisconnectConfirmMessage,
+            confirmLabel = Strings.seerrDisconnectConfirm,
+            onConfirm = viewModel::onConfirmDisconnect,
+            onDismiss = viewModel::onDismissDisconnect,
         )
     }
 }
@@ -181,46 +186,30 @@ private fun SeerrSettingsBody(state: SeerrSettingsUiState, viewModel: SeerrSetti
 
 @Composable
 private fun AddressForm(state: SeerrSettingsUiState, onChange: (String) -> Unit, onConnect: () -> Unit) {
+    val focusManager = LocalFocusManager.current
     Text(Strings.seerrLead, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(Modifier.height(VibeyFinTokens.Space.s2))
 
-    val error = state.addressError
-
-    OutlinedTextField(
+    AddressField(
         value = state.address,
         onValueChange = onChange,
-        label = { Text(Strings.seerrAddress) },
-        placeholder = { Text(Strings.seerrAddressPlaceholder) },
-        singleLine = true,
+        label = Strings.seerrAddress,
+        onGo = onConnect,
+        placeholder = Strings.seerrAddressPlaceholder,
+        help = if (state.addressShared) Strings.seerrAddressSharedHelp else Strings.seerrAddressHelp,
+        error = state.addressError,
         enabled = !state.connecting,
-        isError = error != null,
-        // An alert beside the reason, so it isn't told by colour alone
-        trailingIcon = error?.let { { Icon(painterResource(R.drawable.ic_seerr_failed), contentDescription = null) } },
-        // The reason sits under the field it is about, and is read with it
-        supportingText = { Text(error ?: if (state.addressShared) Strings.seerrAddressSharedHelp else Strings.seerrAddressHelp) },
-        colors = vibeyFinTextFieldColors(),
-        keyboardOptions = KeyboardOptions(
-            capitalization = KeyboardCapitalization.None,
-            autoCorrectEnabled = false,
-            keyboardType = KeyboardType.Uri,
-            imeAction = ImeAction.Go,
-        ),
-        keyboardActions = KeyboardActions(onGo = { onConnect() }),
-        modifier = Modifier.fillMaxWidth().semantics { if (error != null) error(error) },
     )
-
     Spacer(Modifier.height(VibeyFinTokens.Space.s3))
-
-    // The page's one primary action. It keeps its colors while busy; the ViewModel ignores a second tap.
-    Button(onClick = onConnect, modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge)) {
-        if (state.connecting) {
-            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-            Spacer(Modifier.size(VibeyFinTokens.Space.s3))
-            Text(Strings.seerrConnecting)
-        } else {
-            Text(Strings.connect)
-        }
-    }
+    BusyButton(
+        label = Strings.connect,
+        onClick = {
+            focusManager.clearFocus()
+            onConnect()
+        },
+        busy = state.connecting,
+        busyLabel = Strings.seerrConnecting,
+    )
 }
 
 @Composable
@@ -231,20 +220,6 @@ private fun ServerCard(state: SeerrSettingsUiState) {
         state.version?.let { ValueRow(Strings.seerrVersion, it) }
     }
     Spacer(Modifier.height(VibeyFinTokens.Space.s3))
-}
-
-@Composable
-private fun ValueRow(title: String, value: String) {
-    RowFrame {
-        RowText(title, null)
-        Text(
-            value,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            modifier = Modifier.weight(1f, fill = false).padding(start = VibeyFinTokens.Space.s4),
-        )
-    }
 }
 
 @Composable
@@ -259,9 +234,7 @@ private fun OpenRow(title: String, onClick: () -> Unit) {
 private fun DisconnectCard(onDisconnect: () -> Unit) {
     Spacer(Modifier.height(VibeyFinTokens.Space.s3))
     SectionCard {
-        RowFrame(Modifier.clickable(role = Role.Button, onClick = onDisconnect)) {
-            RowText(Strings.seerrDisconnect, null, Modifier.weight(1f), titleColor = VibeyFinTokens.Colors.danger)
-        }
+        ButtonRow(Strings.seerrDisconnect, onDisconnect, destructive = true)
     }
     SectionFooter(Strings.seerrDisconnectHelp)
 }
@@ -273,13 +246,10 @@ private fun SeerrPasswordSheetView(sheet: SeerrPasswordSheet, onSubmit: (String)
         var password by rememberSaveable { mutableStateOf("") }
         val submit = { if (!sheet.submitting) onSubmit(password) }
 
-        Column(
-            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = VibeyFinTokens.Space.s5, vertical = VibeyFinTokens.Space.s2),
-            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
-        ) {
-            Text(Strings.seerrPasswordTitle, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
+        SheetColumn(onCancel = onDismiss) {
+            SheetTitle(Strings.seerrPasswordTitle)
             Text(
-                "${Strings.seerrPasswordReason} ${Strings.seerrPasswordNotKept}",
+                "${Strings.seerrPasswordReason} ${Strings.passwordNotKept}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -292,37 +262,8 @@ private fun SeerrPasswordSheetView(sheet: SeerrPasswordSheet, onSubmit: (String)
                 colors = vibeyFinTextFieldColors(),
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text(Strings.password) },
-                singleLine = true,
-                isError = sheet.error != null,
-                supportingText = sheet.error?.let { { Text(it) } },
-                visualTransformation = PasswordVisualTransformation(),
-                colors = vibeyFinTextFieldColors(),
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.None,
-                    autoCorrectEnabled = false,
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Go,
-                ),
-                keyboardActions = KeyboardActions(onGo = { submit() }),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Button(onClick = { submit() }, modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge)) {
-                if (sheet.submitting) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                    Spacer(Modifier.size(VibeyFinTokens.Space.s3))
-                    Text(Strings.signingIn)
-                } else {
-                    Text(Strings.signIn)
-                }
-            }
-            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                Text(Strings.cancel, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Spacer(Modifier.height(VibeyFinTokens.Space.s2))
+            PasswordField(password, { password = it }, onGo = submit, error = sheet.error)
+            BusyButton(Strings.signIn, submit, busy = sheet.submitting, busyLabel = Strings.signingIn)
         }
     }
 }

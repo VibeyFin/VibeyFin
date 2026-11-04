@@ -118,46 +118,31 @@ struct SeerrSettingsView: View {
 
     @ViewBuilder
     private func setup(_ state: SeerrSettingsUiState) -> some View {
-        Section {
-            TextField(Strings.shared.seerrAddressPlaceholder, text: $address)
-                .keyboardType(.URL)
-                .textContentType(.URL)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .submitLabel(.go)
-                .onSubmit { model.connect() }
-                .onChange(of: address) { _, new in model.setAddress(new) }
-                .disabled(state.connecting)
-                .accessibilityLabel(Strings.shared.seerrAddress)
-                .accessibilityHint(state.addressError ?? "")
-        } header: {
-            VStack(alignment: .leading, spacing: Space.s2) {
+        AddressSection(
+            label: Strings.shared.seerrAddress,
+            placeholder: Strings.shared.seerrAddressPlaceholder,
+            address: $address,
+            help: state.addressShared ? Strings.shared.seerrAddressSharedHelp : Strings.shared.seerrAddressHelp,
+            error: state.addressError,
+            disabled: state.connecting,
+            onSubmit: { model.connect() },
+            header: {
                 Text(Strings.shared.seerrLead)
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .textCase(nil)
                     .padding(.bottom, Space.s2)
-                Text(Strings.shared.seerrAddress)
             }
-        } footer: {
-            if let error = state.addressError {
-                // The reason sits under the field it is about.
-                Label(error, systemImage: "exclamationmark.circle")
-                    .foregroundStyle(Color(.systemRed))
-            } else {
-                Text(state.addressShared ? Strings.shared.seerrAddressSharedHelp : Strings.shared.seerrAddressHelp)
-            }
-        }
+        )
+        .onChange(of: address) { _, new in model.setAddress(new) }
         Section {
             // The page's one primary action. It stays aqua while busy; the ViewModel ignores a second tap.
-            PrimaryButton(action: { model.connect() }) {
-                HStack(spacing: Space.s3) {
-                    if state.connecting { PrimaryButtonSpinner() }
-                    Text((state.connecting ? Strings.shared.seerrConnecting : Strings.shared.connect).titleCased())
-                }
+            PrimaryButton(Strings.shared.connect, busyTitle: Strings.shared.seerrConnecting, busy: state.connecting) {
+                dismissKeyboard()
+                model.connect()
             }
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
         }
     }
 
@@ -210,43 +195,24 @@ struct SeerrPasswordSheetView: View {
     @State private var password = ""
 
     var body: some View {
-        ZStack {
-            Color(.secondarySystemBackground).ignoresSafeArea()
-            VStack(alignment: .leading, spacing: Space.s4) {
-                Text(Strings.shared.seerrPasswordTitle.titleCased()).sheetTitle()
-                Text("\(Strings.shared.seerrPasswordReason) \(Strings.shared.seerrPasswordNotKept)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                FormField(label: Strings.shared.seerrUser) {
+        SheetScaffold(title: Strings.shared.seerrPasswordTitle, onClose: onDismiss) {
+            Text("\(Strings.shared.seerrPasswordReason) \(Strings.shared.passwordNotKept)")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            FieldGroup(isError: sheet.error != nil) {
+                FieldRow(label: Strings.shared.seerrUser) {
                     Text(sheet.userName)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                FormField(label: Strings.shared.password, isError: sheet.error != nil) {
-                    SecureField(Strings.shared.password, text: $password)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .submitLabel(.go)
-                        .onSubmit { submit() }
-                }
-                if let error = sheet.error {
-                    Text(error)
-                        .font(.subheadline)
-                        .foregroundStyle(Color(.systemRed))
-                }
-                PrimaryButton(action: { submit() }) {
-                    HStack(spacing: Space.s3) {
-                        if sheet.submitting { PrimaryButtonSpinner() }
-                        Text((sheet.submitting ? Strings.shared.signingIn : Strings.shared.signIn).titleCased())
-                    }
-                }
-                GhostButton(title: Strings.shared.cancel, action: onDismiss)
-                    .frame(maxWidth: .infinity)
+                Divider().padding(.leading, Space.s4)
+                PasswordField(text: $password, onSubmit: submit)
             }
-            .padding(Space.s5)
+            if let error = sheet.error {
+                FieldError(message: error)
+            }
+            PrimaryButton(Strings.shared.signIn, busyTitle: Strings.shared.signingIn, busy: sheet.submitting) { submit() }
         }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
     }
 
     private func submit() {

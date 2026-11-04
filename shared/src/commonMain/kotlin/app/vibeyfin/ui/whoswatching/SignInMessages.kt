@@ -1,7 +1,6 @@
 package app.vibeyfin.ui.whoswatching
 
 import app.vibeyfin.data.api.ApiError
-import app.vibeyfin.domain.QuickConnectState
 import app.vibeyfin.domain.SignInResult
 
 /** What went wrong signing in and what to try, worded once for every platform. */
@@ -12,17 +11,19 @@ internal object SignInMessages {
     const val UNREACHABLE =
         "Couldn't reach the server. Check that it's on and that this device can reach its network."
 
-    const val QUICK_CONNECT_TIMED_OUT = "That code expired before it was approved. Try again."
-    const val QUICK_CONNECT_UNAVAILABLE =
-        "This server doesn't allow Quick Connect. Sign in with a password instead."
+    const val QUICK_CONNECT_EXPIRED = "That code expired before it was approved. Get a new one and try again."
+    const val QUICK_CONNECT_OFF =
+        "This server doesn't allow Quick Connect. Sign in with a password instead, or ask the server's admin to turn Quick Connect on."
     const val QUICK_CONNECT_FAILED = "Quick Connect didn't work. Try again."
+    const val QUICK_CONNECT_CODE_UNKNOWN = "This server didn't give out that code. Check it on the other device, or get a new one there."
+    const val QUICK_CONNECT_APPROVE_OFF = "Quick Connect is off on this server. The server's admin can turn it on in the Jellyfin dashboard."
+    const val QUICK_CONNECT_APPROVE_FAILED = "Couldn't approve that code. Try again."
 
-    fun forQuickConnect(state: QuickConnectState): String? = when (state) {
-        QuickConnectState.TimedOut -> QUICK_CONNECT_TIMED_OUT
-        QuickConnectState.Unavailable -> QUICK_CONNECT_UNAVAILABLE
-        QuickConnectState.Unreachable -> UNREACHABLE
-        is QuickConnectState.Failed -> QUICK_CONNECT_FAILED
-        QuickConnectState.Starting, is QuickConnectState.Waiting, QuickConnectState.SignedIn -> null
+    fun forQuickConnect(stop: QuickConnectStop): String = when (stop) {
+        QuickConnectStop.Expired -> QUICK_CONNECT_EXPIRED
+        QuickConnectStop.Off -> QUICK_CONNECT_OFF
+        QuickConnectStop.Unreachable -> UNREACHABLE
+        QuickConnectStop.Failed -> QUICK_CONNECT_FAILED
     }
 
     fun forFailure(result: SignInResult, passwordOnly: Boolean): String = when (result) {

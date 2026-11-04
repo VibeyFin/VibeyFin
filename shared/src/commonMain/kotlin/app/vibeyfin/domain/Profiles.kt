@@ -1,6 +1,5 @@
 package app.vibeyfin.domain
 
-import app.vibeyfin.data.api.userImageUrl
 import app.vibeyfin.domain.model.Account
 import app.vibeyfin.domain.model.Profile
 
@@ -24,25 +23,15 @@ data class PublicProfiles(
  * users, keyed by user ID. Saved profiles come first, most recently used first, because that is how
  * [saved] is ordered. A saved profile the server doesn't list (a hidden user, or the server can't
  * be reached) is still shown and counts as needing a password.
- *
- * [fallbackBaseUrl] builds avatar links when the server wasn't reached.
  */
-fun mergeProfiles(
-    saved: List<Account>,
-    public: PublicProfiles?,
-    fallbackBaseUrl: String?,
-): List<Profile> {
-    val baseUrl = public?.baseUrl ?: fallbackBaseUrl
+fun mergeProfiles(saved: List<Account>, public: PublicProfiles?): List<Profile> {
     val publicById = public?.users.orEmpty().associateBy { it.id }
-
-    fun avatar(userId: String, tag: String?) = if (baseUrl != null && tag != null) userImageUrl(baseUrl, userId, tag) else null
 
     val fromSaved = saved.map { account ->
         val listed = publicById[account.userId]
         Profile(
             userId = account.userId,
             name = listed?.name ?: account.name,
-            avatarUrl = avatar(account.userId, listed?.imageTag ?: account.imageTag),
             hasSession = account.hasSession,
             needsPassword = listed?.hasPassword ?: true,
             pinRequiredToOpen = account.pinRequiredToOpen,
@@ -53,7 +42,6 @@ fun mergeProfiles(
         Profile(
             userId = user.id,
             name = user.name,
-            avatarUrl = avatar(user.id, user.imageTag),
             hasSession = false,
             needsPassword = user.hasPassword,
         )

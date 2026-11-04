@@ -84,13 +84,19 @@ struct SettingsSplitView: View {
                         Group {
                             if link.target == .seerr {
                                 SeerrSettingsView(onLeave: { storedRow = "" })
+                            } else if link.target == .quickconnect {
+                                ApproveQuickConnectView()
                             } else {
                                 SettingsPageView(pageId: link.target, model: model, onExit: onExit)
                             }
                         }
                             .navigationDestination(for: TabRoute.self) { route in
                                 if case .settingsPage(let id) = route {
-                                    SettingsPageView(pageId: id, model: model, onExit: onExit)
+                                    if id == .quickconnect {
+                                        ApproveQuickConnectView()
+                                    } else {
+                                        SettingsPageView(pageId: id, model: model, onExit: onExit)
+                                    }
                                 }
                             }
                     }

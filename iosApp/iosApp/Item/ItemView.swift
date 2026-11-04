@@ -182,7 +182,7 @@ struct ItemView: View {
         GeometryReader { proxy in
             let heroHeight = proxy.size.width * Self.phoneHeroByWidth
             ZStack(alignment: .top) {
-                PinnedItemBackdrop(item: item, height: heroHeight, progress: scrollOffset / max(heroHeight * Self.darkenOver, 1))
+                PinnedItemBackdrop(item: item, height: heroHeight, progress: scrollOffset / max(heroHeight * ScrollDarkening.darkenOver, 1))
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         // Reports how far the page has scrolled.
@@ -211,8 +211,6 @@ struct ItemView: View {
 
     /// A phone's picture is 2:3: this tall relative to the width.
     private static let phoneHeroByWidth: CGFloat = 1.5
-    /// The share of the picture that has to scroll by for it to be fully dark.
-    private static let darkenOver: CGFloat = 0.55
 
     /// The backdrop fills the screen and stays put; the first screen leaves it clear with the details in a column on the left, and
     /// the rest scrolls up over it while it darkens.

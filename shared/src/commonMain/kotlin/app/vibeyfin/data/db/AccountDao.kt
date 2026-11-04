@@ -16,6 +16,9 @@ abstract class AccountDao {
     @Query("SELECT * FROM accounts WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun getAccount(serverId: String, userId: String): AccountEntity?
 
+    @Query("SELECT serverId, COUNT(*) AS count FROM accounts GROUP BY serverId")
+    abstract fun observeProfileCounts(): Flow<List<ProfileCountRow>>
+
     @Query("SELECT sealedToken FROM accounts WHERE serverId = :serverId AND sealedToken IS NOT NULL")
     abstract suspend fun getSealedTokens(serverId: String): List<ByteArray>
 

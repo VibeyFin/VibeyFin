@@ -156,16 +156,4 @@ class JellyfinApiTest {
         assertEquals("sec", jellyfin.requestsTo("GET", "/QuickConnect/Connect").single().query["secret"])
         assertTrue(jellyfin.requestsTo("POST", "/Users/AuthenticateWithQuickConnect").single().body.contains(""""Secret":"sec""""))
     }
-
-    @Test
-    fun avatarUrlsPointAtTheUsersPrimaryImage() {
-        assertEquals(
-            "http://nas:8096/Users/u1/Images/Primary?tag=abc&maxWidth=256",
-            jellyfin.api(address).userImageUrl("u1", "abc"),
-        )
-        assertEquals(
-            "https://x.example/jf/Users/u2/Images/Primary?tag=t&maxWidth=96",
-            userImageUrl("https://x.example/jf", "u2", "t", 96),
-        )
-    }
 }

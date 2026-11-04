@@ -6,6 +6,7 @@ import app.vibeyfin.data.vault.TokenVault
 import app.vibeyfin.domain.model.Account
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -20,6 +21,8 @@ class AccountRepository(
     }
 
     suspend fun account(serverId: String, userId: String): Account? = dao.getAccount(serverId, userId)?.toAccount()
+
+    fun observeProfileCounts(): Flow<Map<String, Int>> = dao.observeProfileCounts().map { rows -> rows.associate { it.serverId to it.count } }
 
     /** Stores the token from a successful sign-in, creating the profile or refreshing it. */
     suspend fun saveSession(serverId: String, userId: String, name: String, imageTag: String?, token: String) {

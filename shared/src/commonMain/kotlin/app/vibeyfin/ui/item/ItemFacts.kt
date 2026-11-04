@@ -1,6 +1,7 @@
 package app.vibeyfin.ui.item
 
 import app.vibeyfin.domain.DynamicRange
+import app.vibeyfin.domain.StreamTrack
 import app.vibeyfin.domain.VideoFormat
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
@@ -25,8 +26,26 @@ data class TechnicalLine(val label: String, val value: String)
  */
 internal fun MediaItem.technicalLines(): List<TechnicalLine> = listOfNotNull(
     videoLine(),
+    tracksLine(Strings.technicalAudio, audioTracks),
+    tracksLine(Strings.technicalSubtitles, subtitleTracks),
     fileBytes?.let { TechnicalLine(Strings.technicalSize, Strings.fileSize(it)) },
 )
+
+private fun tracksLine(label: String, tracks: List<StreamTrack>): TechnicalLine? {
+    val names = tracks.mapNotNull { it.name() }
+    return if (names.isEmpty()) null else TechnicalLine(label, names.joinToString("\n"))
+}
+
+private fun StreamTrack.name(): String? {
+    displayTitle?.let { return it.replace(" - ", " · ") }
+    val parts = listOfNotNull(
+        title ?: language,
+        codec?.uppercase(),
+        Strings.trackForced.takeIf { forced },
+        Strings.trackExternal.takeIf { external },
+    )
+    return if (parts.isEmpty()) null else parts.joinToString(" · ")
+}
 
 private fun MediaItem.videoLine(): TechnicalLine? {
     val format = videoFormat ?: return null

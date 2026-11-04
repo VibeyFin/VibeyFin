@@ -8,12 +8,16 @@
 #   My List     Saga Show, Neon Night, Starlit Crown, Solo Season
 #   Kids user   "kids" (password vibeyfin-kids): MaxParentalRating 10 (PG), blocked tag no-kids, schedule Everyday 0-24 h
 #   User        "nodownload" (a second user, downloading switched off), created once and kept that way
+#   User        "nopassword" (no password: a tile that signs in without a sheet)
+#   User        "hidden" (password vibeyfin-test, hidden from the sign-in screen: only "Other user" reaches it)
+#   Sign-in     every other user is listed on the sign-in screen (Jellyfin hides new users by default)
 #   Cleared     everything else among these fixtures (not played, no resume, not a favourite)
 # The expectations are the "Page fixtures" section of docs/test-server.md.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 export JF_URL JF_USER JF_PASS AUTH_HDR JF_NODL_USER JF_NODL_PASS
 export KIDS_USER="kids" KIDS_PASS="vibeyfin-kids"
+export NOPW_USER="nopassword" HIDDEN_USER="hidden" HIDDEN_PASS="vibeyfin-test"
 
 exec python3 -I - <<'PY'
 import json, os, sys, time, urllib.parse, urllib.request
@@ -109,5 +113,17 @@ if nodl is None:
 policy = call(f"/Users/{nodl['Id']}", token)["Policy"]
 policy["EnableContentDownloading"] = False
 call(f"/Users/{nodl['Id']}/Policy", token, method="POST", body=policy)
+
+# Sign-in users: one without a password, one hidden from the sign-in screen. Created once by name; who is listed is set every run.
+users = {u["Name"]: u for u in call("/Users", token)}
+if os.environ["NOPW_USER"] not in users:
+    call("/Users/New", token, method="POST", body={"Name": os.environ["NOPW_USER"]})
+if os.environ["HIDDEN_USER"] not in users:
+    call("/Users/New", token, method="POST", body={"Name": os.environ["HIDDEN_USER"], "Password": os.environ["HIDDEN_PASS"]})
+# Jellyfin hides new users from the sign-in screen; every test user is listed except "hidden".
+for user in call("/Users", token):
+    policy = call(f"/Users/{user['Id']}", token)["Policy"]
+    policy["IsHidden"] = user["Name"] == os.environ["HIDDEN_USER"]
+    call(f"/Users/{user['Id']}/Policy", token, method="POST", body=policy)
 print(f"seeded user data for {len(touched)} items; Crown Collection {box_id}")
 PY

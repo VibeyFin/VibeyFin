@@ -51,6 +51,13 @@ class ServerRepository(
         serverDao.markAddressWorked(serverId, address, clock.now().toEpochMilliseconds())
     }
 
+    /** Forgets one of the server's addresses. The last one stays: false then, and nothing changes. */
+    suspend fun removeAddress(serverId: String, address: String): Boolean {
+        if (serverDao.getAddresses(serverId).size <= 1) return false
+        serverDao.deleteAddress(serverId, address)
+        return true
+    }
+
     /** Removes the server with its addresses and profiles, and releases their stored tokens. */
     suspend fun delete(id: String) {
         accountDao.getSealedTokens(id).forEach(vault::discard)
