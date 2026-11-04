@@ -108,6 +108,8 @@ fun WhoIsWatchingRoute(
     val geometry = remember { ZoomGeometry() }
     val tile = if (LocalConfiguration.current.screenWidthDp >= WIDE_FROM_DP) 140.dp else 104.dp
     val animate = animationsEnabled()
+    // The flight outlives this screen and keeps its last value, so a new "Who's watching?" only follows a flight it started
+    var flying by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.signedIn) {
         if (!state.signedIn) return@LaunchedEffect
@@ -117,6 +119,7 @@ fun WhoIsWatchingRoute(
         val from = profile?.let { geometry.tiles[it.userId] }
 
         if (animate && profile != null && from != null) {
+            flying = true
             flight.start(profile, from, tile, geometry.screen, geometry.button, onSignedIn)
         } else {
             onSignedIn()
@@ -134,7 +137,7 @@ fun WhoIsWatchingRoute(
         onRetry = viewModel::refresh,
         tile = tile,
         geometry = geometry,
-        zoom = { flight.grow.value },
+        zoom = { if (flying) flight.grow.value else 0f },
     )
 
     state.pinPrompt?.let { prompt ->
