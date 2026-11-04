@@ -235,6 +235,10 @@ struct FieldError: View {
     }
 }
 
+func dismissKeyboard() {
+    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+}
+
 struct AddressSection<Header: View>: View {
     let label: String
     let placeholder: String

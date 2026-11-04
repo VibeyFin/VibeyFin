@@ -37,6 +37,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.error
@@ -185,6 +186,7 @@ private fun SeerrSettingsBody(state: SeerrSettingsUiState, viewModel: SeerrSetti
 
 @Composable
 private fun AddressForm(state: SeerrSettingsUiState, onChange: (String) -> Unit, onConnect: () -> Unit) {
+    val focusManager = LocalFocusManager.current
     Text(Strings.seerrLead, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(Modifier.height(VibeyFinTokens.Space.s2))
 
@@ -199,7 +201,15 @@ private fun AddressForm(state: SeerrSettingsUiState, onChange: (String) -> Unit,
         enabled = !state.connecting,
     )
     Spacer(Modifier.height(VibeyFinTokens.Space.s3))
-    BusyButton(Strings.connect, onConnect, busy = state.connecting, busyLabel = Strings.seerrConnecting)
+    BusyButton(
+        label = Strings.connect,
+        onClick = {
+            focusManager.clearFocus()
+            onConnect()
+        },
+        busy = state.connecting,
+        busyLabel = Strings.seerrConnecting,
+    )
 }
 
 @Composable

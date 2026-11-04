@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.components.AddressField
@@ -82,6 +83,7 @@ fun AddServerScreen(
 ) {
     val step = state.step
     val focus = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
 
     LaunchedEffect(Unit) { if (focusOnOpen) focus.requestFocus() }
 
@@ -129,7 +131,10 @@ fun AddServerScreen(
                     } else {
                         BusyButton(
                             label = Strings.connect,
-                            onClick = onConnect,
+                            onClick = {
+                                focusManager.clearFocus()
+                                onConnect()
+                            },
                             busy = step is AddServerStep.Checking,
                             busyLabel = Strings.connecting,
                             enabled = state.canConnect,

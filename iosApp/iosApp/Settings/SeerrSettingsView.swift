@@ -137,7 +137,10 @@ struct SeerrSettingsView: View {
         .onChange(of: address) { _, new in model.setAddress(new) }
         Section {
             // The page's one primary action. It stays aqua while busy; the ViewModel ignores a second tap.
-            PrimaryButton(Strings.shared.connect, busyTitle: Strings.shared.seerrConnecting, busy: state.connecting) { model.connect() }
+            PrimaryButton(Strings.shared.connect, busyTitle: Strings.shared.seerrConnecting, busy: state.connecting) {
+                dismissKeyboard()
+                model.connect()
+            }
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())
         }

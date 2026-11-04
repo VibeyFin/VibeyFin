@@ -431,7 +431,7 @@ From first launch to Home, and back out. The mockups are **SignInFlow** (the map
   **Server details** (its addresses, add or remove one) and **Remove server** (asks first; signs out its profiles on this device and
   deletes their downloads). Android adds "On your network". **Add server** at the foot is the secondary button with a leading +
   (Android: tonal, its label in `ink`, since `on-accent-soft` on `accent-soft` reads too faintly; iOS: the grey bordered button).
-- **Add a server:** a labelled field with help under it, focused on open; Go on the keyboard connects and puts the keyboard away; Connect → Found (or "you already have this server") →
+- **Add a server:** a labelled field with help under it, focused on open; Go on the keyboard or Connect connects and puts the keyboard away; Connect → Found (or "you already have this server") →
   **Add server**, which goes straight to that server's Who's watching?. A failure is said under the field, which keeps the text.
 - **Who's watching?:** the server's name over the title, a tile per profile (lock badge when it needs a password or a PIN), then
   **Quick Connect** (only when the server allows it) and **Other user**. Grey tiles while loading; the tapped tile shows a spinner;

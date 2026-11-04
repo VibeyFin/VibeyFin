@@ -71,7 +71,10 @@ struct AddServerView: View {
             }
         } else {
             Section {
-                PrimaryButton(Strings.shared.connect, busyTitle: Strings.shared.connecting, busy: state.step is AddServerStepChecking) { model.connect() }
+                PrimaryButton(Strings.shared.connect, busyTitle: Strings.shared.connecting, busy: state.step is AddServerStepChecking) {
+                    dismissKeyboard()
+                    model.connect()
+                }
                     .disabled(!state.canConnect && !(state.step is AddServerStepChecking))
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
