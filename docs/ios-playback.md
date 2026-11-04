@@ -31,7 +31,7 @@ A download is kept exactly as the server sent it (`GET /Items/{id}/Download`); n
 
 ## Subtitles
 
-- **Text** (SRT, ASS, VTT): the app fetches the file from the server and paints it (`SubtitleOverlay`), on both engines.
+- **Text** (SRT, ASS, VTT): the app fetches the file from the server and paints it (`SubtitleOverlay`), on both engines. Aether is told to skip an MKV's attached fonts (`skipsContainerAttachments`), which the app never uses and which made large anime remuxes open slowly.
 - **Image** (PGS, DVD, DVB) on **Aether**: Aether decodes the bitmaps and the app paints them over the video (`ImageSubtitleOverlay`). The title stays a direct play.
 - **Image on AVPlayer titles**: the server burns the subtitle in, which makes the stream a transcode.
 - Choosing a subtitle stays in the player when the track is a fetched file, or when it is embedded and the title direct plays. Otherwise the stream is reopened with the burn-in.
@@ -47,7 +47,6 @@ A download is kept exactly as the server sent it (`GET /Items/{id}/Download`); n
 ## Known limits
 
 - Aether needs iOS 18, which is the app's floor.
-- Aether opens an MKV with a very large attachment block (about 23 MB of fonts) slowly over a WAN address, because the demuxer reads the attachments first.
 - If Aether cannot start, the title falls back to the server's stream through the normal failure path.
 - CPU, battery and thermal numbers for the two engines have not been measured.
 

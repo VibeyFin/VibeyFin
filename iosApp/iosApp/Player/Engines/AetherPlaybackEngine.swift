@@ -136,6 +136,8 @@ final class AetherPlaybackEngine: PlaybackEngine {
         // A remux with dozens of sparse subtitle tracks makes the stream probe read tens of megabytes before it settles.
         options.probesize = Self.probeBytes
         options.maxAnalyzeDuration = Self.probeMicroseconds
+        // The app paints subtitles itself, so the fonts attached to an MKV (tens of MB on anime releases) are never used.
+        options.skipsContainerAttachments = true
         let start = TimeInterval(stream.startPositionMs) / 1000
         self.bufferAheadSeconds = bufferAheadSeconds
         videoInfo = nil
