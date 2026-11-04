@@ -331,6 +331,11 @@ final class PlayerController: ObservableObject {
         }
     }
 
+    /// The server turned down the token on a subtitle request. The shared model asks again, and its call is the one that ends the session.
+    func subtitleRejected() {
+        reportFailure(.unauthorized)
+    }
+
     private func reportFailure(_ failure: PlaybackFailure) {
         guard !failureReported else { return }
         failureReported = true

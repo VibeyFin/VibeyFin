@@ -58,7 +58,10 @@ struct PlayerView: View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
             PlayerSurface(controller: controller, pip: pip).ignoresSafeArea()
-            SubtitleOverlay(source: controller.isExternalPlayback ? nil : subtitleSource(in: state)) { controller.engine.currentSeconds }
+            SubtitleOverlay(
+                source: controller.isExternalPlayback ? nil : subtitleSource(in: state),
+                onUnauthorized: { controller.subtitleRejected() }
+            ) { controller.engine.currentSeconds }
             // The picture is on the other screen over AirPlay: the item's artwork, blurred, stands in for it.
             if controller.isExternalPlayback {
                 ExternalPlaybackBackdrop(artworkUrl: state?.artworkUrl)
