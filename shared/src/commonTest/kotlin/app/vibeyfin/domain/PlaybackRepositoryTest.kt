@@ -532,6 +532,39 @@ class PlaybackRepositoryTest {
     }
 
     @Test
+    fun aMovTextTrackTheServerSendsAsAFileIsPaintedOnceAndNotBurnedIn() = runTest {
+        app.capabilities.capabilities = PlaybackCapabilities(
+            containers = listOf("mp4"),
+            videoCodecs = listOf("h264"),
+            audioCodecs = listOf("aac"),
+            fetchedSubtitleCodecs = listOf("mov_text"),
+        )
+        answerWith(playbackInfoJson(mediaSourceJson(streams = listOf(subtitleStreamJson(2, language = "eng", codec = "mov_text")), defaultSubtitle = 2)))
+
+        val plan = ready()
+
+        assertEquals(listOf(2), plan.subtitleFiles.map { it.index })
+        assertEquals(false, plan.subtitleBurnedIn)
+    }
+
+    @Test
+    fun aWebVttTrackLeftInTheFileIsFetchedOnceAndNotBurnedIn() = runTest {
+        app.capabilities.capabilities = PlaybackCapabilities(
+            containers = listOf("mkv"),
+            videoCodecs = listOf("h264"),
+            audioCodecs = listOf("aac"),
+            fetchedSubtitleCodecs = listOf("webvtt"),
+        )
+        answerWith(playbackInfoJson(mediaSourceJson(streams = listOf(subtitleStreamJson(2, delivery = "Embed", codec = "webvtt")), defaultSubtitle = 2)))
+
+        val plan = ready()
+
+        assertEquals(listOf(2), plan.subtitleFiles.map { it.index })
+        assertEquals(listOf("http://nas:8096/Videos/m1/ms-1/Subtitles/2/0/Stream.srt"), plan.subtitleFiles.map { it.url })
+        assertEquals(false, plan.subtitleBurnedIn)
+    }
+
+    @Test
     fun theUsersChoicesAreSentWithTheSourceTheyAreFor() = runTest {
         answerWith(playbackInfoJson(mediaSourceJson(streams = twoAudioTwoSubtitles)))
 

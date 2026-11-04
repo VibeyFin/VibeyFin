@@ -202,6 +202,11 @@ failure "AV1 AC3" mkv -c:v libsvtav1 -preset 12 -pix_fmt yuv420p10le -c:a ac3 -b
 failure "Text Subtitles" mkv -i /data/work/english.srt -i /data/work/german.srt \
   -map 0:v -map 1:a -map 2 -map 3 "${H264[@]}" -c:a aac -b:a 64k -c:s srt \
   -metadata:s:s:0 language=eng -metadata:s:s:1 language=deu
+# Text subtitle codecs the server has no subtitle profile for: mov_text (the MP4 text track) and WebVTT inside a Matroska file.
+failure "MovText Subtitles" mp4 -i /data/work/english.srt -map 0:v -map 1:a -map 2 "${H264[@]}" -c:a aac -b:a 64k -c:s mov_text \
+  -metadata:s:s:0 language=eng
+failure "WebVTT Subtitles" mkv -i /data/work/english.srt -map 0:v -map 1:a -map 2 "${H264[@]}" -c:a aac -b:a 64k -c:s webvtt \
+  -metadata:s:s:0 language=eng
 failure "Image Subtitles" mkv -i /data/work/image.sup \
   -map 0:v -map 1:a -map 2 "${H264[@]}" -c:a aac -b:a 64k -c:s copy
 # Languages: two audio tracks told apart by pitch (English 440 Hz, the default; German 880 Hz) and three text
