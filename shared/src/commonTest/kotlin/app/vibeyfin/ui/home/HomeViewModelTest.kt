@@ -646,10 +646,8 @@ class HomeViewModelTest {
         assertEquals(DOWNLOAD_PAUSED, app.downloads.find("srv-1", "u1", "e1")!!.state)
 
         viewModel.onDownloadAction("e1", DownloadAction.Remove)
-        assertEquals(listOf("e1"), viewModel.uiState.first { it.removePrompt != null }.removePrompt!!.itemIds)
-        assertTrue(app.downloads.find("srv-1", "u1", "e1") != null, "nothing is deleted before the user says yes")
-        viewModel.onDismissRemoval()
-        assertNull(viewModel.uiState.first { it.removePrompt == null }.removePrompt)
+        viewModel.uiState.first { !it.downloads.containsKey("e1") }
+        assertNull(app.downloads.find("srv-1", "u1", "e1"))
     }
 
     @Test

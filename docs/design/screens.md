@@ -254,7 +254,7 @@ download's progress is not playback progress.
   "Download all episodes" and "Remove N downloads".
 - **Season and show confirm first:** "Download 13 episodes?" with "They take about 965 KB." and, when some are watched, "Only episodes
   I haven't watched". A season's own list page has a **Download season** button with "3 of 8 downloaded".
-- **Removing always asks:** "Remove Heat?" with "This frees 283 MB. You can download it again later." (what is on the device now).
+- **Removing one movie or episode is immediate:** Remove in its menu deletes at once, with no second question. Removing more than one (a show, a season, **Remove all downloads**) always asks: "Remove 13 downloads?" with "This frees 283 MB. You can download them again later." iOS shows it as a centred alert (a confirmation dialog is a popover on iPad); Android as an `AlertDialog`. (what is on the device now).
 - **Downloads tab:** the tab header, then a card: "On this device" over "1.4 GB used", and a bin icon with no words
   (**Remove all downloads**, asks first; the screen reader names it); **Movies** (poster, title, status line) and **Shows**
   (a card with the show's poster, "13 episodes · 965 KB" and a chevron that opens its episodes in place, a menu with go to the show and

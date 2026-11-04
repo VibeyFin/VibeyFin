@@ -33,10 +33,9 @@ struct DownloadsView: View {
         // The tab draws its own header; the system bar above it would only be empty space.
         .tabRootBar()
         .onAppear { model.start() }
-        .confirmationDialog(
+        .alert(
             model.state?.removal.map { Strings.shared.removeConfirmTitle(count: $0.count, title: $0.title) } ?? "",
-            isPresented: Binding(get: { model.state?.removal != nil }, set: { if !$0 { model.dismissRemoval() } }),
-            titleVisibility: .visible
+            isPresented: Binding(get: { model.state?.removal != nil }, set: { if !$0 { model.dismissRemoval() } })
         ) {
             Button(Strings.shared.removeConfirmAction.titleCased(), role: .destructive) { model.confirmRemove() }
             Button(Strings.shared.cancel.titleCased(), role: .cancel) { model.dismissRemoval() }
