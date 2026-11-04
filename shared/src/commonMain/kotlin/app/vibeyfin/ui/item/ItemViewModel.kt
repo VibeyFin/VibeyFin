@@ -260,14 +260,18 @@ class ItemViewModel(
     fun onRetry() = load()
 
     // Asks the server how the title Play would start is delivered, again whenever that title changes (a show's next episode).
-    // No answer, an error or no way to play leaves the line out: it is a hint, not something to report.
+    // A download plays from the device, so there is nothing to ask. No answer, an error or no way to play leaves the line out:
+    // it is a hint, not something to report.
     private suspend fun probePlayout() {
-        content.map { it.playTarget?.id }.distinctUntilChanged().collectLatest { id ->
-            content.update { it.copy(playout = null) }
-            if (id == null) return@collectLatest
-            val ready = playback.negotiate(id) as? PlaybackNegotiation.Ready ?: return@collectLatest
-            content.update { it.copy(playout = ready.plan.toPlayout()) }
-        }
+        val target = content.map { it.playTarget?.id }.distinctUntilChanged()
+        combine(target, downloadParts) { id, parts -> id to (id?.let { parts.byId[it]?.badge } == DownloadBadge.Done) }
+            .distinctUntilChanged()
+            .collectLatest { (id, downloaded) ->
+                content.update { it.copy(playout = null) }
+                if (id == null || downloaded) return@collectLatest
+                val ready = playback.negotiate(id) as? PlaybackNegotiation.Ready ?: return@collectLatest
+                content.update { it.copy(playout = ready.plan.toPlayout()) }
+            }
     }
 
     /** "Try again" on "More like this". */

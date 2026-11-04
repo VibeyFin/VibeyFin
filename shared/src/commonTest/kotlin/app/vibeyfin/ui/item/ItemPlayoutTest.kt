@@ -9,6 +9,9 @@ import app.vibeyfin.testing.itemJson
 import app.vibeyfin.testing.itemsJson
 import app.vibeyfin.testing.mediaSourceJson
 import app.vibeyfin.testing.playbackInfoJson
+import app.vibeyfin.testing.sagaServer
+import app.vibeyfin.ui.downloads.DownloadBadge
+import app.vibeyfin.ui.downloads.badge
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -22,6 +25,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ItemPlayoutTest {
@@ -82,5 +86,26 @@ class ItemPlayoutTest {
         val state = viewModel.uiState.first { !it.loading }
 
         assertNull(state.playout)
+    }
+
+    @Test
+    fun aDownloadIsNotAskedAboutBecauseItPlaysFromTheDevice() = runTest {
+        val server = app.sagaServer()
+        server.on("POST", "/Items/m1/PlaybackInfo", Reply.json(playbackInfoJson(mediaSourceJson(container = "mp4"))))
+
+        fun open() = viewModels.track(ItemViewModel("m1", app.library, app.connection, app.watch, app.watchChanges, app.downloadRepository, app.playback, app.seerrRepository, app.seerr))
+        val first = open()
+        first.uiState.first { !it.loading }
+        first.onDownload()
+        first.uiState.first { it.download != null }
+        app.downloads.complete("srv-1", "u1", "m1", 50, "srv-1/u1/m1/video.mp4", 5)
+        first.uiState.first { it.downloads["m1"]?.badge == DownloadBadge.Done }
+        app.jellyfin.requests.clear()
+
+        val second = open()
+        val state = second.uiState.first { !it.loading }
+
+        assertNull(state.playout)
+        assertTrue(app.jellyfin.requests.none { it.path.endsWith("/PlaybackInfo") }, "a download is not negotiated")
     }
 }
