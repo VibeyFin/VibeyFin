@@ -51,6 +51,7 @@ private const val WIDE_FROM_DP = 600
 @Composable
 fun CollectionHeader(title: String, collection: MediaItem?, facts: List<String>, margin: Dp, imageHint: String? = null, scrolled: () -> Int = { 0 }) {
     var expanded by remember { mutableStateOf(false) }
+    var overflows by remember { mutableStateOf(false) }
     val wide = LocalConfiguration.current.screenWidthDp >= WIDE_FROM_DP
     val aspect = if (wide) COLLECTION_HERO_ASPECT_WIDE else COLLECTION_HERO_ASPECT
 
@@ -98,10 +99,11 @@ fun CollectionHeader(title: String, collection: MediaItem?, facts: List<String>,
                     textAlign = if (wide) TextAlign.Start else TextAlign.Center,
                     maxLines = if (expanded) Int.MAX_VALUE else 3,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.clickable { expanded = !expanded }.animateContentSize(),
+                    onTextLayout = { layout -> if (!expanded) overflows = layout.hasVisualOverflow },
+                    modifier = Modifier.clickable(enabled = overflows || expanded) { expanded = !expanded }.animateContentSize(),
                 )
 
-                if (it.length > 140) {
+                if (overflows || expanded) {
                     Text(
                         text = if (expanded) Strings.less else Strings.more,
                         style = MaterialTheme.typography.labelLarge,
