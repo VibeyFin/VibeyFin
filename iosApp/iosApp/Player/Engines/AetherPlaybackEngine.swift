@@ -202,10 +202,12 @@ final class AetherPlaybackEngine: PlaybackEngine {
 
     func seek(to seconds: TimeInterval, completion: @escaping (Bool) -> Void) {
         seeksInFlight += 1
+        let opened = generation
         Task { @MainActor [weak self] in
             guard let self else { return }
             await self.engine.seek(to: seconds)
-            self.seeksInFlight -= 1
+            // A reopen resets the count; a seek from the earlier stream must not take it below zero.
+            if self.generation == opened { self.seeksInFlight -= 1 }
             completion(true)
         }
     }

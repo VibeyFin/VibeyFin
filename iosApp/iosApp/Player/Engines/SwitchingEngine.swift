@@ -8,7 +8,7 @@ import UIKit
 @MainActor
 final class SwitchingEngine: PlaybackEngine {
     var events = PlaybackEngineEvents() {
-        didSet { forEachEngine { $0.events = events } }
+        didSet { current.events = events }
     }
 
     private let native: PlaybackEngine = AVPlayerEngine()
@@ -37,6 +37,8 @@ final class SwitchingEngine: PlaybackEngine {
         let next = engine(for: stream.engine)
         if next !== current {
             current.close()
+            // The player being left can still report (AVPlayer says "paused" a moment after close); the controller must not hear it.
+            current.events = PlaybackEngineEvents()
             current = next
             mount()
             next.events = events

@@ -21,6 +21,7 @@ final class PlayerPictureInPicture: NSObject, ObservableObject, AVPictureInPictu
     var activeChanged: (Bool) -> Void = { _ in }
 
     private var controller: AVPictureInPictureController?
+    private weak var boundLayer: CALayer?
     private var playback: AnyObject?
     private var restoring = false
     private var silenced = false
@@ -38,22 +39,30 @@ final class PlayerPictureInPicture: NSObject, ObservableObject, AVPictureInPictu
 
     /// Ties picture-in-picture to a new layer, for an engine whose layer changes with each stream.
     func replace(with layer: AVPlayerLayer) {
-        install(AVPictureInPictureController(playerLayer: layer), playback: nil)
+        guard !(layer === boundLayer && controller != nil) else { return }
+        install(AVPictureInPictureController(playerLayer: layer), playback: nil, layer: layer)
     }
 
     /// Ties picture-in-picture to frames an engine draws itself. `playback` answers the window's transport and stays alive with it.
     func replace(with layer: AVSampleBufferDisplayLayer, playback: AVPictureInPictureSampleBufferPlaybackDelegate & AnyObject) {
-        guard AVPictureInPictureController.isPictureInPictureSupported() else { return }
+        guard AVPictureInPictureController.isPictureInPictureSupported(), !(layer === boundLayer && controller != nil) else { return }
         let source = AVPictureInPictureController.ContentSource(sampleBufferDisplayLayer: layer, playbackDelegate: playback)
-        install(AVPictureInPictureController(contentSource: source), playback: playback)
+        install(AVPictureInPictureController(contentSource: source), playback: playback, layer: layer)
     }
 
-    private func install(_ pip: AVPictureInPictureController?, playback: AnyObject?) {
+    private func install(_ pip: AVPictureInPictureController?, playback: AnyObject?, layer: CALayer) {
         guard AVPictureInPictureController.isPictureInPictureSupported() else { return }
+        // The old controller's window dies with it and its delegate is cut, so nothing else would say it is gone.
+        if isActive {
+            controller?.stopPictureInPicture()
+            isActive = false
+            activeChanged(false)
+        }
         controller?.delegate = nil
         pip?.delegate = self
         pip?.canStartPictureInPictureAutomaticallyFromInline = allowsStart
         controller = pip
+        boundLayer = layer
         self.playback = playback
         isSupported = pip != nil
     }
