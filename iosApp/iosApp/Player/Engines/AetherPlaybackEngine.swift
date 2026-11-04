@@ -164,7 +164,12 @@ final class AetherPlaybackEngine: PlaybackEngine {
             } catch {
                 guard self.generation == opened, self.isOpen else { return }
                 PlayerLog.write("aether load failed \(error)")
-                self.events.failed(Self.failure(of: error))
+                // Aether throws its own internal error type, so a timeout only shows as a lost connection in the typed info.
+                if let info = self.engine.errorInfo {
+                    self.events.failed(Self.failure(of: info))
+                } else {
+                    self.events.failed(Self.failure(of: error))
+                }
             }
         }
     }
