@@ -301,7 +301,7 @@ after Phase 7. _Depends on Phase 2 (watch status, for cleaning up watched downlo
 _Exit: download an episode on Wi-Fi, switch off the network, watch it, then switch the network on and see
 the position and played mark arrive on the server._
 
-### Playback engine on iOS _(built on `poc/playback-engine`; phone pass in progress)_
+### Playback engine on iOS _(built; the PoC is finished and VLCKit was dropped. Device measurements are still open)_
 
 AVPlayer first, AetherEngine for what it can't play, chosen per title by the shared model; PGS subtitles painted by the app; the item
 screen says how a title will play. Behaviour and limits: `docs/ios-playback.md`.
