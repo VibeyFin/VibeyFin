@@ -25,6 +25,12 @@ final class SubtitleParserTests: XCTestCase {
         XCTAssertEqual(SubtitleParser.active(in: cues, at: 5).count, 0)
     }
 
+    func testALongCueStaysActiveUnderManyShortOnes() {
+        var cues = [SubtitleCue(start: 0, end: 60, text: "Sign")]
+        for index in 1...10 { cues.append(SubtitleCue(start: Double(index), end: Double(index) + 0.5, text: "Line \(index)")) }
+        XCTAssertEqual(SubtitleParser.active(in: cues, at: 20).map(\.text), ["Sign"])
+    }
+
     func testReadsAssDialogue() {
         let text = "[Script Info]\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
             + "Dialogue: 0,0:00:01.50,0:00:03.00,Default,,0,0,0,,{\\an8}Hello, there\\Nfriend\n"

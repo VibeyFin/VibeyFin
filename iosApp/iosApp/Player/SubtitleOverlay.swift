@@ -16,7 +16,8 @@ final class SubtitleTrackModel: ObservableObject {
         task = Task { [weak self] in
             var request = URLRequest(url: source.url)
             for (name, value) in source.headers { request.setValue(value, forHTTPHeaderField: name) }
-            guard let (data, _) = try? await URLSession.shared.data(for: request), !Task.isCancelled else {
+            guard let (data, response) = try? await URLSession.shared.data(for: request), !Task.isCancelled,
+                  (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? true else {
                 PlayerLog.write("subtitle fetch failed \(source.url.lastPathComponent)")
                 return
             }
@@ -34,7 +35,8 @@ struct SubtitleOverlay: View {
     @StateObject private var track = SubtitleTrackModel()
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 0.1)) { _ in
+        // No ticking while there is nothing to show: most titles play without a text subtitle.
+        TimelineView(.animation(minimumInterval: 0.1, paused: track.cues.isEmpty)) { _ in
             let shown = position().map { SubtitleParser.active(in: track.cues, at: $0) } ?? []
             VStack {
                 Spacer()

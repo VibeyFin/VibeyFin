@@ -68,8 +68,8 @@ enum SubtitleParser {
             let mid = (low + high) / 2
             if cues[mid].start <= time { low = mid + 1 } else { high = mid }
         }
-        // Cues may overlap, so look back a little for ones that are still showing.
-        return cues[max(0, low - 4)..<low].filter { $0.end > time }
+        // Cues may overlap (typeset signs outlast the dialogue around them), so any earlier cue can still be showing.
+        return cues[..<low].filter { $0.end > time }
     }
 
     private static func timing(_ line: String) -> (TimeInterval, TimeInterval)? {
