@@ -414,6 +414,11 @@ object Strings {
     val statsLabelMethod = "Method"
     val statsLabelReasons = "Reasons"
     val statsLabelEngine = "Engine"
+    val statsEngineAvPlayer = "AVPlayer"
+
+    /** Aether, with how it shows the picture (the engine's own name for the route). */
+    fun statsEngineAether(route: String) = "Aether $route"
+
     val statsLabelVideo = "Video"
     val statsLabelAudio = "Audio"
     val statsLabelResolution = "Resolution"

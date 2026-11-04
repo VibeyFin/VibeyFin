@@ -266,7 +266,7 @@ final class AVPlayerEngine: PlaybackEngine {
             droppedFrames: dropped.isEmpty ? nil : Int32(clamping: dropped.reduce(0, &+)),
             throughputKbps: latest.flatMap { Self.kbps($0.observedBitrate) },
             bufferMs: buffered.flatMap { $0.isFinite ? Int64(min(max(0, $0) * 1000, Double(Int32.max))) : nil },
-            engine: "AVPlayer"
+            engine: Strings.shared.statsEngineAvPlayer
         )
         guard snapshot != lastDiagnostics else { return }
         lastDiagnostics = snapshot

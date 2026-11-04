@@ -261,7 +261,7 @@ final class AetherPlaybackEngine: PlaybackEngine {
     }
 
     private func pushDiagnostics() {
-        let route = engine.videoRoute == .none ? nil : "Aether \(engine.videoRoute)"
+        let route = engine.videoRoute == .none ? nil : Strings.shared.statsEngineAether(route: "\(engine.videoRoute)")
         let log = engine.softwarePiPSource == nil ? engine.nativePlayerLayer?.player?.currentItem?.accessLog()?.events : nil
         let latest = log?.last
         let dropped = (log ?? []).map(\.numberOfDroppedVideoFrames).filter { $0 >= 0 }
