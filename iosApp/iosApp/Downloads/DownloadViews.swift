@@ -14,7 +14,7 @@ struct DownloadActions {
 }
 
 /// What a download looks like, in one picture: the arrow when there is none, a ring that fills while it comes in (grey and still while
-/// it waits for Wi-Fi or a connection), pause bars, a warning, and a filled check once it is on the device. All in the label colour:
+/// it waits for Wi-Fi or a connection), pause bars, a warning, and a phone with a check once it is on the device. All in the label colour:
 /// aqua is for the one primary action and playback progress, and never signals status.
 struct DownloadBadgeView: View {
     let badge: DownloadBadge
@@ -23,7 +23,7 @@ struct DownloadBadgeView: View {
 
     var body: some View {
         if badge == DownloadBadge.done {
-            Image(systemName: "checkmark.circle.fill").foregroundStyle(tint)
+            Image(systemName: "checkmark.rectangle.portrait").foregroundStyle(tint)
         } else if badge == DownloadBadge.failed {
             Image(systemName: "exclamationmark.triangle").foregroundStyle(tint)
         } else if badge == DownloadBadge.paused {

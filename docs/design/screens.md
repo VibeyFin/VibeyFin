@@ -233,11 +233,11 @@ rating, air date, and its `UserData` (played, resume position).
   left), its rating and the day it aired. A check sits at the top once watched, an aqua progress bar runs along the bottom edge
   when it is part watched, and the episode Play starts has a brighter outline.
 - On a card, a tap on the picture plays it and a tap on the words opens its page. A long press opens a menu on both platforms: **View episode** (its own page) and the watched mark.
-- Each episode has its own **download button**: at the end of the row on a phone, at the top-left of the still on a card. It is the
+- Each episode has its own **download button**: at the end of the row on a phone, at the bottom-right of the still on a card, under the watched check (top-right); the facts line stops short of it so the release date is never covered. It is the
   arrow with nothing downloaded (a tap starts it), then the state badge (a tap opens pause, resume and remove). The long-press menu holds the
   same actions.
 - No swipe actions on either platform.
-- Downloaded is a filled check-disc in `positive` (`ink`) on both.
+- Downloaded is a phone with a check in `ink` (Android: Material `mobile_check`; iOS: `checkmark.rectangle.portrait`), never the check-disc, which is the watched mark.
 
 ## Downloads
 
@@ -246,7 +246,7 @@ download's progress is not playback progress.
 
 - **Download button** (fourth secondary action, icon over label). One picture for the state, drawn from the shared `DownloadBadge`:
   the download arrow (nothing downloaded), a ring that fills (coming in; grey and still while it waits for Wi-Fi or a connection),
-  pause bars (paused), a warning (failed), a filled check-disc (on the device). The label under it is "Download", "Downloading",
+  pause bars (paused), a warning (failed), a phone with a check (on the device), never the check-disc, which is the watched mark. The label under it is "Download", "Downloading",
   "Waiting", "Paused", "Failed", "Downloaded", and on a show "N downloaded". Android draws the ring by hand, not with M3's spinner,
   which is for the player only.
 - **Tapping it:** on a movie or an episode with no download it starts one (and asks, once, for the notification permission on Android

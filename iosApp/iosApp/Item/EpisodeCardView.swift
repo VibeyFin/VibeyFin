@@ -63,7 +63,7 @@ struct EpisodeCardView: View {
                 .buttonStyle(.plain)
                 .accessibilityHint(Strings.shared.viewEpisode)
         }
-        .overlay(alignment: .topTrailing) {
+        .overlay(alignment: .bottomTrailing) {
             EpisodeDownloadButton(
                 title: episode.title,
                 download: download,
@@ -117,6 +117,8 @@ struct EpisodeCardView: View {
             }
             .font(.caption.weight(.semibold))
             .foregroundStyle(.white)
+            // The facts line stops short of the download button at the bottom-right.
+            .padding(.trailing, download != nil || canDownload ? 36 : 0)
         }
         .padding(Space.s3)
         .padding(.bottom, episode.progress != nil ? 4 : 0)

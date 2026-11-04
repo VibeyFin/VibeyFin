@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Warning
@@ -66,7 +65,7 @@ import app.vibeyfin.ui.downloads.stateWord
 
 /**
  * What a download looks like, in one picture: the download arrow when there is none, a ring that fills while it comes in (gray
- * and still while it waits), a pause bars, a warning, and a filled check once it is on the device. All in ink: aqua is for the
+ * and still while it waits), a pause bars, a warning, and a phone with a check once it is on the device. All in ink: aqua is for the
  * one primary action and playback progress, and never signals status. Drawn by hand, not with M3's spinner, which is for the
  * player only.
  */
@@ -75,7 +74,7 @@ fun DownloadBadgeIcon(badge: DownloadBadge, progress: Float?, modifier: Modifier
     when (badge) {
         DownloadBadge.None -> Icon(painterResource(R.drawable.ic_download), contentDescription = null, tint = tint, modifier = modifier)
 
-        DownloadBadge.Done -> Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = tint, modifier = modifier)
+        DownloadBadge.Done -> Icon(painterResource(R.drawable.ic_download_done), contentDescription = null, tint = tint, modifier = modifier)
 
         DownloadBadge.Failed -> Icon(Icons.Filled.Warning, contentDescription = null, tint = tint, modifier = modifier)
 
