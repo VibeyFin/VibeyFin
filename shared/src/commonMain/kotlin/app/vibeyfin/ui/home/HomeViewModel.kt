@@ -73,8 +73,10 @@ data class HomeUiState(
     val continueRow: ContinueRow = ContinueRow(),
     /** A pull to refresh is running; the cards and rows stay on screen while it does. */
     val refreshing: Boolean = false,
-    /** A change that couldn't be saved on the server and was taken back, with what to try. */
+    /** A change that couldn't be saved on the server and was taken back, with what to try; or a removal that can be undone. */
     val actionMessage: String? = null,
+    /** [actionMessage] says a card was removed, and its action is Undo rather than Try again. */
+    val canUndo: Boolean = false,
     /** Set when the screen should be left: the user chose to, or the session ended. */
     val exit: HomeExit? = null,
     /** The category buttons under the header, in order. */
@@ -109,7 +111,9 @@ data class HomeUiState(
     val canDownload: Boolean = true,
     /** The question before a download is deleted; null when none is asked. */
     val removePrompt: RemovePrompt? = null,
-)
+) {
+    val actionLabel: String get() = if (canUndo) Strings.undo else Strings.tryAgain
+}
 
 /**
  * The hero: the items once picked, or [loading] while they are being picked; [slots] is the profile's setting.
@@ -149,6 +153,9 @@ private const val MY_LIST_ID = "my-list"
 // The id of the row that stands in for the Recently added rows when the libraries couldn't be listed.
 private const val LIBRARIES_FAILED_ID = "latest:failed"
 
+// A card "Remove from Continue watching" took out, and where it was.
+private data class RemovedCard(val card: ContinueCard, val index: Int)
+
 private data class Libraries(
     val items: List<MediaItem> = emptyList(),
     val loading: Boolean = false,
@@ -185,6 +192,7 @@ class HomeViewModel(
     private var continueLoadedAt: Instant? = null
 
     private val actionMessage = MutableStateFlow<String?>(null)
+    private val removedCard = MutableStateFlow<RemovedCard?>(null)
 
     private val latestRows = MutableStateFlow<List<MediaRow>>(emptyList())
     private val genreRows = MutableStateFlow<List<MediaRow>>(emptyList())
@@ -255,11 +263,13 @@ class HomeViewModel(
         profileSettings.kidsProfile,
         profile.pinPrompt,
         downloadParts(connection, downloads, downloadFlow, canDownload),
-    ) { content, kids, prompt, parts ->
+        removedCard,
+    ) { content, kids, prompt, parts, removed ->
         content.copy(
             kidsProfile = kids == true,
             pinPrompt = prompt,
-            actionMessage = content.actionMessage ?: parts.message,
+            actionMessage = if (removed != null) Strings.removedFromContinueWatching else content.actionMessage ?: parts.message,
+            canUndo = removed != null,
             downloads = parts.byId,
             canDownload = parts.canDownload,
             removePrompt = parts.removal,
@@ -277,6 +287,8 @@ class HomeViewModel(
                     // Another profile or address has its own genres.
                     sheetJob?.cancel()
                     categoryUi.value = CategoryUi()
+                    removedCard.value = null
+                    retryFailed = null
                     genreOptions = null
                     latestRows.value = emptyList()
                     genreRows.value = emptyList()
@@ -364,8 +376,9 @@ class HomeViewModel(
         downloads.canDownload(profile)?.let { canDownload.value = it }
     }
 
-    private val marking = mutableSetOf<String>()
-    private var failedMark: String? = null
+    // The cards with a change on its way to the server; a second tap on one waits for it.
+    private val changing = mutableSetOf<String>()
+    private var retryFailed: (() -> Unit)? = null
 
     /**
      * "Mark as watched" on a Continue watching card: the card goes at once and the server is told after.
@@ -373,44 +386,94 @@ class HomeViewModel(
      * instead, so no message.
      */
     fun onMarkWatched(cardId: String) {
+        takeCardOut(cardId, LoadMessages.MARK_WATCHED_FAILED, { onMarkWatched(cardId) }) { watch.setPlayed(cardId, played = true) }
+    }
+
+    /** "Remove from Continue watching": like [onMarkWatched], and once it is saved the message offers Undo. */
+    fun onRemoveFromContinueWatching(cardId: String) {
+        takeCardOut(cardId, LoadMessages.REMOVE_FROM_CONTINUE_FAILED, { onRemoveFromContinueWatching(cardId) }, removed = { removedCard.value = it }) { card ->
+            watch.removeFromContinueWatching(card.id, card.seriesId, card.resumePositionMs)
+        }
+    }
+
+    private fun takeCardOut(
+        cardId: String,
+        failure: String,
+        retry: () -> Unit,
+        removed: (RemovedCard) -> Unit = {},
+        save: suspend (ContinueCard) -> ApiResult<Unit>,
+    ) {
         val row = continueRow.value
         val index = row.cards.indexOfFirst { it.id == cardId }
-        if (index < 0 || !marking.add(cardId)) return
+        if (index < 0 || !changing.add(cardId)) return
         val card = row.cards[index]
         actionMessage.value = null
+        removedCard.value = null
         continueRow.value = row.copy(cards = row.cards - card)
         viewModelScope.launch {
-            val result = watch.setPlayed(cardId, played = true)
-            marking.remove(cardId)
-            if (result is ApiResult.Failure) {
-                continueRow.update { current ->
-                    if (current.cards.any { it.id == cardId }) {
-                        current
-                    } else {
-                        current.copy(cards = current.cards.toMutableList().apply { add(index.coerceAtMost(size), card) })
-                    }
-                }
-                if (result.error != ApiError.Unauthorized) {
-                    failedMark = cardId
-                    actionMessage.value = LoadMessages.MARK_WATCHED_FAILED
+            val result = save(card)
+            changing.remove(cardId)
+            when (result) {
+                is ApiResult.Success -> removed(RemovedCard(card, index))
+
+                is ApiResult.Failure -> {
+                    putCardBack(card, index)
+                    failed(result.error, failure, retry)
                 }
             }
         }
     }
 
-    /** "Try again" on the failure message: the mark that failed, or else the download that could not be asked for. */
+    private fun putCardBack(card: ContinueCard, index: Int) {
+        continueRow.update { current ->
+            if (current.cards.any { it.id == card.id }) {
+                current
+            } else {
+                current.copy(cards = current.cards.toMutableList().apply { add(index.coerceAtMost(size), card) })
+            }
+        }
+    }
+
+    private fun failed(error: ApiError, message: String, retry: () -> Unit) {
+        if (error == ApiError.Unauthorized) return
+        retryFailed = retry
+        actionMessage.value = message
+    }
+
+    private fun undoRemoval(removed: RemovedCard) {
+        val card = removed.card
+        if (!changing.add(card.id)) return
+        removedCard.value = null
+        putCardBack(card, removed.index)
+        viewModelScope.launch {
+            val result = watch.restoreToContinueWatching(card.id, card.seriesId, card.resumePositionMs)
+            changing.remove(card.id)
+            if (result is ApiResult.Failure) {
+                continueRow.update { current -> current.copy(cards = current.cards.filterNot { it.id == card.id }) }
+                failed(result.error, LoadMessages.RESTORE_TO_CONTINUE_FAILED) { undoRemoval(removed) }
+            }
+        }
+    }
+
+    /** The message's action: Undo a removal, or try again what failed, or else the download that could not be asked for. */
     fun onRetryAction() {
-        val card = failedMark
-        if (card == null) {
+        removedCard.value?.let {
+            undoRemoval(it)
+            return
+        }
+        val retry = retryFailed
+        if (retry == null) {
             if (downloadFlow.message.value != null) downloadFlow.retry()
             return
         }
-        failedMark = null
-        onMarkWatched(card)
+        retryFailed = null
+        retry()
     }
 
     fun onDismissMessage() {
         actionMessage.value = null
+        removedCard.value = null
+        retryFailed = null
         downloadFlow.dismissMessage()
     }
 

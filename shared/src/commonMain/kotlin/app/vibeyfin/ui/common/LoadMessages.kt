@@ -16,6 +16,8 @@ internal object LoadMessages {
     const val REMOVE_FROM_MY_LIST_FAILED = "Couldn't remove this from My List. Check your connection and try again."
     const val MARK_WATCHED_FAILED = "Couldn't mark this as watched. Check your connection and try again."
     const val MARK_UNWATCHED_FAILED = "Couldn't mark this as unwatched. Check your connection and try again."
+    const val REMOVE_FROM_CONTINUE_FAILED = "Couldn't remove this from Continue watching. Check your connection and try again."
+    const val RESTORE_TO_CONTINUE_FAILED = "Couldn't put this back in Continue watching. Check your connection and try again."
     const val DOWNLOAD_FORBIDDEN =
         "This account isn't allowed to download. Ask the server's admin to turn downloads on for it."
     const val DOWNLOAD_NO_SPACE = "There isn't enough space on this device. Remove a download or free some space, then try again."

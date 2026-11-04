@@ -368,3 +368,23 @@ class NotifiedItemEntity(
     val itemId: String,
     val notifiedAt: Long,
 )
+
+/** A show hidden from Next Up on this device, for this profile, while Next Up still names [episodeId]. The server can't hide one. */
+@Entity(
+    tableName = "dismissed_next_up",
+    primaryKeys = ["serverId", "userId", "seriesId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = AccountEntity::class,
+            parentColumns = ["serverId", "userId"],
+            childColumns = ["serverId", "userId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+)
+class DismissedNextUpEntity(
+    val serverId: String,
+    val userId: String,
+    val seriesId: String,
+    val episodeId: String,
+)

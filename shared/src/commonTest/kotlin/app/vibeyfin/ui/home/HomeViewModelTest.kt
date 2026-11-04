@@ -14,6 +14,7 @@ import app.vibeyfin.testing.itemsJson
 import app.vibeyfin.testing.itemsPage
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.PinReason
+import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.downloads.DownloadAction
 import app.vibeyfin.ui.downloads.actions
 import app.vibeyfin.ui.whoswatching.SignInMessages
@@ -31,6 +32,10 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.yield
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -321,6 +326,9 @@ class HomeViewModelTest {
         runtimeTicks = 40 * TICKS_PER_MINUTE,
     )
 
+    // The same episode as [halfWatched] with its position cleared, as Next Up names it.
+    private val notStartedEpisode = itemJson("e1", "Pilot", type = "Episode", seriesName = "Show", seriesId = "s1", seasonNumber = 2, episodeNumber = 5, runtimeTicks = 40 * TICKS_PER_MINUTE)
+
     private suspend fun HomeViewModel.loadedRow() = uiState.first { it.serverId != null && !it.continueRow.loading }.continueRow
 
     // Lets anything the ViewModel started run to its end. The fake server answers inline, so there is nothing to wait for in real time.
@@ -575,6 +583,160 @@ class HomeViewModelTest {
         val saved = viewModel.uiState.first { it.actionMessage == null && it.continueRow.cards.map { card -> card.id } == listOf("e9") }
 
         assertNull(saved.actionMessage)
+    }
+
+    @Test
+    fun removingACardInProgressClearsItsPositionAndStaysGoneWhenTheEpisodeIsNextUp() = runTest {
+        val server = signedIn()
+        server.libraries()
+        server.watching(resume = itemsJson(halfWatched), nextUp = itemsJson(nextEpisode))
+        server.on("POST", "/UserItems/e1/UserData", Reply.noContent())
+        val viewModel = viewModel()
+        viewModel.loadedRow()
+        // With its position at 0 the server names the same episode as next up.
+        server.watching(nextUp = itemsJson(notStartedEpisode, nextEpisode))
+
+        viewModel.onRemoveFromContinueWatching("e1")
+        val removed = viewModel.uiState.first { it.canUndo }
+
+        assertEquals(Strings.removedFromContinueWatching, removed.actionMessage)
+        assertEquals(Strings.undo, removed.actionLabel)
+        val body = app.jellyfin.awaitRequests("POST", "/UserItems/e1/UserData").single().body
+        assertEquals(0L, Json.parseToJsonElement(body).jsonObject.getValue("PlaybackPositionTicks").jsonPrimitive.long)
+        assertFalse("Played" in Json.parseToJsonElement(body).jsonObject, "the played state should be left alone")
+        assertTrue(app.jellyfin.requestsTo("DELETE", "/UserPlayedItems/e1").isEmpty())
+
+        viewModel.onRefresh()
+        settle()
+        assertEquals(listOf("e9"), viewModel.uiState.value.continueRow.cards.map { it.id })
+    }
+
+    @Test
+    fun undoPutsTheCardAndItsPositionBack() = runTest {
+        val server = signedIn()
+        server.libraries()
+        server.watching(resume = itemsJson(halfWatched), nextUp = itemsJson(nextEpisode))
+        server.on("POST", "/UserItems/e1/UserData", Reply.noContent())
+        val viewModel = viewModel()
+        viewModel.loadedRow()
+
+        viewModel.onRemoveFromContinueWatching("e1")
+        viewModel.uiState.first { it.canUndo }
+        viewModel.onRetryAction()
+        val back = viewModel.uiState.first { !it.canUndo && it.continueRow.cards.any { card -> card.id == "e1" } }
+
+        assertNull(back.actionMessage)
+        val bodies = app.jellyfin.awaitRequests("POST", "/UserItems/e1/UserData", 2).map { Json.parseToJsonElement(it.body).jsonObject.getValue("PlaybackPositionTicks").jsonPrimitive.long }
+        assertEquals(listOf(0L, 10 * TICKS_PER_MINUTE), bodies)
+    }
+
+    @Test
+    fun aRemovalThatCantBeSavedBringsTheCardBackAndCanBeTriedAgain() = runTest {
+        val server = signedIn()
+        server.libraries()
+        server.watching(resume = itemsJson(halfWatched), nextUp = itemsJson(nextEpisode))
+        server.on("POST", "/UserItems/e1/UserData", Reply.status(HttpStatusCode.ServiceUnavailable))
+        val viewModel = viewModel()
+        val states = mutableListOf<HomeUiState>()
+        backgroundScope.collectStates(states, viewModel)
+        viewModel.loadedRow()
+
+        viewModel.onRemoveFromContinueWatching("e1")
+        val failed = viewModel.uiState.first { it.actionMessage != null }
+
+        assertTrue(states.any { state -> state.continueRow.cards.map { it.id } == listOf("e9") }, "the card should have gone at once")
+        assertEquals(listOf("e1", "e9"), failed.continueRow.cards.map { it.id })
+        assertEquals(LoadMessages.REMOVE_FROM_CONTINUE_FAILED, failed.actionMessage)
+        assertEquals(Strings.tryAgain, failed.actionLabel)
+
+        server.on("POST", "/UserItems/e1/UserData", Reply.noContent())
+        server.watching(nextUp = itemsJson(nextEpisode))
+        viewModel.onRetryAction()
+
+        assertEquals(listOf("e9"), viewModel.uiState.first { it.canUndo }.continueRow.cards.map { it.id })
+    }
+
+    @Test
+    fun anUndoThatCantBeSavedTakesTheCardOutAgainWithAMessage() = runTest {
+        val server = signedIn()
+        server.libraries()
+        server.watching(resume = itemsJson(halfWatched))
+        server.on("POST", "/UserItems/e1/UserData", Reply.noContent())
+        val viewModel = viewModel()
+        viewModel.loadedRow()
+        viewModel.onRemoveFromContinueWatching("e1")
+        viewModel.uiState.first { it.canUndo }
+
+        server.on("POST", "/UserItems/e1/UserData", Reply.status(HttpStatusCode.ServiceUnavailable))
+        viewModel.onRetryAction()
+        val failed = viewModel.uiState.first { it.actionMessage == LoadMessages.RESTORE_TO_CONTINUE_FAILED }
+
+        assertFalse(failed.canUndo)
+        assertTrue(failed.continueRow.cards.none { it.id == "e1" })
+    }
+
+    @Test
+    fun aRejectedTokenWhileRemovingEndsTheSessionWithoutAMessage() = runTest {
+        val server = signedIn()
+        server.libraries()
+        server.watching(resume = itemsJson(halfWatched))
+        server.on("POST", "/UserItems/e1/UserData", Reply.status(HttpStatusCode.Unauthorized))
+        val viewModel = viewModel()
+        viewModel.loadedRow()
+
+        viewModel.onRemoveFromContinueWatching("e1")
+        val state = viewModel.uiState.first { it.exit != null }
+
+        assertNull(state.actionMessage)
+        assertFalse(state.canUndo)
+    }
+
+    @Test
+    fun aNextUpCardIsHiddenOnTheDeviceAndComesBackWhenNextUpMovesOn() = runTest {
+        val server = signedIn()
+        server.libraries()
+        server.watching(nextUp = itemsJson(nextEpisode))
+        val viewModel = viewModel()
+        viewModel.loadedRow()
+
+        viewModel.onRemoveFromContinueWatching("e9")
+        viewModel.uiState.first { it.canUndo }
+        settle()
+
+        assertTrue(app.jellyfin.requestsTo("POST", "/UserItems/e9/UserData").isEmpty(), "the server should not be changed")
+        viewModel.onRefresh()
+        settle()
+        assertTrue(viewModel.uiState.value.continueRow.cards.isEmpty())
+
+        val later = itemJson("e10", "Second", type = "Episode", seriesName = "Other", seriesId = "s2", seasonNumber = 1, episodeNumber = 2, runtimeTicks = 40 * TICKS_PER_MINUTE)
+        server.watching(nextUp = itemsJson(later))
+        viewModel.onRefresh()
+        settle()
+        assertEquals(listOf("e10"), viewModel.uiState.value.continueRow.cards.map { it.id })
+
+        // Next Up having moved on, the old episode is no longer hidden if it is ever named again.
+        server.watching(nextUp = itemsJson(nextEpisode))
+        viewModel.onRefresh()
+        settle()
+        assertEquals(listOf("e9"), viewModel.uiState.value.continueRow.cards.map { it.id })
+    }
+
+    @Test
+    fun undoOnANextUpCardShowsItAgain() = runTest {
+        val server = signedIn()
+        server.libraries()
+        server.watching(nextUp = itemsJson(nextEpisode))
+        val viewModel = viewModel()
+        viewModel.loadedRow()
+
+        viewModel.onRemoveFromContinueWatching("e9")
+        viewModel.uiState.first { it.canUndo }
+        viewModel.onRetryAction()
+        settle()
+        viewModel.onRefresh()
+        settle()
+
+        assertEquals(listOf("e9"), viewModel.uiState.value.continueRow.cards.map { it.id })
     }
 
     @Test

@@ -34,14 +34,14 @@ suspend fun JellyfinApi.nextUp(userId: String, limit: Int): ApiResult<ItemsResul
  * `GET /Shows/NextUp?seriesId=`: the episode of one show to watch next, a half-watched one included
  * (`enableResumable=true`), or none when the show was never started or is finished.
  */
-suspend fun JellyfinApi.nextUpOf(userId: String, seriesId: String): ApiResult<ItemsResultDto> = get(
+suspend fun JellyfinApi.nextUpOf(userId: String, seriesId: String, resumable: Boolean = true): ApiResult<ItemsResultDto> = get(
     "/Shows/NextUp",
     mapOf(
         "userId" to userId,
         "seriesId" to seriesId,
         "limit" to "1",
         "fields" to "Overview",
-        "enableResumable" to "true",
+        "enableResumable" to resumable.toString(),
         "enableRewatching" to "false",
     ),
     retry = true,

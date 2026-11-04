@@ -176,6 +176,15 @@ abstract class AccountDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     abstract suspend fun insertNotified(entity: NotifiedItemEntity): Long
 
+    @Query("SELECT * FROM dismissed_next_up WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun dismissedNextUp(serverId: String, userId: String): List<DismissedNextUpEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun dismissNextUp(entity: DismissedNextUpEntity)
+
+    @Query("DELETE FROM dismissed_next_up WHERE serverId = :serverId AND userId = :userId AND seriesId = :seriesId")
+    abstract suspend fun forgetDismissedNextUp(serverId: String, userId: String, seriesId: String)
+
     /** Forgets everything notified for the profile, so its next poll is a first poll again. */
     @Query("DELETE FROM notified_items WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun clearNotified(serverId: String, userId: String)

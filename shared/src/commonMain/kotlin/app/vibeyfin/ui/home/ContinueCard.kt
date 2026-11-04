@@ -24,6 +24,10 @@ data class ContinueCard(
     val progress: Float?,
     /** What a screen reader says: "{title}, {year or episode}, {n}% watched". */
     val accessibilityLabel: String,
+    /** An episode's show: "Remove" hides it from Next Up. */
+    val seriesId: String? = null,
+    /** Where the user stopped, 0 for a Next Up card: "Remove" clears it and "Undo" puts it back. */
+    val resumePositionMs: Long = 0,
 )
 
 /** The Continue watching row on Home. It is not drawn at all when there is nothing to show or say. */
@@ -62,5 +66,7 @@ internal fun MediaItem.toContinueCard(): ContinueCard {
         imageBlurHash = landscapeBlurHash,
         progress = progress,
         accessibilityLabel = Strings.continueCardLabel(title, label ?: year?.toString(), percent),
+        seriesId = seriesId,
+        resumePositionMs = resumePositionMs,
     )
 }

@@ -298,6 +298,9 @@ object Strings {
     val markSeriesUnwatched = "Mark series as unwatched"
     val markWatched = "Mark as watched"
     val markUnwatched = "Mark as unwatched"
+    val removeFromContinueWatching = "Remove from Continue watching"
+    val removedFromContinueWatching = "Removed from Continue watching"
+    val undo = "Undo"
     val details = "Details"
 
     /** In an item's facts, once the server says the user has watched it. */
