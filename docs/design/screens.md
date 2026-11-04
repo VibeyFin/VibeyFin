@@ -117,6 +117,12 @@ A boxset opens its own page: a header with the collection's picture and name (th
 Movies and Shows rows. On a tablet the header is wide (21:9) with the details in a left column. As on a title's page, the picture stays
 put while the page scrolls: the text goes up over it, it darkens, and the rows below cover it.
 
+## Continue watching menu
+
+A long press or the "…" on a Continue watching card opens its options: a bottom sheet on Android, a native context menu (and the same `Menu` behind the "…") on iOS. Rows, in order: **Details**, **Mark as watched**, **Remove from Continue watching** and **Download** (when the server lets the user). Mockup: `ContinueCardMenu`.
+
+- **Remove** is for what the user gave up on. It has the plain row style, asks nothing, and the card leaves the row as the menu closes; the last card takes the row with it. Once saved, "Removed from Continue watching" shows with **Undo** for a few seconds, which puts the card back where it was with its progress. A removal that fails puts the card back and says so, with **Try again**. Mark as watched is unchanged. Kids profiles have it too; offline the card has no menu.
+
 ## Poster menu
 
 A long press on any poster, in a row, a grid or search results, or on a Home hero card, opens a short menu: a bottom sheet on Android, a native context menu on iOS:
