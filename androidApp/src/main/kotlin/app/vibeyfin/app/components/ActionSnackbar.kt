@@ -14,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 
@@ -44,7 +45,11 @@ fun BoxScope.ActionSnackbar(
 
     SnackbarHost(
         hostState = host,
-        modifier = Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(VibeyFinTokens.Space.s2),
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .safeDrawingPadding()
+            .padding(bottom = LocalBottomBarPadding.current)
+            .padding(VibeyFinTokens.Space.s2),
     ) { data ->
         // Aqua is for the primary action and progress, so the action is plain text
         Snackbar(data, actionColor = MaterialTheme.colorScheme.inverseOnSurface)

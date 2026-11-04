@@ -56,6 +56,7 @@ struct HomeView: View {
                                 onPlay: { player.play($0) },
                                 onDetails: onDetails,
                                 onMarkWatched: { model.markWatched($0) },
+                                onRemove: { model.removeFromContinueWatching($0) },
                                 onRetry: { model.retryContinue() },
                                 downloads: state.downloads,
                                 canDownload: state.canDownload,
@@ -108,6 +109,7 @@ struct HomeView: View {
         }
         .failureBanner(
             model.state?.actionMessage,
+            actionLabel: model.state?.actionLabel,
             onRetry: { model.retryAction() },
             onDismiss: { model.dismissMessage() }
         )

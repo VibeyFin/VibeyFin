@@ -26,12 +26,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -151,6 +153,7 @@ fun HomeRoute(
         onHeroMyList = viewModel::onHeroMyList,
         onHeroPlay = viewModel::onHeroPlay,
         onMarkWatched = viewModel::onMarkWatched,
+        onRemoveFromContinueWatching = viewModel::onRemoveFromContinueWatching,
         onDownload = viewModel::onDownload,
         onDownloadAction = viewModel::onDownloadAction,
         onConfirmRemove = viewModel::onConfirmRemove,
@@ -191,6 +194,7 @@ fun HomeScreen(
     onHeroMyList: (String) -> Unit,
     onHeroPlay: (String) -> Unit,
     onMarkWatched: (String) -> Unit,
+    onRemoveFromContinueWatching: (String) -> Unit,
     onDownload: (String) -> Unit,
     onDownloadAction: (String, DownloadAction) -> Unit,
     onConfirmRemove: () -> Unit,
@@ -234,7 +238,13 @@ fun HomeScreen(
         }
 
         Box(Modifier.fillMaxSize()) {
-            ActionSnackbar(state.actionMessage, onRetry = onRetryAction, onDismiss = onDismissMessage)
+            ActionSnackbar(
+                state.actionMessage,
+                onRetry = onRetryAction,
+                onDismiss = onDismissMessage,
+                actionLabel = state.actionLabel,
+                duration = if (state.canUndo) SnackbarDuration.Short else SnackbarDuration.Long,
+            )
         }
     }
 
@@ -254,6 +264,12 @@ fun HomeScreen(
                     menuCard = null
 
                     onMarkWatched(card.id)
+                }
+
+                SheetAction(Strings.removeFromContinueWatching, Icons.Default.Close) {
+                    menuCard = null
+
+                    onRemoveFromContinueWatching(card.id)
                 }
 
                 // Download without opening the page: a movie or an episode goes into the queue; once there is one, a tap opens its actions

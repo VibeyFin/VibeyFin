@@ -42,6 +42,10 @@ final class HomeObservable: ObservableObject {
         model.onMarkWatched(cardId: cardId)
     }
 
+    func removeFromContinueWatching(_ cardId: String) {
+        model.onRemoveFromContinueWatching(cardId: cardId)
+    }
+
     func download(_ cardId: String) { model.onDownload(cardId: cardId) }
 
     func act(_ cardId: String, _ action: DownloadAction) { model.onDownloadAction(cardId: cardId, action: action) }

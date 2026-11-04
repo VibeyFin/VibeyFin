@@ -11,6 +11,7 @@ struct ContinueCardTile: View {
     let onPlay: () -> Void
     let onDetails: () -> Void
     let onMarkWatched: () -> Void
+    var onRemove: () -> Void = {}
     /// Offline there is no page to open and nothing to send, so the card has no menu.
     var showsMenu = true
     /// The card's own download, if any, and whether the user may start one: the menu offers Download without opening the page.
@@ -53,13 +54,7 @@ struct ContinueCardTile: View {
                 .accessibilityHidden(true)
                 if showsMenu {
                     Menu {
-                        Button(action: onDetails) {
-                            Label(Strings.shared.details.titleCased(), systemImage: "info.circle")
-                        }
-                        Button(action: onMarkWatched) {
-                            Label(Strings.shared.markWatched.titleCased(), systemImage: "checkmark.circle")
-                        }
-                        downloadItems
+                        menuRows
                     } label: {
                         Image(systemName: "ellipsis")
                             .font(.subheadline)
@@ -74,15 +69,24 @@ struct ContinueCardTile: View {
         // Long press on the picture: the same actions as the "…".
         .contextMenu {
             if showsMenu {
-                Button(action: onDetails) {
-                    Label(Strings.shared.details.titleCased(), systemImage: "info.circle")
-                }
-                Button(action: onMarkWatched) {
-                    Label(Strings.shared.markWatched.titleCased(), systemImage: "checkmark.circle")
-                }
-                downloadItems
+                menuRows
             }
         }
+    }
+
+    /// The card's options, the same behind the "…" and on a long press.
+    @ViewBuilder
+    private var menuRows: some View {
+        Button(action: onDetails) {
+            Label(Strings.shared.details.titleCased(), systemImage: "info.circle")
+        }
+        Button(action: onMarkWatched) {
+            Label(Strings.shared.markWatched.titleCased(), systemImage: "checkmark.circle")
+        }
+        Button(action: onRemove) {
+            Label(Strings.shared.removeFromContinueWatching.titleCased(), systemImage: "xmark.circle")
+        }
+        downloadItems
     }
 
     /// Download: start it, or pause, resume or remove what is there (the same entries as an episode's menu).
@@ -133,6 +137,7 @@ struct ContinueRowView: View {
     let onPlay: (String) -> Void
     let onDetails: (String) -> Void
     let onMarkWatched: (String) -> Void
+    var onRemove: (String) -> Void = { _ in }
     let onRetry: () -> Void
     var showsMenu = true
     var downloads: [String: Download] = [:]
@@ -166,6 +171,7 @@ struct ContinueRowView: View {
                                 onPlay: { onPlay(card.id) },
                                 onDetails: { onDetails(card.id) },
                                 onMarkWatched: { onMarkWatched(card.id) },
+                                onRemove: { onRemove(card.id) },
                                 showsMenu: showsMenu,
                                 download: downloads[card.id],
                                 canDownload: canDownload,
