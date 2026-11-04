@@ -394,6 +394,7 @@ internal fun BaseItemDto.toSnapshot(baseUrl: String): OfflineSnapshot {
     }
     val source = mediaSources.firstOrNull()
     val tracks = source?.tracks(baseUrl)
+    val video = source?.mediaStreams.orEmpty().firstOrNull { it.type == "Video" }
     // The item lists a subtitle file next to the video without a delivery path (that comes with playback), so its route is built here.
     val subtitleSources = source?.mediaStreams.orEmpty().filter { it.type == "Subtitle" && it.isExternal }.mapNotNull { stream ->
         val (extension, mimeType) = when (stream.codec?.lowercase()) {
@@ -412,7 +413,9 @@ internal fun BaseItemDto.toSnapshot(baseUrl: String): OfflineSnapshot {
         subtitleTracks = tracks?.subtitles.orEmpty(),
         // Nothing to fetch for an item with no pictures and no subtitle files.
         assetsDone = sources.isEmpty() && subtitleSources.isEmpty(),
-        videoCodec = source?.mediaStreams.orEmpty().firstOrNull { it.type == "Video" }?.codec?.lowercase(),
+        videoCodec = video?.codec?.lowercase(),
+        videoLevel = video?.level?.toInt(),
+        videoBitDepth = video?.bitDepth,
         tracksDescribed = true,
     )
 }

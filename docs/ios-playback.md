@@ -23,7 +23,7 @@ The stats overlay shows the method, the engine and the codecs. Five taps on the 
 
 ## Downloads
 
-A download is kept exactly as the server sent it (`GET /Items/{id}/Download`); nothing is converted on the device. When it is played, `OfflineLibrary.playable` makes the plan with the same rule as streaming, without the server: the first engine whose lists include the file's container, its video codec and every audio codec (AVPlayer, then Aether). A file no engine lists goes to the last engine, Aether, which tries it.
+A download is kept exactly as the server sent it (`GET /Items/{id}/Download`); nothing is converted on the device. When it is played, `OfflineLibrary.playable` makes the plan with the same rule as streaming, without the server: the first engine whose lists include the file's container, its video codec and every audio codec (AVPlayer, then Aether), and whose limits the video is within: the same level and bit depth limits streaming sends to the server (`VIDEO_LIMITS`). The download saves the video's level and bit depth for this. A download saved before that has none, and is judged by its codec alone. A file no engine lists goes to the last engine, Aether, which tries it.
 
 - A download is refused before it is fetched when no engine lists its video codec (`IosPlayableVideo`, `DownloadFailure.Unplayable`).
 - Offline there is no server to fall back to: a file the chosen engine cannot open ends in the playback error.

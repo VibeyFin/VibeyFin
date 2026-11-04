@@ -63,15 +63,16 @@ class OfflineLibrary(
     }
 
     // The first player that opens the stored file, in the order the platform lists them (AVPlayer before Aether). The file is as the
-    // server sent it, so its container is the one in its name and its codecs are the ones the item lists; a file no player lists goes
-    // to the last, the widest, which tries it and fails the normal way.
+    // server sent it, so its container is the one in its name and its codecs, level and bit depth are the ones saved with it, held to
+    // the same limits streaming states to the server; a file no player lists goes to the last, the widest, which tries it.
     private fun engineFor(path: String, snapshot: OfflineSnapshot): PlaybackEngineChoice {
         val container = path.substringAfterLast('.', "").lowercase()
         val video = snapshot.videoCodec
         val audio = snapshot.audioTracks.mapNotNull { it.codec?.lowercase() }
         val players = capabilities.candidates()
         val opens = players.firstOrNull { (_, can) ->
-            container in can.containers && (video == null || video in can.videoCodecs) && audio.all { it in can.audioCodecs }
+            container in can.containers && audio.all { it in can.audioCodecs } &&
+                (video == null || (video in can.videoCodecs && withinVideoLimits(video, snapshot.videoLevel, snapshot.videoBitDepth)))
         }
         return (opens ?: players.last()).engine
     }

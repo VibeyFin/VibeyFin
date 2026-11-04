@@ -76,6 +76,44 @@ class OfflineLibraryTest {
         assertEquals(PlaybackEngineChoice.Aether, assertNotNull(library.playable(alex, "m1")).plan.engine)
     }
 
+    // The same limits streaming states to the server: a 10-bit H.264 file in an MP4 is one the phone's decoder gives up on.
+    private suspend fun twoPlayers() {
+        account()
+        app.capabilities.engines = listOf(EngineCapabilities(PlaybackEngineChoice.Native, avPlayer), EngineCapabilities(PlaybackEngineChoice.Aether, aether))
+    }
+
+    @Test
+    fun aTenBitH264FileAVPlayerListsStillGoesToTheOtherPlayer() = runTest {
+        twoPlayers()
+        app.downloaded("m1", extension = "mp4", videoCodec = "h264", videoLevel = 41, videoBitDepth = 10)
+
+        assertEquals(PlaybackEngineChoice.Aether, assertNotNull(library.playable(alex, "m1")).plan.engine)
+    }
+
+    @Test
+    fun anH264FileAboveTheLevelLimitGoesToTheOtherPlayer() = runTest {
+        twoPlayers()
+        app.downloaded("m1", extension = "mp4", videoCodec = "h264", videoLevel = 60, videoBitDepth = 8)
+
+        assertEquals(PlaybackEngineChoice.Aether, assertNotNull(library.playable(alex, "m1")).plan.engine)
+    }
+
+    @Test
+    fun anEightBitH264FileWithinTheLimitsStaysInAVPlayer() = runTest {
+        twoPlayers()
+        app.downloaded("m1", extension = "mp4", videoCodec = "h264", videoLevel = 41, videoBitDepth = 8)
+
+        assertEquals(PlaybackEngineChoice.Native, assertNotNull(library.playable(alex, "m1")).plan.engine)
+    }
+
+    @Test
+    fun aFileThatDoesNotSayItsLevelOrDepthIsJudgedByItsCodecAlone() = runTest {
+        twoPlayers()
+        app.downloaded("m1", extension = "mp4", videoCodec = "h264")
+
+        assertEquals(PlaybackEngineChoice.Native, assertNotNull(library.playable(alex, "m1")).plan.engine)
+    }
+
     @Test
     fun aDownloadStartsWithTheTracksTheLanguagePreferencesPick() = runTest {
         account()

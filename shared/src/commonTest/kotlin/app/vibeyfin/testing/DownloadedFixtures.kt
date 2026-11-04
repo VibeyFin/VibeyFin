@@ -32,6 +32,11 @@ suspend fun TestApp.downloaded(
     userDataAt: Long = 1_000,
     /** The tracks carry their languages and flags, as a download saved by this build does. */
     described: Boolean = false,
+    /** The container the file is in, and what the server said of its video, as the download saved them. */
+    extension: String = "mkv",
+    videoCodec: String? = null,
+    videoLevel: Int? = null,
+    videoBitDepth: Int? = null,
 ): String {
     val folder = "srv-1/u1/$id"
     val kind = if (type == "Movie") ItemKind.Movie else ItemKind.Episode
@@ -50,16 +55,19 @@ suspend fun TestApp.downloaded(
         subtitles = if (subtitle) listOf(OfflineSubtitle(3, "$folder/subs/3.srt", "application/x-subrip", "eng", "English")) else emptyList(),
         assetsDone = true,
         tracksDescribed = described,
+        videoCodec = videoCodec,
+        videoLevel = videoLevel,
+        videoBitDepth = videoBitDepth,
     )
     if (withFile) {
-        files.contents["$folder/video.mkv"] = StringBuilder("video")
+        files.contents["$folder/video.$extension"] = StringBuilder("video")
         files.contents["$folder/images/poster.img"] = StringBuilder("p")
         if (subtitle) files.contents["$folder/subs/3.srt"] = StringBuilder("1\n")
     }
     downloads.upsert(
         DownloadEntity(
             serverId = "srv-1", userId = "u1", itemId = id, kind = kind.name, seriesId = seriesId, seasonId = null, state = state,
-            bytesDone = 5, bytesTotal = 5, mediaSourceId = "ms-$id", container = "mkv", etag = null, filePath = "$folder/video.mkv", error = null,
+            bytesDone = 5, bytesTotal = 5, mediaSourceId = "ms-$id", container = extension, etag = null, filePath = "$folder/video.$extension", error = null,
             addedAt = 10, updatedAt = 10, completedAt = 10,
         ),
     )

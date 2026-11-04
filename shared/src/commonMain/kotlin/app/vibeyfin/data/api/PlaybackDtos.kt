@@ -151,6 +151,8 @@ data class MediaStreamDto(
     @SerialName("BitRate") val bitRate: Int? = null,
     @SerialName("RealFrameRate") val realFrameRate: Float? = null,
     @SerialName("BitDepth") val bitDepth: Int? = null,
+    /** For video: the codec level as the server counts it (H.264 level 4.1 is 41). */
+    @SerialName("Level") val level: Double? = null,
 )
 
 /** The body of `POST /Sessions/Playing`. */

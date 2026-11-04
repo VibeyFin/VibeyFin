@@ -153,6 +153,16 @@ class DownloadRepositoryTest {
     }
 
     @Test
+    fun theSavedCopyKeepsWhatTheServerSaidOfTheVideoSoTheRightPlayerCanBeChosenOffline() = runTest {
+        saga()
+
+        repository.enqueue(alex, plan(DownloadTarget.Item("m1")))
+
+        val snapshot = OfflineSnapshot.decode(app.downloads.findItem("srv-1", "u1", "m1")!!.snapshotJson)
+        assertEquals(Triple("h264", 41, 8), Triple(snapshot.videoCodec, snapshot.videoLevel, snapshot.videoBitDepth))
+    }
+
+    @Test
     fun aSavedCopyThatHasItsPicturesIsNotReplacedWhenRequeued() = runTest {
         saga()
         repository.enqueue(alex, plan(DownloadTarget.Item("m1")))
