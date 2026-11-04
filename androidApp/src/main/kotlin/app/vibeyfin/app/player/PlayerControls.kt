@@ -1,11 +1,13 @@
 package app.vibeyfin.app.player
 
+import android.os.SystemClock
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +45,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -101,11 +104,13 @@ fun PlayerControls(
     /** The episode after this one ("S1 E2  ·  Northbound"), read with the Next episode button; null hides the button. */
     nextEpisode: String? = null,
     onNextEpisode: () -> Unit = {},
+    /** Five quick taps on the title: the playback stats are switched on or off. */
+    onToggleStats: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxSize()) {
         TopBar(
-            title, subtitle, hasTrackChoices, badge, speedLabel, nextEpisode, onClose, onNextEpisode, onTracks, onSpeed, onPip,
+            title, subtitle, hasTrackChoices, badge, speedLabel, nextEpisode, onClose, onNextEpisode, onTracks, onSpeed, onPip, onToggleStats,
             Modifier.align(Alignment.TopStart),
         )
 
@@ -153,6 +158,7 @@ private fun TopBar(
     onTracks: () -> Unit,
     onSpeed: () -> Unit,
     onPip: (() -> Unit)?,
+    onToggleStats: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -170,7 +176,7 @@ private fun TopBar(
     ) {
         BackButton(onClick = onClose)
         Spacer(Modifier.width(VibeyFinTokens.Space.s3))
-        Column(Modifier.weight(1f)) {
+        Column(Modifier.weight(1f).onRepeatedTaps(STATS_TAPS, onToggleStats)) {
             if (title.isNotEmpty()) {
                 Text(
                     text = title,
@@ -302,6 +308,23 @@ private fun TransportSkipButton(icon: Int, seconds: Int, description: String, fo
             color = VibeyFinTokens.Colors.ink,
             modifier = Modifier.padding(top = 3.dp).clearAndSetSemantics { },
         )
+    }
+}
+
+private const val STATS_TAPS = 5
+private const val TAP_GAP_MS = 500L
+
+private fun Modifier.onRepeatedTaps(count: Int, onTaps: () -> Unit): Modifier = pointerInput(onTaps) {
+    var taps = 0
+    var last = 0L
+    detectTapGestures {
+        val now = SystemClock.uptimeMillis()
+        taps = if (now - last > TAP_GAP_MS) 1 else taps + 1
+        last = now
+        if (taps == count) {
+            taps = 0
+            onTaps()
+        }
     }
 }
 

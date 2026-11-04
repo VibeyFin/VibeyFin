@@ -151,6 +151,10 @@ private fun ControlsLayer(
                 viewModel.onUserInteraction()
                 viewModel.onPlayNow()
             },
+            onToggleStats = {
+                touched()
+                viewModel.onToggleDiagnostics()
+            },
             onClose = onClose,
             onTracks = {
                 viewModel.onUserInteraction()

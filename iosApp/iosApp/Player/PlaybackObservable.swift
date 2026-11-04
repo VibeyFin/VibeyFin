@@ -27,6 +27,10 @@ final class PlaybackObservable: ObservableObject {
         }
     }
 
+    func toggleStats() {
+        model.onToggleDiagnostics()
+    }
+
     func playing(_ positionMs: Int64) {
         model.onPlaying(positionMs: positionMs)
     }

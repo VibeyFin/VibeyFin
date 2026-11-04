@@ -657,6 +657,10 @@ class PlaybackViewModel(
         }
     }
 
+    fun onToggleDiagnostics() {
+        viewModelScope.launch { profileSettings.setShowPlaybackStats(!uiState.value.showDiagnostics) }
+    }
+
     fun onRetry() {
         // A transcode that was needed still is after a lost connection; after any other failure start afresh.
         if (!lostConnection) transcodeOnly = false

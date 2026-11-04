@@ -66,6 +66,8 @@ class PlaybackModel(itemId: String, startOver: Boolean) {
 
     fun diagnostics(live: LiveDiagnostics) = host.viewModel.onDiagnostics(live)
 
+    fun onToggleDiagnostics() = host.viewModel.onToggleDiagnostics()
+
     fun onRetry() = host.viewModel.onRetry()
 
     fun close() = host.close()

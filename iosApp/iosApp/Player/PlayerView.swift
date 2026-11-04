@@ -21,8 +21,6 @@ struct PlayerView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var controlsVisible = true
-    /// Five taps on the title flip the playback stats from what the profile's setting says.
-    @State private var statsFlipped = false
     /// The second under the finger while the scrubber is dragged.
     @State private var scrubPosition: TimeInterval?
     @State private var hideTask: Task<Void, Never>?
@@ -207,7 +205,6 @@ struct PlayerView: View {
             )
             pip.allow(state?.pictureInPicture != false)
         }
-        .onChange(of: statsFlipped) { _, _ in controller.wantDiagnostics(showsStats) }
         // Over AirPlay the controls are the whole screen, so they stay up until it stops.
         .onChange(of: controller.isExternalPlayback) { _, active in
             if active {
@@ -317,7 +314,7 @@ struct PlayerView: View {
     }
 
     private var showsStats: Bool {
-        (state?.showDiagnostics == true) != statsFlipped
+        state?.showDiagnostics == true
     }
 
     private var topBar: some View {
@@ -330,7 +327,6 @@ struct PlayerView: View {
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                         .contentShape(Rectangle())
-                        .onTapGesture(count: 5) { statsFlipped.toggle() }
                 }
                 if !metaLine.isEmpty {
                     Text(metaLine)
@@ -340,6 +336,7 @@ struct PlayerView: View {
                 }
             }
             .padding(.top, Space.s1)
+            .onTapGesture(count: 5) { model.toggleStats() }
             Spacer(minLength: 0)
             PlayerControlCluster {
                 // Episodes with a next one only; gives way to the up next card, which has its own Play Now.
