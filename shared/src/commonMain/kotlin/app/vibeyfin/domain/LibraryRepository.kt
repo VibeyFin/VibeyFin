@@ -396,7 +396,7 @@ private fun List<BaseItemDto>.toOptions(kind: GenreKind): List<FilterOption> = m
 }.sortedBy { it.name.lowercase() }
 
 // "S1 E4"; null when the server sent neither number.
-private fun episodeCode(season: Int?, episode: Int?): String? = when {
+internal fun episodeCode(season: Int?, episode: Int?): String? = when {
     season != null && episode != null -> "S$season E$episode"
     episode != null -> "E$episode"
     else -> null

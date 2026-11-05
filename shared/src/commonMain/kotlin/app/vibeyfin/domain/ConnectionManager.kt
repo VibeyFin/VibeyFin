@@ -137,7 +137,7 @@ class ConnectionManager(
 
     /**
      * Runs [block] as the signed-in account, or returns [notSignedIn] when nobody is. A call in [block]
-     * that the server rejects (HTTP 401) is routed to [expireSession] like any other.
+     * that the server rejects (HTTP 401) is handled by the API client's rejection hook, like any other call.
      */
     inline fun <T> asAccount(notSignedIn: T, block: (Account) -> T): T = asConnected(notSignedIn) { block(it.account) }
 

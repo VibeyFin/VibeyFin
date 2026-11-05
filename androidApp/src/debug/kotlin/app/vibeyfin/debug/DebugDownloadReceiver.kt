@@ -15,7 +15,7 @@ import app.vibeyfin.domain.DownloadTarget
 import app.vibeyfin.domain.ResolveResult
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.ServerResolver
-import app.vibeyfin.domain.model.ProfileRef
+import app.vibeyfin.domain.profileOrNull
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -72,13 +72,12 @@ class DebugDownloadReceiver : BroadcastReceiver() {
             koin.get<DevicePreferences>().lastProfile.first()?.let { connection.resume(it.serverId, it.userId) }
         }
 
-        val connected = connection.state.value as? ConnectionState.Connected
+        val profile = connection.state.value.profileOrNull()
             ?: run {
                 Log.e(TAG, "nobody is signed in")
 
                 return
             }
-        val profile = ProfileRef(connected.server.id, connected.account.userId)
         val repository = koin.get<DownloadRepository>()
         val item = intent.getStringExtra("item")
 
