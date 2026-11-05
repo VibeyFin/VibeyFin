@@ -88,10 +88,7 @@ class LanguagePreferences(
      * The languages the server knows, sorted by name, one entry per language. Empty when they can't be read; the screens then
      * fall back to the codes.
      */
-    suspend fun languages(): List<Language> {
-        val connected = connection.state.value as? ConnectionState.Connected ?: return emptyList()
-        return connected.api.cultures().valueOrNull().orEmpty().toLanguages()
-    }
+    suspend fun languages(): List<Language> = connection.asConnected(emptyList()) { it.api.cultures().valueOrNull().orEmpty().toLanguages() }
 
     /** Null is no preference. */
     suspend fun setAudioLanguage(code: String?) = update { it.copy(audioLanguage = code?.ifBlank { null }) }
@@ -105,31 +102,30 @@ class LanguagePreferences(
 
     // Reads the configuration, applies [change] to our keys only, and writes all of it back. Returns what was saved.
     private suspend fun update(change: (LanguagePrefs) -> LanguagePrefs): ApiResult<LanguagePrefs> {
-        val connected = connection.state.value as? ConnectionState.Connected ?: return ApiResult.Failure(ApiError.Unauthorized)
-        val (userId, config) = when (val read = configuration()) {
-            is ApiResult.Success -> read.value
-            is ApiResult.Failure -> return read
-        }
-        val before = config.toPrefs()
-        val prefs = change(before)
-        return when (val written = connected.api.updateUserConfiguration(userId, config.with(prefs, before))) {
-            is ApiResult.Success -> ApiResult.Success(prefs.also { keep(it) })
-            is ApiResult.Failure -> written
+        return connection.asConnected<ApiResult<LanguagePrefs>>(ApiResult.Failure(ApiError.Unauthorized)) { connected ->
+            val (userId, config) = when (val read = configuration()) {
+                is ApiResult.Success -> read.value
+                is ApiResult.Failure -> return@asConnected read
+            }
+            val before = config.toPrefs()
+            val prefs = change(before)
+            when (val written = connected.api.updateUserConfiguration(userId, config.with(prefs, before))) {
+                is ApiResult.Success -> ApiResult.Success(prefs.also { keep(it) })
+                is ApiResult.Failure -> written
+            }
         }
     }
 
     // Keeps [prefs] as the signed-in profile's copy on the device.
     private suspend fun keep(prefs: LanguagePrefs) {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        keep(ProfileRef(account.serverId, account.userId), prefs)
+        connection.asAccount(Unit) { keep(ProfileRef(it.serverId, it.userId), prefs) }
     }
 
     private suspend fun keep(profile: ProfileRef, prefs: LanguagePrefs) = dao.setLanguagePrefs(profile.serverId, profile.userId, JSON.encodeToString(LanguagePrefs.serializer(), prefs))
 
     // The signed-in user's id and whole configuration.
-    private suspend fun configuration(): ApiResult<Pair<String, JsonObject>> {
-        val connected = connection.state.value as? ConnectionState.Connected ?: return ApiResult.Failure(ApiError.Unauthorized)
-        return when (val me = connected.api.me()) {
+    private suspend fun configuration(): ApiResult<Pair<String, JsonObject>> = connection.asConnected<ApiResult<Pair<String, JsonObject>>>(ApiResult.Failure(ApiError.Unauthorized)) { connected ->
+        when (val me = connected.api.me()) {
             // A signed-in user always has one; without it there would be nothing to write back whole.
             is ApiResult.Success -> me.value.configuration?.let { ApiResult.Success(me.value.id to it) } ?: ApiResult.Failure(ApiError.BadResponse)
 

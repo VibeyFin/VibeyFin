@@ -18,10 +18,10 @@ import app.vibeyfin.domain.model.SearchResult
 import app.vibeyfin.domain.model.SeerrMediaType
 import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.domain.model.notInLibrary
+import app.vibeyfin.domain.profileOrNull
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
-import app.vibeyfin.ui.downloads.profileOrNull
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.seerr.SeerrMessages
 import kotlinx.coroutines.Job

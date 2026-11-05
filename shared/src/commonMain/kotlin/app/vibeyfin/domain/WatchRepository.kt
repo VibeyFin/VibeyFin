@@ -33,7 +33,7 @@ class WatchRepository(private val connection: ConnectionManager, private val cha
      * out of Next Up until Next Up names another of its episodes.
      */
     suspend fun continueWatching(): ApiResult<List<MediaItem>> = call { api, userId ->
-        val serverId = connected()?.server?.id ?: return@call ApiResult.Failure(ApiError.Unauthorized)
+        val serverId = serverId() ?: return@call ApiResult.Failure(ApiError.Unauthorized)
         val dismissed = accounts.dismissedNextUp(serverId, userId).associate { it.seriesId to it.episodeId }
         coroutineScope {
             val resume = async { api.resumeItems(userId, ROW_LIMIT) }
@@ -107,7 +107,7 @@ class WatchRepository(private val connection: ConnectionManager, private val cha
      */
     suspend fun removeFromContinueWatching(itemId: String, seriesId: String?): ApiResult<Unit> {
         val result = call { api, userId ->
-            val serverId = connected()?.server?.id ?: return@call ApiResult.Failure(ApiError.Unauthorized)
+            val serverId = serverId() ?: return@call ApiResult.Failure(ApiError.Unauthorized)
             val cleared = api.setPosition(userId, itemId, ticks = 0)
             if (cleared is ApiResult.Success && seriesId != null) {
                 val episodeId = (api.nextUpOf(userId, seriesId, resumable = false) as? ApiResult.Success)?.value?.items?.firstOrNull()?.id ?: itemId
@@ -122,7 +122,7 @@ class WatchRepository(private val connection: ConnectionManager, private val cha
     /** Undo of [removeFromContinueWatching]: the position goes back and the show is no longer hidden. */
     suspend fun restoreToContinueWatching(itemId: String, seriesId: String?, resumePositionMs: Long): ApiResult<Unit> {
         val result = call { api, userId ->
-            val serverId = connected()?.server?.id ?: return@call ApiResult.Failure(ApiError.Unauthorized)
+            val serverId = serverId() ?: return@call ApiResult.Failure(ApiError.Unauthorized)
             val restored = api.setPosition(userId, itemId, ticks = resumePositionMs * TICKS_PER_MILLISECOND)
             if (restored is ApiResult.Success && seriesId != null) accounts.forgetDismissedNextUp(serverId, userId, seriesId)
             restored
@@ -141,12 +141,9 @@ class WatchRepository(private val connection: ConnectionManager, private val cha
     // A rejected token matters most: it ends the session, whatever else went wrong.
     private fun worseOf(first: ApiError, second: ApiError) = if (second == ApiError.Unauthorized && first != ApiError.Unauthorized) second else first
 
-    private suspend fun <T> call(block: suspend (JellyfinApi, String) -> ApiResult<T>): ApiResult<T> {
-        val connected = connected() ?: return ApiResult.Failure(ApiError.Unauthorized)
-        return block(connected.api, connected.account.userId)
-    }
+    private suspend fun <T> call(block: suspend (JellyfinApi, String) -> ApiResult<T>): ApiResult<T> = connection.asConnected(ApiResult.Failure(ApiError.Unauthorized)) { block(it.api, it.account.userId) }
 
-    private fun connected() = connection.state.value as? ConnectionState.Connected
+    private fun serverId() = connection.asConnected<String?>(null) { it.server.id }
 
     companion object {
         /** Each row holds at most this many cards (`guardrails.md`). */

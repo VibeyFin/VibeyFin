@@ -29,24 +29,24 @@ data class PolicySummary(
 /** Reads the signed-in user's Jellyfin policy (`GET /Users/Me`) so the app can show the limits it already obeys. */
 class ProfilePolicy(private val connection: ConnectionManager) {
     suspend fun load(): ApiResult<PolicySummary> {
-        val connected = connection.state.value as? ConnectionState.Connected
-            ?: return ApiResult.Failure(ApiError.Unauthorized)
-        val user = when (val me = connected.api.me()) {
-            is ApiResult.Success -> me.value
-            is ApiResult.Failure -> return me
+        return connection.asConnected<ApiResult<PolicySummary>>(ApiResult.Failure(ApiError.Unauthorized)) { connected ->
+            val user = when (val me = connected.api.me()) {
+                is ApiResult.Success -> me.value
+                is ApiResult.Failure -> return@asConnected me
+            }
+            val policy = user.policy
+            val level = policy?.maxParentalRating
+            // The names are a nicety: if the list can't be had, the static map and then no name stand in.
+            val name = level?.let { ratingName(it, connected.api.parentalRatings().valueOrNull()?.map { r -> r.name to r.value }) }
+            ApiResult.Success(
+                PolicySummary(
+                    maxRatingLevel = level,
+                    ratingName = name,
+                    blockedTags = policy?.blockedTags.orEmpty(),
+                    schedules = policy?.accessSchedules.orEmpty().map { it.toWindow() },
+                ),
+            )
         }
-        val policy = user.policy
-        val level = policy?.maxParentalRating
-        // The names are a nicety: if the list can't be had, the static map and then no name stand in.
-        val name = level?.let { ratingName(it, connected.api.parentalRatings().valueOrNull()?.map { r -> r.name to r.value }) }
-        return ApiResult.Success(
-            PolicySummary(
-                maxRatingLevel = level,
-                ratingName = name,
-                blockedTags = policy?.blockedTags.orEmpty(),
-                schedules = policy?.accessSchedules.orEmpty().map { it.toWindow() },
-            ),
-        )
     }
 
     private companion object {

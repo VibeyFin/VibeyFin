@@ -3,7 +3,6 @@ package app.vibeyfin.ios
 import app.vibeyfin.data.db.AccountDao
 import app.vibeyfin.di.ApplicationScope
 import app.vibeyfin.domain.ConnectionManager
-import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.NewTitlesPoller
 import app.vibeyfin.domain.ProfileNewTitles
 import kotlinx.coroutines.CoroutineScope
@@ -42,8 +41,5 @@ class NewTitlesModel {
     }
 
     /** Whether this profile is the one signed in right now, so a tapped notification may open its content. */
-    fun isSignedIn(serverId: String, userId: String): Boolean {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return false
-        return account.serverId == serverId && account.userId == userId
-    }
+    fun isSignedIn(serverId: String, userId: String): Boolean = connection.asAccount(false) { it.serverId == serverId && it.userId == userId }
 }

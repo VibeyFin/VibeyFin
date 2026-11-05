@@ -276,9 +276,8 @@ class PlaybackReporter(
     }
 
     // Sends one report with the current session. A report that can't be sent, or fails, is dropped.
-    private suspend fun call(block: suspend (JellyfinApi) -> ApiResult<Unit>): ApiResult<Unit>? {
-        val connected = connection.state.value as? ConnectionState.Connected ?: return null
-        return try {
+    private suspend fun call(block: suspend (JellyfinApi) -> ApiResult<Unit>): ApiResult<Unit>? = connection.asConnected(null) { connected ->
+        try {
             block(connected.api)
         } catch (e: CancellationException) {
             throw e
@@ -287,7 +286,7 @@ class PlaybackReporter(
         }
     }
 
-    private fun currentProfile(): ProfileRef? = (connection.state.value as? ConnectionState.Connected)?.let { ProfileRef(it.server.id, it.account.userId) }
+    private fun currentProfile(): ProfileRef? = connection.state.value.profileOrNull()
 
     private fun openSession(profile: ProfileRef, plan: PlaybackPlan) = PendingStop(
         profile = profile,

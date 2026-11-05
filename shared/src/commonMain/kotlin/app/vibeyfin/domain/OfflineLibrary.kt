@@ -9,7 +9,6 @@ import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.domain.model.SearchKind
 import app.vibeyfin.domain.model.SearchResult
-import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -137,7 +136,7 @@ class OfflineLibrary(
                     id = item.id,
                     title = item.title,
                     kind = SearchKind.Episode,
-                    subtitle = listOfNotNull(item.seriesName, Strings.episodeTag(item.seasonNumber, item.episodeNumber)).joinToString(" · ").ifEmpty { null },
+                    subtitle = listOfNotNull(item.seriesName, episodeCode(item.seasonNumber, item.episodeNumber)).joinToString(" · ").ifEmpty { null },
                     imageUrl = item.landscapeUrl ?: item.posterUrl,
                     aspectRatio = WIDE,
                 )

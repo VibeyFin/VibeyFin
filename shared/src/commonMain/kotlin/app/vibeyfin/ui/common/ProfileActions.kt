@@ -2,7 +2,6 @@ package app.vibeyfin.ui.common
 
 import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.ConnectionManager
-import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.ProfileSettings
@@ -46,14 +45,15 @@ class ProfileActions(
      * as this profile is no less than changing its settings. Never on a kids profile.
      */
     fun quickConnect() {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        scope.launch {
-            if (profileSettings.kidsProfile.first() == true) return@launch
-            val open: suspend () -> Unit = { _openQuickConnect.value = true }
-            if (pins.gates(account.serverId, account.userId).openSettings) {
-                pin.ask(PinReason.OpenSettings, account.serverId, account.userId, account.name, onPass = open)
-            } else {
-                open()
+        connection.asAccount(Unit) { account ->
+            scope.launch {
+                if (profileSettings.kidsProfile.first() == true) return@launch
+                val open: suspend () -> Unit = { _openQuickConnect.value = true }
+                if (pins.gates(account.serverId, account.userId).openSettings) {
+                    pin.ask(PinReason.OpenSettings, account.serverId, account.userId, account.name, onPass = open)
+                } else {
+                    open()
+                }
             }
         }
     }
@@ -89,7 +89,7 @@ class ProfileActions(
             if (profileSettings.kidsProfile.first() == true) return@launch
             // While still signed in: the history is the signed-in profile's.
             searchHistory.clear()
-            (connection.state.value as? ConnectionState.Connected)?.account?.let { downloads.purge(ProfileRef(it.serverId, it.userId)) }
+            connection.asAccount(Unit) { downloads.purge(ProfileRef(it.serverId, it.userId)) }
             connection.signOut()
             _exit.value = HomeExit.WhoIsWatching(serverId)
         }
@@ -107,19 +107,20 @@ class ProfileActions(
     fun dismissPin() = pin.dismiss()
 
     private fun leaveProfile(to: HomeExit) {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        scope.launch {
-            val leave: suspend () -> Unit = {
-                connection.switchProfile()
-                _exit.value = to
-            }
-            if (pins.gates(account.serverId, account.userId).switchProfile) {
-                pin.ask(PinReason.SwitchProfile, account.serverId, account.userId, account.name, onPass = leave)
-            } else {
-                leave()
+        connection.asAccount(Unit) { account ->
+            scope.launch {
+                val leave: suspend () -> Unit = {
+                    connection.switchProfile()
+                    _exit.value = to
+                }
+                if (pins.gates(account.serverId, account.userId).switchProfile) {
+                    pin.ask(PinReason.SwitchProfile, account.serverId, account.userId, account.name, onPass = leave)
+                } else {
+                    leave()
+                }
             }
         }
     }
 
-    private fun currentServerId() = (connection.state.value as? ConnectionState.Connected)?.server?.id
+    private fun currentServerId() = connection.asConnected<String?>(null) { it.server.id }
 }

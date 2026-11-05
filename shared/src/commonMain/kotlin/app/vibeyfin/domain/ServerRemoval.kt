@@ -12,7 +12,7 @@ class ServerRemoval(
 ) {
     suspend fun remove(serverId: String) {
         accounts.observeAccounts(serverId).first().forEach { searchHistory.clear(serverId, it.userId) }
-        if ((connection.state.value as? ConnectionState.Connected)?.server?.id == serverId) connection.switchProfile()
+        if (connection.asConnected(false) { it.server.id == serverId }) connection.switchProfile()
         servers.delete(serverId)
         if (preferences.lastServerId.first() == serverId) preferences.setLastServer(null)
     }

@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.domain.ConnectionManager
-import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.SeerrConnectResult
 import app.vibeyfin.domain.SeerrConnection
 import app.vibeyfin.domain.SeerrPasswordResult
@@ -237,8 +236,7 @@ class SeerrSettingsViewModel(
     }
 
     fun onSignInWithPassword() {
-        val name = (connection.state.value as? ConnectionState.Connected)?.account?.name ?: return
-        local.update { it.copy(passwordSheet = SeerrPasswordSheet(name)) }
+        connection.asAccount(Unit) { account -> local.update { it.copy(passwordSheet = SeerrPasswordSheet(account.name)) } }
     }
 
     /** The password from the sheet. It goes to Seerr once and is never kept. */

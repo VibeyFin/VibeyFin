@@ -54,15 +54,13 @@ class ProfileSettings(
     /** Accepts one of [SKIP_BACK_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
     suspend fun setSkipBackSeconds(value: Int) {
         if (value !in SKIP_BACK_CHOICES) return
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setSkipBackSeconds(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setSkipBackSeconds(account.serverId, account.userId, value) }
     }
 
     /** Accepts one of [SKIP_FORWARD_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
     suspend fun setSkipForwardSeconds(value: Int) {
         if (value !in SKIP_FORWARD_CHOICES) return
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setSkipForwardSeconds(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setSkipForwardSeconds(account.serverId, account.userId, value) }
     }
 
     /** Seconds of video the player loads ahead; one of [BUFFER_AHEAD_CHOICES]. Null when nobody is signed in. */
@@ -73,8 +71,7 @@ class ProfileSettings(
     /** Accepts one of [BUFFER_AHEAD_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
     suspend fun setBufferAheadSeconds(value: Int) {
         if (value !in BUFFER_AHEAD_CHOICES) return
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setBufferAheadSeconds(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setBufferAheadSeconds(account.serverId, account.userId, value) }
     }
 
     /** Highest streaming bitrate in bits per second, one of [QUALITY_CHOICES]; 0 is Maximum. Null when nobody is signed in. */
@@ -85,8 +82,7 @@ class ProfileSettings(
     /** Accepts one of [QUALITY_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
     suspend fun setMaxStreamingBitrate(value: Int) {
         if (value !in QUALITY_CHOICES) return
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setMaxStreamingBitrate(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setMaxStreamingBitrate(account.serverId, account.userId, value) }
     }
 
     /** Whether subtitles use the platform's caption style. Null when nobody is signed in. */
@@ -94,8 +90,7 @@ class ProfileSettings(
 
     /** Does nothing when nobody is signed in. */
     suspend fun setCaptionsFollowSystem(value: Boolean) {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setCaptionsFollowSystem(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setCaptionsFollowSystem(account.serverId, account.userId, value) }
     }
 
     /** Subtitle size, one of [SUBTITLE_SIZE_CHOICES]. Null when nobody is signed in. */
@@ -106,8 +101,7 @@ class ProfileSettings(
     /** Accepts one of [SUBTITLE_SIZE_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
     suspend fun setSubtitleSize(value: Int) {
         if (value !in SUBTITLE_SIZE_CHOICES) return
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setSubtitleSize(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setSubtitleSize(account.serverId, account.userId, value) }
     }
 
     /** Subtitle text colour, one of [SUBTITLE_COLOR_CHOICES]. Null when nobody is signed in. */
@@ -118,8 +112,7 @@ class ProfileSettings(
     /** Accepts one of [SUBTITLE_COLOR_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
     suspend fun setSubtitleTextColor(value: Int) {
         if (value !in SUBTITLE_COLOR_CHOICES) return
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setSubtitleTextColor(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setSubtitleTextColor(account.serverId, account.userId, value) }
     }
 
     /** Subtitle background, one of [SUBTITLE_BACKGROUND_CHOICES]. Null when nobody is signed in. */
@@ -130,8 +123,7 @@ class ProfileSettings(
     /** Accepts one of [SUBTITLE_BACKGROUND_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
     suspend fun setSubtitleBackground(value: Int) {
         if (value !in SUBTITLE_BACKGROUND_CHOICES) return
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setSubtitleBackground(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setSubtitleBackground(account.serverId, account.userId, value) }
     }
 
     /** Whether the app posts notifications for the profile. Off by default. Null when nobody is signed in. */
@@ -142,9 +134,10 @@ class ProfileSettings(
      * with [NewTitlesPoller]'s first-poll rule instead of announcing the titles added in between.
      */
     suspend fun setNotificationsEnabled(value: Boolean) {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setNotificationsEnabled(account.serverId, account.userId, value)
-        if (!value) dao.clearNotified(account.serverId, account.userId)
+        connection.asAccount(Unit) { account ->
+            dao.setNotificationsEnabled(account.serverId, account.userId, value)
+            if (!value) dao.clearNotified(account.serverId, account.userId)
+        }
     }
 
     /** What notifies, one of [NOTIFICATION_SCOPE_CHOICES]. Null when nobody is signed in. */
@@ -158,10 +151,11 @@ class ProfileSettings(
      */
     suspend fun setNotificationScope(value: Int) {
         if (value !in NOTIFICATION_SCOPE_CHOICES) return
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        val before = dao.observeNotificationScope(account.serverId, account.userId).first() ?: DEFAULT_NOTIFICATION_SCOPE
-        dao.setNotificationScope(account.serverId, account.userId, value)
-        if (value != before) dao.clearNotified(account.serverId, account.userId)
+        connection.asAccount(Unit) { account ->
+            val before = dao.observeNotificationScope(account.serverId, account.userId).first() ?: DEFAULT_NOTIFICATION_SCOPE
+            dao.setNotificationScope(account.serverId, account.userId, value)
+            if (value != before) dao.clearNotified(account.serverId, account.userId)
+        }
     }
 
     /** Whether the profile is a Kids profile. Off by default. Null when nobody is signed in. */
@@ -169,8 +163,7 @@ class ProfileSettings(
 
     /** Does nothing when nobody is signed in. */
     suspend fun setKidsProfile(value: Boolean) {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setKidsProfile(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setKidsProfile(account.serverId, account.userId, value) }
     }
 
     /** When the profile asks for its PIN. Null when nobody is signed in. */
@@ -178,44 +171,37 @@ class ProfileSettings(
 
     /** Does nothing when nobody is signed in. */
     suspend fun setPinOpenProfile(value: Boolean) {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setPinOpenProfile(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setPinOpenProfile(account.serverId, account.userId, value) }
     }
 
     /** Does nothing when nobody is signed in. */
     suspend fun setPinOpenSettings(value: Boolean) {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setPinOpenSettings(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setPinOpenSettings(account.serverId, account.userId, value) }
     }
 
     /** Does nothing when nobody is signed in. */
     suspend fun setPinSwitchProfile(value: Boolean) {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setPinSwitchProfile(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setPinSwitchProfile(account.serverId, account.userId, value) }
     }
 
     /** Puts all four subtitle options back to their defaults in one write. Does nothing when nobody is signed in. */
     suspend fun resetSubtitleStyle() {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.resetSubtitleStyle(account.serverId, account.userId)
+        connection.asAccount(Unit) { account -> dao.resetSubtitleStyle(account.serverId, account.userId) }
     }
 
     /** Does nothing when nobody is signed in. */
     suspend fun setPictureInPicture(value: Boolean) {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setPictureInPicture(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setPictureInPicture(account.serverId, account.userId, value) }
     }
 
     /** Does nothing when nobody is signed in. */
     suspend fun setSwipeGestures(value: Boolean) {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setSwipeGestures(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setSwipeGestures(account.serverId, account.userId, value) }
     }
 
     /** Does nothing when nobody is signed in. */
     suspend fun setAutoSkipSegments(value: Boolean) {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setAutoSkipSegments(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setAutoSkipSegments(account.serverId, account.userId, value) }
     }
 
     /** Whether downloads may use mobile data. Off by default. Null when nobody is signed in. */
@@ -229,53 +215,46 @@ class ProfileSettings(
 
     /** Does nothing when nobody is signed in. */
     suspend fun setDownloadOverMobile(value: Boolean) {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setDownloadOverMobile(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setDownloadOverMobile(account.serverId, account.userId, value) }
     }
 
     /** Does nothing when nobody is signed in. */
     suspend fun setAutoCleanWatched(value: Boolean) {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setAutoCleanWatched(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setAutoCleanWatched(account.serverId, account.userId, value) }
     }
 
     /** Accepts [NO_STORAGE_LIMIT] or a positive size; anything else is ignored. Does nothing when nobody is signed in. */
     suspend fun setStorageLimitMb(value: Long) {
         if (value < NO_STORAGE_LIMIT) return
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setStorageLimitMb(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setStorageLimitMb(account.serverId, account.userId, value) }
     }
 
     /** Accepts one of [HOME_HERO_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
     suspend fun setHomeHeroItems(value: Int) {
         if (value !in HOME_HERO_CHOICES) return
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setHomeHeroItems(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setHomeHeroItems(account.serverId, account.userId, value) }
     }
 
     /** Does nothing when nobody is signed in. */
     suspend fun setShowPlaybackStats(value: Boolean) {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setShowPlaybackStats(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setShowPlaybackStats(account.serverId, account.userId, value) }
     }
 
     /** Accepts 0 (off) or 2 to 5; anything else is ignored. Does nothing when nobody is signed in. */
     suspend fun setBingeThreshold(value: Int) {
         if (value != 0 && value !in 2..5) return
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setBingeThreshold(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setBingeThreshold(account.serverId, account.userId, value) }
     }
 
     /** Accepts one of [HOME_GENRE_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
     suspend fun setHomeGenreRows(value: Int) {
         if (value !in HOME_GENRE_CHOICES) return
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        dao.setHomeGenreRows(account.serverId, account.userId, value)
+        connection.asAccount(Unit) { account -> dao.setHomeGenreRows(account.serverId, account.userId, value) }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun <T> forAccount(observe: (AccountDao, Account) -> Flow<T?>): Flow<T?> = connection.state
-        .map { (it as? ConnectionState.Connected)?.account }
+        .map { it.accountOrNull() }
         .distinctUntilChanged()
         .flatMapLatest { account -> if (account == null) flowOf(null) else observe(dao, account) }
 

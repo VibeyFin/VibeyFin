@@ -64,66 +64,66 @@ class PlaybackRepository(
         audioStreamIndex: Int?,
         subtitleStreamIndex: Int?,
     ): PlaybackNegotiation {
-        val connected = connection.state.value as? ConnectionState.Connected
-            ?: return PlaybackNegotiation.Failed(ApiError.Unauthorized)
-        val api = connected.api
-        // Read once per call, so one negotiation never mixes two qualities. No profile means Maximum.
-        val maxBitrate = effectiveBitrate(profileSettings.maxStreamingBitrate.first() ?: 0)
-        val request = PlaybackInfoRequestDto(
-            userId = connected.account.userId,
-            deviceProfile = candidate.capabilities.toDeviceProfile(maxBitrate),
-            maxStreamingBitrate = maxBitrate,
-            enableDirectPlay = !forceTranscode,
-            enableDirectStream = !forceTranscode,
-            enableTranscoding = true,
-            autoOpenLiveStream = false,
-            mediaSourceId = mediaSourceId,
-            audioStreamIndex = audioStreamIndex.takeIf { mediaSourceId != null },
-            subtitleStreamIndex = subtitleStreamIndex.takeIf { mediaSourceId != null },
-        )
-        val response = when (val result = api.playbackInfo(itemId, request)) {
-            is ApiResult.Failure -> return PlaybackNegotiation.Failed(result.error)
-            is ApiResult.Success -> result.value
-        }
-        val sessionId = response.playSessionId ?: return PlaybackNegotiation.Failed(ApiError.BadResponse)
-        val directPlay = response.mediaSources.firstOrNull { it.supportsDirectPlay && !forceTranscode }
-        val transcodes = response.mediaSources.filter { it.transcodingUrl != null }
-        val source = directPlay
-            ?: transcodes.firstOrNull()
-            ?: return PlaybackNegotiation.NoCompatibleStream
+        return connection.asConnected<PlaybackNegotiation>(PlaybackNegotiation.Failed(ApiError.Unauthorized)) { connected ->
+            val api = connected.api
+            // Read once per call, so one negotiation never mixes two qualities. No profile means Maximum.
+            val maxBitrate = effectiveBitrate(profileSettings.maxStreamingBitrate.first() ?: 0)
+            val request = PlaybackInfoRequestDto(
+                userId = connected.account.userId,
+                deviceProfile = candidate.capabilities.toDeviceProfile(maxBitrate),
+                maxStreamingBitrate = maxBitrate,
+                enableDirectPlay = !forceTranscode,
+                enableDirectStream = !forceTranscode,
+                enableTranscoding = true,
+                autoOpenLiveStream = false,
+                mediaSourceId = mediaSourceId,
+                audioStreamIndex = audioStreamIndex.takeIf { mediaSourceId != null },
+                subtitleStreamIndex = subtitleStreamIndex.takeIf { mediaSourceId != null },
+            )
+            val response = when (val result = api.playbackInfo(itemId, request)) {
+                is ApiResult.Failure -> return PlaybackNegotiation.Failed(result.error)
+                is ApiResult.Success -> result.value
+            }
+            val sessionId = response.playSessionId ?: return PlaybackNegotiation.Failed(ApiError.BadResponse)
+            val directPlay = response.mediaSources.firstOrNull { it.supportsDirectPlay && !forceTranscode }
+            val transcodes = response.mediaSources.filter { it.transcodingUrl != null }
+            val source = directPlay
+                ?: transcodes.firstOrNull()
+                ?: return PlaybackNegotiation.NoCompatibleStream
 
-        val method = when {
-            directPlay != null -> PlayMethod.DirectPlay
-            source.supportsDirectStream && !forceTranscode -> PlayMethod.DirectStream
-            else -> PlayMethod.Transcode
+            val method = when {
+                directPlay != null -> PlayMethod.DirectPlay
+                source.supportsDirectStream && !forceTranscode -> PlayMethod.DirectStream
+                else -> PlayMethod.Transcode
+            }
+            val url = if (directPlay != null) {
+                directPlayUrl(api.baseUrl, itemId, source, clientInfo.current().deviceId, sessionId)
+            } else {
+                serverUrl(api.baseUrl, checkNotNull(source.transcodingUrl))
+            }
+            val tracks = source.tracks(api.baseUrl, itemId, candidate.capabilities)
+            PlaybackNegotiation.Ready(
+                PlaybackPlan(
+                    itemId = itemId,
+                    mediaSourceId = source.id,
+                    playSessionId = sessionId,
+                    method = method,
+                    url = url,
+                    // The player sends this on every request; no URL here carries the token.
+                    headers = mapOf(HttpHeaders.Authorization to clientInfo.current().authorizationHeader(api.token)),
+                    runtimeMs = source.runTimeTicks?.div(TICKS_PER_MILLISECOND),
+                    audioTracks = tracks.audio,
+                    subtitleTracks = tracks.subtitles,
+                    subtitleFiles = tracks.subtitleFiles,
+                    subtitleBurnedIn = tracks.subtitleBurnedIn,
+                    embeddedSubtitles = tracks.embeddedSubtitles,
+                    audioStreamIndex = tracks.audio.firstOrNull { it.selected }?.index,
+                    subtitleStreamIndex = tracks.subtitles.firstOrNull { it.selected }?.index,
+                    videoFormat = source.mediaStreams.firstOrNull { it.type == "Video" }?.toVideoFormat(),
+                    engine = candidate.engine,
+                ),
+            )
         }
-        val url = if (directPlay != null) {
-            directPlayUrl(api.baseUrl, itemId, source, clientInfo.current().deviceId, sessionId)
-        } else {
-            serverUrl(api.baseUrl, checkNotNull(source.transcodingUrl))
-        }
-        val tracks = source.tracks(api.baseUrl, itemId, candidate.capabilities)
-        return PlaybackNegotiation.Ready(
-            PlaybackPlan(
-                itemId = itemId,
-                mediaSourceId = source.id,
-                playSessionId = sessionId,
-                method = method,
-                url = url,
-                // The player sends this on every request; no URL here carries the token.
-                headers = mapOf(HttpHeaders.Authorization to clientInfo.current().authorizationHeader(api.token)),
-                runtimeMs = source.runTimeTicks?.div(TICKS_PER_MILLISECOND),
-                audioTracks = tracks.audio,
-                subtitleTracks = tracks.subtitles,
-                subtitleFiles = tracks.subtitleFiles,
-                subtitleBurnedIn = tracks.subtitleBurnedIn,
-                embeddedSubtitles = tracks.embeddedSubtitles,
-                audioStreamIndex = tracks.audio.firstOrNull { it.selected }?.index,
-                subtitleStreamIndex = tracks.subtitles.firstOrNull { it.selected }?.index,
-                videoFormat = source.mediaStreams.firstOrNull { it.type == "Video" }?.toVideoFormat(),
-                engine = candidate.engine,
-            ),
-        )
     }
 
     /**
@@ -131,9 +131,8 @@ class PlaybackRepository(
      * are none, and on any failure: a server without the endpoint (before 10.10) answers 404, and a
      * missing skip button isn't worth an error.
      */
-    suspend fun segments(itemId: String): List<MediaSegment> {
-        val connected = connection.state.value as? ConnectionState.Connected ?: return emptyList()
-        return when (val result = connected.api.mediaSegments(itemId)) {
+    suspend fun segments(itemId: String): List<MediaSegment> = connection.asConnected(emptyList()) { connected ->
+        when (val result = connected.api.mediaSegments(itemId)) {
             is ApiResult.Success -> result.value.items.map { it.toMediaSegment() }
             is ApiResult.Failure -> emptyList()
         }
@@ -144,13 +143,14 @@ class PlaybackRepository(
      * [TRICKPLAY_TARGET_WIDTH]; null when the server has made none for it, or can't be asked.
      */
     suspend fun trickplay(itemId: String, mediaSourceId: String): TrickplayTrack? {
-        val connected = connection.state.value as? ConnectionState.Connected ?: return null
-        val item = when (val result = connected.api.itemsById(itemId, connected.account.userId)) {
-            is ApiResult.Success -> result.value.items.firstOrNull() ?: return null
-            is ApiResult.Failure -> return null
+        return connection.asConnected(null) { connected ->
+            val item = when (val result = connected.api.itemsById(itemId, connected.account.userId)) {
+                is ApiResult.Success -> result.value.items.firstOrNull() ?: return null
+                is ApiResult.Failure -> return null
+            }
+            val track = item.trickplay[mediaSourceId]?.values?.toTrickplayTrack(mediaSourceId) ?: return null
+            track.copy(tilesUrl = serverUrl(connected.api.baseUrl, "/Videos/$itemId/Trickplay/${track.width}"))
         }
-        val track = item.trickplay[mediaSourceId]?.values?.toTrickplayTrack(mediaSourceId) ?: return null
-        return track.copy(tilesUrl = serverUrl(connected.api.baseUrl, "/Videos/$itemId/Trickplay/${track.width}"))
     }
 
     companion object {

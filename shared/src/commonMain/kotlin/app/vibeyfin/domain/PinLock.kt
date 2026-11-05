@@ -69,19 +69,21 @@ class PinLock(
     /** Sets the PIN of the profile that is signed in, with a fresh salt. Does nothing when nobody is. */
     suspend fun setPin(pin: String) {
         mutex.withLock {
-            val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-            val salt = Random.nextBytes(SALT_BYTES)
-            dao.setPin(account.serverId, account.userId, hashPin(salt, pin), salt)
-            tries.remove(account.serverId to account.userId)
+            connection.asAccount(Unit) { account ->
+                val salt = Random.nextBytes(SALT_BYTES)
+                dao.setPin(account.serverId, account.userId, hashPin(salt, pin), salt)
+                tries.remove(account.serverId to account.userId)
+            }
         }
     }
 
     /** Removes the PIN of the profile that is signed in. Does nothing when nobody is. */
     suspend fun removePin() {
         mutex.withLock {
-            val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-            dao.setPin(account.serverId, account.userId, null, null)
-            tries.remove(account.serverId to account.userId)
+            connection.asAccount(Unit) { account ->
+                dao.setPin(account.serverId, account.userId, null, null)
+                tries.remove(account.serverId to account.userId)
+            }
         }
     }
 

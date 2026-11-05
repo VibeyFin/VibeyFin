@@ -7,6 +7,7 @@ import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.data.api.authorizeQuickConnect
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.ConnectionState
+import app.vibeyfin.domain.accountOrNull
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.whoswatching.SignInMessages
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,7 +43,7 @@ class ApproveQuickConnectViewModel(private val connection: ConnectionManager) : 
     val uiState: StateFlow<ApproveQuickConnectUiState> = combine(local, connection.state) { local, connected ->
         ApproveQuickConnectUiState(
             code = local.code,
-            profileName = (connected as? ConnectionState.Connected)?.account?.name.orEmpty(),
+            profileName = connected.accountOrNull()?.name.orEmpty(),
             approving = local.approving,
             done = local.done,
             error = local.error,
@@ -57,15 +58,16 @@ class ApproveQuickConnectViewModel(private val connection: ConnectionManager) : 
     fun onApprove() {
         val current = local.value
         if (current.approving || current.code.length != QUICK_CONNECT_CODE_LENGTH) return
-        val connected = connection.state.value as? ConnectionState.Connected ?: return
-        local.update { it.copy(approving = true, done = null, error = null) }
-        viewModelScope.launch {
-            val error = approve(connected, current.code)
-            local.update {
-                if (error == null) {
-                    Local(done = Strings.quickConnectApprovedFor(connected.account.name))
-                } else {
-                    it.copy(approving = false, error = error)
+        connection.asConnected(Unit) { connected ->
+            local.update { it.copy(approving = true, done = null, error = null) }
+            viewModelScope.launch {
+                val error = approve(connected, current.code)
+                local.update {
+                    if (error == null) {
+                        Local(done = Strings.quickConnectApprovedFor(connected.account.name))
+                    } else {
+                        it.copy(approving = false, error = error)
+                    }
                 }
             }
         }

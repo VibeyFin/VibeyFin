@@ -29,12 +29,12 @@ import app.vibeyfin.domain.TrickplayTrack
 import app.vibeyfin.domain.WatchRepository
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
+import app.vibeyfin.domain.profileOrNull
 import app.vibeyfin.domain.toDiagnostics
 import app.vibeyfin.domain.withLive
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
-import app.vibeyfin.ui.downloads.profileOrNull
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.item.badge
 import app.vibeyfin.ui.item.episodeLabel

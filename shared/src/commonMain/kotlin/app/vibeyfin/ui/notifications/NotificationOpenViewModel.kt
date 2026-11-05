@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.PinLock
+import app.vibeyfin.domain.accountOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -60,7 +61,7 @@ class NotificationOpenViewModel(
     }
 
     private suspend fun resolve(t: Target, state: ConnectionState) {
-        val account = (state as? ConnectionState.Connected)?.account ?: return
+        val account = state.accountOrNull() ?: return
         if (target.value != t) return
         if (account.serverId == t.serverId && account.userId == t.userId) {
             target.value = null

@@ -125,7 +125,7 @@ class SeerrConnection(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun profiles() = connection.state
-        .map { (it as? ConnectionState.Connected)?.account?.let { account -> account.serverId to account.userId } }
+        .map { it.accountOrNull()?.let { account -> account.serverId to account.userId } }
         .distinctUntilChanged()
         .flatMapLatest { profile ->
             if (profile == null) flowOf(null) else store.observeKidsProfile(profile.first, profile.second).map { Key(profile.first, profile.second, it) }
@@ -193,9 +193,9 @@ class SeerrConnection(
     /** Signs the profile in with its Jellyfin password, when Quick Connect is off. The password is never kept. */
     suspend fun signInWithPassword(password: String): SeerrPasswordResult = lock.lockedIn(scope) {
         val key = currentKey()?.takeIf { !it.kids } ?: return@lockedIn SeerrPasswordResult.Failed
-        val connected = connection.state.value as? ConnectionState.Connected ?: return@lockedIn SeerrPasswordResult.Failed
+        val name = connection.asAccount<String?>(null) { it.name } ?: return@lockedIn SeerrPasswordResult.Failed
         val address = store.address(key.serverId) ?: return@lockedIn SeerrPasswordResult.Failed
-        when (val result = factory.create(address).signInWithPassword(connected.account.name, password)) {
+        when (val result = factory.create(address).signInWithPassword(name, password)) {
             is ApiResult.Failure -> when (result.error) {
                 ApiError.Unauthorized, ApiError.Forbidden -> SeerrPasswordResult.WrongPassword
                 ApiError.Network -> SeerrPasswordResult.Unreachable
@@ -409,17 +409,13 @@ class SeerrConnection(
     }
 
     // The signed-in profile as [resolve] last saw it, kids flag included; null before it has seen one.
-    private fun currentKey(): Key? {
-        val connected = connection.state.value as? ConnectionState.Connected ?: return null
-        return lastKey?.takeIf { it.serverId == connected.account.serverId && it.userId == connected.account.userId }
-    }
+    private fun currentKey(): Key? = connection.asAccount(null) { account -> lastKey?.takeIf { it.serverId == account.serverId && it.userId == account.userId } }
 
     // Written only by [resolve], under [lock].
     private var lastKey: Key? = null
 
-    private fun jellyfinFor(key: Key): JellyfinApi? {
-        val connected = connection.state.value as? ConnectionState.Connected ?: return null
-        return connected.api.takeIf { connected.account.serverId == key.serverId && connected.account.userId == key.userId }
+    private fun jellyfinFor(key: Key): JellyfinApi? = connection.asConnected(null) { connected ->
+        connected.api.takeIf { connected.account.serverId == key.serverId && connected.account.userId == key.userId }
     }
 
     private companion object {
@@ -450,7 +446,4 @@ fun normalizeSeerrAddress(input: String): String? {
 private suspend fun <T> Mutex.lockedIn(scope: CoroutineScope, block: suspend () -> T): T = scope.async { withLock { block() } }.await()
 
 // Whether the signed-in profile is still this one: a sign-in that finishes after a profile switch mustn't publish its Ready.
-private fun ConnectionManager.isSignedInAs(serverId: String, userId: String): Boolean {
-    val connected = state.value as? ConnectionState.Connected ?: return false
-    return connected.account.serverId == serverId && connected.account.userId == userId
-}
+private fun ConnectionManager.isSignedInAs(serverId: String, userId: String): Boolean = asAccount(false) { it.serverId == serverId && it.userId == userId }
