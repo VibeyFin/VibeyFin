@@ -161,8 +161,8 @@ scripts/test-server/seed-userdata.sh  # user data and the box set; run again any
 | My List (favourites) | Saga Show, Neon Night, Starlit Crown, Solo Season |
 
 Remove from Continue watching (issue #32) needs no new media. Neon Night is a started movie. Saga Show S01E02 is an episode in
-progress: with its position at 0 the server names it again in Next Up, and it must stay gone. For a plain Next Up card mark
-`show-e01` watched (`POST /UserPlayedItems/{id}`), then `show-e02` to bring the show back. `seed-userdata.sh` resets the Saga Show
+progress: with its position at 0 the server names it again in Next Up, and it must stay gone. For a Next Up card, which has no
+Remove, mark `show-e01` watched (`POST /UserPlayedItems/{id}`). `seed-userdata.sh` resets the Saga Show
 and Neon Night data, not Test Show's.
 
 ## Kids user and rated fixtures

@@ -77,11 +77,10 @@ time. Home's own rows (Continue watching, Recently added, genres) are not filter
 
 ## Removing from Continue watching
 
-Jellyfin has no "hide from Continue watching" flag, so what Remove does depends on the card:
+Only a card in progress has Remove; a Next Up card does not. Jellyfin has no "hide from Continue watching" flag, so:
 
-- **In progress:** `POST /UserItems/{id}/UserData` with `{ "PlaybackPositionTicks": 0 }` takes it out of `/UserItems/Resume` on every client and leaves `Played`, `PlayCount` and `LastPlayedDate` as they are. Undo posts the old position back. Never `DELETE /UserPlayedItems/{id}`: it also resets the play count and last played date.
-- **An episode in progress:** with its position at 0 the same episode comes straight back from `/Shows/NextUp`, so the show is also hidden from Next Up at the episode Next Up names after the reset.
-- **Next Up:** no server call. The series ID and the episode it was dismissed at are kept per profile in Room (`dismissed_next_up`) and that entry is filtered out of the row. When Next Up for the series names another episode the entry is dropped and the show is back.
+- **Any card:** `POST /UserItems/{id}/UserData` with `{ "PlaybackPositionTicks": 0 }` takes it out of `/UserItems/Resume` on every client and leaves `Played`, `PlayCount` and `LastPlayedDate` as they are. Undo posts the old position back. Never `DELETE /UserPlayedItems/{id}`: it also resets the play count and last played date.
+- **An episode in progress:** with its position at 0 the same episode comes straight back from `/Shows/NextUp`, so the show is also hidden from Next Up at the episode Next Up names after the reset, with no server call. The series ID and that episode are kept per profile in Room (`dismissed_next_up`) and the entry is filtered out of the row. When Next Up for the series names another episode the entry is dropped and the show is back.
 
 ## Seerr
 

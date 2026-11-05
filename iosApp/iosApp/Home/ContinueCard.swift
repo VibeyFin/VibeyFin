@@ -83,8 +83,10 @@ struct ContinueCardTile: View {
         Button(action: onMarkWatched) {
             Label(Strings.shared.markWatched.titleCased(), systemImage: "checkmark.circle")
         }
-        Button(action: onRemove) {
-            Label(Strings.shared.removeFromContinueWatching.titleCased(), systemImage: "xmark.circle")
+        if card.canRemove {
+            Button(action: onRemove) {
+                Label(Strings.shared.removeFromContinueWatching.titleCased(), systemImage: "xmark.circle")
+            }
         }
         downloadItems
     }

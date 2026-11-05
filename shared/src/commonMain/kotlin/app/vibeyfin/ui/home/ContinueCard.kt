@@ -24,11 +24,14 @@ data class ContinueCard(
     val progress: Float?,
     /** What a screen reader says: "{title}, {year or episode}, {n}% watched". */
     val accessibilityLabel: String,
-    /** An episode's show: "Remove" hides it from Next Up. */
+    /** An episode's show: "Remove" also hides it from Next Up. */
     val seriesId: String? = null,
     /** Where the user stopped, 0 for a Next Up card: "Remove" clears it and "Undo" puts it back. */
     val resumePositionMs: Long = 0,
-)
+) {
+    /** Only what is in progress can be removed; a Next Up card has no "Remove". */
+    val canRemove: Boolean get() = resumePositionMs > 0
+}
 
 /** The Continue watching row on Home. It is not drawn at all when there is nothing to show or say. */
 data class ContinueRow(

@@ -391,8 +391,9 @@ class HomeViewModel(
 
     /** "Remove from Continue watching": like [onMarkWatched], and once it is saved the message offers Undo. */
     fun onRemoveFromContinueWatching(cardId: String) {
+        if (continueRow.value.cards.none { it.id == cardId && it.canRemove }) return
         takeCardOut(cardId, LoadMessages.REMOVE_FROM_CONTINUE_FAILED, { onRemoveFromContinueWatching(cardId) }, removed = { removedCard.value = it }) { card ->
-            watch.removeFromContinueWatching(card.id, card.seriesId, card.resumePositionMs)
+            watch.removeFromContinueWatching(card.id, card.seriesId)
         }
     }
 

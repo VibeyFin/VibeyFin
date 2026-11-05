@@ -592,7 +592,7 @@ class HomeViewModelTest {
         server.watching(resume = itemsJson(halfWatched), nextUp = itemsJson(nextEpisode))
         server.on("POST", "/UserItems/e1/UserData", Reply.noContent())
         val viewModel = viewModel()
-        viewModel.loadedRow()
+        assertTrue(viewModel.loadedRow().cards.first().canRemove)
         // With its position at 0 the server names the same episode as next up.
         server.watching(nextUp = itemsJson(notStartedEpisode, nextEpisode))
 
@@ -628,6 +628,12 @@ class HomeViewModelTest {
         assertNull(back.actionMessage)
         val bodies = app.jellyfin.awaitRequests("POST", "/UserItems/e1/UserData", 2).map { Json.parseToJsonElement(it.body).jsonObject.getValue("PlaybackPositionTicks").jsonPrimitive.long }
         assertEquals(listOf(0L, 10 * TICKS_PER_MINUTE), bodies)
+
+        // The show is no longer hidden from Next Up.
+        server.watching(nextUp = itemsJson(notStartedEpisode))
+        viewModel.onRefresh()
+        settle()
+        assertEquals(listOf("e1"), viewModel.uiState.value.continueRow.cards.map { it.id })
     }
 
     @Test
@@ -692,51 +698,43 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun aNextUpCardIsHiddenOnTheDeviceAndComesBackWhenNextUpMovesOn() = runTest {
+    fun aNextUpCardCantBeRemoved() = runTest {
         val server = signedIn()
         server.libraries()
         server.watching(nextUp = itemsJson(nextEpisode))
         val viewModel = viewModel()
-        viewModel.loadedRow()
+        assertFalse(viewModel.loadedRow().cards.single().canRemove)
 
         viewModel.onRemoveFromContinueWatching("e9")
-        viewModel.uiState.first { it.canUndo }
         settle()
-
-        assertTrue(app.jellyfin.requestsTo("POST", "/UserItems/e9/UserData").isEmpty(), "the server should not be changed")
         viewModel.onRefresh()
         settle()
-        assertTrue(viewModel.uiState.value.continueRow.cards.isEmpty())
 
-        val later = itemJson("e10", "Second", type = "Episode", seriesName = "Other", seriesId = "s2", seasonNumber = 1, episodeNumber = 2, runtimeTicks = 40 * TICKS_PER_MINUTE)
-        server.watching(nextUp = itemsJson(later))
-        viewModel.onRefresh()
-        settle()
-        assertEquals(listOf("e10"), viewModel.uiState.value.continueRow.cards.map { it.id })
-
-        // Next Up having moved on, the old episode is no longer hidden if it is ever named again.
-        server.watching(nextUp = itemsJson(nextEpisode))
-        viewModel.onRefresh()
-        settle()
+        assertFalse(viewModel.uiState.value.canUndo)
         assertEquals(listOf("e9"), viewModel.uiState.value.continueRow.cards.map { it.id })
     }
 
     @Test
-    fun undoOnANextUpCardShowsItAgain() = runTest {
+    fun aRemovedEpisodesShowComesBackWhenNextUpMovesOn() = runTest {
         val server = signedIn()
         server.libraries()
-        server.watching(nextUp = itemsJson(nextEpisode))
+        server.watching(resume = itemsJson(halfWatched))
+        server.on("POST", "/UserItems/e1/UserData", Reply.noContent())
         val viewModel = viewModel()
         viewModel.loadedRow()
+        server.watching(nextUp = itemsJson(notStartedEpisode))
 
-        viewModel.onRemoveFromContinueWatching("e9")
+        viewModel.onRemoveFromContinueWatching("e1")
         viewModel.uiState.first { it.canUndo }
-        viewModel.onRetryAction()
-        settle()
         viewModel.onRefresh()
         settle()
+        assertTrue(viewModel.uiState.value.continueRow.cards.isEmpty())
 
-        assertEquals(listOf("e9"), viewModel.uiState.value.continueRow.cards.map { it.id })
+        val later = itemJson("e2", "Second", type = "Episode", seriesName = "Show", seriesId = "s1", seasonNumber = 2, episodeNumber = 6, runtimeTicks = 40 * TICKS_PER_MINUTE)
+        server.watching(nextUp = itemsJson(later))
+        viewModel.onRefresh()
+        settle()
+        assertEquals(listOf("e2"), viewModel.uiState.value.continueRow.cards.map { it.id })
     }
 
     @Test

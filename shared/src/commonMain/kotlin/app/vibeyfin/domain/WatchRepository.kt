@@ -29,8 +29,8 @@ class WatchRepository(private val connection: ConnectionManager, private val cha
     /**
      * The Continue watching row: what the user has started, newest first, then the next episode of
      * each show they follow ([mergeContinueWatching]). The two lists are asked for together. If one
-     * can't be had the row has the other, and only when both fail does the row fail. A show the user removed is left out of
-     * Next Up until Next Up names another of its episodes.
+     * can't be had the row has the other, and only when both fail does the row fail. A show whose episode the user removed is left
+     * out of Next Up until Next Up names another of its episodes.
      */
     suspend fun continueWatching(): ApiResult<List<MediaItem>> = call { api, userId ->
         val serverId = connected()?.server?.id ?: return@call ApiResult.Failure(ApiError.Unauthorized)
@@ -101,19 +101,16 @@ class WatchRepository(private val connection: ConnectionManager, private val cha
     }
 
     /**
-     * "Remove from Continue watching". A card in progress goes back to position 0 on the server, leaving its played state, play
-     * count and last played date. A show is then hidden from Next Up on this device: a Next Up card at its own episode, and an
-     * episode in progress at whatever Next Up names now, or the show would come straight back as a Next Up card.
+     * "Remove from Continue watching" on a card in progress: it goes back to position 0 on the server, leaving its played state,
+     * play count and last played date. An episode's show is then hidden from Next Up on this device at whatever Next Up names now,
+     * or it would come straight back as a Next Up card.
      */
-    suspend fun removeFromContinueWatching(itemId: String, seriesId: String?, resumePositionMs: Long): ApiResult<Unit> {
+    suspend fun removeFromContinueWatching(itemId: String, seriesId: String?): ApiResult<Unit> {
         val result = call { api, userId ->
             val serverId = connected()?.server?.id ?: return@call ApiResult.Failure(ApiError.Unauthorized)
-            val cleared = if (resumePositionMs > 0) api.setPosition(userId, itemId, ticks = 0) else ApiResult.Success(Unit)
+            val cleared = api.setPosition(userId, itemId, ticks = 0)
             if (cleared is ApiResult.Success && seriesId != null) {
-                val episodeId = when {
-                    resumePositionMs > 0 -> (api.nextUpOf(userId, seriesId, resumable = false) as? ApiResult.Success)?.value?.items?.firstOrNull()?.id ?: itemId
-                    else -> itemId
-                }
+                val episodeId = (api.nextUpOf(userId, seriesId, resumable = false) as? ApiResult.Success)?.value?.items?.firstOrNull()?.id ?: itemId
                 accounts.dismissNextUp(DismissedNextUpEntity(serverId, userId, seriesId, episodeId))
             }
             cleared
@@ -126,11 +123,7 @@ class WatchRepository(private val connection: ConnectionManager, private val cha
     suspend fun restoreToContinueWatching(itemId: String, seriesId: String?, resumePositionMs: Long): ApiResult<Unit> {
         val result = call { api, userId ->
             val serverId = connected()?.server?.id ?: return@call ApiResult.Failure(ApiError.Unauthorized)
-            val restored = if (resumePositionMs > 0) {
-                api.setPosition(userId, itemId, ticks = resumePositionMs * TICKS_PER_MILLISECOND)
-            } else {
-                ApiResult.Success(Unit)
-            }
+            val restored = api.setPosition(userId, itemId, ticks = resumePositionMs * TICKS_PER_MILLISECOND)
             if (restored is ApiResult.Success && seriesId != null) accounts.forgetDismissedNextUp(serverId, userId, seriesId)
             restored
         }

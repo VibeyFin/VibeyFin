@@ -266,10 +266,12 @@ fun HomeScreen(
                     onMarkWatched(card.id)
                 }
 
-                SheetAction(Strings.removeFromContinueWatching, Icons.Default.Close) {
-                    menuCard = null
+                if (card.canRemove) {
+                    SheetAction(Strings.removeFromContinueWatching, Icons.Default.Close) {
+                        menuCard = null
 
-                    onRemoveFromContinueWatching(card.id)
+                        onRemoveFromContinueWatching(card.id)
+                    }
                 }
 
                 // Download without opening the page: a movie or an episode goes into the queue; once there is one, a tap opens its actions
