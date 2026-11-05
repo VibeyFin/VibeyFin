@@ -111,7 +111,8 @@ private inline fun sinkCall(block: () -> Unit) {
 @Serializable
 data class UpdateUserItemDataDto(
     @SerialName("PlaybackPositionTicks") val playbackPositionTicks: Long,
-    @SerialName("Played") val played: Boolean,
+    /** Left out, the server keeps what it has. */
+    @SerialName("Played") val played: Boolean? = null,
     /** When the user last watched it, in the server's date format. */
     @SerialName("LastPlayedDate") val lastPlayedDate: String? = null,
 )

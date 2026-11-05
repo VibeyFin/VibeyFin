@@ -40,6 +40,8 @@ class HomeModel {
 
     fun onMarkWatched(cardId: String) = host.viewModel.onMarkWatched(cardId)
 
+    fun onRemoveFromContinueWatching(cardId: String) = host.viewModel.onRemoveFromContinueWatching(cardId)
+
     fun onDownload(cardId: String) = host.viewModel.onDownload(cardId)
 
     fun onDownloadAction(cardId: String, action: DownloadAction) = host.viewModel.onDownloadAction(cardId, action)

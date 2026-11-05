@@ -56,6 +56,23 @@ class WatchRepositoryTest {
     }
 
     @Test
+    fun aDismissedEpisodeIsLeftOutOfNextUp() {
+        val dismissed = mapOf("s1" to "a")
+
+        assertEquals(listOf("b"), ids(listOf(item("a", "s1"), item("b", "s2")).withoutDismissed(dismissed)))
+        assertEquals(emptyList(), movedOnFromDismissed(listOf(item("a", "s1")), dismissed))
+    }
+
+    @Test
+    fun anotherEpisodeOfADismissedShowIsKeptAndEndsTheDismissal() {
+        val dismissed = mapOf("s1" to "a")
+        val nextUp = listOf(item("later", "s1"), item("no-show"))
+
+        assertEquals(listOf("later", "no-show"), ids(nextUp.withoutDismissed(dismissed)))
+        assertEquals(listOf("s1"), movedOnFromDismissed(nextUp, dismissed))
+    }
+
+    @Test
     fun anItemInBothListsAppearsOnce() {
         val merged = mergeContinueWatching(inProgress = listOf(item("a")), nextUp = listOf(item("a"), item("b")))
 

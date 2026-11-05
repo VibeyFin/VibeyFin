@@ -72,7 +72,7 @@ class TestApp {
     val searchHistory = SearchHistory(InMemoryPreferencesDataStore(), connection)
     val serverRemoval = ServerRemoval(servers, accounts, searchHistory, preferences, connection)
     val watchChanges = WatchChanges()
-    val watch = WatchRepository(connection, watchChanges)
+    val watch = WatchRepository(connection, watchChanges, database.accountDao())
     val capabilities = FakePlaybackCapabilities()
     val profileSettings = ProfileSettings(database.accountDao(), connection)
     val binge = BingeCounter()
