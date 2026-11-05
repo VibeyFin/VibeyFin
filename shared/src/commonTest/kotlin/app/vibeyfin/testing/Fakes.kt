@@ -15,6 +15,7 @@ import app.vibeyfin.domain.DownloadFiles
 import app.vibeyfin.domain.DownloadNetwork
 import app.vibeyfin.domain.DownloadOutput
 import app.vibeyfin.domain.DownloadScheduler
+import app.vibeyfin.domain.EngineCapabilities
 import app.vibeyfin.domain.LanDiscovery
 import app.vibeyfin.domain.NetworkMonitor
 import app.vibeyfin.domain.NetworkState
@@ -113,7 +114,12 @@ class FakePlaybackCapabilities(
         audioCodecs = listOf("aac"),
     ),
 ) : PlaybackCapabilitiesSource {
+    /** Set to offer several players, tried in order. */
+    var engines: List<EngineCapabilities>? = null
+
     override fun current() = capabilities
+
+    override fun candidates() = engines ?: super.candidates()
 }
 
 class FakeDeviceInfo(

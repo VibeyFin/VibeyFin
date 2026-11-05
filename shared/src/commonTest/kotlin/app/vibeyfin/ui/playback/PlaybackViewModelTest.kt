@@ -169,6 +169,21 @@ class PlaybackViewModelTest {
     }
 
     @Test
+    fun `toggling the stats in the player flips the profile setting`() = runTest {
+        server()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.stream != null }
+
+        viewModel.onToggleDiagnostics()
+        assertTrue(viewModel.uiState.first { it.showDiagnostics }.showDiagnostics)
+        assertEquals(true, app.profileSettings.showPlaybackStats.first())
+
+        viewModel.onToggleDiagnostics()
+        assertEquals(false, viewModel.uiState.first { !it.showDiagnostics }.showDiagnostics)
+        assertEquals(false, app.profileSettings.showPlaybackStats.first())
+    }
+
+    @Test
     fun `showDiagnostics follows the profile setting`() = runTest {
         server()
         val viewModel = viewModel()

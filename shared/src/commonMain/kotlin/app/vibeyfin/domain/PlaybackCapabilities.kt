@@ -25,6 +25,18 @@ data class PlaybackCapabilities(
      */
     val subtitleFormats: List<String> = emptyList(),
     /**
+     * Subtitle formats the player reads out of the video file itself, text and image-based alike. The
+     * server then leaves the track in the stream (`Embed`) instead of burning it in, and the player
+     * shows the one the state marks as selected.
+     */
+    val embeddedSubtitleFormats: List<String> = emptyList(),
+    /**
+     * Text subtitle codecs the player takes as a file it fetches itself, from the server's subtitle
+     * endpoint by track index. No delivery method from the server is needed, so every such track in the
+     * file can be shown without a new stream.
+     */
+    val fetchedSubtitleCodecs: List<String> = emptyList(),
+    /**
      * Video codecs the player takes inside the server's HLS stream. A file in one of these is repackaged
      * (a remux) instead of re-encoded when only its container or audio is the problem.
      */
@@ -34,7 +46,13 @@ data class PlaybackCapabilities(
 /** Reports [PlaybackCapabilities] for this device. Bound per platform in `platformModule()`. */
 interface PlaybackCapabilitiesSource {
     fun current(): PlaybackCapabilities
+
+    /** The players to try for a video, in order, each with what it can play. Platforms with one player have the one. */
+    fun candidates(): List<EngineCapabilities> = listOf(EngineCapabilities(PlaybackEngineChoice.Native, current()))
 }
+
+/** What [engine] can play. */
+data class EngineCapabilities(val engine: PlaybackEngineChoice, val capabilities: PlaybackCapabilities)
 
 /**
  * The bitrate the Maximum quality choice asks the server for, in bits per second. Above it the
@@ -54,8 +72,24 @@ private fun lessThanOrEqual(property: String, value: String) = ProfileConditionD
 // Transcodes are always AAC stereo in HLS, and H.264 unless the file's own codec can be carried as it is.
 private const val TRANSCODE_AUDIO = "aac"
 
-// The newest H.264 level (5.2) common phone decoders handle, as the server counts it (level × 10).
-private const val H264_MAX_LEVEL = "52"
+/**
+ * The most a phone's hardware decoder is trusted with for [codec], whatever the container: 10-bit H.264 and very high levels
+ * are where it gives up. Levels are as the server counts them (level × 10). Streaming states them to the server as codec
+ * profile conditions, and a downloaded file is held to the same limits, so both choose a player the same way.
+ */
+internal data class VideoLimit(val codec: String, val maxLevel: Int? = null, val maxBitDepth: Int? = null) {
+    /** A file that doesn't say its level or bit depth passes: the player judges it. */
+    fun allows(level: Int?, bitDepth: Int?) = (maxLevel == null || level == null || level <= maxLevel) && (maxBitDepth == null || bitDepth == null || bitDepth <= maxBitDepth)
+}
+
+// 5.2 is the newest H.264 level common phone decoders handle.
+internal val VIDEO_LIMITS = listOf(
+    VideoLimit("h264", maxLevel = 52, maxBitDepth = 8),
+    VideoLimit("hevc", maxBitDepth = 10),
+)
+
+/** Whether a [codec] video with this [level] and [bitDepth] is within [VIDEO_LIMITS]; a codec with no limit always is. */
+internal fun withinVideoLimits(codec: String, level: Int?, bitDepth: Int?) = VIDEO_LIMITS.firstOrNull { it.codec == codec }?.allows(level, bitDepth) ?: true
 
 internal fun PlaybackCapabilities.toDeviceProfile(maxBitrate: Int): DeviceProfileDto = DeviceProfileDto(
     name = ClientInfo.CLIENT_NAME,
@@ -82,21 +116,16 @@ internal fun PlaybackCapabilities.toDeviceProfile(maxBitrate: Int): DeviceProfil
             breakOnNonKeyFrames = true,
         ),
     ),
-    subtitleProfiles = subtitleFormats.map { SubtitleProfileDto(format = it, method = "External") },
-    // 10-bit H.264 and very high levels are where hardware decoders give up, whatever the container.
-    codecProfiles = listOf(
+    subtitleProfiles = subtitleFormats.map { SubtitleProfileDto(format = it, method = "External") } +
+        embeddedSubtitleFormats.map { SubtitleProfileDto(format = it, method = "Embed") },
+    codecProfiles = VIDEO_LIMITS.map { limit ->
         CodecProfileDto(
             type = VIDEO,
-            codec = "h264",
-            conditions = listOf(
-                lessThanOrEqual("VideoLevel", H264_MAX_LEVEL),
-                lessThanOrEqual("VideoBitDepth", "8"),
+            codec = limit.codec,
+            conditions = listOfNotNull(
+                limit.maxLevel?.let { lessThanOrEqual("VideoLevel", it.toString()) },
+                limit.maxBitDepth?.let { lessThanOrEqual("VideoBitDepth", it.toString()) },
             ),
-        ),
-        CodecProfileDto(
-            type = VIDEO,
-            codec = "hevc",
-            conditions = listOf(lessThanOrEqual("VideoBitDepth", "10")),
-        ),
-    ),
+        )
+    },
 )

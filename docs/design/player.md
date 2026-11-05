@@ -2,7 +2,9 @@
 
 The player on both platforms. Behaviour rules are in `guardrails.md` (Playback); this file is the layout and look. The interactive mockups (controls, scrubbing, skip offer, up next, Settings → Playback) are the `PlayerControls` and `PlayerScreen` components of the VibeyFin design-system artifact (the Settings screens are `SettingsPhone` and `SettingsTablet`, see `screens.md`): https://claude.ai/artifact/L3iSAKqvpmXtUtRy2qBGAe
 
-## iOS (SwiftUI, AVPlayer)
+## iOS (SwiftUI, AVPlayer or Aether)
+
+The engine under the controls is chosen per title and does not change the layout; see `docs/ios-playback.md`.
 
 Apple's scheme: **white on Liquid Glass, never aqua.** Aqua is only the scrubber's progress. iOS 26 uses `.buttonStyle(.glass)` / `.glassEffect()` in one `GlassEffectContainer`; before iOS 26 the same controls sit on a `scrim` disc. Symbols are `.primary`.
 

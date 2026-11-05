@@ -1,37 +1,15 @@
-import AVFoundation
 import SwiftUI
 import UIKit
 
-/// The video itself: a view whose layer is an `AVPlayerLayer`. Everything drawn over it (controls,
-/// scrims) is SwiftUI in `PlayerView`.
+/// The video itself: the view the engine draws in. Everything drawn over it (controls, scrims) is
+/// SwiftUI in `PlayerView`.
 struct PlayerSurface: UIViewRepresentable {
-    let player: AVPlayer
-    /// Hands over the video's layer once, for picture-in-picture.
-    var onLayer: (AVPlayerLayer) -> Void = { _ in }
+    let controller: PlayerController
+    let pip: PlayerPictureInPicture
 
-    func makeUIView(context: Context) -> PlayerLayerView {
-        let view = PlayerLayerView()
-        view.playerLayer.player = player
-        view.playerLayer.videoGravity = .resizeAspect
-        view.backgroundColor = .systemBackground
-        // The controls carry the accessibility; the picture is not an element of its own.
-        view.isAccessibilityElement = false
-        onLayer(view.playerLayer)
-        return view
+    func makeUIView(context: Context) -> UIView {
+        controller.engine.makeVideoView(pip: pip)
     }
 
-    func updateUIView(_ view: PlayerLayerView, context: Context) {
-        if view.playerLayer.player !== player {
-            view.playerLayer.player = player
-        }
-    }
-}
-
-final class PlayerLayerView: UIView {
-    override static var layerClass: AnyClass { AVPlayerLayer.self }
-
-    var playerLayer: AVPlayerLayer {
-        // `layerClass` makes this always an AVPlayerLayer.
-        unsafeDowncast(layer, to: AVPlayerLayer.self)
-    }
+    func updateUIView(_ view: UIView, context: Context) {}
 }

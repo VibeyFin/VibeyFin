@@ -17,19 +17,40 @@ internal fun MediaItem.facts(): List<String> = listOfNotNull(
     rating?.let(Strings::starRating),
 )
 
-/** One line of the technical info: what it is, and what the file says. */
-data class TechnicalLine(val label: String, val value: String)
+/** One line of the technical info: what it is, and what the file says. [reason] says why row [reasonRow] of [value] is a transcode. */
+data class TechnicalLine(val label: String, val value: String, val reason: String? = null, val reasonRow: Int = 0) {
+    val rows: List<TechnicalRow> get() = value.split("\n").mapIndexed { index, row -> TechnicalRow(row, reason.takeIf { index == reasonRow }) }
+}
+
+/** One row of a technical line, and why it is a transcode when it is one. */
+data class TechnicalRow(val text: String, val reason: String? = null)
 
 /**
  * The file's video as one line ("3840×2160 · HEVC · HDR10 · 24 fps · 8.2 Mbps"), then how much storage it takes ("4.2 GB"); each
  * only when the server sent it.
  */
-internal fun MediaItem.technicalLines(): List<TechnicalLine> = listOfNotNull(
-    videoLine(),
-    tracksLine(Strings.technicalAudio, audioTracks),
+internal fun MediaItem.technicalLines(tags: PlayoutTags? = null): List<TechnicalLine> = listOfNotNull(
+    videoLine(tags?.video),
+    audioLine(tags?.audio, tags?.audioTrack),
     tracksLine(Strings.technicalSubtitles, subtitleTracks),
     fileBytes?.let { TechnicalLine(Strings.technicalSize, Strings.fileSize(it)) },
 )
+
+// A title with no such line, like a show, gets one with only how it plays.
+private fun MediaItem.audioLine(tag: Playout?, track: Int?): TechnicalLine? {
+    val named = audioTracks.mapNotNull { audio -> audio.name()?.let { audio to it } }
+    if (named.isEmpty()) return tag?.let { TechnicalLine(Strings.technicalAudio, Strings.statsMethod(it.method), it.reason) }
+    val row = named.indexOfFirst { it.first == track?.let(audioTracks::getOrNull) }.coerceAtLeast(0)
+    val rows = named.mapIndexed { index, (audio, name) -> if (index == row) name.withPlayout(tag, audio.codec) else name }
+    return TechnicalLine(Strings.technicalAudio, rows.joinToString("\n"), tag?.reason, row)
+}
+
+// Says how it plays right after the codec. A track's own name may call a codec something else ("Dolby Digital" for ac3): it then goes at the end of the row.
+private fun String.withPlayout(tag: Playout?, codec: String?): String {
+    if (tag == null) return this
+    val at = codec?.let { indexOf(it, ignoreCase = true).takeIf { found -> found >= 0 }?.plus(it.length) } ?: length
+    return take(at) + " " + Strings.playoutTag(tag.method) + drop(at)
+}
 
 private fun tracksLine(label: String, tracks: List<StreamTrack>): TechnicalLine? {
     val names = tracks.mapNotNull { it.name() }
@@ -47,8 +68,9 @@ private fun StreamTrack.name(): String? {
     return if (parts.isEmpty()) null else parts.joinToString(" · ")
 }
 
-private fun MediaItem.videoLine(): TechnicalLine? {
-    val format = videoFormat ?: return null
+private fun MediaItem.videoLine(tag: Playout?): TechnicalLine? {
+    val onlyTag = tag?.let { TechnicalLine(Strings.technicalVideo, Strings.statsMethod(it.method), it.reason) }
+    val format = videoFormat ?: return onlyTag
     val parts = listOfNotNull(
         if (format.width != null && format.height != null) "${format.width}×${format.height}" else null,
         format.codec?.uppercase(),
@@ -61,7 +83,7 @@ private fun MediaItem.videoLine(): TechnicalLine? {
         format.frameRate?.let { "${oneDecimal(it.toDouble()).removeSuffix(".0")} fps" },
         format.bitrateKbps?.let { "${oneDecimal(it / 1000.0)} Mbps" },
     )
-    return if (parts.isEmpty()) null else TechnicalLine(Strings.technicalVideo, parts.joinToString(" · "))
+    return if (parts.isEmpty()) onlyTag else TechnicalLine(Strings.technicalVideo, parts.joinToString(" · ").withPlayout(tag, format.codec), tag?.reason)
 }
 
 /** What a season's button says: "Season 3" whatever the server calls it ("Series 3", "Season 3"), and "Specials" for 0. */

@@ -9,8 +9,10 @@ final class PlaybackObservable: ObservableObject {
 
     private let model: PlaybackModel
     private var started = false
+    private let itemId: String
 
     init(itemId: String, startOver: Bool) {
+        self.itemId = itemId
         model = PlaybackModel(itemId: itemId, startOver: startOver)
     }
 
@@ -20,8 +22,13 @@ final class PlaybackObservable: ObservableObject {
         guard !started else { return }
         started = true
         model.observe { [weak self] state in
-            self?.state = state
+            guard let self else { return }
+            self.state = state
         }
+    }
+
+    func toggleStats() {
+        model.onToggleDiagnostics()
     }
 
     func playing(_ positionMs: Int64) {

@@ -22,7 +22,7 @@ fun downloadItemJson(
     videoCodec: String = "h264",
 ): String {
     val streams = buildList {
-        add("""{"Index":0,"Type":"Video","Codec":"$videoCodec","Width":640,"Height":360}""")
+        add("""{"Index":0,"Type":"Video","Codec":"$videoCodec","Width":640,"Height":360,"BitDepth":8,"Level":41}""")
         add("""{"Index":1,"Type":"Audio","Codec":"aac","Language":"eng","DisplayTitle":"English - AAC"}""")
         if (subtitle) {
             add(

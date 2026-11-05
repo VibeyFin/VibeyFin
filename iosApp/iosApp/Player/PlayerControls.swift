@@ -128,6 +128,18 @@ struct PlayerTrackMenu: View {
     }
 }
 
+/// The menu is rebuilt only when its tracks change: the player's state moves several times a second, and redrawing an open menu
+/// with dozens of subtitle rows makes it flicker. The callbacks do not count; they act on the model, which is the same object.
+extension PlayerTrackMenu: Equatable {
+    static func == (lhs: PlayerTrackMenu, rhs: PlayerTrackMenu) -> Bool {
+        lhs.rows(lhs.audio) == rhs.rows(rhs.audio) && lhs.rows(lhs.subtitles) == rhs.rows(rhs.subtitles)
+    }
+
+    private func rows(_ options: [TrackOption]) -> [String] {
+        options.map { "\($0.index)|\($0.label)|\($0.selected)" }
+    }
+}
+
 /// The playback speed: a capsule button with the current speed that opens a menu of the speeds. The
 /// labels are the shared model's own wording; only the section title is set here.
 struct PlayerSpeedMenu: View {
@@ -199,6 +211,8 @@ private struct PlayerCapsuleStyle: ViewModifier {
 /// The picture's one badge ("4K", "HDR10"), on the scrim so it reads over any video.
 struct FormatBadge: View {
     let text: String
+    /// `Brand.scrim` over artwork; a plain surface fill where the badge sits on the page's own background.
+    var fill: Color = Brand.scrim
 
     var body: some View {
         Text(text)
@@ -206,7 +220,7 @@ struct FormatBadge: View {
             .foregroundStyle(.primary)
             .padding(.horizontal, Space.s2)
             .padding(.vertical, 2)
-            .background(Capsule().fill(Brand.scrim))
+            .background(Capsule().fill(fill))
             .accessibilityLabel(text)
     }
 }

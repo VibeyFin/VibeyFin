@@ -2,7 +2,6 @@ import AVFoundation
 import Combine
 import Foundation
 import MediaPlayer
-import OSLog
 import Shared
 
 /// What the player tells the shared playback model. Positions are milliseconds.
@@ -16,36 +15,12 @@ struct PlayerEvents {
     var diagnostics: (LiveDiagnostics) -> Void = { _ in }
 }
 
-/// What the stats overlay needs from the player, kept as plain values so a repeat can be skipped.
-/// Anything AVFoundation can't say is nil.
-private struct DiagnosticsSnapshot: Equatable {
-    var videoCodec: String?
-    var audioCodec: String?
-    var width: Int32?
-    var height: Int32?
-    var frameRate: Float?
-    var bitrateKbps: Int32?
-    var droppedFrames: Int32?
-    var throughputKbps: Int32?
-    var bufferMs: Int64?
-}
-
-/// The audio track the shared state marks as selected, as its place in the file's audio list and how
-/// long that list is. The list is in the file's order, which is the order AVFoundation lists them in.
-struct AudioChoice: Equatable {
-    let position: Int
-    let count: Int
-}
-
-/// Owns the `AVPlayer` for one playback screen: opens the stream the shared state names, keeps
-/// the position and duration the controls draw, and turns what the player does into `PlayerEvents`.
+/// Drives one playback screen: opens the stream the shared state names on its `PlaybackEngine`, keeps
+/// the position and duration the controls draw, and turns what the engine does into `PlayerEvents`.
 /// All of it happens on the main thread.
+@MainActor
 final class PlayerController: ObservableObject {
-    let player = AVPlayer()
-
-    /// Timings for the slow-load and slow-seek reports.
-    private static let timing = Logger(subsystem: "app.vibeyfin", category: "timing")
-    private var openedAt: CFTimeInterval = 0
+    let engine: PlaybackEngine
 
     /// The position and buffered position, which tick twice a second. They live in their own object so only the
     /// views that draw them re-evaluate on a tick, not the whole player.
@@ -75,69 +50,45 @@ final class PlayerController: ObservableObject {
     var events = PlayerEvents()
 
     private var openedStreamId: Int32?
-    /// The audio to play, when the player has to choose it (a direct play). Nil: leave the player's own choice.
-    private var wantedAudio: AudioChoice?
-    /// What is selected on the open item, so the same choice isn't applied twice.
-    private var appliedAudio: AudioChoice?
     private var lastPushedSecond = -1
-    /// Seeks the player hasn't finished or cancelled yet.
-    private var seeksInFlight = 0
-    /// Where the opened stream should start, until the item is ready. Over AirPlay the early seek can
-    /// be dropped and the stream starts at 0:00, so `itemIsReady` checks it landed.
+    /// Where the opened stream should start, until the engine says it is ready.
     private var pendingStart: TimeInterval?
     private var failureReported = false
+    private var airPlayWatch: DispatchWorkItem?
+    /// What the server says the item runs, in seconds.
+    private var serverRuntime: TimeInterval = 0
     private var endReported = false
 
-    /// The stats overlay is on, so diagnostics are worth working out.
-    private var diagnosticsWanted = false
-    private var lastDiagnostics: DiagnosticsSnapshot?
-    private var lastDiagnosticsAt: CFTimeInterval = 0
-    /// What the open item's tracks say; read once per item and audio choice.
-    private var trackInfo = TrackInfo()
+    private var playerSubscriptions = Set<AnyCancellable>()
 
-    private struct TrackInfo {
-        var videoCodec: String?
-        var audioCodec: String?
-        var frameRate: Float?
+    private func engineDuration(_ seconds: TimeInterval) {
+        duration = max(seconds, serverRuntime)
     }
 
-    private var timeObserver: Any?
-    private var playerSubscriptions = Set<AnyCancellable>()
-    private var itemSubscriptions = Set<AnyCancellable>()
-
-    init() {
-        player.publisher(for: \.timeControlStatus)
-            .removeDuplicates()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] status in self?.timeControlChanged(status) }
-            .store(in: &playerSubscriptions)
-        player.publisher(for: \.isExternalPlaybackActive)
-            .removeDuplicates()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] active in self?.externalPlaybackChanged(active) }
-            .store(in: &playerSubscriptions)
+    init(engine: PlaybackEngine) {
+        self.engine = engine
+        engine.events = PlaybackEngineEvents(
+            state: { [weak self] intendsToPlay, waiting in self?.stateChanged(intendsToPlay: intendsToPlay, waiting: waiting) },
+            ready: { [weak self] in self?.pendingStart = nil },
+            duration: { [weak self] seconds in self?.engineDuration(seconds) },
+            time: { [weak self] position, buffered in self?.tick(position: position, buffered: buffered) },
+            ended: { [weak self] in self?.reportEnded() },
+            failed: { [weak self] failure in self?.reportFailure(failure) },
+            externalPlayback: { [weak self] active in self?.externalPlaybackChanged(active) },
+            diagnostics: { [weak self] diagnostics in self?.events.diagnostics(diagnostics) }
+        )
         NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.refreshExternalDevice() }
             .store(in: &playerSubscriptions)
-        timeObserver = player.addPeriodicTimeObserver(
-            forInterval: CMTime(seconds: 0.5, preferredTimescale: 600),
-            queue: .main
-        ) { [weak self] time in
-            self?.tick(time)
-        }
-    }
-
-    deinit {
-        if let timeObserver { player.removeTimeObserver(timeObserver) }
     }
 
     /// The current position in milliseconds, for the shared model.
     var currentMilliseconds: Int64 {
         // Until the item is ready the player says 0:00, which would overwrite the position being resumed.
         if let pendingStart { return Int64(pendingStart * 1000) }
-        let seconds = player.currentTime().seconds
-        return Int64((seconds.isFinite ? max(0, seconds) : position) * 1000)
+        let seconds = engine.currentSeconds.map { max(0, $0) } ?? position
+        return Int64(seconds * 1000)
     }
 
     // MARK: - Opening
@@ -147,66 +98,34 @@ final class PlayerController: ObservableObject {
     func open(_ stream: PlaybackStream, bufferAheadSeconds: Int32 = 0) {
         guard stream.id != openedStreamId else { return }
         openedStreamId = stream.id
-        openedAt = CACurrentMediaTime()
-        itemSubscriptions.removeAll()
         failureReported = false
         endReported = false
         lastPushedSecond = -1
-        appliedAudio = nil
         pendingStart = nil
-        lastDiagnostics = nil
-        trackInfo = TrackInfo()
         // The player may still say "paused" for the old item; the new stream starts from "not playing".
         isPlaying = false
 
         guard let url = URL(string: stream.url) else {
-            player.replaceCurrentItem(with: nil)
-            reportFailure(nil, item: nil)
+            engine.close()
+            reportFailure(.unsupported)
             return
         }
-        // AVPlayer passes HDR through by itself; nothing here changes that. The log shows what it was given and what
-        // the display offers, since neither simulator can show real HDR.
-        Self.timing.info("picture \(String(describing: stream.dynamicRange), privacy: .public); display HDR: \(Self.availableHDRModes(), privacy: .public)")
-        // The server wants its Authorization header on every request the player makes for this stream.
-        let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": stream.headers])
-        let item = AVPlayerItem(asset: asset)
-        // 0 is Auto: leave AVPlayer's own choice. A change applies from the next video.
-        if bufferAheadSeconds > 0 { item.preferredForwardBufferDuration = TimeInterval(bufferAheadSeconds) }
-        observe(item)
-        player.replaceCurrentItem(with: item)
-
         let start = TimeInterval(stream.startPositionMs) / 1000
         position = start
         bufferedPosition = start
+        serverRuntime = TimeInterval(stream.runtimeMs?.int64Value ?? 0) / 1000
         duration = 0
-        if start > 0 {
-            pendingStart = start
-            // The seek goes in before the item is ready; the player applies it once it can, so the first
-            // frames aren't shown and a transcode starts at the resume point. Seeking after the item is
-            // ready makes the server drop the transcode it began at 0 and restart it, which takes seconds.
-            seeksInFlight += 1
-            player.seek(
-                to: CMTime(seconds: start, preferredTimescale: 600),
-                toleranceBefore: .zero,
-                toleranceAfter: .zero
-            ) { [weak self] _ in
-                DispatchQueue.main.async { self?.seeksInFlight -= 1 }
-            }
-        }
-        player.play()
+        if start > 0 { pendingStart = start }
+        engine.open(stream, url: url, bufferAheadSeconds: bufferAheadSeconds)
     }
 
     /// Drops the stream, e.g. after the last attempt failed and the shared state shows a message.
     func clear() {
-        itemSubscriptions.removeAll()
         openedStreamId = nil
         pendingStart = nil
-        wantedAudio = nil
-        appliedAudio = nil
         isPlaying = false
         isBuffering = false
-        player.pause()
-        player.replaceCurrentItem(with: nil)
+        engine.close()
     }
 
     /// Stops everything and silences the events. Called when the screen goes away.
@@ -218,6 +137,7 @@ final class PlayerController: ObservableObject {
         nowPlayingArtwork = nil
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         clear()
+        engine.shutdown()
         playerSubscriptions.removeAll()
         position = 0
         duration = 0
@@ -234,158 +154,52 @@ final class PlayerController: ObservableObject {
         try? session.setActive(true)
     }
 
-    // MARK: - Audio track
+    // MARK: - Audio track and diagnostics
 
     /// Plays this audio track of the open file, now or once the item is ready. Pass nil when the
     /// stream already has the right audio (the server chose it), so the player doesn't touch it.
     /// Nothing here tells the shared model: the choice only ever flows from the model to the player.
     func wantAudio(_ choice: AudioChoice?) {
-        guard choice != wantedAudio else { return }
-        wantedAudio = choice
-        if let item = player.currentItem, item.status == .readyToPlay {
-            applyAudio(to: item)
-        }
+        engine.wantAudio(choice)
     }
 
-    private func applyAudio(to item: AVPlayerItem) {
-        guard let choice = wantedAudio, choice != appliedAudio else { return }
-        let streamId = openedStreamId
-        Task { @MainActor [weak self, weak item] in
-            guard let item,
-                  let group = try? await item.asset.loadMediaSelectionGroup(for: .audible) else { return }
-            // Gone, or replaced by another stream or another wish, while the group was loading.
-            guard let self, self.player.currentItem === item, self.openedStreamId == streamId,
-                  self.wantedAudio == choice else { return }
-            // The group lists every audio track in the file's order. If it doesn't have as many as the
-            // server counted, there is no telling which is which, so none is chosen.
-            let options = group.options
-            guard options.count == choice.count, options.indices.contains(choice.position) else { return }
-            item.select(options[choice.position], in: group)
-            self.appliedAudio = choice
-            self.loadTrackInfo(for: item)
-        }
+    /// Shows this embedded subtitle of the open file; nil when the app paints the subtitle or the server burns it in.
+    func wantSubtitle(_ choice: SubtitleChoice?) {
+        wantedImageSubtitle = choice?.position != nil
+        engine.wantSubtitle(choice)
+        burnInForAirPlay()
     }
 
-    // MARK: - Diagnostics
+    /// Whether the player draws an embedded image subtitle itself, which an AirPlay receiver can't be given.
+    private var wantedImageSubtitle = false
+
+    /// The app paints image subtitles over the video, which stays on the phone; an AirPlay receiver only gets the picture.
+    /// So with one showing, the title moves to the server's stream, which burns the subtitle in.
+    private func burnInForAirPlay() {
+        guard isExternalPlayback, wantedImageSubtitle, isPlaying else { return }
+        PlayerLog.write("airplay with an image subtitle, falling back to the server stream")
+        wantedImageSubtitle = false
+        reportFailure(.unsupported)
+    }
 
     /// Turns the stats on or off. Switching on works out the values at once.
     func wantDiagnostics(_ wanted: Bool) {
-        guard wanted != diagnosticsWanted else { return }
-        diagnosticsWanted = wanted
-        lastDiagnostics = nil
-        if wanted {
-            if let item = player.currentItem, item.status == .readyToPlay { loadTrackInfo(for: item) }
-            pushDiagnostics()
-        }
-    }
-
-    /// Codecs and frame rate come from the format descriptions of the tracks that are playing.
-    private func loadTrackInfo(for item: AVPlayerItem) {
-        guard diagnosticsWanted else { return }
-        let tracks = item.tracks.filter { $0.isEnabled }.compactMap { $0.assetTrack }
-        Task { @MainActor [weak self, weak item] in
-            var info = TrackInfo()
-            for track in tracks {
-                guard let descriptions = try? await track.load(.formatDescriptions) else { continue }
-                let fourCC = descriptions.first.map { Self.fourCC(CMFormatDescriptionGetMediaSubType($0)) }
-                switch track.mediaType {
-                case .video where info.videoCodec == nil:
-                    info.videoCodec = Strings.shared.codecName(code: fourCC)
-                    if let rate = try? await track.load(.nominalFrameRate), rate > 0 { info.frameRate = rate }
-                case .audio where info.audioCodec == nil:
-                    info.audioCodec = Strings.shared.codecName(code: fourCC)
-                default: break
-                }
-            }
-            guard let self, let item, self.player.currentItem === item else { return }
-            self.trackInfo = info
-            self.pushDiagnostics()
-        }
-    }
-
-    /// The HDR formats the display and device can show, by name, for the log.
-    private static func availableHDRModes() -> String {
-        let modes = AVPlayer.availableHDRModes
-        var names: [String] = []
-        if modes.contains(.hdr10) { names.append("HDR10") }
-        if modes.contains(.hlg) { names.append("HLG") }
-        if modes.contains(.dolbyVision) { names.append("Dolby Vision") }
-        return names.isEmpty ? "none" : names.joined(separator: ", ")
-    }
-
-    private static func fourCC(_ code: FourCharCode) -> String {
-        let bytes = [24, 16, 8, 0].map { UInt8((code >> $0) & 0xFF) }
-        return String(bytes: bytes, encoding: .utf8) ?? ""
-    }
-
-    /// Reads the item's access log, size and buffer, and tells the shared model when something changed.
-    private func pushDiagnostics() {
-        guard diagnosticsWanted, let item = player.currentItem else { return }
-        lastDiagnosticsAt = CACurrentMediaTime()
-        let events = item.accessLog()?.events ?? []
-        let latest = events.last
-        let dropped = events.map(\.numberOfDroppedVideoFrames).filter { $0 >= 0 }
-        let size = item.presentationSize
-        let now = player.currentTime()
-        let buffered = item.loadedTimeRanges
-            .map(\.timeRangeValue)
-            .first { $0.containsTime(now) }
-            .map { CMTimeSubtract($0.end, now).seconds }
-        let snapshot = DiagnosticsSnapshot(
-            videoCodec: trackInfo.videoCodec,
-            audioCodec: trackInfo.audioCodec,
-            width: Self.positiveInt32(Double(size.width)),
-            height: Self.positiveInt32(Double(size.height)),
-            frameRate: trackInfo.frameRate,
-            bitrateKbps: latest.flatMap { Self.kbps($0.indicatedBitrate) },
-            droppedFrames: dropped.isEmpty ? nil : Int32(clamping: dropped.reduce(0, &+)),
-            throughputKbps: latest.flatMap { Self.kbps($0.observedBitrate) },
-            bufferMs: buffered.flatMap { $0.isFinite ? Int64(min(max(0, $0) * 1000, Double(Int32.max))) : nil }
-        )
-        guard snapshot != lastDiagnostics else { return }
-        lastDiagnostics = snapshot
-        self.events.diagnostics(LiveDiagnostics(
-            videoCodec: snapshot.videoCodec,
-            audioCodec: snapshot.audioCodec,
-            width: snapshot.width.map(KotlinInt.init),
-            height: snapshot.height.map(KotlinInt.init),
-            frameRate: snapshot.frameRate.map(KotlinFloat.init),
-            bitrateKbps: snapshot.bitrateKbps.map(KotlinInt.init),
-            droppedFrames: snapshot.droppedFrames.map(KotlinInt.init),
-            throughputKbps: snapshot.throughputKbps.map(KotlinInt.init),
-            bufferMs: snapshot.bufferMs.map(KotlinLong.init)
-        ))
-    }
-
-    /// AVFoundation uses -1 or 0 for "not known".
-    private static func kbps(_ bitsPerSecond: Double) -> Int32? {
-        positiveInt32(bitsPerSecond / 1000)
-    }
-
-    /// `value` as an `Int32` when it is a positive, finite number; nil otherwise, and `Int32.max` above it.
-    /// `Int32(_:)` traps on infinity, NaN or anything out of range, and AVFoundation can report those.
-    private static func positiveInt32(_ value: Double) -> Int32? {
-        guard value.isFinite, value > 0 else { return nil }
-        return value >= Double(Int32.max) ? Int32.max : Int32(value)
+        engine.wantDiagnostics(wanted)
     }
 
     // MARK: - Commands
 
     func play() {
-        player.play()
+        engine.play()
     }
 
     func pause() {
-        player.pause()
+        engine.pause()
     }
 
-    /// Plays at `speed` from now on. `defaultRate` is what `play()` starts at, so a pause and resume (or a
-    /// seek that resumes) keeps it; setting `rate` straight away would start a paused video, so it only
-    /// changes the live rate while playing.
+    /// Plays at `speed` from now on; a pause and resume (or a seek that resumes) keeps it.
     func setSpeed(_ speed: Float) {
-        guard player.defaultRate != speed else { return }
-        player.defaultRate = speed
-        if isPlaying { player.rate = speed }
+        engine.setSpeed(speed, applyNow: isPlaying)
     }
 
     func togglePlayPause() {
@@ -396,38 +210,54 @@ final class PlayerController: ObservableObject {
     /// frame. `onSeeked` follows once the player got there.
     func seek(to seconds: TimeInterval) {
         let limit = duration > 0 ? duration : seconds
-        let target = CMTime(seconds: min(max(0, seconds), limit), preferredTimescale: 600)
-        position = target.seconds
+        let target = min(max(0, seconds), limit)
+        position = target
         updateNowPlayingInfo()
-        seeksInFlight += 1
-        let startedAt = CACurrentMediaTime()
-        player.seek(to: target) { [weak self] finished in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                self.seeksInFlight -= 1
-                // A seek that a newer one cut short is not reported; the newer one will be.
-                guard finished else { return }
-                Self.timing.debug("seek finished after \(Int((CACurrentMediaTime() - startedAt) * 1000)) ms")
-                self.events.seeked(self.currentMilliseconds)
-            }
+        engine.seek(to: target) { [weak self] finished in
+            guard finished, let self else { return }
+            self.events.seeked(self.currentMilliseconds)
         }
     }
 
-    // MARK: - Player and item state
+    // MARK: - Engine state
 
     private func externalPlaybackChanged(_ active: Bool) {
         isExternalPlayback = active
         refreshExternalDevice()
+        watchAirPlayStart()
+        burnInForAirPlay()
     }
+
+    /// A stream the receiver can't take (a codec it lacks) leaves the picture stuck without an error the app is told about.
+    /// If the player's own clock hasn't moved a while after AirPlay started (the reported position can pause while a stream is rebuilt), the player reports the stream as unsupported, which
+    /// makes the shared model fall back to the server's stream.
+    private func watchAirPlayStart() {
+        airPlayWatch?.cancel()
+        airPlayWatch = nil
+        guard isExternalPlayback, isPlaying else { return }
+        let startedAt = engine.currentSeconds ?? position
+        let stream = openedStreamId
+        let watch = DispatchWorkItem { [weak self] in
+            guard let self, self.isExternalPlayback, self.isPlaying, self.openedStreamId == stream,
+                  (self.engine.currentSeconds ?? self.position) - startedAt < 1 else { return }
+            PlayerLog.write("airplay stalled for \(Int(Self.airPlayStallSeconds)) s, falling back to the server stream")
+            self.reportFailure(.unsupported)
+        }
+        airPlayWatch = watch
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.airPlayStallSeconds, execute: watch)
+    }
+
+    private static let airPlayStallSeconds: TimeInterval = 12
 
     private func refreshExternalDevice() {
         let name = isExternalPlayback ? ExternalPlayback.deviceName(fromPortNames: ExternalPlayback.currentPortNames()) : nil
+        let outputs = AVAudioSession.sharedInstance().currentRoute.outputs.map { "\($0.portType.rawValue)=\($0.portName)" }
+        PlayerLog.write("airplay external=\(isExternalPlayback) name=\(name ?? "nil") outputs=\(outputs)")
         if name != externalDeviceName { externalDeviceName = name }
     }
 
-    private func timeControlChanged(_ status: AVPlayer.TimeControlStatus) {
-        isBuffering = status == .waitingToPlayAtSpecifiedRate && openedStreamId != nil
-        let intendsToPlay = status != .paused
+    private func stateChanged(intendsToPlay: Bool, waiting: Bool) {
+        isBuffering = waiting && openedStreamId != nil
         guard intendsToPlay != isPlaying else { return }
         isPlaying = intendsToPlay
         updateNowPlayingInfo()
@@ -439,78 +269,7 @@ final class PlayerController: ObservableObject {
         }
     }
 
-    private func observe(_ item: AVPlayerItem) {
-        item.publisher(for: \.status)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self, weak item] status in
-                guard let self, let item else { return }
-                switch status {
-                case .readyToPlay: self.itemIsReady(item)
-                case .failed: self.reportFailure(item.error, item: item)
-                default: break
-                }
-            }
-            .store(in: &itemSubscriptions)
-        item.publisher(for: \.duration)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] time in
-                if time.isNumeric, time.seconds > 0 { self?.duration = time.seconds }
-            }
-            .store(in: &itemSubscriptions)
-        NotificationCenter.default
-            .publisher(for: AVPlayerItem.newAccessLogEntryNotification, object: item)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.pushDiagnostics() }
-            .store(in: &itemSubscriptions)
-        item.publisher(for: \.presentationSize)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.pushDiagnostics() }
-            .store(in: &itemSubscriptions)
-        NotificationCenter.default
-            .publisher(for: .AVPlayerItemDidPlayToEndTime, object: item)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.reportEnded() }
-            .store(in: &itemSubscriptions)
-        NotificationCenter.default
-            .publisher(for: .AVPlayerItemFailedToPlayToEndTime, object: item)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] notification in
-                let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error
-                self?.reportFailure(error, item: notification.object as? AVPlayerItem)
-            }
-            .store(in: &itemSubscriptions)
-    }
-
-    private func itemIsReady(_ item: AVPlayerItem) {
-        Self.timing.debug("item ready \(Int((CACurrentMediaTime() - self.openedAt) * 1000)) ms after the stream was opened")
-        if item.duration.isNumeric, item.duration.seconds > 0 { duration = item.duration.seconds }
-        confirmStartPosition()
-        applyAudio(to: item)
-        loadTrackInfo(for: item)
-    }
-
     // MARK: - Now playing
-
-    /// Seeks again to the wanted start when the early seek didn't land. Only over AirPlay: locally the early seek
-    /// is what keeps the transcode from restarting.
-    private func confirmStartPosition() {
-        guard let start = pendingStart else { return }
-        pendingStart = nil
-        guard Self.needsStartSeek(start: start, current: player.currentTime().seconds, external: player.isExternalPlaybackActive) else { return }
-        seeksInFlight += 1
-        player.seek(
-            to: CMTime(seconds: start, preferredTimescale: 600),
-            toleranceBefore: .zero,
-            toleranceAfter: .zero
-        ) { [weak self] _ in
-            DispatchQueue.main.async { self?.seeksInFlight -= 1 }
-        }
-    }
-
-    static func needsStartSeek(start: TimeInterval, current: TimeInterval, external: Bool) -> Bool {
-        guard external, start > 0 else { return false }
-        return !current.isFinite || abs(current - start) > 1
-    }
 
     private var nowPlayingTitle: String?
     private var nowPlayingSubtitle: String?
@@ -548,10 +307,10 @@ final class PlayerController: ObservableObject {
         }
         var info: [String: Any] = [
             MPNowPlayingInfoPropertyMediaType: MPNowPlayingInfoMediaType.video.rawValue,
-            MPNowPlayingInfoPropertyDefaultPlaybackRate: Double(player.defaultRate),
+            MPNowPlayingInfoPropertyDefaultPlaybackRate: Double(engine.speed),
             MPMediaItemPropertyTitle: title,
             MPNowPlayingInfoPropertyElapsedPlaybackTime: position,
-            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? Double(player.defaultRate) : 0,
+            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? Double(engine.speed) : 0,
         ]
         if let subtitle = nowPlayingSubtitle { info[MPMediaItemPropertyArtist] = subtitle }
         if duration > 0 { info[MPMediaItemPropertyPlaybackDuration] = duration }
@@ -559,25 +318,12 @@ final class PlayerController: ObservableObject {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
-    /// The end of the loaded range that holds `time`. Published only when it moves by a tenth of a second or more.
-    private func updateBufferedPosition(_ time: CMTime) {
-        let end = player.currentItem?.loadedTimeRanges
-            .map(\.timeRangeValue)
-            .first { $0.containsTime(time) }
-            .map { CMTimeRangeGetEnd($0).seconds }
-        let value = max(end.flatMap { $0.isFinite ? $0 : nil } ?? time.seconds, time.seconds)
-        if abs(value - bufferedPosition) >= 0.1 { bufferedPosition = value }
-    }
-
-    private func tick(_ time: CMTime) {
-        guard time.isNumeric, openedStreamId != nil else { return }
-        // While a seek is pending the player still reports the old time; keep showing the target.
-        guard seeksInFlight == 0 else { return }
-        position = time.seconds
-        updateBufferedPosition(time)
-        if diagnosticsWanted, CACurrentMediaTime() - lastDiagnosticsAt >= 1 { pushDiagnostics() }
+    private func tick(position time: TimeInterval, buffered: TimeInterval) {
+        guard openedStreamId != nil else { return }
+        position = time
+        if abs(buffered - bufferedPosition) >= 0.1 { bufferedPosition = buffered }
         // The shared model hears the position about once a second.
-        let second = Int(time.seconds)
+        let second = Int(time)
         if second != lastPushedSecond {
             lastPushedSecond = second
             events.position(currentMilliseconds)
@@ -585,10 +331,15 @@ final class PlayerController: ObservableObject {
         }
     }
 
-    private func reportFailure(_ error: Error?, item: AVPlayerItem?) {
+    /// The server turned down the token on a subtitle request. The shared model asks again, and its call is the one that ends the session.
+    func subtitleRejected() {
+        reportFailure(.unauthorized)
+    }
+
+    private func reportFailure(_ failure: PlaybackFailure) {
         guard !failureReported else { return }
         failureReported = true
-        events.failed(PlaybackFailure.of(error, item: item))
+        events.failed(failure)
     }
 
     private func reportEnded() {

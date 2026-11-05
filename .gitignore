@@ -35,9 +35,6 @@ hs_err_pid*.log
 # Local test server state and generated media
 scripts/test-server/data/
 
-# FFmpeg for the iOS remux (built by scripts/ffmpeg/build-ios.sh)
-iosApp/Vendor/
-
 # Claude plans, specs and checklists stay local
 .superpowers/
 docs/plans/

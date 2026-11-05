@@ -65,13 +65,13 @@ fun apiModule() = module {
     single { OfflineMode(get(), get(), get(ApplicationScope)) }
     single { DownloadWake() }
     single { DownloadSpeeds() }
-    single { OfflineLibrary(get(), get(), get()) }
+    single { OfflineLibrary(get(), get(), get(), get()) }
     single { OfflineProgress(get(), get(), get()) }
     single { OfflineSync(get(), get(), get(), get()) }
     // One per player, like PlaybackReporter: it holds where this playback is.
     factory { LocalPlaybackReporter(get(), get(ApplicationScope), get(), get(), get(), get()) }
     single { DownloadRepository(get(), get(), get(), get(), get(), get(), get(), get()) }
-    single { DownloadRunner(get(), get(), get(), get(), get(), get(), get(), speeds = get(), external = getOrNull(), converter = getOrNull()) }
+    single { DownloadRunner(get(), get(), get(), get(), get(), get(), get(), speeds = get(), external = getOrNull(), playable = getOrNull()) }
     single { AuthRepository(get(), get(), get(), get()) }
     single { StartupRouter(get(), get(), get(), get(), get()) }
     single { LibraryRepository(get()) }

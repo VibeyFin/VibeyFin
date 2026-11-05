@@ -19,6 +19,8 @@ data class PlaybackDiagnostics(
     val droppedFrames: Int?,
     val throughputKbps: Int?,
     val bufferMs: Long?,
+    /** The player and route that play the stream, as the player names them. */
+    val engine: String? = null,
 )
 
 /** What the native player measures about the stream it is playing. Anything it can't say is null. */
@@ -32,6 +34,8 @@ data class LiveDiagnostics(
     val droppedFrames: Int?,
     val throughputKbps: Int?,
     val bufferMs: Long?,
+    /** The player and route that play the stream, as the player names them. */
+    val engine: String? = null,
 )
 
 /** The player's own values win; one it didn't report leaves the plan's value as it was. */
@@ -45,6 +49,7 @@ fun PlaybackDiagnostics.withLive(live: LiveDiagnostics): PlaybackDiagnostics = c
     droppedFrames = live.droppedFrames ?: droppedFrames,
     throughputKbps = live.throughputKbps ?: throughputKbps,
     bufferMs = live.bufferMs ?: bufferMs,
+    engine = live.engine ?: engine,
 )
 
 /** What the server said about the stream the plan opens, with the audio track [audioIndex] playing. */

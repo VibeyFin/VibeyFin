@@ -407,61 +407,25 @@ class DownloadRunnerTest {
         assertEquals(listOf(DownloadRunner.Waiting.Network), seen.filterNotNull().distinct())
     }
 
-    /** A platform converter that answers [answer], having written [output] at the target path when it converts. */
-    private inner class FakeConverter(val answer: VideoConversion, val playable: (String) -> Boolean = { true }) : VideoConverter {
-        var converted: Pair<String, String>? = null
-
-        override suspend fun convert(source: String, target: String, stop: kotlinx.coroutines.flow.StateFlow<Boolean>, onProgress: suspend (Float) -> Unit): VideoConversion {
-            converted = source to target
-            onProgress(1f)
-            if (answer == VideoConversion.Converted) app.files.open(target, append = false).also { it.write("mp4-bytes".encodeToByteArray(), 9) }.close()
-            return answer
-        }
-
-        override fun canPlayVideo(codec: String) = playable(codec)
-    }
-
-    private fun runnerWith(converter: VideoConverter) = DownloadRunner(app.downloads, app.database.accountDao(), app.connection, app.files, app.network, app.wake, app.clock, speeds = app.speeds, converter = converter)
+    private fun runnerRefusing(refused: String) = DownloadRunner(
+        app.downloads, app.database.accountDao(), app.connection, app.files, app.network, app.wake, app.clock, speeds = app.speeds,
+        playable = object : PlayableVideo {
+            override fun canPlay(codec: String) = codec != refused
+        },
+    )
 
     @Test
-    fun aVideoThePlayerCannotOpenIsReplacedByTheConvertedFile() = runTest {
+    fun aFinishedVideoIsKeptAsTheServerSentIt() = runTest {
         movieOnServer()
         queue()
-        val converter = FakeConverter(VideoConversion.Converted)
 
-        runnerWith(converter).run()
+        app.runner.run()
 
-        assertEquals("$folder/video.part" to "$folder/video.converting", converter.converted)
         val done = row()
         assertEquals(DOWNLOAD_DONE, done.state)
-        assertEquals("$folder/video.mp4", done.filePath)
-        assertEquals("mp4-bytes", app.files.text("$folder/video.mp4"))
-        assertNull(app.files.text("$folder/video.part"), "the original is not kept next to the copy")
-        assertNull(app.files.text("$folder/video.converting"))
-        assertEquals(9L, app.files.length("$folder/video.mp4"))
-    }
-
-    @Test
-    fun aVideoThePlayerCanOpenIsKeptAsItCame() = runTest {
-        movieOnServer()
-        queue()
-
-        runnerWith(FakeConverter(VideoConversion.NotNeeded)).run()
-
-        assertEquals("$folder/video.mkv", row().filePath)
+        assertEquals("$folder/video.mkv", done.filePath)
         assertEquals(body, app.files.text("$folder/video.mkv"))
-    }
-
-    @Test
-    fun aVideoInACodecThePlayerCannotDecodeFailsAsUnplayable() = runTest {
-        movieOnServer()
-        queue()
-
-        runnerWith(FakeConverter(VideoConversion.Unsupported)).run()
-
-        assertEquals(DOWNLOAD_FAILED, row().state)
-        assertEquals(DownloadFailure.Unplayable.name, row().error)
-        assertNull(app.files.text("$folder/video.part"), "what was fetched is no use")
+        assertNull(app.files.text("$folder/video.part"))
     }
 
     @Test
@@ -471,7 +435,7 @@ class DownloadRunnerTest {
         server.on("GET", "/Items/m1/Download") { Reply.ranged(body, it) }
         queue()
 
-        runnerWith(FakeConverter(VideoConversion.NotNeeded, playable = { it != "av1" })).run()
+        runnerRefusing("av1").run()
 
         assertEquals(DownloadFailure.Unplayable.name, row().error)
         assertTrue(app.jellyfin.requestsTo("GET", "/Items/m1/Download").isEmpty(), "the video was never asked for")
@@ -509,7 +473,7 @@ class DownloadRunnerTest {
         // 1,000 chunks of 10 KB: 10 MB, which is five 2 MB steps.
         externalRunner(FakeExternalTransfer(steps = 1_000, step = 10_000)).run { seen += it }
 
-        val transferring = seen.filter { !it.converting && it.bytesDone > 0 }
+        val transferring = seen.filter { it.bytesDone > 0 }
         assertTrue(transferring.size < 20, "reported ${transferring.size} times")
         assertEquals(10_000_000L, transferring.last().bytesDone, "the last report is the full count")
     }
@@ -523,7 +487,7 @@ class DownloadRunnerTest {
         // 20 chunks of 1 KB, 600 ms apart: far below the byte step, so only time makes them report.
         externalRunner(FakeExternalTransfer(steps = 20, step = 1_000, clockStep = 600.milliseconds)).run { seen += it }
 
-        assertEquals(20, seen.count { it.bytesDone > 0 && !it.converting })
+        assertEquals(20, seen.count { it.bytesDone > 0 })
     }
 
     @Test
@@ -535,7 +499,7 @@ class DownloadRunnerTest {
         // 30 KB in 3 chunks, with no total known: nothing crosses a step, yet the end must be saved.
         externalRunner(FakeExternalTransfer(steps = 3, step = 10_000, total = null)).run { seen += it }
 
-        assertEquals(30_000L, seen.last { !it.converting && it.bytesDone > 0 }.bytesDone)
+        assertEquals(30_000L, seen.last { it.bytesDone > 0 }.bytesDone)
     }
 
     @Test

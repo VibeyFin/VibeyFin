@@ -1,6 +1,7 @@
 package app.vibeyfin.ui.item
 
 import app.vibeyfin.domain.DynamicRange
+import app.vibeyfin.domain.PlayMethod
 import app.vibeyfin.domain.StreamTrack
 import app.vibeyfin.domain.VideoFormat
 import app.vibeyfin.domain.model.ItemKind
@@ -138,5 +139,36 @@ class ItemFactsTest {
         val lines = item(audioTracks = listOf(StreamTrack(language = "eng", codec = "aac"))).technicalLines()
 
         assertEquals(listOf(TechnicalLine("Audio", "eng · AAC")), lines)
+    }
+
+    @Test
+    fun howItPlaysIsSaidAfterTheVideoCodec() {
+        val format = VideoFormat(width = 1920, height = 1080, codec = "hevc", dynamicRange = DynamicRange.Sdr, frameRate = 24f, bitrateKbps = 8200)
+
+        val video = item(videoFormat = format).technicalLines(PlayoutTags(video = Playout(PlayMethod.DirectPlay))).first()
+
+        assertEquals(listOf(TechnicalRow("1920×1080 · HEVC (Direct play) · 24 fps · 8.2 Mbps")), video.rows)
+    }
+
+    @Test
+    fun unsupportedAudioIsSaidAfterThePlayingTracksCodecWithWhyUnderIt() {
+        val reason = "The audio format isn't supported"
+        val tracks = listOf(StreamTrack(displayTitle = "English - AAC - Stereo", codec = "aac"), StreamTrack(displayTitle = "Italiano - DTS - 5.1", codec = "dts"))
+
+        val audio = item(audioTracks = tracks).technicalLines(PlayoutTags(audio = Playout(PlayMethod.Transcode, reason), audioTrack = 1)).single()
+
+        assertEquals(listOf(TechnicalRow("English · AAC · Stereo"), TechnicalRow("Italiano · DTS (Transcode) · 5.1", reason)), audio.rows)
+    }
+
+    @Test
+    fun aCodecTheTrackNameCallsSomethingElseIsFollowedAtTheEndOfTheRow() {
+        val audio = item(audioTracks = listOf(StreamTrack(displayTitle = "English - Dolby Digital - 5.1", codec = "ac3"))).technicalLines(PlayoutTags(audio = Playout(PlayMethod.Transcode))).single()
+
+        assertEquals("English · Dolby Digital · 5.1 (Transcode)", audio.value)
+    }
+
+    @Test
+    fun aTitleWithNoSuchLineGetsOneWithOnlyHowItPlays() {
+        assertEquals(listOf(TechnicalLine("Video", "Direct play")), item().technicalLines(PlayoutTags(video = Playout(PlayMethod.DirectPlay))))
     }
 }

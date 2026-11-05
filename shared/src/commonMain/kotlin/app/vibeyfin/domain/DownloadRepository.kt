@@ -48,8 +48,6 @@ data class Download(
     val item: MediaItem,
     /** How fast it is coming in right now; null unless it is running and has been measured. */
     val bytesPerSecond: Long? = null,
-    /** How far the finished video is into being made playable on the device, 0 to 1; null when it is not being converted. */
-    val conversion: Float? = null,
 ) {
     /** How long the rest of the file takes at the current speed; null when that is not known. */
     val timeLeft: Duration?
@@ -57,7 +55,7 @@ data class Download(
 
     /** How much of the file is here, 0 to 1; null when the size is not known. */
     val progress: Float?
-        get() = conversion ?: bytesTotal?.takeIf { it > 0 }?.let { (bytesDone.toFloat() / it).coerceIn(0f, 1f) }
+        get() = bytesTotal?.takeIf { it > 0 }?.let { (bytesDone.toFloat() / it).coerceIn(0f, 1f) }
 }
 
 /** What to download: one movie or episode, a season's episodes, or every episode of a show. */
@@ -117,13 +115,13 @@ class DownloadRepository(
     private val speeds: DownloadSpeeds = DownloadSpeeds(),
 ) {
     /** The profile's downloads, oldest request first. */
-    fun observeAll(profile: ProfileRef): Flow<List<Download>> = combine(dao.observeAll(profile.serverId, profile.userId), dao.observeItems(profile.serverId, profile.userId), speeds.speeds, speeds.converting) { downloads, items, speed, converting ->
+    fun observeAll(profile: ProfileRef): Flow<List<Download>> = combine(dao.observeAll(profile.serverId, profile.userId), dao.observeItems(profile.serverId, profile.userId), speeds.speeds) { downloads, items, speed ->
         val byId = items.associateBy { it.itemId }
-        downloads.mapNotNull { row -> byId[row.itemId]?.let { row.toDownload(it, speed[folder(profile, row.itemId)], converting[folder(profile, row.itemId)]) } }
+        downloads.mapNotNull { row -> byId[row.itemId]?.let { row.toDownload(it, speed[folder(profile, row.itemId)]) } }
     }.distinctUntilChanged()
 
     /**
-     * [observeAll], but it only emits when a download comes, goes or changes state, not for its byte count, speed or conversion. For screens
+     * [observeAll], but it only emits when a download comes, goes or changes state, not for its byte count or speed. For screens
      * that show what a download is doing but not how far it is: a running download would otherwise rebuild them several times a second.
      * The numbers in what it emits are those of the moment it last changed.
      */
@@ -138,8 +136,8 @@ class DownloadRepository(
     }.distinctUntilChanged()
 
     /** One download, or null when the profile has none for [itemId]. */
-    fun observe(profile: ProfileRef, itemId: String): Flow<Download?> = combine(dao.observe(profile.serverId, profile.userId, itemId), dao.observeItems(profile.serverId, profile.userId), speeds.speeds, speeds.converting) { row, items, speed, converting ->
-        row?.let { r -> items.firstOrNull { it.itemId == itemId }?.let { r.toDownload(it, speed[folder(profile, itemId)], converting[folder(profile, itemId)]) } }
+    fun observe(profile: ProfileRef, itemId: String): Flow<Download?> = combine(dao.observe(profile.serverId, profile.userId, itemId), dao.observeItems(profile.serverId, profile.userId), speeds.speeds) { row, items, speed ->
+        row?.let { r -> items.firstOrNull { it.itemId == itemId }?.let { r.toDownload(it, speed[folder(profile, itemId)]) } }
     }.distinctUntilChanged()
 
     /** The bytes the profile's downloads take on the device, partial ones included. */
@@ -313,7 +311,7 @@ class DownloadRepository(
         return call.unwrap()
     }
 
-    private fun DownloadEntity.toDownload(item: DownloadItemEntity, speed: Long?, conversion: Float?): Download = Download(
+    private fun DownloadEntity.toDownload(item: DownloadItemEntity, speed: Long?): Download = Download(
         profile = ProfileRef(serverId, userId),
         itemId = itemId,
         state = when (state) {
@@ -331,7 +329,6 @@ class DownloadRepository(
         seasonId = seasonId,
         item = OfflineSnapshot.decode(item.snapshotJson).mediaItem(files),
         bytesPerSecond = speed.takeIf { state == DOWNLOAD_RUNNING },
-        conversion = conversion.takeIf { state == DOWNLOAD_RUNNING },
     )
 
     private fun <T> ProfileCall<T>.unwrap(): DownloadAttempt<T> = when (this) {
@@ -397,6 +394,7 @@ internal fun BaseItemDto.toSnapshot(baseUrl: String): OfflineSnapshot {
     }
     val source = mediaSources.firstOrNull()
     val tracks = source?.tracks(baseUrl)
+    val video = source?.mediaStreams.orEmpty().firstOrNull { it.type == "Video" }
     // The item lists a subtitle file next to the video without a delivery path (that comes with playback), so its route is built here.
     val subtitleSources = source?.mediaStreams.orEmpty().filter { it.type == "Subtitle" && it.isExternal }.mapNotNull { stream ->
         val (extension, mimeType) = when (stream.codec?.lowercase()) {
@@ -415,7 +413,9 @@ internal fun BaseItemDto.toSnapshot(baseUrl: String): OfflineSnapshot {
         subtitleTracks = tracks?.subtitles.orEmpty(),
         // Nothing to fetch for an item with no pictures and no subtitle files.
         assetsDone = sources.isEmpty() && subtitleSources.isEmpty(),
-        videoCodec = source?.mediaStreams.orEmpty().firstOrNull { it.type == "Video" }?.codec?.lowercase(),
+        videoCodec = video?.codec?.lowercase(),
+        videoLevel = video?.level?.toInt(),
+        videoBitDepth = video?.bitDepth,
         tracksDescribed = true,
     )
 }

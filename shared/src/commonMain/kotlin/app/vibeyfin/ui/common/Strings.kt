@@ -391,8 +391,34 @@ object Strings {
         PlayMethod.Transcode -> "Transcode"
     }
 
+    /** How a stream plays, after its codec in the item screen's technical info: "HEVC (Direct play)". */
+    fun playoutTag(method: PlayMethod) = "(${statsMethod(method)})"
+
+    /** The server's transcode reason in plain words; an unknown one is its name, split into words. */
+    fun transcodeReason(code: String) = when (code) {
+        "ContainerNotSupported" -> "The file type isn't supported"
+        "VideoCodecNotSupported" -> "The video format isn't supported"
+        "AudioCodecNotSupported" -> "The audio format isn't supported"
+        "SubtitleCodecNotSupported" -> "The subtitle format isn't supported"
+        "VideoProfileNotSupported", "VideoLevelNotSupported" -> "The video profile isn't supported"
+        "VideoRangeTypeNotSupported" -> "The HDR format isn't supported"
+        "VideoResolutionNotSupported" -> "The resolution is too high"
+        "VideoBitDepthNotSupported" -> "The video's bit depth isn't supported"
+        "VideoFramerateNotSupported" -> "The frame rate isn't supported"
+        "AudioChannelsNotSupported" -> "The audio has too many channels"
+        "AudioIsExternal", "SecondaryAudioNotSupported" -> "The audio track is separate"
+        "ContainerBitrateExceedsLimit", "VideoBitrateNotSupported", "AudioBitrateNotSupported" -> "The bitrate is above the limit"
+        else -> code.replace(Regex("(?<=[a-z])(?=[A-Z])"), " ").lowercase().replaceFirstChar(Char::uppercase)
+    }
+
     val statsLabelMethod = "Method"
     val statsLabelReasons = "Reasons"
+    val statsLabelEngine = "Engine"
+    val statsEngineAvPlayer = "AVPlayer"
+
+    /** Aether, with how it shows the picture (the engine's own name for the route). */
+    fun statsEngineAether(route: String) = "Aether $route"
+
     val statsLabelVideo = "Video"
     val statsLabelAudio = "Audio"
     val statsLabelResolution = "Resolution"
@@ -707,6 +733,7 @@ object Strings {
     val settingsGroupAdvanced = "Advanced"
     val settingsKidsFooter = "Applies to this profile only."
     val settingsDeviceHelp = "Otherwise the last profile reopens."
+
     val settingsAbout = "About VibeyFin"
 
     // Profile page
@@ -956,9 +983,6 @@ object Strings {
     val downloadsEmptyHelp = "Download a movie or an episode to watch it without a connection."
     val downloaded = "Downloaded"
     val downloading = "Downloading"
-    val converting = "Converting"
-
-    fun downloadConverting(percent: Int) = "Converting for this device · $percent%"
 
     val downloadQueued = "Waiting to download"
     val downloadWaitingForWifi = "Waiting for Wi-Fi"
