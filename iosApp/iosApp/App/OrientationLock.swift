@@ -28,8 +28,11 @@ enum OrientationLock {
     static var mask: UIInterfaceOrientationMask = defaultMask
 
     /// What Info.plist allows: iPad turns every way, iPhone everything but upside down.
-    private static var defaultMask: UIInterfaceOrientationMask {
-        UIDevice.current.userInterfaceIdiom == .pad ? .all : .allButUpsideDown
+    private static var defaultMask: UIInterfaceOrientationMask { defaultMask(for: UIDevice.current.userInterfaceIdiom) }
+
+    /// An iPhone stays upright outside the player, which asks for landscape itself; an iPad turns freely. The Info.plist still lists landscape for the iPhone, or the player could not ask for it.
+    static func defaultMask(for idiom: UIUserInterfaceIdiom) -> UIInterfaceOrientationMask {
+        idiom == .pad ? .all : .portrait
     }
 
     private static var orientationToRestore: UIInterfaceOrientationMask?
