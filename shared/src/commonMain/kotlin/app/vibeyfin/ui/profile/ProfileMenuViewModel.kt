@@ -9,6 +9,7 @@ import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SearchHistory
+import app.vibeyfin.domain.accountOrNull
 import app.vibeyfin.ui.common.PinPrompt
 import app.vibeyfin.ui.common.ProfileActions
 import app.vibeyfin.ui.home.HomeExit
@@ -47,9 +48,8 @@ class ProfileMenuViewModel(
         profile.exit,
         profile.openQuickConnect,
     ) { state, kids, prompt, exit, quickConnect ->
-        val connected = state as? ConnectionState.Connected
         ProfileMenuUiState(
-            userName = connected?.account?.name,
+            userName = state.accountOrNull()?.name,
             kidsProfile = kids == true,
             pinPrompt = prompt,
             exit = exit,

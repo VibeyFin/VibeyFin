@@ -10,6 +10,7 @@ import app.vibeyfin.domain.DownloadTarget
 import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
+import app.vibeyfin.domain.profileOrNull
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
@@ -18,7 +19,6 @@ import app.vibeyfin.ui.downloads.DownloadPrompt
 import app.vibeyfin.ui.downloads.RemovePrompt
 import app.vibeyfin.ui.downloads.downloadParts
 import app.vibeyfin.ui.downloads.isDone
-import app.vibeyfin.ui.downloads.profileOrNull
 import app.vibeyfin.ui.home.HomeExit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted

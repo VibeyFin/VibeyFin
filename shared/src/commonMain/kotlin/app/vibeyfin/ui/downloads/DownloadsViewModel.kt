@@ -10,6 +10,7 @@ import app.vibeyfin.domain.NetworkState
 import app.vibeyfin.domain.OfflineMode
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.model.ProfileRef
+import app.vibeyfin.domain.profileOrNull
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
 import app.vibeyfin.ui.home.HomeExit

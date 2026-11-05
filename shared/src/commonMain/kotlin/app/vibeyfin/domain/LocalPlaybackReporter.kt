@@ -91,7 +91,7 @@ class LocalPlaybackReporter(
                 positionMs = event.ms
                 if (!started) {
                     started = true
-                    profile = (connection.state.value as? ConnectionState.Connected)?.let { ProfileRef(it.server.id, it.account.userId) }
+                    profile = connection.state.value.profileOrNull()
                 }
                 isPaused = false
                 startTicker()

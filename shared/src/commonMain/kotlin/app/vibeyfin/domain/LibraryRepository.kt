@@ -216,11 +216,7 @@ class LibraryRepository(private val connection: ConnectionManager) {
         }
     }
 
-    private suspend fun <T> call(block: suspend (JellyfinApi, String) -> ApiResult<T>): ApiResult<T> {
-        val connected = connection.state.value as? ConnectionState.Connected
-            ?: return ApiResult.Failure(ApiError.Unauthorized)
-        return block(connected.api, connected.account.userId)
-    }
+    private suspend fun <T> call(block: suspend (JellyfinApi, String) -> ApiResult<T>): ApiResult<T> = connection.asConnected(ApiResult.Failure(ApiError.Unauthorized)) { block(it.api, it.account.userId) }
 
     companion object {
         const val PAGE_SIZE = 60

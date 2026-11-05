@@ -1,5 +1,7 @@
 package app.vibeyfin.domain
 
+import app.vibeyfin.data.api.ApiError
+import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.testing.FakeServer
 import app.vibeyfin.testing.Reply
@@ -107,6 +109,45 @@ class ConnectionManagerTest {
 
         api.me()
 
+        assertEquals(ConnectionState.Expired("srv-1", "u1"), app.connection.state.first { it is ConnectionState.Expired })
+        assertNull(app.accounts.sessionToken("srv-1", "u1"))
+    }
+
+    @Test
+    fun workRunsAsTheSignedInAccount() = runTest {
+        signedInProfile().on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex"}"""))
+        app.connection.activate("srv-1", "u1")
+
+        val name = app.connection.asAccount("nobody") { it.name }
+        val server = app.connection.asConnected("none") { it.server.id }
+
+        assertEquals("Alex", name)
+        assertEquals("srv-1", server)
+    }
+
+    @Test
+    fun workReturnsTheCallersFallbackWhenNobodyIsSignedIn() = runTest {
+        var ran = false
+
+        val result = app.connection.asAccount("nobody") {
+            ran = true
+            it.name
+        }
+
+        assertEquals("nobody", result)
+        assertFalse(ran)
+    }
+
+    @Test
+    fun aTokenRejectedInTheMiddleOfWorkLocksTheProfile() = runTest {
+        val server = signedInProfile()
+        server.on("GET", "/Users/Me", Reply.json("""{"Id":"u1"}"""))
+        app.connection.activate("srv-1", "u1")
+        server.on("GET", "/Users/Me", Reply.status(HttpStatusCode.Unauthorized))
+
+        val result = app.connection.asConnected<ApiResult<*>?>(null) { it.api.me() }
+
+        assertEquals(ApiResult.Failure(ApiError.Unauthorized), result)
         assertEquals(ConnectionState.Expired("srv-1", "u1"), app.connection.state.first { it is ConnectionState.Expired })
         assertNull(app.accounts.sessionToken("srv-1", "u1"))
     }

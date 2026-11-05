@@ -42,8 +42,5 @@ class NewTitlesModel {
     }
 
     /** Whether this profile is the one signed in right now, so a tapped notification may open its content. */
-    fun isSignedIn(serverId: String, userId: String): Boolean {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return false
-        return account.serverId == serverId && account.userId == userId
-    }
+    fun isSignedIn(serverId: String, userId: String): Boolean = connection.asAccount(false) { it.serverId == serverId && it.userId == userId }
 }

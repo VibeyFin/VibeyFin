@@ -22,7 +22,7 @@ class SearchHistory(
     /** The terms of the profile signed in now; empty when nobody is. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val entries: Flow<List<String>> = connection.state
-        .map { (it as? ConnectionState.Connected)?.account?.let { a -> keyFor(a.serverId, a.userId) } }
+        .map { it.accountOrNull()?.let { a -> keyFor(a.serverId, a.userId) } }
         .distinctUntilChanged()
         .flatMapLatest { key -> if (key == null) flowOf(emptyList()) else dataStore.data.map { decode(it[key]) } }
 
@@ -51,7 +51,7 @@ class SearchHistory(
         dataStore.edit { it.remove(keyFor(serverId, userId)) }
     }
 
-    private fun currentKey() = (connection.state.value as? ConnectionState.Connected)?.account?.let { keyFor(it.serverId, it.userId) }
+    private fun currentKey() = connection.asAccount(null) { keyFor(it.serverId, it.userId) }
 
     private fun keyFor(serverId: String, userId: String) = stringPreferencesKey("search_history:$serverId:$userId")
 

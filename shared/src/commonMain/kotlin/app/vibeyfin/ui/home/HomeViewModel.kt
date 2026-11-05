@@ -22,6 +22,7 @@ import app.vibeyfin.domain.WatchRepository
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.ItemPage
 import app.vibeyfin.domain.model.MediaItem
+import app.vibeyfin.domain.profileOrNull
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.PinPrompt
 import app.vibeyfin.ui.common.ProfileActions
@@ -30,7 +31,6 @@ import app.vibeyfin.ui.downloads.DownloadAction
 import app.vibeyfin.ui.downloads.DownloadFlow
 import app.vibeyfin.ui.downloads.RemovePrompt
 import app.vibeyfin.ui.downloads.downloadParts
-import app.vibeyfin.ui.downloads.profileOrNull
 import app.vibeyfin.ui.item.seasonIndex
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async

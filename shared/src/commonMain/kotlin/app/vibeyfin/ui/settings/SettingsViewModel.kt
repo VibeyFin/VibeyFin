@@ -19,6 +19,7 @@ import app.vibeyfin.domain.SeerrConnection
 import app.vibeyfin.domain.SeerrState
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.SubtitleMode
+import app.vibeyfin.domain.accountOrNull
 import app.vibeyfin.domain.model.Account
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.domain.model.Server
@@ -120,7 +121,7 @@ class SettingsViewModel(
         // The same profile coming back (Forgot PIN signs in again) is not asked twice.
         viewModelScope.launch {
             connection.state
-                .map { (it as? ConnectionState.Connected)?.account }
+                .map { it.accountOrNull() }
                 .distinctUntilChangedBy { it?.serverId to it?.userId }
                 .collect { account ->
                     // Limits read for the previous profile must not show for this one.
@@ -209,7 +210,7 @@ class SettingsViewModel(
     // one profile's values never show under another, whatever order the sources arrive in.
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun <T> perProfile(flow: Flow<T?>): Pair<Flow<Any?>, Any?> = connection.state
-        .map { (it as? ConnectionState.Connected)?.account?.key() }
+        .map { it.accountOrNull()?.key() }
         .distinctUntilChanged()
         .flatMapLatest { key -> flow.map { ProfileRead(key, it) }.onStart { emit(ProfileRead(key, null)) } } to ProfileRead(null, null)
 
@@ -511,14 +512,13 @@ class SettingsViewModel(
     }
 
     private fun choosePin() {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        pin.choose(account.serverId, account.userId, account.name)
+        connection.asAccount(Unit) { pin.choose(it.serverId, it.userId, it.name) }
     }
 
     /** The user confirmed signing out: revokes the token and returns to "Who's watching?". */
     fun onConfirmSignOut() {
         confirmSignOut.value = false
-        val account = (connection.state.value as? ConnectionState.Connected)?.account
+        val account = connection.state.value.accountOrNull()
         // The screen leaves right away and clears this view model, so the revoke, the lock and the clean-up must not depend on viewModelScope.
         applicationScope.launch {
             account?.let { downloads.purge(ProfileRef(it.serverId, it.userId)) }
@@ -533,9 +533,10 @@ class SettingsViewModel(
     /** The user confirmed deleting the profile's downloaded files. */
     fun onConfirmPurgeDownloads() {
         confirmPurgeDownloads.value = false
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        // Deleting gigabytes must not stop because the screen was left.
-        applicationScope.launch { downloads.purge(ProfileRef(account.serverId, account.userId)) }
+        connection.asAccount(Unit) { account ->
+            // Deleting gigabytes must not stop because the screen was left.
+            applicationScope.launch { downloads.purge(ProfileRef(account.serverId, account.userId)) }
+        }
     }
 
     fun onDismissPurgeDownloads() {
@@ -555,11 +556,12 @@ class SettingsViewModel(
 
     // Runs [action] for the signed-in profile, after its PIN when [needed] says so for its current [PinGates].
     private suspend fun guarded(reason: PinReason, needed: (PinGates) -> Boolean, action: suspend () -> Unit) {
-        val account = (connection.state.value as? ConnectionState.Connected)?.account ?: return
-        if (needed(pins.gates(account.serverId, account.userId))) {
-            pin.ask(reason, account.serverId, account.userId, account.name, onPass = action)
-        } else {
-            action()
+        connection.asAccount(Unit) { account ->
+            if (needed(pins.gates(account.serverId, account.userId))) {
+                pin.ask(reason, account.serverId, account.userId, account.name, onPass = action)
+            } else {
+                action()
+            }
         }
     }
 }

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.OfflineLibrary
+import app.vibeyfin.domain.accountOrNull
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
 import app.vibeyfin.ui.downloads.profile
@@ -61,6 +62,6 @@ class OfflineHomeViewModel(
     }
 
     val uiState: StateFlow<OfflineHomeUiState> = combine(content, connection.state, connection.sessionEnded()) { state, connectionState, exit ->
-        state.copy(userName = (connectionState as? ConnectionState.Connected)?.account?.name, exit = exit)
+        state.copy(userName = connectionState.accountOrNull()?.name, exit = exit)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OfflineHomeUiState())
 }

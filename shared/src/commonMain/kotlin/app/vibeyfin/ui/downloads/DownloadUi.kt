@@ -8,6 +8,7 @@ import app.vibeyfin.domain.DownloadFailure
 import app.vibeyfin.domain.DownloadRunner
 import app.vibeyfin.domain.DownloadState
 import app.vibeyfin.domain.model.ProfileRef
+import app.vibeyfin.domain.profileOrNull
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.flow.Flow
@@ -132,5 +133,3 @@ internal fun unreachableMessage() = LoadMessages.forError(ApiError.Network)
 /** The profile that is signed in now, or null while nobody is. */
 internal val ConnectionManager.profile: Flow<ProfileRef?>
     get() = state.map { it.profileOrNull() }.distinctUntilChanged()
-
-internal fun ConnectionState.profileOrNull(): ProfileRef? = (this as? ConnectionState.Connected)?.let { ProfileRef(it.server.id, it.account.userId) }

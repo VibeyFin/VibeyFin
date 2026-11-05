@@ -26,6 +26,10 @@ sealed interface ConnectionState {
     data class Expired(val serverId: String, val userId: String) : ConnectionState
 }
 
+fun ConnectionState.accountOrNull(): Account? = (this as? ConnectionState.Connected)?.account
+
+fun ConnectionState.profileOrNull(): ProfileRef? = (this as? ConnectionState.Connected)?.let { ProfileRef(it.server.id, it.account.userId) }
+
 /** The answer to [ConnectionManager.asProfile]. */
 sealed interface ProfileCall<out T> {
     /** A saved address answered; [result] may still be a failure such as a 401. */
@@ -129,6 +133,18 @@ class ConnectionManager(
         val account = accounts.account(serverId, userId) ?: return false
         connect(server, account, token, api.withToken(token))
         return true
+    }
+
+    /**
+     * Runs [block] as the signed-in account, or returns [notSignedIn] when nobody is. A call in [block]
+     * that the server rejects (HTTP 401) is routed to [expireSession] like any other.
+     */
+    inline fun <T> asAccount(notSignedIn: T, block: (Account) -> T): T = asConnected(notSignedIn) { block(it.account) }
+
+    /** Like [asAccount], for work that also needs the [ConnectionState.Connected.server] or [ConnectionState.Connected.api]. */
+    inline fun <T> asConnected(notSignedIn: T, block: (ConnectionState.Connected) -> T): T {
+        val connected = state.value as? ConnectionState.Connected ?: return notSignedIn
+        return block(connected)
     }
 
     /** Leaves the current profile signed in on the server and returns to "Who's watching?". */
