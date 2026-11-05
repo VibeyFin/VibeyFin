@@ -34,6 +34,7 @@ final class NotificationTaps: NSObject, ObservableObject, UNUserNotificationCent
     static let shared = NotificationTaps()
 
     @Published var pending: NewTitleTap?
+    @Published var pendingDownloads: DownloadTap?
 
     /// A notification that arrives while the app is open still shows as a banner.
     func userNotificationCenter(
@@ -49,9 +50,12 @@ final class NotificationTaps: NSObject, ObservableObject, UNUserNotificationCent
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        let tap = NewTitleTap(userInfo: response.notification.request.content.userInfo)
+        let userInfo = response.notification.request.content.userInfo
+        let tap = NewTitleTap(userInfo: userInfo)
+        let downloadsTap = DownloadTap(userInfo: userInfo)
         DispatchQueue.main.async {
             if let tap { self.pending = tap }
+            if let downloadsTap { self.pendingDownloads = downloadsTap }
             completionHandler()
         }
     }

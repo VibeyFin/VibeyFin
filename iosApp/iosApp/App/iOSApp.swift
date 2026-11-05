@@ -12,6 +12,8 @@ struct iOSApp: App {
         IosEntryKt.startKoinIos()
         // Both must be in place before launch ends: the background task's handler, and the delegate that gets a tap which launched the app.
         NewTitlesScheduler.register()
+        DownloadSystemProgress.shared.register()
+        DownloadSystemProgress.shared.start()
         UNUserNotificationCenter.current().delegate = NotificationTaps.shared
     }
 

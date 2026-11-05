@@ -21,6 +21,8 @@ final class DownloadsObservable: ObservableObject {
 
     func removeShow(_ show: DownloadedShow) { model.onRemoveShow(show: show) }
 
+    func resumeShow(_ show: DownloadedShow) { model.onResumeShow(show: show) }
+
     func removeAll() { model.onRemoveAll() }
 
     func confirmRemove() { model.onConfirmRemove() }

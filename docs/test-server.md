@@ -254,6 +254,9 @@ What the server was seen to do (Jellyfin 12.2, checked while writing plan 14):
 - `POST /UserItems/{id}/UserData?userId=` takes `PlaybackPositionTicks`, `Played` and `LastPlayedDate` (`2026-10-20T18:00:00.0000000Z`) and
   the item then reports that `LastPlayedDate`. Leaving `LastPlayedDate` out keeps the old one, so the date a fixture was last given stays.
 
+Issue #31 (download progress and notifications outside the app on iOS) uses `big-download` behind `throttle-proxy.py`: start a download, leave the
+app and watch the system progress (iOS 26 and up); let it finish or remove the file on the server to see the finished and failed notifications.
+
 ### Slowing a download: `throttle-proxy.py`
 
 `scripts/test-server/throttle-proxy.py <port> <bytes per second>` is a pass-through proxy to the server on `localhost:8196` that sends the

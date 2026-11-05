@@ -10,6 +10,8 @@ struct Artwork: View {
     let title: String
     let aspectRatio: CGFloat
     var blurHash: String?
+    /// False in small thumbnails beside a title: a neutral film symbol stands in, so the title is not written twice.
+    var showsTitle = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -41,6 +43,8 @@ struct Artwork: View {
                         }
                         .frame(width: geo.size.width, height: geo.size.height)
                     }
+                } else if !showsTitle {
+                    Image(systemName: "film").font(.title3).foregroundStyle(.tertiary).accessibilityHidden(true)
                 } else {
                     Text(title)
                         .font(.subheadline.weight(.semibold))
