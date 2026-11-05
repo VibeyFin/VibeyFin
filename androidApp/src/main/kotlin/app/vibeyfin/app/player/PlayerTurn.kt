@@ -4,7 +4,6 @@ private const val QUARTER_TURN = 90
 private const val FULL_TURN = 360
 private const val HALF_TURN = 180
 
-/** How the picture is drawn in the window that has just turned, so it starts where the old window left it. */
 internal data class PlayerTurn(val degrees: Float, val scale: Float)
 
 /** [width] and [height] are the window's after the turn, which swaps them. */
@@ -27,9 +26,9 @@ internal data class PlayerScreenFacts(val landscape: Boolean, val smallestWidthD
 
 internal fun opensWithTurn(screen: PlayerScreenFacts) = screen.obeysOrientation && !screen.landscape
 
-/** [heldSideways] is null when the sensor can't tell, such as a phone lying flat. */
+// A null heldSideways is a phone lying flat or tilted, where the system keeps the rotation it has
 internal fun closesWithTurn(screen: PlayerScreenFacts, rotationLocked: Boolean, openedUpright: Boolean, heldSideways: Boolean?) = when {
     !screen.obeysOrientation || !screen.landscape -> false
     rotationLocked -> openedUpright
-    else -> heldSideways != true
+    else -> heldSideways == false
 }

@@ -23,7 +23,7 @@ internal enum class SkipSide { Back, Forward }
 /**
  * The picture. Inflated, because the surface type can only be set from XML. SDR video is drawn on a TextureView, which
  * slides and fades with the screen (player_view_texture.xml); HDR and Dolby Vision need a SurfaceView to reach the
- * display (player_view_surface.xml), which does not, so it is [hidden] as the screen is left. Kept across streams of the
+ * display (player_view_surface.xml), which does not, so it is [hidden] while the screen turns and as it is left. Kept across streams of the
  * same kind, so the next episode doesn't flash. Nothing is drawn until [hdrVideo] is known.
  */
 @Composable

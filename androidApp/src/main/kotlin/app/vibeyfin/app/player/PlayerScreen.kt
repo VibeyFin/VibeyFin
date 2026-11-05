@@ -150,22 +150,17 @@ private fun LeaveEffects(state: PlaybackUiState, chrome: PlayerChrome, window: P
     val lifecycle = LocalLifecycleOwner.current.lifecycle
 
     LaunchedEffect(state.exit) {
-        // The app leaves for another screen, which should not appear sideways either
-        state.exit?.let {
-            window?.restore()
-            onExit(it)
-        }
+        if (state.exit != null) chrome.leaving = true
     }
 
     LaunchedEffect(state.finished) {
         if (state.finished) chrome.leaving = true
     }
 
-    // Opening: the screen grows in, then turns. Leaving: it turns back, then shrinks away, over a page that was never sideways.
     LaunchedEffect(chrome.leaving) {
         if (chrome.leaving) {
-            window?.let { turn.close(it) }
-            onBack()
+            window?.let { turn.close(it, lifecycle) }
+            state.exit?.let(onExit) ?: onBack()
         } else {
             window?.let { turn.open(it, lifecycle) }
         }

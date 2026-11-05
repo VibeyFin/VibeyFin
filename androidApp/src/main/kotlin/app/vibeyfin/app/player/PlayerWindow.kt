@@ -64,7 +64,7 @@ internal class PlayerWindow(private val activity: Activity) {
         if (opensWithTurn) {
             useJumpCut()
         } else {
-            useOwnRotationAnimation()
+            useCrossfade()
             requestLandscape()
         }
 
@@ -89,6 +89,8 @@ internal class PlayerWindow(private val activity: Activity) {
         return closesWithTurn(screenFacts(), locked, openedUpright, heldSideways)
     }
 
+    fun displayRotation() = activity.window.decorView.display.rotation
+
     fun requestLandscape() {
         orientationRequests.execute { activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE }
     }
@@ -100,7 +102,7 @@ internal class PlayerWindow(private val activity: Activity) {
     fun useJumpCut() = setRotationAnimation(WindowManager.LayoutParams.ROTATION_ANIMATION_JUMPCUT)
 
     // Turning the phone over while watching cross-fades instead of spinning a snapshot
-    fun useOwnRotationAnimation() = setRotationAnimation(WindowManager.LayoutParams.ROTATION_ANIMATION_CROSSFADE)
+    fun useCrossfade() = setRotationAnimation(WindowManager.LayoutParams.ROTATION_ANIMATION_CROSSFADE)
 
     fun restore() {
         if (!applied) return

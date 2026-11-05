@@ -70,9 +70,13 @@ class PlayerTurnTest {
     private val turnedPlayer = coverScreen.copy(landscape = true)
 
     @Test
-    fun `closing turns back when the phone is upright or its position is unknown`() {
+    fun `closing turns back when the phone is upright`() {
         assertTrue(closesWithTurn(turnedPlayer, rotationLocked = false, openedUpright = true, heldSideways = false))
-        assertTrue(closesWithTurn(turnedPlayer, rotationLocked = false, openedUpright = true, heldSideways = null))
+    }
+
+    @Test
+    fun `a phone lying flat keeps its rotation, so closing does not wait for a turn`() {
+        assertFalse(closesWithTurn(turnedPlayer, rotationLocked = false, openedUpright = true, heldSideways = null))
     }
 
     @Test

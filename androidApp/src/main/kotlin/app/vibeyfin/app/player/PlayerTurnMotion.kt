@@ -30,20 +30,16 @@ private const val FLIP_WAIT_MS = 1_000L
 // A window attribute reaches the system with the next frames, and has to get there before the orientation request does
 private const val FRAMES_FOR_ATTRIBUTES = 2
 
-/**
- * The system's rotation animates a snapshot of the screen, so the window flips under a jump cut and the app draws the
- * twist: from where the old window left the picture, to where the new window puts it.
- */
+// The system's rotation animates a snapshot it can't shape, so the window flips under a jump cut and the app draws the twist
 @Stable
 internal class PlayerTurnMotion(rotation: Int, settled: Boolean) {
-    private var expecting = false
+    private var expecting by mutableStateOf(false)
     private var rotation by mutableIntStateOf(rotation)
     private var fromRotation by mutableStateOf<Int?>(null)
     private var progress by mutableFloatStateOf(1f)
 
     var pictureRatio by mutableFloatStateOf(DEFAULT_PICTURE_RATIO)
 
-    /** False until the screen has finished turning: the controls come in after it. */
     var settled by mutableStateOf(settled)
         private set
 
@@ -66,29 +62,43 @@ internal class PlayerTurnMotion(rotation: Int, settled: Boolean) {
             lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
             expecting = true
             window.requestLandscape()
-            twist()
-            window.useOwnRotationAnimation()
+            awaitFlip()
+            finishTwist()
+            window.useCrossfade()
         }
 
         settled = true
     }
 
-    suspend fun close(window: PlayerWindow) {
+    suspend fun close(window: PlayerWindow, lifecycle: Lifecycle) {
         settled = false
 
-        if (!window.closesWithTurn()) return
+        // Closing the picture-in-picture window leaves a stopped screen, whose frames never come
+        if (!lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) return
 
-        window.useJumpCut()
-        repeat(FRAMES_FOR_ATTRIBUTES) { withFrameNanos { } }
-        expecting = true
-        window.restoreOrientation()
-        twist()
+        // A turn already asked for lands first, so this one turns it back instead of racing it
+        awaitFlip()
+
+        if (window.closesWithTurn()) {
+            window.useJumpCut()
+            repeat(FRAMES_FOR_ATTRIBUTES) { withFrameNanos { } }
+
+            // Turning the phone over delivers no configuration change, so this may have moved unseen
+            rotation = window.displayRotation()
+            expecting = true
+            window.restoreOrientation()
+            awaitFlip()
+        }
+
+        finishTwist()
     }
 
-    private suspend fun twist() {
-        withTimeoutOrNull(FLIP_WAIT_MS) { snapshotFlow { fromRotation }.first { it != null } }
+    private suspend fun awaitFlip() {
+        withTimeoutOrNull(FLIP_WAIT_MS) { snapshotFlow { expecting }.first { !it } }
         expecting = false
+    }
 
+    private suspend fun finishTwist() {
         if (fromRotation != null) {
             animate(progress, 1f, animationSpec = tween(TWIST_MS, easing = FastOutSlowInEasing)) { value, _ -> progress = value }
         }
@@ -109,11 +119,14 @@ internal class PlayerTurnMotion(rotation: Int, settled: Boolean) {
 @Composable
 internal fun rememberPlayerTurnMotion(window: PlayerWindow?): PlayerTurnMotion {
     val view = LocalView.current
-    val configuration = LocalConfiguration.current
-    val rotation = remember(configuration) { view.display.rotation }
+
+    // Read for the recomposition it brings: the rotation is read live, and can change without one
+    LocalConfiguration.current
+
+    val rotation = view.display.rotation
     val motion = remember { PlayerTurnMotion(rotation, settled = window?.opensWithTurn != true) }
 
-    // In composition, not an effect: the first frame of the new window has to be drawn turned already
+    // Not an effect: the first frame of the new window has to be drawn turned already
     motion.onRotation(rotation)
 
     return motion
