@@ -2,269 +2,216 @@ package app.vibeyfin.domain
 
 import app.vibeyfin.data.db.AccountDao
 import app.vibeyfin.domain.model.Account
+import app.vibeyfin.domain.model.ProfileRef
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /**
  * The settings of the profile that is signed in now, read from [ConnectionManager] each time so a
  * switch of profile switches the settings too. Device-wide options are in [DevicePreferences].
+ * Each setting is defined once in [ProfileSettingDefinitions]; the properties and setters here are one-liners on it.
  */
 class ProfileSettings(
     private val dao: AccountDao,
     private val connection: ConnectionManager,
 ) {
+    /**
+     * Every setting of the profile signed in now, as far as read; a switch of profile starts again from nothing read, so the previous
+     * profile's values never show under the new one.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val values: Flow<ProfileValues> = connection.state
+        .map { it.accountOrNull() }
+        .distinctUntilChanged()
+        .flatMapLatest { account -> if (account == null) flowOf(ProfileValues(null)) else valuesOf(account) }
+
+    private fun valuesOf(account: Account): Flow<ProfileValues> = channelFlow {
+        val read = MutableStateFlow(ProfileValues(ProfileRef(account.serverId, account.userId)))
+        for (setting in ProfileSettingDefinitions.all) launch { collectInto(read, setting, account) }
+        read.collect { send(it) }
+    }
+
+    private suspend fun <T : Any> collectInto(read: MutableStateFlow<ProfileValues>, setting: ProfileSetting<T>, account: Account) {
+        setting.observe(dao, account).collect { value -> read.update { it.with(setting, value) } }
+    }
+
+    private fun <T : Any> observe(setting: ProfileSetting<T>): Flow<T?> = forAccount { account -> setting.observe(dao, account) }
+
+    private suspend fun <T : Any> set(setting: ProfileSetting<T>, value: T) {
+        if (!setting.accepts(value)) return
+        connection.asAccount(Unit) { account -> setting.write(dao, account, value) }
+    }
+
+    private suspend fun update(write: suspend AccountDao.(Account) -> Unit) {
+        connection.asAccount(Unit) { account -> dao.write(account) }
+    }
+
     /** Whether the player shows its stats overlay. Null when nobody is signed in. Off by default. */
-    val showPlaybackStats: Flow<Boolean?> = forAccount { dao, a -> dao.observeShowPlaybackStats(a.serverId, a.userId).map { it ?: false } }
+    val showPlaybackStats: Flow<Boolean?> = observe(ProfileSettingDefinitions.ShowPlaybackStats)
 
     /** Episodes in a row before "Still watching?" appears; 0 is off. Null when nobody is signed in. Three by default. */
-    val bingeThreshold: Flow<Int?> = forAccount { dao, a -> dao.observeBingeThreshold(a.serverId, a.userId).map { it ?: DEFAULT_BINGE_THRESHOLD } }
+    val bingeThreshold: Flow<Int?> = observe(ProfileSettingDefinitions.BingeThreshold)
 
     /** How many genre rows Home shows: [HOME_GENRES_ALL], [HOME_GENRES_NONE], or the biggest this many. Null when nobody is signed in. */
-    val homeGenreRows: Flow<Int?> = forAccount { dao, a -> dao.observeHomeGenreRows(a.serverId, a.userId).map { it ?: HOME_GENRES_ALL } }
+    val homeGenreRows: Flow<Int?> = observe(ProfileSettingDefinitions.HomeGenreRows)
 
     /** How many items Home features above Continue watching, one of [HOME_HERO_CHOICES]; 0 is off. One by default. Null when nobody is signed in. */
-    val homeHeroItems: Flow<Int?> = forAccount { dao, a ->
-        dao.observeHomeHeroItems(a.serverId, a.userId).map { if (it in HOME_HERO_CHOICES) it else DEFAULT_HOME_HERO_ITEMS }
-    }
+    val homeHeroItems: Flow<Int?> = observe(ProfileSettingDefinitions.HomeHeroItems)
 
     /** Seconds the skip-back button jumps; one of [SKIP_BACK_CHOICES]. Null when nobody is signed in. */
-    val skipBackSeconds: Flow<Int?> = forAccount { dao, a ->
-        dao.observeSkipBackSeconds(a.serverId, a.userId).map { if (it in SKIP_BACK_CHOICES) it else DEFAULT_SKIP_BACK_SECONDS }
-    }
+    val skipBackSeconds: Flow<Int?> = observe(ProfileSettingDefinitions.SkipBackSeconds)
 
     /** Seconds the skip-forward button jumps; one of [SKIP_FORWARD_CHOICES]. Null when nobody is signed in. */
-    val skipForwardSeconds: Flow<Int?> = forAccount { dao, a ->
-        dao.observeSkipForwardSeconds(a.serverId, a.userId).map { if (it in SKIP_FORWARD_CHOICES) it else DEFAULT_SKIP_FORWARD_SECONDS }
-    }
+    val skipForwardSeconds: Flow<Int?> = observe(ProfileSettingDefinitions.SkipForwardSeconds)
 
     /** Whether the player skips intros and recaps without asking. Off by default. Null when nobody is signed in. */
-    val autoSkipSegments: Flow<Boolean?> = forAccount { dao, a -> dao.observeAutoSkipSegments(a.serverId, a.userId).map { it ?: false } }
+    val autoSkipSegments: Flow<Boolean?> = observe(ProfileSettingDefinitions.AutoSkipSegments)
 
     /** Whether the player offers picture-in-picture and starts it when the app is left. On by default. Null when nobody is signed in. */
-    val pictureInPicture: Flow<Boolean?> = forAccount { dao, a -> dao.observePictureInPicture(a.serverId, a.userId).map { it ?: true } }
+    val pictureInPicture: Flow<Boolean?> = observe(ProfileSettingDefinitions.PictureInPicture)
 
     /** Whether a vertical swipe on the player changes the volume and the brightness. On by default. Null when nobody is signed in. */
-    val swipeGestures: Flow<Boolean?> = forAccount { dao, a -> dao.observeSwipeGestures(a.serverId, a.userId).map { it ?: true } }
-
-    /** Accepts one of [SKIP_BACK_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
-    suspend fun setSkipBackSeconds(value: Int) {
-        if (value !in SKIP_BACK_CHOICES) return
-        connection.asAccount(Unit) { account -> dao.setSkipBackSeconds(account.serverId, account.userId, value) }
-    }
-
-    /** Accepts one of [SKIP_FORWARD_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
-    suspend fun setSkipForwardSeconds(value: Int) {
-        if (value !in SKIP_FORWARD_CHOICES) return
-        connection.asAccount(Unit) { account -> dao.setSkipForwardSeconds(account.serverId, account.userId, value) }
-    }
+    val swipeGestures: Flow<Boolean?> = observe(ProfileSettingDefinitions.SwipeGestures)
 
     /** Seconds of video the player loads ahead; one of [BUFFER_AHEAD_CHOICES]. Null when nobody is signed in. */
-    val bufferAheadSeconds: Flow<Int?> = forAccount { dao, a ->
-        dao.observeBufferAheadSeconds(a.serverId, a.userId).map { if (it in BUFFER_AHEAD_CHOICES) it else DEFAULT_BUFFER_AHEAD_SECONDS }
-    }
-
-    /** Accepts one of [BUFFER_AHEAD_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
-    suspend fun setBufferAheadSeconds(value: Int) {
-        if (value !in BUFFER_AHEAD_CHOICES) return
-        connection.asAccount(Unit) { account -> dao.setBufferAheadSeconds(account.serverId, account.userId, value) }
-    }
+    val bufferAheadSeconds: Flow<Int?> = observe(ProfileSettingDefinitions.BufferAheadSeconds)
 
     /** Highest streaming bitrate in bits per second, one of [QUALITY_CHOICES]; 0 is Maximum. Null when nobody is signed in. */
-    val maxStreamingBitrate: Flow<Int?> = forAccount { dao, a ->
-        dao.observeMaxStreamingBitrate(a.serverId, a.userId).map { if (it in QUALITY_CHOICES) it else 0 }
-    }
-
-    /** Accepts one of [QUALITY_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
-    suspend fun setMaxStreamingBitrate(value: Int) {
-        if (value !in QUALITY_CHOICES) return
-        connection.asAccount(Unit) { account -> dao.setMaxStreamingBitrate(account.serverId, account.userId, value) }
-    }
+    val maxStreamingBitrate: Flow<Int?> = observe(ProfileSettingDefinitions.MaxStreamingBitrate)
 
     /** Whether subtitles use the platform's caption style. Null when nobody is signed in. */
-    val captionsFollowSystem: Flow<Boolean?> = forAccount { dao, a -> dao.observeCaptionsFollowSystem(a.serverId, a.userId) }
-
-    /** Does nothing when nobody is signed in. */
-    suspend fun setCaptionsFollowSystem(value: Boolean) {
-        connection.asAccount(Unit) { account -> dao.setCaptionsFollowSystem(account.serverId, account.userId, value) }
-    }
+    val captionsFollowSystem: Flow<Boolean?> = observe(ProfileSettingDefinitions.CaptionsFollowSystem)
 
     /** Subtitle size, one of [SUBTITLE_SIZE_CHOICES]. Null when nobody is signed in. */
-    val subtitleSize: Flow<Int?> = forAccount { dao, a ->
-        dao.observeSubtitleSize(a.serverId, a.userId).map { if (it in SUBTITLE_SIZE_CHOICES) it else DEFAULT_SUBTITLE_SIZE }
-    }
-
-    /** Accepts one of [SUBTITLE_SIZE_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
-    suspend fun setSubtitleSize(value: Int) {
-        if (value !in SUBTITLE_SIZE_CHOICES) return
-        connection.asAccount(Unit) { account -> dao.setSubtitleSize(account.serverId, account.userId, value) }
-    }
+    val subtitleSize: Flow<Int?> = observe(ProfileSettingDefinitions.SubtitleSize)
 
     /** Subtitle text colour, one of [SUBTITLE_COLOR_CHOICES]. Null when nobody is signed in. */
-    val subtitleTextColor: Flow<Int?> = forAccount { dao, a ->
-        dao.observeSubtitleTextColor(a.serverId, a.userId).map { if (it in SUBTITLE_COLOR_CHOICES) it else DEFAULT_SUBTITLE_TEXT_COLOR }
-    }
-
-    /** Accepts one of [SUBTITLE_COLOR_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
-    suspend fun setSubtitleTextColor(value: Int) {
-        if (value !in SUBTITLE_COLOR_CHOICES) return
-        connection.asAccount(Unit) { account -> dao.setSubtitleTextColor(account.serverId, account.userId, value) }
-    }
+    val subtitleTextColor: Flow<Int?> = observe(ProfileSettingDefinitions.SubtitleTextColor)
 
     /** Subtitle background, one of [SUBTITLE_BACKGROUND_CHOICES]. Null when nobody is signed in. */
-    val subtitleBackground: Flow<Int?> = forAccount { dao, a ->
-        dao.observeSubtitleBackground(a.serverId, a.userId).map { if (it in SUBTITLE_BACKGROUND_CHOICES) it else DEFAULT_SUBTITLE_BACKGROUND }
-    }
-
-    /** Accepts one of [SUBTITLE_BACKGROUND_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
-    suspend fun setSubtitleBackground(value: Int) {
-        if (value !in SUBTITLE_BACKGROUND_CHOICES) return
-        connection.asAccount(Unit) { account -> dao.setSubtitleBackground(account.serverId, account.userId, value) }
-    }
+    val subtitleBackground: Flow<Int?> = observe(ProfileSettingDefinitions.SubtitleBackground)
 
     /** Whether the app posts notifications for the profile. Off by default. Null when nobody is signed in. */
-    val notificationsEnabled: Flow<Boolean?> = forAccount { dao, a -> dao.observeNotificationsEnabled(a.serverId, a.userId).map { it ?: false } }
+    val notificationsEnabled: Flow<Boolean?> = observe(ProfileSettingDefinitions.NotificationsEnabled)
+
+    /** Whether the app notifies when the profile's downloads finish or fail. On by default. Null when nobody is signed in. */
+    val downloadNotifications: Flow<Boolean?> = observe(ProfileSettingDefinitions.DownloadNotifications)
+
+    /** What notifies, one of [NOTIFICATION_SCOPE_CHOICES]. Null when nobody is signed in. */
+    val notificationScope: Flow<Int?> = observe(ProfileSettingDefinitions.NotificationScope)
+
+    /** Whether the profile is a Kids profile. Off by default. Null when nobody is signed in. */
+    val kidsProfile: Flow<Boolean?> = observe(ProfileSettingDefinitions.KidsProfile)
+
+    /** When the profile asks for its PIN. Null when nobody is signed in. */
+    val pinGates: Flow<PinGates?> = observe(ProfileSettingDefinitions.PinGateSwitches)
+
+    /** Whether downloads may use mobile data. Off by default. Null when nobody is signed in. */
+    val downloadOverMobile: Flow<Boolean?> = observe(ProfileSettingDefinitions.DownloadOverMobile)
+
+    /** Whether a download is removed once watched. Off by default. Null when nobody is signed in. */
+    val autoCleanWatched: Flow<Boolean?> = observe(ProfileSettingDefinitions.AutoCleanWatched)
+
+    /** The most the downloads may take, in megabytes; [NO_STORAGE_LIMIT] when there is no limit. Null when nobody is signed in. */
+    val storageLimitMb: Flow<Long?> = observe(ProfileSettingDefinitions.StorageLimitMb)
+
+    /** Accepts one of [SKIP_BACK_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setSkipBackSeconds(value: Int) = set(ProfileSettingDefinitions.SkipBackSeconds, value)
+
+    /** Accepts one of [SKIP_FORWARD_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setSkipForwardSeconds(value: Int) = set(ProfileSettingDefinitions.SkipForwardSeconds, value)
+
+    /** Accepts one of [BUFFER_AHEAD_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setBufferAheadSeconds(value: Int) = set(ProfileSettingDefinitions.BufferAheadSeconds, value)
+
+    /** Accepts one of [QUALITY_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setMaxStreamingBitrate(value: Int) = set(ProfileSettingDefinitions.MaxStreamingBitrate, value)
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setCaptionsFollowSystem(value: Boolean) = set(ProfileSettingDefinitions.CaptionsFollowSystem, value)
+
+    /** Accepts one of [SUBTITLE_SIZE_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setSubtitleSize(value: Int) = set(ProfileSettingDefinitions.SubtitleSize, value)
+
+    /** Accepts one of [SUBTITLE_COLOR_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setSubtitleTextColor(value: Int) = set(ProfileSettingDefinitions.SubtitleTextColor, value)
+
+    /** Accepts one of [SUBTITLE_BACKGROUND_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setSubtitleBackground(value: Int) = set(ProfileSettingDefinitions.SubtitleBackground, value)
 
     /**
      * Does nothing when nobody is signed in. Switching off forgets what was notified, so switching on again starts
      * with [NewTitlesPoller]'s first-poll rule instead of announcing the titles added in between.
      */
-    suspend fun setNotificationsEnabled(value: Boolean) {
-        connection.asAccount(Unit) { account ->
-            dao.setNotificationsEnabled(account.serverId, account.userId, value)
-            if (!value) dao.clearNotified(account.serverId, account.userId)
-        }
-    }
-
-    /** Whether the app notifies when the profile's downloads finish or fail. On by default. Null when nobody is signed in. */
-    val downloadNotifications: Flow<Boolean?> = forAccount { dao, a -> dao.observeDownloadNotifications(a.serverId, a.userId).map { it ?: true } }
+    suspend fun setNotificationsEnabled(value: Boolean) = set(ProfileSettingDefinitions.NotificationsEnabled, value)
 
     /** Does nothing when nobody is signed in. */
-    suspend fun setDownloadNotifications(value: Boolean) {
-        connection.asAccount(Unit) { account -> dao.setDownloadNotifications(account.serverId, account.userId, value) }
-    }
-
-    /** What notifies, one of [NOTIFICATION_SCOPE_CHOICES]. Null when nobody is signed in. */
-    val notificationScope: Flow<Int?> = forAccount { dao, a ->
-        dao.observeNotificationScope(a.serverId, a.userId).map { if (it in NOTIFICATION_SCOPE_CHOICES) it else DEFAULT_NOTIFICATION_SCOPE }
-    }
+    suspend fun setDownloadNotifications(value: Boolean) = set(ProfileSettingDefinitions.DownloadNotifications, value)
 
     /**
      * Accepts one of [NOTIFICATION_SCOPE_CHOICES]; anything else is ignored. Does nothing when nobody is signed in.
      * A different scope forgets what was notified, like switching off, so a wider scope doesn't announce a backlog.
      */
-    suspend fun setNotificationScope(value: Int) {
-        if (value !in NOTIFICATION_SCOPE_CHOICES) return
-        connection.asAccount(Unit) { account ->
-            val before = dao.observeNotificationScope(account.serverId, account.userId).first() ?: DEFAULT_NOTIFICATION_SCOPE
-            dao.setNotificationScope(account.serverId, account.userId, value)
-            if (value != before) dao.clearNotified(account.serverId, account.userId)
-        }
-    }
-
-    /** Whether the profile is a Kids profile. Off by default. Null when nobody is signed in. */
-    val kidsProfile: Flow<Boolean?> = forAccount { dao, a -> dao.observeKidsProfile(a.serverId, a.userId).map { it ?: false } }
+    suspend fun setNotificationScope(value: Int) = set(ProfileSettingDefinitions.NotificationScope, value)
 
     /** Does nothing when nobody is signed in. */
-    suspend fun setKidsProfile(value: Boolean) {
-        connection.asAccount(Unit) { account -> dao.setKidsProfile(account.serverId, account.userId, value) }
-    }
-
-    /** When the profile asks for its PIN. Null when nobody is signed in. */
-    val pinGates: Flow<PinGates?> = forAccount { dao, a -> dao.observePinGates(a.serverId, a.userId).map { it.toGates() } }
+    suspend fun setKidsProfile(value: Boolean) = set(ProfileSettingDefinitions.KidsProfile, value)
 
     /** Does nothing when nobody is signed in. */
-    suspend fun setPinOpenProfile(value: Boolean) {
-        connection.asAccount(Unit) { account -> dao.setPinOpenProfile(account.serverId, account.userId, value) }
-    }
+    suspend fun setPinOpenProfile(value: Boolean) = update { setPinOpenProfile(it.serverId, it.userId, value) }
 
     /** Does nothing when nobody is signed in. */
-    suspend fun setPinOpenSettings(value: Boolean) {
-        connection.asAccount(Unit) { account -> dao.setPinOpenSettings(account.serverId, account.userId, value) }
-    }
+    suspend fun setPinOpenSettings(value: Boolean) = update { setPinOpenSettings(it.serverId, it.userId, value) }
 
     /** Does nothing when nobody is signed in. */
-    suspend fun setPinSwitchProfile(value: Boolean) {
-        connection.asAccount(Unit) { account -> dao.setPinSwitchProfile(account.serverId, account.userId, value) }
-    }
+    suspend fun setPinSwitchProfile(value: Boolean) = update { setPinSwitchProfile(it.serverId, it.userId, value) }
 
     /** Puts all four subtitle options back to their defaults in one write. Does nothing when nobody is signed in. */
-    suspend fun resetSubtitleStyle() {
-        connection.asAccount(Unit) { account -> dao.resetSubtitleStyle(account.serverId, account.userId) }
-    }
+    suspend fun resetSubtitleStyle() = update { resetSubtitleStyle(it.serverId, it.userId) }
 
     /** Does nothing when nobody is signed in. */
-    suspend fun setPictureInPicture(value: Boolean) {
-        connection.asAccount(Unit) { account -> dao.setPictureInPicture(account.serverId, account.userId, value) }
-    }
+    suspend fun setPictureInPicture(value: Boolean) = set(ProfileSettingDefinitions.PictureInPicture, value)
 
     /** Does nothing when nobody is signed in. */
-    suspend fun setSwipeGestures(value: Boolean) {
-        connection.asAccount(Unit) { account -> dao.setSwipeGestures(account.serverId, account.userId, value) }
-    }
+    suspend fun setSwipeGestures(value: Boolean) = set(ProfileSettingDefinitions.SwipeGestures, value)
 
     /** Does nothing when nobody is signed in. */
-    suspend fun setAutoSkipSegments(value: Boolean) {
-        connection.asAccount(Unit) { account -> dao.setAutoSkipSegments(account.serverId, account.userId, value) }
-    }
-
-    /** Whether downloads may use mobile data. Off by default. Null when nobody is signed in. */
-    val downloadOverMobile: Flow<Boolean?> = forAccount { dao, a -> dao.observeDownloadOverMobile(a.serverId, a.userId).map { it ?: false } }
-
-    /** Whether a download is removed once watched. Off by default. Null when nobody is signed in. */
-    val autoCleanWatched: Flow<Boolean?> = forAccount { dao, a -> dao.observeAutoCleanWatched(a.serverId, a.userId).map { it ?: false } }
-
-    /** The most the downloads may take, in megabytes; [NO_STORAGE_LIMIT] when there is no limit. Null when nobody is signed in. */
-    val storageLimitMb: Flow<Long?> = forAccount { dao, a -> dao.observeStorageLimitMb(a.serverId, a.userId).map { it ?: NO_STORAGE_LIMIT } }
+    suspend fun setAutoSkipSegments(value: Boolean) = set(ProfileSettingDefinitions.AutoSkipSegments, value)
 
     /** Does nothing when nobody is signed in. */
-    suspend fun setDownloadOverMobile(value: Boolean) {
-        connection.asAccount(Unit) { account -> dao.setDownloadOverMobile(account.serverId, account.userId, value) }
-    }
+    suspend fun setDownloadOverMobile(value: Boolean) = set(ProfileSettingDefinitions.DownloadOverMobile, value)
 
     /** Does nothing when nobody is signed in. */
-    suspend fun setAutoCleanWatched(value: Boolean) {
-        connection.asAccount(Unit) { account -> dao.setAutoCleanWatched(account.serverId, account.userId, value) }
-    }
+    suspend fun setAutoCleanWatched(value: Boolean) = set(ProfileSettingDefinitions.AutoCleanWatched, value)
 
     /** Accepts [NO_STORAGE_LIMIT] or a positive size; anything else is ignored. Does nothing when nobody is signed in. */
-    suspend fun setStorageLimitMb(value: Long) {
-        if (value < NO_STORAGE_LIMIT) return
-        connection.asAccount(Unit) { account -> dao.setStorageLimitMb(account.serverId, account.userId, value) }
-    }
+    suspend fun setStorageLimitMb(value: Long) = set(ProfileSettingDefinitions.StorageLimitMb, value)
 
     /** Accepts one of [HOME_HERO_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
-    suspend fun setHomeHeroItems(value: Int) {
-        if (value !in HOME_HERO_CHOICES) return
-        connection.asAccount(Unit) { account -> dao.setHomeHeroItems(account.serverId, account.userId, value) }
-    }
+    suspend fun setHomeHeroItems(value: Int) = set(ProfileSettingDefinitions.HomeHeroItems, value)
 
     /** Does nothing when nobody is signed in. */
-    suspend fun setShowPlaybackStats(value: Boolean) {
-        connection.asAccount(Unit) { account -> dao.setShowPlaybackStats(account.serverId, account.userId, value) }
-    }
+    suspend fun setShowPlaybackStats(value: Boolean) = set(ProfileSettingDefinitions.ShowPlaybackStats, value)
 
     /** Accepts 0 (off) or 2 to 5; anything else is ignored. Does nothing when nobody is signed in. */
-    suspend fun setBingeThreshold(value: Int) {
-        if (value != 0 && value !in 2..5) return
-        connection.asAccount(Unit) { account -> dao.setBingeThreshold(account.serverId, account.userId, value) }
-    }
+    suspend fun setBingeThreshold(value: Int) = set(ProfileSettingDefinitions.BingeThreshold, value)
 
     /** Accepts one of [HOME_GENRE_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
-    suspend fun setHomeGenreRows(value: Int) {
-        if (value !in HOME_GENRE_CHOICES) return
-        connection.asAccount(Unit) { account -> dao.setHomeGenreRows(account.serverId, account.userId, value) }
-    }
+    suspend fun setHomeGenreRows(value: Int) = set(ProfileSettingDefinitions.HomeGenreRows, value)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private fun <T> forAccount(observe: (AccountDao, Account) -> Flow<T?>): Flow<T?> = connection.state
+    private fun <T> forAccount(observe: (Account) -> Flow<T?>): Flow<T?> = connection.state
         .map { it.accountOrNull() }
         .distinctUntilChanged()
-        .flatMapLatest { account -> if (account == null) flowOf(null) else observe(dao, account) }
+        .flatMapLatest { account -> if (account == null) flowOf(null) else observe(account) }
 
     companion object {
         const val DEFAULT_SKIP_BACK_SECONDS = 10

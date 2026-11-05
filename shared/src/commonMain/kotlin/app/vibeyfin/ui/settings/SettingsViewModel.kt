@@ -14,7 +14,9 @@ import app.vibeyfin.domain.LanguagePrefs
 import app.vibeyfin.domain.PinGates
 import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.ProfilePolicy
+import app.vibeyfin.domain.ProfileSettingDefinitions
 import app.vibeyfin.domain.ProfileSettings
+import app.vibeyfin.domain.ProfileValues
 import app.vibeyfin.domain.SeerrConnection
 import app.vibeyfin.domain.SeerrState
 import app.vibeyfin.domain.ServerRepository
@@ -28,17 +30,14 @@ import app.vibeyfin.ui.common.PinPrompt
 import app.vibeyfin.ui.common.PinReason
 import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
@@ -163,108 +162,71 @@ class SettingsViewModel(
     // the defaults at once and no source that is slow on a cold start, or right after a sign-in, holds the others back.
     private val sources: List<Pair<Flow<Any?>, Any?>> = listOf(
         unread(preferences.alwaysAskWhoIsWatching),
-        perProfile(profileSettings.showPlaybackStats),
-        perProfile(profileSettings.bingeThreshold),
-        perProfile(profileSettings.homeGenreRows),
-        perProfile(profileSettings.homeHeroItems),
-        perProfile(profileSettings.skipBackSeconds),
-        perProfile(profileSettings.skipForwardSeconds),
-        perProfile(profileSettings.autoSkipSegments),
-        perProfile(profileSettings.bufferAheadSeconds),
-        perProfile(profileSettings.maxStreamingBitrate),
-        perProfile(profileSettings.captionsFollowSystem),
-        perProfile(profileSettings.subtitleSize),
-        perProfile(profileSettings.subtitleTextColor),
-        perProfile(profileSettings.subtitleBackground),
+        profileSettings.values to ProfileValues(null),
         live(connection.state),
         servers.servers.onStart { emit(emptyList()) } to emptyList<Server>(),
         live(confirmSignOut),
-        perProfile(profileSettings.kidsProfile),
         live(pin.prompt),
         live(unlockedFor),
         live(leave),
         live(policyState),
-        perProfile(profileSettings.pinGates),
-        perProfile(profileSettings.notificationsEnabled),
-        perProfile(profileSettings.notificationScope),
         live(requestNotificationPermission),
         live(notificationsBlocked),
-        perProfile(profileSettings.pictureInPicture),
         unread(preferences.offlineMode),
-        perProfile(profileSettings.downloadOverMobile),
-        perProfile(profileSettings.storageLimitMb),
         live(languagePrefs),
         live(languages),
         live(languageStatus),
         live(searches),
         live(closePage),
         live(confirmPurgeDownloads),
-        perProfile(profileSettings.swipeGestures),
         live(seerr?.state ?: MutableStateFlow<SeerrState>(SeerrState.Hidden)),
-        perProfile(profileSettings.downloadNotifications),
     )
 
     /** Eager, so the reads start with the ViewModel and not when the screen first draws. */
     val uiState: StateFlow<SettingsUiState> = combine(sources.map { it.first }) { state(it.asList()) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, state(sources.map { it.second }))
 
-    // A profile setting tagged with the profile it was read for, starting from "not read yet" (null) each time the profile changes, so
-    // one profile's values never show under another, whatever order the sources arrive in.
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private fun <T> perProfile(flow: Flow<T?>): Pair<Flow<Any?>, Any?> = connection.state
-        .map { it.accountOrNull()?.key() }
-        .distinctUntilChanged()
-        .flatMapLatest { key -> flow.map { ProfileRead(key, it) }.onStart { emit(ProfileRead(key, null)) } } to ProfileRead(null, null)
-
     private fun state(v: List<Any?>): SettingsUiState {
         val defaults = SettingsValues()
         val connected = v[CONNECTION] as? ConnectionState.Connected
         val profile = connected?.account?.key()
-
-        /** The read at [index] when it is for the profile shown now; null (the default) when not read yet or for another profile. */
-        fun <T> read(index: Int): T? {
-            val read = v[index] as ProfileRead
-            @Suppress("UNCHECKED_CAST")
-            return if (profile != null && read.profile == profile) read.value as T? else null
-        }
-
-        fun <T> read(index: Int, default: T): T = read<T>(index) ?: default
+        val settings = (v[PROFILE] as ProfileValues).shownFor(connected?.account?.let { ProfileRef(it.serverId, it.userId) })
 
         // The saved server, not the one the connection started with: addresses can be added later.
         val server = (v[SERVERS] as List<*>).filterIsInstance<Server>().firstOrNull { it.id == connected?.server?.id } ?: connected?.server
-        val kids = read<Boolean>(KIDS)
+        val kids = settings.readOrNull(ProfileSettingDefinitions.KidsProfile)
         val values = SettingsValues(
             alwaysAskWhoIsWatching = v[ALWAYS_ASK] as Boolean? ?: defaults.alwaysAskWhoIsWatching,
             appVersion = appVersion,
             subtitleStyleApplies = subtitleStyleApplies,
-            hasProfile = connected != null,
+            hasProfile = settings.hasProfile,
             // Until the flag is read a signed-in profile counts as a kids one, so rows a kids profile must not see never flash by.
-            kidsProfile = kids ?: (connected != null),
-            pinGates = read(PIN_GATES) ?: PinGates(),
+            kidsProfile = kids ?: settings.hasProfile,
+            pinGates = settings[ProfileSettingDefinitions.PinGateSwitches],
             policy = v[POLICY] as PolicyState,
-            notificationsEnabled = read(NOTIFICATIONS, defaults.notificationsEnabled),
-            notificationScope = read(NOTIFICATION_SCOPE, defaults.notificationScope),
-            downloadNotifications = read(DOWNLOAD_NOTIFICATIONS, defaults.downloadNotifications),
+            notificationsEnabled = settings[ProfileSettingDefinitions.NotificationsEnabled],
+            notificationScope = settings[ProfileSettingDefinitions.NotificationScope],
+            downloadNotifications = settings[ProfileSettingDefinitions.DownloadNotifications],
             downloadAlerts = downloadAlerts,
             notificationsBlocked = v[NOTIFICATIONS_BLOCKED] as Boolean,
-            showPlaybackStats = read(SHOW_STATS, defaults.showPlaybackStats),
-            bingeThreshold = read(BINGE, defaults.bingeThreshold),
-            homeGenreRows = read(GENRE_ROWS, defaults.homeGenreRows),
-            homeHeroItems = read(HERO, defaults.homeHeroItems),
-            skipBackSeconds = read(SKIP_BACK, defaults.skipBackSeconds),
-            skipForwardSeconds = read(SKIP_FORWARD, defaults.skipForwardSeconds),
-            autoSkipSegments = read(AUTO_SKIP, defaults.autoSkipSegments),
-            bufferAheadSeconds = read(BUFFER_AHEAD, defaults.bufferAheadSeconds),
-            pictureInPicture = read(PICTURE_IN_PICTURE, defaults.pictureInPicture),
-            swipeGestures = read(SWIPE_GESTURES, defaults.swipeGestures),
+            showPlaybackStats = settings[ProfileSettingDefinitions.ShowPlaybackStats],
+            bingeThreshold = settings[ProfileSettingDefinitions.BingeThreshold],
+            homeGenreRows = settings[ProfileSettingDefinitions.HomeGenreRows],
+            homeHeroItems = settings[ProfileSettingDefinitions.HomeHeroItems],
+            skipBackSeconds = settings[ProfileSettingDefinitions.SkipBackSeconds],
+            skipForwardSeconds = settings[ProfileSettingDefinitions.SkipForwardSeconds],
+            autoSkipSegments = settings[ProfileSettingDefinitions.AutoSkipSegments],
+            bufferAheadSeconds = settings[ProfileSettingDefinitions.BufferAheadSeconds],
+            pictureInPicture = settings[ProfileSettingDefinitions.PictureInPicture],
+            swipeGestures = settings[ProfileSettingDefinitions.SwipeGestures],
             offlineMode = v[OFFLINE_MODE] as Boolean? ?: defaults.offlineMode,
-            downloadOverMobile = read(DOWNLOAD_OVER_MOBILE, defaults.downloadOverMobile),
-            storageLimitGb = read<Long>(STORAGE_LIMIT)?.let { (it / MB_PER_GB).toInt() } ?: defaults.storageLimitGb,
-            maxStreamingBitrate = read(QUALITY, defaults.maxStreamingBitrate),
-            captionsFollowSystem = read(CAPTIONS_FOLLOW_SYSTEM, defaults.captionsFollowSystem),
-            subtitleSize = read(SUBTITLE_SIZE, defaults.subtitleSize),
-            subtitleTextColor = read(SUBTITLE_COLOR, defaults.subtitleTextColor),
-            subtitleBackground = read(SUBTITLE_BACKGROUND, defaults.subtitleBackground),
+            downloadOverMobile = settings[ProfileSettingDefinitions.DownloadOverMobile],
+            storageLimitGb = (settings[ProfileSettingDefinitions.StorageLimitMb] / MB_PER_GB).toInt(),
+            maxStreamingBitrate = settings[ProfileSettingDefinitions.MaxStreamingBitrate],
+            captionsFollowSystem = settings[ProfileSettingDefinitions.CaptionsFollowSystem],
+            subtitleSize = settings[ProfileSettingDefinitions.SubtitleSize],
+            subtitleTextColor = settings[ProfileSettingDefinitions.SubtitleTextColor],
+            subtitleBackground = settings[ProfileSettingDefinitions.SubtitleBackground],
             profileName = connected?.account?.name.orEmpty(),
             serverName = server?.name.orEmpty(),
             serverAddresses = server?.addresses.orEmpty(),
@@ -595,49 +557,25 @@ private typealias ProfileKey = Pair<String, String>
 
 private fun Account.key(): ProfileKey = serverId to userId
 
-/** A profile setting and the profile it was read for; [value] null is "not read yet". */
-private data class ProfileRead(val profile: ProfileKey?, val value: Any?)
-
 // The positions of the sources in [SettingsViewModel.sources].
 private const val ALWAYS_ASK = 0
-private const val SHOW_STATS = 1
-private const val BINGE = 2
-private const val GENRE_ROWS = 3
-private const val HERO = 4
-private const val SKIP_BACK = 5
-private const val SKIP_FORWARD = 6
-private const val AUTO_SKIP = 7
-private const val BUFFER_AHEAD = 8
-private const val QUALITY = 9
-private const val CAPTIONS_FOLLOW_SYSTEM = 10
-private const val SUBTITLE_SIZE = 11
-private const val SUBTITLE_COLOR = 12
-private const val SUBTITLE_BACKGROUND = 13
-private const val CONNECTION = 14
-private const val SERVERS = 15
-private const val CONFIRM_SIGN_OUT = 16
-private const val KIDS = 17
-private const val PIN_PROMPT = 18
-private const val UNLOCKED_FOR = 19
-private const val LEAVE = 20
-private const val POLICY = 21
-private const val PIN_GATES = 22
-private const val NOTIFICATIONS = 23
-private const val NOTIFICATION_SCOPE = 24
-private const val REQUEST_PERMISSION = 25
-private const val NOTIFICATIONS_BLOCKED = 26
-private const val PICTURE_IN_PICTURE = 27
-private const val OFFLINE_MODE = 28
-private const val DOWNLOAD_OVER_MOBILE = 29
-private const val STORAGE_LIMIT = 30
-private const val LANGUAGE_PREFS = 31
-private const val LANGUAGES = 32
-private const val LANGUAGE_STATUS = 33
-private const val SEARCHES = 34
-private const val CLOSE_PAGE = 35
-private const val CONFIRM_PURGE_DOWNLOADS = 36
-private const val SWIPE_GESTURES = 37
-private const val SEERR = 38
-private const val DOWNLOAD_NOTIFICATIONS = 39
+private const val PROFILE = 1
+private const val CONNECTION = 2
+private const val SERVERS = 3
+private const val CONFIRM_SIGN_OUT = 4
+private const val PIN_PROMPT = 5
+private const val UNLOCKED_FOR = 6
+private const val LEAVE = 7
+private const val POLICY = 8
+private const val REQUEST_PERMISSION = 9
+private const val NOTIFICATIONS_BLOCKED = 10
+private const val OFFLINE_MODE = 11
+private const val LANGUAGE_PREFS = 12
+private const val LANGUAGES = 13
+private const val LANGUAGE_STATUS = 14
+private const val SEARCHES = 15
+private const val CLOSE_PAGE = 16
+private const val CONFIRM_PURGE_DOWNLOADS = 17
+private const val SEERR = 18
 
 private const val MB_PER_GB = 1_000L
