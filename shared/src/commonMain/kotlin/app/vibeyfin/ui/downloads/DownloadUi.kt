@@ -2,7 +2,6 @@ package app.vibeyfin.ui.downloads
 
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.domain.ConnectionManager
-import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.DownloadFailure
 import app.vibeyfin.domain.DownloadRunner

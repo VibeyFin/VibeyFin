@@ -3,7 +3,6 @@ package app.vibeyfin.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.vibeyfin.domain.ConnectionManager
-import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.OfflineLibrary
 import app.vibeyfin.domain.accountOrNull
 import app.vibeyfin.ui.common.Strings

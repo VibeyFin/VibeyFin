@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.domain.ConnectionManager
-import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.SeerrConnectResult
 import app.vibeyfin.domain.SeerrConnection
 import app.vibeyfin.domain.SeerrPasswordResult

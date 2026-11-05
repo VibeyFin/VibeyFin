@@ -2,7 +2,6 @@ package app.vibeyfin.ui.common
 
 import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.ConnectionManager
-import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.ProfileSettings

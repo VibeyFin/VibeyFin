@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.ConnectionManager
-import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.ProfileSettings

@@ -3,7 +3,6 @@ package app.vibeyfin.ios
 import app.vibeyfin.data.db.AccountDao
 import app.vibeyfin.di.ApplicationScope
 import app.vibeyfin.domain.ConnectionManager
-import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.NewTitlesPoller
 import app.vibeyfin.domain.ProfileNewTitles
 import kotlinx.coroutines.CoroutineScope
