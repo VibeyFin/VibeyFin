@@ -151,6 +151,27 @@ apps share are in `guardrails.md`; which Jellyfin field drives which UI is in `j
   for everything else (refactors, docs).
 - Ask before adding a dependency that isn't in the stack above.
 
+### Code Layout & Formatting Rules
+1. Never omit or abstract away logic with placeholders (e.g., `// TODO: implement later` or `... rest of the code`). Output complete, functional code blocks.
+2. Maintain complete type safety. Every function signature must include explicit types for arguments and return values.
+3. Keep functions single-purpose.
+4. Avoid comments unless needed for critical parts. Main goal is to avoid complex operations when possible.
+
+### Variable & Declaration Grouping
+When defining logic inside a function, class, or script, you must group declarations cleanly by category. Do not interleave variable definitions with execution logic.
+
+Follow this strict top-to-bottom layout within scopes:
+1. Imports: Group logically (Standard Library -> Third-Party -> Local Modules) separated by a single blank line.
+2. Constants / Configuration: Declare all immutable configuration variables first.
+3. State / Mutable Variables: Group all local state variables together immediately following constants. Do not scatter declarations throughout the execution path.
+4. Business Logic / Execution: Execute code only after all variables are initialized.
+
+### Alignment & Scannability
+- Align assignments horizontally where it improves readability (e.g., matching `=` signs for sequential variable declarations or `:` for key-value mappings).
+- Use blank lines to isolate logical paragraphs of code, but never use more than one consecutive blank line.
+- Use explicit, descriptive names that indicate semantics rather than data types (e.g., `userAuthenticationToken` instead of `tokenString`).
+
+
 ## Test server
 
 - A feature that touches the Jellyfin API or the player is verified against the local test server
