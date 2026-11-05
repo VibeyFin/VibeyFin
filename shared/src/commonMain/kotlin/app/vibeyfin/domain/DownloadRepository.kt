@@ -19,17 +19,34 @@ import app.vibeyfin.data.db.DownloadItemEntity
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.model.ProfileRef
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.sample
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
+/**
+ * The running downloads by item id, with their byte count and speed as of the last second. For the ring and the time left
+ * of whatever shows a download: [DownloadRepository.observeStates] says what a download is doing, this says how far it is, calmly.
+ */
+@OptIn(FlowPreview::class)
+fun DownloadRepository.observeProgress(profile: ProfileRef): Flow<Map<String, Download>> = observeAll(profile)
+    .map { list -> list.filter { it.state == DownloadState.Running }.associateBy { it.itemId } }
+    .distinctUntilChanged()
+    .sample(DOWNLOAD_SAMPLE_INTERVAL)
+    .flowOn(Dispatchers.Default)
+
 /** The states of the downloads still to do: the ones [DownloadRunner] picks up. */
 internal val ACTIVE_DOWNLOAD_STATES = listOf(DOWNLOAD_RUNNING, DOWNLOAD_QUEUED, DOWNLOAD_WAITING_FOR_NETWORK)
+
+private val DOWNLOAD_SAMPLE_INTERVAL: Duration = 1.seconds
 
 enum class DownloadState { Queued, Running, WaitingForNetwork, Paused, Failed, Done }
 

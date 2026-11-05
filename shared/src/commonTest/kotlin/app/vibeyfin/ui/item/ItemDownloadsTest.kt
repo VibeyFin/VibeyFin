@@ -2,6 +2,7 @@ package app.vibeyfin.ui.item
 
 import app.vibeyfin.data.db.DOWNLOAD_PAUSED
 import app.vibeyfin.data.db.DOWNLOAD_QUEUED
+import app.vibeyfin.data.db.DOWNLOAD_RUNNING
 import app.vibeyfin.domain.DownloadNetwork
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.testing.Reply
@@ -10,6 +11,7 @@ import app.vibeyfin.testing.ViewModelTracker
 import app.vibeyfin.testing.sagaServer
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.downloads.DownloadAction
+import app.vibeyfin.ui.downloads.DownloadBadge
 import app.vibeyfin.ui.downloads.actions
 import app.vibeyfin.ui.whoswatching.SignInMessages
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +66,22 @@ class ItemDownloadsTest {
     }
 
     @Test
+    fun theButtonFollowsTheDownloadFromWaitingToRunningWithItsRing() = runTest {
+        app.sagaServer()
+        val viewModel = viewModel("m1")
+        viewModel.uiState.first { !it.loading }
+        viewModel.onDownload()
+        assertEquals(DownloadBadge.Waiting, viewModel.uiState.first { it.download != null }.downloadBadge)
+
+        app.downloads.setState("srv-1", "u1", "m1", DOWNLOAD_RUNNING, null, 1)
+        viewModel.uiState.first { it.downloadBadge == DownloadBadge.Running }
+        app.downloads.setProgress("srv-1", "u1", "m1", 25, 100, 2)
+        val moved = viewModel.uiState.first { it.downloadProgress == 0.25f }
+
+        assertEquals(DownloadBadge.Running, moved.downloadBadge)
+    }
+
+    @Test
     fun aShowAsksHowManyEpisodesAndHowMuchRoomBeforeDownloading() = runTest {
         app.sagaServer()
         val viewModel = viewModel("s1")
@@ -94,7 +112,7 @@ class ItemDownloadsTest {
         viewModel.onConfirmDownload()
 
         assertNull(viewModel.uiState.first { it.downloadPrompt == null }.downloadPrompt)
-        assertEquals(listOf("e2"), app.downloads.observeAll("srv-1", "u1").first().map { it.itemId })
+        assertEquals(listOf("e2"), app.downloads.observeAll("srv-1", "u1").first { it.isNotEmpty() }.map { it.itemId })
     }
 
     @Test

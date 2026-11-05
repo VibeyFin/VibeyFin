@@ -95,11 +95,45 @@ class DownloadsViewModelTest {
         app.downloads.complete("srv-1", "u1", "m1", 50, "srv-1/u1/m1/video.mkv", 3)
         val done = viewModel.uiState.first { it.movies.singleOrNull()?.state == DownloadState.Done }.movies.single()
         assertEquals("Downloaded · 50 B", done.statusLine(DownloadRunner.Waiting.Network))
+        assertEquals("Downloaded", done.status(DownloadRunner.Waiting.Network).state)
+        assertEquals("50 B", done.status(DownloadRunner.Waiting.Network).detail)
         assertEquals(listOf(DownloadAction.Remove), done.actions)
     }
 
     @Test
-    fun aFailedDownloadSaysWhyAndCanBeResumed() = runTest {
+    fun resumingAShowQueuesItsPausedAndFailedEpisodes() = runTest {
+        app.sagaServer()
+        queue(DownloadTarget.Series("s1"))
+        app.downloads.setState("srv-1", "u1", "e1", "failed", "NoSpace", 1)
+        app.downloads.setState("srv-1", "u1", "e2", "paused", null, 1)
+        val viewModel = viewModel()
+        val show = viewModel.uiState.first { it.shows.singleOrNull()?.episodes?.all { e -> e.state != DownloadState.Queued } == true }.shows.single()
+
+        assertTrue(show.canResume)
+        assertEquals(Strings.retryFailedDownloads, show.resumeLabel)
+        viewModel.onResumeShow(show)
+
+        val after = viewModel.uiState.first { it.shows.single().episodes.all { e -> e.state == DownloadState.Queued } }.shows.single()
+        assertTrue(!after.canResume)
+    }
+
+    @Test
+    fun resumingASeasonLeavesTheOtherSeasonsAlone() = runTest {
+        app.sagaServer()
+        queue(DownloadTarget.Series("s1"))
+        app.downloads.setState("srv-1", "u1", "e1", "paused", null, 1)
+        app.downloads.setState("srv-1", "u1", "e2", "paused", null, 1)
+        val viewModel = viewModel()
+        val show = viewModel.uiState.first { it.shows.singleOrNull()?.episodes?.all { e -> e.state == DownloadState.Paused } == true }.shows.single()
+
+        viewModel.onResumeSeason(show, "other-season")
+
+        assertTrue(viewModel.uiState.value.shows.single().episodes.all { it.state == DownloadState.Paused })
+        assertEquals(Strings.resumeAllDownloads, show.resumeLabel)
+    }
+
+    @Test
+    fun aFailedDownloadSaysWhyAndCanBeRetried() = runTest {
         app.sagaServer()
         queue(DownloadTarget.Item("m1"))
         app.downloads.setState("srv-1", "u1", "m1", "failed", "NoSpace", 1)
@@ -108,7 +142,20 @@ class DownloadsViewModelTest {
 
         assertEquals(Strings.downloadFailed, failed.statusLine(DownloadRunner.Waiting.Network))
         assertEquals(LoadMessages.DOWNLOAD_NO_SPACE, failed.failureMessage)
-        assertEquals(listOf(DownloadAction.Resume, DownloadAction.Remove), failed.actions)
+        assertEquals(listOf(DownloadAction.Retry, DownloadAction.Remove), failed.actions)
+    }
+
+    @Test
+    fun retryingAFailedDownloadQueuesItAgain() = runTest {
+        app.sagaServer()
+        queue(DownloadTarget.Item("m1"))
+        app.downloads.setState("srv-1", "u1", "m1", "failed", "NoSpace", 1)
+        val viewModel = viewModel()
+        val failed = viewModel.uiState.first { it.movies.singleOrNull()?.state == DownloadState.Failed }.movies.single()
+
+        viewModel.onAction(failed, DownloadAction.Retry)
+
+        assertEquals(DownloadState.Queued, viewModel.uiState.first { it.movies.singleOrNull()?.state == DownloadState.Queued }.movies.single().state)
     }
 
     @Test

@@ -959,6 +959,9 @@ object Strings {
 
     fun notificationsScopeLabel(scope: Int) = if (scope == ProfileSettings.NOTIFY_EVERYTHING) notificationsEverything else notificationsFollowed
 
+    val downloadNotificationsToggle = "Download notifications"
+    val downloadNotificationsFooter = "Tells you when downloads finish or fail. VibeyFin asks for permission the first time a download starts; if you declined, allow notifications in system settings."
+
     val notificationsFooter =
         "Jellyfin sends no push, so the app checks in the background: expect a delay. Switching this on asks for notification permission."
 
@@ -1072,6 +1075,34 @@ object Strings {
 
     fun downloadingNotificationTitle(title: String) = "Downloading $title"
 
+    /** The notifications for downloads that finished or failed while the app was away. */
+    fun downloadedOne(title: String): String = "Downloaded $title"
+
+    fun downloadedEpisodes(count: Int, show: String): String = "Downloaded $count episodes for $show"
+
+    fun downloadedVideos(count: Int): String = "Downloaded $count videos"
+
+    val downloadsReadyBody = "Ready to watch offline."
+
+    fun downloadFailedTitle(title: String): String = "Download failed: $title"
+
+    /** The second line of the system progress: how much of the video in hand is here, "1.23 GB of 4.50 GB"; just the first part while the size is unknown. */
+    fun downloadSizeProgress(done: Long, total: Long?): String = if (total != null && total > 0) "${preciseFileSize(done)} of ${preciseFileSize(total)}" else preciseFileSize(done)
+
+    /** A file size with two decimals, in MB below a gigabyte: "512.34 MB", "1.23 GB". Decimal units, like [fileSize]. */
+    fun preciseFileSize(bytes: Long): String {
+        val value = bytes.coerceAtLeast(0)
+        return if (value >= GIGABYTE) "${hundredths(value, GIGABYTE)} GB" else "${hundredths(value, MEGABYTE)} MB"
+    }
+
+    private fun hundredths(value: Long, unit: Long): String {
+        val rounded = (value * 100 + unit / 2) / unit
+        return "${rounded / 100}.${(rounded % 100).toString().padStart(2, '0')}"
+    }
+
+    private const val MEGABYTE: Long = 1_000_000
+    private const val GIGABYTE: Long = 1_000_000_000
+
     fun downloadsWaiting(count: Int) = if (count == 1) "1 more waiting" else "$count more waiting"
 
     // Downloads: the actions, the confirmations and the Downloads screen.
@@ -1079,6 +1110,9 @@ object Strings {
 
     val pauseDownload = "Pause download"
     val resumeDownload = "Resume download"
+    val retryDownload = "Retry download"
+    val resumeAllDownloads = "Resume all"
+    val retryFailedDownloads = "Retry failed"
 
     fun downloadSeasonNamed(season: String) = "Download $season"
 

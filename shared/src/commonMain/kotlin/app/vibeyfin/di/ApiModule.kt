@@ -15,6 +15,7 @@ import app.vibeyfin.domain.DownloadSpeeds
 import app.vibeyfin.domain.DownloadWake
 import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.LocalPlaybackReporter
+import app.vibeyfin.domain.NoDownloadAlerts
 import app.vibeyfin.domain.OfflineLibrary
 import app.vibeyfin.domain.OfflineMode
 import app.vibeyfin.domain.OfflineProgress
@@ -71,7 +72,7 @@ fun apiModule() = module {
     // One per player, like PlaybackReporter: it holds where this playback is.
     factory { LocalPlaybackReporter(get(), get(ApplicationScope), get(), get(), get(), get()) }
     single { DownloadRepository(get(), get(), get(), get(), get(), get(), get(), get()) }
-    single { DownloadRunner(get(), get(), get(), get(), get(), get(), get(), speeds = get(), external = getOrNull(), playable = getOrNull()) }
+    single { DownloadRunner(get(), get(), get(), get(), get(), get(), get(), speeds = get(), external = getOrNull(), playable = getOrNull(), alerts = getOrNull() ?: NoDownloadAlerts) }
     single { AuthRepository(get(), get(), get(), get()) }
     single { StartupRouter(get(), get(), get(), get(), get()) }
     single { LibraryRepository(get()) }

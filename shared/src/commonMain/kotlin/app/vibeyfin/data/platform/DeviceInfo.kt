@@ -10,4 +10,7 @@ interface DeviceInfo {
 
     /** False where subtitles are burned into the picture, so the caption style cannot apply. */
     val subtitleStyleApplies: Boolean get() = true
+
+    /** True where the app notifies about downloads (iOS), so Settings offers the switch. */
+    val downloadAlerts: Boolean get() = false
 }

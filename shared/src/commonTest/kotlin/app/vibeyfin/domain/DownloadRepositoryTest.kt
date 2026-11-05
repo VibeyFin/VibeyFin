@@ -269,6 +269,35 @@ class DownloadRepositoryTest {
         assertEquals(listOf(DownloadState.Running, DownloadState.Paused), seen.value.map { it.single().state })
     }
 
+    @Test
+    fun theProgressOfRunningDownloadsComesOncePerSecondWithTheLatestBytes() = runTest {
+        saga()
+        repository.enqueue(alex, plan(DownloadTarget.Item("m1")))
+        app.downloads.setState("srv-1", "u1", "m1", DOWNLOAD_RUNNING, null, 1)
+        val seen = MutableStateFlow(emptyList<Map<String, Download>>())
+        backgroundScope.launch(Dispatchers.Default) { repository.observeProgress(alex).collect { running -> seen.update { it + listOf(running) } } }
+        settle()
+
+        repeat(50) { app.downloads.setProgress("srv-1", "u1", "m1", (it + 1) * 1_000L, 100_000, 2) }
+        kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.delay(1_300) }
+
+        assertTrue(seen.value.size <= 2, "a burst of writes is one emission per second, not one per write: ${seen.value.size}")
+        assertEquals(50_000L, seen.value.last().getValue("m1").bytesDone)
+    }
+
+    @Test
+    fun aDownloadThatIsNotRunningHasNoProgressToReport() = runTest {
+        saga()
+        repository.enqueue(alex, plan(DownloadTarget.Item("m1")))
+        app.downloads.setState("srv-1", "u1", "m1", DOWNLOAD_PAUSED, null, 1)
+        val seen = MutableStateFlow(emptyList<Map<String, Download>>())
+        backgroundScope.launch(Dispatchers.Default) { repository.observeProgress(alex).collect { running -> seen.update { it + listOf(running) } } }
+
+        kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.delay(1_300) }
+
+        assertTrue(seen.value.all { it.isEmpty() })
+    }
+
     // Lets the database's flows, which run off the test's clock, deliver what they have.
     private suspend fun settle() = kotlinx.coroutines.withContext(Dispatchers.Default) { kotlinx.coroutines.delay(300) }
 

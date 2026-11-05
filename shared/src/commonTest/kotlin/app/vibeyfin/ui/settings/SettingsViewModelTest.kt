@@ -89,8 +89,9 @@ class SettingsViewModelTest {
         pins: PinLock = app.pins,
         appVersion: String = "",
         seerr: SeerrConnection? = null,
+        downloadAlerts: Boolean = true,
     ) = viewModels.track(
-        SettingsViewModel(preferences, profileSettings, app.connection, app.servers, pins, app.policy, app.languages, app.auth, app.downloadRepository, applicationScope, appVersion, seerr = seerr),
+        SettingsViewModel(preferences, profileSettings, app.connection, app.servers, pins, app.policy, app.languages, app.auth, app.downloadRepository, applicationScope, appVersion, downloadAlerts = downloadAlerts, seerr = seerr),
     )
 
     @Test
@@ -705,6 +706,29 @@ class SettingsViewModelTest {
         viewModel.onNotificationPermissionRequested()
         assertFalse(viewModel.uiState.first { !it.requestNotificationPermission }.requestNotificationPermission)
         assertTrue(viewModel.uiState.first().notificationsOn())
+    }
+
+    @Test
+    fun `download notifications start on and the toggle saves for the profile`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        assertTrue(viewModel.uiState.first { it.hasProfile }.checked(SettingKey.DownloadNotifications))
+
+        viewModel.onToggle(SettingKey.DownloadNotifications, false)
+
+        assertFalse(viewModel.uiState.first { !it.checked(SettingKey.DownloadNotifications) }.checked(SettingKey.DownloadNotifications))
+        assertEquals(false, app.profileSettings.downloadNotifications.first())
+        assertFalse(viewModel.uiState.first().requestNotificationPermission, "the permission is asked on the first download, not here")
+    }
+
+    @Test
+    fun `a platform without download alerts shows no such row`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel(downloadAlerts = false)
+
+        val shown = viewModel.uiState.first { it.hasProfile }.pages.getValue(SettingsPageId.Notifications).visibleOnly().sections.flatMap { it.items }
+
+        assertTrue(shown.none { it.key == SettingKey.DownloadNotifications })
     }
 
     @Test

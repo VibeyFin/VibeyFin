@@ -6,6 +6,7 @@ import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.DownloadRunner
+import app.vibeyfin.domain.DownloadState
 import app.vibeyfin.domain.NetworkState
 import app.vibeyfin.domain.OfflineMode
 import app.vibeyfin.domain.ProfileSettings
@@ -35,6 +36,12 @@ data class DownloadedShow(
 ) {
     val bytes: Long get() = episodes.sumOf { it.bytes }
     val doneCount: Int get() = episodes.count { it.isDone }
+
+    /** Some episode is paused or failed, so the show offers Resume (or Retry when one failed). */
+    val canResume: Boolean get() = episodes.resumable.isNotEmpty()
+
+    val resumeLabel: String
+        get() = if (episodes.any { it.state == DownloadState.Failed }) Strings.retryFailedDownloads else Strings.resumeAllDownloads
 
     /** "3 episodes · 1.2 GB". */
     val line: String get() = Strings.showDownloadLine(episodes.size, bytes)
@@ -109,6 +116,12 @@ class DownloadsViewModel(
     }
 
     fun onAction(download: Download, action: DownloadAction) = flow.act(download, action)
+
+    /** Resumes every paused or failed episode of [show]. */
+    fun onResumeShow(show: DownloadedShow) = flow.resumeAll(show.episodes)
+
+    /** Resumes every paused or failed episode of [show] that sits in the season [seasonId]. */
+    fun onResumeSeason(show: DownloadedShow, seasonId: String) = flow.resumeAll(show.episodes.filter { it.seasonId == seasonId })
 
     /** Asks before removing every episode of [show]. */
     fun onRemoveShow(show: DownloadedShow) = flow.askRemove(show.episodes, show.title)

@@ -140,6 +140,14 @@ class ProfileSettings(
         }
     }
 
+    /** Whether the app notifies when the profile's downloads finish or fail. On by default. Null when nobody is signed in. */
+    val downloadNotifications: Flow<Boolean?> = forAccount { dao, a -> dao.observeDownloadNotifications(a.serverId, a.userId).map { it ?: true } }
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setDownloadNotifications(value: Boolean) {
+        connection.asAccount(Unit) { account -> dao.setDownloadNotifications(account.serverId, account.userId, value) }
+    }
+
     /** What notifies, one of [NOTIFICATION_SCOPE_CHOICES]. Null when nobody is signed in. */
     val notificationScope: Flow<Int?> = forAccount { dao, a ->
         dao.observeNotificationScope(a.serverId, a.userId).map { if (it in NOTIFICATION_SCOPE_CHOICES) it else DEFAULT_NOTIFICATION_SCOPE }

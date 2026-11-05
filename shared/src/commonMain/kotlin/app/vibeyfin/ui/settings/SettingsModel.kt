@@ -45,6 +45,7 @@ enum class SettingKey {
     NotificationScope,
     PictureInPicture,
     SwipeGestures,
+    DownloadNotifications,
     OfflineMode,
     DownloadOverMobile,
     StorageLimit,

@@ -6,8 +6,10 @@ import app.vibeyfin.domain.DownloadAttempt
 import app.vibeyfin.domain.DownloadCandidate
 import app.vibeyfin.domain.DownloadPlan
 import app.vibeyfin.domain.DownloadRepository
+import app.vibeyfin.domain.DownloadState
 import app.vibeyfin.domain.DownloadTarget
 import app.vibeyfin.domain.model.ProfileRef
+import app.vibeyfin.domain.observeProgress
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.CoroutineScope
@@ -20,6 +22,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -133,9 +136,17 @@ class DownloadFlow(
         val profile = profile() ?: return
         when (action) {
             DownloadAction.Pause -> scope.launch { downloads.pause(profile, download.itemId) }
-            DownloadAction.Resume -> scope.launch { downloads.resume(profile, download.itemId) }
+            DownloadAction.Resume, DownloadAction.Retry -> scope.launch { downloads.resume(profile, download.itemId) }
             DownloadAction.Remove -> scope.launch { downloads.remove(profile, download.itemId) }
         }
+    }
+
+    /** Puts every paused or failed download of [items] back in the queue, in season then episode order. */
+    fun resumeAll(items: List<Download>) {
+        val profile = profile() ?: return
+        val ids = items.resumable.map { it.itemId }
+        if (ids.isEmpty()) return
+        scope.launch { ids.forEach { downloads.resume(profile, it) } }
     }
 
     /** Asks before deleting [items]; [title] names them when there is one. */
@@ -180,7 +191,8 @@ internal class DownloadParts(
 
 /**
  * The [DownloadParts] of whoever is signed in; [canDownload] is whether the server lets them download. While [live] is false the downloads
- * only change with their state (see [DownloadRepository.observeStates]), so a screen that shows no progress is not rebuilt by one.
+ * change with their state (see [DownloadRepository.observeStates]) and, for running ones, their byte count once a second
+ * ([DownloadRepository.observeProgress]), so a screen is not rebuilt for every byte. While [live] is true they follow every write.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 internal fun downloadParts(
@@ -194,7 +206,7 @@ internal fun downloadParts(
         when {
             profile == null -> flowOf(emptyList<Download>())
             live -> downloads.observeAll(profile)
-            else -> downloads.observeStates(profile)
+            else -> withProgress(downloads.observeStates(profile), downloads.observeProgress(profile))
         }.map { list -> list.associateBy { it.itemId } }
     },
     canDownload,
@@ -202,3 +214,15 @@ internal fun downloadParts(
     flow.removal,
     flow.message,
 ) { byId, allowed, prompt, removal, message -> DownloadParts(byId, allowed, prompt, removal, message) }
+
+private fun withProgress(
+    states: Flow<List<Download>>,
+    progress: Flow<Map<String, Download>>,
+): Flow<List<Download>> = combine(states, progress.onStart { emit(emptyMap()) }) { list, running ->
+    list.map { it.withProgressOf(running[it.itemId]) }
+}.distinctUntilChanged()
+
+private fun Download.withProgressOf(sampled: Download?): Download = when {
+    state != DownloadState.Running || sampled == null -> this
+    else -> copy(bytesDone = sampled.bytesDone, bytesTotal = sampled.bytesTotal, bytesPerSecond = sampled.bytesPerSecond)
+}

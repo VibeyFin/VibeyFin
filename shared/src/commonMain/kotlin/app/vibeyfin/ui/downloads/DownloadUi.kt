@@ -15,15 +15,21 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 /** What the user can do to a download that exists, by its state. Screens word each with [Strings]. */
-enum class DownloadAction { Pause, Resume, Remove }
+enum class DownloadAction { Pause, Resume, Retry, Remove }
 
-/** Pause while it is on its way, resume when it was paused or failed, and remove whatever its state. */
+/** Pause while it is on its way, resume when it was paused, retry when it failed, and remove whatever its state. */
 val Download.actions: List<DownloadAction>
     get() = when (state) {
         DownloadState.Queued, DownloadState.Running, DownloadState.WaitingForNetwork -> listOf(DownloadAction.Pause, DownloadAction.Remove)
-        DownloadState.Paused, DownloadState.Failed -> listOf(DownloadAction.Resume, DownloadAction.Remove)
+        DownloadState.Paused -> listOf(DownloadAction.Resume, DownloadAction.Remove)
+        DownloadState.Failed -> listOf(DownloadAction.Retry, DownloadAction.Remove)
         DownloadState.Done -> listOf(DownloadAction.Remove)
     }
+
+/** The paused and failed downloads, in season then episode order, as a resume of the whole group takes them. */
+val List<Download>.resumable: List<Download>
+    get() = filter { it.state == DownloadState.Paused || it.state == DownloadState.Failed }
+        .sortedWith(compareBy({ it.item.seasonNumber ?: 0 }, { it.item.episodeNumber ?: 0 }))
 
 val Download.isDone: Boolean get() = state == DownloadState.Done
 
@@ -84,26 +90,36 @@ val DownloadBadge.label: String
 /** The bytes it takes, or will take: the file's size once known, what is here until then. */
 val Download.bytes: Long get() = bytesTotal ?: bytesDone
 
-/** The one line under a download: its state, and how far it is. [waiting] says what a download that is waiting waits for. */
-fun Download.statusLine(waiting: DownloadRunner.Waiting): String = when (state) {
-    DownloadState.Done -> Strings.downloadedWithSize(bytes)
+/** The status as two short lines, so a narrow row never clips the sizes: the state, then what is known about the size or the time left. */
+class DownloadStatusLine(val state: String, val detail: String?)
 
-    DownloadState.Running -> listOfNotNull(Strings.downloading, Strings.downloadProgress(bytesDone, bytesTotal), timeLeft?.let { Strings.downloadTimeLeft(it.inWholeSeconds) }).joinToString(" · ")
+fun Download.status(waiting: DownloadRunner.Waiting): DownloadStatusLine = when (this.state) {
+    DownloadState.Done -> DownloadStatusLine(Strings.downloaded, bytes.takeIf { it > 0 }?.let { Strings.fileSize(it) })
 
-    DownloadState.Queued -> Strings.downloadQueued
+    DownloadState.Running -> DownloadStatusLine(
+        Strings.downloading,
+        listOfNotNull(Strings.downloadProgress(bytesDone, bytesTotal), timeLeft?.let { Strings.downloadTimeLeft(it.inWholeSeconds) }).joinToString(" · "),
+    )
 
-    DownloadState.WaitingForNetwork -> when (waiting) {
-        DownloadRunner.Waiting.Network -> Strings.downloadWaitingForNetwork
-        DownloadRunner.Waiting.Wifi -> Strings.downloadWaitingForWifi
-        DownloadRunner.Waiting.Server -> Strings.downloadWaitingForServer
-    }
+    DownloadState.Queued -> DownloadStatusLine(Strings.downloadQueued, null)
 
-    DownloadState.Paused -> if (bytesDone > 0) "${Strings.downloadPaused} · ${Strings.downloadProgress(bytesDone, bytesTotal)}" else Strings.downloadPaused
+    DownloadState.WaitingForNetwork -> DownloadStatusLine(
+        when (waiting) {
+            DownloadRunner.Waiting.Network -> Strings.downloadWaitingForNetwork
+            DownloadRunner.Waiting.Wifi -> Strings.downloadWaitingForWifi
+            DownloadRunner.Waiting.Server -> Strings.downloadWaitingForServer
+        },
+        null,
+    )
 
-    DownloadState.Failed -> Strings.downloadFailed
+    DownloadState.Paused -> DownloadStatusLine(Strings.downloadPaused, if (bytesDone > 0) Strings.downloadProgress(bytesDone, bytesTotal) else null)
+
+    DownloadState.Failed -> DownloadStatusLine(Strings.downloadFailed, null)
 }
 
-/** Why a failed download failed, with what to try; null for one that did not fail. */
+/** The one line under a download: its state, and how far it is. [waiting] says what a download that is waiting waits for. */
+fun Download.statusLine(waiting: DownloadRunner.Waiting): String = status(waiting).let { listOfNotNull(it.state, it.detail).joinToString(" · ") }
+
 val Download.failureMessage: String? get() = if (state == DownloadState.Failed) (failure ?: DownloadFailure.Unknown).message() else null
 
 /** The word a screen reader says for the state of a download. */
