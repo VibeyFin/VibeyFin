@@ -565,7 +565,10 @@ fun TechnicalInfo(lines: List<TechnicalLine>) {
             lines.forEach { line ->
                 Column {
                     Text(line.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(line.value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
+                    line.rows.forEach { row ->
+                        Text(row.text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
+                        row.reason?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = VibeyFinTokens.Colors.inkMuted) }
+                    }
                 }
             }
         }

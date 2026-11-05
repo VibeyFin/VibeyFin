@@ -12,7 +12,12 @@ struct TechnicalInfoView: View {
                 ForEach(lines, id: \.label) { line in
                     VStack(alignment: .leading, spacing: 2) {
                         Text(line.label).font(.caption).foregroundStyle(.secondary)
-                        Text(line.value).font(.subheadline).foregroundStyle(.primary)
+                        ForEach(Array(line.rows.enumerated()), id: \.offset) { _, row in
+                            Text(row.text).font(.subheadline).foregroundStyle(.primary)
+                            if let reason = row.reason {
+                                Text(reason).font(.footnote).foregroundStyle(.secondary)
+                            }
+                        }
                     }
                 }
             }

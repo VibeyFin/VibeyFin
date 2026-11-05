@@ -391,8 +391,8 @@ object Strings {
         PlayMethod.Transcode -> "Transcode"
     }
 
-    // The line under Play on the item screen
-    fun playoutDescription(method: PlayMethod, reason: String?) = "Plays as ${statsMethod(method).lowercase()}" + (reason?.let { ", ${it.replaceFirstChar(Char::lowercase)}" } ?: "")
+    /** How a stream plays, after its codec in the item screen's technical info: "HEVC (Direct play)". */
+    fun playoutTag(method: PlayMethod) = "(${statsMethod(method)})"
 
     /** The server's transcode reason in plain words; an unknown one is its name, split into words. */
     fun transcodeReason(code: String) = when (code) {

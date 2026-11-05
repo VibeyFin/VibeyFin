@@ -203,7 +203,6 @@ struct HeroDetailsView: View {
             // A show's Play waits for its next episode: a grey button of the same size holds its place, so it does not pop in.
             if state.canPlay {
                 playButtons
-                playoutLine
             } else if state.playLoading {
                 SkeletonBlock().frame(maxWidth: .infinity).frame(height: 50).clipShape(Capsule())
             }
@@ -260,27 +259,6 @@ struct HeroDetailsView: View {
     private var playLabel: String {
         let parts = state.playLabel.components(separatedBy: " \u{00B7} ")
         return ([parts[0].titleCased()] + parts.dropFirst()).joined(separator: " \u{00B7} ")
-    }
-
-    /// How the title will play, under Play: direct play, direct stream, or transcode with its reason. Its height is held from the
-    /// start, so the answer does not move the page; with no answer (a download, offline, an error) the space stays empty.
-    private var playoutLine: some View {
-        HStack(spacing: Space.s2) {
-            if let playout = state.playoutLine {
-                FormatBadge(text: Strings.shared.statsMethod(method: playout.method), fill: Color(.tertiarySystemFill))
-                if let reason = playout.reason {
-                    Text(reason)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
-        .padding(.top, -Space.s1)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(state.playoutLine?.description_ ?? "")
-        .accessibilityHidden(state.playoutLine == nil)
     }
 
     private var playButtons: some View {

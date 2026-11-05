@@ -128,7 +128,7 @@ data class ItemUiState(
     /** The question before downloads are deleted; null when none is asked. */
     val removePrompt: RemovePrompt? = null,
     /** How Play will deliver the title, asked of the server when the page opens; null until it answers or when it can't say. */
-    val playout: Playout? = null,
+    val playout: PlayoutTags? = null,
     /** Set when the session ended and the screen must be left. */
     val exit: HomeExit? = null,
 ) {
@@ -176,15 +176,15 @@ data class ItemUiState(
         }
 
     /** The file's details, collapsed at the bottom of the page; empty when the server sent none. */
-    val technical: List<TechnicalLine> get() = item?.technicalLines().orEmpty()
+    val technical: List<TechnicalLine> get() = item?.technicalLines(playoutTags).orEmpty()
 
     private val isSeries: Boolean get() = item?.kind == ItemKind.Series
 
     /** What Play opens the player on: the item itself, or for a show the episode to watch next. */
     val playTarget: MediaItem? get() = if (isSeries) seasons.startEpisode else item?.takeIf { it.canPlay }
 
-    /** The line under Play. None for a download, which plays from the device without asking the server. */
-    val playoutLine: Playout? get() = playout?.takeUnless { playTarget?.let { downloads[it.id]?.badge == DownloadBadge.Done } == true }
+    /** The tags in the technical info. None for a download, which plays from the device without asking the server. */
+    val playoutTags: PlayoutTags? get() = playout?.takeUnless { playTarget?.let { downloads[it.id]?.badge == DownloadBadge.Done } == true }
 
     /** A show's Play is on its way: the page draws a grey button of the same size so Play does not pop in. */
     val playLoading: Boolean get() = isSeries && playTarget == null && !seasons.playSettled
@@ -270,7 +270,7 @@ class ItemViewModel(
                 content.update { it.copy(playout = null) }
                 if (id == null || downloaded) return@collectLatest
                 val ready = playback.negotiate(id) as? PlaybackNegotiation.Ready ?: return@collectLatest
-                content.update { it.copy(playout = ready.plan.toPlayout()) }
+                content.update { it.copy(playout = ready.plan.toPlayoutTags()) }
             }
     }
 

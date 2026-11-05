@@ -53,9 +53,10 @@ class ItemPlayoutTest {
     fun aFileTheDeviceCanPlayIsShownAsDirectPlay() = runTest {
         val viewModel = page(Reply.json(playbackInfoJson(mediaSourceJson(container = "mp4"))))
 
-        val playout = viewModel.uiState.first { it.playout != null }.playout
+        val state = viewModel.uiState.first { it.playout != null }
 
-        assertEquals(Playout(PlayMethod.DirectPlay), playout)
+        assertEquals(Playout(PlayMethod.DirectPlay), state.playout?.video)
+        assertEquals("Direct play", state.technical.first().value)
     }
 
     @Test
@@ -65,9 +66,20 @@ class ItemPlayoutTest {
 
         val playout = viewModel.uiState.first { it.playout != null }.playout
 
-        assertEquals(PlayMethod.Transcode, playout?.method)
-        assertEquals("The audio format isn't supported", playout?.reason)
-        assertEquals("Plays as transcode, the audio format isn't supported", playout?.description)
+        assertNull(playout?.video, "the video isn't what is converted")
+        assertEquals(PlayMethod.Transcode, playout?.audio?.method)
+        assertEquals("The audio format isn't supported", playout?.audio?.reason)
+    }
+
+    @Test
+    fun aVideoProblemTagsTheVideoAndAnAudioProblemTagsTheAudioToo() = runTest {
+        val source = mediaSourceJson(container = "mkv", directPlay = false, directStream = false, transcodingUrl = "$HLS_PATH&TranscodeReasons=VideoCodecNotSupported,AudioCodecNotSupported")
+        val viewModel = page(Reply.json(playbackInfoJson(source)))
+
+        val playout = viewModel.uiState.first { it.playout != null }.playout
+
+        assertEquals(Playout(PlayMethod.Transcode, "The video format isn't supported"), playout?.video)
+        assertEquals(Playout(PlayMethod.Transcode, "The audio format isn't supported"), playout?.audio)
     }
 
     @Test
@@ -76,7 +88,7 @@ class ItemPlayoutTest {
 
         val playout = viewModel.uiState.first { it.playout != null }.playout
 
-        assertEquals(Playout(PlayMethod.DirectStream), playout)
+        assertEquals(PlayoutTags(video = Playout(PlayMethod.DirectStream)), playout)
     }
 
     @Test
