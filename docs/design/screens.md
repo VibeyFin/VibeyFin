@@ -233,11 +233,11 @@ rating, air date, and its `UserData` (played, resume position).
   left), its rating and the day it aired. A check sits at the top once watched, an aqua progress bar runs along the bottom edge
   when it is part watched, and the episode Play starts has a brighter outline.
 - On a card, a tap on the picture plays it and a tap on the words opens its page. A long press opens a menu on both platforms: **View episode** (its own page) and the watched mark.
-- Each episode has its own **download button**: at the end of the row on a phone, at the top-left of the still on a card. It is the
+- Each episode has its own **download button**: at the end of the row on a phone, at the bottom-right of the still on a card, under the watched check (top-right); the facts line stops short of it so the release date is never covered. It is the
   arrow with nothing downloaded (a tap starts it), then the state badge (a tap opens pause, resume and remove). The long-press menu holds the
   same actions.
 - No swipe actions on either platform.
-- Downloaded is a filled check-disc in `positive` (`ink`) on both.
+- Downloaded is a phone with a check in `ink` (Android: Material `mobile_check`; iOS: `checkmark.rectangle.portrait`), never the check-disc, which is the watched mark.
 
 ## Downloads
 
@@ -246,7 +246,7 @@ download's progress is not playback progress.
 
 - **Download button** (fourth secondary action, icon over label). One picture for the state, drawn from the shared `DownloadBadge`:
   the download arrow (nothing downloaded), a ring that fills (coming in; grey and still while it waits for Wi-Fi or a connection),
-  pause bars (paused), a warning (failed), a filled check-disc (on the device). The label under it is "Download", "Downloading",
+  pause bars (paused), a warning (failed), a phone with a check (on the device), never the check-disc, which is the watched mark. The label under it is "Download", "Downloading",
   "Waiting", "Paused", "Failed", "Downloaded", and on a show "N downloaded". Android draws the ring by hand, not with M3's spinner,
   which is for the player only.
 - **Tapping it:** on a movie or an episode with no download it starts one (and asks, once, for the notification permission on Android
@@ -254,13 +254,14 @@ download's progress is not playback progress.
   "Download all episodes" and "Remove N downloads".
 - **Season and show confirm first:** "Download 13 episodes?" with "They take about 965 KB." and, when some are watched, "Only episodes
   I haven't watched". A season's own list page has a **Download season** button with "3 of 8 downloaded".
-- **Removing always asks:** "Remove Heat?" with "This frees 283 MB. You can download it again later." (what is on the device now).
+- **Removing one movie or episode is immediate:** Remove in its menu deletes at once, with no second question. Removing more than one (a show, a season, **Remove all downloads**) always asks: "Remove 13 downloads?" with "This frees 283 MB. You can download them again later." iOS shows it as a centred alert (a confirmation dialog is a popover on iPad); Android as an `AlertDialog`. (what is on the device now).
 - **Downloads tab:** the tab header, then a card: "On this device" over "1.4 GB used", and a bin icon with no words
   (**Remove all downloads**, asks first; the screen reader names it); **Movies** (poster, title, status line) and **Shows**
   (a card with the show's poster, "13 episodes · 965 KB" and a chevron that opens its episodes in place, a menu with go to the show and
   remove all of it). A row's status line is "Downloaded · 850 MB", "Downloading · 120 MB of 850 MB" with a thin ink progress bar,
   "Waiting for Wi-Fi", "Waiting for a connection", "Waiting for the server", "Paused · …", or "Download failed" with the reason under it. A running download adds the time left ("· 8m left"); the notification says the same ("20 MB of 283 MB · 8m left").
   A row's menu is pause or resume, and remove; a tap opens the item's page. Empty: "Nothing downloaded yet".
+- **Swipe to remove (Downloads tab only):** a row swipes left to a red Remove (iOS: native `swipeActions`, a short "Remove" with a bin, VoiceOver gets the full words; Android: Material `SwipeToDismissBox` with a `danger` bin). A movie or an episode goes at once, with a full swipe on iOS; a show settles back and asks first, with no full swipe on iOS. The row's menu stays the way to do it without a gesture. The episode lists on the item pages still have no swipe actions.
 - **Settings:** "Offline mode" (device), "Download over mobile data" and "Storage limit for downloads" (profile), and **Delete downloaded files** in `danger` text (profile). It asks first (iOS confirmation dialog, Android `AlertDialog`) and deletes the profile's whole folder, leftover metadata of unfinished downloads and files no download lists included. Other profiles keep theirs.
 - **Where the files are:** per server and per profile (`<server>/<profile>/<item>`). iOS: the app's Documents folder, shown in the Files app under On My iPad, VibeyFin, out of iCloud and backups. Android: the app's own folder on shared storage (`Android/data/<app>/files/Downloads`), which a file manager can open. They go with their owner: signing out deletes the profile's, removing a server deletes the server's, uninstalling deletes all (so Android does not use the shared Movies folder, which outlives the app).
 

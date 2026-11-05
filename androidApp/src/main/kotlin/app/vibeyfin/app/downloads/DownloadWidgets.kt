@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Warning
@@ -50,6 +49,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
 import app.vibeyfin.R
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
@@ -66,7 +66,7 @@ import app.vibeyfin.ui.downloads.stateWord
 
 /**
  * What a download looks like, in one picture: the download arrow when there is none, a ring that fills while it comes in (gray
- * and still while it waits), a pause bars, a warning, and a filled check once it is on the device. All in ink: aqua is for the
+ * and still while it waits), a pause bars, a warning, and a phone with a check once it is on the device. All in ink: aqua is for the
  * one primary action and playback progress, and never signals status. Drawn by hand, not with M3's spinner, which is for the
  * player only.
  */
@@ -75,7 +75,7 @@ fun DownloadBadgeIcon(badge: DownloadBadge, progress: Float?, modifier: Modifier
     when (badge) {
         DownloadBadge.None -> Icon(painterResource(R.drawable.ic_download), contentDescription = null, tint = tint, modifier = modifier)
 
-        DownloadBadge.Done -> Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = tint, modifier = modifier)
+        DownloadBadge.Done -> Icon(painterResource(R.drawable.ic_download_done), contentDescription = null, tint = tint, modifier = modifier)
 
         DownloadBadge.Failed -> Icon(Icons.Filled.Warning, contentDescription = null, tint = tint, modifier = modifier)
 
@@ -248,11 +248,11 @@ private const val ASKED = "asked_for_notifications"
 
 private fun Context.asked() = getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(ASKED, false)
 
-private fun Context.markAsked() = getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(ASKED, true).apply()
+private fun Context.markAsked() = getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean(ASKED, true) }
 
 /** A square that holds a badge over a picture: a dark disc so the ink reads on any artwork. */
 @Composable
-fun BadgeOverPicture(badge: DownloadBadge, progress: Float?, size: Dp = 26.dp, modifier: Modifier = Modifier) {
+fun BadgeOverPicture(modifier: Modifier = Modifier, badge: DownloadBadge, progress: Float?, size: Dp = 26.dp) {
     Box(
         modifier = modifier
             .size(size)
@@ -298,7 +298,7 @@ fun EpisodeDownloadButton(
             modifier = Modifier.semantics { contentDescription = description },
         ) {
             if (overPicture) {
-                BadgeOverPicture(badge, download?.progress, size = 32.dp)
+                BadgeOverPicture(badge = badge, progress = download?.progress, size = 32.dp)
             } else {
                 DownloadBadgeIcon(badge, download?.progress, Modifier.size(26.dp), tint = if (badge == DownloadBadge.None) VibeyFinTokens.Colors.inkMuted else VibeyFinTokens.Colors.ink)
             }

@@ -33,10 +33,9 @@ struct DownloadsView: View {
         // The tab draws its own header; the system bar above it would only be empty space.
         .tabRootBar()
         .onAppear { model.start() }
-        .confirmationDialog(
+        .alert(
             model.state?.removal.map { Strings.shared.removeConfirmTitle(count: $0.count, title: $0.title) } ?? "",
-            isPresented: Binding(get: { model.state?.removal != nil }, set: { if !$0 { model.dismissRemoval() } }),
-            titleVisibility: .visible
+            isPresented: Binding(get: { model.state?.removal != nil }, set: { if !$0 { model.dismissRemoval() } })
         ) {
             Button(Strings.shared.removeConfirmAction.titleCased(), role: .destructive) { model.confirmRemove() }
             Button(Strings.shared.cancel.titleCased(), role: .cancel) { model.dismissRemoval() }
@@ -66,6 +65,7 @@ struct DownloadsView: View {
                 Section(Strings.shared.filterMovies.titleCased()) {
                     ForEach(state.movies, id: \.itemId) { download in
                         row(download, waiting: state.waiting, poster: true)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) { removeSwipe(download) }
                     }
                 }
             }
@@ -73,9 +73,11 @@ struct DownloadsView: View {
                 Section(Strings.shared.filterShows.titleCased()) {
                     ForEach(state.shows, id: \.seriesId) { show in
                         showRow(show)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) { removeShowSwipe(show) }
                         if open.contains(show.seriesId) {
                             ForEach(show.episodes, id: \.itemId) { episode in
                                 row(episode, waiting: state.waiting, poster: false).padding(.leading, Space.s4)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) { removeSwipe(episode) }
                             }
                         }
                     }
@@ -84,6 +86,22 @@ struct DownloadsView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
+    }
+
+    /// Swiping a movie or an episode deletes it at once, as Remove in its menu does. The label is short so the tray stays narrow; VoiceOver gets the full words.
+    private func removeSwipe(_ download: Download) -> some View {
+        Button(role: .destructive) { model.act(download, DownloadAction.remove) } label: {
+            Label(Strings.shared.removeConfirmAction.titleCased(), systemImage: "trash")
+        }
+        .accessibilityLabel(Strings.shared.removeDownload)
+    }
+
+    /// Swiping a show asks first, since it takes every episode. No full swipe: the row would slide out before the question is answered.
+    private func removeShowSwipe(_ show: DownloadedShow) -> some View {
+        Button(role: .destructive) { model.removeShow(show) } label: {
+            Label(Strings.shared.removeConfirmAction.titleCased(), systemImage: "trash")
+        }
+        .accessibilityLabel(Strings.shared.removeDownloadsOf(count: Int32(show.episodes.count)))
     }
 
     /// How much the downloads take on the device, and the bin: an icon, which VoiceOver names.

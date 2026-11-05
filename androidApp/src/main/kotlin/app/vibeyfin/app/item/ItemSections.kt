@@ -425,15 +425,6 @@ private fun EpisodeCard(
                 )
             }
 
-            EpisodeDownloadButton(
-                title = episode.title,
-                download = download,
-                canDownload = canDownload,
-                onStart = { downloadCallbacks.onDownloadEpisode(episode.id) },
-                onAction = { downloadCallbacks.onAction(episode.id, it) },
-                overPicture = true,
-                modifier = Modifier.align(Alignment.TopStart),
-            )
             Column(
                 Modifier
                     .align(Alignment.BottomStart)
@@ -462,12 +453,22 @@ private fun EpisodeCard(
                     overflow = TextOverflow.Ellipsis,
                 )
 
-                EpisodeFacts(episode)
+                EpisodeFacts(episode, Modifier.padding(end = if (download != null || canDownload) DOWNLOAD_BUTTON_ROOM else 0.dp))
             }
 
             episode.progress?.let { progress ->
                 PlaybackProgressBar(progress, Modifier.align(Alignment.BottomStart))
             }
+
+            EpisodeDownloadButton(
+                title = episode.title,
+                download = download,
+                canDownload = canDownload,
+                onStart = { downloadCallbacks.onDownloadEpisode(episode.id) },
+                onAction = { downloadCallbacks.onAction(episode.id, it) },
+                overPicture = true,
+                modifier = Modifier.align(Alignment.BottomEnd),
+            )
         }
 
         VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
@@ -587,11 +588,14 @@ internal fun BoxScope.EpisodeCardScrim() {
     )
 }
 
+// The facts line stops this far short of the card's download button at the bottom-right
+private val DOWNLOAD_BUTTON_ROOM = 36.dp
+
 @Composable
-private fun EpisodeFacts(episode: MediaItem) {
+private fun EpisodeFacts(episode: MediaItem, modifier: Modifier = Modifier) {
     val time = episodeTime(episode)
 
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         time?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = VibeyFinTokens.Colors.ink) }
         episode.rating?.takeIf { it > 0 }?.let { Text(Strings.ratingTag(it), style = MaterialTheme.typography.labelLarge, color = VibeyFinTokens.Colors.ink) }
         Spacer(Modifier.weight(1f))

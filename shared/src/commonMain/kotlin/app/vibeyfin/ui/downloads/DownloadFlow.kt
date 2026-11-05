@@ -128,13 +128,13 @@ class DownloadFlow(
         if (result is DownloadAttempt.Failure) _message.value = result.text()
     }
 
-    /** Pauses or resumes [download] at once; removing asks first. */
+    /** Pauses, resumes or removes one [download] at once; removing several goes through [askRemove]. */
     fun act(download: Download, action: DownloadAction) {
         val profile = profile() ?: return
         when (action) {
             DownloadAction.Pause -> scope.launch { downloads.pause(profile, download.itemId) }
             DownloadAction.Resume -> scope.launch { downloads.resume(profile, download.itemId) }
-            DownloadAction.Remove -> askRemove(listOf(download), download.item.title)
+            DownloadAction.Remove -> scope.launch { downloads.remove(profile, download.itemId) }
         }
     }
 

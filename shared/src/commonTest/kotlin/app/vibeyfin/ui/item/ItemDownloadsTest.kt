@@ -164,7 +164,7 @@ class ItemDownloadsTest {
     }
 
     @Test
-    fun removingAsksFirstAndSaysHowMuchRoomItFrees() = runTest {
+    fun removingOneDownloadDeletesItAtOnce() = runTest {
         app.sagaServer()
         val viewModel = viewModel("m1")
         viewModel.uiState.first { !it.loading }
@@ -174,14 +174,8 @@ class ItemDownloadsTest {
         viewModel.uiState.first { it.download?.bytesDone == 50L }
 
         viewModel.onDownloadAction("m1", DownloadAction.Remove)
-        val prompt = viewModel.uiState.first { it.removePrompt != null }.removePrompt!!
-        assertEquals(1, prompt.count)
-        assertEquals(50L, prompt.bytes)
-        assertNotNull(app.downloads.find("srv-1", "u1", "m1"), "still there until the user agrees")
 
-        viewModel.onConfirmRemove()
-
-        viewModel.uiState.first { it.download == null && it.removePrompt == null }
+        viewModel.uiState.first { it.download == null }
         assertNull(app.downloads.find("srv-1", "u1", "m1"))
     }
 

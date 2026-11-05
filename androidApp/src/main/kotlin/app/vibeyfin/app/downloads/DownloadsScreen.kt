@@ -29,7 +29,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -194,7 +197,9 @@ private fun Content(
         if (state.movies.isNotEmpty()) {
             item(key = "movies") { SectionTitle(Strings.filterMovies, modifier = Modifier.semantics { heading() }) }
             items(state.movies, key = { "movie-" + it.itemId }) { download ->
-                DownloadRow(download, state.waiting, poster = true, onOpen = { onOpen(download) }, onAction = { onAction(download, it) })
+                SwipeToRemove(immediate = true, onRemove = { onAction(download, DownloadAction.Remove) }) {
+                    DownloadRow(download, state.waiting, poster = true, onOpen = { onOpen(download) }, onAction = { onAction(download, it) })
+                }
             }
         }
 
@@ -204,19 +209,23 @@ private fun Content(
                 val expanded = show.seriesId in open
 
                 item(key = "show-" + show.seriesId) {
-                    ShowRow(
-                        show = show,
-                        expanded = expanded,
-                        onToggle = { open = if (expanded) open - show.seriesId else open + show.seriesId },
-                        onOpen = { onOpenShow(show.seriesId) },
-                        onRemove = { onRemoveShow(show) },
-                    )
+                    SwipeToRemove(immediate = false, onRemove = { onRemoveShow(show) }) {
+                        ShowRow(
+                            show = show,
+                            expanded = expanded,
+                            onToggle = { open = if (expanded) open - show.seriesId else open + show.seriesId },
+                            onOpen = { onOpenShow(show.seriesId) },
+                            onRemove = { onRemoveShow(show) },
+                        )
+                    }
                 }
 
                 if (expanded) {
                     items(show.episodes, key = { "episode-" + it.itemId }) { episode ->
                         Box(Modifier.padding(start = VibeyFinTokens.Space.s4)) {
-                            DownloadRow(episode, state.waiting, poster = false, onOpen = { onOpen(episode) }, onAction = { onAction(episode, it) })
+                            SwipeToRemove(immediate = true, onRemove = { onAction(episode, DownloadAction.Remove) }) {
+                                DownloadRow(episode, state.waiting, poster = false, onOpen = { onOpen(episode) }, onAction = { onAction(episode, it) })
+                            }
                         }
                     }
                 }
@@ -224,6 +233,36 @@ private fun Content(
         }
 
         item(key = "end") { Spacer(Modifier.height(VibeyFinTokens.Space.s6)) }
+    }
+}
+
+@Composable
+private fun SwipeToRemove(immediate: Boolean, onRemove: () -> Unit, content: @Composable () -> Unit) {
+    // One movie or episode goes at once; a show settles back and asks first, through its own prompt
+    val state = rememberSwipeToDismissBoxState(
+        confirmValueChange = { target ->
+            val remove = target == SwipeToDismissBoxValue.EndToStart
+            if (remove) onRemove()
+            remove && immediate
+        },
+    )
+
+    SwipeToDismissBox(
+        state = state,
+        enableDismissFromStartToEnd = false,
+        backgroundContent = {
+            // Drawn only while swiping: the rows are see-through, so it would show behind them otherwise
+            if (state.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
+                Box(
+                    Modifier.fillMaxSize().clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork)).background(VibeyFinTokens.Colors.danger),
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    Icon(Icons.Filled.Delete, contentDescription = null, tint = VibeyFinTokens.Colors.ink, modifier = Modifier.padding(end = VibeyFinTokens.Space.s4))
+                }
+            }
+        },
+    ) {
+        Box(Modifier.background(MaterialTheme.colorScheme.background)) { content() }
     }
 }
 
