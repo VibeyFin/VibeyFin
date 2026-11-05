@@ -19,6 +19,7 @@ import app.vibeyfin.domain.OfflineLibrary
 import app.vibeyfin.domain.OfflineMode
 import app.vibeyfin.domain.OfflineProgress
 import app.vibeyfin.domain.OfflineSync
+import app.vibeyfin.domain.SubtitleRepository
 import app.vibeyfin.domain.PROGRESS_INTERVAL
 import app.vibeyfin.domain.PendingReports
 import app.vibeyfin.domain.PinLock
@@ -80,6 +81,7 @@ class TestApp {
 
     val network = FakeNetworkMonitor()
     val offline = OfflineMode(network, preferences, scope)
+    val subtitles = SubtitleRepository(connection, library, profileSettings, offline, FakeDeviceInfo(language = "de"), pollEvery = Duration.ZERO, polls = 3)
     val downloads = database.downloadDao()
     val files = FakeDownloadFiles()
     val scheduler = FakeDownloadScheduler()

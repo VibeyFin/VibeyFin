@@ -31,6 +31,13 @@ internal object LoadMessages {
     const val LANGUAGES_UNREACHABLE =
         "Can\u2019t reach your server, so these can\u2019t change right now. They\u2019re saved on your Jellyfin account; try again when you\u2019re back online."
     const val LANGUAGES_SAVE_FAILED = "Couldn\u2019t save that to your Jellyfin account. Check your connection and try again."
+    const val SUBTITLES_NOT_ALLOWED_TITLE = "You can\u2019t add subtitles"
+    const val SUBTITLES_NOT_ALLOWED_TEXT = "Ask an admin to turn on \u201CAllow subtitle management\u201D for your account."
+    const val SUBTITLES_UNREACHABLE_TITLE = "Can\u2019t reach your server"
+    const val SUBTITLES_UNREACHABLE_TEXT = "Check your connection and try again."
+    const val SUBTITLES_SEARCH_FAILED_TITLE = "Couldn\u2019t search for subtitles"
+    const val SUBTITLES_ADD_FAILED = "Couldn\u2019t add these subtitles. Check your connection and try again."
+    const val SUBTITLES_DID_NOT_ARRIVE = "These subtitles didn\u2019t arrive. The provider\u2019s daily limit may be reached. Try again tomorrow, or choose a result from another provider."
     const val PLAYBACK_NETWORK = "Lost the connection to the server. Check your network and try again."
 
     fun forError(error: ApiError): String = when (error) {

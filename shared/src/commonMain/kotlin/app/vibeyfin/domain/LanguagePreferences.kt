@@ -41,7 +41,7 @@ enum class SubtitleMode(val server: String) {
  * A language the server knows: [code] is the ISO 639-2 code it stores as a preference, [otherCodes] the language's other ISO
  * 639-2 code where it has two (`ger` and `deu`), since tracks and other clients may use either.
  */
-data class Language(val code: String, val name: String, val otherCodes: List<String> = emptyList()) {
+data class Language(val code: String, val name: String, val otherCodes: List<String> = emptyList(), val twoLetterCode: String? = null) {
     /** Whether [code] names this language, by either of its codes. */
     fun matches(code: String): Boolean = this.code.equals(code, ignoreCase = true) || otherCodes.any { it.equals(code, ignoreCase = true) }
 }
@@ -180,7 +180,7 @@ class LanguagePreferences(
         fun List<CultureDto>.toLanguages(): List<Language> = mapNotNull { culture ->
             val code = culture.threeLetterIsoLanguageName?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
             val name = culture.displayName?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-            Language(code, name, culture.threeLetterIsoLanguageNames.orEmpty().filterNot { it.equals(code, ignoreCase = true) })
+            Language(code, name, culture.threeLetterIsoLanguageNames.orEmpty().filterNot { it.equals(code, ignoreCase = true) }, culture.twoLetterIsoLanguageName?.takeIf { it.isNotBlank() })
         }.distinctBy { it.code }.sortedBy { it.name.lowercase() }
     }
 }

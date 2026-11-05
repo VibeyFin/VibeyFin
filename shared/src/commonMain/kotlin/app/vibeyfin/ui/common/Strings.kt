@@ -809,6 +809,23 @@ object Strings {
     val languageListGroup = "Languages"
     val languageListFooter = "The languages your Jellyfin server knows, by the names it uses on tracks."
     val searchLanguages = "Search languages"
+    val searchForSubtitles = "Search for subtitles"
+    val subtitleSearchLanguage = "Language"
+    val subtitleMatch = "Match"
+    val noSubtitlesHint = "Try another language. If no language finds any, the server may need a subtitle provider plugin, such as OpenSubtitles. An admin can add one in the Jellyfin dashboard."
+
+    fun noSubtitlesFound(language: String) = "No subtitles found in $language"
+
+    fun subtitlesAdded(language: String) = "$language subtitles added"
+
+    /** Provider, format and rating; what the server left out is left out here too. */
+    fun subtitleResultDetails(provider: String?, format: String?, rating: Double?): String {
+        val stars = rating?.let { "\u2605 " + (it * 10).roundToInt().let { tenths -> "${tenths / 10}.${tenths % 10}" } }
+        return listOfNotNull(provider, format?.uppercase(), stars).joinToString(" \u00B7 ")
+    }
+
+    fun subtitleResultDescription(name: String, details: String, isMatch: Boolean) = listOfNotNull(name, details, if (isMatch) "Matches this file" else null).joinToString(", ")
+
     val noLanguageMatches = "No language matches"
     val languagesDefaultsSummary = "Server defaults"
 

@@ -412,10 +412,7 @@ fun languagePage(v: SettingsValues, id: SettingsPageId): SettingsPage {
     val query = v.searches[id].orEmpty().trim()
     val current = choiceValue(if (audio) prefs.audioLanguage else prefs.subtitleLanguage, choices)
     val options = (listOf(SettingOption(0, Strings.anyLanguage, code = "")) + choices.mapIndexed { index, choice -> SettingOption(index + 1, choice.name, choice.code) })
-        .filter { option ->
-            query.isEmpty() || option.label.contains(query, ignoreCase = true) ||
-                option.code.equals(query, ignoreCase = true)
-        }
+        .filter { option -> matchesLanguageSearch(option.label, option.code, query) }
     val visible = v.hasProfile
     val key = if (audio) SettingKey.AudioLanguage else SettingKey.SubtitleLanguage
     return SettingsPage(
@@ -435,6 +432,12 @@ fun languagePage(v: SettingsValues, id: SettingsPageId): SettingsPage {
         searchPrompt = Strings.searchLanguages,
         sheet = true,
     )
+}
+
+/** Whether a language row stays when [query] is typed in the chooser's search: by its name, or exactly by its code. */
+fun matchesLanguageSearch(name: String, code: String?, query: String): Boolean {
+    val typed = query.trim()
+    return typed.isEmpty() || name.contains(typed, ignoreCase = true) || code.equals(typed, ignoreCase = true)
 }
 
 /**

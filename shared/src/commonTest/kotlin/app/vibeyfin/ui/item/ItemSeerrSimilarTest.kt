@@ -50,7 +50,7 @@ class ItemSeerrSimilarTest {
         {"id":13,"mediaType":"movie","title":"Salt Road","mediaInfo":{"status":2,"requests":[]}}]}"""
 
     private fun viewModel() = viewModels.track(
-        ItemViewModel("m1", app.library, app.connection, app.watch, app.watchChanges, app.downloadRepository, app.playback, app.seerrRepository, app.seerr),
+        ItemViewModel("m1", app.library, app.connection, app.watch, app.watchChanges, app.downloadRepository, app.playback, app.seerrRepository, app.seerr, app.subtitles),
     )
 
     private suspend fun ItemViewModel.await(predicate: (ItemUiState) -> Boolean) = withContext(Dispatchers.Default) { withTimeout(5.seconds) { uiState.first(predicate) } }

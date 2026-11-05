@@ -8,6 +8,9 @@ interface DeviceInfo {
     /** The marketing version of the app, e.g. "0.1.0". */
     val appVersion: String
 
+    /** The device's language as an ISO 639-1 code, e.g. "de". */
+    val language: String
+
     /** False where subtitles are burned into the picture, so the caption style cannot apply. */
     val subtitleStyleApplies: Boolean get() = true
 

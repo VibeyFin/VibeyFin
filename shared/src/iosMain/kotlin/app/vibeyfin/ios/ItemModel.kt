@@ -3,6 +3,7 @@ package app.vibeyfin.ios
 import app.vibeyfin.ui.downloads.DownloadAction
 import app.vibeyfin.ui.item.ItemUiState
 import app.vibeyfin.ui.item.ItemViewModel
+import app.vibeyfin.ui.subtitles.SubtitleAdded
 import org.koin.core.parameter.parametersOf
 
 /** The item [itemId]'s metadata, as SwiftUI needs it. */
@@ -36,6 +37,10 @@ class ItemModel(itemId: String) {
     fun onRetryAction() = host.viewModel.onRetryAction()
 
     fun onDismissMessage() = host.viewModel.onDismissMessage()
+
+    fun onSubtitleAdded(added: SubtitleAdded) = host.viewModel.onSubtitleAdded(added)
+
+    fun onDismissNotice() = host.viewModel.onDismissNotice()
 
     // Downloads.
 
