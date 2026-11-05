@@ -12,7 +12,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.datasource.DefaultHttpDataSource
 import app.vibeyfin.ui.home.HomeExit
@@ -46,7 +45,7 @@ fun PlayerRoute(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val window = rememberPlayerWindow()
-    val turn = rememberPlayerTurnMotion(window)
+    val turn = rememberPlayerTurnSequence(window)
 
     val clock = remember { PlaybackClock() }
     val chrome = remember { PlayerChrome() }
@@ -86,8 +85,6 @@ fun PlayerRoute(
 
     var screenBounds by remember { mutableStateOf<Rect?>(null) }
     val videoRatio = state.videoRatio()
-
-    turn.pictureRatio = videoRatio
 
     // Leaving the app turns the screen into a picture-in-picture window while something plays. The video
     // carries on and so does the session; closing the window ends it, expanding it brings the screen back.
@@ -146,9 +143,7 @@ fun PlayerRoute(
 
 // The session ended, or the video finished: the screen leaves
 @Composable
-private fun LeaveEffects(state: PlaybackUiState, chrome: PlayerChrome, window: PlayerWindow?, turn: PlayerTurnMotion, onExit: (HomeExit) -> Unit, onBack: () -> Unit) {
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-
+private fun LeaveEffects(state: PlaybackUiState, chrome: PlayerChrome, window: PlayerWindow?, turn: PlayerTurnSequence, onExit: (HomeExit) -> Unit, onBack: () -> Unit) {
     LaunchedEffect(state.exit) {
         if (state.exit != null) chrome.leaving = true
     }
@@ -159,20 +154,18 @@ private fun LeaveEffects(state: PlaybackUiState, chrome: PlayerChrome, window: P
 
     LaunchedEffect(chrome.leaving) {
         if (chrome.leaving) {
-            window?.let { turn.close(it, lifecycle) }
+            window?.let { turn.close(it) }
             state.exit?.let(onExit) ?: onBack()
         } else {
-            window?.let { turn.open(it, lifecycle) }
+            turn.open()
         }
     }
 }
-
-internal const val DEFAULT_PICTURE_RATIO = 16f / 9f
 
 // Until the player has measured the picture, a widescreen one is assumed
 private fun PlaybackUiState.videoRatio(): Float {
     val width = diagnostics?.width ?: 0
     val height = diagnostics?.height ?: 0
 
-    return if (width > 0 && height > 0) width.toFloat() / height else DEFAULT_PICTURE_RATIO
+    return if (width > 0 && height > 0) width.toFloat() / height else 16f / 9f
 }

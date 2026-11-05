@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
-import android.content.res.Configuration
 import android.os.Build
 import android.provider.Settings
 import android.view.OrientationEventListener
@@ -16,6 +15,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.withContext
 import java.util.concurrent.Executors
 
 private const val SIDEWAYS_FROM = 60
@@ -26,19 +27,19 @@ private const val HALF_TURN = 180
 /**
  * Full screen while the player is up: system bars hidden (a swipe from the edge brings them back for
  * a moment), the screen kept on (no touches arrive while watching, so it would dim and sleep otherwise;
- * Media3's PlayerView leaves that to the app) and landscape. Where the screen has to turn, [PlayerTurnMotion]
- * decides when. [restore] puts all three back as they were, which also leaves the user's rotation lock alone.
+ * Media3's PlayerView leaves that to the app) and landscape. [PlayerTurnSequence] says
+ * when the screen may change around a turn. [restore] puts all three back as they were, which also leaves the user's rotation lock alone.
  */
 internal class PlayerWindow(private val activity: Activity) {
     private val previousOrientation = activity.requestedOrientation
     private val controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
     private var applied = false
 
-    private val previousRotationAnimation = activity.window.attributes.rotationAnimation
     private val previousCutoutMode = activity.window.attributes.layoutInDisplayCutoutMode
 
     // An orientation request can take hundreds of milliseconds, and a quick back press must not overtake the one before it
     private val orientationRequests = Executors.newSingleThreadExecutor()
+    private val orientationDispatcher = orientationRequests.asCoroutineDispatcher()
 
     private var heldSideways: Boolean? = null
     private val sensor = object : OrientationEventListener(activity) {
@@ -61,12 +62,7 @@ internal class PlayerWindow(private val activity: Activity) {
 
         sensor.enable()
 
-        if (opensWithTurn) {
-            useJumpCut()
-        } else {
-            useCrossfade()
-            requestLandscape()
-        }
+        requestLandscape()
 
         // The picture runs into the camera cut-out too (landscape on a phone, and on a foldable's cover screen): left alone the
         // window keeps a bar of its own color beside it.
@@ -89,20 +85,15 @@ internal class PlayerWindow(private val activity: Activity) {
         return closesWithTurn(screenFacts(), locked, openedUpright, heldSideways)
     }
 
-    fun displayRotation() = activity.window.decorView.display.rotation
-
-    fun requestLandscape() {
+    private fun requestLandscape() {
         orientationRequests.execute { activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE }
     }
 
-    fun restoreOrientation() {
+    suspend fun turnBack() = withContext(orientationDispatcher) { activity.requestedOrientation = previousOrientation }
+
+    private fun restoreOrientation() {
         orientationRequests.execute { activity.requestedOrientation = previousOrientation }
     }
-
-    fun useJumpCut() = setRotationAnimation(WindowManager.LayoutParams.ROTATION_ANIMATION_JUMPCUT)
-
-    // Turning the phone over while watching cross-fades instead of spinning a snapshot
-    fun useCrossfade() = setRotationAnimation(WindowManager.LayoutParams.ROTATION_ANIMATION_CROSSFADE)
 
     fun restore() {
         if (!applied) return
@@ -114,29 +105,14 @@ internal class PlayerWindow(private val activity: Activity) {
         restoreOrientation()
     }
 
-    /** Back to the window's own rotation animation, once the screen has turned back. */
     fun release() {
         sensor.disable()
         orientationRequests.shutdown()
-        setRotationAnimation(previousRotationAnimation)
 
         activity.window.attributes = activity.window.attributes.apply { layoutInDisplayCutoutMode = previousCutoutMode }
     }
 
-    private fun setRotationAnimation(animation: Int) {
-        activity.window.attributes = activity.window.attributes.apply { rotationAnimation = animation }
-    }
-
-    private fun screenFacts(): PlayerScreenFacts {
-        val configuration = activity.resources.configuration
-
-        return PlayerScreenFacts(
-            landscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE,
-            smallestWidthDp = configuration.smallestScreenWidthDp,
-            sdk = Build.VERSION.SDK_INT,
-            multiWindow = activity.isInMultiWindowMode,
-        )
-    }
+    private fun screenFacts() = activity.playerScreenFacts(activity.resources.configuration)
 
     private fun heldSideways(degrees: Int): Boolean? {
         if (degrees == OrientationEventListener.ORIENTATION_UNKNOWN) return null
@@ -165,6 +141,23 @@ internal fun rememberPlayerWindow(): PlayerWindow? {
     }
 
     return window
+}
+
+// The system's own turn moves the screen, so the app's transition would only fight it
+class PlayerTurns internal constructor(private val activity: Activity?) {
+    val opening get() = activity != null && opensWithTurn(activity.playerScreenFacts(activity.resources.configuration))
+
+    // The player asks for the orientation back before it leaves only when that turns the screen
+    val leaving get() = activity != null &&
+        activity.playerScreenFacts(activity.resources.configuration).obeysOrientation &&
+        activity.requestedOrientation != ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+}
+
+@Composable
+fun rememberPlayerTurns(): PlayerTurns {
+    val context = LocalContext.current
+
+    return remember(context) { PlayerTurns(context.findActivity()) }
 }
 
 internal tailrec fun Context.findActivity(): Activity? = when (this) {

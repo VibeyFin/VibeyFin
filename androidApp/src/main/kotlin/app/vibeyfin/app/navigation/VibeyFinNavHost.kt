@@ -4,6 +4,8 @@ package app.vibeyfin.app.navigation
 
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.tween
@@ -77,6 +79,7 @@ import app.vibeyfin.app.home.OfflineHomeRoute
 import app.vibeyfin.app.item.ItemRoute
 import app.vibeyfin.app.person.PersonRoute
 import app.vibeyfin.app.player.PlayerRoute
+import app.vibeyfin.app.player.rememberPlayerTurns
 import app.vibeyfin.app.search.SearchRoute
 import app.vibeyfin.app.seerr.MyRequestsRoute
 import app.vibeyfin.app.seerr.SeerrListRoute
@@ -135,7 +138,7 @@ private const val OPEN_START_SCALE = 0.92f
 
 private const val PLAYER_FADE_MS = 320
 
-private const val PLAYER_START_SCALE = 0.85f
+private const val PLAYER_START_SCALE = 0.94f
 
 private fun NavBackStackEntry.opensPlayer() = destination.hasRoute<Player>()
 
@@ -143,7 +146,9 @@ private fun NavBackStackEntry.isTabRoot() = destination.hasRoute<Home>() || dest
 
 private fun NavBackStackEntry.isDetail() = destination.hasRoute<Item>()
 
-private fun enter(target: NavBackStackEntry, from: NavBackStackEntry) = if (from.destination.hasRoute<WhoIsWatching>() && target.isTabRoot()) {
+private fun enter(target: NavBackStackEntry, from: NavBackStackEntry, playerTurns: Boolean) = if (target.opensPlayer() && playerTurns) {
+    EnterTransition.None
+} else if (from.destination.hasRoute<WhoIsWatching>() && target.isTabRoot()) {
     fadeIn(tween(SIGN_IN_FADE_MS))
 } else if (target.isDetail()) {
     // The poster grows into the page's picture (a shared element), so the page itself only fades in under it
@@ -156,23 +161,29 @@ private fun enter(target: NavBackStackEntry, from: NavBackStackEntry) = if (from
     scaleIn(tween(SLIDE_MS), initialScale = OPEN_START_SCALE) + fadeIn(tween(SLIDE_MS))
 }
 
-private fun exit(target: NavBackStackEntry, from: NavBackStackEntry) = fadeOut(
-    tween(
-        if (from.destination.hasRoute<WhoIsWatching>() && target.isTabRoot()) {
-            SIGN_IN_FADE_MS
-        } else if (target.isDetail()) {
-            DETAIL_UNDER_FADE_MS
-        } else if (target.isTabRoot()) {
-            TAB_FADE_MS
-        } else if (target.opensPlayer()) {
-            PLAYER_FADE_MS
-        } else {
-            SLIDE_MS
-        },
-    ),
-)
+private fun exit(target: NavBackStackEntry, from: NavBackStackEntry, playerTurns: Boolean) = if (target.opensPlayer() && playerTurns) {
+    ExitTransition.None
+} else {
+    fadeOut(
+        tween(
+            if (from.destination.hasRoute<WhoIsWatching>() && target.isTabRoot()) {
+                SIGN_IN_FADE_MS
+            } else if (target.isDetail()) {
+                DETAIL_UNDER_FADE_MS
+            } else if (target.isTabRoot()) {
+                TAB_FADE_MS
+            } else if (target.opensPlayer()) {
+                PLAYER_FADE_MS
+            } else {
+                SLIDE_MS
+            },
+        ),
+    )
+}
 
-private fun popEnter(leaving: NavBackStackEntry) = if (leaving.opensPlayer()) {
+private fun popEnter(leaving: NavBackStackEntry, playerTurns: Boolean) = if (leaving.opensPlayer() && playerTurns) {
+    EnterTransition.None
+} else if (leaving.opensPlayer()) {
     fadeIn(tween(PLAYER_FADE_MS))
 } else if (leaving.isDetail()) {
     fadeIn(tween(DETAIL_FADE_MS))
@@ -180,7 +191,9 @@ private fun popEnter(leaving: NavBackStackEntry) = if (leaving.opensPlayer()) {
     slideInHorizontally(tween(SLIDE_MS)) { -it / SLIDE_FRACTION } + fadeIn(tween(SLIDE_MS))
 }
 
-private fun popExit(leaving: NavBackStackEntry) = if (leaving.opensPlayer()) {
+private fun popExit(leaving: NavBackStackEntry, playerTurns: Boolean) = if (leaving.opensPlayer() && playerTurns) {
+    ExitTransition.None
+} else if (leaving.opensPlayer()) {
     fadeOut(tween(PLAYER_FADE_MS)) + scaleOut(tween(PLAYER_FADE_MS), targetScale = PLAYER_START_SCALE)
 } else if (leaving.isDetail()) {
     fadeOut(tween(DETAIL_FADE_MS))
@@ -246,6 +259,9 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
     // The player is the whole screen: no inset of its own for the camera cut-out, so no bar of the page's color beside the picture
     // (a foldable's cover screen, a phone turned sideways), and a black window behind it.
     val onPlayer = backStackEntry?.opensPlayer() == true
+
+    val playerTurns = rememberPlayerTurns()
+
     val tabs = Tab.entries.filter { !offline || it != Tab.Library }
 
     Scaffold(
@@ -292,14 +308,14 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
                             navController = navController,
                             modifier = Modifier,
                             startDestination = Startup,
-                            enterTransition = { enter(targetState, initialState) },
-                            exitTransition = { exit(targetState, initialState) },
-                            popEnterTransition = { popEnter(initialState) },
-                            popExitTransition = { popExit(initialState) },
+                            enterTransition = { enter(targetState, initialState, playerTurns.opening) },
+                            exitTransition = { exit(targetState, initialState, playerTurns.opening) },
+                            popEnterTransition = { popEnter(initialState, playerTurns.leaving) },
+                            popExitTransition = { popExit(initialState, playerTurns.leaving) },
                             // The back gesture scrubs these two. Left alone they are the library's own scale-down, which
                             // looks nothing like the slide the back button plays, so they are the pop pair again.
-                            predictivePopEnterTransition = { popEnter(initialState) },
-                            predictivePopExitTransition = { popExit(initialState) },
+                            predictivePopEnterTransition = { popEnter(initialState, playerTurns.leaving) },
+                            predictivePopExitTransition = { popExit(initialState, playerTurns.leaving) },
                         ) {
                             appGraph(navController, offline, select, leave, homeSession, signInFlight)
                         }

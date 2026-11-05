@@ -1,20 +1,8 @@
 package app.vibeyfin.app.player
 
-private const val QUARTER_TURN = 90
-private const val FULL_TURN = 360
-private const val HALF_TURN = 180
-
-internal data class PlayerTurn(val degrees: Float, val scale: Float)
-
-/** [width] and [height] are the window's after the turn, which swaps them. */
-internal fun turnFrom(oldRotation: Int, newRotation: Int, width: Float, height: Float, pictureRatio: Float): PlayerTurn {
-    val turn = (oldRotation - newRotation) * QUARTER_TURN
-    val degrees = ((turn + FULL_TURN + HALF_TURN - 1) % FULL_TURN) - HALF_TURN + 1
-
-    return PlayerTurn(degrees.toFloat(), fittedWidth(height, width, pictureRatio) / fittedWidth(width, height, pictureRatio))
-}
-
-private fun fittedWidth(width: Float, height: Float, pictureRatio: Float) = minOf(width, height * pictureRatio)
+import android.app.Activity
+import android.content.res.Configuration
+import android.os.Build
 
 private const val BAKLAVA = 36
 private const val LARGE_SCREEN_DP = 600
@@ -32,3 +20,10 @@ internal fun closesWithTurn(screen: PlayerScreenFacts, rotationLocked: Boolean, 
     rotationLocked -> openedUpright
     else -> heldSideways == false
 }
+
+internal fun Activity.playerScreenFacts(configuration: Configuration) = PlayerScreenFacts(
+    landscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE,
+    smallestWidthDp = configuration.smallestScreenWidthDp,
+    sdk = Build.VERSION.SDK_INT,
+    multiWindow = isInMultiWindowMode,
+)

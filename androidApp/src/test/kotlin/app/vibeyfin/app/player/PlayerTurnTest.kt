@@ -1,49 +1,10 @@
 package app.vibeyfin.app.player
 
-import android.view.Surface
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class PlayerTurnTest {
-    private val widescreen = 16f / 9f
-
-    @Test
-    fun `opening starts upright on the held phone, a quarter turn back from the new landscape window`() {
-        assertEquals(-90f, turnFrom(Surface.ROTATION_0, Surface.ROTATION_90, 2000f, 1000f, widescreen).degrees)
-        assertEquals(90f, turnFrom(Surface.ROTATION_0, Surface.ROTATION_270, 2000f, 1000f, widescreen).degrees)
-    }
-
-    @Test
-    fun `closing starts sideways on the held phone, a quarter turn back from the new portrait window`() {
-        assertEquals(90f, turnFrom(Surface.ROTATION_90, Surface.ROTATION_0, 1000f, 2000f, widescreen).degrees)
-        assertEquals(-90f, turnFrom(Surface.ROTATION_270, Surface.ROTATION_0, 1000f, 2000f, widescreen).degrees)
-    }
-
-    @Test
-    fun `opening starts with the picture as wide as the portrait screen`() {
-        // In a 2000x1000 window a 16:9 picture is 1778 wide; upright on the 1000 wide phone it was 1000 wide
-        assertEquals(0.5625f, turnFrom(Surface.ROTATION_0, Surface.ROTATION_90, 2000f, 1000f, widescreen).scale, 0.001f)
-    }
-
-    @Test
-    fun `closing starts with the picture as tall as the landscape screen`() {
-        assertEquals(1.778f, turnFrom(Surface.ROTATION_90, Surface.ROTATION_0, 1000f, 2000f, widescreen).scale, 0.001f)
-    }
-
-    @Test
-    fun `a picture wider than the landscape screen starts from the full width`() {
-        // 2.39:1 fills the 2000 wide window in landscape, and the 1000 wide screen when upright
-        assertEquals(0.5f, turnFrom(Surface.ROTATION_0, Surface.ROTATION_90, 2000f, 1000f, 2.39f).scale, 0.001f)
-    }
-
-    @Test
-    fun `a vertical video fills the portrait screen and only the height in landscape`() {
-        // 9:16 is 1000 wide upright, and 562 wide in landscape where the 1000 high window limits it
-        assertEquals(1.778f, turnFrom(Surface.ROTATION_0, Surface.ROTATION_90, 2000f, 1000f, 9f / 16f).scale, 0.001f)
-    }
-
     private val coverScreen = PlayerScreenFacts(landscape = false, smallestWidthDp = 475, sdk = 37, multiWindow = false)
 
     @Test
