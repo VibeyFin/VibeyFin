@@ -117,7 +117,7 @@ class SubtitleSearchViewModelTest {
         val state = viewModel.uiState.first { it.results.singleOrNull()?.id == "it" }
 
         assertEquals("Italian", state.languageName)
-        assertTrue(app.jellyfin.requests.none { it.method == "POST" && it.path.contains("Configuration") })
+        assertTrue(app.jellyfin.callLog().none { it.startsWith("POST") && it.contains("Configuration") })
 
         viewModel.onOpen("m1")
         assertEquals("en", viewModel.uiState.first { it.results.isNotEmpty() && it.languageName == "English" }.results.single().id)

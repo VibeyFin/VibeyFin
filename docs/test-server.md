@@ -32,6 +32,10 @@ so its items have no trickplay:
 names the first episode "Episode 1" and the HDR movie "HDR" because there is no online metadata
 match; the file names are what the scripts own.
 
+## Search for subtitles
+
+The test server has **no subtitle provider**: the OpenSubtitles plugin needs an account and has a daily limit, so it isn't installed and CI fakes the provider with `MockEngine`. What it can check: `EnableSubtitleManagement` (off by default on the `admin` user) hides or shows the entry, and the search returns `[]`, which is the "nothing found" state. Finding results and adding a real file is checked by hand against a server with a provider. `plain` has no subtitles, for the list with only "Off" and the search row.
+
 ## Fixture catalogue
 
 Every file `make-media.sh` creates, by stable name. Tests and manual checks refer to a fixture by

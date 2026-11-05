@@ -1,5 +1,6 @@
 package app.vibeyfin.app.components
 
+import android.view.WindowManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -15,10 +16,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 
@@ -35,6 +41,21 @@ fun VibeyFinSheet(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> 
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         content = content,
     )
+}
+
+// A sheet is its own window and shows the system bars the player hides, so they are hidden again for it
+@Composable
+fun KeepSystemBarsHidden() {
+    val view = LocalView.current
+
+    SideEffect {
+        val window = (view.parent as? DialogWindowProvider)?.window ?: return@SideEffect
+
+        // The flag hides the status bar at once; the controller's own hide animates, which stutters the slide
+        @Suppress("DEPRECATION")
+        window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+        WindowCompat.getInsetsController(window, view).hide(WindowInsetsCompat.Type.navigationBars())
+    }
 }
 
 @Composable

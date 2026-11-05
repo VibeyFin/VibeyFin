@@ -18,10 +18,13 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +43,7 @@ import app.vibeyfin.app.downloads.RemoveConfirmDialog
 import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.navigation.sharedPoster
+import app.vibeyfin.app.subtitles.SubtitleSearch
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.ItemKind
@@ -68,10 +72,18 @@ fun ItemRoute(
     viewModel: ItemViewModel = koinViewModel(parameters = { parametersOf(itemId) }),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var searchingSubtitles by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(state.exit) {
         state.exit?.let(onExit)
     }
+
+    SubtitleSearch(
+        itemId = itemId,
+        visible = searchingSubtitles,
+        onDismiss = { searchingSubtitles = false },
+        onAdded = viewModel::onSubtitleAdded,
+    )
 
     val ensureNotifications = rememberDownloadNotificationPermission()
 
@@ -95,6 +107,8 @@ fun ItemRoute(
         onRetryEpisodes = viewModel::onRetryEpisodes,
         onRetryAction = viewModel::onRetryAction,
         onDismissMessage = viewModel::onDismissMessage,
+        onSearchSubtitles = { searchingSubtitles = true },
+        onDismissNotice = viewModel::onDismissNotice,
         downloads = DownloadCallbacks(
             onDownload = viewModel::onDownload,
             onDownloadEpisode = viewModel::onDownloadEpisode,
@@ -142,6 +156,8 @@ fun ItemScreen(
     onRetryEpisodes: () -> Unit,
     onRetryAction: () -> Unit,
     onDismissMessage: () -> Unit,
+    onSearchSubtitles: () -> Unit,
+    onDismissNotice: () -> Unit,
     downloads: DownloadCallbacks = DownloadCallbacks.None,
     onOpenSeerr: (SeerrTitle) -> Unit = {},
 ) {
@@ -174,7 +190,7 @@ fun ItemScreen(
                         BoxWithConstraints(Modifier.fillMaxSize()) {
                             ItemPage(
                                 item, state, wide = maxWidth >= WIDE_FROM, screenWidth = maxWidth, screenHeight = maxHeight,
-                                onPlay, onPlayEpisode, onOpen, onOpenSeries, onToggleFavorite, onTogglePlayed, onToggleEpisodePlayed, onSelectSeason, onRetrySimilar, onRetryCollections, onRetrySeasons, onRetryEpisodes, onOpenPerson, onRetryExtras,
+                                onPlay, onPlayEpisode, onOpen, onOpenSeries, onToggleFavorite, onTogglePlayed, onToggleEpisodePlayed, onSelectSeason, onRetrySimilar, onRetryCollections, onRetrySeasons, onRetryEpisodes, onOpenPerson, onRetryExtras, onSearchSubtitles,
                                 downloads = downloads,
                                 onOpenSeerr = onOpenSeerr,
                             )
@@ -185,6 +201,7 @@ fun ItemScreen(
 
             FloatingBackButton(onBack)
             ActionSnackbar(state.actionMessage, onRetry = onRetryAction, onDismiss = onDismissMessage)
+            ActionSnackbar(state.notice, onRetry = {}, onDismiss = onDismissNotice, actionLabel = null, duration = SnackbarDuration.Short)
         }
     }
 }
@@ -223,6 +240,7 @@ private fun ItemPage(
     onRetryEpisodes: () -> Unit,
     onOpenPerson: (String) -> Unit,
     onRetryExtras: () -> Unit,
+    onSearchSubtitles: () -> Unit,
     downloads: DownloadCallbacks,
     onOpenSeerr: (SeerrTitle) -> Unit,
 ) {
@@ -249,6 +267,8 @@ private fun ItemPage(
             state.similar?.takeIf { it.isVisible || state.similarTiles.isNotEmpty() }?.let { row ->
                 SimilarSection(row, state.similarTiles, margin, onOpen, onOpenSeerr, onRetry = onRetrySimilar, tileWidth = if (wide) POSTER_WIDE else VibeyFinTokens.Size.posterWidth)
             }
+
+            if (state.offersSubtitleSearch) SubtitleSearchRow(onSearchSubtitles)
 
             if (state.technical.isNotEmpty()) TechnicalInfo(state.technical)
 

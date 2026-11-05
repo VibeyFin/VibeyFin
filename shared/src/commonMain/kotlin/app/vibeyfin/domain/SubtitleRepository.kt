@@ -82,7 +82,6 @@ class SubtitleRepository(
             delay(pollEvery)
             when (val read = library.item(itemId)) {
                 is ApiResult.Success -> newTrack(before, read.value.subtitleTracks)?.index?.let { return@asConnected SubtitleDownload.Added(it) }
-
                 is ApiResult.Failure -> if (read.error == ApiError.Unauthorized) return@asConnected SubtitleDownload.Failed(read.error)
             }
         }

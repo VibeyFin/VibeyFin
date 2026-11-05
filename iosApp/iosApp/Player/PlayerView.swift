@@ -26,6 +26,7 @@ struct PlayerView: View {
     @State private var hideTask: Task<Void, Never>?
     /// A track or speed menu is showing: the controls stay up, and the quiet moment starts when it closes.
     @State private var menuOpen = false
+    @State private var searchingSubtitles = false
     /// The video was playing when "Are you still watching?" paused it.
     @State private var pausedForPrompt = false
     /// The skip seek handed to the player last, until the model's state has cleared it.
@@ -147,6 +148,21 @@ struct PlayerView: View {
         .tint(.white)
         .statusBarHidden(!controlsVisible)
         .persistentSystemOverlays(controlsVisible ? .automatic : .hidden)
+        .overlay(alignment: .top) {
+            if let notice = model.state?.notice {
+                Text(notice)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, Space.s4)
+                    .padding(.vertical, Space.s2)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.top, Space.s7 + Space.s4)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
+        }
+        .subtitleSearch(itemId: model.state?.subtitleSearchItemId, isPresented: $searchingSubtitles) { model.subtitleAdded($0) }
+        .onChange(of: searchingSubtitles) { _, open in menuOpenChanged(open) }
         .onAppear {
             bindPlayer()
             bindPictureInPicture()
@@ -365,7 +381,7 @@ struct PlayerView: View {
                 if let state, state.hasTrackChoices {
                     PlayerTrackMenu(
                         audio: state.audioTracks,
-                        subtitles: state.subtitleTracks,
+                        subtitles: state.subtitleChoices,
                         onSelectAudio: { index in
                             model.selectAudio(index)
                             scheduleHide()
@@ -374,6 +390,7 @@ struct PlayerView: View {
                             model.selectSubtitle(index)
                             scheduleHide()
                         },
+                        onSearchSubtitles: state.offersSubtitleSearch ? { searchingSubtitles = true } : nil,
                         onTouch: {
                             model.userInteraction()
                             hideTask?.cancel()

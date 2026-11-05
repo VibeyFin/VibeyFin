@@ -32,6 +32,19 @@ M3 on the scrim, no glass. Top app bar: `←`, title and meta line, speed, audio
 
 **Cast (Android, planned, issue #48):** the top app bar's Cast button shows only when a device is found, and shows pressed while connected. It opens an M3 dialog on `surface-2`: "Cast to", the devices (cast glyph, name, type and state, a check on the connected one) and a "Stop casting" tonal button while connected. While casting, the player shows the same status pill as on iOS, "Casting to <device>" (cast glyph, `scrim-strong`, no glass), over the transport and scrubber on the item's artwork blurred and dimmed on the `scrim`, as on iOS. It stays while paused or stalled, the controls stay up, the volume and brightness swipes are off, and a long name is cut to one line. The Cast state is mocked up here; it is built with #48, not #47. The mockups are `PlayerControls`, `PlayerPhone` and `PlayerTablet` in the design-system artifact.
 
+## Search for subtitles (issue #58)
+
+The last row of the Subtitles list: a button with `magnifyingglass` at the end of the iOS `Menu`, a row at the end of the Subtitles column of the Android track sheet. A title with no subtitles still has the list, with "Off" and this row. It shows under the same rules as on a title's page (`screens.md`), and not for what plays from a download: a new subtitle reaches streams only, not a title already on the device.
+
+- **The sheet:** a native sheet with the title, a Language row, then the results. It searches straight away in the profile's subtitle language, or the device's when that has no preference. Grey lines while it loads.
+- **Language:** the same chooser as Settings > Audio and subtitles (`PickerSheet`, `PickerSheetView`) without "Any language". A choice searches again for this search only; the profile's setting doesn't change.
+- **Results:** hash matches first with an outline "Match" badge, then the highest rated. Name, then provider, format and rating. No aqua.
+- **Choosing one:** that row shows a spinner and the others are dimmed until the new track appears. Playback keeps going behind the sheet, and closing the sheet doesn't cancel the download.
+- **Added:** the sheet closes, the track turns on at the current position and "English subtitles added" shows over the picture for 4 seconds. The player asks the server again, as for any subtitle it can't show by itself, so the stall spinner may show briefly; the position stays. On a title's page the message is the snackbar or banner, and the page reads the item again.
+- **Nothing found:** the title says which language, with a hint to try another and that the server may need a subtitle provider plugin. A server can't say which of the two it is.
+- **Errors:** no permission (a 403; the entry is hidden until the app next starts), no answer, with Try again, and a failed download, where the results stay and the message shows at the bottom. A 401 goes through `ConnectionManager.expireSession`, with no message.
+- **A track that never arrives:** after 30 seconds the sheet says the subtitles didn't arrive and that the provider's daily limit may be reached. The server answers 204 either way, so this is the only sign of a refused download.
+
 ## Settings → Playback (per profile)
 
 | Setting | Choices | Default |

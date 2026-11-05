@@ -35,7 +35,7 @@ data class SubtitleResultRow(
     val details: String,
     val isMatch: Boolean,
     /** What a screen reader says for the row. */
-    val description: String,
+    val spoken: String,
 )
 
 /** One row of the language chooser; [code] is what to pass back to `onSelectLanguage`. */
@@ -131,9 +131,7 @@ class SubtitleSearchViewModel(
             content.update { it.copy(downloadingId = null) }
             when (outcome) {
                 is SubtitleDownload.Added -> content.update { it.copy(added = SubtitleAdded(item, outcome.streamIndex, languageName())) }
-
                 SubtitleDownload.NotArrived -> content.update { it.copy(message = SubtitleSearchMessage(LoadMessages.SUBTITLES_DID_NOT_ARRIVE, canRetry = false)) }
-
                 is SubtitleDownload.Failed -> onDownloadFailed(id, outcome.error)
             }
         }

@@ -118,6 +118,10 @@ final class PlaybackObservable: ObservableObject {
         model.onSelectSubtitle(index: index)
     }
 
+    func subtitleAdded(_ added: SubtitleAdded) {
+        model.onSubtitleAdded(added: added)
+    }
+
     func retry() {
         model.onRetry()
     }

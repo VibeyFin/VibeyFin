@@ -54,6 +54,7 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
+import kotlin.concurrent.Volatile
 import kotlin.reflect.KClass
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -1124,16 +1125,16 @@ class PlaybackViewModelTest {
         return jellyfin
     }
 
-    private fun TestScope.statesOf(viewModel: PlaybackViewModel): MutableList<PlaybackUiState> {
-        val seen = mutableListOf<PlaybackUiState>()
+    private fun TestScope.statesOf(viewModel: PlaybackViewModel): List<PlaybackUiState> {
+        val seen = SeenStates()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler), start = CoroutineStart.UNDISPATCHED) {
-            viewModel.uiState.collect { seen += it }
+            viewModel.uiState.collect { seen.add(it) }
         }
         return seen
     }
 
     // Playing, with the next episode looked up (it is asked for in the background).
-    private suspend fun TestScope.playing(viewModel: PlaybackViewModel, jellyfin: FakeJellyfin): MutableList<PlaybackUiState> {
+    private suspend fun TestScope.playing(viewModel: PlaybackViewModel, jellyfin: FakeJellyfin): List<PlaybackUiState> {
         val seen = statesOf(viewModel)
         viewModel.uiState.first { it.stream != null }
         viewModel.onPlaying(0)
@@ -1638,7 +1639,7 @@ class PlaybackViewModelTest {
 
     // "Are you still watching?": the card's countdown is held back once enough episodes started by themselves.
 
-    private suspend fun TestScope.nearTheEnd(viewModel: PlaybackViewModel, jellyfin: FakeJellyfin): MutableList<PlaybackUiState> {
+    private suspend fun TestScope.nearTheEnd(viewModel: PlaybackViewModel, jellyfin: FakeJellyfin): List<PlaybackUiState> {
         val seen = playing(viewModel, jellyfin)
         viewModel.onPosition(tenMinutes - 30_000)
         return seen
@@ -2166,7 +2167,7 @@ class PlaybackViewModelTest {
     }
 
     @Test
-    fun `a title with no subtitles still has the list, with Off, when the user may search`() = runTest {
+    fun `a title with no subtitles still has the list with Off when the user may search`() = runTest {
         serverWithSubtitlePolicy(allowed = true)
 
         val state = viewModel().uiState.first { it.stream != null && it.offersSubtitleSearch }
@@ -2189,7 +2190,7 @@ class PlaybackViewModelTest {
     }
 
     @Test
-    fun `an added subtitle is turned on from where the video is, and the player says so`() = runTest {
+    fun `an added subtitle is turned on from where the video is and the player says so`() = runTest {
         val jellyfin = serverWithSubtitlePolicy(allowed = true)
         val viewModel = viewModel()
         val first = viewModel.uiState.first { it.stream != null }
@@ -2213,5 +2214,19 @@ class PlaybackViewModelTest {
 
         assertEquals(1, jellyfin.requestsTo("POST", "/Items/m1/PlaybackInfo").size)
         assertNull(viewModel.uiState.value.notice)
+    }
+}
+
+// The collector appends while a test reads, on another thread once a request has answered: a plain list throws when that overlaps.
+private class SeenStates : AbstractList<PlaybackUiState>() {
+    @Volatile
+    private var states = emptyList<PlaybackUiState>()
+
+    override val size: Int get() = states.size
+
+    override fun get(index: Int): PlaybackUiState = states[index]
+
+    fun add(state: PlaybackUiState) {
+        states = states + state
     }
 }

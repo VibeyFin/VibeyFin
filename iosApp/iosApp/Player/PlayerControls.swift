@@ -83,6 +83,8 @@ struct PlayerTrackMenu: View {
     let subtitles: [TrackOption]
     let onSelectAudio: (Int32) -> Void
     let onSelectSubtitle: (Int32) -> Void
+    /// Set when the Subtitles list ends with "Search for subtitles".
+    var onSearchSubtitles: (() -> Void)?
     /// A touch landed on the button, so the menu is about to open. The first moment the player can hold
     /// its controls up; `onOpenChange` then says when the menu really closes.
     var onTouch: () -> Void = {}
@@ -101,6 +103,11 @@ struct PlayerTrackMenu: View {
             }
             if !subtitles.isEmpty {
                 picker(Strings.shared.subtitles, options: subtitles, onSelect: onSelectSubtitle)
+            }
+            if let onSearchSubtitles {
+                Button(action: onSearchSubtitles) {
+                    Label(Strings.shared.searchForSubtitles.titleCased(), systemImage: "magnifyingglass")
+                }
             }
         } label: {
             PlayerSymbol(systemName: subtitleIsOn ? "captions.bubble.fill" : "captions.bubble")
@@ -133,6 +140,7 @@ struct PlayerTrackMenu: View {
 extension PlayerTrackMenu: Equatable {
     static func == (lhs: PlayerTrackMenu, rhs: PlayerTrackMenu) -> Bool {
         lhs.rows(lhs.audio) == rhs.rows(rhs.audio) && lhs.rows(lhs.subtitles) == rhs.rows(rhs.subtitles)
+            && (lhs.onSearchSubtitles == nil) == (rhs.onSearchSubtitles == nil)
     }
 
     private func rows(_ options: [TrackOption]) -> [String] {
