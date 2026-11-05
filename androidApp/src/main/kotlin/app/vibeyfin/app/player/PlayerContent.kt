@@ -48,6 +48,7 @@ internal fun PlayerContent(
     player: ExoPlayer,
     clock: PlaybackClock,
     chrome: PlayerChrome,
+    turn: PlayerTurnSequence,
     pip: PlayerPip,
     swipe: PlayerSwipe,
     viewModel: PlaybackViewModel,
@@ -67,7 +68,7 @@ internal fun PlayerContent(
             onBoundsChanged(Rect(b.left.toInt(), b.top.toInt(), b.right.toInt(), b.bottom.toInt()))
         },
     ) {
-        PlayerVideoSurface(hdrVideo, player, hidden = chrome.leaving, subtitleStyle)
+        PlayerVideoSurface(hdrVideo, player, hidden = turn.pictureHidden, subtitleStyle)
         PlayerTapLayer(
             swipe = Modifier.swipeForLevels(swipe, enabled = state.swipeGestures && overlaysShown) {
                 viewModel.onUserInteraction()

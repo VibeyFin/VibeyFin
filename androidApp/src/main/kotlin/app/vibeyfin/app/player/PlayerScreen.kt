@@ -45,6 +45,7 @@ fun PlayerRoute(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val window = rememberPlayerWindow()
+    val turn = rememberPlayerTurnSequence(window)
 
     val clock = remember { PlaybackClock() }
     val chrome = remember { PlayerChrome() }
@@ -54,7 +55,7 @@ fun PlayerRoute(
     val player = rememberPlayer(context, http, state.bufferAheadSeconds, hasStream = state.stream != null)
     val stream = state.stream
 
-    LeaveEffects(state, chrome, window, onExit, onBack)
+    LeaveEffects(state, chrome, window, turn, onExit, onBack)
 
     val close = {
         if (!chrome.leaving) {
@@ -127,6 +128,7 @@ fun PlayerRoute(
         player = player,
         clock = clock,
         chrome = chrome,
+        turn = turn,
         pip = pip,
         swipe = swipe,
         viewModel = viewModel,
@@ -141,13 +143,9 @@ fun PlayerRoute(
 
 // The session ended, or the video finished: the screen leaves
 @Composable
-private fun LeaveEffects(state: PlaybackUiState, chrome: PlayerChrome, window: PlayerWindow?, onExit: (HomeExit) -> Unit, onBack: () -> Unit) {
+private fun LeaveEffects(state: PlaybackUiState, chrome: PlayerChrome, window: PlayerWindow?, turn: PlayerTurnSequence, onExit: (HomeExit) -> Unit, onBack: () -> Unit) {
     LaunchedEffect(state.exit) {
-        // The app leaves for another screen, which should not appear sideways either
-        state.exit?.let {
-            window?.restore()
-            onExit(it)
-        }
+        if (state.exit != null) chrome.leaving = true
     }
 
     LaunchedEffect(state.finished) {
@@ -155,11 +153,12 @@ private fun LeaveEffects(state: PlaybackUiState, chrome: PlayerChrome, window: P
     }
 
     LaunchedEffect(chrome.leaving) {
-        if (!chrome.leaving) return@LaunchedEffect
-
-        // Nothing to wait for: the video leaves with the screen. Turning the screen upright re-lays out
-        // everything and would stall the slide, so that waits until the screen is gone (see PlayerWindow).
-        onBack()
+        if (chrome.leaving) {
+            window?.let { turn.close(it) }
+            state.exit?.let(onExit) ?: onBack()
+        } else {
+            turn.open()
+        }
     }
 }
 
