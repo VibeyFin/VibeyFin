@@ -4,14 +4,20 @@ import SwiftUI
 extension View {
     /// "Search for subtitles" for a screen. The model lives with the screen, so a download that is still going reaches `onAdded`
     /// after the sheet has gone.
-    func subtitleSearch(itemId: String?, isPresented: Binding<Bool>, onAdded: @escaping (SubtitleAdded) -> Void) -> some View {
-        modifier(SubtitleSearchModifier(itemId: itemId, isPresented: isPresented, onAdded: onAdded))
+    func subtitleSearch(
+        itemId: String?,
+        isPresented: Binding<Bool>,
+        onFailedWhileClosed: @escaping (String) -> Void,
+        onAdded: @escaping (SubtitleAdded) -> Void
+    ) -> some View {
+        modifier(SubtitleSearchModifier(itemId: itemId, isPresented: isPresented, onFailedWhileClosed: onFailedWhileClosed, onAdded: onAdded))
     }
 }
 
 private struct SubtitleSearchModifier: ViewModifier {
     let itemId: String?
     @Binding var isPresented: Bool
+    let onFailedWhileClosed: (String) -> Void
     let onAdded: (SubtitleAdded) -> Void
     @StateObject private var model = SubtitleSearchObservable()
 
@@ -26,6 +32,13 @@ private struct SubtitleSearchModifier: ViewModifier {
                 model.addedHandled()
                 onAdded(added)
                 isPresented = false
+            }
+            // The next episode took over: the results were for the one before.
+            .onChange(of: itemId) { _, _ in isPresented = false }
+            .onChange(of: model.state?.message?.text) { _, text in
+                guard let text, !isPresented else { return }
+                model.dismissMessage()
+                onFailedWhileClosed(text)
             }
             .sheet(isPresented: $isPresented) {
                 SubtitleSearchView(model: model)
@@ -55,6 +68,7 @@ private struct SubtitleSearchView: View {
             onRetry: { model.retry() },
             onDismiss: { model.dismissMessage() }
         )
+        .presentationDetents([.medium, .large])
         .sheet(isPresented: $choosingLanguage, onDismiss: { model.searchLanguages("") }, content: {
             languagePicker
         })
@@ -73,7 +87,7 @@ private struct SubtitleSearchView: View {
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
-        .buttonStyle(PressableButtonStyle())
+        .buttonStyle(.plain)
         .padding(.horizontal, Space.s4)
     }
 

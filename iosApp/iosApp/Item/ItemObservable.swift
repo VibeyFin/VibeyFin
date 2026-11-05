@@ -31,6 +31,10 @@ final class ItemObservable: ObservableObject {
         model.onSubtitleAdded(added: added)
     }
 
+    func notice(_ text: String) {
+        model.onNotice(text: text)
+    }
+
     func dismissNotice() {
         model.onDismissNotice()
     }

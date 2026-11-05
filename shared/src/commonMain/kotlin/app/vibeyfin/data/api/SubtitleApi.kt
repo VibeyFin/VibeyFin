@@ -18,7 +18,7 @@ data class RemoteSubtitleDto(
 )
 
 /** `GET /Items/{id}/RemoteSearch/Subtitles/{language}`: asks the server's subtitle providers. A server with none answers an empty list. */
-suspend fun JellyfinApi.remoteSubtitles(itemId: String, language: String): ApiResult<List<RemoteSubtitleDto>> = get("/Items/$itemId/RemoteSearch/Subtitles/$language")
+suspend fun JellyfinApi.remoteSubtitles(itemId: String, language: String): ApiResult<List<RemoteSubtitleDto>> = get("/Items/$itemId/RemoteSearch/Subtitles/$language", retry = true)
 
 /**
  * `POST /Items/{id}/RemoteSearch/Subtitles/{subtitleId}`. The server answers 204 even when the provider failed, and only queues

@@ -88,25 +88,35 @@ class SubtitleSearchViewModel(
     private var searching: Job? = null
     private var downloading: Job? = null
     private var failedDownload: String? = null
+    private var chosenLanguage = false
 
     /** The sheet opens on [item]: it searches straight away. A download still going for that item is simply shown again. */
     fun onOpen(item: String) {
         if (item == itemId && downloading?.isActive == true) return
+        // A subtitle for the item left behind is on its way to the server, but nothing here is waiting for it any more.
+        downloading?.cancel()
         itemId = item
         failedDownload = null
+        chosenLanguage = false
         searching?.cancel()
         content.update { SubtitleSearchUiState(added = it.added) }
         searching = viewModelScope.launch {
-            known = languages.languages()
-            prefs = languages.load().valueOrNull()
-            languageCode = subtitles.startingLanguage(prefs, known)
+            readLanguages()
             search()
         }
+    }
+
+    private suspend fun readLanguages() {
+        known = languages.languages()
+        prefs = languages.load().valueOrNull()
+        if (!chosenLanguage) languageCode = subtitles.startingLanguage(prefs, known)
     }
 
     /** Searches again in [code], for this search only: the profile's setting stays as it is. */
     fun onSelectLanguage(code: String) {
         languageCode = code
+        chosenLanguage = true
+        failedDownload = null
         searching?.cancel()
         content.update { it.copy(languageQuery = "") }
         searching = viewModelScope.launch { search() }
@@ -120,17 +130,14 @@ class SubtitleSearchViewModel(
     fun onChoose(id: String) {
         if (downloading?.isActive == true) return
         val item = itemId
+        val language = languageName()
         failedDownload = null
         content.update { it.copy(downloadingId = id, message = null) }
         downloading = viewModelScope.launch {
             val outcome = subtitles.download(item, id)
-            if (item != itemId) {
-                if (outcome is SubtitleDownload.Added) content.update { it.copy(added = SubtitleAdded(item, outcome.streamIndex, languageName())) }
-                return@launch
-            }
             content.update { it.copy(downloadingId = null) }
             when (outcome) {
-                is SubtitleDownload.Added -> content.update { it.copy(added = SubtitleAdded(item, outcome.streamIndex, languageName())) }
+                is SubtitleDownload.Added -> content.update { it.copy(added = SubtitleAdded(item, outcome.streamIndex, language)) }
                 SubtitleDownload.NotArrived -> content.update { it.copy(message = SubtitleSearchMessage(LoadMessages.SUBTITLES_DID_NOT_ARRIVE, canRetry = false)) }
                 is SubtitleDownload.Failed -> onDownloadFailed(id, outcome.error)
             }
@@ -157,7 +164,10 @@ class SubtitleSearchViewModel(
             onChoose(failed)
         } else {
             searching?.cancel()
-            searching = viewModelScope.launch { search() }
+            searching = viewModelScope.launch {
+                if (known.isEmpty() || prefs == null) readLanguages()
+                search()
+            }
         }
     }
 

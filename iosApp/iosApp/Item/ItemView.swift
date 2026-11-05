@@ -72,7 +72,7 @@ struct ItemView: View {
             onDismiss: { model.dismissMessage() }
         )
         .failureBanner(model.state?.notice, actionLabel: nil, onRetry: {}, onDismiss: { model.dismissNotice() })
-        .subtitleSearch(itemId: itemId, isPresented: $searchingSubtitles) { model.subtitleAdded($0) }
+        .subtitleSearch(itemId: itemId, isPresented: $searchingSubtitles, onFailedWhileClosed: { model.notice($0) }, onAdded: { model.subtitleAdded($0) })
         // The questions before a season or a show is downloaded, and before downloads are deleted.
         .downloadPrompts(
             prompt: model.state?.downloadPrompt,

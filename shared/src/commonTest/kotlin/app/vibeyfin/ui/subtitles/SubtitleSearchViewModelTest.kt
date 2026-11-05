@@ -1,6 +1,8 @@
 package app.vibeyfin.ui.subtitles
 
+import app.vibeyfin.domain.SubtitleRepository
 import app.vibeyfin.testing.ConnectionRefused
+import app.vibeyfin.testing.FakeDeviceInfo
 import app.vibeyfin.testing.FakeServer
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
@@ -23,6 +25,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SubtitleSearchViewModelTest {
@@ -41,7 +44,10 @@ class SubtitleSearchViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(SubtitleSearchViewModel(app.subtitles, app.languages, app.connection))
+    private fun viewModel(subtitles: SubtitleRepository = app.subtitles) = viewModels.track(SubtitleSearchViewModel(subtitles, app.languages, app.connection))
+
+    // Keeps waiting for the track until it arrives, so a test can act while a download is going.
+    private fun patientSubtitles() = SubtitleRepository(app.connection, app.library, app.profileSettings, app.offline, FakeDeviceInfo(language = "de"), pollEvery = 1.milliseconds, polls = 2_000)
 
     private suspend fun SubtitleSearchViewModel.settled() = uiState.first { !it.loading }
 
@@ -258,5 +264,107 @@ class SubtitleSearchViewModelTest {
 
         viewModel.onRetry()
         assertEquals(4, viewModel.uiState.first { it.added != null }.added?.streamIndex)
+    }
+
+    @Test
+    fun openingAnotherItemDropsTheDownloadGoingAndLetsAChoiceThrough() = runTest {
+        val server = signedIn(subtitleLanguage = "eng")
+        server.finds("eng", result("a"))
+        server.on("GET", "/Items/m2/RemoteSearch/Subtitles/eng", Reply.json("[${result("b")}]"))
+        var secondSent = false
+        server.on("GET", "/Items") { request ->
+            if (request.query["ids"] == "m2" && secondSent) itemWith(track(5, "English")) else itemWith()
+        }
+        server.on("POST", "/Items/m1/RemoteSearch/Subtitles/a", Reply.noContent())
+        server.on("POST", "/Items/m2/RemoteSearch/Subtitles/b") {
+            secondSent = true
+            Reply.noContent()
+        }
+        val viewModel = viewModel(patientSubtitles())
+        viewModel.onOpen("m1")
+        viewModel.settled()
+        viewModel.onChoose("a")
+        viewModel.uiState.first { it.downloadingId == "a" }
+        app.jellyfin.awaitRequests("POST", "/Items/m1/RemoteSearch/Subtitles/a")
+
+        viewModel.onOpen("m2")
+        viewModel.uiState.first { it.results.singleOrNull()?.id == "b" }
+        viewModel.onChoose("b")
+        val added = assertNotNull(viewModel.uiState.first { it.added != null }.added)
+
+        assertEquals("m2", added.itemId)
+    }
+
+    @Test
+    fun theLanguageNamedIsTheOneTheDownloadWasChosenIn() = runTest {
+        val server = signedIn(subtitleLanguage = "eng")
+        server.finds("eng", result("a"))
+        server.finds("ita", result("it"))
+        var arrived = false
+        server.on("GET", "/Items") { if (arrived) itemWith(track(3, "English")) else itemWith() }
+        server.on("POST", "/Items/m1/RemoteSearch/Subtitles/a", Reply.noContent())
+        val viewModel = viewModel(patientSubtitles())
+        viewModel.onOpen("m1")
+        viewModel.settled()
+        viewModel.onChoose("a")
+        app.jellyfin.awaitRequests("POST", "/Items/m1/RemoteSearch/Subtitles/a")
+
+        viewModel.onSelectLanguage("ita")
+        viewModel.uiState.first { it.languageName == "Italian" && !it.loading }
+        arrived = true
+
+        assertEquals("English", viewModel.uiState.first { it.added != null }.added?.languageName)
+    }
+
+    @Test
+    fun aRefusalHidesTheEntryForThatProfileOnly() = runTest {
+        val server = signedIn(subtitleLanguage = "ita")
+        server.on("GET", "/Items/m1/RemoteSearch/Subtitles/ita", Reply.status(HttpStatusCode.Forbidden))
+        val viewModel = viewModel()
+        viewModel.onOpen("m1")
+        viewModel.settled()
+
+        server.on("GET", "/Users/Me", Reply.json("""{"Id":"u2","Name":"Sam","Policy":{"EnableSubtitleManagement":true}}"""))
+        app.accounts.saveSession("srv-1", "u2", "Sam", null, "token-2")
+        app.connection.activate("srv-1", "u2")
+
+        assertTrue(app.subtitles.available.first())
+    }
+
+    @Test
+    fun tryAgainReadsTheLanguagesThatCouldNotBeRead() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Users/Me", Reply.status(HttpStatusCode.InternalServerError))
+        val viewModel = viewModel()
+        viewModel.onOpen("m1")
+        assertTrue(assertNotNull(viewModel.settled().problem).canRetry)
+
+        signedIn(subtitleLanguage = "ita").finds("ita", result("a"))
+        viewModel.onRetry()
+        val state = viewModel.uiState.first { it.results.isNotEmpty() }
+
+        assertEquals("Italian", state.languageName)
+    }
+
+    @Test
+    fun tryAgainAfterChangingLanguageSearchesAndDoesNotRepeatTheOldDownload() = runTest {
+        val server = signedIn(subtitleLanguage = "eng")
+        server.finds("eng", result("a"))
+        server.on("GET", "/Items", itemWith())
+        server.on("POST", "/Items/m1/RemoteSearch/Subtitles/a", Reply.status(HttpStatusCode.InternalServerError))
+        server.on("GET", "/Items/m1/RemoteSearch/Subtitles/ita", Reply.status(HttpStatusCode.InternalServerError))
+        val viewModel = viewModel()
+        viewModel.onOpen("m1")
+        viewModel.settled()
+        viewModel.onChoose("a")
+        viewModel.uiState.first { it.message != null }
+
+        viewModel.onSelectLanguage("ita")
+        viewModel.uiState.first { it.problem != null }
+        server.finds("ita", result("it"))
+        viewModel.onRetry()
+        viewModel.uiState.first { it.results.isNotEmpty() }
+
+        assertEquals(1, app.jellyfin.requestsTo("POST", "/Items/m1/RemoteSearch/Subtitles/a").size)
     }
 }

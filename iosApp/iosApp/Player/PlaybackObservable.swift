@@ -122,6 +122,10 @@ final class PlaybackObservable: ObservableObject {
         model.onSubtitleAdded(added: added)
     }
 
+    func notice(_ text: String) {
+        model.onNotice(text: text)
+    }
+
     func retry() {
         model.onRetry()
     }

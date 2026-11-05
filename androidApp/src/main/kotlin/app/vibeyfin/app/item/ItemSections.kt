@@ -556,7 +556,7 @@ fun SubtitleSearchRow(onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-        modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick).padding(vertical = VibeyFinTokens.Space.s2),
+        modifier = Modifier.fillMaxWidth().heightIn(min = VibeyFinTokens.Size.touch).clickable(role = Role.Button, onClick = onClick),
     ) {
         Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(Strings.searchForSubtitles, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.weight(1f))

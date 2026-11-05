@@ -271,8 +271,12 @@ class ItemViewModel(
 
     /** A subtitle reached the server: the page reads the item again, so the track is in the technical info. */
     fun onSubtitleAdded(added: SubtitleAdded) {
-        content.update { it.copy(notice = Strings.subtitlesAdded(added.languageName)) }
+        onNotice(Strings.subtitlesAdded(added.languageName))
         viewModelScope.launch { refresh() }
+    }
+
+    fun onNotice(text: String) {
+        content.update { it.copy(notice = text) }
     }
 
     fun onDismissNotice() {

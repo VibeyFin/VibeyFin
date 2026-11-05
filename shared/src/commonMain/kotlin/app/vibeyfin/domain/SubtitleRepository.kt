@@ -7,12 +7,14 @@ import app.vibeyfin.data.api.map
 import app.vibeyfin.data.api.remoteSubtitles
 import app.vibeyfin.data.api.valueOrNull
 import app.vibeyfin.data.platform.DeviceInfo
+import app.vibeyfin.domain.model.ProfileRef
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -47,12 +49,12 @@ class SubtitleRepository(
     private val pollEvery: Duration = 2.seconds,
     private val polls: Int = 15,
 ) {
-    // A 403 means the policy changed after it was read; the entry stays hidden until the app next starts.
-    private val refused = MutableStateFlow(false)
+    // A 403 means the policy changed after it was read; that profile's entry stays hidden until the app next starts.
+    private val refused = MutableStateFlow(emptySet<ProfileRef>())
 
     /** Whether to offer the search: online, not a kids profile, and the user's own policy allows it. Being an admin doesn't count. */
-    val available: Flow<Boolean> = combine(offlineMode.isOffline, profileSettings.kidsProfile, refused) { offline, kids, isRefused ->
-        !offline && kids == false && !isRefused
+    val available: Flow<Boolean> = combine(offlineMode.isOffline, profileSettings.kidsProfile, refused, connection.state) { offline, kids, refusedProfiles, state ->
+        !offline && kids == false && state.profileOrNull() !in refusedProfiles
     }.distinctUntilChanged().map { it && allowedByPolicy() }
 
     private suspend fun allowedByPolicy(): Boolean = connection.asConnected(false) { it.api.me().valueOrNull()?.policy?.enableSubtitleManagement == true }
@@ -96,7 +98,7 @@ class SubtitleRepository(
     }
 
     private fun <T> noteRefusal(result: ApiResult<T>): ApiResult<T> {
-        if ((result as? ApiResult.Failure)?.error == ApiError.Forbidden) refused.value = true
+        if ((result as? ApiResult.Failure)?.error == ApiError.Forbidden) connection.state.value.profileOrNull()?.let { profile -> refused.update { it + profile } }
         return result
     }
 }

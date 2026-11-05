@@ -83,6 +83,7 @@ fun ItemRoute(
         visible = searchingSubtitles,
         onDismiss = { searchingSubtitles = false },
         onAdded = viewModel::onSubtitleAdded,
+        onFailedWhileClosed = viewModel::onNotice,
     )
 
     val ensureNotifications = rememberDownloadNotificationPermission()

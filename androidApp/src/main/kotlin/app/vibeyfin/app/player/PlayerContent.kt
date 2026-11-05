@@ -292,6 +292,7 @@ private fun PromptAndSheets(state: PlaybackUiState, chrome: PlayerChrome, viewMo
             visible = chrome.showSubtitleSearch,
             onDismiss = { chrome.showSubtitleSearch = false },
             onAdded = viewModel::onSubtitleAdded,
+            onFailedWhileClosed = viewModel::onNotice,
             keepSystemBarsHidden = true,
         )
     }

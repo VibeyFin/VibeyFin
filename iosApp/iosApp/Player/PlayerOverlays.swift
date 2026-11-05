@@ -249,3 +249,20 @@ struct ScrubPreview: View {
         .accessibilityHidden(true)
     }
 }
+
+/// A short message over the picture, on the scrim. Takes no touches.
+struct PlayerNotice: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.subheadline)
+            .foregroundStyle(.white)
+            .padding(.horizontal, Space.s4)
+            .padding(.vertical, Space.s2)
+            .background(Brand.scrimStrong, in: Capsule())
+            .padding(.top, Space.s7 + Space.s4)
+            .allowsHitTesting(false)
+            .transition(.opacity)
+    }
+}

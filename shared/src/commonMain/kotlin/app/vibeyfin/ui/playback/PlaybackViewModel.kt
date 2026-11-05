@@ -494,8 +494,13 @@ class PlaybackViewModel(
         if (added.itemId != itemId) return
         val current = plan ?: return
         reopen(current, audio = audioNow, subtitle = added.streamIndex)
+        onNotice(Strings.subtitlesAdded(added.languageName))
+    }
+
+    /** Shows [text] over the picture for a few seconds. */
+    fun onNotice(text: String) {
         noticeJob?.cancel()
-        content.update { it.copy(notice = Strings.subtitlesAdded(added.languageName)) }
+        content.update { it.copy(notice = text) }
         noticeJob = viewModelScope.launch {
             delay(NOTICE_SHOWN)
             content.update { it.copy(notice = null) }

@@ -149,19 +149,14 @@ struct PlayerView: View {
         .statusBarHidden(!controlsVisible)
         .persistentSystemOverlays(controlsVisible ? .automatic : .hidden)
         .overlay(alignment: .top) {
-            if let notice = model.state?.notice {
-                Text(notice)
-                    .font(.subheadline)
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, Space.s4)
-                    .padding(.vertical, Space.s2)
-                    .background(.regularMaterial, in: Capsule())
-                    .padding(.top, Space.s7 + Space.s4)
-                    .allowsHitTesting(false)
-                    .transition(.opacity)
-            }
+            if let notice = model.state?.notice { PlayerNotice(text: notice) }
         }
-        .subtitleSearch(itemId: model.state?.subtitleSearchItemId, isPresented: $searchingSubtitles) { model.subtitleAdded($0) }
+        .subtitleSearch(
+            itemId: model.state?.subtitleSearchItemId,
+            isPresented: $searchingSubtitles,
+            onFailedWhileClosed: { model.notice($0) },
+            onAdded: { model.subtitleAdded($0) }
+        )
         .onChange(of: searchingSubtitles) { _, open in menuOpenChanged(open) }
         .onAppear {
             bindPlayer()

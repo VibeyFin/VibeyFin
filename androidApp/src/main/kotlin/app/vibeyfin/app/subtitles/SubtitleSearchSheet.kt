@@ -1,6 +1,7 @@
 package app.vibeyfin.app.subtitles
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,6 +49,7 @@ import app.vibeyfin.app.components.PickerSearch
 import app.vibeyfin.app.components.PickerSheet
 import app.vibeyfin.app.components.SkeletonLine
 import app.vibeyfin.app.components.VibeyFinSheet
+import app.vibeyfin.app.theme.MenuPressIndication
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.subtitles.SubtitleAdded
@@ -66,6 +69,8 @@ fun SubtitleSearch(
     visible: Boolean,
     onDismiss: () -> Unit,
     onAdded: (SubtitleAdded) -> Unit,
+    /** A download failed with the sheet closed: the screen says so itself. */
+    onFailedWhileClosed: (String) -> Unit,
     keepSystemBarsHidden: Boolean = false,
     viewModel: SubtitleSearchViewModel = koinViewModel(),
 ) {
@@ -82,6 +87,15 @@ fun SubtitleSearch(
         }
     }
 
+    LaunchedEffect(state.message, visible) {
+        val message = state.message
+
+        if (!visible && message != null) {
+            viewModel.onDismissMessage()
+            onFailedWhileClosed(message.text)
+        }
+    }
+
     if (visible) SubtitleSearchSheet(state, viewModel, keepSystemBarsHidden, onDismiss)
 }
 
@@ -91,37 +105,39 @@ private fun SubtitleSearchSheet(state: SubtitleSearchUiState, viewModel: Subtitl
 
     VibeyFinSheet(onDismiss) {
         if (keepSystemBarsHidden) KeepSystemBarsHidden()
-        Text(
-            Strings.searchForSubtitles,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s2),
-        )
-        LanguageRow(state.languageName) { choosingLanguage = true }
-        HorizontalDivider()
-        Box(Modifier.fillMaxWidth().weight(1f, fill = false).navigationBarsPadding()) {
-            val problem = state.problem
+        CompositionLocalProvider(LocalIndication provides MenuPressIndication) {
+            Text(
+                Strings.searchForSubtitles,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s2),
+            )
+            LanguageRow(state.languageName) { choosingLanguage = true }
+            HorizontalDivider()
+            Box(Modifier.fillMaxWidth().weight(1f, fill = false).navigationBarsPadding()) {
+                val problem = state.problem
 
-            when {
-                state.loading -> Column(Modifier.padding(VibeyFinTokens.Space.s4), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
-                    repeat(SKELETON_ROWS) {
-                        Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
-                            SkeletonLine(width = 240.dp, style = MaterialTheme.typography.bodyMedium)
-                            SkeletonLine(width = 140.dp, style = MaterialTheme.typography.bodySmall)
+                when {
+                    state.loading -> Column(Modifier.padding(VibeyFinTokens.Space.s4), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
+                        repeat(SKELETON_ROWS) {
+                            Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
+                                SkeletonLine(width = 240.dp, style = MaterialTheme.typography.bodyMedium)
+                                SkeletonLine(width = 140.dp, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+
+                    problem != null -> Problem(problem, viewModel::onRetry)
+
+                    else -> LazyColumn {
+                        items(state.results, key = { it.id }) { result ->
+                            ResultRow(result, downloading = state.downloadingId == result.id, enabled = state.downloadingId == null) { viewModel.onChoose(result.id) }
                         }
                     }
                 }
-
-                problem != null -> Problem(problem, viewModel::onRetry)
-
-                else -> LazyColumn {
-                    items(state.results, key = { it.id }) { result ->
-                        ResultRow(result, downloading = state.downloadingId == result.id, enabled = state.downloadingId == null) { viewModel.onChoose(result.id) }
-                    }
+                state.message?.let { message ->
+                    ActionSnackbar(message.text, onRetry = viewModel::onRetry, onDismiss = viewModel::onDismissMessage, actionLabel = Strings.tryAgain.takeIf { message.canRetry })
                 }
-            }
-            state.message?.let { message ->
-                ActionSnackbar(message.text, onRetry = viewModel::onRetry, onDismiss = viewModel::onDismissMessage, actionLabel = Strings.tryAgain.takeIf { message.canRetry })
             }
         }
     }

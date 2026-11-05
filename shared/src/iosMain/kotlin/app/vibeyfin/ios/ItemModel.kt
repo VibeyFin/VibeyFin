@@ -40,6 +40,8 @@ class ItemModel(itemId: String) {
 
     fun onSubtitleAdded(added: SubtitleAdded) = host.viewModel.onSubtitleAdded(added)
 
+    fun onNotice(text: String) = host.viewModel.onNotice(text)
+
     fun onDismissNotice() = host.viewModel.onDismissNotice()
 
     // Downloads.

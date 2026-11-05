@@ -55,6 +55,8 @@ class PlaybackModel(itemId: String, startOver: Boolean) {
 
     fun onSubtitleAdded(added: SubtitleAdded) = host.viewModel.onSubtitleAdded(added)
 
+    fun onNotice(text: String) = host.viewModel.onNotice(text)
+
     fun onSelectSpeed(speed: Float) = host.viewModel.onSelectSpeed(speed)
 
     fun onUserInteraction() = host.viewModel.onUserInteraction()
