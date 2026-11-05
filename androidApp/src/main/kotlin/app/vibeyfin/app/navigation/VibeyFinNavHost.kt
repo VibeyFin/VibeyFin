@@ -10,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
@@ -132,10 +133,9 @@ private const val SLIDE_FRACTION = 5
 
 private const val OPEN_START_SCALE = 0.92f
 
-// Gentle, so it does not fight the rotation
 private const val PLAYER_FADE_MS = 320
 
-private const val PLAYER_START_SCALE = 0.94f
+private const val PLAYER_START_SCALE = 0.85f
 
 private fun NavBackStackEntry.opensPlayer() = destination.hasRoute<Player>()
 
@@ -172,9 +172,21 @@ private fun exit(target: NavBackStackEntry, from: NavBackStackEntry) = fadeOut(
     ),
 )
 
-private fun popEnter(leaving: NavBackStackEntry) = if (leaving.isDetail()) fadeIn(tween(DETAIL_FADE_MS)) else slideInHorizontally(tween(SLIDE_MS)) { -it / SLIDE_FRACTION } + fadeIn(tween(SLIDE_MS))
+private fun popEnter(leaving: NavBackStackEntry) = if (leaving.opensPlayer()) {
+    fadeIn(tween(PLAYER_FADE_MS))
+} else if (leaving.isDetail()) {
+    fadeIn(tween(DETAIL_FADE_MS))
+} else {
+    slideInHorizontally(tween(SLIDE_MS)) { -it / SLIDE_FRACTION } + fadeIn(tween(SLIDE_MS))
+}
 
-private fun popExit(leaving: NavBackStackEntry) = if (leaving.isDetail()) fadeOut(tween(DETAIL_FADE_MS)) else slideOutHorizontally(tween(SLIDE_MS)) { it / SLIDE_FRACTION } + fadeOut(tween(SLIDE_MS))
+private fun popExit(leaving: NavBackStackEntry) = if (leaving.opensPlayer()) {
+    fadeOut(tween(PLAYER_FADE_MS)) + scaleOut(tween(PLAYER_FADE_MS), targetScale = PLAYER_START_SCALE)
+} else if (leaving.isDetail()) {
+    fadeOut(tween(DETAIL_FADE_MS))
+} else {
+    slideOutHorizontally(tween(SLIDE_MS)) { it / SLIDE_FRACTION } + fadeOut(tween(SLIDE_MS))
+}
 
 @Composable
 fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {

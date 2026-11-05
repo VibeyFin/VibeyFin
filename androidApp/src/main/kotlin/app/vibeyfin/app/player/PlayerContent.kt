@@ -48,6 +48,7 @@ internal fun PlayerContent(
     player: ExoPlayer,
     clock: PlaybackClock,
     chrome: PlayerChrome,
+    turn: PlayerTurnMotion,
     pip: PlayerPip,
     swipe: PlayerSwipe,
     viewModel: PlaybackViewModel,
@@ -58,16 +59,17 @@ internal fun PlayerContent(
     onClose: () -> Unit,
     onBoundsChanged: (Rect) -> Unit,
 ) {
-    val overlaysShown = !chrome.leaving && !pip.active
+    val onScreen = !chrome.leaving && !pip.active
+    val overlaysShown = onScreen && turn.settled
 
     Box(
         Modifier.fillMaxSize().background(Color.Black).onGloballyPositioned {
             val b = it.boundsInWindow()
 
             onBoundsChanged(Rect(b.left.toInt(), b.top.toInt(), b.right.toInt(), b.bottom.toInt()))
-        },
+        }.then(with(turn) { Modifier.turning() }),
     ) {
-        PlayerVideoSurface(hdrVideo, player, hidden = chrome.leaving, subtitleStyle)
+        PlayerVideoSurface(hdrVideo, player, hidden = chrome.leaving || !turn.settled, subtitleStyle)
         PlayerTapLayer(
             swipe = Modifier.swipeForLevels(swipe, enabled = state.swipeGestures && overlaysShown) {
                 viewModel.onUserInteraction()
@@ -89,9 +91,11 @@ internal fun PlayerContent(
 
         if (overlaysShown) {
             SeekRipple(state.skipRun)
-            ControlsLayer(state, player, clock, chrome, pip, viewModel, trickplay, playable, onClose)
-            StatusOverlays(state, chrome, viewModel)
         }
+
+        if (onScreen) ControlsLayer(state, player, clock, chrome, pip, viewModel, trickplay, playable, turn.settled, onClose)
+
+        if (overlaysShown) StatusOverlays(state, chrome, viewModel)
 
         val waiting = state.loading || (clock.buffering && state.stream != null)
 
@@ -124,6 +128,7 @@ private fun ControlsLayer(
     viewModel: PlaybackViewModel,
     trickplay: TrickplayTiles?,
     playable: Boolean,
+    turnSettled: Boolean,
     onClose: () -> Unit,
 ) {
     // Every control counts as the viewer being there and restarts the hide timer
@@ -132,7 +137,7 @@ private fun ControlsLayer(
         chrome.touched()
     }
 
-    AnimatedVisibility(visible = chrome.controlsVisible || state.message != null, enter = fadeIn(), exit = fadeOut()) {
+    AnimatedVisibility(visible = turnSettled && (chrome.controlsVisible || state.message != null), enter = fadeIn(), exit = fadeOut()) {
         PlayerControls(
             title = state.title,
             subtitle = state.subtitle,
