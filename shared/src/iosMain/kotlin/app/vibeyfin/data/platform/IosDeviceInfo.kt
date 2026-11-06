@@ -10,6 +10,8 @@ class IosDeviceInfo : DeviceInfo {
     // AVPlayer gets every subtitle burned in (no text formats are advertised), so the style cannot apply.
     override val subtitleStyleApplies: Boolean = false
 
+    override val downloadAlerts: Boolean = true
+
     override val appVersion: String =
         NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String ?: "0"
 }

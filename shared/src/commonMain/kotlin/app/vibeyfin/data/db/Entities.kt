@@ -178,6 +178,9 @@ class AccountSettingsEntity(
     /** Whether downloads may use mobile data (or any metered network). Off: they wait for Wi-Fi. */
     @ColumnInfo(defaultValue = "0")
     val downloadOverMobile: Boolean = false,
+    /** Whether the app notifies when this profile's downloads finish or fail. */
+    @ColumnInfo(defaultValue = "1")
+    val downloadNotifications: Boolean = true,
     /** Whether a download is removed once the user has watched it. */
     @ColumnInfo(defaultValue = "0")
     val autoCleanWatched: Boolean = false,

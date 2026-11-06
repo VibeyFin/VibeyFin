@@ -191,6 +191,24 @@ class ProfileSettingsTest {
     }
 
     @Test
+    fun `download notifications are null with nobody signed in and on for a new profile`() = runTest {
+        assertNull(app.profileSettings.downloadNotifications.first())
+
+        app.signedIn()
+
+        assertEquals(true, app.profileSettings.downloadNotifications.first())
+    }
+
+    @Test
+    fun `download notifications are saved`() = runTest {
+        app.signedIn()
+
+        app.profileSettings.setDownloadNotifications(false)
+
+        assertEquals(false, app.profileSettings.downloadNotifications.first())
+    }
+
+    @Test
     fun `the notification settings are saved and a scope outside the choices changes nothing`() = runTest {
         app.signedIn()
 

@@ -59,6 +59,7 @@ class DownloadRunner(
     private val external: ExternalVideoTransfer? = null,
     /** On a platform that must refuse a video before fetching it (iOS, where no player decodes what no engine lists); null elsewhere. */
     private val playable: PlayableVideo? = null,
+    private val alerts: DownloadAlerts = NoDownloadAlerts,
 ) {
     /** What the platform should do after [run] returns. */
     enum class Next {
@@ -97,7 +98,11 @@ class DownloadRunner(
             get() = if (bytesTotal != null && bytesPerSecond != null && bytesPerSecond > 0) ((bytesTotal - bytesDone).coerceAtLeast(0) / bytesPerSecond).seconds else null
     }
 
-    private enum class Outcome { Finished, Stopped, Waiting, Retry }
+    private val completed: MutableMap<ProfileRef, MutableList<CompletedDownload>> = mutableMapOf()
+
+    private var interrupted: Boolean = false
+
+    private enum class Outcome { Finished, Failed, Stopped, Waiting, Retry }
 
     /**
      * Runs until nothing is left to do. [onProgress] is told how the download in hand is doing, about twice a second.
@@ -109,6 +114,19 @@ class DownloadRunner(
      * [Next] when to run again.
      */
     suspend fun run(patience: Duration = Duration.ZERO, onProgress: suspend (Progress) -> Unit = {}): Next {
+        val next = drain(patience, onProgress)
+        if (next == Next.Done) reportQueue()
+        return next
+    }
+
+    // The queue is one report however many runs it took, and none when the user stopped part of it.
+    private suspend fun reportQueue() {
+        if (!interrupted) completed.forEach { (profile, downloads) -> if (alertsOn(profile)) alerts.finished(profile, downloads) }
+        completed.clear()
+        interrupted = false
+    }
+
+    private suspend fun drain(patience: Duration, onProgress: suspend (Progress) -> Unit): Next {
         val started = timeSource.markNow()
         var failures = 0
 
@@ -134,7 +152,13 @@ class DownloadRunner(
                 continue
             }
             when (transfer(chosen, selection.allowed.size, onProgress)) {
-                Outcome.Finished -> failures = 0
+                Outcome.Finished -> {
+                    failures = 0
+                    val item = dao.findItem(chosen.serverId, chosen.userId, chosen.itemId)
+                    completed.getOrPut(ProfileRef(chosen.serverId, chosen.userId)) { mutableListOf() } += CompletedDownload(item?.title.orEmpty(), item?.seriesName)
+                }
+
+                Outcome.Failed -> failures = 0
 
                 Outcome.Stopped -> Unit
 
@@ -193,7 +217,8 @@ class DownloadRunner(
             val outcome = Transfer(row, stop, remaining, onProgress).run()
             if (outcome == Outcome.Stopped) {
                 // A network rule stopped it (a pause or a removal already changed the state): wait for a better network.
-                dao.find(row.serverId, row.userId, row.itemId)?.takeIf { it.state == DOWNLOAD_RUNNING }?.let { markWaiting(it) }
+                val stopped = dao.find(row.serverId, row.userId, row.itemId)?.takeIf { it.state == DOWNLOAD_RUNNING }
+                if (stopped != null) markWaiting(stopped) else interrupted = true
             }
             outcome
         } finally {
@@ -352,6 +377,8 @@ class DownloadRunner(
             val throttle = ProgressThrottle()
             var done = files.length(part)
             var total = known
+            // Before the first bytes: iOS only starts its system progress while the app is in front.
+            onProgress(Progress(row.itemId, title, done, total, remaining))
             val result = transfer.transfer(
                 ExternalTransferRequest(base, address.first, address.second, row.itemId, part, allowsMobile(row)),
                 stop,
@@ -381,7 +408,8 @@ class DownloadRunner(
 
         private suspend fun fail(failure: DownloadFailure): Outcome {
             dao.setState(row.serverId, row.userId, row.itemId, DOWNLOAD_FAILED, failure.name, clock.now().toEpochMilliseconds())
-            return Outcome.Finished
+            if (alertsOn(profile)) alerts.failed(profile, title, failure)
+            return Outcome.Failed
         }
 
         private suspend fun waiting(): Outcome {
@@ -567,6 +595,8 @@ class DownloadRunner(
     private suspend fun markWaiting(row: DownloadEntity) {
         if (row.state != DOWNLOAD_WAITING_FOR_NETWORK) setState(row, DOWNLOAD_WAITING_FOR_NETWORK)
     }
+
+    private suspend fun alertsOn(profile: ProfileRef): Boolean = accounts.observeDownloadNotifications(profile.serverId, profile.userId).first() == true
 
     private suspend fun allowsMobile(row: DownloadEntity): Boolean = accounts.observeDownloadOverMobile(row.serverId, row.userId).first() == true
 

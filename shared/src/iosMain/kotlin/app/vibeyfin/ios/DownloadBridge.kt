@@ -4,12 +4,13 @@ import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.DownloadRunner
 import app.vibeyfin.ui.downloads.DownloadAction
 import app.vibeyfin.ui.downloads.DownloadBadge
+import app.vibeyfin.ui.downloads.DownloadStatusLine
 import app.vibeyfin.ui.downloads.actions
 import app.vibeyfin.ui.downloads.badge
 import app.vibeyfin.ui.downloads.failureMessage
 import app.vibeyfin.ui.downloads.isDone
 import app.vibeyfin.ui.downloads.stateWord
-import app.vibeyfin.ui.downloads.statusLine
+import app.vibeyfin.ui.downloads.status
 
 /**
  * What the shared code works out about a [Download] (the words, the actions, the badge), for SwiftUI: Kotlin extension properties
@@ -22,7 +23,7 @@ object DownloadBridge {
 
     fun isDone(download: Download): Boolean = download.isDone
 
-    fun statusLine(download: Download, waiting: DownloadRunner.Waiting): String = download.statusLine(waiting)
+    fun status(download: Download, waiting: DownloadRunner.Waiting): DownloadStatusLine = download.status(waiting)
 
     fun failureMessage(download: Download): String? = download.failureMessage
 

@@ -114,13 +114,19 @@ struct RootView: View {
                     path = [.whoIsWatching(serverId: who.serverId, pinUserId: who.pinFor?.userId)]
                 }
                 ready = true
-                if !signedIn { taps.pending = nil }
+                if !signedIn {
+                    taps.pending = nil
+                    taps.pendingDownloads = nil
+                }
             }
         }
         // A tapped notification opens its title only from the tabs (TabShell). Before sign-in the app stays where it decided to open,
         // "Who's watching?" with whatever PIN it asks for, and the tap is dropped.
         .onReceive(taps.$pending) { tap in
             if tap != nil && ready && !signedIn { taps.pending = nil }
+        }
+        .onReceive(taps.$pendingDownloads) { tap in
+            if tap != nil && ready && !signedIn { taps.pendingDownloads = nil }
         }
     }
 }

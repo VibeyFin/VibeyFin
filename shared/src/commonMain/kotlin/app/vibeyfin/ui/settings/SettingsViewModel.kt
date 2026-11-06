@@ -95,6 +95,7 @@ class SettingsViewModel(
     private val applicationScope: CoroutineScope,
     private val appVersion: String = "",
     private val subtitleStyleApplies: Boolean = true,
+    private val downloadAlerts: Boolean = false,
     seerr: SeerrConnection? = null,
 ) : ViewModel() {
     private val confirmSignOut = MutableStateFlow(false)
@@ -200,6 +201,7 @@ class SettingsViewModel(
         live(confirmPurgeDownloads),
         perProfile(profileSettings.swipeGestures),
         live(seerr?.state ?: MutableStateFlow<SeerrState>(SeerrState.Hidden)),
+        perProfile(profileSettings.downloadNotifications),
     )
 
     /** Eager, so the reads start with the ViewModel and not when the screen first draws. */
@@ -242,6 +244,8 @@ class SettingsViewModel(
             policy = v[POLICY] as PolicyState,
             notificationsEnabled = read(NOTIFICATIONS, defaults.notificationsEnabled),
             notificationScope = read(NOTIFICATION_SCOPE, defaults.notificationScope),
+            downloadNotifications = read(DOWNLOAD_NOTIFICATIONS, defaults.downloadNotifications),
+            downloadAlerts = downloadAlerts,
             notificationsBlocked = v[NOTIFICATIONS_BLOCKED] as Boolean,
             showPlaybackStats = read(SHOW_STATS, defaults.showPlaybackStats),
             bingeThreshold = read(BINGE, defaults.bingeThreshold),
@@ -325,6 +329,8 @@ class SettingsViewModel(
                     notificationsBlocked.value = false
                     requestNotificationPermission.value = value
                 }
+
+                SettingKey.DownloadNotifications -> profileSettings.setDownloadNotifications(value)
 
                 SettingKey.PinOpenProfile -> profileSettings.setPinOpenProfile(value)
 
@@ -632,5 +638,6 @@ private const val CLOSE_PAGE = 35
 private const val CONFIRM_PURGE_DOWNLOADS = 36
 private const val SWIPE_GESTURES = 37
 private const val SEERR = 38
+private const val DOWNLOAD_NOTIFICATIONS = 39
 
 private const val MB_PER_GB = 1_000L

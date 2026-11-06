@@ -60,7 +60,7 @@ fun appModule() = module {
     viewModelOf(::NotificationOpenViewModel)
     viewModel {
         val device = get<DeviceInfo>()
-        SettingsViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(ApplicationScope), device.appVersion, device.subtitleStyleApplies, seerr = get())
+        SettingsViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(ApplicationScope), device.appVersion, device.subtitleStyleApplies, downloadAlerts = device.downloadAlerts, seerr = get())
     }
     viewModelOf(::AppBannerViewModel)
     viewModelOf(::DownloadsViewModel)

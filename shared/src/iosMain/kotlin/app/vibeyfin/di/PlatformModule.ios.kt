@@ -16,6 +16,7 @@ import app.vibeyfin.data.platform.IosPlaybackCapabilities
 import app.vibeyfin.data.prefs.createDevicePreferencesDataStore
 import app.vibeyfin.data.vault.KeychainTokenVault
 import app.vibeyfin.data.vault.TokenVault
+import app.vibeyfin.domain.DownloadAlerts
 import app.vibeyfin.domain.DownloadFiles
 import app.vibeyfin.domain.DownloadRunner
 import app.vibeyfin.domain.DownloadScheduler
@@ -27,6 +28,7 @@ import app.vibeyfin.domain.NoProgressSyncScheduler
 import app.vibeyfin.domain.PlayableVideo
 import app.vibeyfin.domain.PlaybackCapabilitiesSource
 import app.vibeyfin.domain.ProgressSyncScheduler
+import app.vibeyfin.ios.IosDownloadAlerts
 import kotlinx.cinterop.ExperimentalForeignApi
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -59,6 +61,8 @@ actual fun platformModule(): Module = module {
     // A download is kept as the server sent it; an engine plays it, so a codec no engine lists is refused before it is fetched.
     single<PlayableVideo> { IosPlayableVideo(get()) }
     single<DownloadScheduler> { IosDownloadScheduler(get(ApplicationScope), get()) { get<DownloadRunner>() } }
+    single { IosDownloadAlerts() }
+    single<DownloadAlerts> { get<IosDownloadAlerts>() }
     single<ProgressSyncScheduler> { NoProgressSyncScheduler }
 }
 

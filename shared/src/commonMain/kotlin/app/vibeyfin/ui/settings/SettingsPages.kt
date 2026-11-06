@@ -51,6 +51,9 @@ data class SettingsValues(
     val pinGates: PinGates = PinGates(),
     val policy: PolicyState = PolicyState.Loading,
     val notificationsEnabled: Boolean = false,
+    val downloadNotifications: Boolean = true,
+    /** True where the app can notify about downloads (iOS), so the row shows. */
+    val downloadAlerts: Boolean = false,
     val notificationScope: Int = ProfileSettings.DEFAULT_NOTIFICATION_SCOPE,
     /** The OS refused notification permission, so the page points to system settings. */
     val notificationsBlocked: Boolean = false,
@@ -195,6 +198,13 @@ fun notificationsPage(v: SettingsValues): SettingsPage {
                         options = ProfileSettings.NOTIFICATION_SCOPE_CHOICES.map { SettingOption(it, Strings.notificationsScopeLabel(it)) },
                         visible = visible && v.notificationsEnabled,
                     ),
+                ),
+            ),
+            SettingsSection(
+                title = null,
+                footer = Strings.downloadNotificationsFooter,
+                items = listOf(
+                    ToggleItem(SettingKey.DownloadNotifications, Strings.downloadNotificationsToggle, checked = v.downloadNotifications, visible = visible && v.downloadAlerts),
                 ),
             ),
         ),

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -74,7 +75,7 @@ import app.vibeyfin.ui.downloads.actions
 import app.vibeyfin.ui.downloads.failureMessage
 import app.vibeyfin.ui.downloads.isDone
 import app.vibeyfin.ui.downloads.stateWord
-import app.vibeyfin.ui.downloads.statusLine
+import app.vibeyfin.ui.downloads.status
 import app.vibeyfin.ui.home.HomeExit
 import org.koin.androidx.compose.koinViewModel
 
@@ -104,6 +105,7 @@ fun DownloadsRoute(
         onOpenShow = { seriesId -> if (!offline) onOpen(seriesId) },
         onAction = viewModel::onAction,
         onRemoveShow = viewModel::onRemoveShow,
+        onResumeShow = viewModel::onResumeShow,
         onRemoveAll = viewModel::onRemoveAll,
     )
     state.removal?.let { RemoveConfirmDialog(it, onConfirm = viewModel::onConfirmRemove, onDismiss = viewModel::onDismissRemoval) }
@@ -117,6 +119,7 @@ fun DownloadsScreen(
     onOpenShow: (seriesId: String) -> Unit,
     onAction: (Download, DownloadAction) -> Unit,
     onRemoveShow: (DownloadedShow) -> Unit,
+    onResumeShow: (DownloadedShow) -> Unit,
     onRemoveAll: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -129,7 +132,7 @@ fun DownloadsScreen(
                     Empty()
                 }
 
-                else -> Content(state, onOpen, onOpenShow, onAction, onRemoveShow, onRemoveAll)
+                else -> Content(state, onOpen, onOpenShow, onAction, onRemoveShow, onResumeShow, onRemoveAll)
             }
         }
     }
@@ -186,6 +189,7 @@ private fun Content(
     onOpenShow: (String) -> Unit,
     onAction: (Download, DownloadAction) -> Unit,
     onRemoveShow: (DownloadedShow) -> Unit,
+    onResumeShow: (DownloadedShow) -> Unit,
     onRemoveAll: () -> Unit,
 ) {
     // Which shows are open: kept with the screen, so coming back from an episode's page finds them as they were
@@ -215,6 +219,7 @@ private fun Content(
                             expanded = expanded,
                             onToggle = { open = if (expanded) open - show.seriesId else open + show.seriesId },
                             onOpen = { onOpenShow(show.seriesId) },
+                            onResume = { onResumeShow(show) },
                             onRemove = { onRemoveShow(show) },
                         )
                     }
@@ -299,13 +304,9 @@ private fun DownloadRow(download: Download, waiting: DownloadRunner.Waiting, pos
 
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = VibeyFinTokens.Colors.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(
-                text = download.statusLine(waiting),
-                style = MaterialTheme.typography.bodyMedium,
-                color = VibeyFinTokens.Colors.inkMuted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            val status = download.status(waiting)
+            Text(status.state, style = MaterialTheme.typography.bodyMedium, color = VibeyFinTokens.Colors.inkMuted)
+            status.detail?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = VibeyFinTokens.Colors.inkMuted) }
             download.failureMessage?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = VibeyFinTokens.Colors.danger, maxLines = 3, overflow = TextOverflow.Ellipsis)
             }
@@ -342,7 +343,7 @@ private fun DownloadRow(download: Download, waiting: DownloadRunner.Waiting, pos
 }
 
 @Composable
-private fun ShowRow(show: DownloadedShow, expanded: Boolean, onToggle: () -> Unit, onOpen: () -> Unit, onRemove: () -> Unit) {
+private fun ShowRow(show: DownloadedShow, expanded: Boolean, onToggle: () -> Unit, onOpen: () -> Unit, onResume: () -> Unit, onRemove: () -> Unit) {
     val shape = RoundedCornerShape(VibeyFinTokens.Radius.artwork)
     var menu by remember { mutableStateOf(false) }
 
@@ -382,6 +383,14 @@ private fun ShowRow(show: DownloadedShow, expanded: Boolean, onToggle: () -> Uni
                     menu = false
 
                     onOpen()
+                }
+
+                if (show.canResume) {
+                    VibeyFinMenuItem(show.resumeLabel, Icons.Filled.Refresh) {
+                        menu = false
+
+                        onResume()
+                    }
                 }
 
                 VibeyFinMenuItem(Strings.removeDownloadsOf(show.episodes.size), Icons.Filled.Delete) {

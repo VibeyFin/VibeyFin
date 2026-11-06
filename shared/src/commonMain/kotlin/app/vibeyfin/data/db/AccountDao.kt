@@ -243,6 +243,12 @@ abstract class AccountDao {
     @Query("UPDATE account_settings SET pinSwitchProfile = :value WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun setPinSwitchProfile(serverId: String, userId: String, value: Boolean)
 
+    @Query("SELECT downloadNotifications FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeDownloadNotifications(serverId: String, userId: String): Flow<Boolean?>
+
+    @Query("UPDATE account_settings SET downloadNotifications = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setDownloadNotifications(serverId: String, userId: String, value: Boolean)
+
     @Query("SELECT downloadOverMobile FROM account_settings WHERE serverId = :serverId AND userId = :userId")
     abstract fun observeDownloadOverMobile(serverId: String, userId: String): Flow<Boolean?>
 

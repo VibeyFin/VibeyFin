@@ -6,6 +6,7 @@ import Shared
 struct DownloadsView: View {
     @StateObject private var model = DownloadsObservable()
     @Environment(\.playerSession) private var player
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var open: Set<String> = []
 
     /// Opens an item's page; not used offline, where there is no page.
@@ -76,7 +77,7 @@ struct DownloadsView: View {
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) { removeShowSwipe(show) }
                         if open.contains(show.seriesId) {
                             ForEach(show.episodes, id: \.itemId) { episode in
-                                row(episode, waiting: state.waiting, poster: false).padding(.leading, Space.s4)
+                                row(episode, waiting: state.waiting, poster: false).padding(.leading, sizeClass == .compact ? Space.s2 : Space.s4)
                                     .swipeActions(edge: .trailing, allowsFullSwipe: true) { removeSwipe(episode) }
                             }
                         }
@@ -123,41 +124,48 @@ struct DownloadsView: View {
         }
     }
 
-    /// A movie or an episode: its picture, its title, where its download is, and a menu for what can be done to it.
+    /// A movie or an episode: its picture, its title, where its download is, and a menu for what can be done to it. The progress bar runs under the whole row.
     private func row(_ download: Download, waiting: DownloadRunner.Waiting, poster: Bool) -> some View {
-        let item = download.item
-        let done = DownloadBridge.shared.isDone(download: download)
-        let title = poster ? item.title : Strings.shared.taggedTitle(tag: Strings.shared.episodeTag(season: item.seasonNumber, episode: item.episodeNumber), title: item.title)
-        return HStack(spacing: Space.s3) {
-            Button {
-                if done { player.play(download.itemId) } else if !offline { onOpen(download.itemId) }
-            } label: {
-                HStack(spacing: Space.s3) {
-                    Artwork(url: poster ? item.posterUrl : (item.landscapeUrl ?? item.posterUrl), title: item.title, aspectRatio: poster ? 2.0 / 3.0 : 16.0 / 9.0, blurHash: poster ? item.posterBlurHash : item.landscapeBlurHash)
-                        .frame(width: poster ? 56 : 112)
-                        .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
-                    VStack(alignment: .leading, spacing: Space.s1) {
-                        Text(title).font(.headline).foregroundStyle(.primary).lineLimit(2)
-                        Text(DownloadBridge.shared.statusLine(download: download, waiting: waiting)).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-                        if let message = DownloadBridge.shared.failureMessage(download: download) {
-                            Text(message).font(.caption).foregroundStyle(.red).lineLimit(3)
+        let item                 = download.item
+        let done                 = DownloadBridge.shared.isDone(download: download)
+        let episodeTag: String?  = poster ? nil : Strings.shared.episodeTag(season: item.seasonNumber, episode: item.episodeNumber)
+        let thumbnailWidth: CGFloat = poster ? 56 : (sizeClass == .compact ? 96 : 112)
+        let inProgress: Bool     = download.state == DownloadState.running || download.state == DownloadState.paused
+        return VStack(alignment: .leading, spacing: Space.s2) {
+            HStack(spacing: Space.s2) {
+                Button {
+                    if done { player.play(download.itemId) } else if !offline { onOpen(download.itemId) }
+                } label: {
+                    HStack(spacing: Space.s3) {
+                        Artwork(url: poster ? item.posterUrl : (item.landscapeUrl ?? item.posterUrl), title: item.title, aspectRatio: poster ? 2.0 / 3.0 : 16.0 / 9.0, blurHash: poster ? item.posterBlurHash : item.landscapeBlurHash, showsTitle: false)
+                            .frame(width: thumbnailWidth)
+                            .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
+                        VStack(alignment: .leading, spacing: Space.s1) {
+                            if let episodeTag { Text(episodeTag).font(.caption).foregroundStyle(.secondary) }
+                            Text(item.title).font(.headline).foregroundStyle(.primary).lineLimit(2)
+                            let status = DownloadBridge.shared.status(download: download, waiting: waiting)
+                            Text(status.state).font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                            if let detail = status.detail { Text(detail).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+                            if let message = DownloadBridge.shared.failureMessage(download: download) {
+                                Text(message).font(.caption).foregroundStyle(.red).lineLimit(3)
+                            }
                         }
-                        if download.state == DownloadState.running || download.state == DownloadState.paused, let progress = download.progress?.floatValue {
-                            // The label colour on a quiet track: aqua is for playback progress, not for downloads.
-                            ProgressView(value: progress).tint(Color(.label))
-                        }
+                        Spacer(minLength: 0)
                     }
-                    Spacer(minLength: 0)
+                    .contentShape(Rectangle())
                 }
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+                Menu {
+                    DownloadActionButtons(actions: DownloadBridge.shared.actions(download: download)) { model.act(download, $0) }
+                } label: {
+                    Image(systemName: "ellipsis").frame(minWidth: 44, minHeight: 44)
+                }
+                .accessibilityLabel(Strings.shared.showOptions)
             }
-            .buttonStyle(.plain)
-            Menu {
-                DownloadActionButtons(actions: DownloadBridge.shared.actions(download: download)) { model.act(download, $0) }
-            } label: {
-                Image(systemName: "ellipsis").frame(minWidth: 44, minHeight: 44)
+            if inProgress, let progress = download.progress?.floatValue {
+                // The label colour on a quiet track: aqua is for playback progress, not for downloads.
+                ProgressView(value: progress).tint(Color(.label))
             }
-            .accessibilityLabel(Strings.shared.showOptions)
         }
         .accessibilityElement(children: .contain)
     }
@@ -170,7 +178,7 @@ struct DownloadsView: View {
                 if expanded { open.remove(show.seriesId) } else { open.insert(show.seriesId) }
             } label: {
                 HStack(spacing: Space.s3) {
-                    Artwork(url: show.posterUrl, title: show.title, aspectRatio: 2.0 / 3.0, blurHash: show.posterBlurHash)
+                    Artwork(url: show.posterUrl, title: show.title, aspectRatio: 2.0 / 3.0, blurHash: show.posterBlurHash, showsTitle: false)
                         .frame(width: 56)
                         .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
                     VStack(alignment: .leading, spacing: Space.s1) {
@@ -186,6 +194,11 @@ struct DownloadsView: View {
             Menu {
                 if !offline {
                     Button { onOpen(show.seriesId) } label: { Label(Strings.shared.goToSeries(name: show.title), systemImage: "info.circle") }
+                }
+                if show.canResume {
+                    Button { model.resumeShow(show) } label: {
+                        Label(show.resumeLabel.titleCased(), systemImage: "arrow.clockwise")
+                    }
                 }
                 Button(role: .destructive) { model.removeShow(show) } label: {
                     Label(Strings.shared.removeDownloadsOf(count: Int32(show.episodes.count)), systemImage: "trash")

@@ -5,6 +5,8 @@ import app.vibeyfin.domain.DownloadRunner
 import app.vibeyfin.domain.DownloadScheduler
 import app.vibeyfin.domain.NetworkMonitor
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
@@ -28,7 +30,11 @@ class IosDownloadScheduler(
     override val isSupported = true
 
     private val running = Mutex()
+    private val latest = MutableStateFlow<DownloadRunner.Progress?>(null)
     private var again = false
+
+    /** How the download in hand is doing while a run is going; null otherwise. */
+    val progress: StateFlow<DownloadRunner.Progress?> = latest
 
     init {
         // A connection coming back is a reason to look again; the first value is the one at start, which the start-up check covers.
@@ -45,7 +51,11 @@ class IosDownloadScheduler(
             try {
                 while (again) {
                     again = false
-                    runner().run(patience = PATIENCE)
+                    try {
+                        runner().run(patience = PATIENCE) { latest.value = it }
+                    } finally {
+                        latest.value = null
+                    }
                 }
             } finally {
                 running.unlock()

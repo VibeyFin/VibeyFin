@@ -25,7 +25,12 @@ abstract class DownloadDao {
     abstract suspend fun allItems(serverId: String, userId: String): List<DownloadItemEntity>
 
     /** Every profile's downloads in [states], oldest first: what a worker starting in a cold process picks up. */
-    @Query("SELECT * FROM downloads WHERE state IN (:states) ORDER BY addedAt, itemId")
+    @Query(
+        "SELECT d.* FROM downloads d LEFT JOIN download_items i " +
+            "ON i.serverId = d.serverId AND i.userId = d.userId AND i.itemId = d.itemId " +
+            "WHERE d.state IN (:states) " +
+            "ORDER BY d.addedAt, i.seasonNumber, i.episodeNumber, d.itemId",
+    )
     abstract suspend fun inStates(states: List<String>): List<DownloadEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

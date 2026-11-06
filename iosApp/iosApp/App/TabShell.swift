@@ -215,6 +215,9 @@ struct TabShell: View {
         .onReceive(taps.$pending) { tap in
             if let tap { openTapped(tap) }
         }
+        .onReceive(taps.$pendingDownloads) { tap in
+            if let tap { openDownloadsTapped(tap) }
+        }
         .downloadPrompts(
             prompt: tileMenu.overlay.prompt,
             removal: tileMenu.overlay.removal,
@@ -286,6 +289,13 @@ struct TabShell: View {
         guard NewTitlesModel().isSignedIn(serverId: tap.serverId, userId: tap.userId) else { return }
         selection = .home
         homePath.append(.item(itemId: tap.itemId))
+    }
+
+    /// A tapped download notification opens the Downloads tab, under the same rule: only for the profile signed in now.
+    private func openDownloadsTapped(_ tap: DownloadTap) {
+        taps.pendingDownloads = nil
+        guard NewTitlesModel().isSignedIn(serverId: tap.serverId, userId: tap.userId) else { return }
+        selection = .downloads
     }
 
     /// Settings from the profile button: opens in the tab on screen, with a new model so its PIN is asked each time.

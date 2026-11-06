@@ -5,6 +5,7 @@
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>app.vibeyfin.newtitles</string>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER).download.queue</string>
 	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>

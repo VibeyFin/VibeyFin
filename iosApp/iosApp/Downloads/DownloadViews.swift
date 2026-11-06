@@ -56,6 +56,7 @@ struct DownloadBadgeView: View {
 func downloadActionLabel(_ action: DownloadAction) -> (title: String, systemImage: String) {
     if action == DownloadAction.pause { return (Strings.shared.pauseDownload, "pause") }
     if action == DownloadAction.resume { return (Strings.shared.resumeDownload, "play") }
+    if action == DownloadAction.retry { return (Strings.shared.retryDownload, "arrow.clockwise") }
     return (Strings.shared.removeDownload, "trash")
 }
 

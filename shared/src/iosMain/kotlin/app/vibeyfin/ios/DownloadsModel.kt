@@ -16,6 +16,8 @@ class DownloadsModel {
 
     fun onRemoveShow(show: DownloadedShow) = host.viewModel.onRemoveShow(show)
 
+    fun onResumeShow(show: DownloadedShow) = host.viewModel.onResumeShow(show)
+
     fun onRemoveAll() = host.viewModel.onRemoveAll()
 
     fun onConfirmRemove() = host.viewModel.onConfirmRemove()

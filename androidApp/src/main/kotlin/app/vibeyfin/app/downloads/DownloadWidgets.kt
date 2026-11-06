@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -124,6 +125,7 @@ private val RING_PADDING = 6.dp
 fun DownloadAction.icon(): DownloadActionIcon = when (this) {
     DownloadAction.Pause -> DownloadActionIcon.Resource(R.drawable.ic_pause)
     DownloadAction.Resume -> DownloadActionIcon.Vector(Icons.Filled.PlayArrow)
+    DownloadAction.Retry -> DownloadActionIcon.Vector(Icons.Filled.Refresh)
     DownloadAction.Remove -> DownloadActionIcon.Vector(Icons.Filled.Delete)
 }
 
@@ -136,6 +138,7 @@ sealed interface DownloadActionIcon {
 fun DownloadAction.label(): String = when (this) {
     DownloadAction.Pause -> Strings.pauseDownload
     DownloadAction.Resume -> Strings.resumeDownload
+    DownloadAction.Retry -> Strings.retryDownload
     DownloadAction.Remove -> Strings.removeDownload
 }
 

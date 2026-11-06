@@ -315,6 +315,51 @@ class DownloadRunnerTest {
     }
 
     @Test
+    fun episodesQueuedTogetherGoBySeasonThenEpisodeNumber() = runTest {
+        val server = app.signedIn()
+
+        fun episode(id: String, season: Int, number: Int) = downloadItemJson(
+            id, "Episode $number", "Episode", size = 3, seriesId = "s1", seriesName = "Saga", seasonId = "se$season",
+            seasonNumber = season, episodeNumber = number, primaryTag = null,
+        )
+        val all = mapOf("c" to episode("c", 2, 1), "a" to episode("a", 1, 3), "d" to episode("d", 1, 1), "b" to episode("b", 1, 2))
+        server.on("GET", "/Items") { request -> Reply.json(itemsPage(*request.query["ids"]!!.split(",").mapNotNull { all[it] }.toTypedArray())) }
+        server.on("GET", "/Shows/s1/Episodes") { Reply.json(itemsPage(*all.values.toTypedArray())) }
+        all.keys.forEach { id -> server.on("GET", "/Items/$id/Download") { Reply.ranged("aaa", it) } }
+        queue(DownloadTarget.Series("s1"))
+
+        app.runner.run()
+
+        assertEquals(
+            listOf("d", "b", "a", "c").map { "GET /Items/$it/Download" },
+            app.jellyfin.callLog().filter { it.endsWith("/Download") },
+        )
+    }
+
+    @Test
+    fun anEpisodeThatFailsIsSkippedAndTheRestOfTheQueueGoesOn() = runTest {
+        val server = app.signedIn()
+
+        fun episode(id: String, number: Int) = downloadItemJson(
+            id, "Episode $number", "Episode", size = 3, seriesId = "s1", seriesName = "Saga", seasonId = "se1",
+            seasonNumber = 1, episodeNumber = number, primaryTag = null,
+        )
+        val all = mapOf("a" to episode("a", 1), "b" to episode("b", 2), "c" to episode("c", 3))
+        server.on("GET", "/Items") { request -> Reply.json(itemsPage(*request.query["ids"]!!.split(",").mapNotNull { all[it] }.toTypedArray())) }
+        server.on("GET", "/Shows/s1/Episodes") { Reply.json(itemsPage(*all.values.toTypedArray())) }
+        server.on("GET", "/Items/a/Download") { Reply.ranged("aaa", it) }
+        server.on("GET", "/Items/b/Download") { Reply.status(HttpStatusCode.Forbidden) }
+        server.on("GET", "/Items/c/Download") { Reply.ranged("ccc", it) }
+        queue(DownloadTarget.Series("s1"))
+
+        app.runner.run()
+
+        assertEquals(DOWNLOAD_DONE, row("a").state)
+        assertEquals(DOWNLOAD_FAILED, row("b").state)
+        assertEquals(DOWNLOAD_DONE, row("c").state)
+    }
+
+    @Test
     fun aFileThatWouldGoOverTheStorageLimitIsNotStarted() = runTest {
         movieOnServer(size = 2_000_000)
         queue()
@@ -407,6 +452,168 @@ class DownloadRunnerTest {
         assertEquals(listOf(DownloadRunner.Waiting.Network), seen.filterNotNull().distinct())
     }
 
+    private class RecordingAlerts : DownloadAlerts {
+        val finished = mutableListOf<Pair<ProfileRef, List<CompletedDownload>>>()
+        val failed = mutableListOf<Triple<ProfileRef, String, DownloadFailure>>()
+
+        override fun finished(profile: ProfileRef, downloads: List<CompletedDownload>) {
+            finished += profile to downloads
+        }
+
+        override fun failed(profile: ProfileRef, title: String, failure: DownloadFailure) {
+            failed += Triple(profile, title, failure)
+        }
+    }
+
+    private fun runnerAlerting(alerts: DownloadAlerts) = DownloadRunner(
+        app.downloads, app.database.accountDao(), app.connection, app.files, app.network, app.wake, app.clock, speeds = app.speeds, alerts = alerts,
+    )
+
+    @Test
+    fun aQueueThatIsDoneIsReportedOnceForTheProfile() = runTest {
+        movieOnServer()
+        queue()
+        val alerts = RecordingAlerts()
+
+        runnerAlerting(alerts).run()
+
+        assertEquals(listOf(alex to listOf(CompletedDownload("Heat", null))), alerts.finished)
+        assertTrue(alerts.failed.isEmpty())
+    }
+
+    @Test
+    fun aFailedDownloadIsReportedWithItsTitleAndReasonAndIsNotCountedAsFinished() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Items", Reply.json(itemsPage(downloadItemJson("m1", "Heat", size = body.length.toLong(), videoCodec = "av1"))))
+        queue()
+        val alerts = RecordingAlerts()
+        val runner = DownloadRunner(
+            app.downloads, app.database.accountDao(), app.connection, app.files, app.network, app.wake, app.clock, speeds = app.speeds,
+            playable = object : PlayableVideo {
+                override fun canPlay(codec: String) = false
+            },
+            alerts = alerts,
+        )
+
+        runner.run()
+
+        assertEquals(listOf(Triple(alex, "Heat", DownloadFailure.Unplayable)), alerts.failed)
+        assertTrue(alerts.finished.isEmpty())
+    }
+
+    @Test
+    fun severalDownloadsAreOneReportWithTheirCount() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Items") { request -> Reply.json(itemsPage(downloadItemJson(request.query["ids"]!!, size = 3, primaryTag = null))) }
+        server.on("GET", "/Items/a/Download") { Reply.ranged("aaa", it) }
+        server.on("GET", "/Items/b/Download") { Reply.ranged("bbb", it) }
+        queue(DownloadTarget.Item("a"))
+        app.clock.advance(1.seconds)
+        queue(DownloadTarget.Item("b"))
+        val alerts = RecordingAlerts()
+
+        runnerAlerting(alerts).run()
+
+        assertEquals(listOf(alex to listOf("a", "b")), alerts.finished.map { (profile, downloads) -> profile to downloads.map { it.title } })
+    }
+
+    @Test
+    fun anEpisodeIsReportedWithItsShow() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Items") { request ->
+            when (request.query["ids"]) {
+                "e1" -> Reply.json(itemsPage(downloadItemJson("e1", "Pilot", "Episode", seriesId = "s1", seriesName = "Saga", seasonId = "se1", seasonNumber = 1, episodeNumber = 1)))
+                else -> Reply.json(itemsPage(parentJson("s1", "Saga", "Series"), parentJson("se1", "Season 1", "Season", number = 1, seriesId = "s1")))
+            }
+        }
+        server.on("GET", "/Items/e1/Download") { Reply.ranged(body, it) }
+        server.on("GET", "/Items/e1/Images/Primary", Reply.file("still"))
+        server.on("GET", "/Items/s1/Images/Primary", Reply.file("show-poster"))
+        server.on("GET", "/Items/se1/Images/Primary", Reply.file("season-poster"))
+        queue(DownloadTarget.Item("e1"))
+        val alerts = RecordingAlerts()
+
+        runnerAlerting(alerts).run()
+
+        assertEquals(listOf(alex to listOf(CompletedDownload("Pilot", "Saga"))), alerts.finished)
+    }
+
+    @Test
+    fun aPauseByTheUserReportsNothing() = runTest {
+        val server = movieOnServer()
+        queue()
+        val gate = server.hold("GET", "/Items/m1/Download")
+        val alerts = RecordingAlerts()
+
+        val run = async { runnerAlerting(alerts).run() }
+        runCurrent()
+        app.downloadRepository.pause(alex, "m1")
+        withContext(Dispatchers.Default) { delay(200) }
+        gate.open()
+        run.await()
+
+        assertTrue(alerts.finished.isEmpty())
+        assertTrue(alerts.failed.isEmpty())
+    }
+
+    @Test
+    fun aProfileWithDownloadNotificationsOffGetsNoReports() = runTest {
+        movieOnServer()
+        queue()
+        app.profileSettings.setDownloadNotifications(false)
+        val alerts = RecordingAlerts()
+
+        runnerAlerting(alerts).run()
+
+        assertTrue(alerts.finished.isEmpty())
+        assertTrue(alerts.failed.isEmpty())
+    }
+
+    @Test
+    fun aQueueSplitAcrossRunsIsReportedOnceWhenItIsDone() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Items") { request -> Reply.json(itemsPage(downloadItemJson(request.query["ids"]!!, size = 3, primaryTag = null))) }
+        server.on("GET", "/Items/a/Download") { Reply.ranged("aaa", it) }
+        var secondCalls = 0
+        server.on("GET", "/Items/b/Download") { if (++secondCalls == 1) Reply.status(HttpStatusCode.ServiceUnavailable) else Reply.ranged("bbb", it) }
+        queue(DownloadTarget.Item("a"))
+        app.clock.advance(1.seconds)
+        queue(DownloadTarget.Item("b"))
+        val alerts = RecordingAlerts()
+        val runner = runnerAlerting(alerts)
+
+        val first = runner.run()
+        val none = alerts.finished.toList()
+        val second = runner.run()
+
+        assertEquals(DownloadRunner.Next.Retry, first)
+        assertTrue(none.isEmpty())
+        assertEquals(DownloadRunner.Next.Done, second)
+        assertEquals(listOf(alex to listOf("a", "b")), alerts.finished.map { (profile, downloads) -> profile to downloads.map { it.title } })
+    }
+
+    @Test
+    fun pausingTheRestOfAQueueReportsNothingForTheOnesThatFinished() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Items") { request -> Reply.json(itemsPage(downloadItemJson(request.query["ids"]!!, size = 3, primaryTag = null))) }
+        server.on("GET", "/Items/a/Download") { Reply.ranged("aaa", it) }
+        server.on("GET", "/Items/b/Download") { Reply.ranged("bbb", it) }
+        queue(DownloadTarget.Item("a"))
+        app.clock.advance(1.seconds)
+        queue(DownloadTarget.Item("b"))
+        val gate = server.hold("GET", "/Items/b/Download")
+        val alerts = RecordingAlerts()
+
+        val run = async { runnerAlerting(alerts).run() }
+        runCurrent()
+        app.downloadRepository.pause(alex, "b")
+        withContext(Dispatchers.Default) { delay(200) }
+        gate.open()
+        run.await()
+
+        assertTrue(alerts.finished.isEmpty())
+    }
+
     private fun runnerRefusing(refused: String) = DownloadRunner(
         app.downloads, app.database.accountDao(), app.connection, app.files, app.network, app.wake, app.clock, speeds = app.speeds,
         playable = object : PlayableVideo {
@@ -476,6 +683,30 @@ class DownloadRunnerTest {
         val transferring = seen.filter { it.bytesDone > 0 }
         assertTrue(transferring.size < 20, "reported ${transferring.size} times")
         assertEquals(10_000_000L, transferring.last().bytesDone, "the last report is the full count")
+    }
+
+    @Test
+    fun aPlatformTransferIsReportedBeforeItsFirstBytesSoTheSystemCanShowItAtOnce() = runTest {
+        movieOnServer()
+        queue()
+        val seen = mutableListOf<DownloadRunner.Progress>()
+        var seenWhenTheTransferStarted: List<DownloadRunner.Progress> = emptyList()
+        val transfer = object : ExternalVideoTransfer {
+            override suspend fun transfer(
+                request: ExternalTransferRequest,
+                stop: kotlinx.coroutines.flow.StateFlow<Boolean>,
+                onProgress: suspend (done: Long, total: Long?) -> Unit,
+            ): ExternalTransferResult {
+                seenWhenTheTransferStarted = seen.toList()
+                app.files.open(request.partPath, append = false).also { it.write("x".encodeToByteArray(), 1) }.close()
+                return ExternalTransferResult.Finished
+            }
+        }
+
+        externalRunner(transfer).run { seen += it }
+
+        assertEquals("Heat", seenWhenTheTransferStarted.single().title)
+        assertEquals(0L, seenWhenTheTransferStarted.single().bytesDone)
     }
 
     @Test
