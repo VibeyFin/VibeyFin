@@ -8,6 +8,8 @@ import app.vibeyfin.ui.notifications.NotificationOpenViewModel
 @Composable
 fun VibeyFinApp(notificationOpen: NotificationOpenViewModel) {
     VibeyFinTheme {
-        VibeyFinNavHost(notificationOpen)
+        LocalNetworkPermissionGate {
+            VibeyFinNavHost(notificationOpen)
+        }
     }
 }

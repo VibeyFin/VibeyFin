@@ -18,6 +18,7 @@
          listens for answers. While targetSdk is 36 or lower, Android grants local network access
          with INTERNET. At targetSdk 37 it needs android.permission.ACCESS_LOCAL_NETWORK, declared
          here and requested at runtime, and that covers connecting to LAN servers too. -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
