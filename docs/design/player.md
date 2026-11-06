@@ -34,7 +34,7 @@ M3 on the scrim, no glass. Top app bar: `←`, title and meta line, speed, audio
 
 ## Search for subtitles (issue #58)
 
-The last row of the Subtitles list: a button with `magnifyingglass` at the end of the iOS `Menu`, a row at the end of the Subtitles column of the Android track sheet. A title with no subtitles still has the list, with "Off" and this row. It shows under the same rules as on a title's page (`screens.md`), and not for what plays from a download: a new subtitle reaches streams only, not a title already on the device.
+The last row of the Subtitles list: a button with `magnifyingglass` at the end of the iOS `Menu`, a row with the search icon at the end of the Subtitles column of the Android track sheet. A title with no subtitles still has the list, with "Off" and this row. It shows under the same rules as on a title's page (`screens.md`), and not for what plays from a download: a new subtitle reaches streams only, not a title already on the device.
 
 - **The sheet:** a native sheet with the title, a Language row, then the results. It searches straight away in the profile's subtitle language, or the device's when that has no preference. Grey lines while it loads.
 - **Language:** the same chooser as Settings > Audio and subtitles (`PickerSheet`, `PickerSheetView`) without "Any language". A choice searches again for this search only; the profile's setting doesn't change.

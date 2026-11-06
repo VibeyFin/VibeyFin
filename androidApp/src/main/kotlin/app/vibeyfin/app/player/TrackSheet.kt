@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -73,7 +75,7 @@ fun SpeedSheet(
 @Composable
 private fun Section(title: String, options: List<TrackOption>, onSelect: (Int) -> Unit, modifier: Modifier = Modifier, onSearch: (() -> Unit)? = null) {
     val rows = remember(options, onSearch != null) {
-        options.map { OptionRow(it.index.toString(), it.label, it.selected) } + listOfNotNull(OptionRow(SEARCH_ROW, Strings.searchForSubtitles).takeIf { onSearch != null })
+        options.map { OptionRow(it.index.toString(), it.label, it.selected) } + listOfNotNull(OptionRow(SEARCH_ROW, Strings.searchForSubtitles, icon = Icons.Filled.Search).takeIf { onSearch != null })
     }
 
     // Half the width each, so a long server name may need a third line
