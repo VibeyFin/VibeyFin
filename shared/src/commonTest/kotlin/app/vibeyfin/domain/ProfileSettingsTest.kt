@@ -1,14 +1,21 @@
 package app.vibeyfin.domain
 
 import app.vibeyfin.data.db.NotifiedItemEntity
+import app.vibeyfin.domain.model.ProfileRef
+import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class ProfileSettingsTest {
     private val app = TestApp()
@@ -235,5 +242,74 @@ class ProfileSettingsTest {
 
         assertFalse(dao.wasNotified(account.serverId, account.userId, "i1"))
         assertEquals(true, dao.wasNotified(account.serverId, account.userId, "i2"))
+    }
+
+    @Test
+    fun `values with nobody signed in have no profile and every default`() = runTest {
+        val values = app.profileSettings.values.first()
+
+        assertNull(values.profile)
+        assertFalse(values.hasProfile)
+        assertEquals(10, values[ProfileSettingDefinitions.SkipBackSeconds])
+        assertNull(values.readOrNull(ProfileSettingDefinitions.SkipBackSeconds))
+    }
+
+    @Test
+    fun `values of a signed-in profile hold what was saved and the default for the rest`() = runTest {
+        app.signedIn()
+        app.profileSettings.setSkipBackSeconds(15)
+
+        val values = app.profileSettings.values.first { it.readOrNull(ProfileSettingDefinitions.SkipBackSeconds) == 15 }
+
+        assertEquals(ProfileRef("srv-1", "u1"), values.profile)
+        assertEquals(15, values[ProfileSettingDefinitions.SkipBackSeconds])
+        assertEquals(true, values[ProfileSettingDefinitions.PictureInPicture])
+    }
+
+    @Test
+    fun `a value outside the choices is ignored and so is one stored outside them`() = runTest {
+        app.signedIn()
+
+        app.profileSettings.setBingeThreshold(1)
+        app.profileSettings.setStorageLimitMb(-5)
+        assertEquals(3, app.profileSettings.bingeThreshold.first())
+        assertEquals(0L, app.profileSettings.storageLimitMb.first())
+
+        app.database.accountDao().setSkipBackSeconds("srv-1", "u1", 7)
+        assertEquals(10, app.profileSettings.skipBackSeconds.first())
+        assertEquals(10, app.profileSettings.values.first { it.hasProfile }[ProfileSettingDefinitions.SkipBackSeconds])
+    }
+
+    @Test
+    fun `shownFor hides values read for another profile`() = runTest {
+        app.signedIn()
+        app.profileSettings.setSkipBackSeconds(15)
+        val values = app.profileSettings.values.first { it.readOrNull(ProfileSettingDefinitions.SkipBackSeconds) == 15 }
+
+        assertEquals(15, values.shownFor(ProfileRef("srv-1", "u1"))[ProfileSettingDefinitions.SkipBackSeconds])
+        val other = values.shownFor(ProfileRef("srv-1", "u2"))
+        assertEquals(ProfileRef("srv-1", "u2"), other.profile)
+        assertNull(other.readOrNull(ProfileSettingDefinitions.SkipBackSeconds))
+        assertEquals(10, other[ProfileSettingDefinitions.SkipBackSeconds])
+    }
+
+    @Test
+    fun `switching profile never shows the previous profile's value`() = runTest {
+        val server = app.signedIn()
+        app.profileSettings.setSkipBackSeconds(15)
+        server.on("GET", "/Users/Me", Reply.json("""{"Id":"u2","Name":"Sam"}"""))
+        app.accounts.saveSession("srv-1", "u2", "Sam", null, "token-2")
+
+        val seen = mutableListOf<ProfileValues>()
+        val collecting = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { app.profileSettings.values.toList(seen) }
+        app.connection.activate("srv-1", "u2")
+        app.profileSettings.setSkipBackSeconds(30)
+        advanceUntilIdle()
+        collecting.cancel()
+
+        val sam = seen.filter { it.profile == ProfileRef("srv-1", "u2") }
+        assertTrue(sam.isNotEmpty())
+        assertTrue(sam.none { it[ProfileSettingDefinitions.SkipBackSeconds] == 15 })
+        assertEquals(15, app.database.accountDao().observeSkipBackSeconds("srv-1", "u1").first())
     }
 }
