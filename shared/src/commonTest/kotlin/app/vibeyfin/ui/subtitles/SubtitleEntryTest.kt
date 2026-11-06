@@ -7,6 +7,7 @@ import app.vibeyfin.testing.ViewModelTracker
 import app.vibeyfin.testing.itemJson
 import app.vibeyfin.testing.itemsJson
 import app.vibeyfin.ui.item.ItemViewModel
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -20,7 +21,10 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /** Who sees "Search for subtitles" on a title's page, and what the page does once one is added. */
@@ -53,6 +57,55 @@ class SubtitleEntryTest {
     private suspend fun ItemViewModel.offered(): Boolean {
         uiState.first { !it.loading }
         return withTimeoutOrNull(1.seconds) { uiState.first { it.offersSubtitleSearch } } != null
+    }
+
+    @Test
+    fun theEntryAppearsOnceAFailedPermissionCheckPasses() = runTest {
+        val server = signedIn(admin = false, allowed = true)
+        var failing = true
+        server.on("GET", "/Users/Me") {
+            if (failing) Reply.status(HttpStatusCode.ServiceUnavailable) else Reply.json("""{"Id":"u1","Name":"Alex","Policy":{"EnableSubtitleManagement":true}}""")
+        }
+        val page = page()
+
+        assertFalse(page.offered())
+        failing = false
+        assertNotNull(withTimeoutOrNull(1.minutes) { page.uiState.first { it.offersSubtitleSearch } })
+    }
+
+    @Test
+    fun aRefusedPermissionCheckIsNotAskedAgain() = runTest {
+        val server = signedIn(admin = false, allowed = false)
+        var reads = 0
+        server.on("GET", "/Users/Me") {
+            reads++
+            Reply.json("""{"Id":"u1","Name":"Alex","Policy":{"EnableSubtitleManagement":false}}""")
+        }
+        val page = page()
+
+        assertFalse(page.offered())
+        val settled = reads
+        assertNull(withTimeoutOrNull(1.minutes) { page.uiState.first { it.offersSubtitleSearch } })
+        assertEquals(settled, reads)
+    }
+
+    @Test
+    fun theEntrySitsInTheTechnicalInfoOnceOffered() = runTest {
+        signedIn(admin = false, allowed = true)
+        val state = page().uiState.first { it.offersSubtitleSearch }
+
+        assertEquals(listOf("Subtitles"), state.technical.filter { it.searchesSubtitles }.map { it.label })
+    }
+
+    @Test
+    fun theEntryOutlivesThePageLoadingAgain() = runTest {
+        signedIn(admin = false, allowed = true)
+        val page = page()
+
+        assertTrue(page.offered())
+        page.onRetry()
+        page.uiState.first { !it.loading && it.item != null }
+        assertTrue(page.offered())
     }
 
     @Test

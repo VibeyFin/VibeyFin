@@ -242,12 +242,14 @@ class ItemViewModel(
     private var episodesJob: Job? = null
     private val downloadFlow = DownloadFlow(viewModelScope, downloads) { connection.state.value.profileOrNull() }
     private val canDownload = MutableStateFlow(true)
+    private val canSearchSubtitles = MutableStateFlow(false)
 
     private val downloadParts = downloadParts(connection, downloads, downloadFlow, canDownload)
 
-    val uiState: StateFlow<ItemUiState> = combine(content, connection.sessionEnded(), downloadParts) { content, exit, parts ->
+    val uiState: StateFlow<ItemUiState> = combine(content, connection.sessionEnded(), downloadParts, canSearchSubtitles) { content, exit, parts, canSearch ->
         content.copy(
             exit = exit,
+            canSearchSubtitles = canSearch,
             downloads = parts.byId,
             canDownload = parts.canDownload,
             downloadPrompt = parts.prompt,
@@ -266,7 +268,7 @@ class ItemViewModel(
         // What was watched changed (playback ended): bring the Resume button and the marks up to date, quietly.
         viewModelScope.launch { changes.events.collect { refresh() } }
         viewModelScope.launch { probePlayout() }
-        viewModelScope.launch { subtitles.available.collect { can -> content.update { it.copy(canSearchSubtitles = can) } } }
+        viewModelScope.launch { subtitles.available.collect { canSearchSubtitles.value = it } }
     }
 
     /** A subtitle reached the server: the page reads the item again, so the track is in the technical info. */

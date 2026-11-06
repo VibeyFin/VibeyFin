@@ -2,18 +2,21 @@ package app.vibeyfin.domain
 
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
+import app.vibeyfin.data.api.UserDto
 import app.vibeyfin.data.api.downloadRemoteSubtitle
+import app.vibeyfin.data.api.isRetryable
 import app.vibeyfin.data.api.map
 import app.vibeyfin.data.api.remoteSubtitles
 import app.vibeyfin.data.api.valueOrNull
 import app.vibeyfin.data.platform.DeviceInfo
 import app.vibeyfin.domain.model.ProfileRef
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.update
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -40,6 +43,7 @@ sealed interface SubtitleDownload {
 }
 
 /** Searching for subtitles through the server's providers, and adding one to an item for every client. */
+@OptIn(ExperimentalCoroutinesApi::class)
 class SubtitleRepository(
     private val connection: ConnectionManager,
     private val library: LibraryRepository,
@@ -48,6 +52,8 @@ class SubtitleRepository(
     private val deviceInfo: DeviceInfo,
     private val pollEvery: Duration = 2.seconds,
     private val polls: Int = 15,
+    private val policyRecheckEvery: Duration = 5.seconds,
+    private val policyRechecks: Int = 36,
 ) {
     // A 403 means the policy changed after it was read; that profile's entry stays hidden until the app next starts.
     private val refused = MutableStateFlow(emptySet<ProfileRef>())
@@ -55,9 +61,20 @@ class SubtitleRepository(
     /** Whether to offer the search: online, not a kids profile, and the user's own policy allows it. Being an admin doesn't count. */
     val available: Flow<Boolean> = combine(offlineMode.isOffline, profileSettings.kidsProfile, refused, connection.state) { offline, kids, refusedProfiles, state ->
         !offline && kids == false && state.profileOrNull() !in refusedProfiles
-    }.distinctUntilChanged().map { it && allowedByPolicy() }
+    }.distinctUntilChanged().mapLatest { it && allowedByPolicy() }
 
-    private suspend fun allowedByPolicy(): Boolean = connection.asConnected(false) { it.api.me().valueOrNull()?.policy?.enableSubtitleManagement == true }
+    private suspend fun allowedByPolicy(): Boolean {
+        var read = readUser()
+        var left = policyRechecks
+
+        while (read.isRetryable() && left-- > 0) {
+            delay(policyRecheckEvery)
+            read = readUser()
+        }
+        return read.valueOrNull()?.policy?.enableSubtitleManagement == true
+    }
+
+    private suspend fun readUser(): ApiResult<UserDto> = connection.asConnected<ApiResult<UserDto>>(ApiResult.Failure(ApiError.Unauthorized)) { it.api.me() }
 
     /** The language to search first: the profile's subtitle language, else the device's. */
     fun startingLanguage(prefs: LanguagePrefs?, languages: List<Language>): String = prefs?.subtitleLanguage

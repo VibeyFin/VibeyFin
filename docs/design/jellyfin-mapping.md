@@ -86,7 +86,7 @@ Only a card in progress has Remove; a Next Up card does not. Jellyfin has no "hi
 
 | What | Source | Notes |
 | --- | --- | --- |
-| Whether to offer it | `Policy.EnableSubtitleManagement` on `GET /Users/Me` | Only this field, never `IsAdministrator`. Hidden on a kids profile and offline. Jellyfin 12.2 let an admin search with the field off, so the policy is what decides, not whether the call would work. |
+| Whether to offer it | `Policy.EnableSubtitleManagement` on `GET /Users/Me` | Only this field, never `IsAdministrator`. Hidden on a kids profile and offline. Jellyfin 12.2 let an admin search with the field off, so the policy is what decides, not whether the call would work. A read that gets no answer or a 5xx is tried again every 5 seconds for 3 minutes, so a blip doesn't hide the entry. |
 | Results | `GET /Items/{id}/RemoteSearch/Subtitles/{language}` | `language` is the three-letter code. The device's language goes through `TwoLetterISOLanguageName` in `GET /Localization/Cultures`; if those can't be read, the two-letter code goes as it is, which Jellyfin 12.2 accepts. A server with no provider answers `[]`, the same as a language with no results. Providers that fail or hit a limit are logged and also leave `[]`. |
 | Adding one | `POST /Items/{id}/RemoteSearch/Subtitles/{subtitleId}` | Answers 204 **even when the provider failed**, and only queues the refresh that lists the track. So the app compares the item's `MediaStreams` before and after, every 2 seconds for 30 seconds. The new track is found by `DisplayTitle`, because adding one can move the other indexes. |
 
