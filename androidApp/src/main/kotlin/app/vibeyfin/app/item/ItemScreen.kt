@@ -269,9 +269,7 @@ private fun ItemPage(
                 SimilarSection(row, state.similarTiles, margin, onOpen, onOpenSeerr, onRetry = onRetrySimilar, tileWidth = if (wide) POSTER_WIDE else VibeyFinTokens.Size.posterWidth)
             }
 
-            if (state.offersSubtitleSearch) SubtitleSearchRow(onSearchSubtitles)
-
-            if (state.technical.isNotEmpty()) TechnicalInfo(state.technical)
+            if (state.technical.isNotEmpty()) TechnicalInfo(state.technical, onSearchSubtitles)
 
             Spacer(Modifier.height(VibeyFinTokens.Space.s5))
         }

@@ -9,6 +9,7 @@ import app.vibeyfin.domain.model.MediaItem
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class ItemFactsTest {
     private fun item(
@@ -170,5 +171,28 @@ class ItemFactsTest {
     @Test
     fun aTitleWithNoSuchLineGetsOneWithOnlyHowItPlays() {
         assertEquals(listOf(TechnicalLine("Video", "Direct play")), item().technicalLines(PlayoutTags(video = Playout(PlayMethod.DirectPlay))))
+    }
+
+    @Test
+    fun theSubtitleSearchSitsOnTheSubtitlesLineBetweenAudioAndSize() {
+        val lines = item(fileBytes = 850_000_000, subtitleTracks = listOf(StreamTrack(displayTitle = "English"))).technicalLines(searchesSubtitles = true)
+
+        assertEquals(listOf("Subtitles", "Size"), lines.map { it.label })
+        assertEquals(listOf(true, false), lines.map { it.searchesSubtitles })
+        assertEquals(listOf("English"), lines.first().rows.map { it.text })
+    }
+
+    @Test
+    fun aTitleWithNoSubtitleTracksKeepsTheLineWithOnlyTheSearch() {
+        val line = item().technicalLines(searchesSubtitles = true).single()
+
+        assertEquals("Subtitles", line.label)
+        assertTrue(line.searchesSubtitles)
+        assertEquals(emptyList(), line.rows)
+    }
+
+    @Test
+    fun withoutTheSearchATitleWithNoSubtitleTracksHasNoLine() {
+        assertEquals(emptyList(), item().technicalLines())
     }
 }

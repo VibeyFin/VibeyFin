@@ -142,11 +142,8 @@ struct ItemView: View {
                     .padding(.horizontal, -margin)
             }
             similarSection(state)
-            if state.offersSubtitleSearch {
-                SubtitleSearchRow { searchingSubtitles = true }
-            }
             if !state.technical.isEmpty {
-                TechnicalInfoView(lines: state.technical)
+                TechnicalInfoView(lines: state.technical) { searchingSubtitles = true }
             }
         }
         .screenMargin()

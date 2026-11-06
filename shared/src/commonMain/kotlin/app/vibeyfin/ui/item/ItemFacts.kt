@@ -17,9 +17,12 @@ internal fun MediaItem.facts(): List<String> = listOfNotNull(
     rating?.let(Strings::starRating),
 )
 
-/** One line of the technical info: what it is, and what the file says. [reason] says why row [reasonRow] of [value] is a transcode. */
-data class TechnicalLine(val label: String, val value: String, val reason: String? = null, val reasonRow: Int = 0) {
-    val rows: List<TechnicalRow> get() = value.split("\n").mapIndexed { index, row -> TechnicalRow(row, reason.takeIf { index == reasonRow }) }
+/**
+ * One line of the technical info: what it is, and what the file says. [reason] says why row [reasonRow] of [value] is a transcode.
+ * [searchesSubtitles] puts "Search for subtitles" under the line's rows.
+ */
+data class TechnicalLine(val label: String, val value: String, val reason: String? = null, val reasonRow: Int = 0, val searchesSubtitles: Boolean = false) {
+    val rows: List<TechnicalRow> get() = if (value.isEmpty()) emptyList() else value.split("\n").mapIndexed { index, row -> TechnicalRow(row, reason.takeIf { index == reasonRow }) }
 }
 
 /** One row of a technical line, and why it is a transcode when it is one. */
@@ -29,10 +32,10 @@ data class TechnicalRow(val text: String, val reason: String? = null)
  * The file's video as one line ("3840×2160 · HEVC · HDR10 · 24 fps · 8.2 Mbps"), then how much storage it takes ("4.2 GB"); each
  * only when the server sent it.
  */
-internal fun MediaItem.technicalLines(tags: PlayoutTags? = null): List<TechnicalLine> = listOfNotNull(
+internal fun MediaItem.technicalLines(tags: PlayoutTags? = null, searchesSubtitles: Boolean = false): List<TechnicalLine> = listOfNotNull(
     videoLine(tags?.video),
     audioLine(tags?.audio, tags?.audioTrack),
-    tracksLine(Strings.technicalSubtitles, subtitleTracks),
+    subtitlesLine(searchesSubtitles),
     fileBytes?.let { TechnicalLine(Strings.technicalSize, Strings.fileSize(it)) },
 )
 
@@ -50,6 +53,13 @@ private fun String.withPlayout(tag: Playout?, codec: String?): String {
     if (tag == null) return this
     val at = codec?.let { indexOf(it, ignoreCase = true).takeIf { found -> found >= 0 }?.plus(it.length) } ?: length
     return take(at) + " " + Strings.playoutTag(tag.method) + drop(at)
+}
+
+// A title with no subtitle tracks still has the line when it offers the search: that is the case the search is for
+private fun MediaItem.subtitlesLine(searches: Boolean): TechnicalLine? {
+    val line = tracksLine(Strings.technicalSubtitles, subtitleTracks)
+
+    return if (searches) (line ?: TechnicalLine(Strings.technicalSubtitles, "")).copy(searchesSubtitles = true) else line
 }
 
 private fun tracksLine(label: String, tracks: List<StreamTrack>): TechnicalLine? {

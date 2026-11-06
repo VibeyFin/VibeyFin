@@ -138,7 +138,7 @@ data class ItemUiState(
     /** A short message that goes by itself. */
     val notice: String? = null,
 ) {
-    /** A row for "Search for subtitles": a movie or an episode only, since subtitles belong to one file, and not what plays from a download. */
+    /** "Search for subtitles" in the technical info: a movie or an episode only, since subtitles belong to one file, and not what plays from a download. */
     val offersSubtitleSearch: Boolean
         get() = canSearchSubtitles && (item?.kind == ItemKind.Movie || item?.kind == ItemKind.Episode) && download?.badge != DownloadBadge.Done
 
@@ -186,7 +186,7 @@ data class ItemUiState(
         }
 
     /** The file's details, collapsed at the bottom of the page; empty when the server sent none. */
-    val technical: List<TechnicalLine> get() = item?.technicalLines(playoutTags).orEmpty()
+    val technical: List<TechnicalLine> get() = item?.technicalLines(playoutTags, offersSubtitleSearch).orEmpty()
 
     private val isSeries: Boolean get() = item?.kind == ItemKind.Series
 

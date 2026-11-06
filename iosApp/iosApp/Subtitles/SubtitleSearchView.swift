@@ -206,7 +206,7 @@ private struct ProblemView: View {
     }
 }
 
-/// The way in on a title's page: a row of its own, above the technical info and outside it.
+/// The way in on a title's page, under the technical info's subtitle tracks.
 struct SubtitleSearchRow: View {
     let action: () -> Void
 

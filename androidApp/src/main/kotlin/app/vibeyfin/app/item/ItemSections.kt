@@ -550,9 +550,8 @@ private fun CastTile(person: CastMember, tile: Dp, onClick: () -> Unit) {
 
 private fun Modifier.matchSize(): Modifier = this.fillMaxWidth().fillMaxHeight()
 
-/** The way in to "Search for subtitles": a row of its own, above the technical info and outside it. */
 @Composable
-fun SubtitleSearchRow(onClick: () -> Unit) {
+private fun SubtitleSearchRow(onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
@@ -566,7 +565,7 @@ fun SubtitleSearchRow(onClick: () -> Unit) {
 
 /** The file's details, collapsed until asked for. */
 @Composable
-fun TechnicalInfo(lines: List<TechnicalLine>) {
+fun TechnicalInfo(lines: List<TechnicalLine>, onSearchSubtitles: () -> Unit) {
     var open by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
@@ -586,6 +585,7 @@ fun TechnicalInfo(lines: List<TechnicalLine>) {
                         Text(row.text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
                         row.reason?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = VibeyFinTokens.Colors.inkMuted) }
                     }
+                    if (line.searchesSubtitles) SubtitleSearchRow(onSearchSubtitles)
                 }
             }
         }
