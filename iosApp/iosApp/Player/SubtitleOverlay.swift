@@ -27,7 +27,7 @@ final class SubtitleTrackModel: ObservableObject {
                 if status == 401 { onUnauthorized() }
                 return
             }
-            let parsed = SubtitleParser.parse(String(bytes: data, encoding: .utf8) ?? "")
+            let parsed = SubtitleParser.parse(SubtitleParser.decode(data))
             PlayerLog.write("subtitle loaded bytes=\(data.count) cues=\(parsed.count) first=\(parsed.first.map { "\($0.start)" } ?? "-")")
             self?.cues = parsed
         }

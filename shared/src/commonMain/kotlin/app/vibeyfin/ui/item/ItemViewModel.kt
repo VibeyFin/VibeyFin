@@ -140,7 +140,7 @@ data class ItemUiState(
 ) {
     /** "Search for subtitles" in the technical info: a movie or an episode only, since subtitles belong to one file, and not what plays from a download. */
     val offersSubtitleSearch: Boolean
-        get() = canSearchSubtitles && (item?.kind == ItemKind.Movie || item?.kind == ItemKind.Episode) && download?.badge != DownloadBadge.Done
+        get() = canSearchSubtitles && item?.canPlay == true && download?.badge != DownloadBadge.Done
 
     /** The page's own movie or episode as a download, or null when it is not one. */
     val download: Download? get() = item?.let { downloads[it.id] }

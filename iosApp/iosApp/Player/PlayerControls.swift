@@ -99,14 +99,18 @@ struct PlayerTrackMenu: View {
     var body: some View {
         Menu {
             if !audio.isEmpty {
-                picker(Strings.shared.audio, options: audio, onSelect: onSelectAudio)
+                Section(Strings.shared.audio.titleCased()) {
+                    picker(options: audio, onSelect: onSelectAudio)
+                }
             }
             if !subtitles.isEmpty {
-                picker(Strings.shared.subtitles, options: subtitles, onSelect: onSelectSubtitle)
-            }
-            if let onSearchSubtitles {
-                Button(action: onSearchSubtitles) {
-                    Label(Strings.shared.searchForSubtitles.titleCased(), systemImage: "magnifyingglass")
+                Section(Strings.shared.subtitles.titleCased()) {
+                    picker(options: subtitles, onSelect: onSelectSubtitle)
+                    if let onSearchSubtitles {
+                        Button(action: onSearchSubtitles) {
+                            Label(Strings.shared.searchForSubtitles.titleCased(), systemImage: "magnifyingglass")
+                        }
+                    }
                 }
             }
         } label: {
@@ -120,9 +124,9 @@ struct PlayerTrackMenu: View {
 
     /// The picker shows what the shared model marks as selected, and a pick goes straight back to it:
     /// nothing is kept here, so the state is the only truth.
-    private func picker(_ title: String, options: [TrackOption], onSelect: @escaping (Int32) -> Void) -> some View {
+    private func picker(options: [TrackOption], onSelect: @escaping (Int32) -> Void) -> some View {
         Picker(
-            title.titleCased(),
+            "",
             selection: Binding(
                 get: { options.first(where: { $0.selected })?.index ?? options.first?.index ?? 0 },
                 set: onSelect
@@ -132,6 +136,8 @@ struct PlayerTrackMenu: View {
                 Text(option.label).tag(option.index)
             }
         }
+        .pickerStyle(.inline)
+        .labelsHidden()
     }
 }
 

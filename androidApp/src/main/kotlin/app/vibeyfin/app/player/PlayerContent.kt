@@ -20,6 +20,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -286,16 +287,16 @@ private fun PromptAndSheets(state: PlaybackUiState, chrome: PlayerChrome, viewMo
         )
     }
 
-    state.subtitleSearchItemId?.let { id ->
-        SubtitleSearch(
-            itemId = id,
-            visible = chrome.showSubtitleSearch,
-            onDismiss = { chrome.showSubtitleSearch = false },
-            onAdded = viewModel::onSubtitleAdded,
-            onFailedWhileClosed = viewModel::onNotice,
-            keepSystemBarsHidden = true,
-        )
-    }
+    LaunchedEffect(state.subtitleSearchItemId) { chrome.showSubtitleSearch = false }
+
+    SubtitleSearch(
+        itemId = state.subtitleSearchItemId.orEmpty(),
+        visible = chrome.showSubtitleSearch && state.subtitleSearchItemId != null,
+        onDismiss = { chrome.showSubtitleSearch = false },
+        onAdded = viewModel::onSubtitleAdded,
+        onFailedWhileClosed = viewModel::onNotice,
+        keepSystemBarsHidden = true,
+    )
 }
 
 // The next episode, in the last seconds of this one. It grows in and fades like a screen opening, and goes the

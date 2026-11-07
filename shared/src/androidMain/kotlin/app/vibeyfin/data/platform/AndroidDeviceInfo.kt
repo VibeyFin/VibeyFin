@@ -13,7 +13,7 @@ class AndroidDeviceInfo(private val context: Context) : DeviceInfo {
             ?: Build.MODEL
     }
 
-    override val language: String get() = Locale.getDefault().language
+    override val language: String get() = Locale.getDefault().toLanguageTag().substringBefore('-')
 
     override val appVersion: String by lazy {
         val packages = context.packageManager

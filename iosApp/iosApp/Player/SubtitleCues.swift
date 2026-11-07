@@ -14,6 +14,13 @@ struct SubtitleSource: Equatable {
 }
 
 enum SubtitleParser {
+    /// The file's text. Providers serve legacy encodings as often as UTF-8, and text that is not valid UTF-8 would otherwise read as nothing.
+    static func decode(_ data: Data) -> String {
+        if let text = String(data: data, encoding: .utf8) { return text }
+        if data.starts(with: [0xFF, 0xFE]) || data.starts(with: [0xFE, 0xFF]), let text = String(data: data, encoding: .utf16) { return text }
+        return String(data: data, encoding: .windowsCP1252) ?? String(data: data, encoding: .isoLatin1) ?? ""
+    }
+
     /// Reads SRT and WebVTT. Both are blocks of a timing line (`00:01:02,500 --> 00:01:04,000`) and text lines.
     /// Markup (`<i>`, `{\an8}`) is dropped; a block without a readable timing line is skipped.
     static func parse(_ text: String) -> [SubtitleCue] {

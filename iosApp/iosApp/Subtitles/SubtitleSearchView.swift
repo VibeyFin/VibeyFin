@@ -69,6 +69,7 @@ private struct SubtitleSearchView: View {
             onDismiss: { model.dismissMessage() }
         )
         .presentationDetents([.medium, .large])
+        .presentationSizing(.form)
         .sheet(isPresented: $choosingLanguage, onDismiss: { model.searchLanguages("") }, content: {
             languagePicker
         })

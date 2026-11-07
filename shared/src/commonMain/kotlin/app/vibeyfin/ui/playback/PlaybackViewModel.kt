@@ -802,7 +802,7 @@ class PlaybackViewModel(
                 title = found.title,
                 subtitle = Strings.metaLine(found.seriesName, found.episodeLabel()),
                 artworkUrl = found.landscapeUrl ?: found.backdropUrl ?: found.posterUrl,
-                subtitleSearchItemId = found.id.takeIf { downloaded == null && (found.kind == ItemKind.Movie || found.kind == ItemKind.Episode) },
+                subtitleSearchItemId = found.id.takeIf { downloaded == null && found.canPlay },
             )
         }
         open(startAtMs)
