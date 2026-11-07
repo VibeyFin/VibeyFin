@@ -224,6 +224,18 @@ class SubtitleSearchViewModelTest {
     }
 
     @Test
+    fun aRatingOfZeroIsLeftOutLikeNoRating() = runTest {
+        val server = signedIn(subtitleLanguage = "eng")
+        server.finds("eng", result("a", rating = 0.0))
+        val viewModel = viewModel()
+
+        viewModel.onOpen("m1")
+        val state = viewModel.settled()
+
+        assertEquals("OpenSubtitles · SRT", state.results.single().details)
+    }
+
+    @Test
     fun aResultThatWasAddedIsMarkedAndCannotBeAddedAgain() = runTest {
         val server = signedIn(subtitleLanguage = "eng")
         server.finds("eng", result("a"))

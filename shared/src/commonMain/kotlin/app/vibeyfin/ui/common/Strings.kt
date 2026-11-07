@@ -820,11 +820,11 @@ object Strings {
 
     /** Provider, format and rating; what the server left out is left out here too. */
     fun subtitleResultDetails(provider: String?, format: String?, rating: Double?, possiblyAdded: Boolean = false): String {
-        val stars = rating?.let { "\u2605 " + (it * 10).roundToInt().let { tenths -> "${tenths / 10}.${tenths % 10}" } }
+        val stars = rating?.takeIf { it > 0 }?.let { "\u2605 " + (it * 10).roundToInt().let { tenths -> "${tenths / 10}.${tenths % 10}" } }
         return listOfNotNull(provider, format?.uppercase(), stars, if (possiblyAdded) "May already be added" else null).joinToString(" \u00B7 ")
     }
 
-    fun subtitleResultDescription(name: String, details: String, isMatch: Boolean, added: Boolean) = listOfNotNull(name, details, if (isMatch) "Matches this file" else null, if (added) "Already added" else null).joinToString(", ")
+    fun subtitleResultDescription(name: String, details: String, isMatch: Boolean, added: Boolean): String = listOfNotNull(name, details, if (isMatch) "Matches this file" else null, if (added) "Already added" else null).joinToString(", ")
 
     val noLanguageMatches = "No language matches"
     val languagesDefaultsSummary = "Server defaults"

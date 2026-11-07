@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -171,7 +172,7 @@ private fun SubtitleSearchSheet(state: SubtitleSearchUiState, viewModel: Subtitl
 private fun LanguageRow(language: String, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick).padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s3),
+        modifier = Modifier.fillMaxWidth().heightIn(min = VibeyFinTokens.Size.touch).clickable(role = Role.Button, onClick = onClick).padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s3),
     ) {
         Text(Strings.subtitleSearchLanguage, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
         Text(language, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -186,6 +187,7 @@ private fun ResultRow(result: SubtitleResultRow, downloading: Boolean, enabled: 
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = VibeyFinTokens.Size.touch)
             .clickable(enabled = enabled, onClick = onClick)
             .alpha(if (enabled || downloading || result.added) 1f else DISABLED_ALPHA)
             .clearAndSetSemantics {
@@ -217,7 +219,7 @@ private fun MatchBadge() {
 
     Text(
         Strings.subtitleMatch,
-        style = MaterialTheme.typography.labelSmall,
+        style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.border(line, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 1.dp),
     )

@@ -112,7 +112,6 @@ class SubtitleRepository(
         }
     }
 
-    /** The subtitle files already next to the item; empty when the item can't be read. */
     suspend fun externalTracks(itemId: String): List<StreamTrack> = (library.item(itemId) as? ApiResult.Success)?.value?.subtitleTracks.orEmpty().filter { it.external }
 
     /** Asks the server to add [subtitleId] to the item, and waits for the track to be listed. */

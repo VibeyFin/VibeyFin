@@ -224,7 +224,7 @@ class SubtitleSearchViewModel(
         .filter { matchesLanguageSearch(it.name, it.code, query) }
         .map { SubtitleLanguageRow(it.code, it.name, it.matches(languageCode)) }
 
-    private fun SubtitleResultRow.markedAdded() = copy(added = true, spoken = Strings.subtitleResultDescription(name, details, isMatch, added = true))
+    private fun SubtitleResultRow.markedAdded(): SubtitleResultRow = copy(added = true, spoken = Strings.subtitleResultDescription(name, details, isMatch, added = true))
 
     private fun inSearchLanguage(track: StreamTrack): Boolean {
         val language = track.language ?: return false

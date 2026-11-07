@@ -166,10 +166,11 @@ private struct ResultRow: View {
                     Image(systemName: "arrow.down.circle").foregroundStyle(.secondary)
                 }
             }
+            .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(!enabled)
+        .allowsHitTesting(enabled)
         .opacity(enabled || downloading || result.added ? 1 : 0.4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(result.spoken)
