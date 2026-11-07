@@ -14,11 +14,16 @@ final class PlayerPictureInPicture: NSObject, ObservableObject, AVPictureInPictu
     var entered: () -> Void = {}
     /// The window went away; `closed` is false when it was expanded back into the app.
     var left: (_ closed: Bool) -> Void = { _ in }
+    /// The window was tapped: the player screen must be back in place before the window flies into it.
+    /// Returns whether the screen is turning, so the window waits for it.
+    var restoreRequested: () -> Bool = { false }
     /// The window was announced with `entered` but never appeared: the video is still inline.
     var failedToStart: () -> Void = {}
 
     /// The engine learns when the window is up or gone, for engines that keep their own state about it.
     var activeChanged: (Bool) -> Void = { _ in }
+
+    private static let turnDuration: UInt64 = 500_000_000
 
     private var controller: AVPictureInPictureController?
     private weak var boundLayer: CALayer?
@@ -88,6 +93,14 @@ final class PlayerPictureInPicture: NSObject, ObservableObject, AVPictureInPictu
         return true
     }
 
+    /// The screen turns upright first and the window opens after, so the window does not turn with it.
+    func startAfterTurningUpright() {
+        Task { @MainActor in
+            if OrientationLock.restore() { try? await Task.sleep(nanoseconds: Self.turnDuration) }
+            if !start() { OrientationLock.lockLandscape() }
+        }
+    }
+
     /// Closes the window without reporting it: the caller has ended the session itself.
     func stop() {
         silenced = true
@@ -116,13 +129,17 @@ final class PlayerPictureInPicture: NSObject, ObservableObject, AVPictureInPictu
         if announced { failedToStart() }
     }
 
-    /// Tapping the window: the player screen never went away, so there is nothing to put back.
+    /// Tapping the window: the screen is put back first, so the window lands on the player and not on the page behind it.
     func pictureInPictureController(
         _ controller: AVPictureInPictureController,
         restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler: @escaping (Bool) -> Void
     ) {
         restoring = true
-        completionHandler(true)
+        guard restoreRequested() else { return completionHandler(true) }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: Self.turnDuration)
+            completionHandler(true)
+        }
     }
 
     func pictureInPictureControllerDidStopPictureInPicture(_ controller: AVPictureInPictureController) {

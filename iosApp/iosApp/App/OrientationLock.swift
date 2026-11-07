@@ -43,18 +43,26 @@ enum OrientationLock {
     }
 
     /// Phones and tablets turn to landscape for the player and stay there. (An iPad refuses it while the app is windowed, in Split View or in Slide Over: "The current windowing mode does not allow for programmatic changes to interface orientation". The request is kept for when the system allows it.)
-    static func lockLandscape() {
-        guard orientationToRestore == nil else { return }
-        orientationToRestore = scene.map { maskFor($0.interfaceOrientation) } ?? .portrait
+    /// Returns whether the screen has to turn for it, so a caller can wait for the turn.
+    @discardableResult
+    static func lockLandscape() -> Bool {
+        guard orientationToRestore == nil else { return false }
+        let current = scene?.interfaceOrientation
+        orientationToRestore = current.map { maskFor($0) } ?? .portrait
         apply(.landscape)
+        return current?.isLandscape == false
     }
 
     /// Lets the app turn freely again and goes back to the orientation it was in before the player.
-    static func restore() {
-        guard let previous = orientationToRestore else { return }
+    /// Returns whether the screen has to turn for it, so a caller can wait for the turn.
+    @discardableResult
+    static func restore() -> Bool {
+        guard let previous = orientationToRestore else { return false }
+        let turns = scene.map { maskFor($0.interfaceOrientation) != previous } ?? false
         orientationToRestore = nil
         mask = defaultMask
         apply(previous, keepingMask: true)
+        return turns
     }
 
     private static func apply(_ target: UIInterfaceOrientationMask, keepingMask: Bool = false) {

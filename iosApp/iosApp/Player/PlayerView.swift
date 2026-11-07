@@ -226,6 +226,12 @@ struct PlayerView: View {
         .onChange(of: scenePhase) { _, phase in
             // The brightness is the whole screen's on iOS, so other apps and the home screen get theirs back.
             if phase != .active { swipe.restoreBrightness() }
+            // A phone held upright goes to portrait before the app leaves, so the window starts there and not after a turn.
+            // Only when the window will open by itself and the phone is upright: a pulled-down notification centre is `.inactive` too.
+            if phase == .inactive && !pip.isActive && UIDevice.current.orientation == .portrait
+                && pip.mayStartAutomatically(whilePlaying: controller.isPlaying) {
+                OrientationLock.restore()
+            }
             // The home screen or the lock button: the video stops and the server is told. Only the
             // background counts; a pulled-down notification centre is `.inactive` and playback goes on.
             if phase == .background && !pip.isActive {
@@ -245,6 +251,8 @@ struct PlayerView: View {
             } else if phase == .active {
                 pendingBackground?.cancel()
                 pendingBackground = nil
+                // The window did not come up after the early turn to portrait below.
+                if !session.minimised { OrientationLock.lockLandscape() }
                 // A picker that closed while the app was away may never have said so.
                 menuOpen = false
                 showControls()
@@ -389,7 +397,7 @@ struct PlayerView: View {
                         label: Strings.shared.pictureInPicture,
                         action: {
                             model.userInteraction()
-                            pip.start()
+                            pip.startAfterTurningUpright()
                         }
                     )
                 }
@@ -522,6 +530,11 @@ struct PlayerView: View {
             model.enteredPictureInPicture(controller.currentMilliseconds)
             // The video is in the window now: the player steps aside so the page it was opened from shows, not an empty screen.
             session.minimise()
+        }
+        pip.restoreRequested = {
+            let turns = OrientationLock.lockLandscape()
+            session.expand()
+            return turns
         }
         pip.left = { closed in
             model.leftPictureInPicture(controller.currentMilliseconds, closed: closed)
