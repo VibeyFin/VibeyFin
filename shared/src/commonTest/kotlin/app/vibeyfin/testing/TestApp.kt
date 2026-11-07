@@ -81,7 +81,7 @@ class TestApp {
 
     val network = FakeNetworkMonitor()
     val offline = OfflineMode(network, preferences, scope)
-    val subtitles = SubtitleRepository(connection, library, profileSettings, offline, FakeDeviceInfo(language = "de"), pollEvery = Duration.ZERO, polls = 3)
+    val subtitles = SubtitleRepository(connection, library, profileSettings, offline, FakeDeviceInfo(language = "de"), preferences, pollEvery = Duration.ZERO, polls = 3)
     val downloads = database.downloadDao()
     val files = FakeDownloadFiles()
     val scheduler = FakeDownloadScheduler()

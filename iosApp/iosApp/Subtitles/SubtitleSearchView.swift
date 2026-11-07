@@ -100,7 +100,7 @@ private struct SubtitleSearchView: View {
                 Spacer(minLength: 0)
             } else {
                 List(state.results, id: \.id) { result in
-                    ResultRow(result: result, downloading: state.downloadingId == result.id, enabled: state.downloadingId == nil) {
+                    ResultRow(result: result, downloading: state.downloadingId == result.id, enabled: state.downloadingId == nil && !result.added) {
                         model.choose(result.id)
                     }
                     .listRowBackground(Color.clear)
@@ -160,6 +160,8 @@ private struct ResultRow: View {
                 Spacer(minLength: 0)
                 if downloading {
                     ProgressView()
+                } else if result.added {
+                    Image(systemName: "checkmark").foregroundStyle(.secondary)
                 } else {
                     Image(systemName: "arrow.down.circle").foregroundStyle(.secondary)
                 }
@@ -168,7 +170,7 @@ private struct ResultRow: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
-        .opacity(enabled || downloading ? 1 : 0.4)
+        .opacity(enabled || downloading || result.added ? 1 : 0.4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(result.spoken)
         .accessibilityAddTraits(.isButton)

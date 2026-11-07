@@ -27,4 +27,8 @@ interface DevicePreferences {
     suspend fun setAlwaysAskWhoIsWatching(value: Boolean)
 
     suspend fun setOfflineMode(value: Boolean)
+
+    suspend fun addedSubtitles(serverId: String, itemId: String): Set<String>
+
+    suspend fun setSubtitleAdded(serverId: String, itemId: String, subtitleId: String)
 }

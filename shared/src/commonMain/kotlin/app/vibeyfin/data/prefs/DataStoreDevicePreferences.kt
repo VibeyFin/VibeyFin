@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import app.vibeyfin.domain.DevicePreferences
 import app.vibeyfin.domain.model.ProfileRef
 import kotlinx.coroutines.flow.Flow
@@ -53,6 +54,13 @@ class DataStoreDevicePreferences(
         }
     }
 
+    override suspend fun addedSubtitles(serverId: String, itemId: String): Set<String> = dataStore.data.first()[addedSubtitlesKey(serverId, itemId)].orEmpty()
+
+    override suspend fun setSubtitleAdded(serverId: String, itemId: String, subtitleId: String) {
+        val key = addedSubtitlesKey(serverId, itemId)
+        dataStore.edit { it[key] = it[key].orEmpty() + subtitleId }
+    }
+
     override suspend fun setAlwaysAskWhoIsWatching(value: Boolean) {
         dataStore.edit { it[ALWAYS_ASK] = value }
     }
@@ -60,6 +68,8 @@ class DataStoreDevicePreferences(
     override suspend fun setOfflineMode(value: Boolean) {
         dataStore.edit { it[OFFLINE_MODE] = value }
     }
+
+    private fun addedSubtitlesKey(serverId: String, itemId: String) = stringSetPreferencesKey("added_subtitles.$serverId.$itemId")
 
     private companion object {
         val DEVICE_ID = stringPreferencesKey("device_id")

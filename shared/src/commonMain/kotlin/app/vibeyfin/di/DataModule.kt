@@ -35,7 +35,7 @@ fun dataModule() = module {
     single { PinLock(get(), get(), get()) }
     single { ProfilePolicy(get()) }
     single { LanguagePreferences(get(), get()) }
-    single { SubtitleRepository(get(), get(), get(), get(), get()) }
+    single { SubtitleRepository(get(), get(), get(), get(), get(), get()) }
     single { SearchHistory(get(), get()) }
     single { PendingReports(get(), get()) }
     single { NewTitlesPoller(get(), get(), get()) }

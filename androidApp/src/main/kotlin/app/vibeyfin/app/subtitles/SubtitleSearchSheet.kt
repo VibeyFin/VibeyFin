@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -131,7 +132,7 @@ private fun SubtitleSearchSheet(state: SubtitleSearchUiState, viewModel: Subtitl
 
                     else -> LazyColumn {
                         items(state.results, key = { it.id }) { result ->
-                            ResultRow(result, downloading = state.downloadingId == result.id, enabled = state.downloadingId == null) { viewModel.onChoose(result.id) }
+                            ResultRow(result, downloading = state.downloadingId == result.id, enabled = state.downloadingId == null && !result.added) { viewModel.onChoose(result.id) }
                         }
                     }
                 }
@@ -186,7 +187,7 @@ private fun ResultRow(result: SubtitleResultRow, downloading: Boolean, enabled: 
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled, onClick = onClick)
-            .alpha(if (enabled || downloading) 1f else DISABLED_ALPHA)
+            .alpha(if (enabled || downloading || result.added) 1f else DISABLED_ALPHA)
             .clearAndSetSemantics {
                 contentDescription = result.spoken
                 role = Role.Button
@@ -202,6 +203,8 @@ private fun ResultRow(result: SubtitleResultRow, downloading: Boolean, enabled: 
         }
         if (downloading) {
             CircularProgressIndicator(color = MaterialTheme.colorScheme.onSurface, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+        } else if (result.added) {
+            Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
         } else {
             Icon(painterResource(R.drawable.ic_download), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
         }

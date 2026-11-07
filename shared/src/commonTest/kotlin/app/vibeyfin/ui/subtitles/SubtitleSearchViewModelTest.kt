@@ -47,7 +47,7 @@ class SubtitleSearchViewModelTest {
     private fun viewModel(subtitles: SubtitleRepository = app.subtitles) = viewModels.track(SubtitleSearchViewModel(subtitles, app.languages, app.connection))
 
     // Keeps waiting for the track until it arrives, so a test can act while a download is going.
-    private fun patientSubtitles() = SubtitleRepository(app.connection, app.library, app.profileSettings, app.offline, FakeDeviceInfo(language = "de"), pollEvery = 1.milliseconds, polls = 2_000)
+    private fun patientSubtitles() = SubtitleRepository(app.connection, app.library, app.profileSettings, app.offline, FakeDeviceInfo(language = "de"), app.preferences, pollEvery = 1.milliseconds, polls = 2_000)
 
     private suspend fun SubtitleSearchViewModel.settled() = uiState.first { !it.loading }
 
@@ -79,7 +79,7 @@ class SubtitleSearchViewModelTest {
         """{"Items":[{"Id":"m1","Name":"Film","Type":"Movie","MediaStreams":[${subtitles.joinToString(",")}]}],"TotalRecordCount":1}""",
     )
 
-    private fun track(index: Int, title: String) = """{"Index":$index,"Type":"Subtitle","DisplayTitle":"$title","Language":"eng"}"""
+    private fun track(index: Int, title: String, external: Boolean = false) = """{"Index":$index,"Type":"Subtitle","DisplayTitle":"$title","Language":"eng","IsExternal":$external}"""
 
     @Test
     fun searchesAtOnceInTheProfilesLanguageWithMatchesFirstThenByRating() = runTest {
@@ -221,6 +221,36 @@ class SubtitleSearchViewModelTest {
         assertNull(viewModel.uiState.value.downloadingId)
         viewModel.onAddedHandled()
         assertNull(viewModel.uiState.first { it.added == null }.added)
+    }
+
+    @Test
+    fun aResultThatWasAddedIsMarkedAndCannotBeAddedAgain() = runTest {
+        val server = signedIn(subtitleLanguage = "eng")
+        server.finds("eng", result("a"))
+        var reads = 0
+        server.on("GET", "/Items") {
+            reads++
+            if (reads < 3) itemWith(track(2, "Italian")) else itemWith(track(2, "Italian"), track(3, "English - External", external = true))
+        }
+        var posts = 0
+        server.on("POST", "/Items/m1/RemoteSearch/Subtitles/a") {
+            posts++
+            Reply.noContent()
+        }
+        val viewModel = viewModel()
+        viewModel.onOpen("m1")
+        viewModel.settled()
+        viewModel.onChoose("a")
+        viewModel.uiState.first { it.added != null }
+        viewModel.onAddedHandled()
+
+        val afterRestart = viewModel()
+        afterRestart.onOpen("m1")
+        afterRestart.settled()
+        afterRestart.onChoose("a")
+
+        assertEquals(1, posts)
+        assertEquals(true, afterRestart.uiState.value.results.single().added)
     }
 
     @Test

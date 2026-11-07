@@ -31,6 +31,21 @@ data class RemoteSubtitle(
     val isHashMatch: Boolean,
 )
 
+private val noiseWords = setOf("srt", "sub", "ass", "ssa", "vtt", "subrip", "external", "default", "forced", "sdh", "cc")
+
+private fun String?.words(): Set<String> = orEmpty().lowercase().split(Regex("[^\\p{L}\\p{N}]+")).filter { it.length > 1 && it !in noiseWords }.toSet()
+
+/**
+ * Whether [track]'s title seems to come from this result: every word of the result's name is in it. The server keeps no link
+ * between a result and the track it became, so this only works where the saved file kept the release name.
+ */
+fun RemoteSubtitle.namedBy(track: StreamTrack): Boolean {
+    val mine = name.words()
+    val theirs = track.title.words() + track.displayTitle.words()
+
+    return mine.size >= 2 && theirs.containsAll(mine)
+}
+
 /** What came of asking the server to add a subtitle. */
 sealed interface SubtitleDownload {
     /** The item now lists the track, at this index. */
@@ -50,6 +65,7 @@ class SubtitleRepository(
     profileSettings: ProfileSettings,
     offlineMode: OfflineMode,
     private val deviceInfo: DeviceInfo,
+    private val preferences: DevicePreferences,
     private val pollEvery: Duration = 2.seconds,
     private val polls: Int = 15,
     private val policyRecheckEvery: Duration = 5.seconds,
@@ -57,6 +73,13 @@ class SubtitleRepository(
 ) {
     // A 403 means the policy changed after it was read; that profile's entry stays hidden until the app next starts.
     private val refused = MutableStateFlow(emptySet<ProfileRef>())
+
+    // The server doesn't say which provider result a track came from, so only what this device added is remembered.
+    suspend fun addedTo(itemId: String): Set<String> {
+        val serverId = connection.state.value.profileOrNull()?.serverId ?: return emptySet()
+
+        return preferences.addedSubtitles(serverId, itemId)
+    }
 
     /** Whether to offer the search: online, not a kids profile, and the user's own policy allows it. Being an admin doesn't count. */
     val available: Flow<Boolean> = combine(offlineMode.isOffline, profileSettings.kidsProfile, refused, connection.state) { offline, kids, refusedProfiles, state ->
@@ -89,6 +112,9 @@ class SubtitleRepository(
         }
     }
 
+    /** The subtitle files already next to the item; empty when the item can't be read. */
+    suspend fun externalTracks(itemId: String): List<StreamTrack> = (library.item(itemId) as? ApiResult.Success)?.value?.subtitleTracks.orEmpty().filter { it.external }
+
     /** Asks the server to add [subtitleId] to the item, and waits for the track to be listed. */
     suspend fun download(itemId: String, subtitleId: String): SubtitleDownload = connection.asConnected<SubtitleDownload>(SubtitleDownload.Failed(ApiError.Unauthorized)) { connected ->
         val before = when (val read = library.item(itemId)) {
@@ -100,7 +126,11 @@ class SubtitleRepository(
         repeat(polls) {
             delay(pollEvery)
             when (val read = library.item(itemId)) {
-                is ApiResult.Success -> newTrack(before, read.value.subtitleTracks)?.index?.let { return@asConnected SubtitleDownload.Added(it) }
+                is ApiResult.Success -> newTrack(before, read.value.subtitleTracks)?.index?.let {
+                    connection.state.value.profileOrNull()?.serverId?.let { serverId -> preferences.setSubtitleAdded(serverId, itemId, subtitleId) }
+                    return@asConnected SubtitleDownload.Added(it)
+                }
+
                 is ApiResult.Failure -> if (read.error == ApiError.Unauthorized) return@asConnected SubtitleDownload.Failed(read.error)
             }
         }
