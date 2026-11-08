@@ -24,29 +24,15 @@ import platform.Foundation.writeData
 /**
  * The downloads in the app's Documents folder, so the user finds them in the Files app, left out of iCloud and device backups: a movie
  * that can be downloaded again is not worth the user's iCloud space. Paths are relative to [root], so the app's container moving (it
- * does on an update) loses nothing; [uri] is worked out when asked. [legacyRoot] is where earlier versions kept them (Application
- * Support): what is left there moves to [root] when this is made.
+ * does on an update) loses nothing; [uri] is worked out when asked.
  */
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
-class IosDownloadFiles(private val root: String, legacyRoot: String? = null) : DownloadFiles {
+class IosDownloadFiles(private val root: String) : DownloadFiles {
     private val manager = NSFileManager.defaultManager
 
     init {
         manager.createDirectoryAtPath(root, withIntermediateDirectories = true, attributes = null, error = null)
         NSURL.fileURLWithPath(root).setResourceValue(true, forKey = NSURLIsExcludedFromBackupKey, error = null)
-        legacyRoot?.let(::adopt)
-    }
-
-    // Temporary: remove the migration (this, `legacyRoot` and its call in PlatformModule.ios.kt) once nobody has downloads in Application Support: the app is in beta and only the developers do.
-    // Moves each server's folder from [legacyRoot] into [root], on the same volume so it costs nothing, then removes the old folder.
-    private fun adopt(legacyRoot: String) {
-        if (!manager.fileExistsAtPath(legacyRoot)) return
-        manager.contentsOfDirectoryAtPath(legacyRoot, error = null)?.filterIsInstance<String>()?.forEach { name ->
-            val target = "$root/$name"
-            // Never over what is there already: a folder that is in both places stays where it is and is dropped from the old one.
-            if (!manager.fileExistsAtPath(target)) manager.moveItemAtPath("$legacyRoot/$name", toPath = target, error = null)
-        }
-        manager.removeItemAtPath(legacyRoot, error = null)
     }
 
     /** The full path of a relative one. */

@@ -52,9 +52,8 @@ actual fun platformModule(): Module = module {
     // Until the downloads phase for iOS lands an NWPathMonitor, iOS never goes offline by itself.
     single<NetworkMonitor> { IosNetworkMonitor() }
     // Downloads: the files in Documents, so they show in the Files app under "On My iPhone / VibeyFin" (out of backups), and videos
-    // through a background URLSession. They used to be in Application Support: whatever is still there is moved over.
-    // Temporary: remove `legacyRoot` with the migration in IosDownloadFiles (beta only, developers' devices).
-    single { IosDownloadFiles("${documentsDirectory()}/Downloads", legacyRoot = "${appSupportDirectory()}/downloads") }
+    // through a background URLSession.
+    single { IosDownloadFiles("${documentsDirectory()}/Downloads") }
     single<DownloadFiles> { get<IosDownloadFiles>() }
     single { IosBackgroundTransfer(get(), get()) }
     single<ExternalVideoTransfer> { get<IosBackgroundTransfer>() }
