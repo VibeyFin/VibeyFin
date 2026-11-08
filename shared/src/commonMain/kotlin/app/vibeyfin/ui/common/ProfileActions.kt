@@ -12,7 +12,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -21,7 +20,7 @@ import kotlinx.coroutines.launch
  */
 class ProfileActions(
     private val connection: ConnectionManager,
-    private val profileSettings: ProfileSettings,
+    profileSettings: ProfileSettings,
     private val searchHistory: SearchHistory,
     private val pins: PinLock,
     auth: AuthRepository,
@@ -29,6 +28,7 @@ class ProfileActions(
     private val scope: CoroutineScope,
 ) {
     private val pin = PinGate(pins, auth, scope)
+    private val kids = KidsGuard(profileSettings)
     private val _exit = MutableStateFlow<HomeExit?>(null)
     val exit: StateFlow<HomeExit?> = _exit.asStateFlow()
 
@@ -47,7 +47,7 @@ class ProfileActions(
     fun quickConnect() {
         connection.asAccount(Unit) { account ->
             scope.launch {
-                if (profileSettings.kidsProfile.first() == true) return@launch
+                if (kids.isKidsProfile()) return@launch
                 val open: suspend () -> Unit = { _openQuickConnect.value = true }
                 if (pins.gates(account.serverId, account.userId).openSettings) {
                     pin.ask(PinReason.OpenSettings, account.serverId, account.userId, account.name, onPass = open)
@@ -86,7 +86,7 @@ class ProfileActions(
         val serverId = currentServerId() ?: return
         scope.launch {
             // A kids profile has no Sign out; its menu hides it, and this keeps it that way.
-            if (profileSettings.kidsProfile.first() == true) return@launch
+            if (kids.isKidsProfile()) return@launch
             // While still signed in: the history is the signed-in profile's.
             searchHistory.clear()
             connection.asAccount(Unit) { downloads.purge(ProfileRef(it.serverId, it.userId)) }
