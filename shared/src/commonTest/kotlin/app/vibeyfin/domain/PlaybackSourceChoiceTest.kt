@@ -3,7 +3,6 @@ package app.vibeyfin.domain
 import app.vibeyfin.data.api.MediaSourceDto
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 class PlaybackSourceChoiceTest {
     private class Case(
@@ -27,15 +26,69 @@ class PlaybackSourceChoiceTest {
     )
 
     private val cases: List<Case> = listOf(
-        Case("direct play", listOf(source("a", directPlay = true)), false, "a", PlayMethod.DirectPlay),
-        Case("direct play beats an earlier transcode", listOf(source("a", transcodingUrl = "/t"), source("b", directPlay = true)), false, "b", PlayMethod.DirectPlay),
-        Case("direct stream", listOf(source("a", directStream = true, transcodingUrl = "/t")), false, "a", PlayMethod.DirectStream),
-        Case("transcode", listOf(source("a", transcodingUrl = "/t")), false, "a", PlayMethod.Transcode),
-        Case("first transcode wins", listOf(source("a", transcodingUrl = "/t1"), source("b", transcodingUrl = "/t2")), false, "a", PlayMethod.Transcode),
-        Case("force transcode skips direct play", listOf(source("a", directPlay = true, directStream = true, transcodingUrl = "/t")), true, "a", PlayMethod.Transcode),
-        Case("force transcode without a transcode url", listOf(source("a", directPlay = true)), true, null, null),
-        Case("no compatible stream", listOf(source("a")), false, null, null),
-        Case("no sources", emptyList(), false, null, null),
+        Case(
+            name = "direct play",
+            sources = listOf(source("a", directPlay = true)),
+            forceTranscode = false,
+            expectedSourceId = "a",
+            expectedMethod = PlayMethod.DirectPlay,
+        ),
+        Case(
+            name = "direct play beats an earlier transcode",
+            sources = listOf(source("a", transcodingUrl = "/t"), source("b", directPlay = true)),
+            forceTranscode = false,
+            expectedSourceId = "b",
+            expectedMethod = PlayMethod.DirectPlay,
+        ),
+        Case(
+            name = "direct stream",
+            sources = listOf(source("a", directStream = true, transcodingUrl = "/t")),
+            forceTranscode = false,
+            expectedSourceId = "a",
+            expectedMethod = PlayMethod.DirectStream,
+        ),
+        Case(
+            name = "transcode",
+            sources = listOf(source("a", transcodingUrl = "/t")),
+            forceTranscode = false,
+            expectedSourceId = "a",
+            expectedMethod = PlayMethod.Transcode,
+        ),
+        Case(
+            name = "first transcode wins",
+            sources = listOf(source("a", transcodingUrl = "/t1"), source("b", transcodingUrl = "/t2")),
+            forceTranscode = false,
+            expectedSourceId = "a",
+            expectedMethod = PlayMethod.Transcode,
+        ),
+        Case(
+            name = "force transcode skips direct play",
+            sources = listOf(source("a", directPlay = true, directStream = true, transcodingUrl = "/t")),
+            forceTranscode = true,
+            expectedSourceId = "a",
+            expectedMethod = PlayMethod.Transcode,
+        ),
+        Case(
+            name = "force transcode without a transcode url",
+            sources = listOf(source("a", directPlay = true)),
+            forceTranscode = true,
+            expectedSourceId = null,
+            expectedMethod = null,
+        ),
+        Case(
+            name = "no compatible stream",
+            sources = listOf(source("a")),
+            forceTranscode = false,
+            expectedSourceId = null,
+            expectedMethod = null,
+        ),
+        Case(
+            name = "no sources",
+            sources = emptyList(),
+            forceTranscode = false,
+            expectedSourceId = null,
+            expectedMethod = null,
+        ),
     )
 
     @Test
@@ -45,7 +98,6 @@ class PlaybackSourceChoiceTest {
 
             assertEquals(case.expectedSourceId, choice?.source?.id, case.name)
             assertEquals(case.expectedMethod, choice?.method, case.name)
-            if (case.expectedSourceId == null) assertNull(choice, case.name)
         }
     }
 }
