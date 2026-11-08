@@ -74,6 +74,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 ## Sign-in and profiles
 
 - Server discovery on the local network first, manual URL second. Offer Quick Connect alongside username / password.
+- Android 17 and up: the system asks for local network access when the app opens, before anything connects. The app's screens wait for the answer, because a connection made earlier stays failed after Allow. Refusing still opens the app, with the "Can't reach the server" banner for a server on the local network.
 - iOS has no network search until VibeyFin holds Apple's multicast entitlement; its first screen asks for the address and never shows an empty "On your network".
 - Quick Connect shows only when the server says it is on (`/QuickConnect/Enabled`), on the grid and in the password sheets. It signs in whoever approves the code. Closing its sheet stops the polling; coming back to the app resumes it.
 - Password fields allow paste, password managers and show/hide. The password is sent once and dropped; only the token is kept.
