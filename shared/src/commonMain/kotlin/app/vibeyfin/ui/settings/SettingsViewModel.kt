@@ -101,7 +101,7 @@ class SettingsViewModel(
     private val confirmSignOut = MutableStateFlow(false)
     private val confirmPurgeDownloads = MutableStateFlow(false)
     private val pin = PinGate(pins, auth, viewModelScope)
-    private val kids = KidsGuard(profileSettings)
+    private val kidsGuard = KidsGuard(profileSettings)
 
     // The profile whose PIN to open Settings is known not to be needed or has been entered. Only the gate collector below and a passed
     // PIN set it; the state is locked for every other profile, so the lock comes from the data and not from which collector ran first.
@@ -288,7 +288,7 @@ class SettingsViewModel(
 
                 SettingKey.Notifications -> {
                     // A kids profile has no Notifications page; this keeps a stale toggle from reaching it.
-                    if (kids.isKidsProfile()) return@launch
+                    if (kidsGuard.isKidsProfile()) return@launch
                     profileSettings.setNotificationsEnabled(value)
                     notificationsBlocked.value = false
                     requestNotificationPermission.value = value
@@ -380,7 +380,7 @@ class SettingsViewModel(
                 SettingKey.SwitchProfile -> guarded(PinReason.SwitchProfile, { it.switchProfile }) { connection.switchProfile() }
 
                 // A kids profile has no Sign out row; this keeps a stale tap from reaching it.
-                SettingKey.SignOut -> if (!kids.isKidsProfile()) confirmSignOut.value = true
+                SettingKey.SignOut -> if (!kidsGuard.isKidsProfile()) confirmSignOut.value = true
 
                 SettingKey.PurgeDownloads -> confirmPurgeDownloads.value = true
 

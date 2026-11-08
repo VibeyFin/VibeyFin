@@ -5,8 +5,8 @@ import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.authJson
 import io.ktor.http.HttpStatusCode
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher

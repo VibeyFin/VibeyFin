@@ -305,7 +305,7 @@ class HomeViewModel(
                         launch { loadGenreRows(quiet = false) }
                         launch { loadMyList(quiet = false) }
                         launch { loadHeroIfEnabled() }
-                        launch { downloadFlow.readPermission() }
+                        launch { downloadFlow.refreshCanDownload() }
                     }
                 }
         }

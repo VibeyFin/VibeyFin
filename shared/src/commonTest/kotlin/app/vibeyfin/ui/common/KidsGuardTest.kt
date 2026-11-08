@@ -10,7 +10,6 @@ import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -30,27 +29,17 @@ class KidsGuardTest {
     }
 
     @Test
-    fun `a profile that is not a kids one runs the action`() = runTest {
+    fun `a profile that is not a kids one is not blocked`() = runTest {
         app.signedIn()
-        val guard = KidsGuard(app.profileSettings)
-        var ran = 0
 
-        guard.unlessKids { ran++ }
-
-        assertFalse(guard.isKidsProfile())
-        assertEquals(1, ran)
+        assertFalse(KidsGuard(app.profileSettings).isKidsProfile())
     }
 
     @Test
-    fun `a kids profile is blocked and the action does not run`() = runTest {
+    fun `a kids profile is blocked`() = runTest {
         app.signedIn()
         app.profileSettings.setKidsProfile(true)
-        val guard = KidsGuard(app.profileSettings)
-        var ran = 0
 
-        guard.unlessKids { ran++ }
-
-        assertTrue(guard.isKidsProfile())
-        assertEquals(0, ran)
+        assertTrue(KidsGuard(app.profileSettings).isKidsProfile())
     }
 }

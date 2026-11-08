@@ -86,7 +86,7 @@ class DownloadFlowTest {
     fun `nothing signed in means no permission is read`() = runTest {
         val flow = DownloadFlow(backgroundScope, app.downloadRepository) { null }
 
-        assertEquals(false, flow.readPermission())
+        assertEquals(false, flow.refreshCanDownload())
         assertEquals(true, flow.canDownload.value)
     }
 }

@@ -115,7 +115,7 @@ class DownloadFlow(
     }
 
     /** Asks the server once whether the signed-in user may download; false when nobody is signed in, so the caller can ask again. */
-    suspend fun readPermission(): Boolean {
+    suspend fun refreshCanDownload(): Boolean {
         val profile = profile() ?: return false
         downloads.canDownload(profile)?.let { _canDownload.value = it }
         return true

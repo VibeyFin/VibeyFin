@@ -228,7 +228,7 @@ class TileMenuViewModel(
     private fun readDownloadPermission() {
         if (permissionRead) return
         permissionRead = true
-        viewModelScope.launch { if (!downloadFlow.readPermission()) permissionRead = false }
+        viewModelScope.launch { if (!downloadFlow.refreshCanDownload()) permissionRead = false }
     }
 
     // A trailer the server holds first (it plays in the app), else one on the web; null when the title has neither.
