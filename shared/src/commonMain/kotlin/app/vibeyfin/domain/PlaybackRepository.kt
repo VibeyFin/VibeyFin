@@ -85,18 +85,10 @@ class PlaybackRepository(
                 is ApiResult.Success -> result.value
             }
             val sessionId = response.playSessionId ?: return PlaybackNegotiation.Failed(ApiError.BadResponse)
-            val directPlay = response.mediaSources.firstOrNull { it.supportsDirectPlay && !forceTranscode }
-            val transcodes = response.mediaSources.filter { it.transcodingUrl != null }
-            val source = directPlay
-                ?: transcodes.firstOrNull()
-                ?: return PlaybackNegotiation.NoCompatibleStream
-
-            val method = when {
-                directPlay != null -> PlayMethod.DirectPlay
-                source.supportsDirectStream && !forceTranscode -> PlayMethod.DirectStream
-                else -> PlayMethod.Transcode
-            }
-            val url = if (directPlay != null) {
+            val choice = chooseSource(response.mediaSources, forceTranscode) ?: return PlaybackNegotiation.NoCompatibleStream
+            val source = choice.source
+            val method = choice.method
+            val url = if (method == PlayMethod.DirectPlay) {
                 directPlayUrl(api.baseUrl, itemId, source, clientInfo.current().deviceId, sessionId)
             } else {
                 serverUrl(api.baseUrl, checkNotNull(source.transcodingUrl))
