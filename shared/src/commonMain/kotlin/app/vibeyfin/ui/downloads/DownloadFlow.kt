@@ -80,6 +80,11 @@ class DownloadFlow(
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message
 
+    private val _canDownload = MutableStateFlow(true)
+
+    /** Whether the server lets the user download; taken as yes until it says otherwise, so a menu entry is not missing while that is read. */
+    val canDownload: StateFlow<Boolean> = _canDownload
+
     private var last: Triple<DownloadTarget, String, Boolean>? = null
 
     /**
@@ -107,6 +112,13 @@ class DownloadFlow(
                 }
             }
         }
+    }
+
+    /** Asks the server once whether the signed-in user may download; false when nobody is signed in, so the caller can ask again. */
+    suspend fun readPermission(): Boolean {
+        val profile = profile() ?: return false
+        downloads.canDownload(profile)?.let { _canDownload.value = it }
+        return true
     }
 
     /** Flips "only episodes I haven't watched". */

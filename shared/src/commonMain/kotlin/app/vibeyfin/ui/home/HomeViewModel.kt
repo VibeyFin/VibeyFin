@@ -179,7 +179,6 @@ class HomeViewModel(
 ) : ViewModel() {
     private val profile = ProfileActions(connection, profileSettings, searchHistory, pins, auth, downloads, viewModelScope)
     private val downloadFlow = DownloadFlow(viewModelScope, downloads) { connection.state.value.profileOrNull() }
-    private val canDownload = MutableStateFlow(true)
     private val exit = profile.exit
 
     // Signed in, the libraries are always on their way, so the first thing to show is loading, not empty.
@@ -262,7 +261,7 @@ class HomeViewModel(
         content,
         profileSettings.kidsProfile,
         profile.pinPrompt,
-        downloadParts(connection, downloads, downloadFlow, canDownload),
+        downloadParts(connection, downloads, downloadFlow, downloadFlow.canDownload),
         removedCard,
     ) { content, kids, prompt, parts, removed ->
         content.copy(
@@ -306,7 +305,7 @@ class HomeViewModel(
                         launch { loadGenreRows(quiet = false) }
                         launch { loadMyList(quiet = false) }
                         launch { loadHeroIfEnabled() }
-                        launch { readDownloadPermission() }
+                        launch { downloadFlow.readPermission() }
                     }
                 }
         }
@@ -368,12 +367,6 @@ class HomeViewModel(
                 SeeAll.MyList, null -> Unit
             }
         }
-    }
-
-    // Whether this user may download is read once per session, quietly: it only decides whether the menu entry is there.
-    private suspend fun readDownloadPermission() {
-        val profile = connection.state.value.profileOrNull() ?: return
-        downloads.canDownload(profile)?.let { canDownload.value = it }
     }
 
     // The cards with a change on its way to the server; a second tap on one waits for it.
