@@ -1,10 +1,13 @@
 package app.vibeyfin.ui.downloads
 
+import app.vibeyfin.data.db.DOWNLOAD_PAUSED
 import app.vibeyfin.data.db.DOWNLOAD_QUEUED
 import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.DownloadAttempt
+import app.vibeyfin.domain.DownloadState
 import app.vibeyfin.domain.DownloadTarget
 import app.vibeyfin.domain.model.ProfileRef
+import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.sagaServer
 import kotlinx.coroutines.Dispatchers
@@ -88,5 +91,34 @@ class DownloadFlowTest {
 
         assertEquals(false, flow.refreshCanDownload())
         assertEquals(true, flow.canDownload.value)
+    }
+
+    @Test
+    fun `pause then resume then remove act on one download at once`() = runTest {
+        app.sagaServer()
+        val flow = DownloadFlow(backgroundScope, app.downloadRepository) { alex }
+        val first = queuedShow().first { it.itemId == "e1" }
+
+        flow.act(first, DownloadAction.Pause)
+        app.downloadRepository.observeAll(alex).first { list -> list.any { it.itemId == "e1" && it.state == DownloadState.Paused } }
+        assertEquals(DOWNLOAD_PAUSED, app.downloads.find("srv-1", "u1", "e1")!!.state)
+
+        flow.act(first, DownloadAction.Resume)
+        app.downloadRepository.observeAll(alex).first { list -> list.any { it.itemId == "e1" && it.state != DownloadState.Paused } }
+
+        flow.act(first, DownloadAction.Remove)
+        app.downloadRepository.observeAll(alex).first { list -> list.none { it.itemId == "e1" } }
+        assertNull(flow.removal.value)
+    }
+
+    @Test
+    fun `a user the server does not let download is read as such`() = runTest {
+        val server = app.sagaServer()
+        server.on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex","Policy":{"EnableContentDownloading":false}}"""))
+        val flow = DownloadFlow(backgroundScope, app.downloadRepository) { alex }
+
+        assertEquals(true, flow.refreshCanDownload())
+
+        assertEquals(false, flow.canDownload.value)
     }
 }

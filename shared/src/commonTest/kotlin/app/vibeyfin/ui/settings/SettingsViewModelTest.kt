@@ -515,6 +515,19 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `a stale Sign out tap on a kids profile asks for nothing`() = runTest {
+        app.signedIn()
+        app.profileSettings.setKidsProfile(true)
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.hasProfile && it.kidsProfile }
+
+        viewModel.onAction(SettingKey.SignOut)
+
+        assertFalse(viewModel.uiState.first().confirmSignOut)
+        assertIs<ConnectionState.Connected>(app.connection.state.value)
+    }
+
+    @Test
     fun `signing out asks to confirm and then clears the session and the profile's downloads`() = runTest {
         val server = app.signedIn()
         app.files.open("srv-1/u1/m1/video.mkv", append = false).also { it.write("x".encodeToByteArray(), 1) }.close()

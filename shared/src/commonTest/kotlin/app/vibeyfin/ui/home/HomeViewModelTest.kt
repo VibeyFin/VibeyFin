@@ -791,7 +791,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun aCardsDownloadCanBePausedFromItsMenuAndRemovingAsksFirst() = runTest {
+    fun aCardsDownloadCanBePausedFromItsMenu() = runTest {
         val server = signedIn()
         server.libraries()
         server.watching(resume = itemsJson(halfWatched), nextUp = itemsJson(nextEpisode))
@@ -804,10 +804,6 @@ class HomeViewModelTest {
         viewModel.onDownloadAction("e1", DownloadAction.Pause)
         viewModel.uiState.first { it.downloads["e1"]?.actions?.firstOrNull() == DownloadAction.Resume }
         assertEquals(DOWNLOAD_PAUSED, app.downloads.find("srv-1", "u1", "e1")!!.state)
-
-        viewModel.onDownloadAction("e1", DownloadAction.Remove)
-        viewModel.uiState.first { !it.downloads.containsKey("e1") }
-        assertNull(app.downloads.find("srv-1", "u1", "e1"))
     }
 
     @Test
