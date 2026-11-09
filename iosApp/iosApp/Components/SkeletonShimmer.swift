@@ -48,20 +48,26 @@ private struct SkeletonShimmerEffect: ViewModifier {
 private struct SkeletonShimmerBand: View {
     let sweepWidth: CGFloat
 
+    @State private var frame: CGRect = .zero
+
+    private let clock: SkeletonShimmerClock = .shared
+
     var body: some View {
-        GeometryReader { proxy in
-            let frame = proxy.frame(in: .global)
-            // Every band reads the same clock, so the light is in the same place on every shape at once.
-            TimelineView(.animation) { timeline in
-                let elapsed = Int64(timeline.date.timeIntervalSinceReferenceDate * 1000)
-                let center = CGFloat(SkeletonShimmer.shared.bandCenter(elapsedMillis: elapsed, sweepWidth: Float(sweepWidth)))
-                let half = CGFloat(SkeletonShimmer.shared.bandHalfWidth(sweepWidth: Float(sweepWidth)))
-                if let points = ShimmerBand.points(center: center, half: half, minX: frame.minX, width: frame.width) {
-                    LinearGradient(colors: [.clear, Color(.separator), .clear], startPoint: points.start, endPoint: points.end)
-                }
-            }
+        Color.clear
+            .overlay { gradient }
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
+            .onAppear { clock.join() }
+            .onDisappear { clock.leave() }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    @ViewBuilder private var gradient: some View {
+        let center: CGFloat = CGFloat(SkeletonShimmer.shared.bandCenter(elapsedMillis: clock.elapsedMillis, sweepWidth: Float(sweepWidth)))
+        let half: CGFloat   = CGFloat(SkeletonShimmer.shared.bandHalfWidth(sweepWidth: Float(sweepWidth)))
+
+        if let points = ShimmerBand.points(center: center, half: half, minX: frame.minX, width: frame.width) {
+            LinearGradient(colors: [.clear, Color(.separator), .clear], startPoint: points.start, endPoint: points.end)
         }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
     }
 }
