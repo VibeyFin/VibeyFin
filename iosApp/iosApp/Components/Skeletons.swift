@@ -2,8 +2,8 @@ import SwiftUI
 import Shared
 
 // Grey stand-ins for content that is still loading: the same shapes as the real thing, so nothing moves
-// when it arrives. Not animated; looping motion is an opt-in setting (`brand.md`). A `ProgressView` is
-// only for an action in progress (a button, the player, "loading more").
+// when it arrives. Each shape wears `skeletonShimmer()`, which plays unless the system asks for Reduce Motion (`brand.md`).
+// A `ProgressView` is only for an action in progress (a button, the player, "loading more").
 
 /// A grey block with the artwork corner radius.
 struct SkeletonBlock: View {
@@ -12,6 +12,7 @@ struct SkeletonBlock: View {
     var body: some View {
         Color(.tertiarySystemBackground)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .skeletonShimmer()
     }
 }
 
@@ -28,6 +29,7 @@ struct SkeletonLine: View {
                 .redacted(reason: .placeholder)
                 .frame(width: width, alignment: .leading)
                 .clipped()
+                .skeletonShimmer()
         } else {
             Text(Strings.shared.loadingPage)
                 .font(font)
@@ -116,7 +118,7 @@ struct ItemSkeleton: View {
     /// where the text starts.
     private func picture(width: CGFloat, height: CGFloat) -> some View {
         ZStack {
-            Color(.tertiarySystemBackground)
+            Color(.tertiarySystemBackground).skeletonShimmer()
             LinearGradient(
                 stops: wide
                     ? [.init(color: .clear, location: 0.6), .init(color: Color(.systemBackground), location: 1)]
@@ -148,6 +150,7 @@ private struct HeroDetailsSkeleton: View {
                 .fill(Color(.tertiarySystemBackground))
                 .frame(height: 50)
                 .frame(maxWidth: centered ? .infinity : 260)
+                .skeletonShimmer()
             HStack(spacing: 0) {
                 ForEach(0..<4, id: \.self) { _ in
                     VStack(spacing: Space.s1) {
@@ -173,6 +176,7 @@ struct ProfileSkeletonGrid: View {
                     RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
                         .fill(Color(.tertiarySystemBackground))
                         .frame(width: avatarSize, height: avatarSize)
+                        .skeletonShimmer()
                     SkeletonLine(font: .subheadline, width: 72)
                 }
             }

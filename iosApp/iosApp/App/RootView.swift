@@ -17,6 +17,7 @@ struct RootView: View {
     @State private var buttonFrame: CGRect = .zero
     @State private var homeButtonFrame: CGRect = .zero
     @State private var ready = false
+    @State private var screenWidth: CGFloat = 0
     @StateObject private var startup = StartupObservable()
     @ObservedObject private var taps = NotificationTaps.shared
 
@@ -101,6 +102,8 @@ struct RootView: View {
             }
         }
         .tint(Brand.accent)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { screenWidth = $0 }
+        .environment(\.skeletonShimmerWidth, screenWidth > 0 ? screenWidth : nil)
         // Blank background until the app has worked out where to open, a moment of storage reads.
         .overlay {
             if !ready { Color(.systemBackground).ignoresSafeArea() }

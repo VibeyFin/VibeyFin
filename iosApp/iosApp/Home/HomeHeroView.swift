@@ -115,6 +115,7 @@ struct HomeHeroSkeleton: View {
                 .padding(Space.s3)
             }
             .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
+            .skeletonShimmer()
             .overlay(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous).stroke(Color(.tertiarySystemBackground), lineWidth: 1))
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Strings.shared.loadingPage)
