@@ -49,7 +49,7 @@ class TileMenuViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(TileMenuViewModel(app.library, app.watch, app.connection, app.downloadRepository))
+    private fun viewModel() = viewModels.track(TileMenuViewModel(app.library, app.watch, app.connection, app.downloadRepository, app.watchChanges))
 
     // The poster as a list gives it: no trailers on it.
     private fun tile(favorite: Boolean = false) = MediaItem(
@@ -173,6 +173,36 @@ class TileMenuViewModelTest {
 
         assertNull(failed.item)
         assertEquals(LoadMessages.ADD_TO_MY_LIST_FAILED, failed.actionMessage)
+    }
+
+    @Test
+    fun aTitlePutOnMyListHereOpensAsOnItNextTimeBeforeTheServerAnswers() = runTest {
+        val server = server(itemJson("m1", "Heat"))
+        server.on("POST", "/UserFavoriteItems/m1", Reply.json("""{"IsFavorite":true}"""))
+        val viewModel = viewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.onOpen(tile())
+        viewModel.uiState.first { !it.checkingTrailer && it.item != null }
+        viewModel.onToggleFavorite()
+        server.hold("GET", "/Items")
+
+        viewModel.onOpen(tile(favorite = false))
+
+        assertEquals(true, viewModel.uiState.first { it.item != null }.item?.isFavorite)
+    }
+
+    @Test
+    fun aTitleTakenOffMyListElsewhereOpensAsOffItBeforeTheServerAnswers() = runTest {
+        val server = server(itemJson("m1", "Heat", favorite = true))
+        server.on("DELETE", "/UserFavoriteItems/m1", Reply.json("{}"))
+        val viewModel = viewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        app.watch.setFavorite("m1", favorite = false)
+        server.hold("GET", "/Items")
+
+        viewModel.onOpen(tile(favorite = true))
+
+        assertEquals(false, viewModel.uiState.first { it.item != null }.item?.isFavorite)
     }
 
     @Test
