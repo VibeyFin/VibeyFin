@@ -138,10 +138,7 @@ private fun PlayDisc(modifier: Modifier = Modifier) {
     }
 }
 
-/**
- * Stands in for the row while it loads: the same cards, gray, so nothing moves when they arrive. Not
- * animated; looping motion is an opt-in setting (`brand.md`).
- */
+/** Stands in for the row while it loads: the same cards, gray, so nothing moves when they arrive. */
 @Composable
 fun ContinueSkeletonCards(modifier: Modifier = Modifier) {
     // The cards are wider than a phone, so the row measures them unbounded and the box cuts it off at the edge: every card keeps
@@ -153,13 +150,7 @@ fun ContinueSkeletonCards(modifier: Modifier = Modifier) {
         ) {
             repeat(skeletonCount(3)) {
                 Column(Modifier.width(VibeyFinTokens.Size.thumbWidth)) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(CARD_ASPECT)
-                            .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
-                            .background(VibeyFinTokens.Colors.surface2),
-                    )
+                    SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(CARD_ASPECT))
                     Column(Modifier.padding(top = VibeyFinTokens.Space.s2), verticalArrangement = Arrangement.spacedBy(CARD_LINE_GAP)) {
                         SkeletonLine(140.dp, MaterialTheme.typography.titleSmall)
                         SkeletonLine(72.dp, MaterialTheme.typography.bodySmall)

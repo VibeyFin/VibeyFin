@@ -310,10 +310,9 @@ private fun HeroSkeletonCard(wide: Boolean) {
             .fillMaxWidth()
             .clip(shape)
             .border(1.dp, VibeyFinTokens.Colors.surface3, shape)
-            .background(VibeyFinTokens.Colors.surface2)
             .semantics { contentDescription = Strings.loadingPage },
     ) {
-        Box(Modifier.fillMaxWidth().aspectRatio(if (wide) HERO_ASPECT_WIDE else HERO_ASPECT))
+        SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(if (wide) HERO_ASPECT_WIDE else HERO_ASPECT), shape)
         Column(
             Modifier.align(if (wide) Alignment.BottomStart else Alignment.BottomCenter).fillMaxWidth().padding(horizontal = VibeyFinTokens.Space.s3).padding(bottom = VibeyFinTokens.Space.s3),
             horizontalAlignment = if (wide) Alignment.Start else Alignment.CenterHorizontally,

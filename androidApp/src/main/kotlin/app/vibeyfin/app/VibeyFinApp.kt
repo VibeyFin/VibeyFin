@@ -1,6 +1,7 @@
 package app.vibeyfin.app
 
 import androidx.compose.runtime.Composable
+import app.vibeyfin.app.components.ProvideSkeletonShimmer
 import app.vibeyfin.app.navigation.VibeyFinNavHost
 import app.vibeyfin.app.theme.VibeyFinTheme
 import app.vibeyfin.ui.notifications.NotificationOpenViewModel
@@ -8,8 +9,10 @@ import app.vibeyfin.ui.notifications.NotificationOpenViewModel
 @Composable
 fun VibeyFinApp(notificationOpen: NotificationOpenViewModel) {
     VibeyFinTheme {
-        LocalNetworkPermissionGate {
-            VibeyFinNavHost(notificationOpen)
+        ProvideSkeletonShimmer {
+            LocalNetworkPermissionGate {
+                VibeyFinNavHost(notificationOpen)
+            }
         }
     }
 }

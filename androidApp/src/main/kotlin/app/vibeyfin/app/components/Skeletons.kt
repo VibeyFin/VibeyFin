@@ -1,5 +1,11 @@
 package app.vibeyfin.app.components
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,26 +24,57 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.State
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.animationsEnabled
+import app.vibeyfin.ui.common.SkeletonShimmer
 import app.vibeyfin.ui.common.Strings
 
 /*
  * Gray stand-ins for content that is still loading: the same shapes as the real thing, so nothing moves
- * when it arrives. Not animated; looping motion is an opt-in setting (`brand.md`). A spinner is only for
- * an action in progress (a button, the player, "loading more").
+ * when it arrives. They shimmer while animations are on (`brand.md`).
+ * A spinner is only for an action in progress (a button, the player, "loading more").
  */
+
+private val LocalSkeletonShimmerElapsedMillis = staticCompositionLocalOf<State<Float>?> { null }
+
+/** One clock for every skeleton under [content], so a single light sweeps the whole screen; none while animations are off. */
+@Composable
+fun ProvideSkeletonShimmer(content: @Composable () -> Unit) {
+    if (!animationsEnabled()) {
+        content()
+        return
+    }
+
+    val elapsed: State<Float> = rememberInfiniteTransition("skeleton-shimmer").animateFloat(
+        initialValue = 0f,
+        targetValue = SkeletonShimmer.PERIOD_MILLIS.toFloat(),
+        animationSpec = infiniteRepeatable(tween(SkeletonShimmer.PERIOD_MILLIS.toInt(), easing = LinearEasing), RepeatMode.Restart),
+        label = "skeleton-shimmer-elapsed",
+    )
+
+    CompositionLocalProvider(LocalSkeletonShimmerElapsedMillis provides elapsed, content = content)
+}
 
 /** A gray block with the artwork corner radius. */
 @Composable
@@ -46,8 +83,29 @@ fun SkeletonBlock(
     shape: Shape = RoundedCornerShape(VibeyFinTokens.Radius.artwork),
     color: Color = VibeyFinTokens.Colors.surface2,
 ) {
-    Box(modifier.clip(shape).background(color))
+    Box(modifier.clip(shape).background(color).then(shimmer()))
 }
+
+@Composable
+private fun shimmer(): Modifier {
+    val elapsed: State<Float> = LocalSkeletonShimmerElapsedMillis.current ?: return Modifier
+    val sweepWidth: Float = LocalWindowInfo.current.containerSize.width.toFloat()
+    val originX: FloatArray = remember { FloatArray(1) }
+    val highlight: Color = VibeyFinTokens.Colors.line.copy(alpha = SHIMMER_ALPHA)
+
+    // The band is placed in screen coordinates and read at draw time, so the blocks line up and nothing recomposes per frame
+    return Modifier
+        .onGloballyPositioned { originX[0] = it.positionInRoot().x }
+        .drawWithContent {
+            val center: Float = SkeletonShimmer.bandCenter(elapsed.value.toLong(), sweepWidth) - originX[0]
+            val half: Float = SkeletonShimmer.bandHalfWidth(sweepWidth)
+
+            drawContent()
+            drawRect(Brush.horizontalGradient(listOf(Color.Transparent, highlight, Color.Transparent), startX = center - half, endX = center + half))
+        }
+}
+
+private const val SHIMMER_ALPHA = 0.5f
 
 /**
  * How many placeholders a row or grid draws: [phone] on a compact width, twice as many from 600 dp (a tablet, an unfolded
@@ -63,12 +121,9 @@ private const val WIDE_FROM_DP = 600
 fun SkeletonLine(width: Dp, style: TextStyle) {
     Box(Modifier.width(width)) {
         Text(text = "", style = style, minLines = 1)
-        Box(
-            Modifier
-                .matchParentSize()
-                .padding(vertical = VibeyFinTokens.Space.s1)
-                .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Xs))
-                .background(VibeyFinTokens.Colors.surface2),
+        SkeletonBlock(
+            Modifier.matchParentSize().padding(vertical = VibeyFinTokens.Space.s1),
+            RoundedCornerShape(VibeyFinTokens.Radius.m3Xs),
         )
     }
 }
