@@ -278,13 +278,14 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
         val uriHandler = LocalUriHandler.current
         val openTrailerUrl: (String) -> Unit = { url -> uriHandler.openUri(url) }
 
-        TileMenuHost(tileMenu, navController, openTrailerUrl)
+        val notices = remember { SnackbarHostState() }
+
+        TileMenuHost(tileMenu, navController, notices, openTrailerUrl)
 
         var seerrMenu by remember { mutableStateOf<SeerrTitle?>(null) }
-        val seerrNotices = remember { SnackbarHostState() }
 
         seerrMenu?.let { title ->
-            SeerrMenuHost(title, navController, seerrNotices, openTrailerUrl, onReopen = { seerrMenu = it }) { seerrMenu = null }
+            SeerrMenuHost(title, navController, notices, openTrailerUrl, onReopen = { seerrMenu = it }) { seerrMenu = null }
         }
 
         Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
@@ -325,7 +326,7 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
 
             signInFlight.Overlay()
             // What a request from a Seerr poster menu came to, over whatever screen the menu was on
-            SnackbarHost(seerrNotices, Modifier.align(Alignment.BottomCenter).padding(bottom = if (currentTab != null) FLOATING_BAR_SPACE else 0.dp))
+            SnackbarHost(notices, Modifier.align(Alignment.BottomCenter).padding(bottom = if (currentTab != null) FLOATING_BAR_SPACE else 0.dp))
 
             if (currentTab != null) {
                 FloatingNavigationBar(
@@ -415,9 +416,18 @@ private fun NavGraphBuilder.details(navController: NavHostController, leave: (Ho
 }
 
 @Composable
-private fun TileMenuHost(tileMenu: TileMenuViewModel, navController: NavHostController, openTrailerUrl: (String) -> Unit) {
+private fun TileMenuHost(tileMenu: TileMenuViewModel, navController: NavHostController, notices: SnackbarHostState, openTrailerUrl: (String) -> Unit) {
     val menu by tileMenu.uiState.collectAsStateWithLifecycle()
     val ensureNotifications = rememberDownloadNotificationPermission()
+    val actionMessage = menu.actionMessage
+
+    // The menu has closed by the time a change is refused, so the reason shows under it.
+    LaunchedEffect(actionMessage) {
+        if (actionMessage != null) {
+            notices.showSnackbar(actionMessage, duration = SnackbarDuration.Short)
+            tileMenu.onDismissMessage()
+        }
+    }
 
     TileMenuSheet(
         state = menu,

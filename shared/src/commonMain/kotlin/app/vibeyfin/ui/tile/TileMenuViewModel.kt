@@ -114,9 +114,6 @@ class TileMenuViewModel(
     private var lookup: Job? = null
     private var writing = false
 
-    // The user changed My List in this menu: the lookup's older answer must not undo it.
-    private var toggled = false
-
     val uiState: StateFlow<TileMenuUiState> = combine(
         // Progress is only drawn while a menu is open; closed, the menu must not rebuild whatever shows it for every byte that arrives.
         content,
@@ -145,7 +142,6 @@ class TileMenuViewModel(
     /** A poster was long-pressed: the menu opens at once, and the trailer row fills in when the server has answered. */
     fun onOpen(item: MediaItem) {
         lookup?.cancel()
-        toggled = false
         readDownloadPermission()
         // The same poster again (iOS asks early) keeps what the first look-up found.
         val kept = content.value.takeIf { it.item?.id == item.id }
@@ -163,7 +159,7 @@ class TileMenuViewModel(
                 } else {
                     // The server's word on My List replaces the poster's own, which a search result does not carry.
                     current.copy(
-                        item = if (detail != null && !toggled) current.item.copy(isFavorite = detail.isFavorite) else current.item,
+                        item = if (detail != null) current.item.copy(isFavorite = detail.isFavorite) else current.item,
                         trailer = trailer,
                         checkingTrailer = false,
                     )
@@ -177,20 +173,17 @@ class TileMenuViewModel(
         content.value = TileMenuUiState()
     }
 
-    /** "My List" in the menu: shown at once, taken back with a message if it can't be saved. */
+    /** "My List" in the menu: the menu closes and the change is saved; a message says so if it can't be. */
     fun onToggleFavorite() {
         val before = content.value.item ?: return
         if (writing) return
         writing = true
-        toggled = true
         val target = !before.isFavorite
-        content.update { it.copy(item = before.copy(isFavorite = target), actionMessage = null) }
+        onClose()
         viewModelScope.launch {
             val result = watch.setFavorite(before.id, target)
             writing = false
-            if (result is ApiResult.Failure) {
-                content.update { it.copy(item = it.item?.copy(isFavorite = before.isFavorite), actionMessage = failureMessage(result.error, target)) }
-            }
+            if (result is ApiResult.Failure) content.update { it.copy(actionMessage = failureMessage(result.error, target)) }
         }
     }
 
@@ -199,18 +192,20 @@ class TileMenuViewModel(
         downloadFlow.dismissMessage()
     }
 
-    /** The Download row: a movie or an episode goes into the queue at once; a show asks how many episodes first. */
+    /** The Download row: the menu closes, a movie or an episode goes into the queue at once and a show asks how many episodes first. */
     fun onDownload() {
         val item = content.value.item ?: return
+        onClose()
         when {
             item.kind == ItemKind.Series -> downloadFlow.start(DownloadTarget.Series(item.id), item.title, ask = true)
             item.canPlay -> downloadFlow.start(DownloadTarget.Item(item.id), item.title, ask = false)
         }
     }
 
-    /** Pause, resume or remove (after asking) the tile's own download. */
+    /** Pause, resume or remove (after asking) the tile's own download; the menu closes. */
     fun onDownloadAction(action: DownloadAction) {
         val download = uiState.value.download ?: return
+        onClose()
         downloadFlow.act(download, action)
     }
 

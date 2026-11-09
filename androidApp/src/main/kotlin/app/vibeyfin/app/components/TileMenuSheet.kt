@@ -31,10 +31,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -102,10 +100,6 @@ fun TileMenuSheet(
                 }
 
                 if (state.offersDownload) DownloadRow(state, onDownload, onDownloadAction)
-
-                state.actionMessage?.let {
-                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s2).semantics { liveRegion = LiveRegionMode.Polite })
-                }
 
                 MenuRow(Strings.myListAction(item.isFavorite), rememberIcon(if (item.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder), onMyList)
             }
