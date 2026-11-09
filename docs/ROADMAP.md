@@ -262,8 +262,8 @@ _Depends on Phase 4 (Home rows) and Phase 6 (profiles and the first settings). S
   skip back and forward steps, auto-skip intros and recaps, "Still watching" Off or after 2 to 5 episodes,
   Buffer ahead; default audio and subtitle language and when subtitles show (Audio and subtitles page, kept on the
   Jellyfin account, issue #28). Still to do: gestures, auto-advance off_
-- [ ] Motion: looping motion (skeleton shimmer) is off by default and an opt-in
-  "Looping motion" setting, and is never on when the system asks for Reduce Motion. One-shot motion (the
+- [x] Motion: the skeleton shimmer always plays (no setting) and never when the system asks for Reduce Motion
+  or Remove animations (#80). One-shot motion (the
   shared-element transition, crossfades) is on and follows the system setting
 - [ ] Settings that travel: copy settings from another profile, export and import as a file.
   **Open question:** also sync through Jellyfin's per-client `DisplayPreferences` (`CustomPrefs`)

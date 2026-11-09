@@ -8,7 +8,7 @@ Further sections: **UX guardrails** (behavior both apps must share), **iOS & iPa
 2. **Resume beats discover.** Continue watching sits above the fold, and tapping a card's picture plays — no detour. Its title opens the detail page.
 3. **Native first.** Each app uses its platform's own components, type, navigation, motion and icons. If the platform has a control for it, use that control; build custom only where Jellyfin needs it (posters, rows, the player).
 4. **One brand across both.** What stays identical: the name, electric aqua, dark-only, artwork ratios and treatment, the brand display face, voice, and every rule in **UX guardrails**.
-5. **Calm motion.** Native transitions only; nothing bounces for effect, spins or auto-rotates. Looping motion (a skeleton shimmer) is off by default, opt-in, and never plays when the system asks for Reduce Motion.
+5. **Calm motion.** Native transitions only; nothing bounces for effect, spins or auto-rotates. The one looping motion is the skeleton shimmer: always on, no setting, and never playing when the system asks for Reduce Motion (iOS) or Remove animations (Android). It is one soft grey light (`line` / `separator`, never aqua) that sweeps the whole screen every 2 s, in step across every placeholder, from one shared modifier per platform.
 
 ## What is shared vs native
 
