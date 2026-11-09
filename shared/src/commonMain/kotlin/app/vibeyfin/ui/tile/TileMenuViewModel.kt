@@ -110,7 +110,6 @@ class TileMenuViewModel(
 ) : ViewModel() {
     private val content = MutableStateFlow(TileMenuUiState())
     private val downloadFlow = DownloadFlow(viewModelScope, downloads) { connection.state.value.profileOrNull() }
-    private val canDownload = MutableStateFlow(true)
     private var permissionRead = false
     private var lookup: Job? = null
     private var writing = false
@@ -122,7 +121,7 @@ class TileMenuViewModel(
         // Progress is only drawn while a menu is open; closed, the menu must not rebuild whatever shows it for every byte that arrives.
         content,
         connection.sessionEnded(),
-        downloadParts(connection, downloads, downloadFlow, canDownload, live = content.map { it.item != null }),
+        downloadParts(connection, downloads, downloadFlow, downloadFlow.canDownload, live = content.map { it.item != null }),
     ) { content, exit, parts ->
         content.copy(
             exit = exit,
@@ -229,13 +228,7 @@ class TileMenuViewModel(
     private fun readDownloadPermission() {
         if (permissionRead) return
         permissionRead = true
-        viewModelScope.launch {
-            val profile = connection.state.value.profileOrNull() ?: run {
-                permissionRead = false
-                return@launch
-            }
-            downloads.canDownload(profile)?.let { canDownload.value = it }
-        }
+        viewModelScope.launch { if (!downloadFlow.refreshCanDownload()) permissionRead = false }
     }
 
     // A trailer the server holds first (it plays in the app), else one on the web; null when the title has neither.

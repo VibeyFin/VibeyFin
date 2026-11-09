@@ -25,6 +25,7 @@ import app.vibeyfin.domain.accountOrNull
 import app.vibeyfin.domain.model.Account
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.domain.model.Server
+import app.vibeyfin.ui.common.KidsGuard
 import app.vibeyfin.ui.common.PinGate
 import app.vibeyfin.ui.common.PinPrompt
 import app.vibeyfin.ui.common.PinReason
@@ -100,6 +101,7 @@ class SettingsViewModel(
     private val confirmSignOut = MutableStateFlow(false)
     private val confirmPurgeDownloads = MutableStateFlow(false)
     private val pin = PinGate(pins, auth, viewModelScope)
+    private val kidsGuard = KidsGuard(profileSettings)
 
     // The profile whose PIN to open Settings is known not to be needed or has been entered. Only the gate collector below and a passed
     // PIN set it; the state is locked for every other profile, so the lock comes from the data and not from which collector ran first.
@@ -286,7 +288,7 @@ class SettingsViewModel(
 
                 SettingKey.Notifications -> {
                     // A kids profile has no Notifications page; this keeps a stale toggle from reaching it.
-                    if (profileSettings.kidsProfile.first() == true) return@launch
+                    if (kidsGuard.isKidsProfile()) return@launch
                     profileSettings.setNotificationsEnabled(value)
                     notificationsBlocked.value = false
                     requestNotificationPermission.value = value
@@ -378,7 +380,7 @@ class SettingsViewModel(
                 SettingKey.SwitchProfile -> guarded(PinReason.SwitchProfile, { it.switchProfile }) { connection.switchProfile() }
 
                 // A kids profile has no Sign out row; this keeps a stale tap from reaching it.
-                SettingKey.SignOut -> if (profileSettings.kidsProfile.first() != true) confirmSignOut.value = true
+                SettingKey.SignOut -> if (!kidsGuard.isKidsProfile()) confirmSignOut.value = true
 
                 SettingKey.PurgeDownloads -> confirmPurgeDownloads.value = true
 
