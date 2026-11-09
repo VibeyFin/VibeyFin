@@ -55,7 +55,7 @@ fun appModule() = module {
     viewModel { SearchViewModel(get(), get(), get(), get(), get(), seerr = get(), seerrRepository = get()) }
     viewModelOf(::TileMenuViewModel)
     viewModelOf(::SubtitleSearchViewModel)
-    viewModel { params -> FilteredListViewModel(params.get(), get(), get()) }
+    viewModel { params -> FilteredListViewModel(params.get(), get(), get(), get()) }
     viewModel { params -> ItemViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { params -> PlaybackViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), startOver = params.getOrNull() ?: false) }
     viewModelOf(::StartupViewModel)

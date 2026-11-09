@@ -47,7 +47,7 @@ class FilteredListViewModelTest {
 
     private suspend fun FilteredListViewModel.list(until: (ChildrenUiState) -> Boolean) = uiState.map { it.list }.first(until)
 
-    private fun viewModel(filter: HomeFilter) = viewModels.track(FilteredListViewModel(filter, app.library, app.connection))
+    private fun viewModel(filter: HomeFilter) = viewModels.track(FilteredListViewModel(filter, app.library, app.connection, app.watchChanges))
 
     private fun FakeServer.listOf(all: List<String>, pageSize: Int) = on("GET", "/Items") { request ->
         val start = request.query["startIndex"]!!.toInt()
@@ -544,5 +544,96 @@ class FilteredListViewModelTest {
 
         assertEquals(listOf("All genres", "Drama", "Sitcom"), sheet.options.map { it.name })
         assertEquals(listOf(null, 1, 3), sheet.options.map { it.count })
+    }
+
+    // My List follows favourite changes made anywhere (a poster's menu, a title's page).
+
+    @Test
+    fun aTitleTakenOffMyListLeavesThePageAtOnce() = runTest {
+        val server = app.signedIn()
+        server.listOf(listOf("a", "b", "c"), 60)
+        server.on("DELETE", "/UserFavoriteItems/b", Reply.json("{}"))
+        val viewModel = viewModel(HomeFilter.MyList)
+        viewModel.list { !it.loading }
+
+        app.watch.setFavorite("b", favorite = false)
+        val state = viewModel.list { it.items.size == 2 }
+
+        assertEquals(listOf("a", "c"), state.items.map { it.id })
+        assertEquals(2, state.total)
+    }
+
+    @Test
+    fun takingTheLastTitleOffMyListShowsTheEmptyPage() = runTest {
+        val server = app.signedIn()
+        server.listOf(listOf("a"), 60)
+        server.on("DELETE", "/UserFavoriteItems/a", Reply.json("{}"))
+        val viewModel = viewModel(HomeFilter.MyList)
+        viewModel.list { !it.loading }
+
+        app.watch.setFavorite("a", favorite = false)
+        val state = viewModel.list { it.items.isEmpty() }
+
+        assertTrue(state.isEmpty)
+        assertEquals(Strings.emptyFolder, state.emptyText)
+    }
+
+    @Test
+    fun aTitlePutBackOnMyListShowsOnThePageAgain() = runTest {
+        val server = app.signedIn()
+        server.listOf(listOf("a"), 60)
+        server.on("POST", "/UserFavoriteItems/b", Reply.json("{}"))
+        val viewModel = viewModel(HomeFilter.MyList)
+        viewModel.list { !it.loading }
+
+        server.listOf(listOf("b", "a"), 60)
+        app.watch.setFavorite("b", favorite = true)
+        val state = viewModel.list { it.items.size == 2 && !it.refreshing }
+
+        assertEquals(listOf("b", "a"), state.items.map { it.id })
+    }
+
+    @Test
+    fun aFavoriteThatCouldNotBeSavedLeavesMyListAsItWas() = runTest {
+        val server = app.signedIn()
+        server.listOf(listOf("a", "b"), 60)
+        server.on("DELETE", "/UserFavoriteItems/b", Reply.status(HttpStatusCode.ServiceUnavailable))
+        val viewModel = viewModel(HomeFilter.MyList)
+        viewModel.list { !it.loading }
+
+        app.watch.setFavorite("b", favorite = false)
+
+        assertEquals(listOf("a", "b"), viewModel.uiState.value.list.items.map { it.id })
+    }
+
+    @Test
+    fun anotherPageIgnoresMyListChanges() = runTest {
+        val server = app.signedIn()
+        server.listOf(listOf("a", "b"), 60)
+        server.on("DELETE", "/UserFavoriteItems/b", Reply.json("{}"))
+        val viewModel = viewModel(HomeFilter.Movies)
+        viewModel.list { !it.loading }
+
+        app.watch.setFavorite("b", favorite = false)
+
+        assertEquals(listOf("a", "b"), viewModel.uiState.value.list.items.map { it.id })
+    }
+
+    @Test
+    fun aTitleTakenOffWhileThePageReloadsDoesNotComeBack() = runTest {
+        val server = app.signedIn()
+        server.listOf(listOf("a", "b"), 60)
+        server.on("DELETE", "/UserFavoriteItems/b", Reply.json("{}"))
+        val viewModel = viewModel(HomeFilter.MyList)
+        viewModel.list { !it.loading }
+        val reload = server.hold("GET", "/Items")
+        viewModel.onChip(ListChipKind.Sort)
+        viewModel.onPick("Rating")
+
+        app.watch.setFavorite("b", favorite = false)
+        reload.open()
+        val state = viewModel.list { !it.refreshing }
+
+        assertEquals(listOf("a"), state.items.map { it.id })
     }
 }

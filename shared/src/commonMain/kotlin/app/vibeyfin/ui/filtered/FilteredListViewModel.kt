@@ -5,12 +5,15 @@ import androidx.lifecycle.viewModelScope
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.Decade
+import app.vibeyfin.domain.FavoriteChange
 import app.vibeyfin.domain.FilterOption
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.PageSort
 import app.vibeyfin.domain.TypeFilter
+import app.vibeyfin.domain.WatchChanges
 import app.vibeyfin.domain.defaultSort
+import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.offersCollections
 import app.vibeyfin.domain.offersTypeFilter
 import app.vibeyfin.domain.offersYearAndPeople
@@ -81,6 +84,7 @@ class FilteredListViewModel(
     private val filter: HomeFilter,
     private val library: LibraryRepository,
     connection: ConnectionManager,
+    changes: WatchChanges,
 ) : ViewModel() {
     /** The name at the top of the page. */
     val title: String = filter.title
@@ -96,12 +100,16 @@ class FilteredListViewModel(
     // The people the last search found, so a pick can name who was chosen.
     private var foundPeople: List<FilterOption> = emptyList()
 
+    // Taken off My List here: a page the server answered before the change must not bring them back.
+    private val removedFromList = mutableSetOf<String>()
+
     val uiState: StateFlow<FilteredListUiState> = combine(content, selection, sheet, connection.sessionEnded()) { content, selection, sheet, exit ->
         FilteredListUiState(content.copy(exit = exit), chipsFor(selection), sheet)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FilteredListUiState())
 
     init {
         loadFirstPage()
+        if (filter == HomeFilter.MyList) viewModelScope.launch { changes.favorites.collect(::onFavoriteChanged) }
     }
 
     /** Called as the end of the loaded items comes into view. */
@@ -116,7 +124,7 @@ class FilteredListViewModel(
             if (selection.value != asked) return@launch
             when (result) {
                 is ApiResult.Success -> content.update {
-                    val items = it.items + result.value.items
+                    val items = it.items + result.value.items.withoutRemoved()
                     it.copy(
                         items = items,
                         hasMore = result.value.items.isNotEmpty() && items.size < result.value.total,
@@ -307,6 +315,22 @@ class FilteredListViewModel(
         }
     }
 
+    // One put back is placed where the server's order puts it.
+    private fun onFavoriteChanged(change: FavoriteChange) {
+        if (change.favorite) {
+            removedFromList.remove(change.itemId)
+            loadFirstPage()
+            return
+        }
+        removedFromList.add(change.itemId)
+        content.update { current ->
+            val remaining = current.items.withoutRemoved()
+            if (remaining.size == current.items.size) current else current.copy(items = remaining, total = current.total?.minus(current.items.size - remaining.size))
+        }
+    }
+
+    private fun List<MediaItem>.withoutRemoved(): List<MediaItem> = if (removedFromList.isEmpty()) this else filterNot { it.id in removedFromList }
+
     private fun decadeLabel(decade: Decade) = when (decade) {
         Decade.Twenties -> Strings.decade2020s
         Decade.Tens -> Strings.decade2010s
@@ -340,7 +364,7 @@ class FilteredListViewModel(
             if (selection.value != asked) return@launch
             content.value = when (result) {
                 is ApiResult.Success -> ChildrenUiState(
-                    items = result.value.items,
+                    items = result.value.items.withoutRemoved(),
                     loading = false,
                     hasMore = result.value.hasMore,
                     total = result.value.total,
