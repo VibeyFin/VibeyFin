@@ -181,6 +181,7 @@ struct ArtworkGrid: View {
     var onNearEnd: () -> Void = {}
     /// Ask for the next page when one of this many last items scrolls into view.
     private let loadAhead = 6
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         LazyVGrid(
@@ -196,6 +197,7 @@ struct ArtworkGrid: View {
                     }
             }
         }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: items.map(\.id))
     }
 }
 

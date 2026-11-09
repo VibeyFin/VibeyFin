@@ -62,6 +62,7 @@ struct MediaRowView: View {
             }
             .screenMargin()
             .liftRoomInside()
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: items.map(\.id))
         }
         .liftRoom()
     }
