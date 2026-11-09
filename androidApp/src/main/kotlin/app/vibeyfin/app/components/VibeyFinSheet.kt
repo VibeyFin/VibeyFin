@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -51,9 +52,16 @@ import app.vibeyfin.ui.common.Strings
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VibeyFinSheet(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    VibeyFinSheet(onDismiss, rememberModalBottomSheetState(skipPartiallyExpanded = true), content)
+}
+
+/** The same sheet driven by [sheetState], for a sheet that closes itself with the slide down. */
+@ExperimentalMaterial3Api
+@Composable
+fun VibeyFinSheet(onDismiss: () -> Unit, sheetState: SheetState, content: @Composable ColumnScope.() -> Unit) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetState = sheetState,
         // A fixed top margin: M3's own top inset shrinks as the sheet moves, which resizes a nearly full sheet and snaps it back mid-drag
         modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)),
         contentWindowInsets = { WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom) },
