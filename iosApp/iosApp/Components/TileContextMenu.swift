@@ -130,10 +130,22 @@ private struct LiveTileContextMenu: ViewModifier {
                 Label(Strings.shared.checkingTrailer, systemImage: "film")
             }
         }
-        Button { menu.toggleFavorite(item) } label: {
-            Label(Strings.shared.myListAction(onList: isFavorite).titleCased(), systemImage: isFavorite ? "heart.fill" : "heart")
-        }
+        myListRow(isFavorite)
         if offersDownload { downloadRows(shown) }
+    }
+
+    /// Two branches, not one Button with a changing label: the system keeps a menu row it has built and refreshes only its icon.
+    @ViewBuilder
+    private func myListRow(_ isFavorite: Bool) -> some View {
+        if isFavorite {
+            Button { menu.toggleFavorite(item) } label: {
+                Label(Strings.shared.myListAction(onList: true).titleCased(), systemImage: "heart.fill")
+            }
+        } else {
+            Button { menu.toggleFavorite(item) } label: {
+                Label(Strings.shared.myListAction(onList: false).titleCased(), systemImage: "heart")
+            }
+        }
     }
 
     /// Download: with no download a tap starts one (a show asks first); with one, pause, resume and remove.
