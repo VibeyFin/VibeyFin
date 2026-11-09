@@ -116,7 +116,7 @@ class TileMenuViewModel(
     private var lookup: Job? = null
     private var writing = false
 
-    // The latest My List state of each title changed while the app runs: a poster's own copy may be older.
+    // The latest My List state of each title seen while the app runs: a poster's own copy may be older.
     private val knownFavorites = mutableMapOf<String, Boolean>()
 
     // The title whose My List write is out: a lookup that started before it must not undo it.
@@ -170,6 +170,7 @@ class TileMenuViewModel(
         lookup = viewModelScope.launch {
             val detail = (library.item(item.id) as? ApiResult.Success)?.value
             val trailer = detail?.takeIf { item.canHaveTrailer }?.let { findTrailer(it) }
+            if (detail != null && writingId != item.id) knownFavorites[item.id] = detail.isFavorite
             content.update { current ->
                 if (current.item?.id != item.id) {
                     current
@@ -184,6 +185,9 @@ class TileMenuViewModel(
             }
         }
     }
+
+    /** The latest My List state of [itemId] this menu knows, read at once (iOS draws a poster's rows before a press); null when it knows none. */
+    fun knownFavorite(itemId: String): Boolean? = knownFavorites[itemId]
 
     fun onClose() {
         lookup?.cancel()

@@ -52,6 +52,9 @@ final class TileMenuObservable: ObservableObject {
 
     func close() { model.onClose() }
 
+    /// The latest My List state the menu knows for `item`, read at once; nil when it knows none.
+    func knownFavorite(_ item: MediaItem) -> Bool? { model.knownFavorite(itemId: item.id)?.boolValue }
+
     func dismissMessage() { model.onDismissMessage() }
 
     func toggleFavorite() { model.onToggleFavorite() }

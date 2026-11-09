@@ -15,6 +15,8 @@ class TileMenuModel {
 
     fun onClose() = host.viewModel.onClose()
 
+    fun knownFavorite(itemId: String): Boolean? = host.viewModel.knownFavorite(itemId)
+
     fun onToggleFavorite() = host.viewModel.onToggleFavorite()
 
     fun onDismissMessage() = host.viewModel.onDismissMessage()

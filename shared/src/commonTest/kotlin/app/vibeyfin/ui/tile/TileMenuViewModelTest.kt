@@ -192,6 +192,22 @@ class TileMenuViewModelTest {
     }
 
     @Test
+    fun aTitlesMyListStateIsKnownTheMomentItIsTappedAndOnceTheServerHasSaidIt() = runTest {
+        val server = server(itemJson("m1", "Heat", favorite = true))
+        server.on("DELETE", "/UserFavoriteItems/m1", Reply.json("{}"))
+        val viewModel = viewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        assertNull(viewModel.knownFavorite("m1"))
+        viewModel.onOpen(tile(favorite = false))
+        viewModel.uiState.first { !it.checkingTrailer && it.item?.isFavorite == true }
+        assertEquals(true, viewModel.knownFavorite("m1"))
+
+        viewModel.onToggleFavorite()
+
+        assertEquals(false, viewModel.knownFavorite("m1"))
+    }
+
+    @Test
     fun aTitleTakenOffMyListElsewhereOpensAsOffItBeforeTheServerAnswers() = runTest {
         val server = server(itemJson("m1", "Heat", favorite = true))
         server.on("DELETE", "/UserFavoriteItems/m1", Reply.json("{}"))
