@@ -191,9 +191,8 @@ struct ContinueRowView: View {
     }
 }
 
-/// Stands in for the row while it loads, redacted so nothing moves when the cards arrive. Not
-/// animated; looping motion is an opt-in setting (`brand.md`). The words under the pictures are never
-/// seen, only drawn as grey bars, so they borrow strings that already exist.
+/// Stands in for the row while it loads, redacted so nothing moves when the cards arrive. The words under
+/// the pictures are never seen, only drawn as grey bars, so they borrow strings that already exist.
 struct ContinueSkeletonRow: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
 
@@ -218,6 +217,7 @@ struct ContinueSkeletonRow: View {
                 }
             }
             .redacted(reason: .placeholder)
+            .skeletonShimmer()
             .screenMargin()
         }
         .scrollDisabled(true)

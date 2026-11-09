@@ -58,7 +58,7 @@ struct PlayerView: View {
             Color(.systemBackground).ignoresSafeArea()
             PlayerSurface(controller: controller, pip: pip).ignoresSafeArea()
             SubtitleOverlay(
-                source: controller.isExternalPlayback ? nil : subtitleSource(in: state),
+                source: controller.isExternalPlayback ? nil : state?.subtitleSource,
                 onUnauthorized: { controller.subtitleRejected() }
             ) { controller.engine.currentSeconds }
             // The picture is on the other screen over AirPlay: the item's artwork, blurred, stands in for it.
@@ -204,8 +204,8 @@ struct PlayerView: View {
                 lastSkipSeekMs = nil
             }
             updateTrickplay(state)
-            controller.wantAudio(audioChoice(in: state))
-            controller.wantSubtitle(subtitleChoice(in: state))
+            controller.wantAudio(state?.audioChoice)
+            controller.wantSubtitle(state?.subtitleChoice)
             controller.wantDiagnostics(showsStats)
             controller.setSpeed(state?.speed ?? 1)
             applyStillWatching(state?.stillWatching == true)
@@ -565,34 +565,6 @@ struct PlayerView: View {
     private func leaveForBackground() {
         controller.pause()
         model.backgrounded(controller.currentMilliseconds)
-    }
-
-    /// What the player has to choose itself: the selected audio track of a direct play. The server
-    /// chooses the audio of every other stream, and the player then leaves it alone.
-    private func audioChoice(in state: PlaybackUiState?) -> AudioChoice? {
-        guard let state, state.stream?.audioInPlayer == true,
-              let position = state.audioTracks.firstIndex(where: { $0.selected }) else { return nil }
-        return AudioChoice(position: position, count: state.audioTracks.count)
-    }
-
-    /// The subtitle the player draws itself: an embedded image track, by its place among the file's subtitles.
-    /// Nil when the stream has no such track to show, so the player leaves subtitles alone.
-    private func subtitleChoice(in state: PlaybackUiState?) -> SubtitleChoice? {
-        guard let state, let stream = state.stream, !stream.embeddedSubtitles.isEmpty else { return nil }
-        let tracks = state.subtitleTracks.filter { $0.index >= 0 }
-        let selected = tracks.first { $0.selected }?.index
-        let embedded = stream.embeddedSubtitles.map(\.int32Value)
-        guard selected == nil || embedded.contains(selected ?? -1) else { return nil }
-        return SubtitleChoice(position: tracks.firstIndex { $0.selected }, count: tracks.count, index: selected.map(Int.init))
-    }
-
-    /// The subtitle the app paints itself: the selected track, when the server can send it as a file.
-    private func subtitleSource(in state: PlaybackUiState?) -> SubtitleSource? {
-        guard let state, let stream = state.stream,
-              let selected = state.subtitleTracks.first(where: { $0.selected && $0.index >= 0 })?.index,
-              let file = stream.subtitleFiles.first(where: { $0.index == selected }),
-              let url = URL(string: file.url) else { return nil }
-        return SubtitleSource(url: url, headers: stream.headers)
     }
 
     private func close() {
