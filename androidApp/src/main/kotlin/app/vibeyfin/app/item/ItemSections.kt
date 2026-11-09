@@ -36,12 +36,14 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -548,9 +550,22 @@ private fun CastTile(person: CastMember, tile: Dp, onClick: () -> Unit) {
 
 private fun Modifier.matchSize(): Modifier = this.fillMaxWidth().fillMaxHeight()
 
+@Composable
+private fun SubtitleSearchRow(onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
+        modifier = Modifier.fillMaxWidth().heightIn(min = VibeyFinTokens.Size.touch).clickable(role = Role.Button, onClick = onClick),
+    ) {
+        Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(Strings.searchForSubtitles, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.weight(1f))
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
 /** The file's details, collapsed until asked for. */
 @Composable
-fun TechnicalInfo(lines: List<TechnicalLine>) {
+fun TechnicalInfo(lines: List<TechnicalLine>, onSearchSubtitles: () -> Unit) {
     var open by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
@@ -570,6 +585,7 @@ fun TechnicalInfo(lines: List<TechnicalLine>) {
                         Text(row.text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
                         row.reason?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = VibeyFinTokens.Colors.inkMuted) }
                     }
+                    if (line.searchesSubtitles) SubtitleSearchRow(onSearchSubtitles)
                 }
             }
         }

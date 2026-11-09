@@ -15,9 +15,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,6 +33,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.ExoPlayer
 import app.vibeyfin.app.components.LoadError
+import app.vibeyfin.app.subtitles.SubtitleSearch
+import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.playback.PlaybackUiState
@@ -215,6 +220,20 @@ private fun BoxScope.StatusOverlays(state: PlaybackUiState, chrome: PlayerChrome
         )
     }
 
+    state.notice?.let { notice ->
+        Text(
+            notice,
+            style = MaterialTheme.typography.bodyMedium,
+            color = VibeyFinTokens.Colors.ink,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .safeDrawingPadding()
+                .padding(top = STATS_TOP_INSET)
+                .background(VibeyFinTokens.Colors.scrimStrong, RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
+                .padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s2),
+        )
+    }
+
     // Offered for the whole segment, controls up or not; above the scrubber while that shows
     if (noError && skip != null) {
         val lift by animateDpAsState(if (chrome.controlsVisible) SKIP_LIFT_WITH_CONTROLS else 0.dp, label = "skipLift")
@@ -247,7 +266,7 @@ private fun PromptAndSheets(state: PlaybackUiState, chrome: PlayerChrome, viewMo
     if (chrome.showTracks) {
         TrackSheet(
             audio = state.audioTracks,
-            subtitles = state.subtitleTracks,
+            subtitles = state.subtitleChoices,
             onSelectAudio = {
                 viewModel.onSelectAudio(it)
                 chrome.showTracks = false
@@ -256,9 +275,28 @@ private fun PromptAndSheets(state: PlaybackUiState, chrome: PlayerChrome, viewMo
                 viewModel.onSelectSubtitle(it)
                 chrome.showTracks = false
             },
+            onSearchSubtitles = if (state.offersSubtitleSearch) {
+                {
+                    chrome.showTracks = false
+                    chrome.showSubtitleSearch = true
+                }
+            } else {
+                null
+            },
             onDismiss = { chrome.showTracks = false },
         )
     }
+
+    LaunchedEffect(state.subtitleSearchItemId) { chrome.showSubtitleSearch = false }
+
+    SubtitleSearch(
+        itemId = state.subtitleSearchItemId.orEmpty(),
+        visible = chrome.showSubtitleSearch && state.subtitleSearchItemId != null,
+        onDismiss = { chrome.showSubtitleSearch = false },
+        onAdded = viewModel::onSubtitleAdded,
+        onFailedWhileClosed = viewModel::onNotice,
+        keepSystemBarsHidden = true,
+    )
 }
 
 // The next episode, in the last seconds of this one. It grows in and fades like a screen opening, and goes the

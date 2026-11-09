@@ -26,6 +26,7 @@ import app.vibeyfin.testing.subtitleStreamJson
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.HomeExit
+import app.vibeyfin.ui.subtitles.SubtitleAdded
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -45,6 +46,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.yield
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
@@ -52,6 +54,7 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
+import kotlin.concurrent.Volatile
 import kotlin.reflect.KClass
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -99,7 +102,7 @@ class PlaybackViewModelTest {
     ) = viewModels.track(
         PlaybackViewModel(
             id, app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge,
-            app.offlineLibrary, app.offline, app.localReporter(reporterScope),
+            app.offlineLibrary, app.offline, app.localReporter(reporterScope), app.subtitles,
             retryDelays, startOver, autoAdvance, countdownStep,
         ),
     )
@@ -708,7 +711,7 @@ class PlaybackViewModelTest {
             store,
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
-                override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T = PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge, app.offlineLibrary, app.offline, app.localReporter(reporterScope)) as T
+                override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T = PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge, app.offlineLibrary, app.offline, app.localReporter(reporterScope), app.subtitles) as T
             },
         )[PlaybackViewModel::class]
         viewModel.uiState.first { it.stream != null }
@@ -725,7 +728,7 @@ class PlaybackViewModelTest {
         store,
         object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T = PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge, app.offlineLibrary, app.offline, app.localReporter(reporterScope)) as T
+            override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T = PlaybackViewModel("m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge, app.offlineLibrary, app.offline, app.localReporter(reporterScope), app.subtitles) as T
         },
     )[PlaybackViewModel::class]
 
@@ -1122,16 +1125,16 @@ class PlaybackViewModelTest {
         return jellyfin
     }
 
-    private fun TestScope.statesOf(viewModel: PlaybackViewModel): MutableList<PlaybackUiState> {
-        val seen = mutableListOf<PlaybackUiState>()
+    private fun TestScope.statesOf(viewModel: PlaybackViewModel): List<PlaybackUiState> {
+        val seen = SeenStates()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler), start = CoroutineStart.UNDISPATCHED) {
-            viewModel.uiState.collect { seen += it }
+            viewModel.uiState.collect { seen.add(it) }
         }
         return seen
     }
 
     // Playing, with the next episode looked up (it is asked for in the background).
-    private suspend fun TestScope.playing(viewModel: PlaybackViewModel, jellyfin: FakeJellyfin): MutableList<PlaybackUiState> {
+    private suspend fun TestScope.playing(viewModel: PlaybackViewModel, jellyfin: FakeJellyfin): List<PlaybackUiState> {
         val seen = statesOf(viewModel)
         viewModel.uiState.first { it.stream != null }
         viewModel.onPlaying(0)
@@ -1636,7 +1639,7 @@ class PlaybackViewModelTest {
 
     // "Are you still watching?": the card's countdown is held back once enough episodes started by themselves.
 
-    private suspend fun TestScope.nearTheEnd(viewModel: PlaybackViewModel, jellyfin: FakeJellyfin): MutableList<PlaybackUiState> {
+    private suspend fun TestScope.nearTheEnd(viewModel: PlaybackViewModel, jellyfin: FakeJellyfin): List<PlaybackUiState> {
         val seen = playing(viewModel, jellyfin)
         viewModel.onPosition(tenMinutes - 30_000)
         return seen
@@ -2154,5 +2157,76 @@ class PlaybackViewModelTest {
 
         repeat(10) { yield() }
         assertEquals(40_000L, vm.uiState.first { it.pendingSeekMs != null }.pendingSeekMs)
+    }
+
+    // Signed in with the permission to manage subtitles, or without it.
+    private suspend fun serverWithSubtitlePolicy(allowed: Boolean, info: String = playbackInfoJson(mediaSourceJson())): FakeJellyfin {
+        val jellyfin = server(info = info)
+        app.jellyfin.server("http://nas:8096").on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex","Policy":{"EnableSubtitleManagement":$allowed}}"""))
+        return jellyfin
+    }
+
+    @Test
+    fun `a title with no subtitles still has the list with Off when the user may search`() = runTest {
+        serverWithSubtitlePolicy(allowed = true)
+
+        val state = viewModel().uiState.first { it.stream != null && it.offersSubtitleSearch }
+
+        assertEquals("m1", state.subtitleSearchItemId)
+        assertTrue(state.hasTrackChoices)
+        assertEquals(listOf(SUBTITLES_OFF), state.subtitleChoices.map { it.index })
+    }
+
+    @Test
+    fun `without the permission the player offers no search`() = runTest {
+        serverWithSubtitlePolicy(allowed = false)
+
+        val viewModel = viewModel()
+        val state = viewModel.uiState.first { it.stream != null }
+
+        assertNull(withTimeoutOrNull(500.milliseconds) { viewModel.uiState.first { it.offersSubtitleSearch } })
+        assertFalse(state.hasTrackChoices)
+        assertEquals(emptyList(), state.subtitleChoices)
+    }
+
+    @Test
+    fun `an added subtitle is turned on from where the video is and the player says so`() = runTest {
+        val jellyfin = serverWithSubtitlePolicy(allowed = true)
+        val viewModel = viewModel()
+        val first = viewModel.uiState.first { it.stream != null }
+        viewModel.onPosition(60_000)
+
+        viewModel.onSubtitleAdded(SubtitleAdded("m1", 7, "English"))
+        val state = viewModel.uiState.first { it.stream != null && it.stream?.id != first.stream?.id }
+
+        assertEquals(60_000, state.stream?.startPositionMs)
+        assertEquals(7, bodyOf(jellyfin.requestsTo("POST", "/Items/m1/PlaybackInfo").last()).getValue("SubtitleStreamIndex").jsonPrimitive.int)
+        assertEquals("English subtitles added", state.notice)
+    }
+
+    @Test
+    fun `a subtitle added for another episode leaves this one playing`() = runTest {
+        val jellyfin = serverWithSubtitlePolicy(allowed = true)
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.stream != null }
+
+        viewModel.onSubtitleAdded(SubtitleAdded("other", 7, "English"))
+
+        assertEquals(1, jellyfin.requestsTo("POST", "/Items/m1/PlaybackInfo").size)
+        assertNull(viewModel.uiState.value.notice)
+    }
+}
+
+// The collector appends while a test reads, on another thread once a request has answered: a plain list throws when that overlaps.
+private class SeenStates : AbstractList<PlaybackUiState>() {
+    @Volatile
+    private var states = emptyList<PlaybackUiState>()
+
+    override val size: Int get() = states.size
+
+    override fun get(index: Int): PlaybackUiState = states[index]
+
+    fun add(state: PlaybackUiState) {
+        states = states + state
     }
 }

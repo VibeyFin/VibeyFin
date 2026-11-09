@@ -45,8 +45,10 @@ fun PickerSheet(
     onRetry: () -> Unit,
     /** A search field above the rows (the People filter): what was typed, its placeholder and who hears each change. */
     search: PickerSearch? = null,
+    keepSystemBarsHidden: Boolean = false,
 ) {
     VibeyFinSheet(onDismiss) {
+        if (keepSystemBarsHidden) KeepSystemBarsHidden()
         val modifier = Modifier.navigationBarsPadding().padding(horizontal = VibeyFinTokens.Space.s2, vertical = VibeyFinTokens.Space.s2)
         val plain = modifier.padding(horizontal = VibeyFinTokens.Space.s2)
 

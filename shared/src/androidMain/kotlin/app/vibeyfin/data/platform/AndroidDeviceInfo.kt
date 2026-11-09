@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
+import java.util.Locale
 
 class AndroidDeviceInfo(private val context: Context) : DeviceInfo {
     override val deviceName: String by lazy {
@@ -11,6 +12,8 @@ class AndroidDeviceInfo(private val context: Context) : DeviceInfo {
             ?.takeIf { it.isNotBlank() }
             ?: Build.MODEL
     }
+
+    override val language: String get() = Locale.getDefault().toLanguageTag().substringBefore('-')
 
     override val appVersion: String by lazy {
         val packages = context.packageManager

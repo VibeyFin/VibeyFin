@@ -83,6 +83,8 @@ struct PlayerTrackMenu: View {
     let subtitles: [TrackOption]
     let onSelectAudio: (Int32) -> Void
     let onSelectSubtitle: (Int32) -> Void
+    /// Set when the Subtitles list ends with "Search for subtitles".
+    var onSearchSubtitles: (() -> Void)?
     /// A touch landed on the button, so the menu is about to open. The first moment the player can hold
     /// its controls up; `onOpenChange` then says when the menu really closes.
     var onTouch: () -> Void = {}
@@ -97,10 +99,19 @@ struct PlayerTrackMenu: View {
     var body: some View {
         Menu {
             if !audio.isEmpty {
-                picker(Strings.shared.audio, options: audio, onSelect: onSelectAudio)
+                Section(Strings.shared.audio.titleCased()) {
+                    picker(options: audio, onSelect: onSelectAudio)
+                }
             }
             if !subtitles.isEmpty {
-                picker(Strings.shared.subtitles, options: subtitles, onSelect: onSelectSubtitle)
+                Section(Strings.shared.subtitles.titleCased()) {
+                    picker(options: subtitles, onSelect: onSelectSubtitle)
+                    if let onSearchSubtitles {
+                        Button(action: onSearchSubtitles) {
+                            Label(Strings.shared.searchForSubtitles.titleCased(), systemImage: "magnifyingglass")
+                        }
+                    }
+                }
             }
         } label: {
             PlayerSymbol(systemName: subtitleIsOn ? "captions.bubble.fill" : "captions.bubble")
@@ -113,9 +124,9 @@ struct PlayerTrackMenu: View {
 
     /// The picker shows what the shared model marks as selected, and a pick goes straight back to it:
     /// nothing is kept here, so the state is the only truth.
-    private func picker(_ title: String, options: [TrackOption], onSelect: @escaping (Int32) -> Void) -> some View {
+    private func picker(options: [TrackOption], onSelect: @escaping (Int32) -> Void) -> some View {
         Picker(
-            title.titleCased(),
+            "",
             selection: Binding(
                 get: { options.first(where: { $0.selected })?.index ?? options.first?.index ?? 0 },
                 set: onSelect
@@ -125,6 +136,8 @@ struct PlayerTrackMenu: View {
                 Text(option.label).tag(option.index)
             }
         }
+        .pickerStyle(.inline)
+        .labelsHidden()
     }
 }
 
@@ -133,6 +146,7 @@ struct PlayerTrackMenu: View {
 extension PlayerTrackMenu: Equatable {
     static func == (lhs: PlayerTrackMenu, rhs: PlayerTrackMenu) -> Bool {
         lhs.rows(lhs.audio) == rhs.rows(rhs.audio) && lhs.rows(lhs.subtitles) == rhs.rows(rhs.subtitles)
+            && (lhs.onSearchSubtitles == nil) == (rhs.onSearchSubtitles == nil)
     }
 
     private func rows(_ options: [TrackOption]) -> [String] {

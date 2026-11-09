@@ -14,6 +14,7 @@ import app.vibeyfin.domain.PlaybackRepository
 import app.vibeyfin.domain.SeerrConnection
 import app.vibeyfin.domain.SeerrRepository
 import app.vibeyfin.domain.SeerrState
+import app.vibeyfin.domain.SubtitleRepository
 import app.vibeyfin.domain.WatchChanges
 import app.vibeyfin.domain.WatchRepository
 import app.vibeyfin.domain.model.ItemKind
@@ -36,6 +37,7 @@ import app.vibeyfin.ui.downloads.label
 import app.vibeyfin.ui.downloads.progress
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.home.MediaRow
+import app.vibeyfin.ui.subtitles.SubtitleAdded
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -131,7 +133,15 @@ data class ItemUiState(
     val playout: PlayoutTags? = null,
     /** Set when the session ended and the screen must be left. */
     val exit: HomeExit? = null,
+    /** The server lets this user add subtitles, and the device is online. */
+    val canSearchSubtitles: Boolean = false,
+    /** A short message that goes by itself. */
+    val notice: String? = null,
 ) {
+    /** "Search for subtitles" in the technical info: a movie or an episode only, since subtitles belong to one file, and not what plays from a download. */
+    val offersSubtitleSearch: Boolean
+        get() = canSearchSubtitles && item?.canPlay == true && download?.badge != DownloadBadge.Done
+
     /** The page's own movie or episode as a download, or null when it is not one. */
     val download: Download? get() = item?.let { downloads[it.id] }
 
@@ -176,7 +186,7 @@ data class ItemUiState(
         }
 
     /** The file's details, collapsed at the bottom of the page; empty when the server sent none. */
-    val technical: List<TechnicalLine> get() = item?.technicalLines(playoutTags).orEmpty()
+    val technical: List<TechnicalLine> get() = item?.technicalLines(playoutTags, offersSubtitleSearch).orEmpty()
 
     private val isSeries: Boolean get() = item?.kind == ItemKind.Series
 
@@ -224,6 +234,7 @@ class ItemViewModel(
     private val playback: PlaybackRepository,
     private val seerr: SeerrRepository,
     private val seerrConnection: SeerrConnection,
+    subtitles: SubtitleRepository,
 ) : ViewModel() {
     // Seerr's recommendations for this title, not in the library; mixed into "More like this".
     private var seerrSimilar: List<SeerrTitle> = emptyList()
@@ -231,12 +242,14 @@ class ItemViewModel(
     private var episodesJob: Job? = null
     private val downloadFlow = DownloadFlow(viewModelScope, downloads) { connection.state.value.profileOrNull() }
     private val canDownload = MutableStateFlow(true)
+    private val canSearchSubtitles = MutableStateFlow(false)
 
     private val downloadParts = downloadParts(connection, downloads, downloadFlow, canDownload)
 
-    val uiState: StateFlow<ItemUiState> = combine(content, connection.sessionEnded(), downloadParts) { content, exit, parts ->
+    val uiState: StateFlow<ItemUiState> = combine(content, connection.sessionEnded(), downloadParts, canSearchSubtitles) { content, exit, parts, canSearch ->
         content.copy(
             exit = exit,
+            canSearchSubtitles = canSearch,
             downloads = parts.byId,
             canDownload = parts.canDownload,
             downloadPrompt = parts.prompt,
@@ -255,6 +268,21 @@ class ItemViewModel(
         // What was watched changed (playback ended): bring the Resume button and the marks up to date, quietly.
         viewModelScope.launch { changes.events.collect { refresh() } }
         viewModelScope.launch { probePlayout() }
+        viewModelScope.launch { subtitles.available.collect { canSearchSubtitles.value = it } }
+    }
+
+    /** A subtitle reached the server: the page reads the item again, so the track is in the technical info. */
+    fun onSubtitleAdded(added: SubtitleAdded) {
+        onNotice(Strings.subtitlesAdded(added.languageName))
+        viewModelScope.launch { refresh() }
+    }
+
+    fun onNotice(text: String) {
+        content.update { it.copy(notice = text) }
+    }
+
+    fun onDismissNotice() {
+        content.update { it.copy(notice = null) }
     }
 
     fun onRetry() = load()

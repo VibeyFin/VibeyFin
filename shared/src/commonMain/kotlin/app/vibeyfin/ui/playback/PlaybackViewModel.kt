@@ -25,6 +25,7 @@ import app.vibeyfin.domain.PlaybackTrack
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SegmentType
 import app.vibeyfin.domain.SubtitleFile
+import app.vibeyfin.domain.SubtitleRepository
 import app.vibeyfin.domain.TrickplayTrack
 import app.vibeyfin.domain.WatchRepository
 import app.vibeyfin.domain.model.ItemKind
@@ -38,6 +39,7 @@ import app.vibeyfin.ui.common.sessionEnded
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.item.badge
 import app.vibeyfin.ui.item.episodeLabel
+import app.vibeyfin.ui.subtitles.SubtitleAdded
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -227,12 +229,25 @@ data class PlaybackUiState(
     val inPictureInPicture: Boolean = false,
     /** Several episodes in a row started by themselves: the player is paused and asks whether to go on. */
     val stillWatching: Boolean = false,
+    /** The server lets this user add subtitles, and the device is online. */
+    val canSearchSubtitles: Boolean = false,
+    /** The movie or episode "Search for subtitles" would search for; null for a trailer, or what plays from a download. */
+    val subtitleSearchItemId: String? = null,
+    /** A short message over the picture that goes by itself. */
+    val notice: String? = null,
 ) {
     /** The speeds to pick from. */
     val speeds: List<Float> get() = PLAYBACK_SPEEDS
 
     /** Whether there is anything to choose between, so the player shows its audio and subtitles control. */
-    val hasTrackChoices: Boolean get() = audioTracks.isNotEmpty() || subtitleTracks.isNotEmpty()
+    val hasTrackChoices: Boolean get() = audioTracks.isNotEmpty() || subtitleTracks.isNotEmpty() || offersSubtitleSearch
+
+    /** Whether the Subtitles list ends with "Search for subtitles". */
+    val offersSubtitleSearch: Boolean get() = canSearchSubtitles && subtitleSearchItemId != null
+
+    /** The rows of the Subtitles list: a title with no subtitles has just "Off" when the search can add one. */
+    val subtitleChoices: List<TrackOption>
+        get() = subtitleTracks.ifEmpty { if (offersSubtitleSearch) listOf(TrackOption(SUBTITLES_OFF, Strings.subtitlesOff, selected = true)) else emptyList() }
 }
 
 /** The speeds the player offers. */
@@ -246,6 +261,8 @@ private val SERVER_WAIT = 3.seconds
 
 /** Resuming starts this long before where the user stopped, so the scene they left is in view again. */
 const val RESUME_REWIND_MS = 5_000L
+
+private val NOTICE_SHOWN = 4.seconds
 
 /**
  * Plays one item: asks the server how, hands the native player a [PlaybackStream], and reports to
@@ -291,6 +308,7 @@ class PlaybackViewModel(
     private val offlineMode: OfflineMode,
     /** Where a download's progress goes while it plays: the device, and the server later. */
     private val localReporter: LocalPlaybackReporter,
+    subtitles: SubtitleRepository,
     private val retryDelays: List<Duration> = NETWORK_RETRY_DELAYS,
     private val startOver: Boolean = false,
     private val autoAdvance: Boolean = true,
@@ -403,6 +421,8 @@ class PlaybackViewModel(
     // The error on screen is a lost connection, which says nothing about what the device can play.
     private var lostConnection = false
 
+    private var noticeJob: Job? = null
+
     private class TrackChoice(val mediaSourceId: String, val audio: Int?, val subtitle: Int)
 
     init {
@@ -431,6 +451,9 @@ class PlaybackViewModel(
         }
         viewModelScope.launch {
             profileSettings.autoSkipSegments.collect { autoSkip = it ?: false }
+        }
+        viewModelScope.launch {
+            subtitles.available.collect { can -> content.update { it.copy(canSearchSubtitles = can) } }
         }
         start()
     }
@@ -463,6 +486,24 @@ class PlaybackViewModel(
             applySelection(current)
         } else {
             reopen(current, audio = audioNow, subtitle = target)
+        }
+    }
+
+    /** A subtitle reached the server: it is turned on from where the video is now. One for an episode no longer playing changes nothing. */
+    fun onSubtitleAdded(added: SubtitleAdded) {
+        if (added.itemId != itemId) return
+        val current = plan ?: return
+        reopen(current, audio = audioNow, subtitle = added.streamIndex)
+        onNotice(Strings.subtitlesAdded(added.languageName))
+    }
+
+    /** Shows [text] over the picture for a few seconds. */
+    fun onNotice(text: String) {
+        noticeJob?.cancel()
+        content.update { it.copy(notice = text) }
+        noticeJob = viewModelScope.launch {
+            delay(NOTICE_SHOWN)
+            content.update { it.copy(notice = null) }
         }
     }
 
@@ -761,6 +802,7 @@ class PlaybackViewModel(
                 title = found.title,
                 subtitle = Strings.metaLine(found.seriesName, found.episodeLabel()),
                 artworkUrl = found.landscapeUrl ?: found.backdropUrl ?: found.posterUrl,
+                subtitleSearchItemId = found.id.takeIf { downloaded == null && found.canPlay },
             )
         }
         open(startAtMs)

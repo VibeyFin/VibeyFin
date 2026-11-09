@@ -25,6 +25,7 @@ import app.vibeyfin.ui.servers.ServerDetailsViewModel
 import app.vibeyfin.ui.servers.ServersViewModel
 import app.vibeyfin.ui.settings.SettingsViewModel
 import app.vibeyfin.ui.startup.StartupViewModel
+import app.vibeyfin.ui.subtitles.SubtitleSearchViewModel
 import app.vibeyfin.ui.tile.TileMenuViewModel
 import app.vibeyfin.ui.whoswatching.WhoIsWatchingViewModel
 import org.koin.core.module.dsl.viewModel
@@ -53,9 +54,10 @@ fun appModule() = module {
     viewModel { params -> PersonViewModel(params.get(), get(), get()) }
     viewModel { SearchViewModel(get(), get(), get(), get(), get(), seerr = get(), seerrRepository = get()) }
     viewModelOf(::TileMenuViewModel)
+    viewModelOf(::SubtitleSearchViewModel)
     viewModel { params -> FilteredListViewModel(params.get(), get(), get()) }
-    viewModel { params -> ItemViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get()) }
-    viewModel { params -> PlaybackViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), startOver = params.getOrNull() ?: false) }
+    viewModel { params -> ItemViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { params -> PlaybackViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), startOver = params.getOrNull() ?: false) }
     viewModelOf(::StartupViewModel)
     viewModelOf(::NotificationOpenViewModel)
     viewModel {

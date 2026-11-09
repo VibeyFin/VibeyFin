@@ -235,8 +235,8 @@ internal fun StillWatchingPauseEffect(stillWatching: Boolean, player: ExoPlayer)
 // Held while the track or speed sheet is open; closing one changes a key, so the full delay starts again
 @Composable
 internal fun ControlsAutoHideEffect(chrome: PlayerChrome, playing: Boolean, screenReaderOn: Boolean) {
-    LaunchedEffect(chrome.controlsVisible, chrome.interactions, playing, chrome.scrubbing, chrome.showTracks, chrome.showSpeeds) {
-        val keepControlsUp = chrome.scrubbing || chrome.showTracks || chrome.showSpeeds || screenReaderOn
+    LaunchedEffect(chrome.controlsVisible, chrome.interactions, playing, chrome.scrubbing, chrome.showTracks, chrome.showSpeeds, chrome.showSubtitleSearch) {
+        val keepControlsUp = chrome.scrubbing || chrome.showTracks || chrome.showSpeeds || chrome.showSubtitleSearch || screenReaderOn
 
         if (chrome.controlsVisible && playing && !keepControlsUp) {
             delay(CONTROLS_HIDE_MS)

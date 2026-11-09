@@ -57,7 +57,7 @@ class LocalPlaybackViewModelTest {
     private fun viewModel(id: String = "m1", startOver: Boolean = false, countdownStep: Duration = 1.milliseconds) = viewModels.track(
         PlaybackViewModel(
             id, app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge,
-            app.offlineLibrary, app.offline, app.localReporter(reporterScope, interval = 20.milliseconds),
+            app.offlineLibrary, app.offline, app.localReporter(reporterScope, interval = 20.milliseconds), app.subtitles,
             listOf(1.milliseconds, 1.milliseconds), startOver, true, countdownStep,
         ),
     )

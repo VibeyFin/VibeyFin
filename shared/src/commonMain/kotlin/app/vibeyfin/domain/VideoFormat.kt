@@ -25,6 +25,7 @@ data class StreamTrack(
     val codec: String? = null,
     val forced: Boolean = false,
     val external: Boolean = false,
+    val index: Int? = null,
 )
 
 internal fun MediaStreamDto.toStreamTrack(): StreamTrack = StreamTrack(
@@ -34,6 +35,7 @@ internal fun MediaStreamDto.toStreamTrack(): StreamTrack = StreamTrack(
     codec = codec?.takeIf { it.isNotBlank() },
     forced = isForced,
     external = isExternal,
+    index = index,
 )
 
 internal fun MediaStreamDto.toVideoFormat(): VideoFormat = VideoFormat(

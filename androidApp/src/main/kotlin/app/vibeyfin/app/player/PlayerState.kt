@@ -39,6 +39,7 @@ internal class PlayerChrome {
     var scrubbing by mutableStateOf(false)
     var showTracks by mutableStateOf(false)
     var showSpeeds by mutableStateOf(false)
+    var showSubtitleSearch by mutableStateOf(false)
 
     fun touched() {
         interactions++
@@ -47,5 +48,6 @@ internal class PlayerChrome {
     fun closeSheets() {
         showTracks = false
         showSpeeds = false
+        showSubtitleSearch = false
     }
 }

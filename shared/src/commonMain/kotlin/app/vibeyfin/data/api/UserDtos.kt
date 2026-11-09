@@ -25,6 +25,8 @@ data class UserDto(
 data class UserPolicyDto(
     /** Whether the user may download media. The server's own default, when it leaves the field out, is that they may. */
     @SerialName("EnableContentDownloading") val enableContentDownloading: Boolean = true,
+    /** "Allow subtitle management". Off unless the server says so; being an admin doesn't grant it. */
+    @SerialName("EnableSubtitleManagement") val enableSubtitleManagement: Boolean = false,
     @SerialName("MaxParentalRating") val maxParentalRating: Int? = null,
     @SerialName("BlockedTags") val blockedTags: List<String>? = null,
     @SerialName("AccessSchedules") val accessSchedules: List<AccessScheduleDto>? = null,
@@ -74,6 +76,7 @@ data class ParentalRatingDto(
 @Serializable
 data class CultureDto(
     @SerialName("DisplayName") val displayName: String? = null,
+    @SerialName("TwoLetterISOLanguageName") val twoLetterIsoLanguageName: String? = null,
     /** The ISO 639-2 code the server writes on tracks, such as `deu`. */
     @SerialName("ThreeLetterISOLanguageName") val threeLetterIsoLanguageName: String? = null,
     /** Every ISO 639-2 code of the language, both the bibliographic (`ger`) and the terminology (`deu`) one where they differ. */

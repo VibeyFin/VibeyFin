@@ -27,6 +27,18 @@ final class ItemObservable: ObservableObject {
         model.onRetry()
     }
 
+    func subtitleAdded(_ added: SubtitleAdded) {
+        model.onSubtitleAdded(added: added)
+    }
+
+    func notice(_ text: String) {
+        model.onNotice(text: text)
+    }
+
+    func dismissNotice() {
+        model.onDismissNotice()
+    }
+
     func togglePlayed() {
         model.onTogglePlayed()
     }

@@ -14,6 +14,7 @@ import app.vibeyfin.domain.ProfilePolicy
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SearchHistory
 import app.vibeyfin.domain.ServerRepository
+import app.vibeyfin.domain.SubtitleRepository
 import org.koin.dsl.module
 import kotlin.time.Clock
 
@@ -34,6 +35,7 @@ fun dataModule() = module {
     single { PinLock(get(), get(), get()) }
     single { ProfilePolicy(get()) }
     single { LanguagePreferences(get(), get()) }
+    single { SubtitleRepository(get(), get(), get(), get(), get(), get()) }
     single { SearchHistory(get(), get()) }
     single { PendingReports(get(), get()) }
     single { NewTitlesPoller(get(), get(), get()) }

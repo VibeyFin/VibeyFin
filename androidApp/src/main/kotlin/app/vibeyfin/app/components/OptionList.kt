@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -42,6 +44,8 @@ data class OptionRow(
     val detail: String? = null,
     /** What a screen reader says for the row, when the label alone is not enough. */
     val description: String? = null,
+    /** A row that does something rather than choosing a value: drawn before the label. */
+    val icon: ImageVector? = null,
 )
 
 /**
@@ -65,6 +69,7 @@ fun OptionList(title: String, options: List<OptionRow>, onSelect: (String) -> Un
 
             items(options, key = { it.key }) { option ->
                 ListItem(
+                    leadingContent = option.icon?.let { icon -> { Icon(icon, contentDescription = null) } },
                     headlineContent = {
                         Text(
                             option.label,

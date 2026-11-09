@@ -4,6 +4,7 @@ import Shared
 /// The file's details, collapsed until asked for.
 struct TechnicalInfoView: View {
     let lines: [TechnicalLine]
+    let onSearchSubtitles: () -> Void
     @State private var open = false
 
     var body: some View {
@@ -17,6 +18,9 @@ struct TechnicalInfoView: View {
                             if let reason = row.reason {
                                 Text(reason).font(.footnote).foregroundStyle(.secondary)
                             }
+                        }
+                        if line.searchesSubtitles {
+                            SubtitleSearchRow(action: onSearchSubtitles)
                         }
                     }
                 }

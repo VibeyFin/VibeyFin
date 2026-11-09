@@ -35,6 +35,7 @@ import app.vibeyfin.domain.ServerConnector
 import app.vibeyfin.domain.ServerRemoval
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.StartupRouter
+import app.vibeyfin.domain.SubtitleRepository
 import app.vibeyfin.domain.WatchChanges
 import app.vibeyfin.domain.WatchRepository
 import app.vibeyfin.domain.hashPin
@@ -80,6 +81,7 @@ class TestApp {
 
     val network = FakeNetworkMonitor()
     val offline = OfflineMode(network, preferences, scope)
+    val subtitles = SubtitleRepository(connection, library, profileSettings, offline, FakeDeviceInfo(language = "de"), preferences, pollEvery = Duration.ZERO, polls = 3)
     val downloads = database.downloadDao()
     val files = FakeDownloadFiles()
     val scheduler = FakeDownloadScheduler()

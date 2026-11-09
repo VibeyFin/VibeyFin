@@ -4,6 +4,7 @@ import app.vibeyfin.domain.LiveDiagnostics
 import app.vibeyfin.ui.playback.PlaybackFailure
 import app.vibeyfin.ui.playback.PlaybackUiState
 import app.vibeyfin.ui.playback.PlaybackViewModel
+import app.vibeyfin.ui.subtitles.SubtitleAdded
 import org.koin.core.parameter.parametersOf
 
 /**
@@ -51,6 +52,10 @@ class PlaybackModel(itemId: String, startOver: Boolean) {
 
     /** [index] is a track's index, or -1 for no subtitles. */
     fun onSelectSubtitle(index: Int) = host.viewModel.onSelectSubtitle(index)
+
+    fun onSubtitleAdded(added: SubtitleAdded) = host.viewModel.onSubtitleAdded(added)
+
+    fun onNotice(text: String) = host.viewModel.onNotice(text)
 
     fun onSelectSpeed(speed: Float) = host.viewModel.onSelectSpeed(speed)
 

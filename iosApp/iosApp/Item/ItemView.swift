@@ -8,6 +8,7 @@ struct ItemView: View {
     @StateObject private var model: ItemObservable
     @Environment(\.playerSession) private var player
     @State private var scrollOffset: CGFloat = 0
+    @State private var searchingSubtitles = false
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     private let itemId: String
@@ -70,6 +71,8 @@ struct ItemView: View {
             onRetry: { model.retryAction() },
             onDismiss: { model.dismissMessage() }
         )
+        .failureBanner(model.state?.notice, actionLabel: nil, onRetry: {}, onDismiss: { model.dismissNotice() })
+        .subtitleSearch(itemId: itemId, isPresented: $searchingSubtitles, onFailedWhileClosed: { model.notice($0) }, onAdded: { model.subtitleAdded($0) })
         // The questions before a season or a show is downloaded, and before downloads are deleted.
         .downloadPrompts(
             prompt: model.state?.downloadPrompt,
@@ -140,7 +143,7 @@ struct ItemView: View {
             }
             similarSection(state)
             if !state.technical.isEmpty {
-                TechnicalInfoView(lines: state.technical)
+                TechnicalInfoView(lines: state.technical) { searchingSubtitles = true }
             }
         }
         .screenMargin()

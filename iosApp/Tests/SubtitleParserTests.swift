@@ -10,6 +10,18 @@ final class SubtitleParserTests: XCTestCase {
         XCTAssertEqual(cues[1], SubtitleCue(start: 60, end: 62.25, text: "Second"))
     }
 
+    func testReadsAFileInAWindowsCodePage() throws {
+        let text = "1\n00:00:01,000 --> 00:00:02,000\nCaf\u{E9} \u{FC}ber\n"
+        let data = try XCTUnwrap(text.data(using: .windowsCP1252))
+        XCTAssertNil(String(data: data, encoding: .utf8))
+        XCTAssertEqual(SubtitleParser.parse(SubtitleParser.decode(data)).map(\.text), ["Caf\u{E9} \u{FC}ber"])
+    }
+
+    func testReadsAUtf16FileWithABom() throws {
+        let data = try XCTUnwrap("1\n00:00:01,000 --> 00:00:02,000\nHi\n".data(using: .utf16))
+        XCTAssertEqual(SubtitleParser.parse(SubtitleParser.decode(data)).map(\.text), ["Hi"])
+    }
+
     func testReadsWebVttWithHeaderAndCueSettings() {
         let text = "WEBVTT\n\n00:01.000 --> 00:02.000 align:start\nLine\n\n01:00:00.000 --> 01:00:01.000\nHour\n"
         let cues = SubtitleParser.parse(text)
