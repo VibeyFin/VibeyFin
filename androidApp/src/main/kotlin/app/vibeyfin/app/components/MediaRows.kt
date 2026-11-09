@@ -11,12 +11,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -99,15 +102,34 @@ fun MediaRowSection(
                 RowPhase.Failed -> LoadError(row.message ?: "", onRetry)
 
                 RowPhase.Ready -> LazyRow(
+                    state = rememberRowStateKeepingStart(tiles.firstOrNull()?.id),
                     modifier = Modifier.bleed(margin),
                     contentPadding = PaddingValues(horizontal = margin),
                     horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
                 ) {
                     items(tiles, key = { it.id }, contentType = { "poster" }) { item ->
-                        ArtworkTile(item, onClick = { onOpen(item) }, modifier = Modifier.width(tileWidth), captionLines = POSTER_CAPTION_LINES)
+                        ArtworkTile(item, onClick = { onOpen(item) }, modifier = Modifier.animateItem().width(tileWidth), captionLines = POSTER_CAPTION_LINES)
                     }
                 }
             }
         }
     }
+}
+
+/**
+ * A lazy row keeps its first visible poster in place, so a title added at the front of a row that sits at its start would land off
+ * screen; the row stays at its start instead and the new poster shows.
+ */
+@Composable
+internal fun rememberRowStateKeepingStart(firstKey: Any?): LazyListState {
+    val listState = rememberLazyListState()
+    val shownFirst = remember { arrayOf(firstKey) }
+
+    SideEffect {
+        if (shownFirst[0] != firstKey) {
+            if (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) listState.requestScrollToItem(0)
+            shownFirst[0] = firstKey
+        }
+    }
+    return listState
 }

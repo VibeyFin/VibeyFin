@@ -19,6 +19,7 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -48,7 +49,7 @@ class TileMenuViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(TileMenuViewModel(app.library, app.watch, app.connection, app.downloadRepository))
+    private fun viewModel() = viewModels.track(TileMenuViewModel(app.library, app.watch, app.connection, app.downloadRepository, app.watchChanges))
 
     // The poster as a list gives it: no trailers on it.
     private fun tile(favorite: Boolean = false) = MediaItem(
@@ -146,19 +147,22 @@ class TileMenuViewModelTest {
     }
 
     @Test
-    fun myListInTheMenuIsShownAtOnceAndSaved() = runTest {
+    fun myListInTheMenuClosesItAndIsSaved() = runTest {
         val server = server(itemJson("m1", "Heat"))
         server.on("POST", "/UserFavoriteItems/m1", Reply.json("""{"IsFavorite":true}"""))
         val viewModel = viewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
         viewModel.onOpen(tile())
 
         viewModel.onToggleFavorite()
 
-        assertTrue(viewModel.uiState.first { it.item?.isFavorite == true }.item?.isFavorite == true)
+        assertNull(viewModel.uiState.value.item)
+        assertNull(viewModel.uiState.value.actionMessage)
+        assertEquals(1, app.jellyfin.requestsTo("POST", "/UserFavoriteItems/m1").size)
     }
 
     @Test
-    fun myListThatCantBeSavedIsTakenBackWithAMessage() = runTest {
+    fun myListThatCantBeSavedSaysSoAfterTheMenuCloses() = runTest {
         val server = server(itemJson("m1", "Heat"))
         server.on("POST", "/UserFavoriteItems/m1", Reply.status(HttpStatusCode.ServiceUnavailable))
         val viewModel = viewModel()
@@ -167,8 +171,54 @@ class TileMenuViewModelTest {
         viewModel.onToggleFavorite()
         val failed = viewModel.uiState.first { it.actionMessage != null }
 
-        assertEquals(false, failed.item?.isFavorite)
+        assertNull(failed.item)
         assertEquals(LoadMessages.ADD_TO_MY_LIST_FAILED, failed.actionMessage)
+    }
+
+    @Test
+    fun aTitlePutOnMyListHereOpensAsOnItNextTimeBeforeTheServerAnswers() = runTest {
+        val server = server(itemJson("m1", "Heat"))
+        server.on("POST", "/UserFavoriteItems/m1", Reply.json("""{"IsFavorite":true}"""))
+        val viewModel = viewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.onOpen(tile())
+        viewModel.uiState.first { !it.checkingTrailer && it.item != null }
+        viewModel.onToggleFavorite()
+        server.hold("GET", "/Items")
+
+        viewModel.onOpen(tile(favorite = false))
+
+        assertEquals(true, viewModel.uiState.first { it.item != null }.item?.isFavorite)
+    }
+
+    @Test
+    fun aTitlesMyListStateIsKnownTheMomentItIsTappedAndOnceTheServerHasSaidIt() = runTest {
+        val server = server(itemJson("m1", "Heat", favorite = true))
+        server.on("DELETE", "/UserFavoriteItems/m1", Reply.json("{}"))
+        val viewModel = viewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        assertNull(viewModel.knownFavorite("m1"))
+        viewModel.onOpen(tile(favorite = false))
+        viewModel.uiState.first { !it.checkingTrailer && it.item?.isFavorite == true }
+        assertEquals(true, viewModel.knownFavorite("m1"))
+
+        viewModel.onToggleFavorite()
+
+        assertEquals(false, viewModel.knownFavorite("m1"))
+    }
+
+    @Test
+    fun aTitleTakenOffMyListElsewhereOpensAsOffItBeforeTheServerAnswers() = runTest {
+        val server = server(itemJson("m1", "Heat", favorite = true))
+        server.on("DELETE", "/UserFavoriteItems/m1", Reply.json("{}"))
+        val viewModel = viewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        app.watch.setFavorite("m1", favorite = false)
+        server.hold("GET", "/Items")
+
+        viewModel.onOpen(tile(favorite = true))
+
+        assertEquals(false, viewModel.uiState.first { it.item != null }.item?.isFavorite)
     }
 
     @Test
@@ -186,15 +236,18 @@ class TileMenuViewModelTest {
     private fun showTile() = tile().copy(id = "s1", title = "Saga", kind = ItemKind.Series, isFolder = true)
 
     @Test
-    fun aMovieOffersDownloadRightInTheMenuAndTheTapQueuesIt() = runTest {
+    fun aMovieOffersDownloadRightInTheMenuAndTheTapQueuesItAndClosesTheMenu() = runTest {
         app.sagaServer()
         val viewModel = viewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
         viewModel.onOpen(tile())
         val offered = viewModel.uiState.first { it.item != null && it.offersDownload }
         assertEquals(Strings.download, offered.downloadLabel)
 
         viewModel.onDownload()
 
+        assertNull(viewModel.uiState.value.item)
+        viewModel.onOpen(tile())
         val state = viewModel.uiState.first { it.download != null }
         assertEquals("Heat", state.download!!.item.title)
         assertEquals(DOWNLOAD_QUEUED, app.downloads.find("srv-1", "u1", "m1")!!.state)
@@ -219,13 +272,17 @@ class TileMenuViewModelTest {
     fun aDownloadThatIsThereShowsItsStateAndTheSameActionsAsThePage() = runTest {
         app.sagaServer()
         val viewModel = viewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
         viewModel.onOpen(tile())
         viewModel.uiState.first { it.offersDownload }
         viewModel.onDownload()
+        viewModel.onOpen(tile())
         assertEquals(listOf(DownloadAction.Pause, DownloadAction.Remove), viewModel.uiState.first { it.download != null }.download!!.actions)
 
         viewModel.onDownloadAction(DownloadAction.Pause)
 
+        assertNull(viewModel.uiState.value.item)
+        viewModel.onOpen(tile())
         viewModel.uiState.first { it.download?.actions?.firstOrNull() == DownloadAction.Resume }
         assertEquals(DOWNLOAD_PAUSED, app.downloads.find("srv-1", "u1", "m1")!!.state)
     }

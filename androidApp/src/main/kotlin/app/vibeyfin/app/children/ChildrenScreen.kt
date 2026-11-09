@@ -387,7 +387,7 @@ private fun ItemGrid(
             }
         } else {
             items(state.items.distinctBy { it.id }, key = { it.id }) { item ->
-                ArtworkTile(item, onClick = { onOpen(item) })
+                ArtworkTile(item, onClick = { onOpen(item) }, modifier = Modifier.animateItem())
             }
         }
 

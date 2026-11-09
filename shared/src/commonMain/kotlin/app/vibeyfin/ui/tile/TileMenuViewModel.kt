@@ -9,6 +9,7 @@ import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.DownloadTarget
 import app.vibeyfin.domain.LibraryRepository
+import app.vibeyfin.domain.WatchChanges
 import app.vibeyfin.domain.WatchRepository
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
@@ -107,6 +108,7 @@ class TileMenuViewModel(
     private val watch: WatchRepository,
     private val connection: ConnectionManager,
     private val downloads: DownloadRepository,
+    changes: WatchChanges,
 ) : ViewModel() {
     private val content = MutableStateFlow(TileMenuUiState())
     private val downloadFlow = DownloadFlow(viewModelScope, downloads) { connection.state.value.profileOrNull() }
@@ -114,8 +116,11 @@ class TileMenuViewModel(
     private var lookup: Job? = null
     private var writing = false
 
-    // The user changed My List in this menu: the lookup's older answer must not undo it.
-    private var toggled = false
+    // The latest My List state of each title seen while the app runs: a poster's own copy may be older.
+    private val knownFavorites = mutableMapOf<String, Boolean>()
+
+    // The title whose My List write is out: a lookup that started before it must not undo it.
+    private var writingId: String? = null
 
     val uiState: StateFlow<TileMenuUiState> = combine(
         // Progress is only drawn while a menu is open; closed, the menu must not rebuild whatever shows it for every byte that arrives.
@@ -133,6 +138,15 @@ class TileMenuViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TileMenuUiState())
 
+    init {
+        viewModelScope.launch {
+            changes.favorites.collect { change ->
+                knownFavorites[change.itemId] = change.favorite
+                content.update { current -> if (current.item?.id == change.itemId) current.copy(item = current.item.copy(isFavorite = change.favorite)) else current }
+            }
+        }
+    }
+
     /** A library title known only by its id, such as an available one on a Seerr poster: its menu opens once the server has sent it. */
     fun onOpenById(itemId: String) {
         lookup?.cancel()
@@ -145,25 +159,25 @@ class TileMenuViewModel(
     /** A poster was long-pressed: the menu opens at once, and the trailer row fills in when the server has answered. */
     fun onOpen(item: MediaItem) {
         lookup?.cancel()
-        toggled = false
         readDownloadPermission()
         // The same poster again (iOS asks early) keeps what the first look-up found.
         val kept = content.value.takeIf { it.item?.id == item.id }
         content.value = TileMenuUiState(
-            item = kept?.item ?: item,
+            item = kept?.item ?: item.withKnownFavorite(),
             trailer = kept?.trailer,
             checkingTrailer = kept == null && item.canHaveTrailer,
         )
         lookup = viewModelScope.launch {
             val detail = (library.item(item.id) as? ApiResult.Success)?.value
             val trailer = detail?.takeIf { item.canHaveTrailer }?.let { findTrailer(it) }
+            if (detail != null && writingId != item.id) knownFavorites[item.id] = detail.isFavorite
             content.update { current ->
                 if (current.item?.id != item.id) {
                     current
                 } else {
                     // The server's word on My List replaces the poster's own, which a search result does not carry.
                     current.copy(
-                        item = if (detail != null && !toggled) current.item.copy(isFavorite = detail.isFavorite) else current.item,
+                        item = if (detail != null && writingId != item.id) current.item.copy(isFavorite = detail.isFavorite) else current.item,
                         trailer = trailer,
                         checkingTrailer = false,
                     )
@@ -172,24 +186,30 @@ class TileMenuViewModel(
         }
     }
 
+    /** The latest My List state of [itemId] this menu knows, read at once (iOS draws a poster's rows before a press); null when it knows none. */
+    fun knownFavorite(itemId: String): Boolean? = knownFavorites[itemId]
+
     fun onClose() {
         lookup?.cancel()
         content.value = TileMenuUiState()
     }
 
-    /** "My List" in the menu: shown at once, taken back with a message if it can't be saved. */
+    /** "My List" in the menu: the menu closes and the change is saved; a message says so if it can't be. */
     fun onToggleFavorite() {
         val before = content.value.item ?: return
         if (writing) return
         writing = true
-        toggled = true
+        writingId = before.id
         val target = !before.isFavorite
-        content.update { it.copy(item = before.copy(isFavorite = target), actionMessage = null) }
+        knownFavorites[before.id] = target
+        onClose()
         viewModelScope.launch {
             val result = watch.setFavorite(before.id, target)
             writing = false
+            writingId = null
             if (result is ApiResult.Failure) {
-                content.update { it.copy(item = it.item?.copy(isFavorite = before.isFavorite), actionMessage = failureMessage(result.error, target)) }
+                knownFavorites[before.id] = before.isFavorite
+                content.update { it.copy(actionMessage = failureMessage(result.error, target)) }
             }
         }
     }
@@ -199,18 +219,20 @@ class TileMenuViewModel(
         downloadFlow.dismissMessage()
     }
 
-    /** The Download row: a movie or an episode goes into the queue at once; a show asks how many episodes first. */
+    /** The Download row: the menu closes, a movie or an episode goes into the queue at once and a show asks how many episodes first. */
     fun onDownload() {
         val item = content.value.item ?: return
+        onClose()
         when {
             item.kind == ItemKind.Series -> downloadFlow.start(DownloadTarget.Series(item.id), item.title, ask = true)
             item.canPlay -> downloadFlow.start(DownloadTarget.Item(item.id), item.title, ask = false)
         }
     }
 
-    /** Pause, resume or remove (after asking) the tile's own download. */
+    /** Pause, resume or remove (after asking) the tile's own download; the menu closes. */
     fun onDownloadAction(action: DownloadAction) {
         val download = uiState.value.download ?: return
+        onClose()
         downloadFlow.act(download, action)
     }
 
@@ -223,6 +245,8 @@ class TileMenuViewModel(
     fun onConfirmRemove() = downloadFlow.confirmRemove()
 
     fun onDismissRemoval() = downloadFlow.dismissRemoval()
+
+    private fun MediaItem.withKnownFavorite(): MediaItem = knownFavorites[id]?.let { copy(isFavorite = it) } ?: this
 
     // Whether this user may download is read once, quietly: it only decides whether the row is there.
     private fun readDownloadPermission() {

@@ -103,17 +103,23 @@ private struct LiveTileContextMenu: ViewModifier {
     let onShown: () -> Void
     /// SwiftUI builds the rows when the poster is drawn, so they are rebuilt, for this poster only, when its data arrives.
     @State private var shown: TileMenuUiState?
+    /// Read from the menu as soon as anything may have changed it, so the next press shows it without waiting for the menu's state.
+    @State private var knownFavorite: Bool?
 
     func body(content: Content) -> some View {
         content
-            .onReceive(menu.stateChanges.filter { $0.item?.id == item.id }) { shown = $0 }
+            .onReceive(menu.stateChanges.filter { $0.item?.id == item.id }) {
+                shown = $0
+                knownFavorite = menu.knownFavorite(item)
+            }
+            .onAppear { knownFavorite = menu.knownFavorite(item) }
             .contextMenu { rows }
     }
 
     /// Until the data arrives the rows come from the poster itself, with a placeholder for the Trailer.
     @ViewBuilder
     private var rows: some View {
-        let isFavorite = shown?.item?.isFavorite ?? item.isFavorite
+        let isFavorite = knownFavorite ?? shown?.item?.isFavorite ?? item.isFavorite
         let offersDownload = shown?.offersDownload ?? (menu.canDownload && (item.canPlay || item.kind == ItemKind.series))
         let checkingTrailer = shown?.checkingTrailer ?? item.canHaveTrailer
         Button { menu.handlers.details(item) } label: {
@@ -130,10 +136,27 @@ private struct LiveTileContextMenu: ViewModifier {
                 Label(Strings.shared.checkingTrailer, systemImage: "film")
             }
         }
-        Button { menu.toggleFavorite(item) } label: {
-            Label(Strings.shared.myListAction(onList: isFavorite).titleCased(), systemImage: isFavorite ? "heart.fill" : "heart")
-        }
+        myListRow(isFavorite)
         if offersDownload { downloadRows(shown) }
+    }
+
+    /// Two branches, not one Button with a changing label: the system keeps a menu row it has built and refreshes only its icon.
+    @ViewBuilder
+    private func myListRow(_ isFavorite: Bool) -> some View {
+        if isFavorite {
+            Button { toggleFavorite() } label: {
+                Label(Strings.shared.myListAction(onList: true).titleCased(), systemImage: "heart.fill")
+            }
+        } else {
+            Button { toggleFavorite() } label: {
+                Label(Strings.shared.myListAction(onList: false).titleCased(), systemImage: "heart")
+            }
+        }
+    }
+
+    private func toggleFavorite() {
+        menu.toggleFavorite(item)
+        knownFavorite = menu.knownFavorite(item)
     }
 
     /// Download: with no download a tap starts one (a show asks first); with one, pause, resume and remove.

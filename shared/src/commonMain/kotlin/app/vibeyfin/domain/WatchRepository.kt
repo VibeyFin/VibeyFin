@@ -77,8 +77,7 @@ class WatchRepository(private val connection: ConnectionManager, private val cha
     /** Puts [itemId] on "My List" or takes it off. The page has already shown the change; if this fails it takes it back. */
     suspend fun setFavorite(itemId: String, favorite: Boolean): ApiResult<Unit> {
         val result = call { api, userId -> api.setFavorite(itemId, userId, favorite) }
-        // Home's My List row reads the favourites again.
-        if (result is ApiResult.Success) changes.changed()
+        if (result is ApiResult.Success) changes.favoriteChanged(FavoriteChange(itemId, favorite))
         return result
     }
 

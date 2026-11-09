@@ -21,8 +21,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,10 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -67,21 +68,36 @@ fun TileMenuSheet(
     onDownloadAction: (DownloadAction) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val item = state.item ?: return
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var lastOpen by remember { mutableStateOf<TileMenuUiState?>(null) }
 
-    VibeyFinSheet(onDismiss) {
+    // A menu closed by a tap slides down with what it showed instead of vanishing; a long press while it slides brings it back up.
+    LaunchedEffect(state) {
+        if (state.item != null) {
+            if (lastOpen != null && sheetState.targetValue == SheetValue.Hidden) sheetState.show()
+            lastOpen = state
+        } else if (lastOpen != null) {
+            sheetState.hide()
+            lastOpen = null
+        }
+    }
+
+    val menu = state.takeIf { it.item != null } ?: lastOpen ?: return
+    val item = menu.item ?: return
+
+    VibeyFinSheet(onDismiss, sheetState) {
         WithMenuPress {
             Column(Modifier.navigationBarsPadding().padding(bottom = VibeyFinTokens.Space.s4)) {
-                MenuHeader(item.title, state.subtitle, item.posterUrl, item.posterAspectRatio.coerceIn(2f / 3f, 16f / 9f), if (item.posterAspectRatio > 1f) 72.dp else 40.dp)
+                MenuHeader(item.title, menu.subtitle, item.posterUrl, item.posterAspectRatio.coerceIn(2f / 3f, 16f / 9f), if (item.posterAspectRatio > 1f) 72.dp else 40.dp)
                 HorizontalDivider(Modifier.padding(horizontal = VibeyFinTokens.Space.s4), color = MaterialTheme.colorScheme.outlineVariant)
                 MenuRow(Strings.details, rememberIcon(Icons.Filled.Info), onDetails)
 
                 // The trailer row has a slot of its own, the height of a row, kept while the server answers: a gray line fades into the row,
                 // or the slot closes softly when there is none, so the buttons around it do not jump.
                 Crossfade(
-                    targetState = if (state.trailer != null) {
+                    targetState = if (menu.trailer != null) {
                         2
-                    } else if (state.checkingTrailer) {
+                    } else if (menu.checkingTrailer) {
                         1
                     } else {
                         0
@@ -91,7 +107,7 @@ fun TileMenuSheet(
                     label = "trailer row",
                 ) { shown ->
                     when (shown) {
-                        2 -> state.trailer?.let { trailer -> MenuRow(Strings.trailer, painterIcon(R.drawable.ic_trailer)) { onTrailer(trailer) } }
+                        2 -> menu.trailer?.let { trailer -> MenuRow(Strings.trailer, painterIcon(R.drawable.ic_trailer)) { onTrailer(trailer) } }
 
                         1 -> Row(Modifier.fillMaxWidth().heightIn(min = ROW_HEIGHT).padding(horizontal = VibeyFinTokens.Space.s4), verticalAlignment = Alignment.CenterVertically) {
                             SkeletonLine(120.dp, MaterialTheme.typography.bodyLarge)
@@ -101,11 +117,7 @@ fun TileMenuSheet(
                     }
                 }
 
-                if (state.offersDownload) DownloadRow(state, onDownload, onDownloadAction)
-
-                state.actionMessage?.let {
-                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s2).semantics { liveRegion = LiveRegionMode.Polite })
-                }
+                if (menu.offersDownload) DownloadRow(menu, onDownload, onDownloadAction)
 
                 MenuRow(Strings.myListAction(item.isFavorite), rememberIcon(if (item.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder), onMyList)
             }
