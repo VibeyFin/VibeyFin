@@ -43,6 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.components.BusyButton
 import app.vibeyfin.app.components.DangerConfirmDialog
 import app.vibeyfin.app.components.TabHeader
+import app.vibeyfin.app.components.VibeyFinLogo
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.theme.BrandDisplay
@@ -124,6 +125,7 @@ private fun Welcome(
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            VibeyFinLogo()
             Text(Strings.appName, style = BrandDisplay, color = MaterialTheme.colorScheme.onBackground)
             Text(
                 text = Strings.welcomeLead,
@@ -201,7 +203,6 @@ private fun Lead(text: String, align: TextAlign = TextAlign.Start) {
     )
 }
 
-// The label is ink: the muted teal of onSecondaryContainer sits too close to the tonal fill to read well
 @Composable
 private fun AddServerButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     FilledTonalButton(
