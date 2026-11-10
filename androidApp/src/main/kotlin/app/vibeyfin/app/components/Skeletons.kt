@@ -128,9 +128,9 @@ fun SkeletonLine(width: Dp, style: TextStyle) {
     }
 }
 
-/** Poster tiles for a lazy grid: [count] gray posters with a title line under each. */
-fun LazyGridScope.skeletonTiles(count: Int = 6, aspectRatio: Float = 2f / 3f) {
-    items(count, key = { "skeleton-$it" }) {
+/** Poster tiles for a lazy grid: [count] gray posters with a title line under each; [keyPrefix] tells two such runs in one grid apart. */
+fun LazyGridScope.skeletonTiles(count: Int = 6, aspectRatio: Float = 2f / 3f, keyPrefix: String = "skeleton") {
+    items(count, key = { "$keyPrefix-$it" }) {
         Column(
             Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = Strings.loadingPage },
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
