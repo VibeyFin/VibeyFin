@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -128,7 +129,7 @@ data class UpNext(
     val secondsLeft: Int,
 )
 
-// The next-episode card appears this long before the end of an episode (the last 30 s when there are no credits to find).
+// The next-episode card appears this long before the end of an episode when there are no credits to find.
 private const val UP_NEXT_WINDOW_MS = 30_000L
 
 // How long the card counts down before the next episode starts by itself.
@@ -287,10 +288,11 @@ private val NOTICE_SHOWN = 4.seconds
  * that: if that read fails, playback doesn't start (with "Try again"), because starting at 0 would later
  * report a small position and overwrite the real one.
  *
- * Auto-advance: for an episode, the next one is looked up in the background. In the last 30 s of an
- * episode (always that window; an Outro segment doesn't move it) [PlaybackUiState.upNext] counts down
- * 10 s and then plays the next episode in this same ViewModel, so neither native player is rebuilt: the
- * finished one is reported stopped at its end, so the server marks it watched, and the stream changes.
+ * Auto-advance: for an episode, the next one is looked up in the background. When its credits (an Outro
+ * segment) start, or in the last 30 s if there are none, [PlaybackUiState.upNext] takes the place of
+ * "Skip credits" and counts down 10 s, standing still while the video is paused. Then it plays the next
+ * episode in this same ViewModel, so neither native player is rebuilt: the finished one is reported
+ * stopped at its end, so the server marks it watched, and the stream changes.
  * [onWatchCredits] dismisses the card for this episode; [onPlayNow] doesn't wait. A video under three
  * minutes only counts down once it has ended. [autoAdvance] is on by default.
  */
@@ -375,6 +377,7 @@ class PlaybackViewModel(
     private var bingeThreshold = ProfileSettings.DEFAULT_BINGE_THRESHOLD
 
     private var countdown: Job? = null
+    private val videoPlaying: MutableStateFlow<Boolean> = MutableStateFlow(true)
 
     // Clears [PlaybackUiState.skipRun] after [SKIP_RUN_WINDOW]; each skip starts it again.
     private var skipRunEnd: Job? = null
@@ -523,11 +526,13 @@ class PlaybackViewModel(
     /** The player is playing: it started, or resumed. */
     fun onPlaying(positionMs: Long) {
         lastPositionMs = positionMs
+        videoPlaying.value = true
         active.playing(positionMs)
     }
 
     fun onPaused(positionMs: Long) {
         lastPositionMs = positionMs
+        videoPlaying.value = false
         active.paused(positionMs)
     }
 
@@ -827,18 +832,23 @@ class PlaybackViewModel(
         }
     }
 
-    // Shows the card when the end is near enough ([UP_NEXT_WINDOW_MS]) and it is worth it, or takes it
-    // away again after a seek back out of the window. Called with every new position.
+    // Shows the card when the credits start (or the end is near enough, [UP_NEXT_WINDOW_MS]) and it is worth it,
+    // or takes it away again after a seek back before that. Called with every new position.
     private fun checkUpNext(positionMs: Long) {
         val upcoming = next ?: return
         val runtime = item?.runtimeMs ?: return
         if (!autoAdvanceOpen || ended || content.value.stillWatching) return
-        val remaining = runtime - positionMs
+        val startMs: Long = upNextStartMs(runtime)
         if (countdown == null) {
-            if (runtime >= MIN_AUTO_ADVANCE_RUNTIME_MS && remaining <= UP_NEXT_WINDOW_MS) startCountdown(upcoming)
-        } else if (remaining > UP_NEXT_WINDOW_MS + UP_NEXT_SEEK_SLACK_MS) {
+            if (runtime >= MIN_AUTO_ADVANCE_RUNTIME_MS && positionMs >= startMs) startCountdown(upcoming)
+        } else if (positionMs < startMs - UP_NEXT_SEEK_SLACK_MS) {
             cancelCountdown()
         }
+    }
+
+    private fun upNextStartMs(runtimeMs: Long): Long {
+        val outroStartMs: Long? = segments.filter { it.type == SegmentType.Outro && it.endMs > it.startMs }.minOfOrNull { it.startMs }
+        return outroStartMs ?: (runtimeMs - UP_NEXT_WINDOW_MS)
     }
 
     private fun startCountdown(upcoming: MediaItem) {
@@ -851,11 +861,18 @@ class PlaybackViewModel(
             for (left in UP_NEXT_SECONDS downTo 1) {
                 // The card and "Skip credits" sit in the same corner, so the card takes it away in the same update.
                 content.update { it.copy(upNext = upcoming.toUpNext(left), skipOffer = skipOfferNow(cardShowing = true)) }
+                awaitPlaying()
                 delay(countdownStep)
+                awaitPlaying()
             }
             countdown = null
             playNext(byItself = true)
         }
+    }
+
+    // An ended video can't be paused, so the countdown never waits on it then.
+    private suspend fun awaitPlaying() {
+        if (!ended) videoPlaying.first { it }
     }
 
     private fun cancelCountdown() {
@@ -1067,10 +1084,9 @@ class PlaybackViewModel(
         loadSegments()
         viewModelScope.launch {
             val picked = choice
-            val negotiation = playback.negotiate(itemId, transcodeOnly, picked?.mediaSourceId, picked?.audio, picked?.subtitle)
-            when (val result = negotiation) {
+            when (val negotiation = playback.negotiate(itemId, transcodeOnly, picked?.mediaSourceId, picked?.audio, picked?.subtitle)) {
                 is PlaybackNegotiation.Ready -> {
-                    val ready = result.plan
+                    val ready = negotiation.plan
                     plan = ready
                     method = ready.method
                     audioNow = ready.audioStreamIndex
@@ -1108,7 +1124,7 @@ class PlaybackViewModel(
                     content.update { it.copy(loading = false, message = LoadMessages.NO_COMPATIBLE_STREAM) }
 
                 is PlaybackNegotiation.Failed ->
-                    content.update { it.copy(loading = false, message = LoadMessages.forError(result.error)) }
+                    content.update { it.copy(loading = false, message = LoadMessages.forError(negotiation.error)) }
             }
         }
     }

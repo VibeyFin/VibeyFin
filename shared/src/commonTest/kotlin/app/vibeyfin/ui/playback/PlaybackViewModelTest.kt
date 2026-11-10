@@ -1444,9 +1444,9 @@ class PlaybackViewModelTest {
         val seen = playing(viewModel, jellyfin)
         jellyfin.awaitRequests("GET", "/MediaSegments/m1")
 
-        viewModel.onPosition(tenMinutes - 45_000)
-        assertEquals(SkipOffer("Skip credits", tenMinutes), seen.last().skipOffer)
-        viewModel.onPosition(tenMinutes - 30_000)
+        viewModel.onPosition(tenMinutes - 61_000)
+        assertNull(seen.last().upNext)
+        viewModel.onPosition(tenMinutes - 60_000)
         assertNotNull(seen.last().upNext)
         assertNull(seen.last().skipOffer)
         // Both overlays never show at once, not even for one state.
@@ -1455,6 +1455,56 @@ class PlaybackViewModelTest {
         viewModel.onWatchCredits()
         assertNull(seen.last().upNext)
         assertEquals(SkipOffer("Skip credits", tenMinutes), seen.last().skipOffer)
+    }
+
+    @Test
+    fun `the card waits for the credits to start however early they come`() = runTest {
+        val jellyfin = seriesServer()
+        jellyfin.server("http://nas:8096").on("GET", "/MediaSegments/m1", Reply.json(segmentsJson(segmentJson("Outro", tenMinutes - 120_000, tenMinutes))))
+        val viewModel = viewModel()
+        val seen = playing(viewModel, jellyfin)
+        jellyfin.awaitRequests("GET", "/MediaSegments/m1")
+
+        viewModel.onPosition(tenMinutes - 121_000)
+        assertNull(seen.last().upNext)
+        viewModel.onPosition(tenMinutes - 120_000)
+        assertNotNull(seen.last().upNext)
+    }
+
+    @Test
+    fun `the countdown stands still while the video is paused`() = runTest {
+        val jellyfin = seriesServer()
+        val viewModel = viewModel(countdownStep = 1.milliseconds)
+        val seen = playing(viewModel, jellyfin)
+
+        viewModel.onPaused(tenMinutes - 31_000)
+        viewModel.onPosition(tenMinutes - 30_000)
+        repeat(20) { yield() }
+        assertEquals(10, assertNotNull(seen.last().upNext).secondsLeft)
+        assertNull(seen.last().finished.takeIf { it })
+
+        viewModel.onPlaying(tenMinutes - 30_000)
+        val next = viewModel.uiState.first { it.title == "Northbound" && it.stream != null }
+        assertNull(next.upNext)
+    }
+
+    @Test
+    fun `a pause in the middle of the countdown holds it until the video plays again`() = runTest {
+        val jellyfin = seriesServer()
+        val viewModel = viewModel(countdownStep = 1.milliseconds)
+        val seen = playing(viewModel, jellyfin)
+
+        viewModel.onPosition(tenMinutes - 30_000)
+        viewModel.uiState.first { (it.upNext?.secondsLeft ?: 10) < 10 }
+        viewModel.onPaused(tenMinutes - 25_000)
+        repeat(50) { yield() }
+        val held = assertNotNull(seen.last().upNext).secondsLeft
+        repeat(50) { yield() }
+        assertEquals(held, assertNotNull(seen.last().upNext).secondsLeft)
+
+        viewModel.onPlaying(tenMinutes - 25_000)
+        val next = viewModel.uiState.first { it.title == "Northbound" && it.stream != null }
+        assertNull(next.upNext)
     }
 
     @Test

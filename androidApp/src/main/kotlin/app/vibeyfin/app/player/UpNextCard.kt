@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,7 +30,7 @@ import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.playback.UpNext
 
 /**
- * Offers the next episode in the last seconds of this one: its picture, "S1 E2 · title", how many seconds
+ * Offers the next episode when the credits start: its picture, "S1 E2 · title", how many seconds
  * until it starts on its own, "Play now" and "Watch credits", which
  * dismisses it. It sits on the scrim, over the video.
  */
@@ -73,13 +74,13 @@ fun UpNextCard(upNext: UpNext, onPlayNow: () -> Unit, onWatchCredits: () -> Unit
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2), modifier = Modifier.fillMaxWidth()) {
-            Button(onClick = onPlayNow, modifier = Modifier.weight(1f)) {
+            Button(onClick = onPlayNow, modifier = Modifier.weight(1f).height(UP_NEXT_BUTTON_HEIGHT)) {
                 Icon(painter = painterResource(R.drawable.ic_play), contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(Strings.playNow, maxLines = 1)
             }
 
-            FilledTonalButton(onClick = onWatchCredits, modifier = Modifier.weight(1f)) {
+            FilledTonalButton(onClick = onWatchCredits, modifier = Modifier.weight(1f).height(UP_NEXT_BUTTON_HEIGHT)) {
                 Text(Strings.watchCredits, maxLines = 1)
             }
         }
@@ -87,3 +88,4 @@ fun UpNextCard(upNext: UpNext, onPlayNow: () -> Unit, onWatchCredits: () -> Unit
 }
 
 private val UP_NEXT_WIDTH = 340.dp
+private val UP_NEXT_BUTTON_HEIGHT = 44.dp
