@@ -10,6 +10,11 @@ struct PersonView: View {
     let onOpen: (MediaItem) -> Void
     let onExit: (HomeExit) -> Void
 
+    private let portraitSize: CGFloat = 160
+    private let wideTileWidth: CGFloat = 168
+    /// The header stops here, so the biography stays readable on a wide iPad.
+    private let contentMaxWidth: CGFloat = 720
+
     init(personId: String, onOpen: @escaping (MediaItem) -> Void, onExit: @escaping (HomeExit) -> Void) {
         _model = StateObject(wrappedValue: PersonObservable(personId: personId))
         self.onOpen = onOpen
@@ -41,6 +46,8 @@ struct PersonView: View {
         }
     }
 
+    private var wide: Bool { sizeClass == .regular }
+
     @ViewBuilder
     private func content(_ state: PersonUiState) -> some View {
         if state.loading {
@@ -48,14 +55,10 @@ struct PersonView: View {
         } else if let message = state.message {
             LoadErrorView(message: message, onRetry: { model.retry() }).screenMargin()
         } else if let person = state.person {
-            header(state, person)
+            if wide { wideHeader(state, person) } else { header(state, person) }
             VStack(alignment: .leading, spacing: Space.s5) {
-                if state.movies.isVisible {
-                    MediaRowView(row: state.movies, onOpen: onOpen, onSeeAll: { _ in }, onRetry: { model.retry() }, tileWidth: sizeClass == .regular ? 168 : 112)
-                }
-                if state.shows.isVisible {
-                    MediaRowView(row: state.shows, onOpen: onOpen, onSeeAll: { _ in }, onRetry: { model.retry() }, tileWidth: sizeClass == .regular ? 168 : 112)
-                }
+                if state.movies.isVisible { filmography(state.movies) }
+                if state.shows.isVisible { filmography(state.shows) }
                 if let message = state.appearancesMessage {
                     LoadErrorView(message: message, onRetry: { model.retry() }).screenMargin()
                 }
@@ -69,25 +72,68 @@ struct PersonView: View {
         }
     }
 
+    @ViewBuilder
+    private func filmography(_ row: MediaRow) -> some View {
+        if wide {
+            VStack(alignment: .leading, spacing: Space.s3) {
+                Text(row.title)
+                    .sectionTitle()
+                    .lineLimit(1)
+                    .accessibilityAddTraits(.isHeader)
+                if row.loading {
+                    PosterSkeletonGrid(minimumWidth: wideTileWidth)
+                } else if let message = row.message {
+                    LoadErrorView(message: message, onRetry: { model.retry() })
+                } else {
+                    ArtworkGrid(items: row.items, minimumWidth: wideTileWidth, onOpen: onOpen)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .screenMargin()
+        } else {
+            MediaRowView(row: row, onOpen: onOpen, onSeeAll: { _ in }, onRetry: { model.retry() })
+        }
+    }
+
     private func header(_ state: PersonUiState, _ person: Person) -> some View {
         VStack(spacing: Space.s2) {
             portrait(person)
+            details(state, person, alignment: .center)
+                .padding(.top, Space.s2)
+        }
+        .screenMargin()
+    }
+
+    private func wideHeader(_ state: PersonUiState, _ person: Person) -> some View {
+        HStack(alignment: .top, spacing: Space.s5) {
+            portrait(person)
+            details(state, person, alignment: .leading)
+                .padding(.top, Space.s2)
+        }
+        .frame(maxWidth: contentMaxWidth, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .screenMargin()
+    }
+
+    private func details(_ state: PersonUiState, _ person: Person, alignment: HorizontalAlignment) -> some View {
+        let textAlignment: TextAlignment = alignment == .center ? .center : .leading
+
+        return VStack(alignment: alignment, spacing: Space.s2) {
             Text(person.name)
                 .font(.brandDisplay)
                 .tracking(-0.8)
-                .multilineTextAlignment(.center)
+                .multilineTextAlignment(textAlignment)
                 .lineLimit(3)
-                .padding(.top, Space.s2)
             if !state.facts.isEmpty {
                 Text(Strings.shared.factsLine(facts: state.facts))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+                    .multilineTextAlignment(textAlignment)
             }
             Text(person.overview ?? Strings.shared.noBiography)
                 .font(.subheadline)
                 .foregroundStyle(person.overview == nil ? .secondary : .primary)
-                .multilineTextAlignment(.center)
+                .multilineTextAlignment(textAlignment)
                 .lineLimit(expanded ? nil : 4)
                 .padding(.top, Space.s2)
             if let overview = person.overview, overview.count > 180 {
@@ -96,20 +142,35 @@ struct PersonView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .screenMargin()
     }
 
     private func portrait(_ person: Person) -> some View {
-        PortraitView(name: person.name, imageUrl: person.imageUrl, size: 160, initialsFont: .brandDisplay)
+        PortraitView(name: person.name, imageUrl: person.imageUrl, size: portraitSize, initialsFont: .brandDisplay)
             .accessibilityLabel(person.name)
     }
 
+    @ViewBuilder
     private var skeleton: some View {
-        VStack(spacing: Space.s3) {
-            SkeletonBlock().frame(width: 160, height: 160).clipShape(Circle())
-            SkeletonLine(font: .title, width: 200)
-            SkeletonLine(font: .subheadline, width: 140)
-            SkeletonLine(font: .subheadline, width: 280)
+        if wide {
+            HStack(alignment: .top, spacing: Space.s5) {
+                SkeletonBlock().frame(width: portraitSize, height: portraitSize).clipShape(Circle())
+                VStack(alignment: .leading, spacing: Space.s3) { skeletonLines }
+                    .padding(.top, Space.s2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .screenMargin()
+        } else {
+            VStack(spacing: Space.s3) {
+                SkeletonBlock().frame(width: portraitSize, height: portraitSize).clipShape(Circle())
+                skeletonLines
+            }
         }
+    }
+
+    @ViewBuilder
+    private var skeletonLines: some View {
+        SkeletonLine(font: .title, width: 200)
+        SkeletonLine(font: .subheadline, width: 140)
+        SkeletonLine(font: .subheadline, width: 280)
     }
 }

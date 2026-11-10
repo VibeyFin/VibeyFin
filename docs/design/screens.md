@@ -111,6 +111,10 @@ A cast member's page, opened from the cast row or a search result: a round portr
 the name in `brand-display`, "Born 1999 · Place", the biography (four lines with More / Less, or "No biography on the server."), then
 Movies and Shows in the library as poster rows, newest first. A person with nothing in the library says so.
 
+On a tablet (Android from 600dp, iPad at regular width) the page uses the width: the portrait and the details sit side by side, the
+details start-aligned and no wider than 720, and Movies and Shows are each a heading over a grid of posters at least 168 wide that
+fills the width. A folded device's cover screen and Split View at compact width keep the phone layout. Mockup: **PersonTablet**.
+
 ## Collection page
 
 A boxset opens its own page: a header with the collection's picture and name (the text fades in with the picture, with no jump), then
