@@ -3,7 +3,7 @@
 # Idempotent: every run sets the same state (it does not toggle). Run it after the library scan has found the
 # fixtures from make-media.sh (start.sh does the scan; this script waits for the items, bounded).
 #   Collection  "Crown Collection" (BoxSet): Starlit Crown, Starlit Crown II (created once, by name)
-#   Watched     Saga Show S01E01
+#   Watched     Saga Show S01E01, Bare Item
 #   Resume      Saga Show S01E02 at 1.2 s of 3 s (40 %), Neon Night at 2 s of 5 s
 #   My List     Saga Show, Neon Night, Starlit Crown, Solo Season
 #   Kids user   "kids" (password vibeyfin-kids): MaxParentalRating 10 (PG), blocked tag no-kids, schedule Everyday 0-24 h
@@ -82,7 +82,7 @@ else:
     box_id = call(f"/Collections?name={urllib.parse.quote('Crown Collection')}&ids={crown['Id']},{crown2['Id']}",
                   token, method="POST")["Id"]
 
-watched = {e1["Id"]}
+watched = {e1["Id"], bare["Id"]}
 resume = {e2["Id"]: int(1.2 * TICKS), neon["Id"]: 2 * TICKS}
 favourites = {saga["Id"], neon["Id"], crown["Id"], solo["Id"]}
 touched = [i["Id"] for i in episodes] + [saga["Id"], solo["Id"], neon["Id"], crown["Id"], crown2["Id"], bare["Id"]]

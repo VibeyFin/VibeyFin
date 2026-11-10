@@ -192,7 +192,7 @@ scrolls over it (fully dark after about half the picture has gone by).
 
 - Cast: a row of people from `People` (round `Primary` image, name, role); a missing image is a
   `surface-2` disc with initials.
-- More like this: a row of posters from `/Items/{id}/Similar`.
+- More like this: a row of posters from `/Items/{id}/Similar`, without watched titles when the profile hides them (**Watched titles in rows**).
 - Search for subtitles: on a movie's or an episode's page, a row inside opened Technical info, directly under the **Subtitles** tracks, because that is the list a new subtitle joins. A title with no subtitle tracks keeps the Subtitles label with only this row. Never on a show or a season or in the long-press menu. It shows only when the user's `Policy.EnableSubtitleManagement` is on (being an admin doesn't count), never on a kids profile or offline, and not when the title plays from a download on this device. It opens the same sheet as the player: see **Search for subtitles** in `player.md`. Mockup: `SubtitleSearch`.
 - Technical info (video, audio, subtitles, file) collapsed at the bottom. Plain text in brackets right after the **Video** codec, not a badge, says how Play will deliver the title (`3840×2160 · HEVC (Direct play) · 24 fps · 8.2 Mbps`: Direct play, Direct stream or Transcode, a transcode with its reason under the row). When only the audio has to be converted, `(Transcode)` goes after the codec of the playing **Audio** track instead, and when both do, on both. A title with no such line, like a show, has a row saying only that. Nothing is said when it plays from a download or the server can't say. **Audio** and **Subtitles** list every track, one per line, by the server's own name with ` · ` between the parts ("English · Dolby Digital · 5.1 · Default", "English · SUBRIP · External"); a line is left out when the file has no such track.
 
@@ -352,7 +352,7 @@ the scope is clear from position and from the footers.
 - **Profile card** (tappable, chevron): opens the Profile page.
 - **Playback**: Quality, Audio and subtitles, Skipping and autoplay. There is no Buffering row here: Buffer ahead lives
   on Skipping and autoplay.
-- **Home**: Featured title, Genre rows.
+- **Home**: Featured title, Genre rows, Show watched titles in rows (a switch, on by default; see **Watched titles in rows**).
 - **Notifications**: opens its page (below).
 - **Kids and PIN** (the group): one row, **Kids profile**, which opens the Kids and PIN page (below). It stays on a kids profile too, since turning kids mode off asks for the PIN on that page.
 - **This device**: Always ask who's watching.
@@ -361,6 +361,17 @@ the scope is clear from position and from the footers.
 A choice that is not a page of its own (Genre rows and the intervals) is a menu in its row: a `Picker` with
 `.pickerStyle(.menu)` on iOS, a `ChoiceRow` with a `DropdownMenu` on Android. It never opens a sub-page.
 A link row opens a sub-page.
+
+### Watched titles in rows
+
+"Show watched titles in rows" is per profile and on by default. Off, Home's Recently added rows and genre rows ask the server for
+unwatched titles only (`isPlayed=false` on `/Items/Latest`, `Filters=IsUnplayed` on `/Items`), so each row still fills to its 20.
+A show is watched only once every episode is (the server's own rule). More like this leaves them out too: `/Items/{id}/Similar`
+has no such filter, so three times as many are asked for and the watched ones dropped on the device. Continue watching, My List,
+the hero (which never features a watched title anyway) and the library and category pages are not affected. On, Recently added
+still follows the profile's own Jellyfin preference "Hide watched content from latest media" (`HidePlayedInLatest`, on by
+default): the API has no way to ask Latest for watched titles past it. A row left empty is hidden, as any empty row. Changing it
+while Home is open asks for those rows again.
 
 ### Profile
 
