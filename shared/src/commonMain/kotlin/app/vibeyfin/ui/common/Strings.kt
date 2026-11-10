@@ -715,8 +715,7 @@ object Strings {
     fun homeGenreRowsTop(n: Int) = "Top $n"
 
     val showWatchedInRowsTitle = "Show watched titles in rows"
-    val showWatchedInRowsHelp =
-        "When this is off, Recently added, the genre rows and More like this leave out what you have watched and fill up with titles you haven't seen. A show counts as watched once you have seen every episode. Continue watching always shows."
+    val showWatchedInRowsHelp = "Off: rows skip what you've watched. Continue watching always shows."
 
     val stillWatchingTitle = "Ask if you're still watching"
     val stillWatchingHelp =
