@@ -123,7 +123,7 @@ struct SeerrTitleView: View {
         VStack(alignment: centered ? .center : .leading, spacing: Space.s3) {
             Text(title.title)
                 .font(.brandDisplay)
-                .tracking(-0.8)
+                .tracking(-0.4)
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(centered ? .center : .leading)
                 .lineLimit(3)

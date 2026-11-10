@@ -65,8 +65,8 @@ enum Size {
 extension Font {
     /// `brand-display`: the only brand face. For the wordmark, a hero title without a Logo image and
     /// onboarding; everything else uses Dynamic Type text styles. Scales with `.largeTitle`. Apply
-    /// `.tracking(-0.8)` at the call site (-0.02em at 40 pt).
-    static let brandDisplay = Font.custom("BricolageGrotesque-96ptExtraBold", size: 40, relativeTo: .largeTitle)
+    /// `.tracking(-0.4)` at the call site (-0.01em at 40 pt).
+    static let brandDisplay = Font.custom("ArchivoCondensed-ExtraBold", size: 40, relativeTo: .largeTitle)
 }
 
 extension Color {

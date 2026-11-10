@@ -4,7 +4,6 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import app.vibeyfin.R
@@ -16,11 +15,7 @@ import app.vibeyfin.R
 val VibeyFinTypography = Typography()
 
 private val BrandFamily = FontFamily(
-    Font(
-        resId = R.font.bricolage_grotesque,
-        weight = FontWeight.ExtraBold,
-        variationSettings = FontVariation.Settings(FontVariation.weight(800)),
-    ),
+    Font(resId = R.font.archivo_condensed_extra_bold, weight = FontWeight.ExtraBold),
 )
 
 /**
@@ -32,5 +27,5 @@ val BrandDisplay = TextStyle(
     fontWeight = FontWeight.ExtraBold,
     fontSize = 40.sp,
     lineHeight = 44.sp,
-    letterSpacing = (-0.8).sp,
+    letterSpacing = (-0.4).sp,
 )

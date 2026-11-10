@@ -40,7 +40,7 @@ struct ServersView: View {
             Spacer()
             Text(Strings.shared.appName)
                 .font(.brandDisplay)
-                .tracking(-0.8)
+                .tracking(-0.4)
                 .foregroundStyle(.primary)
             Text(Strings.shared.welcomeLead)
                 .font(.body)
