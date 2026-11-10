@@ -715,7 +715,7 @@ object Strings {
     fun homeGenreRowsTop(n: Int) = "Top $n"
 
     val showWatchedInRowsTitle = "Show watched titles in rows"
-    val showWatchedInRowsHelp = "Off: rows skip what you've watched, except Continue watching. Recently added also follows your Jellyfin setting."
+    val showWatchedInRowsHelp = "Whether Recently added, genre rows and More like this show titles you've already watched."
 
     val stillWatchingTitle = "Ask if you're still watching"
     val stillWatchingHelp =
