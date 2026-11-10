@@ -42,7 +42,7 @@ class ItemDetailViewModelTest {
         app.close()
     }
 
-    private fun viewModel(id: String) = viewModels.track(ItemViewModel(id, app.library, app.connection, app.watch, app.watchChanges, app.downloadRepository, app.playback, app.seerrRepository, app.seerr, app.subtitles))
+    private fun viewModel(id: String) = viewModels.track(ItemViewModel(id, app.library, app.connection, app.watch, app.watchChanges, app.downloadRepository, app.playback, app.seerrRepository, app.seerr, app.subtitles, app.profileSettings))
 
     // What the fake server has been told is watched: a write sticks, so the page read again afterwards shows it as a real server would.
     private val watchedOnServer = mutableSetOf<String>()
@@ -104,6 +104,41 @@ class ItemDetailViewModelTest {
     @Test
     fun aMovieWithNothingLikeItHidesTheRow() = runTest {
         server(similar = itemsJson())
+
+        val state = viewModel("m1").shown()
+
+        assertFalse(state.similar!!.isVisible)
+    }
+
+    // Twenty titles like the movie, every odd one watched, answered up to the limit asked for as a real server does.
+    private suspend fun halfWatchedSimilar() {
+        val alike = List(20) { i -> itemJson("like-$i", "Alike $i", played = (i % 2 == 1).takeIf { it }) }
+        server().on("GET", "/Items/m1/Similar") { request -> Reply.json(itemsJson(*alike.take(request.query["limit"]!!.toInt()).toTypedArray())) }
+    }
+
+    @Test
+    fun moreLikeThisKeepsWatchedTitlesByDefault() = runTest {
+        halfWatchedSimilar()
+
+        val state = viewModel("m1").shown()
+
+        assertEquals((0 until 12).map { "like-$it" }, state.similar?.items?.map { it.id })
+    }
+
+    @Test
+    fun aProfileThatHidesWatchedTitlesStillFillsMoreLikeThisWithUnwatchedOnes() = runTest {
+        halfWatchedSimilar()
+        app.profileSettings.setShowWatchedInRows(false)
+
+        val state = viewModel("m1").shown()
+
+        assertEquals((0 until 20 step 2).map { "like-$it" }, state.similar?.items?.map { it.id })
+    }
+
+    @Test
+    fun moreLikeThisWithOnlyWatchedTitlesIsHiddenWhenTheProfileHidesThem() = runTest {
+        server(similar = itemsJson(itemJson("seen", "Seen", played = true)))
+        app.profileSettings.setShowWatchedInRows(false)
 
         val state = viewModel("m1").shown()
 

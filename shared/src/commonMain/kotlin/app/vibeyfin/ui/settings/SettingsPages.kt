@@ -61,6 +61,7 @@ data class SettingsValues(
     val bingeThreshold: Int = ProfileSettings.DEFAULT_BINGE_THRESHOLD,
     val homeGenreRows: Int = ProfileSettings.HOME_GENRES_ALL,
     val homeHeroItems: Int = ProfileSettings.DEFAULT_HOME_HERO_ITEMS,
+    val showWatchedInRows: Boolean = true,
     val skipBackSeconds: Int = ProfileSettings.DEFAULT_SKIP_BACK_SECONDS,
     val skipForwardSeconds: Int = ProfileSettings.DEFAULT_SKIP_FORWARD_SECONDS,
     val autoSkipSegments: Boolean = false,

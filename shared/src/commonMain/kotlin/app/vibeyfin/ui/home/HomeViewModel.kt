@@ -319,6 +319,15 @@ class HomeViewModel(
                 if (connection.state.value is ConnectionState.Connected) loadGenreRows(quiet = true)
             }
         }
+        // Watched titles were hidden or shown again in Settings while Home waits underneath.
+        viewModelScope.launch {
+            profileSettings.showWatchedInRows.filterNotNull().distinctUntilChanged().drop(1).collect {
+                if (connection.state.value is ConnectionState.Connected) {
+                    launch { loadLatestRows(quiet = true) }
+                    launch { loadGenreRows(quiet = true) }
+                }
+            }
+        }
         // The hero's number changed in Settings: it is picked again for the new number, or goes when switched off.
         viewModelScope.launch {
             profileSettings.homeHeroItems.filterNotNull().distinctUntilChanged().drop(1).collect { slots ->
@@ -575,7 +584,7 @@ class HomeViewModel(
     }
 
     private suspend fun loadLatest(lib: MediaItem, quiet: Boolean) {
-        val result = library.latest(lib.id)
+        val result = library.latest(lib.id, hideWatched = profileSettings.hidesWatchedInRows())
         latestRows.updateRow(latestId(lib)) { row ->
             when (result) {
                 is ApiResult.Success -> row.copy(items = result.value, loading = false, message = null)
@@ -613,7 +622,7 @@ class HomeViewModel(
     }
 
     private suspend fun loadGenreRow(filter: HomeFilter.Genre, quiet: Boolean) {
-        val result = library.filteredPage(filter, PageSort.Rating, limit = LibraryRepository.ROW_LIMIT)
+        val result = library.filteredPage(filter, PageSort.Rating, limit = LibraryRepository.ROW_LIMIT, hideWatched = profileSettings.hidesWatchedInRows())
         genreRows.updateRow(genreId(filter)) { row ->
             when (result) {
                 is ApiResult.Success -> row.copy(items = result.value.items, loading = false, message = null)

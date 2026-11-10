@@ -33,6 +33,12 @@ object ProfileSettingDefinitions {
         write = { dao, a, v -> dao.setHomeHeroItems(a.serverId, a.userId, v) },
     )
 
+    val ShowWatchedInRows = ProfileSetting(
+        default = true,
+        read = { dao, a -> dao.observeShowWatchedInRows(a.serverId, a.userId) },
+        write = { dao, a, v -> dao.setShowWatchedInRows(a.serverId, a.userId, v) },
+    )
+
     val SkipBackSeconds = ProfileSetting(
         default = ProfileSettings.DEFAULT_SKIP_BACK_SECONDS,
         accepts = { it in ProfileSettings.SKIP_BACK_CHOICES },
@@ -164,7 +170,7 @@ object ProfileSettingDefinitions {
     )
 
     internal val all: List<ProfileSetting<*>> = listOf(
-        ShowPlaybackStats, BingeThreshold, HomeGenreRows, HomeHeroItems, SkipBackSeconds, SkipForwardSeconds, AutoSkipSegments,
+        ShowPlaybackStats, BingeThreshold, HomeGenreRows, HomeHeroItems, ShowWatchedInRows, SkipBackSeconds, SkipForwardSeconds, AutoSkipSegments,
         PictureInPicture, SwipeGestures, BufferAheadSeconds, MaxStreamingBitrate, CaptionsFollowSystem, SubtitleSize, SubtitleTextColor,
         SubtitleBackground, NotificationsEnabled, DownloadNotifications, NotificationScope, KidsProfile, PinGateSwitches, DownloadOverMobile, AutoCleanWatched,
         StorageLimitMb,

@@ -47,7 +47,7 @@ class ItemPlayoutTest {
     private suspend fun page(playbackInfo: Reply) = app.signedIn().also {
         it.on("GET", "/Items", Reply.json(itemsJson(itemJson("m1", "Caminandes"))))
         it.on("POST", "/Items/m1/PlaybackInfo", playbackInfo)
-    }.let { viewModels.track(ItemViewModel("m1", app.library, app.connection, app.watch, app.watchChanges, app.downloadRepository, app.playback, app.seerrRepository, app.seerr, app.subtitles)) }
+    }.let { viewModels.track(ItemViewModel("m1", app.library, app.connection, app.watch, app.watchChanges, app.downloadRepository, app.playback, app.seerrRepository, app.seerr, app.subtitles, app.profileSettings)) }
 
     @Test
     fun aFileTheDeviceCanPlayIsShownAsDirectPlay() = runTest {
@@ -105,7 +105,7 @@ class ItemPlayoutTest {
         val server = app.sagaServer()
         server.on("POST", "/Items/m1/PlaybackInfo", Reply.json(playbackInfoJson(mediaSourceJson(container = "mp4"))))
 
-        fun open() = viewModels.track(ItemViewModel("m1", app.library, app.connection, app.watch, app.watchChanges, app.downloadRepository, app.playback, app.seerrRepository, app.seerr, app.subtitles))
+        fun open() = viewModels.track(ItemViewModel("m1", app.library, app.connection, app.watch, app.watchChanges, app.downloadRepository, app.playback, app.seerrRepository, app.seerr, app.subtitles, app.profileSettings))
         val first = open()
         first.uiState.first { !it.loading }
         first.onDownload()

@@ -121,6 +121,9 @@ class AccountSettingsEntity(
     /** How many items the hero features while [showHomeHero] is on: 1 to 5, a carousel from 2. */
     @ColumnInfo(defaultValue = "1")
     val homeHeroItems: Int = 1,
+    /** Whether Home's Recently added and genre rows, and More like this, include what the profile has watched. */
+    @ColumnInfo(defaultValue = "1")
+    val showWatchedInRows: Boolean = true,
     /** Seconds the player's skip-back button jumps. */
     @ColumnInfo(defaultValue = "10")
     val skipBackSeconds: Int = 10,

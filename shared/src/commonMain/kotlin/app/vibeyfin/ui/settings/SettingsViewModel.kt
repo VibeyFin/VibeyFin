@@ -217,6 +217,7 @@ class SettingsViewModel(
             bingeThreshold = settings[ProfileSettingDefinitions.BingeThreshold],
             homeGenreRows = settings[ProfileSettingDefinitions.HomeGenreRows],
             homeHeroItems = settings[ProfileSettingDefinitions.HomeHeroItems],
+            showWatchedInRows = settings[ProfileSettingDefinitions.ShowWatchedInRows],
             skipBackSeconds = settings[ProfileSettingDefinitions.SkipBackSeconds],
             skipForwardSeconds = settings[ProfileSettingDefinitions.SkipForwardSeconds],
             autoSkipSegments = settings[ProfileSettingDefinitions.AutoSkipSegments],
@@ -270,6 +271,8 @@ class SettingsViewModel(
                 SettingKey.PictureInPicture -> profileSettings.setPictureInPicture(value)
 
                 SettingKey.SwipeGestures -> profileSettings.setSwipeGestures(value)
+
+                SettingKey.ShowWatchedInRows -> profileSettings.setShowWatchedInRows(value)
 
                 SettingKey.OfflineMode -> preferences.setOfflineMode(value)
 
