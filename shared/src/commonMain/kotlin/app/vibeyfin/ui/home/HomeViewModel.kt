@@ -25,10 +25,12 @@ import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.profileOrNull
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.PinPrompt
+import app.vibeyfin.ui.common.PinSheetControls
 import app.vibeyfin.ui.common.ProfileActions
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.downloads.DownloadAction
 import app.vibeyfin.ui.downloads.DownloadFlow
+import app.vibeyfin.ui.downloads.RemovalControls
 import app.vibeyfin.ui.downloads.RemovePrompt
 import app.vibeyfin.ui.downloads.downloadParts
 import app.vibeyfin.ui.item.seasonIndex
@@ -176,7 +178,9 @@ class HomeViewModel(
     pins: PinLock,
     auth: AuthRepository,
     private val downloads: DownloadRepository,
-) : ViewModel() {
+) : ViewModel(),
+    PinSheetControls,
+    RemovalControls {
     private val profile = ProfileActions(connection, profileSettings, searchHistory, pins, auth, downloads, viewModelScope)
     private val downloadFlow = DownloadFlow(viewModelScope, downloads) { connection.state.value.profileOrNull() }
     private val exit = profile.exit
@@ -483,9 +487,9 @@ class HomeViewModel(
         downloadFlow.act(download, action)
     }
 
-    fun onConfirmRemove() = downloadFlow.confirmRemove()
+    override fun onConfirmRemove() = downloadFlow.confirmRemove()
 
-    fun onDismissRemoval() = downloadFlow.dismissRemoval()
+    override fun onDismissRemoval() = downloadFlow.dismissRemoval()
 
     fun onRetryContinue() {
         continueReload?.cancel()
@@ -803,15 +807,15 @@ class HomeViewModel(
     fun onSwitchServer() = profile.switchServer()
 
     /** A PIN was entered in the open PIN sheet. */
-    fun onSubmitPin(pin: String) = profile.submitPin(pin)
+    override fun onSubmitPin(pin: String) = profile.submitPin(pin)
 
     /** "Forgot PIN?": the PIN sheet asks for the profile's Jellyfin password instead. */
-    fun onForgotPin() = profile.forgotPin()
+    override fun onForgotPin() = profile.forgotPin()
 
     /** The Jellyfin password entered after "Forgot PIN?". */
-    fun onSubmitPassword(password: String) = profile.submitPassword(password)
+    override fun onSubmitPassword(password: String) = profile.submitPassword(password)
 
-    fun onDismissPin() = profile.dismissPin()
+    override fun onDismissPin() = profile.dismissPin()
 
     /** Revokes the token, locks the profile here and goes back to "Who's watching?"; a kids profile can't. */
     fun onSignOut() = profile.signOut()

@@ -19,6 +19,7 @@ import app.vibeyfin.domain.model.Server
 import app.vibeyfin.ui.common.PinGate
 import app.vibeyfin.ui.common.PinPrompt
 import app.vibeyfin.ui.common.PinReason
+import app.vibeyfin.ui.common.PinSheetControls
 import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -103,7 +104,8 @@ class WhoIsWatchingViewModel(
     private val pins: PinLock,
     private val clock: Clock,
     private val pinFor: ProfileRef? = null,
-) : ViewModel() {
+) : ViewModel(),
+    PinSheetControls {
     private data class Local(
         val server: Server? = null,
         val loaded: Boolean = false,
@@ -184,12 +186,12 @@ class WhoIsWatchingViewModel(
     }
 
     /** A PIN was entered in the open PIN sheet. */
-    fun onSubmitPin(pin: String) = this.pin.submitPin(pin)
+    override fun onSubmitPin(pin: String) = this.pin.submitPin(pin)
 
     /** "Forgot PIN?": the PIN sheet asks for the profile's Jellyfin password instead. */
-    fun onForgotPin() = pin.forgotPin()
+    override fun onForgotPin() = pin.forgotPin()
 
-    fun onDismissPin() = pin.dismiss()
+    override fun onDismissPin() = pin.dismiss()
 
     private fun askAtLaunch(ref: ProfileRef) {
         viewModelScope.launch {
@@ -240,7 +242,7 @@ class WhoIsWatchingViewModel(
     }
 
     /** Signs in with [password] for the profile in the open password sheet, or checks it after "Forgot PIN?". */
-    fun onSubmitPassword(password: String) {
+    override fun onSubmitPassword(password: String) {
         if (pin.prompt.value?.forgot == true) return pin.submitPassword(password)
         val sheet = local.value.sheet as? SignInSheet.Password ?: return
         signIn(sheet.profile.name, password, passwordOnly = true, userId = sheet.profile.userId)

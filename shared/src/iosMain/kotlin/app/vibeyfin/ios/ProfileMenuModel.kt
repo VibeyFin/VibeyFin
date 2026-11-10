@@ -1,11 +1,14 @@
 package app.vibeyfin.ios
 
+import app.vibeyfin.ui.common.PinSheetControls
 import app.vibeyfin.ui.profile.ProfileMenuUiState
 import app.vibeyfin.ui.profile.ProfileMenuViewModel
 
 /** The profile button at the top of every tab: [ProfileMenuViewModel] as SwiftUI needs it. */
-class ProfileMenuModel {
+class ProfileMenuModel : PinSheetModel {
     private val host = ViewModelHost(ProfileMenuViewModel::class) { it.get<ProfileMenuViewModel>() }
+
+    override val pinSheet: PinSheetControls get() = host.viewModel
 
     fun observe(onChange: (ProfileMenuUiState) -> Unit) = host.observe(host.viewModel.uiState, onChange)
 
@@ -18,17 +21,6 @@ class ProfileMenuModel {
     fun onQuickConnect() = host.viewModel.onQuickConnect()
 
     fun onQuickConnectOpened() = host.viewModel.onQuickConnectOpened()
-
-    /** A PIN was entered in the open PIN sheet. */
-    fun onSubmitPin(pin: String) = host.viewModel.onSubmitPin(pin)
-
-    /** "Forgot PIN?": the PIN sheet asks for the profile's Jellyfin password instead. */
-    fun onForgotPin() = host.viewModel.onForgotPin()
-
-    fun onDismissPin() = host.viewModel.onDismissPin()
-
-    /** The Jellyfin password entered after "Forgot PIN?". */
-    fun onSubmitPassword(password: String) = host.viewModel.onSubmitPassword(password)
 
     fun close() = host.close()
 }
