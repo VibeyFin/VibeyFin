@@ -54,8 +54,8 @@ private class MenuPressNode(private val source: InteractionSource) :
     }
 
     override fun ContentDrawScope.draw() {
-        drawContent()
-
         if (held.value > 0f) drawRect(VibeyFinTokens.Colors.sparkSoft.copy(alpha = held.value))
+
+        drawContent()
     }
 }

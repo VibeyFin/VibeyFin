@@ -299,7 +299,7 @@ struct PlayerScrubber: View {
             let bufferedFraction = duration > 0 ? min(max(bufferedPosition / duration, fraction), 1) : 0
             ZStack(alignment: .leading) {
                 Capsule().fill(Brand.progressTrack)
-                Capsule().fill(Color.white.opacity(0.35)).frame(width: width * bufferedFraction)
+                Capsule().fill(Brand.overlayStrong).frame(width: width * bufferedFraction)
                 Capsule().fill(Brand.spark).frame(width: width * fraction)
             }
             .frame(height: isDragging ? 10 : 4)
