@@ -46,7 +46,7 @@ enum class DownloadBadge {
     Paused,
     Failed,
 
-    /** On the device: a filled check, in ink (aqua never signals status). */
+    /** On the device: a filled check. */
     Done,
 }
 

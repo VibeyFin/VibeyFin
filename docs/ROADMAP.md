@@ -91,7 +91,7 @@ _Exit: play a movie and an episode, direct and transcoded, with position reporte
   both fail it shows the row's error state. A plain row above the libraries on the existing Home; Phase 4
   restructures Home around it
 - [x] Resume on open (seek to `PlaybackPositionTicks`, 10,000,000 ticks/sec) — _the server's position is
-  the source of truth, so there are no per-device positions. Resume is the aqua primary button reading
+  the source of truth, so there are no per-device positions. Resume is the white primary button reading
   "Resume · 38m left", with a round icon-only "start over" arrow beside it and a 5 s rewind when resuming. A local position is
   only the offline fallback (Phase 10)_
 - [x] Auto-advance with countdown into Next Up — _owned here: countdown, cancel, on by default. Phase 3
@@ -169,7 +169,7 @@ _Starts after the state audit (see Cross-cutting)._
   backdrop hero (`Backdrop` image) with a dark gradient overlay (the `scrim` token), and the movie
   details and action buttons are layered over the image: the `Logo` image as the title (the
   `brand-display` title when there is none), the facts line (year, rating, runtime, genres), the
-  overview, then the actions, with Play / Resume as the one aqua primary button. Cast and similar
+  overview, then the actions, with Play / Resume as the one white primary button. Cast and similar
   items scroll below the hero. The bar over the hero is transparent (Android) or an inline title
   over the backdrop (iOS); text over the image always sits on the scrim
 - [x] Series detail page (Android built and run; iOS parsed): the same hero, then episode cards with all their text on the still (tag, title, synopsis, length, rating, air date; long press: View episode, watched mark), mark the whole series watched, Play holds its place while loading, a season slides in from the side it is on, and the row opens at the current episode. Before: a row of season buttons (about four visible at a time,
@@ -184,7 +184,7 @@ _Starts after the state audit (see Cross-cutting)._
 - [x] Special features (behind the scenes, extras; plan 12; Android built, iOS parsed) on the detail page (`GET /Items/{id}/SpecialFeatures`)
 - [x] Library browse (Android built and run; iOS written and only parsed): the Library tab is every movie and show as a poster grid (three across on a phone) with the title count under its name, and buttons for Movies, Shows, Collections, Sort, Genre, Year (by decade), People (searched by name) and Clear. Changing a filter keeps the old list dimmed and the count in place until the new list is in, so nothing jumps. Sheets show the chosen row as a soft pill, not a tick
 - [x] Shared-element transition: built, **off by default** on both platforms (`SHARED_POSTER_ENABLED` on Android, `sharedPosterEnabled` on iOS). Compose's shared transition on Android (no new dependency, seen on the emulator with animations slowed) and iOS 18's zoom navigation transition behind `#available` (written and only parsed). Detail pages open the way the reference video does instead: the screen dims, a skeleton shows, the page fades up whole
-- [x] Home hero (Android built and run; iOS written and only parsed): one featured item per session (random among recently added and My List that have a Backdrop and a Logo, never one already watched), a rounded banner card (4:3 on a phone, 2.6:1 from 600dp) with the Logo, a line of what it is and its genres, and Play beside My List (a heart, filled when on the list; a movie plays; a show plays its next episode, else the first episode that is not in Specials, else opens its page), tapping the picture opens its page; a per-profile setting ("Featured titles on Home", Off or 1 to 5) sets how many; from two it is a carousel with page dots that moves on by itself every 8 s and goes round, swipes round too, and opens the poster menu on a long press (plan 19, #17). It sits under the category buttons and above Continue watching. Play is the one aqua button. Optional by design, so Home looks right without it (no item qualifies, or a failure). Its skeleton is in the first frame: Home waits for the setting before drawing
+- [x] Home hero (Android built and run; iOS written and only parsed): one featured item per session (random among recently added and My List that have a Backdrop and a Logo, never one already watched), a rounded banner card (4:3 on a phone, 2.6:1 from 600dp) with the Logo, a line of what it is and its genres, and Play beside My List (a heart, filled when on the list; a movie plays; a show plays its next episode, else the first episode that is not in Specials, else opens its page), tapping the picture opens its page; a per-profile setting ("Featured titles on Home", Off or 1 to 5) sets how many; from two it is a carousel with page dots that moves on by itself every 8 s and goes round, swipes round too, and opens the poster menu on a long press (plan 19, #17). It sits under the category buttons and above Continue watching. Play is the one white button. Optional by design, so Home looks right without it (no item qualifies, or a failure). Its skeleton is in the first frame: Home waits for the setting before drawing
 - [x] My List (Favorites): Home row, "See all" page, the detail page's heart, Android built and iOS parsed.
 - ~~Thumbs (`UserData.likes`)~~ — _cut:_ Jellyfin's like flag is barely used by its own clients and My List already covers "I want this". Revisit only if Phase 7's recommendations need a signal
 - [x] Tile trailers (Android built and run; iOS written and only parsed): a long press on any poster opens a menu with Details, Trailer (only when the title has one, found when the menu opens because lists do not carry trailers: one the server holds plays in the app, one on the web opens in the system's viewer) and My List. The detail page has the same Trailer button
@@ -250,7 +250,7 @@ _Depends on Phase 4 (Home rows) and Phase 6 (profiles and the first settings). S
 - [ ] Row and card layout, set per row: poster, landscape or thumb artwork; card size; item count
   (default 20) and the "See all" grid density; titles, progress and badges shown or hidden. Hero on
   or off, its source (recently added, favourites or a chosen collection) and its height
-- [ ] Theming — _decided: the brand stays dark, with aqua the only primary and progress colour._ Options:
+- [ ] Theming — _decided: the brand stays dark, with white the only action colour and copper the only state colour._ Options:
   true-black (AMOLED) or lifted "cinematic dark" backgrounds, corner radius, density and text size.
   Each goes into `docs/design/` and `design/tokens.json` first, so the drift check covers every theme.
   Not offered: a light theme, Android dynamic colour, a free colour picker, custom fonts, and accents
@@ -343,7 +343,7 @@ _Depends on Phase 4 (search and detail page)._ Issue #14 (Seerr results when sea
   after the library's rows and before the genre rows. Titles the library has look like library tiles. See all pages them
 - [x] Title page for something not in the library (`GET /movie/{id}`, `/tv/{id}`, `/recommendations`), on the detail page's
   layout, with the request state from `mediaInfo.status` (1 unknown, 2 pending, 3 processing, 4 partly available, 5 available;
-  a decline or failure comes from the latest request). _Decided: status is `ink` with an icon, never aqua_
+  a decline or failure comes from the latest request). _Decided: status is `ink` with an icon, never copper_
 - [x] Request a movie or a series: `POST /request` (`mediaType`, `mediaId`, `seasons`, `is4k`), with a season picker (All
   missing seasons on, Specials off) and 4K only when the profile may; Cancel request while it waits for approval
   (`DELETE /request/{id}`). The poster menu (long press) offers the same. My requests: a Home row after Continue watching and

@@ -104,14 +104,16 @@ dark only, artwork-forward, and native on each platform: Apple's Human Interface
 Liquid Glass on iOS 26+ (`ios.md`), Material 3 on Android (`android.md`). Behaviour rules that both
 apps share are in `guardrails.md`; which Jellyfin field drives which UI is in `jellyfin-mapping.md`.
 
-- One brand across both: electric aqua `#3fe0d0` fills the single primary action per screen (Play,
-  Sign in) and playback progress, and nothing else. Aqua never signals status; downloaded uses `ink`
-  with the filled icon. No teal, no amber, no dynamic colour, no light theme.
+- One brand across both: the white `action` (black label) fills the single primary action per screen
+  (Play, Sign in). Copper `spark` `#e07a45` marks state only: playback progress, the selected tab, chip
+  or season, a switch that is on, the logo and the New badge. It is never a button and never signals
+  status; downloaded uses `ink` with the filled icon. No teal, no amber, no dynamic colour, no light theme.
 - Colours: iOS uses Apple's dark semantic colours (not hex) plus the brand values; Android builds an
-  explicit M3 dark `ColorScheme` from the `android` column of `tokens.json`. Text over artwork sits
+  explicit M3 dark `ColorScheme` from the `android` column of `tokens.json` (`primary` is `action`,
+  copper is `tertiary`). iOS AccentColor is `ink`; copper is applied explicitly. Text over artwork sits
   on `scrim`.
 - Type: system fonts (SF Pro Dynamic Type styles on iOS, the M3 type scale on Android). Only
-  `brand-display` (Bricolage Grotesque) is bundled, for the wordmark, the hero title without a Logo
+  `brand-display` (Archivo Condensed) is bundled, for the wordmark, the hero title without a Logo
   image and onboarding.
 - Use the platform's own component when it has one (buttons, sheets, menus, tab bar, text fields);
   build custom only for posters, rows, the hero and the player. Never fake Liquid Glass.
