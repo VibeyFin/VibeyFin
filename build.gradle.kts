@@ -46,6 +46,37 @@ listOf(":androidApp", ":shared").map { project(it) }.forEach { module ->
     }
 }
 
+// Screens take colours from VibeyFinTokens; raw ones live in app/theme only. Runs with detekt, which has no rule for a property like Color.White.
+val rawColorPattern = """Color\.(White|Black)\b|\bColor\(\s*(0x|red\s*=|green\s*=|blue\s*=|alpha\s*=)"""
+
+val checkRawColors = project(":androidApp").tasks.register("checkRawColors") {
+    group = "verification"
+    description = "Fails when a screen types a raw colour instead of a VibeyFinTokens one"
+
+    val sources = project(":androidApp").fileTree("src") {
+        include("**/*.kt")
+        exclude("**/app/theme/**")
+    }
+
+    val rootPath: String = rootDir.path
+    val pattern: String = rawColorPattern
+
+    doLast {
+        val matcher = Regex(pattern)
+        val offences = sources.files.sorted().flatMap { file ->
+            file.readLines().mapIndexedNotNull { index, line ->
+                if (matcher.containsMatchIn(line)) "${file.path.removePrefix(rootPath)}:${index + 1}: ${line.trim()}" else null
+            }
+        }
+
+        if (offences.isNotEmpty()) {
+            throw GradleException("Raw colours outside app/theme, use VibeyFinTokens:\n" + offences.joinToString("\n"))
+        }
+    }
+}
+
+project(":androidApp").tasks.withType<dev.detekt.gradle.Detekt>().configureEach { dependsOn(checkRawColors) }
+
 // Only stable releases count as updates (see CLAUDE.md). For local checks: ./gradlew dependencyUpdates, versionCatalogUpdate.
 fun isUnstable(version: String): Boolean {
     val stable = listOf("RELEASE", "FINAL", "GA").any { version.uppercase().endsWith(it) }
