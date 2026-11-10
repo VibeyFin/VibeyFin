@@ -38,10 +38,7 @@ struct ServersView: View {
     private func welcome(_ state: ServersUiState) -> some View {
         VStack(spacing: Space.s3) {
             Spacer()
-            Text(Strings.shared.appName)
-                .font(.brandDisplay)
-                .tracking(-0.4)
-                .foregroundStyle(.primary)
+            Logo()
             Text(Strings.shared.welcomeLead)
                 .font(.body)
                 .foregroundStyle(.secondary)

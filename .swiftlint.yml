@@ -30,3 +30,24 @@ file_length:
   warning: 700
 type_body_length:
   warning: 600
+
+custom_rules:
+  no_raw_white:
+    name: "No raw white"
+    regex: '(?<![A-Za-z.])(Color)?\.white\b(?!space)(?!\w)'
+    match_kinds: [identifier]
+    excluded: 'iosApp/iosApp/(App/Theme|Components/Logo|Settings/SettingsRows)\.swift'
+    message: "Use Brand.onMedia, Brand.action or Brand.overlay* instead of raw white."
+    severity: error
+  no_raw_black:
+    name: "No raw black"
+    regex: '(?<![A-Za-z])(Color|UIColor)?\.black\b'
+    excluded: 'iosApp/iosApp/(App/Theme|Components/Logo|Settings/SettingsRows)\.swift'
+    message: "Use Brand.scrim, Brand.scrimStrong or Brand.onAction instead of raw black."
+    severity: error
+  no_color_literals:
+    name: "No colour literals"
+    regex: '\b(Color|UIColor)\((hex|red|white):'
+    excluded: 'iosApp/iosApp/(App/Theme|Components/Logo)\.swift'
+    message: "Colours come from Brand in App/Theme.swift."
+    severity: error
