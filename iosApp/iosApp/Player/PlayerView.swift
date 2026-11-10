@@ -143,8 +143,6 @@ struct PlayerView: View {
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.26), value: state?.upNext != nil)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: controller.isExternalPlayback)
-        // The app tints aqua; in the player everything that takes a tint (the spinner, glass buttons,
-        // menus) is white. Aqua stays on the scrubber's fill, which sets its own colour.
         .tint(.white)
         .statusBarHidden(!controlsVisible)
         .persistentSystemOverlays(controlsVisible ? .automatic : .hidden)

@@ -31,9 +31,12 @@ def block(kind):
 colors = family('color')
 brand = block('Brand')
 for swift_name, token in [
-    ('accent', 'accent'), ('onAccent', 'on-accent'), ('accentSoft', 'accent-soft'),
-    ('onAccentSoft', 'on-accent-soft'), ('scrim', 'scrim'), ('scrimStrong', 'scrim-strong'),
-    ('progressTrack', 'progress-track'),
+    ('action', 'action'), ('actionPressed', 'action-pressed'), ('onAction', 'on-action'),
+    ('spark', 'spark'), ('sparkPressed', 'spark-pressed'), ('onSpark', 'on-spark'),
+    ('sparkSoft', 'spark-soft'), ('onSparkSoft', 'on-spark-soft'),
+    ('tonal', 'tonal'), ('onTonal', 'on-tonal'),
+    ('scrim', 'scrim'), ('scrimStrong', 'scrim-strong'), ('progressTrack', 'progress-track'),
+    ('onMedia', 'on-media'), ('overlayWeak', 'overlay-weak'), ('overlay', 'overlay'), ('overlayStrong', 'overlay-strong'),
     ('avatar1', 'avatar-1'), ('avatar2', 'avatar-2'), ('avatar3', 'avatar-3'),
     ('avatar4', 'avatar-4'), ('avatar5', 'avatar-5'), ('avatar6', 'avatar-6'),
 ]:
@@ -62,12 +65,12 @@ for kind, mapping, fam in [
         elif float(m.group(1)) != px(fam[token]):
             errors.append('%s.%s is %s, tokens.json %s is %s' % (kind, swift_name, m.group(1), token, px(fam[token])))
 
-# The AccentColor asset must hold the same aqua.
+# The AccentColor asset must hold `ink`.
 asset = json.load(open('iosApp/iosApp/Assets.xcassets/AccentColor.colorset/Contents.json'))
 c = asset['colors'][0]['color']['components']
 got = (int(c['red'], 16) << 16) | (int(c['green'], 16) << 8) | int(c['blue'], 16)
-if got != argb(colors['accent']['value']['ios'])[0]:
-    errors.append('AccentColor asset is 0x%06X, tokens.json accent differs' % got)
+if got != argb(colors['ink']['value']['ios'])[0]:
+    errors.append('AccentColor asset is 0x%06X, tokens.json ink differs' % got)
 
 if errors:
     print('\n'.join(errors))

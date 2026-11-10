@@ -3,8 +3,7 @@ import Shared
 
 /// Shows, Movies, New and Categories as one scrolling row of capsules. Every one opens something: the first three
 /// open their page; Categories carries a chevron and opens a list of genres first, which is how it differs. None of
-/// them stays selected, because Home itself is never filtered. A capsule on the system background, never glass; aqua
-/// is not used here.
+/// them stays selected, because Home itself is never filtered.
 struct CategoryButtonRow: View {
     let buttons: [CategoryButton]
     let onTap: (CategoryButton) -> Void

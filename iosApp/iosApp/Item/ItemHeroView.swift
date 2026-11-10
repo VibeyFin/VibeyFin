@@ -242,7 +242,6 @@ struct HeroDetailsView: View {
                 if let badge = state.badge {
                     FormatBadge(text: badge)
                 }
-                // Watched is an icon, in the secondary ink: aqua never signals status.
                 if state.watched {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.subheadline)
@@ -253,7 +252,7 @@ struct HeroDetailsView: View {
         }
     }
 
-    /// The one filled action on the page: the aqua capsule, "Play", "Resume · 38m left" or for a show "Play S2 E4", with a round
+    /// The play button: "Play", "Resume · 38m left" or for a show "Play S2 E4", with a round
     /// "start over" arrow beside it only when there is something to resume.
     /// The label in title case, but only up to the " · ": what follows is a time left ("1m left"), which stays as written.
     private var playLabel: String {

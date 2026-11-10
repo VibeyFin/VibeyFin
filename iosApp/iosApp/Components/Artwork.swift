@@ -209,7 +209,7 @@ struct LoadingIndicator: View {
     }
 }
 
-/// What went wrong and a way to try again. The button is the grey secondary: aqua is for the primary action.
+/// What went wrong and a way to try again.
 struct LoadErrorView: View {
     let message: String
     let onRetry: () -> Void

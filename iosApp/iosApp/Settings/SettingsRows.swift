@@ -46,12 +46,11 @@ struct SettingsItemRow: View {
     }
 
     // The whole row is the switch, so the label is a target too (a bare `Toggle` in a list only reacts to the switch itself).
-    // The switch is aqua, the app tint.
     private func toggleRow(_ item: ToggleItem) -> some View {
         Toggle(isOn: Binding(get: { item.checked }, set: { model.toggle(item.key, $0) })) {
             RowLabel(title: item.title, help: item.help)
         }
-        .tint(Brand.accent)
+        .tint(Brand.spark)
         .contentShape(Rectangle())
         .onTapGesture { model.toggle(item.key, !item.checked) }
     }
@@ -90,10 +89,9 @@ struct SettingsItemRow: View {
     @ViewBuilder
     private func linkRow(_ item: LinkItem) -> some View {
         if let selection {
-            // The selected row is an accent-soft pill with its text left alone; the system's aqua highlight under white text is too faint.
             linkLabel(item)
                 .tag(Optional(item.key))
-                .listRowBackground(selection.wrappedValue == item.key ? Brand.accentSoft : nil)
+                .listRowBackground(selection.wrappedValue == item.key ? Brand.sparkSoft : nil)
         } else if model.page(item.target)?.sheet == true {
             // Its list opens as the picker sheet the filters use, over this page.
             Button { onOpenSheet(item.target) } label: {
@@ -188,7 +186,7 @@ struct ChecklistRows: View {
                     Color(.secondarySystemGroupedBackground)
                     if selected {
                         RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
-                            .fill(Brand.accentSoft)
+                            .fill(Brand.sparkSoft)
                             .padding(.horizontal, Space.s2)
                             .padding(.vertical, 2)
                     }
@@ -253,7 +251,7 @@ private struct SubtitlePreviewRow: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             LinearGradient(
-                colors: [Brand.accentSoft, Color(.systemBackground), Color(.secondarySystemGroupedBackground)],
+                colors: [Brand.sparkSoft, Color(.systemBackground), Color(.secondarySystemGroupedBackground)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )

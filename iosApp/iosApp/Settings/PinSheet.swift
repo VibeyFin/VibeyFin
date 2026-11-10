@@ -175,7 +175,7 @@ struct PinSheet: View {
     }
 }
 
-/// Four dots, filled as digits go in. They are ink, not aqua: aqua is for the one primary action.
+/// Four dots, filled as digits go in.
 struct PinDotsView: View {
     let filled: Int
 

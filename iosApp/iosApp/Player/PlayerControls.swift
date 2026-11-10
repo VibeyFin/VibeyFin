@@ -257,8 +257,7 @@ struct PlayerControlCluster<Content: View>: View {
 }
 
 /// Groups the player's glass controls so they blend and share one render pass on iOS 26. Before
-/// that there is nothing to group. The app's aqua accent reaches glass buttons and menu labels
-/// through the tint, so it is set to white here once: aqua stays on the scrubber's fill only.
+/// that there is nothing to group.
 struct PlayerGlassGroup<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
@@ -272,7 +271,7 @@ struct PlayerGlassGroup<Content: View>: View {
     }
 }
 
-/// The scrubber: a bar with no thumb that thickens while it is dragged. Aqua is the progress. A tap
+/// The scrubber: a bar with no thumb that thickens while it is dragged. A tap
 /// or a drag anywhere on it moves there; the seek happens when the finger lifts.
 struct PlayerScrubber: View {
     /// Seconds.
@@ -301,7 +300,7 @@ struct PlayerScrubber: View {
             ZStack(alignment: .leading) {
                 Capsule().fill(Brand.progressTrack)
                 Capsule().fill(Color.white.opacity(0.35)).frame(width: width * bufferedFraction)
-                Capsule().fill(Brand.accent).frame(width: width * fraction)
+                Capsule().fill(Brand.spark).frame(width: width * fraction)
             }
             .frame(height: isDragging ? 10 : 4)
             .frame(maxHeight: .infinity)

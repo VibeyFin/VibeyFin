@@ -78,10 +78,9 @@ struct PickerSheetView: View {
                             }
                         }
                         .fontWeight(row.selected ? .semibold : .regular)
-                        // The chosen row is lit as a soft rounded pill in the accent tint, with no tick.
                         .padding(.horizontal, Space.s3)
                         .padding(.vertical, Space.s2)
-                        .background(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous).fill(row.selected ? Brand.accentSoft : Color.clear))
+                        .background(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous).fill(row.selected ? Brand.sparkSoft : Color.clear))
                         .contentShape(Rectangle())
                     }
                     .listRowBackground(Color.clear)

@@ -101,7 +101,6 @@ struct RootView: View {
                 ProfileFlightView(flight: flight, button: homeButtonFrame == .zero ? buttonFrame : homeButtonFrame)
             }
         }
-        .tint(Brand.accent)
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { screenWidth = $0 }
         .environment(\.skeletonShimmerWidth, screenWidth > 0 ? screenWidth : nil)
         // Blank background until the app has worked out where to open, a moment of storage reads.

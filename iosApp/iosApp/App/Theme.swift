@@ -5,17 +5,30 @@ import UIKit
 // semantic colours (background, label, separator, ...) are used by name, never as hex; only the
 // brand values live here. scripts/check-swift-tokens.sh fails when this file drifts from the JSON.
 
-/// Brand values with no Apple equivalent. Aqua is the one filled primary action per screen.
+/// Brand values with no Apple equivalent.
 enum Brand {
-    static let accent = Color(hex: 0x3FE0D0)
-    static let onAccent = Color(hex: 0x04201D)
-    static let accentSoft = Color(hex: 0x0F2F2C)
-    static let onAccentSoft = Color(hex: 0x3FE0D0)
+    static let action = Color(hex: 0xFFFFFF)
+    static let actionPressed = Color(hex: 0xD9D9D9)
+    static let onAction = Color(hex: 0x000000)
+
+    static let spark = Color(hex: 0xE07A45)
+    static let sparkPressed = Color(hex: 0xC8622E)
+    static let onSpark = Color(hex: 0x2A1206)
+    static let sparkSoft = Color(hex: 0x2E170C)
+    static let onSparkSoft = Color(hex: 0xE8935F)
+
+    static let tonal = Color(hex: 0x3A3A3C)
+    static let onTonal = Color(hex: 0xFFFFFF)
 
     /// Under any text or control laid over artwork or video.
     static let scrim = Color(hex: 0x000000, alpha: 0.78)
     static let scrimStrong = Color(hex: 0x000000, alpha: 0.9)
-    static let progressTrack = Color(hex: 0xFFFFFF, alpha: 0.3)
+    static let progressTrack = Color(hex: 0xFFFFFF, alpha: 0.18)
+
+    static let onMedia = Color(hex: 0xFFFFFF)
+    static let overlayWeak = Color(hex: 0xFFFFFF, alpha: 0.16)
+    static let overlay = Color(hex: 0xFFFFFF, alpha: 0.25)
+    static let overlayStrong = Color(hex: 0xFFFFFF, alpha: 0.4)
 
     /// Profile tile grounds, picked from the user's name; the initial sits on one in `.primary`.
     static let avatar1 = Color(hex: 0x3A4A6B)
@@ -54,7 +67,6 @@ extension Font {
     /// onboarding; everything else uses Dynamic Type text styles. Scales with `.largeTitle`. Apply
     /// `.tracking(-0.8)` at the call site (-0.02em at 40 pt).
     static let brandDisplay = Font.custom("BricolageGrotesque-96ptExtraBold", size: 40, relativeTo: .largeTitle)
-
 }
 
 extension Color {

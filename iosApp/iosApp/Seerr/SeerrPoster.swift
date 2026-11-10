@@ -32,7 +32,7 @@ struct SeerrPosterTile: View {
 }
 
 /// What Seerr knows about a title, in the poster's one badge slot: a + disc for a title nobody asked for, otherwise a pill with a
-/// symbol and a word. Primary text on real glass (iOS 26) or the scrim, never aqua; a failure is in red.
+/// symbol and a word. Primary text on real glass (iOS 26) or the scrim; a failure is in red.
 struct SeerrMarker: View {
     let state: RequestState
 

@@ -2,8 +2,8 @@ import SwiftUI
 import Shared
 
 /// Offers the next episode in the last seconds of this one: its picture, "S1 E2 · title", how many
-/// seconds until it starts on its own, "Play now" (a white filled capsule; the player stays in Apple's
-/// scheme, never aqua) and "Watch credits", a glass capsule that dismisses it. The card is Liquid
+/// seconds until it starts on its own, "Play now" and
+/// "Watch credits", a glass capsule that dismisses it. The card is Liquid
 /// Glass on iOS 26 and the scrim before that, over the video.
 struct UpNextCard: View {
     let upNext: UpNext

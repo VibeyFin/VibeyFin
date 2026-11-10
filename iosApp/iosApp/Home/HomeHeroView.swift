@@ -2,7 +2,7 @@ import SwiftUI
 import Shared
 
 /// The one featured item, above Continue watching, as a rounded card inside the page's margins: its backdrop under a scrim, the Logo
-/// as the title, a line saying what it is and its genres, then Play (the one aqua button) beside My List. Tapping the picture opens the
+/// as the title, a line saying what it is and its genres, then Play beside My List. Tapping the picture opens the
 /// item's page. Play plays: a movie, or the episode a show is up to.
 struct HomeHeroView: View {
     let item: MediaItem
@@ -57,17 +57,14 @@ struct HomeHeroView: View {
                     .lineLimit(1)
             }
             HStack(spacing: Space.s2) {
-                // Built like My list so the two are the same size (the system's prominent button is shorter than 40pt): aqua is the one
-                // primary action, a capsule on the picture.
                 Button(action: onPlay) {
                     Label(Strings.shared.play.titleCased(), systemImage: "play.fill")
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(Brand.onAccent)
+                        .foregroundStyle(Brand.onAction)
                         .frame(maxWidth: .infinity, minHeight: 40)
-                        .background(Capsule().fill(Brand.accent))
+                        .background(Capsule().fill(Brand.action))
                 }
                 .buttonStyle(PressableButtonStyle())
-                // Not aqua: aqua is the one primary action. A soft, see-through button over the picture.
                 Button(action: onMyList) {
                     Label(Strings.shared.myList.titleCased(), systemImage: item.isFavorite ? "heart.fill" : "heart")
                         .font(.body.weight(.medium))

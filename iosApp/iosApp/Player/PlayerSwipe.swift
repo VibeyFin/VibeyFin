@@ -203,7 +203,7 @@ private struct SwipeForLevels: ViewModifier {
 }
 
 /// The level a swipe set, on the side being swiped: a Liquid Glass capsule on iOS 26 (a `Brand.scrim` one before), filled
-/// from the bottom in white like Control Center, with the symbol at its foot in black once the fill reaches it. Never aqua.
+/// from the bottom in white like Control Center, with the symbol at its foot in black once the fill reaches it.
 struct SwipeLevelIndicator: View {
     @ObservedObject var swipe: PlayerSwipe
 
