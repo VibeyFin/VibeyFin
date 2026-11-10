@@ -143,7 +143,7 @@ struct PlayerView: View {
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.26), value: state?.upNext != nil)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: controller.isExternalPlayback)
-        .tint(.white)
+        .tint(Brand.onMedia)
         .statusBarHidden(!controlsVisible)
         .persistentSystemOverlays(controlsVisible ? .automatic : .hidden)
         .overlay(alignment: .top) {

@@ -53,7 +53,7 @@ struct HomeHeroView: View {
                 // "Show · Offbeat · Heartfelt · Comedy": what it is, then its genres.
                 Text(Strings.shared.factsLine(facts: facts))
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Brand.onMedia)
                     .lineLimit(1)
             }
             HStack(spacing: Space.s2) {
@@ -68,9 +68,9 @@ struct HomeHeroView: View {
                 Button(action: onMyList) {
                     Label(Strings.shared.myList.titleCased(), systemImage: item.isFavorite ? "heart.fill" : "heart")
                         .font(.body.weight(.medium))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Brand.onMedia)
                         .frame(maxWidth: .infinity, minHeight: 40)
-                        .background(Capsule().fill(Color.white.opacity(0.2)))
+                        .background(Capsule().fill(Brand.overlayWeak))
                 }
                 .buttonStyle(PressableButtonStyle())
                 .accessibilityLabel(Strings.shared.myListAction(onList: item.isFavorite))

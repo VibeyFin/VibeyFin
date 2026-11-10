@@ -55,7 +55,7 @@ struct SeerrEpisodeCardView: View {
             .overlay {
                 LinearGradient(
                     // The picture stays clear well down the card; only the lower part darkens, just enough for the white text to read.
-                    stops: [.init(color: .clear, location: 0), .init(color: .clear, location: 0.4), .init(color: .black.opacity(0.55), location: 0.75), .init(color: .black.opacity(0.78), location: 1)],
+                    stops: [.init(color: .clear, location: 0), .init(color: .clear, location: 0.4), .init(color: Brand.scrim.opacity(0.7), location: 0.75), .init(color: Brand.scrim, location: 1)],
                     startPoint: .top,
                     endPoint: .bottom
                 )
@@ -73,16 +73,16 @@ struct SeerrEpisodeCardView: View {
             if let tag = Strings.shared.episodeTag(season: KotlinInt(int: episode.season), episode: KotlinInt(int: episode.number)) {
                 Text(tag)
                     .font(.caption2.weight(.medium))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Brand.onMedia)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Brand.scrim))
             }
-            Text(episode.title).font(.headline.weight(.bold)).foregroundStyle(.white).lineLimit(1)
+            Text(episode.title).font(.headline.weight(.bold)).foregroundStyle(Brand.onMedia).lineLimit(1)
             // Two lines, always, so every card in the row is the same.
             Text(episode.overview ?? "")
                 .font(.subheadline)
-                .foregroundStyle(.white)
+                .foregroundStyle(Brand.onMedia)
                 .lineLimit(2, reservesSpace: true)
                 .multilineTextAlignment(.leading)
             HStack(spacing: Space.s3) {
@@ -93,7 +93,7 @@ struct SeerrEpisodeCardView: View {
                 }
             }
             .font(.caption.weight(.semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(Brand.onMedia)
         }
         .padding(Space.s3)
         .frame(width: width, alignment: .leading)

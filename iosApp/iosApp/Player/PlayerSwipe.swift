@@ -228,12 +228,12 @@ struct SwipeLevelIndicator: View {
             GeometryReader { proxy in
                 VStack(spacing: 0) {
                     Spacer(minLength: 0)
-                    Rectangle().fill(.white).frame(height: proxy.size.height * level)
+                    Rectangle().fill(Brand.onMedia).frame(height: proxy.size.height * level)
                 }
             }
             Image(systemName: symbol(kind, level))
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(level >= iconCovered ? Color.black : Color.white)
+                .foregroundStyle(level >= iconCovered ? Brand.onAction : Brand.onMedia)
                 .frame(height: 28)
                 .padding(.bottom, Space.s3)
         }

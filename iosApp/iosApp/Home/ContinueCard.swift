@@ -109,15 +109,14 @@ private struct PlayDisc: View {
     var body: some View {
         Image(systemName: "play.fill")
             .font(.title3)
-            .foregroundStyle(.white)
+            .foregroundStyle(Brand.onMedia)
             .frame(width: 44, height: 44)
             .background(Brand.scrim.opacity(0.6), in: Circle())
-            .overlay(Circle().strokeBorder(Color.white.opacity(0.6), lineWidth: 1))
+            .overlay(Circle().strokeBorder(Brand.overlayStrong, lineWidth: 1))
             .accessibilityHidden(true)
     }
 }
 
-/// The unfilled part is the `progress-track` token.
 private struct ProgressBar: View {
     let progress: CGFloat
 

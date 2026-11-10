@@ -1,10 +1,6 @@
 import SwiftUI
 import UIKit
 
-// The iOS side of design/tokens.json (the `ios` column). Colours that Apple provides as dark
-// semantic colours (background, label, separator, ...) are used by name, never as hex; only the
-// brand values live here. scripts/check-swift-tokens.sh fails when this file drifts from the JSON.
-
 /// Brand values with no Apple equivalent.
 enum Brand {
     static let action = Color(hex: 0xFFFFFF)
@@ -20,7 +16,6 @@ enum Brand {
     static let tonal = Color(hex: 0x3A3A3C)
     static let onTonal = Color(hex: 0xFFFFFF)
 
-    /// Under any text or control laid over artwork or video.
     static let scrim = Color(hex: 0x000000, alpha: 0.78)
     static let scrimStrong = Color(hex: 0x000000, alpha: 0.9)
     static let progressTrack = Color(hex: 0xFFFFFF, alpha: 0.18)
@@ -30,7 +25,6 @@ enum Brand {
     static let overlay = Color(hex: 0xFFFFFF, alpha: 0.25)
     static let overlayStrong = Color(hex: 0xFFFFFF, alpha: 0.4)
 
-    /// Profile tile grounds, picked from the user's name; the initial sits on one in `.primary`.
     static let avatar1 = Color(hex: 0x3A4A6B)
     static let avatar2 = Color(hex: 0x4B3F6B)
     static let avatar3 = Color(hex: 0x3F6B5E)
@@ -63,9 +57,7 @@ enum Size {
 }
 
 extension Font {
-    /// `brand-display`: the only brand face. For the wordmark, a hero title without a Logo image and
-    /// onboarding; everything else uses Dynamic Type text styles. Scales with `.largeTitle`. Apply
-    /// `.tracking(-0.4)` at the call site (-0.01em at 40 pt).
+    /// Scales with `.largeTitle`; apply `.tracking(-0.4)` at the call site.
     static let brandDisplay = Font.custom("ArchivoCondensed-ExtraBold", size: 40, relativeTo: .largeTitle)
 }
 

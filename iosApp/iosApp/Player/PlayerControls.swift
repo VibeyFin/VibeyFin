@@ -264,9 +264,9 @@ struct PlayerGlassGroup<Content: View>: View {
     var body: some View {
         if #available(iOS 26.0, *) {
             GlassEffectContainer { content() }
-                .tint(.white)
+                .tint(Brand.onMedia)
         } else {
-            content().tint(.white)
+            content().tint(Brand.onMedia)
         }
     }
 }

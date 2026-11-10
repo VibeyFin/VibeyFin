@@ -256,7 +256,7 @@ struct PlayerNotice: View {
     var body: some View {
         Text(text)
             .font(.subheadline)
-            .foregroundStyle(.white)
+            .foregroundStyle(Brand.onMedia)
             .padding(.horizontal, Space.s4)
             .padding(.vertical, Space.s2)
             .background(Brand.scrimStrong, in: Capsule())

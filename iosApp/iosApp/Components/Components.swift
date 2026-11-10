@@ -2,8 +2,7 @@ import SwiftUI
 import UIKit
 import Shared
 
-/// A full-width capsule button. Native `.borderedProminent`
-/// so the system supplies press, disabled and Liquid Glass-era behaviour; the label sits on `onAction`.
+/// A full-width capsule button. Native `.borderedProminent`, so the system supplies press, disabled and Liquid Glass-era behaviour.
 struct PrimaryButton<Label: View>: View {
     let action: () -> Void
     @ViewBuilder let label: () -> Label

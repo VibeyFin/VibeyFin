@@ -51,8 +51,8 @@ struct SubtitleOverlay: View {
                     Text(shown.map(\.text).joined(separator: "\n"))
                         .font(.title3.weight(.semibold))
                         .multilineTextAlignment(.center)
-                        .foregroundStyle(.white)
-                        .shadow(color: .black, radius: 3)
+                        .foregroundStyle(Brand.onMedia)
+                        .shadow(color: Brand.scrimStrong, radius: 3)
                         .padding(.horizontal, 48)
                         .padding(.bottom, 32)
                 }

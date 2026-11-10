@@ -166,7 +166,7 @@ struct WatchedBadge: View {
     var body: some View {
         Image(systemName: "checkmark")
             .font(.caption.weight(.bold))
-            .foregroundStyle(.white)
+            .foregroundStyle(Brand.onMedia)
             .frame(width: 24, height: 24)
             .background(Brand.scrim, in: Circle())
             .accessibilityHidden(true)
