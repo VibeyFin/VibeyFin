@@ -10,29 +10,41 @@ import androidx.compose.ui.unit.dp
  */
 object VibeyFinTokens {
     object Colors {
-        val bg = Color(0xFF0E1514)
-        val surface1 = Color(0xFF161D1C)
-        val surface2 = Color(0xFF1A2120)
-        val surface3 = Color(0xFF242B2A)
-        val line = Color(0xFF3B4A47)
-        val lineStrong = Color(0xFF859491)
-        val ink = Color(0xFFDDE4E2)
-        val inkMuted = Color(0xFFBACAC6)
-        val inkSubtle = Color(0xFF859491)
+        val bg = Color(0xFF131314)
+        val surface1 = Color(0xFF1B1B1C)
+        val surface2 = Color(0xFF1F1F20)
+        val surface3 = Color(0xFF2A2A2B)
+        val line = Color(0xFF444748)
+        val lineStrong = Color(0xFF8E9192)
+        val ink = Color(0xFFE6E6E7)
+        val inkMuted = Color(0xFFC4C6C7)
+        val inkSubtle = Color(0xFF8E9192)
 
-        /** Electric aqua. The one filled primary action per screen, and playback progress. */
-        val accent = Color(0xFF3FE0D0)
-        val accentPressed = Color(0xFF2BBFB1)
-        val onAccent = Color(0xFF003732)
-        val accentSoft = Color(0xFF194F49)
-        val onAccentSoft = Color(0xFF8BBFB7)
+        val action = Color(0xFFFFFFFF)
+        val actionPressed = Color(0xFFD9D9D9)
+        val onAction = Color(0xFF131314)
+
+        val spark = Color(0xFFE07A45)
+        val sparkPressed = Color(0xFFC8622E)
+        val onSpark = Color(0xFF2A1206)
+        val sparkSoft = Color(0xFF2E170C)
+        val onSparkSoft = Color(0xFFE8935F)
+
+        /** Neutral secondary buttons and the selected navigation pill. */
+        val tonal = Color(0xFF2E2E30)
+        val onTonal = Color(0xFFE6E6E7)
         val danger = Color(0xFFFFB4AB)
 
         /** Under any text or control laid over artwork or video. */
         val scrim = Color(0xC7000000)
         val scrimStrong = Color(0xE6000000)
-        val progressTrack = Color(0x4DDDE4E2)
-        val focus = Color(0xFFDDE4E2)
+        val progressTrack = Color(0x2EE6E6E7)
+        val focus = Color(0xFFE6E6E7)
+
+        val onMedia = Color(0xFFFFFFFF)
+        val overlayWeak = Color(0x29FFFFFF)
+        val overlay = Color(0x40FFFFFF)
+        val overlayStrong = Color(0x66FFFFFF)
 
         /** Profile tile grounds, picked from the user's name; the initial sits on one in [ink]. */
         val avatar1 = Color(0xFF3A4A6B)

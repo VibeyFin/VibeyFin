@@ -30,7 +30,7 @@ import app.vibeyfin.ui.playback.UpNext
 
 /**
  * Offers the next episode in the last seconds of this one: its picture, "S1 E2 · title", how many seconds
- * until it starts on its own, "Play now" (the one aqua action while it is up) and "Watch credits", which
+ * until it starts on its own, "Play now" and "Watch credits", which
  * dismisses it. It sits on the scrim, over the video.
  */
 @Composable

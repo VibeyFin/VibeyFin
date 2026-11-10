@@ -69,7 +69,7 @@ fun SeerrPosterTile(
 
 /**
  * What Seerr knows about a title, in the poster's one badge slot: a + disc for a title nobody asked for, otherwise a pill with an
- * icon and a word. Ink on `scrim`, never aqua (aqua never signals status); a failure is in `danger`. The tile's own description
+ * icon and a word. Ink on `scrim`; a failure is in `danger`. The tile's own description
  * says it, so the marker is not read on its own.
  */
 @Composable

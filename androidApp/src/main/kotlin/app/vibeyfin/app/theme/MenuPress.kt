@@ -14,14 +14,11 @@ import androidx.compose.ui.node.DelegatableNode
 import androidx.compose.ui.node.DrawModifierNode
 import kotlinx.coroutines.launch
 
-private const val HELD_ALPHA = 0.28f
-
 private const val HELD_MS = 90
 
 /**
  * Press feedback for the rows of a menu or a sheet's list (a subtitle picker, the poster menu, a dropdown): the row under the finger
- * lights up in the accent color and goes back when let go. Unlike the rest of the app a row does not shrink: a list of rows that
- * each move in under the finger looks restless, and a held row is easier to read as a color.
+ * lights up and goes back when let go. Unlike the rest of the app a row does not shrink.
  */
 object MenuPressIndication : IndicationNodeFactory {
     override fun create(interactionSource: InteractionSource): DelegatableNode = MenuPressNode(interactionSource)
@@ -31,7 +28,7 @@ object MenuPressIndication : IndicationNodeFactory {
     override fun hashCode() = -2
 }
 
-/** Gives every row inside [content] the accent-color press instead of the app's usual shrink. */
+/** Gives every row inside [content] the held-row press instead of the app's usual shrink. */
 @Composable
 fun WithMenuPress(content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalIndication provides MenuPressIndication, content = content)
@@ -59,6 +56,6 @@ private class MenuPressNode(private val source: InteractionSource) :
     override fun ContentDrawScope.draw() {
         drawContent()
 
-        if (held.value > 0f) drawRect(VibeyFinTokens.Colors.accent.copy(alpha = HELD_ALPHA * held.value))
+        if (held.value > 0f) drawRect(VibeyFinTokens.Colors.sparkSoft.copy(alpha = held.value))
     }
 }

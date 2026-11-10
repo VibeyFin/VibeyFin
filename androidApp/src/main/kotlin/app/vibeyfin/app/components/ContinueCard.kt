@@ -44,7 +44,7 @@ private val PLAY_DISC = 44.dp
 private val CARD_LINE_GAP = 2.dp
 
 /**
- * A 16:9 card in the Continue watching row: the picture with a play disc in the middle and the aqua
+ * A 16:9 card in the Continue watching row: the picture with a play disc in the middle and the
  * progress bar along its bottom edge if something is in progress, then the title with what is left (or
  * the episode) under it, close together, and a "…" button for the card's actions. Tapping the picture
  * plays, with no detail page in between; tapping the words opens the detail page. A long press opens

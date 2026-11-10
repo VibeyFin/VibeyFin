@@ -78,8 +78,8 @@ val LocalBottomBarPadding = compositionLocalOf { 0.dp }
 
 /**
  * The main navigation on phones and tablets: a pill floating over the content, centered and only as wide as its tabs, with a fine
- * edge that sets it apart from the artwork behind it. The tab showing has its label beside its icon in `ink` on a faint tint; the
- * others are icons alone in `ink-muted`, named for TalkBack. Never aqua: that is Play and progress only. Without the server there is
+ * edge that sets it apart from the artwork behind it. The tab showing has its label beside its icon; the
+ * others are icons alone, named for TalkBack. Without the server there is
  * no Library tab ([tabs] leaves it out). As on iOS, a finger dragged along the bar moves the highlight to the tab under it, with
  * a tick for each; the page changes only when the finger lifts, to the tab it lifted on.
  */
@@ -134,8 +134,8 @@ fun FloatingNavigationBar(selected: Tab, tabs: List<Tab>, onSelect: (Tab) -> Uni
 
 @Composable
 private fun BarItem(tab: Tab, active: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val tint by animateColorAsState(if (active) VibeyFinTokens.Colors.ink.copy(alpha = 0.10f) else Color.Transparent, label = "tab tint")
-    val content by animateColorAsState(if (active) VibeyFinTokens.Colors.ink else VibeyFinTokens.Colors.inkMuted, label = "tab content")
+    val tint by animateColorAsState(if (active) VibeyFinTokens.Colors.tonal else Color.Transparent, label = "tab tint")
+    val content by animateColorAsState(if (active) VibeyFinTokens.Colors.spark else VibeyFinTokens.Colors.inkMuted, label = "tab content")
 
     Row(
         modifier = modifier

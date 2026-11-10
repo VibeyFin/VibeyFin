@@ -12,7 +12,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 /** Fails when the Kotlin tokens drift from design/tokens.json (the `android` theme column). */
 class DesignTokensTest {
@@ -34,15 +33,24 @@ class DesignTokensTest {
         "ink" to colors.ink,
         "ink-muted" to colors.inkMuted,
         "ink-subtle" to colors.inkSubtle,
-        "accent" to colors.accent,
-        "accent-pressed" to colors.accentPressed,
-        "on-accent" to colors.onAccent,
-        "accent-soft" to colors.accentSoft,
-        "on-accent-soft" to colors.onAccentSoft,
+        "spark" to colors.spark,
+        "spark-pressed" to colors.sparkPressed,
+        "on-spark" to colors.onSpark,
+        "action" to colors.action,
+        "action-pressed" to colors.actionPressed,
+        "on-action" to colors.onAction,
+        "spark-soft" to colors.sparkSoft,
+        "on-spark-soft" to colors.onSparkSoft,
+        "tonal" to colors.tonal,
+        "on-tonal" to colors.onTonal,
         "danger" to colors.danger,
         "scrim" to colors.scrim,
         "scrim-strong" to colors.scrimStrong,
         "progress-track" to colors.progressTrack,
+        "on-media" to colors.onMedia,
+        "overlay-weak" to colors.overlayWeak,
+        "overlay" to colors.overlay,
+        "overlay-strong" to colors.overlayStrong,
         "focus" to colors.focus,
         "avatar-1" to colors.avatar1,
         "avatar-2" to colors.avatar2,
@@ -129,7 +137,8 @@ class DesignTokensTest {
     }
 
     @Test
-    fun thePrimaryActionColourIsAqua() {
-        assertTrue(VibeyFinTokens.Colors.accent.toArgb() == 0xFF3FE0D0.toInt())
+    fun theActionAndTheSparkKeepTheirBrandValues() {
+        assertEquals(0xFFFFFFFF.toInt(), VibeyFinTokens.Colors.action.toArgb())
+        assertEquals(0xFFE07A45.toInt(), VibeyFinTokens.Colors.spark.toArgb())
     }
 }

@@ -409,8 +409,8 @@ private fun Scrubber(
                     )
                 },
                 colors = SliderDefaults.colors(
-                    thumbColor = VibeyFinTokens.Colors.accent,
-                    activeTrackColor = VibeyFinTokens.Colors.accent,
+                    thumbColor = VibeyFinTokens.Colors.spark,
+                    activeTrackColor = VibeyFinTokens.Colors.spark,
                     inactiveTrackColor = VibeyFinTokens.Colors.progressTrack,
                     disabledThumbColor = VibeyFinTokens.Colors.progressTrack,
                     disabledActiveTrackColor = VibeyFinTokens.Colors.progressTrack,
@@ -457,8 +457,8 @@ private val TimeStyle
 @Composable
 private fun BufferedTrack(played: Float, buffered: Float, enabled: Boolean) {
     val track = VibeyFinTokens.Colors.progressTrack
-    val bufferedColor = if (enabled) Color.White.copy(alpha = BUFFERED_ALPHA) else track
-    val playedColor = if (enabled) VibeyFinTokens.Colors.accent else track
+    val bufferedColor = if (enabled) VibeyFinTokens.Colors.overlayStrong else track
+    val playedColor = if (enabled) VibeyFinTokens.Colors.spark else track
 
     Canvas(Modifier.fillMaxWidth().height(4.dp)) {
         val corner = CornerRadius(size.height / 2)
@@ -476,5 +476,3 @@ private fun BufferedTrack(played: Float, buffered: Float, enabled: Boolean) {
 }
 
 private fun fraction(value: Float, range: ClosedFloatingPointRange<Float>): Float = if (range.endInclusive > range.start) (value - range.start) / (range.endInclusive - range.start) else 0f
-
-private const val BUFFERED_ALPHA = 0.35f

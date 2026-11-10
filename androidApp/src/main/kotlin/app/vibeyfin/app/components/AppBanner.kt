@@ -24,7 +24,7 @@ import app.vibeyfin.ui.banner.Banner
 
 /**
  * The line at the top, its color running up behind the status bar, that says the app is offline, or that the server cannot be reached, with the button that ends it
- * (when one does). A quiet strip in the page's own surface colors: it is not an error and nothing here is aqua. Announced to a
+ * (when one does). Announced to a
  * screen reader when it appears.
  */
 @Composable

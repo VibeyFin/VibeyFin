@@ -51,7 +51,6 @@ fun BoxScope.ActionSnackbar(
             .padding(bottom = LocalBottomBarPadding.current)
             .padding(VibeyFinTokens.Space.s2),
     ) { data ->
-        // Aqua is for the primary action and progress, so the action is plain text
         Snackbar(data, actionColor = MaterialTheme.colorScheme.inverseOnSurface)
     }
 }

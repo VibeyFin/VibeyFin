@@ -105,9 +105,8 @@ fun StatsOverlay(diagnostics: PlaybackDiagnostics, modifier: Modifier = Modifier
 }
 
 /**
- * "Skip intro", "Skip credits": the soft teal button with `ink` text, which reads clearly on it (the default
- * tonal text was a muted teal, too close to the button). Aqua stays for Play; shown for the whole segment
- * whether or not the controls are up. The label comes from the shared state.
+ * "Skip intro", "Skip credits". Shown for the whole segment whether or not the controls are up.
+ * The label comes from the shared state.
  */
 @Composable
 fun SkipButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -123,7 +122,6 @@ fun SkipButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier
 /**
  * "Are you still watching?" over the paused video, after several episodes in a row that started by
  * themselves. It covers the picture and takes every touch, so nothing underneath is pressed by accident.
- * Keeping on is the one primary action; stopping is the quiet one.
  */
 @Composable
 fun StillWatchingPrompt(onContinue: () -> Unit, onStop: () -> Unit, modifier: Modifier = Modifier) {

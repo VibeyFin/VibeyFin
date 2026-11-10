@@ -48,10 +48,9 @@ fun VibeyFinMenu(expanded: Boolean, onDismiss: () -> Unit, content: @Composable 
 fun VibeyFinMenuItem(label: String, icon: ImageVector?, selected: Boolean = false, onClick: () -> Unit) {
     WithMenuPress {
         DropdownMenuItem(
-            // The chosen entry (a setting's value) is lit as a soft pill instead of carrying a tick
             text = { Text(label, fontWeight = if (selected) FontWeight.SemiBold else null) },
             colors = MenuDefaults.itemColors(
-                textColor = if (selected) VibeyFinTokens.Colors.onAccentSoft else MaterialTheme.colorScheme.onSurface,
+                textColor = if (selected) VibeyFinTokens.Colors.onSparkSoft else MaterialTheme.colorScheme.onSurface,
             ),
             // No icon, no empty slot: a choice's options (a setting's menu) start at the edge like the value they replace
             leadingIcon = icon?.let { { Icon(it, contentDescription = null) } },
@@ -60,7 +59,7 @@ fun VibeyFinMenuItem(label: String, icon: ImageVector?, selected: Boolean = fals
             modifier = Modifier
                 .padding(horizontal = 6.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .then(if (selected) Modifier.background(VibeyFinTokens.Colors.accentSoft) else Modifier)
+                .then(if (selected) Modifier.background(VibeyFinTokens.Colors.sparkSoft) else Modifier)
                 .heightIn(min = 52.dp),
         )
     }

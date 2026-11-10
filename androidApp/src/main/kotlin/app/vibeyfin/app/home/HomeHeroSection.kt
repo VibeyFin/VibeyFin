@@ -81,7 +81,7 @@ private val HERO_BUTTON_HEIGHT = 40.dp
 
 /**
  * The one featured item, above Continue watching, as a rounded card inside the page's margins: its backdrop under a scrim, the Logo
- * as the title, a line saying what it is and its genres, then Play (the one aqua button) beside My List. Tapping the picture opens the
+ * as the title, a line saying what it is and its genres, then Play beside My List. Tapping the picture opens the
  * item's page. Play plays: a movie, or the episode a show is up to.
  */
 @Composable
@@ -166,10 +166,9 @@ fun HomeHeroSection(
                     Text(Strings.play, style = MaterialTheme.typography.labelLarge, maxLines = 1)
                 }
 
-                // Not aqua: aqua is the one primary action. A soft, see-through button over the picture.
                 Button(
                     onClick = onMyList,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.2f), contentColor = VibeyFinTokens.Colors.ink),
+                    colors = ButtonDefaults.buttonColors(containerColor = VibeyFinTokens.Colors.overlay, contentColor = VibeyFinTokens.Colors.ink),
                     modifier = Modifier.weight(1f).height(HERO_BUTTON_HEIGHT).semantics { contentDescription = Strings.myListAction(item.isFavorite) },
                 ) {
                     Icon(if (item.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, contentDescription = null)

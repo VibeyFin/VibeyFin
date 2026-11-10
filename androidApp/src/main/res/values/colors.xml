@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- bg, from design/tokens.json. Shown before Compose draws its first frame. -->
-    <color name="ink">#0E1514</color>
-    <!-- Amber, launcher icon only. The icon is recoloured in a separate task. -->
-    <color name="marquee">#E8B04B</color>
+    <color name="window_background">#131314</color>
 </resources>

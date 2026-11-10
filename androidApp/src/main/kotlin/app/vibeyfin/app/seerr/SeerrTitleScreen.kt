@@ -259,7 +259,6 @@ private fun Hero(state: SeerrTitleUiState, centered: Boolean, viewModel: SeerrTi
     ) {
         Text(title.title, style = BrandDisplay.copy(fontSize = 32.sp, lineHeight = 36.sp), color = VibeyFinTokens.Colors.ink, textAlign = align, maxLines = 3, overflow = TextOverflow.Ellipsis)
 
-        // Where it stands, as a tag at the start of the facts: a word or two with its icon, in ink (never aqua)
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3, if (centered) Alignment.CenterHorizontally else Alignment.Start),
@@ -277,7 +276,7 @@ private fun Hero(state: SeerrTitleUiState, centered: Boolean, viewModel: SeerrTi
         state.status4k?.let { StatusLine(it, state.state) }
 
         state.primary?.let { primary ->
-            // The one aqua button, as Play is. With nothing to do it stays, quiet and disabled, so the page doesn't jump
+            // With nothing to do the button stays, disabled, so the page doesn't jump
             Button(
                 onClick = viewModel::onRequest,
                 enabled = primary.enabled,
@@ -321,7 +320,7 @@ private fun Hero(state: SeerrTitleUiState, centered: Boolean, viewModel: SeerrTi
     }
 }
 
-/** The state as a tag: its icon alone on a quiet round chip, in ink (a failure in `danger`); never aqua. [text] is what a screen reader says. */
+/** The state as a tag: its icon alone on a quiet round chip, in ink (a failure in `danger`). [text] is what a screen reader says. */
 @Composable
 internal fun StateTag(text: String, state: RequestState) {
     val color = if (state == RequestState.Failed) VibeyFinTokens.Colors.danger else VibeyFinTokens.Colors.ink
@@ -334,7 +333,7 @@ internal fun StateTag(text: String, state: RequestState) {
     }
 }
 
-/** Where the title stands, as an icon and words in ink (a failure in `danger`); never aqua. */
+/** Where the title stands, as an icon and words in ink (a failure in `danger`). */
 @Composable
 internal fun StatusLine(text: String, state: RequestState) {
     val color = if (state == RequestState.Failed) VibeyFinTokens.Colors.danger else VibeyFinTokens.Colors.ink

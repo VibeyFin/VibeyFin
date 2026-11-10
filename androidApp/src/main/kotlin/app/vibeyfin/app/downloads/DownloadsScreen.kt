@@ -313,7 +313,6 @@ private fun DownloadRow(download: Download, waiting: DownloadRunner.Waiting, pos
 
             if (download.state == DownloadState.Running || download.state == DownloadState.Paused) {
                 download.progress?.let { progress ->
-                    // Ink on a quiet track: aqua is for playback progress, not for downloads
                     LinearProgressIndicator(
                         progress = { progress },
                         color = VibeyFinTokens.Colors.ink,
