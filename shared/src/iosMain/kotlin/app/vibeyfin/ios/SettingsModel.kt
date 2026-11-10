@@ -1,5 +1,6 @@
 package app.vibeyfin.ios
 
+import app.vibeyfin.ui.common.PinSheetControls
 import app.vibeyfin.ui.settings.SettingKey
 import app.vibeyfin.ui.settings.SettingsPageId
 import app.vibeyfin.ui.settings.SettingsUiState
@@ -7,8 +8,10 @@ import app.vibeyfin.ui.settings.SettingsViewModel
 import app.vibeyfin.ui.settings.firstSettablePage
 
 /** The settings screen's [SettingsViewModel] as SwiftUI needs it. */
-class SettingsModel {
+class SettingsModel : PinSheetModel {
     private val host = ViewModelHost(SettingsViewModel::class) { it.get<SettingsViewModel>() }
+
+    override val pinSheet: PinSheetControls get() = host.viewModel
 
     fun observe(onChange: (SettingsUiState) -> Unit) = host.observe(host.viewModel.uiState, onChange)
 
@@ -39,17 +42,6 @@ class SettingsModel {
     fun onConfirmPurgeDownloads() = host.viewModel.onConfirmPurgeDownloads()
 
     fun onDismissPurgeDownloads() = host.viewModel.onDismissPurgeDownloads()
-
-    /** A PIN was entered in the open PIN sheet. */
-    fun onSubmitPin(pin: String) = host.viewModel.onSubmitPin(pin)
-
-    /** "Forgot PIN?": the PIN sheet asks for the profile's Jellyfin password instead. */
-    fun onForgotPin() = host.viewModel.onForgotPin()
-
-    fun onDismissPin() = host.viewModel.onDismissPin()
-
-    /** The Jellyfin password entered after "Forgot PIN?". */
-    fun onSubmitPassword(password: String) = host.viewModel.onSubmitPassword(password)
 
     /** The one-shot permission request in the state was shown: acknowledge it. */
     fun onNotificationPermissionRequested() = host.viewModel.onNotificationPermissionRequested()

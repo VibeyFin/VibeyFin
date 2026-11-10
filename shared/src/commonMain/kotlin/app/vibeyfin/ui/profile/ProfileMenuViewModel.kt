@@ -10,6 +10,7 @@ import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SearchHistory
 import app.vibeyfin.domain.accountOrNull
 import app.vibeyfin.ui.common.PinPrompt
+import app.vibeyfin.ui.common.PinSheetControls
 import app.vibeyfin.ui.common.ProfileActions
 import app.vibeyfin.ui.home.HomeExit
 import kotlinx.coroutines.flow.SharingStarted
@@ -37,7 +38,8 @@ class ProfileMenuViewModel(
     pins: PinLock,
     auth: AuthRepository,
     downloads: DownloadRepository,
-) : ViewModel() {
+) : ViewModel(),
+    PinSheetControls {
     private val profile = ProfileActions(connection, profileSettings, searchHistory, pins, auth, downloads, viewModelScope)
 
     val uiState: StateFlow<ProfileMenuUiState> = combine(
@@ -66,11 +68,11 @@ class ProfileMenuViewModel(
 
     fun onQuickConnectOpened() = profile.quickConnectOpened()
 
-    fun onSubmitPin(pin: String) = profile.submitPin(pin)
+    override fun onSubmitPin(pin: String) = profile.submitPin(pin)
 
-    fun onForgotPin() = profile.forgotPin()
+    override fun onForgotPin() = profile.forgotPin()
 
-    fun onSubmitPassword(password: String) = profile.submitPassword(password)
+    override fun onSubmitPassword(password: String) = profile.submitPassword(password)
 
-    fun onDismissPin() = profile.dismissPin()
+    override fun onDismissPin() = profile.dismissPin()
 }

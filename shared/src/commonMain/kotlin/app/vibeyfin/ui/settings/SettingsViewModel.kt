@@ -29,6 +29,7 @@ import app.vibeyfin.ui.common.KidsGuard
 import app.vibeyfin.ui.common.PinGate
 import app.vibeyfin.ui.common.PinPrompt
 import app.vibeyfin.ui.common.PinReason
+import app.vibeyfin.ui.common.PinSheetControls
 import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -97,7 +98,8 @@ class SettingsViewModel(
     private val subtitleStyleApplies: Boolean = true,
     private val downloadAlerts: Boolean = false,
     seerr: SeerrConnection? = null,
-) : ViewModel() {
+) : ViewModel(),
+    PinSheetControls {
     private val confirmSignOut = MutableStateFlow(false)
     private val confirmPurgeDownloads = MutableStateFlow(false)
     private val pin = PinGate(pins, auth, viewModelScope)
@@ -514,15 +516,15 @@ class SettingsViewModel(
     }
 
     /** A PIN was entered in the open PIN sheet. */
-    fun onSubmitPin(pin: String) = this.pin.submitPin(pin)
+    override fun onSubmitPin(pin: String) = this.pin.submitPin(pin)
 
     /** "Forgot PIN?": the sheet asks for the profile's Jellyfin password instead. */
-    fun onForgotPin() = pin.forgotPin()
+    override fun onForgotPin() = pin.forgotPin()
 
     /** The Jellyfin password entered after "Forgot PIN?". */
-    fun onSubmitPassword(password: String) = pin.submitPassword(password)
+    override fun onSubmitPassword(password: String) = pin.submitPassword(password)
 
-    fun onDismissPin() = pin.dismiss()
+    override fun onDismissPin() = pin.dismiss()
 
     // Runs [action] for the signed-in profile, after its PIN when [needed] says so for its current [PinGates].
     private suspend fun guarded(reason: PinReason, needed: (PinGates) -> Boolean, action: suspend () -> Unit) {

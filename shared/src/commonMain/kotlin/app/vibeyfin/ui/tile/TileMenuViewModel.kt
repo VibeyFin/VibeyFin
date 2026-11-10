@@ -21,6 +21,7 @@ import app.vibeyfin.ui.downloads.DownloadAction
 import app.vibeyfin.ui.downloads.DownloadBadge
 import app.vibeyfin.ui.downloads.DownloadFlow
 import app.vibeyfin.ui.downloads.DownloadPrompt
+import app.vibeyfin.ui.downloads.RemovalControls
 import app.vibeyfin.ui.downloads.RemovePrompt
 import app.vibeyfin.ui.downloads.badge
 import app.vibeyfin.ui.downloads.downloadParts
@@ -109,7 +110,8 @@ class TileMenuViewModel(
     private val connection: ConnectionManager,
     private val downloads: DownloadRepository,
     changes: WatchChanges,
-) : ViewModel() {
+) : ViewModel(),
+    RemovalControls {
     private val content = MutableStateFlow(TileMenuUiState())
     private val downloadFlow = DownloadFlow(viewModelScope, downloads) { connection.state.value.profileOrNull() }
     private var permissionRead = false
@@ -242,9 +244,9 @@ class TileMenuViewModel(
 
     fun onDismissDownloadPrompt() = downloadFlow.dismiss()
 
-    fun onConfirmRemove() = downloadFlow.confirmRemove()
+    override fun onConfirmRemove() = downloadFlow.confirmRemove()
 
-    fun onDismissRemoval() = downloadFlow.dismissRemoval()
+    override fun onDismissRemoval() = downloadFlow.dismissRemoval()
 
     private fun MediaItem.withKnownFavorite(): MediaItem = knownFavorites[id]?.let { copy(isFavorite = it) } ?: this
 
