@@ -5,6 +5,11 @@ Mirror of the "VibeyFin" design system artifact, https://claude.ai/artifact/MPry
 change, and when the two differ, change the files here to match it. `design/tokens.json` is the token source
 of truth for the code.
 
+`design/tokens.json` adds one thing the artifact does not have: a top-level `themes` list. Each entry has an `id`, a
+`name`, `default` for the one the app starts with, and `overrides`, the roles it changes as `{ "ios": ..., "android": ... }`.
+The role values in `color.tokens` are the default theme's. (The artifact's `color.themes` is its platform list, ios and
+android.) On iOS only the brand roles (action, spark, tonal, scrim, overlay, avatars) can differ between themes, because the rest are Apple's semantic colours; the generator fails on any other iOS override. `./gradlew generateThemes` writes the apps' colours from it; the files are committed and CI fails on a diff.
+
 - `brand.md`: the four colour roles, the logo, type, the rules the system enforces and the allowed platform drift
 - `ios.md`, `android.md`: native UI rules per platform
 - `screens.md`, `player.md`: reference layouts for Home (with the category buttons), the detail, series detail and tablet

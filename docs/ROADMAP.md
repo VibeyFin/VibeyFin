@@ -252,7 +252,7 @@ _Depends on Phase 4 (Home rows) and Phase 6 (profiles and the first settings). S
   or off, its source (recently added, favourites or a chosen collection) and its height
 - [ ] Theming — _decided: the brand stays dark, with white the only action colour and copper the only state colour._ Options:
   true-black (AMOLED) or lifted "cinematic dark" backgrounds, corner radius, density and text size.
-  Each goes into `docs/design/` and `design/tokens.json` first, so the drift check covers every theme.
+  Each goes into `docs/design/` and `design/tokens.json` first (a theme is one entry in its `themes` list), so the generator and the contrast test cover every theme.
   Not offered: a light theme, Android dynamic colour, a free colour picker, custom fonts, and accents
   derived from artwork (artwork stays artwork, never a theme)
 - [ ] Navigation: choose and order the tabs, set the start tab, hide libraries

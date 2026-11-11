@@ -120,8 +120,13 @@ apps share are in `guardrails.md`; which Jellyfin field drives which UI is in `j
 - Copy: `Strings` is written in sentence case, plain verbs; errors say what happened and how to fix
   it. iOS shows button, tab and title labels in title case through one helper, `titleCased()`;
   Android uses the text as is.
-- Token values are hand-written in `app/theme` (Android) and `Theme.swift` (iOS). A drift check
-  against `design/tokens.json` fails when they differ. Never hand-copy a hex value into a screen.
+- Colours are generated from `design/tokens.json` by `./gradlew generateThemes` (Android `GeneratedThemes.kt`, iOS
+  `GeneratedTheme.swift`, the window colour and the iOS colour sets). The files are committed and CI fails when they differ
+  from a fresh run. Screens read colour roles (`VibeyFinTokens.Colors`, `Brand`), never a raw value. A theme is one entry
+  in the `themes` list of `tokens.json` that overrides only the roles it changes (the role values at the top are the
+  default theme's; `color.themes` is the artifact's platform list, not these), and the profile's `themeId` picks it.
+  Spacing, radius and size are hand-written in `app/theme` and `Theme.swift`; `DesignTokensTest` and
+  `scripts/check-swift-tokens.sh` fail when they drift. A contrast test covers every theme on both platforms.
 - Netflix patterns stay: "Who's watching?" profile grid, hero billboard, rows of posters.
 
 ## Working agreement
@@ -142,8 +147,8 @@ apps share are in `guardrails.md`; which Jellyfin field drives which UI is in `j
   Android: put behaviour in the ViewModel and test it in `shared/`, and test pure Swift helpers with
   XCTest. New Swift logic that isn't a view gets a test in `iosApp/Tests/`. Say plainly when the iOS
   tests could not run.
-- **Mockups:** every new feature or UI change adds a mockup to the shared mockups artifact
-  (https://claude.ai/code/artifact/9a3ea814-fd54-4106-b2ab-71115ddc3c7b) before or with the
+- **Mockups:** every new feature or UI change adds a mockup to the VibeyFin design system
+  artifact (https://claude.ai/artifact/MPryZWZRno4kWcKtxQZdgA, the mockups are its `components/`) before or with the
   implementation. Read it first (`Artifact` action `read`), update it in place with the same `url`,
   and show both platforms where they differ. If the artifact can't be read or updated, say so in
   the phase summary.
