@@ -31,6 +31,7 @@
 #   Download fixtures: movies/Big Download (2026) (about 280 MB, 60 s of noise: long enough to pause, kill and resume a
 #     download), movies/Download Subs (2026) (artwork, cast, and two external .srt files next to the clip),
 #     movies/Download Languages (2026) (English and German audio, English, German and forced English .srt files)
+#   movies/Delete Subtitles (2026): two external .srt files that deleting a subtitle removes; each run puts them back
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
@@ -402,6 +403,14 @@ cat > "${SUBS}/movie.nfo" <<'NFO'
 <plot>A short movie with artwork, cast and two external subtitle files, to check what a download keeps.</plot>
 <actor><name>Ada Vance</name><role>Narrator</role><type>Actor</type><order>0</order></actor></movie>
 NFO
+
+# Delete Subtitles: two external subtitle files (English and French) to delete from the app. Deleting one removes the file
+# from this folder for good, so each run writes both again; scan the library afterwards to list them.
+DELSUBS="${MEDIA}/movies/Delete Subtitles (2026)"
+clip "${DELSUBS}/Delete Subtitles (2026).mkv"
+printf '1\n00:00:00,500 --> 00:00:02,500\nEnglish subtitle\n' > "${DELSUBS}/Delete Subtitles (2026).en.srt"
+printf '1\n00:00:00,500 --> 00:00:02,500\nSous-titre fran\xc3\xa7ais\n' > "${DELSUBS}/Delete Subtitles (2026).fr.srt"
+echo "<movie><title>Delete Subtitles</title><lockdata>true</lockdata><year>2026</year></movie>" > "${DELSUBS}/movie.nfo"
 
 # Download Languages: English and German audio told apart by pitch (English 440 Hz, the default; German 880 Hz) and three
 # external subtitle files (English, German, and a forced English one). Only subtitle files come along with a download, so

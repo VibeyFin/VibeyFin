@@ -36,6 +36,17 @@ match; the file names are what the scripts own.
 
 The test server has **no subtitle provider**: the OpenSubtitles plugin needs an account and has a daily limit, so it isn't installed and CI fakes the provider with `MockEngine`. What it can check: `EnableSubtitleManagement` (off by default on the `admin` user) hides or shows the entry, and the search returns `[]`, which is the "nothing found" state. Finding results and adding a real file is checked by hand against a server with a provider. `plain` has no subtitles, for the list with only "Off" and the search row.
 
+## Delete subtitles
+
+Only an administrator may delete a subtitle file (issue #84). Seen on Jellyfin 12.2: `DELETE /Videos/{id}/Subtitles/{index}`
+answers 403 for a user who isn't one, even with `EnableSubtitleManagement` on, and 204 for `admin` with it off; the file
+goes from the folder and the next `GET` of the item no longer lists the track. An index the item doesn't have answers 400.
+Don't try it on embedded tracks: only files beside the video can be deleted.
+
+| Fixture | Path under `media/` | What it is | Needed by |
+| --- | --- | --- | --- |
+| `delete-subs` | `movies/Delete Subtitles (2026)/` | 3 s clip with two external subtitle files (`.en.srt` "English subtitle", `.fr.srt` "Sous-titre français") and no embedded ones | Signed in as `admin`, Technical info shows **Delete subtitles** with both tracks; deleting one leaves the other. The files are gone once deleted: run `make-media.sh` again and scan the library to bring them back |
+
 ## Fixture catalogue
 
 Every file `make-media.sh` creates, by stable name. Tests and manual checks refer to a fixture by
