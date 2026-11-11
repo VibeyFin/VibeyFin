@@ -45,7 +45,7 @@ import app.vibeyfin.ui.common.Strings
 internal class SeasonChip<K : Any>(val id: K, val label: String)
 
 /**
- * A show's seasons as a row of buttons, the selected one in `accent-soft` (aqua stays for the primary action). The row opens
+ * A show's seasons as a row of buttons. The row opens
  * scrolled to the selected season.
  */
 @Composable
@@ -70,8 +70,8 @@ internal fun <K : Any> SeasonChipsRow(seasons: List<SeasonChip<K>>, selectedId: 
                 colors = FilterChipDefaults.filterChipColors(
                     containerColor = VibeyFinTokens.Colors.surface2,
                     labelColor = VibeyFinTokens.Colors.inkMuted,
-                    selectedContainerColor = VibeyFinTokens.Colors.accentSoft,
-                    selectedLabelColor = VibeyFinTokens.Colors.onAccentSoft,
+                    selectedContainerColor = VibeyFinTokens.Colors.sparkSoft,
+                    selectedLabelColor = VibeyFinTokens.Colors.onSparkSoft,
                 ),
                 border = null,
                 modifier = Modifier.semantics { contentDescription = Strings.seasonDescription(season.label, selected) },

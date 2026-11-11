@@ -2,7 +2,7 @@ import SwiftUI
 import Shared
 
 /// The request sheet a Request opens (a show's season picker, or a movie's quality choice): its title, the choices that apply (4K,
-/// quality, All missing seasons), one row per season with a tick, and one aqua button saying what will be asked for.
+/// quality, All missing seasons), one row per season with a tick, and one action button saying what will be asked for.
 struct SeerrSeasonPickerView: View {
     let picker: SeerrSeasonPicker
     let sending: Bool
@@ -75,7 +75,7 @@ struct SeerrSeasonPickerView: View {
         if picker.showsSeasons {
             row {
                 Toggle(Strings.shared.seerrAllMissingSeasons, isOn: Binding(get: { picker.allMissing }, set: { model.pickerAllMissing($0) }))
-                    .tint(Brand.accent)
+                    .tint(Brand.spark)
             }
             Divider().padding(.horizontal, Space.s5)
         }
@@ -98,7 +98,7 @@ struct SeerrSeasonPickerView: View {
             } else {
                 Image(systemName: "checkmark")
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Brand.spark)
                     .frame(width: 22)
                     .opacity(season.selected ? 1 : 0)
             }

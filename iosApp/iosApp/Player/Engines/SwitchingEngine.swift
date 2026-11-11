@@ -25,7 +25,7 @@ final class SwitchingEngine: PlaybackEngine {
 
     init() {
         current = native
-        container.backgroundColor = .black
+        container.backgroundColor = .systemBackground
     }
 
     var currentSeconds: TimeInterval? { current.currentSeconds }

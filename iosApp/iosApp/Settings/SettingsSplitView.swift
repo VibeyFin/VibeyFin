@@ -66,7 +66,6 @@ struct SettingsSplitView: View {
     var body: some View {
         NavigationSplitView {
             SettingsPageView(pageId: SettingsPageId.root, model: model, onExit: onExit, selection: selection)
-                .tint(Brand.accent)
                 // Settings was pushed over Home, whose bar is hidden, so the sidebar carries the way back.
                 .toolbar {
                     ToolbarItem(placement: .navigation) {

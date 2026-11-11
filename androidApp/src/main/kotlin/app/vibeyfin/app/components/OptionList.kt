@@ -89,10 +89,9 @@ fun OptionList(title: String, options: List<OptionRow>, onSelect: (String) -> Un
                     } else {
                         null
                     },
-                    // The chosen row is lit as a soft rounded pill in the accent tint, with its label in that tint: no tick
                     colors = ListItemDefaults.colors(
-                        containerColor = if (option.selected) VibeyFinTokens.Colors.accentSoft else Color.Transparent,
-                        headlineColor = if (option.selected) VibeyFinTokens.Colors.onAccentSoft else MaterialTheme.colorScheme.onSurface,
+                        containerColor = if (option.selected) VibeyFinTokens.Colors.sparkSoft else Color.Transparent,
+                        headlineColor = if (option.selected) VibeyFinTokens.Colors.onSparkSoft else MaterialTheme.colorScheme.onSurface,
                     ),
                     modifier = Modifier
                         .padding(horizontal = VibeyFinTokens.Space.s2)

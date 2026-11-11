@@ -10,7 +10,7 @@ A SwiftUI app that follows the Human Interface Guidelines and adopts Liquid Glas
 - iPad with the tab bar at the top (regular width): the system puts that bar in the navigation bar's row, so the four roots keep the navigation bar (empty, compact `.editor` role, no background, and no scroll-edge effect so no root gets a grey band behind it) and the profile avatar takes its trailing slot, with the system's glass capsule behind it switched off on iOS 26 (`tabRootBar`). No title row of ours and no overlay: hiding the bar and drawing over it left the content under the tab bar after a page was opened and closed. An iPad in a narrow window, with the bar at the bottom, keeps the `TabHeader` row.
 - The profile avatar is on every tab. A tap opens the system menu as the finger touches down (a `UIButton` with its menu as the primary action; SwiftUI's `Menu` waited for the finger to lift) (Switch profile, Switch server, Settings, Sign out; no Sign out on a kids profile; Settings only offline). There is no double tap on any platform. The tab bar stays the system's: floating Liquid Glass on iOS 26, and its own swipe.
 - No in-app mini player: while PiP plays, the player steps aside and the system window is the only mini view. PiP is a per-profile setting.
-- Force dark: `.preferredColorScheme(.dark)` at the root. App tint = `accent` (AccentColor in the asset catalog).
+- Force dark: `.preferredColorScheme(.dark)` at the root. AccentColor = `ink` (white), so everything the system tints (links, bar buttons, borderless buttons, menus) is white like Android. Copper is applied explicitly where state needs it: `.tint(Spark)` on `ProgressView`, `Toggle` and the `TabView`, and the selected chip and season (`spark-soft`). The prominent Play button is the white `action` capsule.
 
 ## Liquid Glass
 
@@ -18,8 +18,8 @@ Glass is the **navigation and controls layer** floating above content — never 
 
 - System-rendered, no code: tab bar, sidebar, navigation and toolbars, sheets, menus, context menus, alerts, the search field.
 - Custom glass where the controls float over media: player buttons (`.buttonStyle(.glass)`, `.glassEffect(in: .circle)`) grouped in a `GlassEffectContainer`; the Continue watching play disc.
-- **Player controls are white, never aqua.** Symbols are `.primary` on `.glass`, grouped in one `GlassEffectContainer`; the top-right controls share one glass capsule, not separate floating buttons. Aqua is only the scrubber's progress; the buffered part is white at about 35%.
-- **Never** glass on posters, rows, the hero card or text blocks. **Never** tint glass with aqua — the prominent Play button is the filled `.borderedProminent` capsule.
+- **Player controls are white, never copper.** Symbols are `.primary` on `.glass`, grouped in one `GlassEffectContainer`; the top-right controls share one glass capsule, not separate floating buttons. Copper is only the scrubber's progress; the buffered part is white at 40% (`overlay-strong`).
+- **Never** glass on posters, rows, the hero card or text blocks. **Never** tint glass with copper — the prominent Play button is the filled `.borderedProminent` capsule.
 - Content scrolls edge to edge under the bars; let the safe area inset the scroll content instead of adding manual padding.
 - Reduce Transparency and Increase Contrast restyle glass automatically — test with both on; our own `scrim`s don't change.
 
@@ -32,15 +32,15 @@ Glass is the **navigation and controls layer** floating above content — never 
 | Quick actions on a poster or the hero | A native `.contextMenu`, like Continue watching and the episodes: press, slide to a row, let go. Details, Trailer, My List, Download, in that order. SwiftUI fixes the rows as the finger lands, so they are built from what the poster knows and a greyed "Checking for trailer…" row holds the Trailer's place while the server is asked; the menu updates by itself when the answer comes. The menu goes on the poster's Button, not inside its label, with no gesture of ours beside it (either one stops the system's long press) |
 | Episode card actions | `.contextMenu` on the card (View episode, the watched mark); no swipe actions |
 | Audio / subtitles | `Menu` / `Picker` in a toolbar or a sheet with `.presentationDetents([.medium, .large])` |
-| Season buttons (series detail) | Horizontal `ScrollView` of capsule buttons, selected filled `ink`; `ScrollViewReader` scrolls to the next-up season on open |
+| Season buttons (series detail) | Horizontal `ScrollView` of capsule buttons, selected `spark-soft` / `on-spark-soft` (as on Android); `ScrollViewReader` scrolls to the next-up season on open |
 | Home hero (optional) | One rounded card, or a paged `TabView` (`.page(indexDisplayMode: .never)`) of them (2 to 5) with a wrapped `UIPageControl` under it, the system's own dots, which VoiceOver adjusts. Not glass. Auto-advance as `guardrails.md` says (see `screens.md` **Home hero**) |
 | Home category buttons (Shows, Movies, New, Categories) | Horizontal `ScrollView` of capsule buttons under the Home header: `surface-2` fill with `ink`, never selected; 36pt tall with a 44pt hit area. Not glass. Categories adds a trailing `chevron.down` and opens a `.sheet` with a plain list (medium and large detents), no search; the others open their page. A sheet rather than the player's `Menu`, because the list loads on demand and needs loading, empty and error states. A category page's Sort and Genre are capsules that open the same sheet |
 | Share | `ShareLink` |
 | Casting | `AVRoutePickerView` (AirPlay) |
 | Player skip buttons | `gobackward.<n>` / `goforward.<n>` SF Symbols, `n` from the profile's skip settings (back 10, forward 10 by default) |
 | Skip feedback | `SeekFlash`: a "10s" capsule on the scrim by the side the video moved, holding the total of skips in a row; shown for buttons and double-taps alike |
-| Settings rows | inset grouped list, small-caps section headers, footers carrying the help text; `Toggle` tinted aqua; a choice is a `Picker` with `.pickerStyle(.menu)`, never a sub-page; a link is a `NavigationLink` row |
-| Quality setting | the one checklist: inline rows in its own section (title once, footer below), the chosen row an `accent-soft` pill with no tick |
+| Settings rows | inset grouped list, small-caps section headers, footers carrying the help text; `Toggle` `.tint(Spark)` (on = copper, as on Android); a choice is a `Picker` with `.pickerStyle(.menu)`, never a sub-page; a link is a `NavigationLink` row |
+| Quality setting | the one checklist: inline rows in its own section (title once, footer below), the chosen row an `spark-soft` pill with no tick |
 | Settings on iPad | at regular width `NavigationSplitView`: the root as the sidebar (system selection following the tapped row), the page in the detail column capped at about 640 and centred; the back chevron is in the sidebar only. At compact width it is the phone's `NavigationStack` |
 | Skip intervals setting | a `Picker` with `.pickerStyle(.menu)` (Skip back 5 to 30 s, Skip forward 10 to 60 s), on the Skipping and autoplay page |
 | Buffer ahead setting | the same `Picker` row (Auto, 10 to 60 s, default 20 s), in its own group on Skipping and autoplay. Player: `AVPlayerItem.preferredForwardBufferDuration`; the scrubber's buffered segment is the end of the `loadedTimeRanges` range holding the current time |

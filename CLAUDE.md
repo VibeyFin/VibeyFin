@@ -104,22 +104,29 @@ dark only, artwork-forward, and native on each platform: Apple's Human Interface
 Liquid Glass on iOS 26+ (`ios.md`), Material 3 on Android (`android.md`). Behaviour rules that both
 apps share are in `guardrails.md`; which Jellyfin field drives which UI is in `jellyfin-mapping.md`.
 
-- One brand across both: electric aqua `#3fe0d0` fills the single primary action per screen (Play,
-  Sign in) and playback progress, and nothing else. Aqua never signals status; downloaded uses `ink`
-  with the filled icon. No teal, no amber, no dynamic colour, no light theme.
+- One brand across both: the white `action` (black label) fills the single primary action per screen
+  (Play, Sign in). Copper `spark` `#e07a45` marks state only: playback progress, the selected tab, chip
+  or season, a switch that is on, the logo and the New badge. It is never a button and never signals
+  status; downloaded uses `ink` with the filled icon. No teal, no amber, no dynamic colour, no light theme.
 - Colours: iOS uses Apple's dark semantic colours (not hex) plus the brand values; Android builds an
-  explicit M3 dark `ColorScheme` from the `android` column of `tokens.json`. Text over artwork sits
+  explicit M3 dark `ColorScheme` from the `android` column of `tokens.json` (`primary` is `action`,
+  copper is `tertiary`). iOS AccentColor is `ink`; copper is applied explicitly. Text over artwork sits
   on `scrim`.
 - Type: system fonts (SF Pro Dynamic Type styles on iOS, the M3 type scale on Android). Only
-  `brand-display` (Bricolage Grotesque) is bundled, for the wordmark, the hero title without a Logo
+  `brand-display` (Archivo Condensed) is bundled, for the wordmark, the hero title without a Logo
   image and onboarding.
 - Use the platform's own component when it has one (buttons, sheets, menus, tab bar, text fields);
   build custom only for posters, rows, the hero and the player. Never fake Liquid Glass.
 - Copy: `Strings` is written in sentence case, plain verbs; errors say what happened and how to fix
   it. iOS shows button, tab and title labels in title case through one helper, `titleCased()`;
   Android uses the text as is.
-- Token values are hand-written in `app/theme` (Android) and `Theme.swift` (iOS). A drift check
-  against `design/tokens.json` fails when they differ. Never hand-copy a hex value into a screen.
+- Colours are generated from `design/tokens.json` by `./gradlew generateThemes` (Android `GeneratedThemes.kt`, iOS
+  `GeneratedTheme.swift`, the window colour and the iOS colour sets). The files are committed and CI fails when they differ
+  from a fresh run. Screens read colour roles (`VibeyFinTokens.Colors`, `Brand`), never a raw value. A theme is one entry
+  in the `themes` list of `tokens.json` that overrides only the roles it changes (the role values at the top are the
+  default theme's; `color.themes` is the artifact's platform list, not these), and the profile's `themeId` picks it.
+  Spacing, radius and size are hand-written in `app/theme` and `Theme.swift`; `DesignTokensTest` and
+  `scripts/check-swift-tokens.sh` fail when they drift. A contrast test covers every theme on both platforms.
 - Netflix patterns stay: "Who's watching?" profile grid, hero billboard, rows of posters.
 
 ## Working agreement
@@ -140,8 +147,8 @@ apps share are in `guardrails.md`; which Jellyfin field drives which UI is in `j
   Android: put behaviour in the ViewModel and test it in `shared/`, and test pure Swift helpers with
   XCTest. New Swift logic that isn't a view gets a test in `iosApp/Tests/`. Say plainly when the iOS
   tests could not run.
-- **Mockups:** every new feature or UI change adds a mockup to the shared mockups artifact
-  (https://claude.ai/code/artifact/9a3ea814-fd54-4106-b2ab-71115ddc3c7b) before or with the
+- **Mockups:** every new feature or UI change adds a mockup to the VibeyFin design system
+  artifact (https://claude.ai/artifact/MPryZWZRno4kWcKtxQZdgA, the mockups are its `components/`) before or with the
   implementation. Read it first (`Artifact` action `read`), update it in place with the same `url`,
   and show both platforms where they differ. If the artifact can't be read or updated, say so in
   the phase summary.

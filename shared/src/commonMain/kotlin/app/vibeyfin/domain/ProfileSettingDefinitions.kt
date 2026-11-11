@@ -169,10 +169,17 @@ object ProfileSettingDefinitions {
         write = { dao, a, v -> dao.setStorageLimitMb(a.serverId, a.userId, v) },
     )
 
+    val ThemeId = ProfileSetting(
+        default = ThemeIds.DEFAULT,
+        accepts = { it in ThemeIds.all },
+        read = { dao, a -> dao.observeThemeId(a.serverId, a.userId) },
+        write = { dao, a, v -> dao.setThemeId(a.serverId, a.userId, v) },
+    )
+
     internal val all: List<ProfileSetting<*>> = listOf(
         ShowPlaybackStats, BingeThreshold, HomeGenreRows, HomeHeroItems, ShowWatchedInRows, SkipBackSeconds, SkipForwardSeconds, AutoSkipSegments,
         PictureInPicture, SwipeGestures, BufferAheadSeconds, MaxStreamingBitrate, CaptionsFollowSystem, SubtitleSize, SubtitleTextColor,
         SubtitleBackground, NotificationsEnabled, DownloadNotifications, NotificationScope, KidsProfile, PinGateSwitches, DownloadOverMobile, AutoCleanWatched,
-        StorageLimitMb,
+        StorageLimitMb, ThemeId,
     )
 }

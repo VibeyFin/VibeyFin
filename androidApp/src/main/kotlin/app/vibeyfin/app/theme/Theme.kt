@@ -1,30 +1,31 @@
 package app.vibeyfin.app.theme
 
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 
 // VibeyFin is dark-only and never uses dynamic color. Every role is set explicitly: Material fills
-// unset roles with its baseline purple. Values come from the `android` column of design/tokens.json;
-// tertiary mirrors secondary so aqua keeps its single meaning.
-private val VibeyFinColorScheme = with(VibeyFinTokens.Colors) {
+// unset roles with its baseline purple. Values come from the theme's colours, generated from design/tokens.json.
+private fun colorSchemeFor(colors: ThemeColors): ColorScheme = with(colors) {
     darkColorScheme(
-        primary = accent,
-        onPrimary = onAccent,
-        primaryContainer = accentSoft,
-        onPrimaryContainer = onAccentSoft,
-        inversePrimary = accentPressed,
-        secondary = onAccentSoft,
-        onSecondary = accentSoft,
-        secondaryContainer = accentSoft,
-        onSecondaryContainer = onAccentSoft,
-        tertiary = onAccentSoft,
-        onTertiary = accentSoft,
-        tertiaryContainer = accentSoft,
-        onTertiaryContainer = onAccentSoft,
+        primary = action,
+        onPrimary = onAction,
+        primaryContainer = tonal,
+        onPrimaryContainer = onTonal,
+        inversePrimary = actionPressed,
+        secondary = onTonal,
+        onSecondary = tonal,
+        secondaryContainer = tonal,
+        onSecondaryContainer = onTonal,
+        tertiary = spark,
+        onTertiary = onSpark,
+        tertiaryContainer = sparkSoft,
+        onTertiaryContainer = onSparkSoft,
         background = bg,
         onBackground = ink,
         surface = bg,
@@ -52,9 +53,13 @@ private val VibeyFinColorScheme = with(VibeyFinTokens.Colors) {
 }
 
 @Composable
-fun VibeyFinTheme(content: @Composable () -> Unit) {
+fun VibeyFinTheme(themeId: String? = null, content: @Composable () -> Unit) {
+    val colors: ThemeColors = remember(themeId) { ThemePalettes.byId(themeId) }
+
+    activeThemeColors = colors
+
     MaterialTheme(
-        colorScheme = VibeyFinColorScheme,
+        colorScheme = remember(colors) { colorSchemeFor(colors) },
         typography = VibeyFinTypography,
     ) {
         // Inside MaterialTheme, which sets its own ripple: this one keeps the ripple and adds the press scale

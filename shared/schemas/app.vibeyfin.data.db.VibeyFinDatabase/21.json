@@ -1,0 +1,909 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 21,
+    "identityHash": "1406c9c3902a56fcee6f02c61fd87dcb",
+    "entities": [
+      {
+        "tableName": "servers",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `version` TEXT, `addedAt` INTEGER NOT NULL, `seerrUrl` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "addedAt",
+            "columnName": "addedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seerrUrl",
+            "columnName": "seerrUrl",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "server_addresses",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `url` TEXT NOT NULL, `addedAt` INTEGER NOT NULL, `lastSuccessAt` INTEGER, PRIMARY KEY(`serverId`, `url`), FOREIGN KEY(`serverId`) REFERENCES `servers`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "url",
+            "columnName": "url",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "addedAt",
+            "columnName": "addedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSuccessAt",
+            "columnName": "lastSuccessAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId",
+            "url"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "servers",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "serverId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "accounts",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `userId` TEXT NOT NULL, `name` TEXT NOT NULL, `imageTag` TEXT, `sealedToken` BLOB, `lastUsedAt` INTEGER NOT NULL, `sealedSeerrSession` BLOB, `seerrUserId` INTEGER, `seerrOff` INTEGER NOT NULL DEFAULT 0, `seerrPasswordSignIn` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`serverId`, `userId`), FOREIGN KEY(`serverId`) REFERENCES `servers`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "imageTag",
+            "columnName": "imageTag",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sealedToken",
+            "columnName": "sealedToken",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "lastUsedAt",
+            "columnName": "lastUsedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sealedSeerrSession",
+            "columnName": "sealedSeerrSession",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "seerrUserId",
+            "columnName": "seerrUserId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "seerrOff",
+            "columnName": "seerrOff",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "seerrPasswordSignIn",
+            "columnName": "seerrPasswordSignIn",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId",
+            "userId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "servers",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "serverId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "account_settings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `userId` TEXT NOT NULL, `showPlaybackStats` INTEGER NOT NULL DEFAULT 0, `bingeThreshold` INTEGER NOT NULL DEFAULT 3, `homeGenreRows` INTEGER NOT NULL DEFAULT 0, `showHomeHero` INTEGER NOT NULL DEFAULT 1, `homeHeroItems` INTEGER NOT NULL DEFAULT 1, `showWatchedInRows` INTEGER NOT NULL DEFAULT 1, `skipBackSeconds` INTEGER NOT NULL DEFAULT 10, `skipForwardSeconds` INTEGER NOT NULL DEFAULT 10, `autoSkipSegments` INTEGER NOT NULL DEFAULT 0, `bufferAheadSeconds` INTEGER NOT NULL DEFAULT 20, `maxStreamingBitrate` INTEGER NOT NULL DEFAULT 0, `captionsFollowSystem` INTEGER NOT NULL DEFAULT 1, `subtitleSize` INTEGER NOT NULL DEFAULT 1, `subtitleTextColor` INTEGER NOT NULL DEFAULT 0, `subtitleBackground` INTEGER NOT NULL DEFAULT 1, `kidsProfile` INTEGER NOT NULL DEFAULT 0, `pinHash` BLOB, `pinSalt` BLOB, `pinOpenProfile` INTEGER NOT NULL DEFAULT 1, `pinOpenSettings` INTEGER NOT NULL DEFAULT 1, `pinSwitchProfile` INTEGER NOT NULL DEFAULT 1, `notificationsEnabled` INTEGER NOT NULL DEFAULT 0, `notificationScope` INTEGER NOT NULL DEFAULT 0, `pictureInPicture` INTEGER NOT NULL DEFAULT 1, `swipeGestures` INTEGER NOT NULL DEFAULT 1, `downloadOverMobile` INTEGER NOT NULL DEFAULT 0, `downloadNotifications` INTEGER NOT NULL DEFAULT 1, `autoCleanWatched` INTEGER NOT NULL DEFAULT 0, `storageLimitMb` INTEGER NOT NULL DEFAULT 0, `themeId` TEXT NOT NULL DEFAULT 'vibeyfin', `languagePrefs` TEXT, PRIMARY KEY(`serverId`, `userId`), FOREIGN KEY(`serverId`, `userId`) REFERENCES `accounts`(`serverId`, `userId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "showPlaybackStats",
+            "columnName": "showPlaybackStats",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "bingeThreshold",
+            "columnName": "bingeThreshold",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "3"
+          },
+          {
+            "fieldPath": "homeGenreRows",
+            "columnName": "homeGenreRows",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "showHomeHero",
+            "columnName": "showHomeHero",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "homeHeroItems",
+            "columnName": "homeHeroItems",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "showWatchedInRows",
+            "columnName": "showWatchedInRows",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "skipBackSeconds",
+            "columnName": "skipBackSeconds",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "10"
+          },
+          {
+            "fieldPath": "skipForwardSeconds",
+            "columnName": "skipForwardSeconds",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "10"
+          },
+          {
+            "fieldPath": "autoSkipSegments",
+            "columnName": "autoSkipSegments",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "bufferAheadSeconds",
+            "columnName": "bufferAheadSeconds",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "20"
+          },
+          {
+            "fieldPath": "maxStreamingBitrate",
+            "columnName": "maxStreamingBitrate",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "captionsFollowSystem",
+            "columnName": "captionsFollowSystem",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "subtitleSize",
+            "columnName": "subtitleSize",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "subtitleTextColor",
+            "columnName": "subtitleTextColor",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "subtitleBackground",
+            "columnName": "subtitleBackground",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "kidsProfile",
+            "columnName": "kidsProfile",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "pinHash",
+            "columnName": "pinHash",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "pinSalt",
+            "columnName": "pinSalt",
+            "affinity": "BLOB"
+          },
+          {
+            "fieldPath": "pinOpenProfile",
+            "columnName": "pinOpenProfile",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "pinOpenSettings",
+            "columnName": "pinOpenSettings",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "pinSwitchProfile",
+            "columnName": "pinSwitchProfile",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "notificationsEnabled",
+            "columnName": "notificationsEnabled",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "notificationScope",
+            "columnName": "notificationScope",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "pictureInPicture",
+            "columnName": "pictureInPicture",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "swipeGestures",
+            "columnName": "swipeGestures",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "downloadOverMobile",
+            "columnName": "downloadOverMobile",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "downloadNotifications",
+            "columnName": "downloadNotifications",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "autoCleanWatched",
+            "columnName": "autoCleanWatched",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "storageLimitMb",
+            "columnName": "storageLimitMb",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "themeId",
+            "columnName": "themeId",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'vibeyfin'"
+          },
+          {
+            "fieldPath": "languagePrefs",
+            "columnName": "languagePrefs",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId",
+            "userId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "accounts",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "serverId",
+              "userId"
+            ],
+            "referencedColumns": [
+              "serverId",
+              "userId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "pending_reports",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `serverId` TEXT NOT NULL, `userId` TEXT NOT NULL, `kind` TEXT NOT NULL, `itemId` TEXT NOT NULL, `mediaSourceId` TEXT NOT NULL, `playSessionId` TEXT NOT NULL, `positionTicks` INTEGER NOT NULL, `failed` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `played` INTEGER NOT NULL DEFAULT 0, `watchedAt` INTEGER NOT NULL DEFAULT 0, FOREIGN KEY(`serverId`, `userId`) REFERENCES `accounts`(`serverId`, `userId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "itemId",
+            "columnName": "itemId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mediaSourceId",
+            "columnName": "mediaSourceId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playSessionId",
+            "columnName": "playSessionId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "positionTicks",
+            "columnName": "positionTicks",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "failed",
+            "columnName": "failed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "played",
+            "columnName": "played",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "watchedAt",
+            "columnName": "watchedAt",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_pending_reports_serverId_userId_kind_itemId_playSessionId",
+            "unique": true,
+            "columnNames": [
+              "serverId",
+              "userId",
+              "kind",
+              "itemId",
+              "playSessionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_pending_reports_serverId_userId_kind_itemId_playSessionId` ON `${TABLE_NAME}` (`serverId`, `userId`, `kind`, `itemId`, `playSessionId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "accounts",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "serverId",
+              "userId"
+            ],
+            "referencedColumns": [
+              "serverId",
+              "userId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "notified_items",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `userId` TEXT NOT NULL, `itemId` TEXT NOT NULL, `notifiedAt` INTEGER NOT NULL, PRIMARY KEY(`serverId`, `userId`, `itemId`), FOREIGN KEY(`serverId`, `userId`) REFERENCES `accounts`(`serverId`, `userId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "itemId",
+            "columnName": "itemId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notifiedAt",
+            "columnName": "notifiedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId",
+            "userId",
+            "itemId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "accounts",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "serverId",
+              "userId"
+            ],
+            "referencedColumns": [
+              "serverId",
+              "userId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "downloads",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `userId` TEXT NOT NULL, `itemId` TEXT NOT NULL, `kind` TEXT NOT NULL, `seriesId` TEXT, `seasonId` TEXT, `state` TEXT NOT NULL, `bytesDone` INTEGER NOT NULL, `bytesTotal` INTEGER NOT NULL, `mediaSourceId` TEXT, `container` TEXT, `etag` TEXT, `filePath` TEXT, `error` TEXT, `addedAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `completedAt` INTEGER, PRIMARY KEY(`serverId`, `userId`, `itemId`), FOREIGN KEY(`serverId`, `userId`) REFERENCES `accounts`(`serverId`, `userId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "itemId",
+            "columnName": "itemId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seriesId",
+            "columnName": "seriesId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "seasonId",
+            "columnName": "seasonId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bytesDone",
+            "columnName": "bytesDone",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bytesTotal",
+            "columnName": "bytesTotal",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mediaSourceId",
+            "columnName": "mediaSourceId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "container",
+            "columnName": "container",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "etag",
+            "columnName": "etag",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "filePath",
+            "columnName": "filePath",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "error",
+            "columnName": "error",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "addedAt",
+            "columnName": "addedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completedAt",
+            "columnName": "completedAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId",
+            "userId",
+            "itemId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "accounts",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "serverId",
+              "userId"
+            ],
+            "referencedColumns": [
+              "serverId",
+              "userId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "download_items",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `userId` TEXT NOT NULL, `itemId` TEXT NOT NULL, `kind` TEXT NOT NULL, `title` TEXT NOT NULL, `seriesId` TEXT, `seriesName` TEXT, `seasonId` TEXT, `seasonNumber` INTEGER, `episodeNumber` INTEGER, `searchText` TEXT NOT NULL, `positionTicks` INTEGER NOT NULL, `played` INTEGER NOT NULL, `userDataAt` INTEGER NOT NULL, `snapshotJson` TEXT NOT NULL, PRIMARY KEY(`serverId`, `userId`, `itemId`), FOREIGN KEY(`serverId`, `userId`) REFERENCES `accounts`(`serverId`, `userId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "itemId",
+            "columnName": "itemId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seriesId",
+            "columnName": "seriesId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "seriesName",
+            "columnName": "seriesName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "seasonId",
+            "columnName": "seasonId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "seasonNumber",
+            "columnName": "seasonNumber",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "episodeNumber",
+            "columnName": "episodeNumber",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "searchText",
+            "columnName": "searchText",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "positionTicks",
+            "columnName": "positionTicks",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "played",
+            "columnName": "played",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userDataAt",
+            "columnName": "userDataAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "snapshotJson",
+            "columnName": "snapshotJson",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId",
+            "userId",
+            "itemId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_download_items_serverId_userId_seriesId",
+            "unique": false,
+            "columnNames": [
+              "serverId",
+              "userId",
+              "seriesId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_download_items_serverId_userId_seriesId` ON `${TABLE_NAME}` (`serverId`, `userId`, `seriesId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "accounts",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "serverId",
+              "userId"
+            ],
+            "referencedColumns": [
+              "serverId",
+              "userId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "dismissed_next_up",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `userId` TEXT NOT NULL, `seriesId` TEXT NOT NULL, `episodeId` TEXT NOT NULL, PRIMARY KEY(`serverId`, `userId`, `seriesId`), FOREIGN KEY(`serverId`, `userId`) REFERENCES `accounts`(`serverId`, `userId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seriesId",
+            "columnName": "seriesId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "episodeId",
+            "columnName": "episodeId",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId",
+            "userId",
+            "seriesId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "accounts",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "serverId",
+              "userId"
+            ],
+            "referencedColumns": [
+              "serverId",
+              "userId"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1406c9c3902a56fcee6f02c61fd87dcb')"
+    ]
+  }
+}

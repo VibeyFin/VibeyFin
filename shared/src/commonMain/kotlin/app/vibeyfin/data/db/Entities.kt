@@ -5,6 +5,7 @@ import androidx.room3.Entity
 import androidx.room3.ForeignKey
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
+import app.vibeyfin.domain.ThemeIds
 
 // Times are epoch milliseconds. Deleting a server cascades to its addresses, accounts and settings.
 
@@ -190,6 +191,9 @@ class AccountSettingsEntity(
     /** The most the profile's downloads may take, in megabytes; 0 is no limit. */
     @ColumnInfo(defaultValue = "0")
     val storageLimitMb: Long = 0,
+    /** The id of the colour theme the profile uses. */
+    @ColumnInfo(defaultValue = "vibeyfin")
+    val themeId: String = ThemeIds.DEFAULT,
     /**
      * The profile's preferred audio and subtitle languages as last read from the Jellyfin account, as JSON, so a download picks
      * its tracks the same way without the server. Null until they have been read once.

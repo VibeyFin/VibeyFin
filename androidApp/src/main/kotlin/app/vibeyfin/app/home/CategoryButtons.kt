@@ -20,7 +20,7 @@ import app.vibeyfin.ui.home.FilterSheet
 /**
  * Shows, Movies, New and Categories as one scrolling row of M3 chips. Every chip opens something: the first three
  * open their page; Categories carries a dropdown arrow and opens a list of genres first, which is how it differs.
- * None of them stays selected, because Home itself is never filtered. Aqua is not used here. Margins come from
+ * None of them stays selected, because Home itself is never filtered. Margins come from
  * [contentPadding] so the row can run to the screen edge.
  */
 @Composable

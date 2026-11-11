@@ -48,7 +48,7 @@ struct ExternalPlaybackBackdrop: View {
 }
 
 /// "Playing on <device>": a status, not a button, centred above the transport. White on Liquid Glass, a
-/// `scrim-strong` capsule before iOS 26, never aqua.
+/// `scrim-strong` capsule before iOS 26.
 struct ExternalPlaybackStatus: View {
     let text: String
 
@@ -70,7 +70,7 @@ struct ExternalPlaybackStatus: View {
             Text(text).lineLimit(1).truncationMode(.tail)
         }
         .font(.headline)
-        .foregroundStyle(.white)
+        .foregroundStyle(Brand.onMedia)
         .padding(.horizontal, Space.s4)
         .padding(.vertical, Space.s2)
         .frame(minHeight: 44)

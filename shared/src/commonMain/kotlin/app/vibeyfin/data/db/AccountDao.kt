@@ -279,6 +279,12 @@ abstract class AccountDao {
     @Query("UPDATE account_settings SET storageLimitMb = :value WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun setStorageLimitMb(serverId: String, userId: String, value: Long)
 
+    @Query("SELECT themeId FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeThemeId(serverId: String, userId: String): Flow<String?>
+
+    @Query("UPDATE account_settings SET themeId = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setThemeId(serverId: String, userId: String, value: String)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract suspend fun insertAccount(account: AccountEntity): Long
 

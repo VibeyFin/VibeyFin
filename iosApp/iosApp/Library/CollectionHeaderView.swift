@@ -18,7 +18,7 @@ struct CollectionHeaderView: View {
             VStack(alignment: wide ? .leading : .center, spacing: Space.s2) {
                 Text(collection.title)
                     .font(.brandDisplay)
-                    .tracking(-0.8)
+                    .tracking(-0.4)
                     .foregroundStyle(.primary)
                     .multilineTextAlignment(wide ? .leading : .center)
                     .lineLimit(3)

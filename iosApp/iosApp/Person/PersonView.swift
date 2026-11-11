@@ -121,7 +121,7 @@ struct PersonView: View {
         return VStack(alignment: alignment, spacing: Space.s2) {
             Text(person.name)
                 .font(.brandDisplay)
-                .tracking(-0.8)
+                .tracking(-0.4)
                 .multilineTextAlignment(textAlignment)
                 .lineLimit(3)
             if !state.facts.isEmpty {

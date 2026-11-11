@@ -67,8 +67,8 @@ import app.vibeyfin.ui.downloads.stateWord
 
 /**
  * What a download looks like, in one picture: the download arrow when there is none, a ring that fills while it comes in (gray
- * and still while it waits), a pause bars, a warning, and a phone with a check once it is on the device. All in ink: aqua is for the
- * one primary action and playback progress, and never signals status. Drawn by hand, not with M3's spinner, which is for the
+ * and still while it waits), a pause bars, a warning, and a phone with a check once it is on the device.
+ * Drawn by hand, not with M3's spinner, which is for the
  * player only.
  */
 @Composable
@@ -188,7 +188,7 @@ fun DownloadConfirmDialog(prompt: DownloadPrompt, onToggleUnwatched: () -> Unit,
                                 Checkbox(
                                     checked = prompt.unwatchedOnly,
                                     onCheckedChange = null,
-                                    colors = CheckboxDefaults.colors(checkedColor = VibeyFinTokens.Colors.ink, checkmarkColor = VibeyFinTokens.Colors.bg, uncheckedColor = VibeyFinTokens.Colors.inkMuted),
+                                    colors = CheckboxDefaults.colors(checkedColor = VibeyFinTokens.Colors.spark, checkmarkColor = VibeyFinTokens.Colors.onSpark, uncheckedColor = VibeyFinTokens.Colors.inkMuted),
                                 )
                                 Text(Strings.downloadUnwatchedOnly, modifier = Modifier.padding(start = VibeyFinTokens.Space.s2))
                             }

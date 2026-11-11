@@ -12,7 +12,7 @@ import androidx.compose.ui.Modifier
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 
-/** What went wrong and a way to try again. The button is tonal: aqua is for the primary action. */
+/** What went wrong and a way to try again. */
 @Composable
 fun LoadError(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
     Column(

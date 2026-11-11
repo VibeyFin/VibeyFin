@@ -27,13 +27,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.ExoPlayer
 import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.subtitles.SubtitleSearch
+import app.vibeyfin.app.theme.FixedColors
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.ui.common.Strings
@@ -67,7 +67,7 @@ internal fun PlayerContent(
     val overlaysShown = !chrome.leaving && !pip.active
 
     Box(
-        Modifier.fillMaxSize().background(Color.Black).onGloballyPositioned {
+        Modifier.fillMaxSize().background(FixedColors.videoBackground).onGloballyPositioned {
             val b = it.boundsInWindow()
 
             onBoundsChanged(Rect(b.left.toInt(), b.top.toInt(), b.right.toInt(), b.bottom.toInt()))

@@ -451,7 +451,6 @@ private fun FactsLine(state: ItemUiState, centered: Boolean) {
             )
         }
 
-        // Watched is an icon, in ink: aqua never signals status
         if (state.watched) {
             Icon(
                 imageVector = Icons.Default.CheckCircle,

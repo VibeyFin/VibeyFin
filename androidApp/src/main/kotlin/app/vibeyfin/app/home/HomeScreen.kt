@@ -377,7 +377,6 @@ private fun Content(
         onRefresh = onRefresh,
         state = refreshState,
         modifier = Modifier.fillMaxSize(),
-        // Aqua is for the primary action and playback progress, so the spinner is neutral
         indicator = {
             PullToRefreshDefaults.Indicator(
                 state = refreshState,

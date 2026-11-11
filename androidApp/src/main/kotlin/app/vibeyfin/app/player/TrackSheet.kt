@@ -22,8 +22,7 @@ import app.vibeyfin.ui.playback.TrackOption
  * Audio and subtitles in a bottom sheet, as the design asks for the Android player. The two sections
  * sit side by side, each with its own scroll, so a long list in one never pushes the other out of
  * reach. A section lists its options with a check on the one in use; one with nothing to choose is
- * left out and the other takes the whole width. The check is `ink`, not aqua, which is kept for the
- * one primary action and playback progress.
+ * left out and the other takes the whole width.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

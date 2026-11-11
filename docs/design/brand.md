@@ -1,77 +1,83 @@
-VibeyFin is a dark, artwork-first client for a personal Jellyfin library. **One brand, two native apps:** the iOS / iPadOS app is SwiftUI and follows Apple's Human Interface Guidelines (Liquid Glass included); the Android app is Jetpack Compose and follows Material 3. They share a Kotlin Multiplatform core — Jellyfin API, repositories, playback reporting, downloads, and the state each screen renders — never UI code.
+# Brand language
 
-Further sections: **UX guardrails** (behavior both apps must share), **iOS & iPadOS** and **Android** (each platform's native UI rules), **Reference screens** (detail, series detail and tablet layouts), **Jellyfin data → UI** (which API field drives which pixel). Every component preview shows both platforms side by side; the two color themes *are* the two platforms.
+One brand, two native apps. **The brand wins over the platform.** A platform may drift only where the OS requires it (the list at the bottom); everywhere else iOS and Android look and behave the same.
 
-## Principles
+## The four roles
 
-1. **Artwork leads, chrome recedes.** Screens are mostly posters and backdrops on `bg`. No decorative panels, gradients or borders around content.
-2. **Resume beats discover.** Continue watching sits above the fold, and tapping a card's picture plays — no detour. Its title opens the detail page.
-3. **Native first.** Each app uses its platform's own components, type, navigation, motion and icons. If the platform has a control for it, use that control; build custom only where Jellyfin needs it (posters, rows, the player).
-4. **One brand across both.** What stays identical: the name, electric aqua, dark-only, artwork ratios and treatment, the brand display face, voice, and every rule in **UX guardrails**.
-5. **Calm motion.** Native transitions only; nothing bounces for effect, spins or auto-rotates. The one looping motion is the skeleton shimmer: always on, no setting, and never playing when the system asks for Reduce Motion (iOS) or Remove animations (Android). It is one soft grey light (`line` / `separator`, never aqua) that sweeps the whole screen every 2 s, in step across every placeholder, from one shared modifier per platform.
+| Role | Token | Means | Use it for | Never |
+| --- | --- | --- | --- | --- |
+| Action | `action` / `on-action` | "Do this" | The one filled button per screen: Play, Resume, Connect, Request. White, black label. | Copper |
+| Spark | `spark` | "This is on / here / how far" | Progress and scrubber, a selected tab / chip / season / destination, a switch that is on, the logo, the New badge | Buttons, links, tappable icons, errors, status, large fills, text on `surface-3` |
+| Tonal | `tonal` / `on-tonal` | "Secondary" | Secondary buttons, the Android nav pill, the selected tablet nav item. Neutral. | Any tint |
+| Ink | `ink`, `ink-muted` | everything else | Text, links, ghost buttons, action icons (My List, Like, Trailer, Download), section labels | |
 
-## What is shared vs native
+Rule of thumb: **if you can tap it to do something, it is white or ink. Copper only tells you a state.**
 
-| Shared (brand + behavior) | Native per platform |
-| --- | --- |
-| Name, wordmark, `brand-display` face | UI framework (SwiftUI / Compose M3) |
-| `accent` aqua, dark-only, `scrim` over artwork | Surfaces, text and line colors (Apple semantic colors / M3 scheme) |
-| Artwork ratios, `radius-artwork`, BlurHash placeholders | Type scale (SF Pro Dynamic Type / M3 Roboto) |
-| Screen structure, row order, guardrails, copy content | Buttons, sheets, menus, navigation, tab bar, gestures |
-| Kotlin Multiplatform core and its state | Icons (SF Symbols / Material Symbols), motion, haptics |
+## Same on both platforms
 
-## Voice
+| Thing | iOS | Android |
+| --- | --- | --- |
+| Main button | white `action` capsule | white `action` pill |
+| Progress | copper on `surface-3` (3pt) | copper on `surface-3` (4dp) |
+| Selected chip / season | `spark-soft` / `on-spark-soft` | `spark-soft` / `on-spark-soft` |
+| Selected nav item | copper icon and label on glass | copper icon and label on `tonal` |
+| Switch on | copper track | copper track |
+| Ghost, link, action icons | `ink` | `ink` |
+| New badge | `spark-soft` | `spark-soft` |
+| Error | `danger` + icon + word | `danger` + icon + word |
+| Downloaded | `ink`, filled icon, the word | `ink`, filled icon, the word |
+| Section labels | `ink-muted` | `ink-muted` |
 
-- Same words on both; casing follows the platform. iOS: title case for buttons, tabs and titles ("Continue Watching", "Mark as Watched", "Skip Intro"). Android: sentence case everywhere ("Continue watching", "Mark as watched", "Skip intro").
-- Watched is a check icon (a small badge on the poster's top-right, a check-circle by the facts on the detail page), in ink, never aqua.
-- Motion is for feedback and orientation, short and calm: a press shrinks the thing to 95% and springs back, a card or screen opening grows in from 92% while it fades. Nothing bounces for effect, and Reduce Motion turns the scale off.
-- Prefer an icon to a word where the icon is clear (start over is a circular arrow, with the word as its accessibility label); the primary action keeps its words.
-- Buttons are verbs, specific when we know more: "Play", "Resume · 38m left", "Play S2 E4".
-- Time and episode shorthand: `1h 52m`, `38m left`, `S2 E4`; tabular numerals for clocks.
-- Use metadata exactly as Jellyfin returns it. No emoji, no exclamation marks. Errors say what happened and what to do: "Can't reach your server. Check your connection, then try again."
+Implementation: iOS AccentColor = `ink`; copper is applied with `.tint(Spark)` where listed. Android M3 `primary` = `action`; copper is `tertiary`, used only explicitly. Neither platform may let the system tint decide a colour.
 
-## Color
+## Name
 
-Dark only, on both platforms (force dark appearance; ignore the system light mode). The two themes in the tokens are the two platforms; each token's note names the native API to use — on device, use that API, not the hex.
+Always **VibeyFin**. Never "vibeyfin", "Vibeyfin" or "Vibey Fin". The wordmark appears on the splash screen, connect screen, onboarding and About. Tab headers show the page name ("Home") on both platforms, not the wordmark.
 
-- Screens on `bg`; lists and sheet bodies on `surface-1`; fields, menus and missing-artwork tiles on `surface-2`. iOS reads Apple's dark semantic colors (`systemBackground` is true black); Android reads the M3 dark scheme generated from the aqua seed (slightly aqua-tinted neutrals).
-- Text: `ink`, `ink-muted` for metadata and synopsis, `ink-subtle` only on `bg` / `surface-1`.
-- `accent` — electric aqua — fills the one primary action per screen (Play / Resume) and playback progress. iOS: set it as the app's AccentColor, so the system tints tab selection, links and borderless buttons natively. Android: it is `primary`; tonal surfaces use `accent-soft` / `on-accent-soft` (secondaryContainer).
-- Over artwork or video, text and controls sit on `scrim` (synopsis on `scrim-strong`) — identical on both.
-- Downloaded state is `positive` (= `ink`) with the filled icon; `danger` (systemRed / M3 error) only for errors, always with a word or icon. Aqua never signals status.
-- No dynamic theming: no Material You wallpaper colors, and no artwork-derived accents or control colors; aqua stays the one primary and progress color.
+## Logo: Fin Play
+
+A rounded, fin-shaped play triangle with a copper progress bar below it. The bar is the app's own progress bar, so the logo can move: it fills on launch, connecting and buffering, and stays static under Reduce Motion.
+
+- Variants: mark, horizontal lockup, stacked lockup, reversed, on light (deep copper #C8622E), mono light, mono dark.
+- The mark uses fixed colours (white, #3a3a3c track, #e07a45 fill), never theme tokens, so it is identical on both platforms.
+- Sizes: 24 px minimum (favicon and unread dot only), 32 px minimum inside the UI. The track is dropped below 32 px.
+- Clear space: at least half the fin height on every side.
+- Flat solid colours only: no gradients, transparency, shadows or extra strokes.
+- Deep copper is for the logo on light backgrounds, never for text.
+- Android: adaptive icon with a monochrome themed-icon layer; the notification icon is white only.
+
+```svg
+<path d="M27 17 C 50 19 69 31 81 48 L 27 69 C 34 54 34 32 27 17 Z" fill="#fff" stroke="#fff" stroke-width="8" stroke-linejoin="round"/>
+<rect x="23" y="81" width="62" height="8" rx="4" fill="#3a3a3c"/>
+<rect x="23" y="81" width="38" height="8" rx="4" fill="#e07a45"/>
+```
+
+Use the `Logo` component in the UI, and the SVG files in Assets → Logos (`assets/Logos/`) everywhere else (app icons, store art, the web); don't copy the path or redraw it. See **SplashPhone** and **ConnectPhone**.
 
 ## Type
 
-System fonts for UI on each platform; one brand face.
+UI text stays native: SF Pro with Dynamic Type on iOS, Roboto and the M3 scale on Android. The brand face is **Archivo Condensed** (variable Archivo at width 75%, weight 800, tracking -0.01em) for the wordmark, hero title fallback, onboarding, the movie-logo stand-in and generated poster titles. Never body text or controls.
 
-- `brand-display` (Bricolage Grotesque, bundled) only for the hero title fallback when an item has no Logo image, the wordmark and onboarding.
-- iOS: SF Pro via Dynamic Type text styles (`ios-*` styles) — always the semantic style (`.headline`, `.footnote`), never fixed sizes, so text scales.
-- Android: the M3 type scale (`m3-*` styles) with Roboto via `MaterialTheme.typography`; respect font scale (non-linear on Android 14+).
-- Mapping of roles: row header `ios-title3` / `m3-title-large`; card title `ios-subheadline` / `m3-title-small`; metadata `ios-footnote` / `m3-body-small`; button `ios-headline` / `m3-label-large`.
+## Rules the system enforces
 
-## Space and layout
+- Text 4.5:1 on its ground. `ink-subtle` and (iOS) `danger` text only on `bg` and `surface-1`.
+- Progress bars on a plain surface use `surface-3` (copper 3.8:1 iOS, 4.8:1 Android); bars over artwork use `progress-track` (18% white).
+- Every colour in a component comes from a token. Fixed white over artwork is `on-media`; white pills over glass are `overlay-weak`, `overlay`, `overlay-strong`.
+- Small controls keep their visual size but reach the platform tap target (44pt iOS, 48dp Android) through an invisible hit area.
+- Badge text is 12px or larger. iOS tab labels stay 10pt (the system size).
+- `prefers-reduced-motion`: no transitions or looping animation; the logo bar is static.
 
-- 4-unit grid `space-1` … `space-7` (pt / dp). Phone margins 16 on both; iPad 20; Android medium width 24.
-- Rows scroll edge to edge, first card at the margin, a next card always peeks. Rows `space-5` apart.
-- Width classes drive layout on both (SwiftUI size classes / Compose `WindowSizeClass`): posters 112 → 140 → 168.
-- Hit targets: `touch-ios` 44pt, `touch-android` 48dp.
+## Allowed platform drift (OS dos and don'ts only)
 
-## Artwork
+| Drift | Why |
+| --- | --- |
+| iOS Liquid Glass bars and overlay buttons, Android opaque surfaces | Apple's material, M3 has none |
+| iOS Title Case, Android sentence case | Platform writing conventions |
+| SF Pro vs Roboto, Dynamic Type vs the M3 scale | System fonts |
+| Button height 50pt vs 56dp (hero) and 40dp, hit area 44pt vs 48dp | Platform minimums |
+| Progress 3pt vs 4dp | Native component sizes |
+| iOS chips and seasons are capsules, Android uses 8dp rounded rectangles | M3 chip shape |
+| iOS 10pt tab labels | System tab bar |
+| Back, share and menu glyph sets | SF Symbols vs Material Symbols |
 
-- Ratios: poster 2:3, thumbnail and backdrop 16:9, Home hero 4:3 card on phones, 2.6:1 from 600dp; the detail hero is the full-bleed Backdrop, center-cropped to 2:3 on phones and at its own 16:9 on tablets (see **Reference screens**). `radius-artwork` (8) on both (continuous on iOS).
-- BlurHash color block → image fades in. Missing image: `surface-2` tile with the title. Never a broken-image icon.
-- Request images at rendered size × density. One badge per card, top-left; watched check top-right; progress on the bottom edge.
-
-## Iconography
-
-- iOS: SF Symbols, matching the text weight; `.fill` for selected tabs and toggled states.
-- Android: Material Symbols Rounded, 24dp, weight 400; filled for the active destination.
-- Same meaning per action on both (play, add, download, more…), never the other platform's shape: `‹` vs `←`, `…` vs `⋮`, AirPlay vs Cast, square-and-arrow vs share-nodes. The icons in previews are simplified stand-ins.
-
-## Architecture
-
-- `shared/` (Kotlin Multiplatform): Ktor + Jellyfin API, repositories, caching, playback session and progress reporting, download queue, and one state holder per screen exposing `StateFlow`s.
-- `iosApp/` (SwiftUI): consumes the shared state holders (via SKIE or KMP-NativeCoroutines for Flows and suspend functions), owns navigation (`TabView` + `NavigationStack`), AVPlayer playback.
-- `androidApp/` (Jetpack Compose + Material 3): consumes the same state holders, Navigation Compose, Media3 playback.
-- Tokens: generate a Swift asset catalog / `Color` extension and a Kotlin M3 `ColorScheme` + `Typography` from `tokens.json` — never hand-copy values.
+Anything not in this table is a bug.

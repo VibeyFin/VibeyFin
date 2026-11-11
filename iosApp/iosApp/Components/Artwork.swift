@@ -166,7 +166,7 @@ struct WatchedBadge: View {
     var body: some View {
         Image(systemName: "checkmark")
             .font(.caption.weight(.bold))
-            .foregroundStyle(.white)
+            .foregroundStyle(Brand.onMedia)
             .frame(width: 24, height: 24)
             .background(Brand.scrim, in: Circle())
             .accessibilityHidden(true)
@@ -209,7 +209,7 @@ struct LoadingIndicator: View {
     }
 }
 
-/// What went wrong and a way to try again. The button is the grey secondary: aqua is for the primary action.
+/// What went wrong and a way to try again.
 struct LoadErrorView: View {
     let message: String
     let onRetry: () -> Void

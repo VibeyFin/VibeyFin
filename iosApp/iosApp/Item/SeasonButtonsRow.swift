@@ -6,7 +6,7 @@ struct SeasonButton<ID: Hashable> {
     let label: String
 }
 
-/// A show's seasons as a row of capsule buttons (the selected one filled `ink` with `bg` text). It opens scrolled to the selected one.
+/// A show's seasons as a row of capsule buttons. It opens scrolled to the selected one.
 struct SeasonButtonsRow<ID: Hashable>: View {
     let seasons: [SeasonButton<ID>]
     let selectedId: ID?
@@ -23,10 +23,10 @@ struct SeasonButtonsRow<ID: Hashable>: View {
                         Button { onSelect(season.id) } label: {
                             Text(season.label)
                                 .font(.subheadline.weight(.medium))
-                                .foregroundStyle(selected ? Color(.systemBackground) : Color.primary)
+                                .foregroundStyle(selected ? Brand.onSparkSoft : Color.primary)
                                 .padding(.horizontal, Space.s4)
                                 .frame(height: 36)
-                                .background(Capsule().fill(selected ? Color.primary : Color(.tertiarySystemBackground)))
+                                .background(Capsule().fill(selected ? Brand.sparkSoft : Color(.tertiarySystemBackground)))
                                 .frame(minHeight: 44)
                                 .contentShape(Rectangle())
                         }

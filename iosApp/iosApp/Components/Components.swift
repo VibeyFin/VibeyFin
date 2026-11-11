@@ -2,8 +2,7 @@ import SwiftUI
 import UIKit
 import Shared
 
-/// The one filled primary action on a screen: an aqua capsule, full width. Native `.borderedProminent`
-/// so the system supplies press, disabled and Liquid Glass-era behaviour; the label sits on `onAccent`.
+/// A full-width capsule button. Native `.borderedProminent`, so the system supplies press, disabled and Liquid Glass-era behaviour.
 struct PrimaryButton<Label: View>: View {
     let action: () -> Void
     @ViewBuilder let label: () -> Label
@@ -17,18 +16,17 @@ struct PrimaryButton<Label: View>: View {
         .buttonStyle(.borderedProminent)
         .buttonBorderShape(.capsule)
         .controlSize(.large)
-        .tint(Brand.accent)
-        // Disabled keeps a readable label: the system greys the fill, and `onAccent` on grey is not legible.
-        .foregroundStyle(isEnabled ? Brand.onAccent : Color.secondary)
+        .tint(Brand.action)
+        .foregroundStyle(isEnabled ? Brand.onAction : Color.secondary)
     }
 }
 
-/// A spinner that shows on the aqua of a busy primary button.
+/// A spinner that shows on a busy primary button.
 struct PrimaryButtonSpinner: View {
     var body: some View {
         ProgressView()
             .progressViewStyle(.circular)
-            .tint(Brand.onAccent)
+            .tint(Brand.onAction)
             .scaleEffect(0.8)
     }
 }

@@ -110,7 +110,7 @@ import coil3.compose.AsyncImage
 import app.vibeyfin.ui.item.EpisodeList as EpisodeData
 
 /**
- * A show's seasons as a row of buttons (the selected one in `accent-soft`, aqua stays for Play), then the selected season's
+ * A show's seasons as a row of buttons, then the selected season's
  * episodes. The row opens scrolled to the season Play starts in; another season swaps the list in place and the old list
  * stays up, a little dimmed, until the new one arrives.
  */
@@ -600,8 +600,8 @@ internal fun BoxScope.EpisodeCardScrim() {
             Brush.verticalGradient(
                 0f to Color.Transparent,
                 0.4f to Color.Transparent,
-                0.75f to Color.Black.copy(alpha = 0.55f),
-                1f to Color.Black.copy(alpha = 0.78f),
+                0.75f to VibeyFinTokens.Colors.scrim.copy(alpha = 0.55f),
+                1f to VibeyFinTokens.Colors.scrim,
             ),
         ),
     )

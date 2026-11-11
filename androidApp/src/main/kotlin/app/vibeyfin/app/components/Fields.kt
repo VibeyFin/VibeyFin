@@ -39,8 +39,8 @@ import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 
 /**
- * Text fields focus in the text color. Material's default is the primary color, and aqua is
- * reserved for the single primary action on a screen. The resting border is `outline` (line-strong):
+ * Text fields focus in the text color.
+ * The resting border is `outline` (line-strong):
  * a field's edge has to be seen, which the decorative `outlineVariant` is not for.
  */
 @Composable

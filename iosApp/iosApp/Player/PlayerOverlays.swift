@@ -54,7 +54,7 @@ struct StatsOverlay: View {
     }
 }
 
-/// "Skip intro", "Skip credits": white on a glass capsule with a leading skip symbol (never aqua),
+/// "Skip intro", "Skip credits": a glass capsule with a leading skip symbol,
 /// shown for the whole segment whether or not the controls are up. Real Liquid Glass on iOS 26, the
 /// scrim before that. The label is the shared model's wording. `systemImage` is nil for a plain
 /// quiet button such as "Stop watching".
@@ -113,7 +113,6 @@ struct StillWatchingPrompt: View {
                     .multilineTextAlignment(.center)
                 HStack(spacing: Space.s3) {
                     SkipButton(label: Strings.shared.stillWatchingStop, systemImage: nil, action: onStop)
-                    // The one primary action, white like "Play now": the player never uses aqua.
                     Button(action: onContinue) {
                         Text(Strings.shared.stillWatchingContinue.titleCased())
                             .font(.headline)
@@ -257,7 +256,7 @@ struct PlayerNotice: View {
     var body: some View {
         Text(text)
             .font(.subheadline)
-            .foregroundStyle(.white)
+            .foregroundStyle(Brand.onMedia)
             .padding(.horizontal, Space.s4)
             .padding(.vertical, Space.s2)
             .background(Brand.scrimStrong, in: Capsule())

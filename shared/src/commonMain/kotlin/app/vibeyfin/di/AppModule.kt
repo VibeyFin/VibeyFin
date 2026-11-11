@@ -26,6 +26,7 @@ import app.vibeyfin.ui.servers.ServersViewModel
 import app.vibeyfin.ui.settings.SettingsViewModel
 import app.vibeyfin.ui.startup.StartupViewModel
 import app.vibeyfin.ui.subtitles.SubtitleSearchViewModel
+import app.vibeyfin.ui.theme.ThemeViewModel
 import app.vibeyfin.ui.tile.TileMenuViewModel
 import app.vibeyfin.ui.whoswatching.WhoIsWatchingViewModel
 import org.koin.core.module.dsl.viewModel
@@ -59,6 +60,7 @@ fun appModule() = module {
     viewModel { params -> ItemViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { params -> PlaybackViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), startOver = params.getOrNull() ?: false) }
     viewModelOf(::StartupViewModel)
+    viewModelOf(::ThemeViewModel)
     viewModelOf(::NotificationOpenViewModel)
     viewModel {
         val device = get<DeviceInfo>()

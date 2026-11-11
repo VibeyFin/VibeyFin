@@ -1,7 +1,7 @@
 import SwiftUI
 import Shared
 
-/// A 16:9 card in the Continue watching row: the picture with a play disc in the middle and the aqua
+/// A 16:9 card in the Continue watching row: the picture with a play disc in the middle and the
 /// progress bar along its bottom edge if something is in progress, then the title with what is left (or
 /// the episode) under it, close together, and a "…" menu for the card's actions. Tapping the picture
 /// plays, with no detail page in between; tapping the words opens the detail page. A long press opens
@@ -109,15 +109,14 @@ private struct PlayDisc: View {
     var body: some View {
         Image(systemName: "play.fill")
             .font(.title3)
-            .foregroundStyle(.white)
+            .foregroundStyle(Brand.onMedia)
             .frame(width: 44, height: 44)
             .background(Brand.scrim.opacity(0.6), in: Circle())
-            .overlay(Circle().strokeBorder(Color.white.opacity(0.6), lineWidth: 1))
+            .overlay(Circle().strokeBorder(Brand.overlayStrong, lineWidth: 1))
             .accessibilityHidden(true)
     }
 }
 
-/// Aqua is playback progress, here and in the player. The unfilled part is the `progress-track` token.
 private struct ProgressBar: View {
     let progress: CGFloat
 
@@ -125,7 +124,7 @@ private struct ProgressBar: View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
                 Brand.progressTrack
-                Brand.accent.frame(width: proxy.size.width * min(max(progress, 0), 1))
+                Brand.spark.frame(width: proxy.size.width * min(max(progress, 0), 1))
             }
         }
         .frame(height: 3)

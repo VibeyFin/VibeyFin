@@ -281,6 +281,23 @@ class ProfileSettingsTest {
     }
 
     @Test
+    fun `a profile uses the default theme and an unknown theme id changes nothing`() = runTest {
+        assertNull(app.profileSettings.themeId.first())
+        app.signedIn()
+
+        assertEquals(ThemeIds.DEFAULT, app.profileSettings.themeId.first())
+
+        app.profileSettings.setThemeId(ThemeIds.DEFAULT)
+        assertEquals(ThemeIds.DEFAULT, app.profileSettings.themeId.first())
+
+        app.profileSettings.setThemeId("no-such-theme")
+        assertEquals(ThemeIds.DEFAULT, app.profileSettings.themeId.first())
+
+        app.database.accountDao().setThemeId("srv-1", "u1", "no-such-theme")
+        assertEquals(ThemeIds.DEFAULT, app.profileSettings.themeId.first())
+    }
+
+    @Test
     fun `shownFor hides values read for another profile`() = runTest {
         app.signedIn()
         app.profileSettings.setSkipBackSeconds(15)

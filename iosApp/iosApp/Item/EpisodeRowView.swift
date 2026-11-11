@@ -1,8 +1,8 @@
 import SwiftUI
 import Shared
 
-/// An episode on a phone: a row in the list down the page. The picture on the left plays it, with a check on it once watched, an
-/// aqua progress bar along its bottom edge when part watched, and a brighter outline on the one Play starts. On the right, the
+/// An episode on a phone: a row in the list down the page. The picture on the left plays it, with a check on it once watched, a
+/// progress bar along its bottom edge when part watched, and a brighter outline on the one Play starts. On the right, the
 /// "S1 E4" tag, the title, how long it is (or how much is left), its rating and air date, and two lines of synopsis; those open
 /// its page. A long press on either opens the menu: View episode, and the watched mark.
 struct EpisodeRowView: View {
@@ -25,22 +25,21 @@ struct EpisodeRowView: View {
                         if episode.played {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.headline)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Brand.onMedia)
                                 .shadow(radius: 2)
                                 .padding(Space.s2)
                                 .accessibilityLabel(Strings.shared.watched)
                         }
                     }
                     .overlay(alignment: .bottom) {
-                        // Aqua is playback progress: how far into the episode the user got.
                         if let progress = episode.progress {
                             GeometryReader { proxy in
                                 ZStack(alignment: .leading) {
                                     Rectangle().fill(Brand.progressTrack)
-                                    Rectangle().fill(Brand.accent).frame(width: proxy.size.width * CGFloat(progress.floatValue))
+                                    Rectangle().fill(Brand.spark).frame(width: proxy.size.width * CGFloat(progress.floatValue))
                                 }
                             }
-                            .frame(height: 4)
+                            .frame(height: 3)
                         }
                     }
                     .frame(width: 148)

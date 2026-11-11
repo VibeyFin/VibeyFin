@@ -221,7 +221,7 @@ fun SettingsPageScreen(
 
 /**
  * The title and sections of a page, shared by the phone's page and the tablet's two panes. [selectedLink]
- * is the row whose page is open beside this list on a tablet (an `accent-soft` pill); null on a phone.
+ * is the row whose page is open beside this list on a tablet; null on a phone.
  */
 @Composable
 internal fun SettingsPageBody(

@@ -163,7 +163,6 @@ struct DownloadsView: View {
                 .accessibilityLabel(Strings.shared.showOptions)
             }
             if inProgress, let progress = download.progress?.floatValue {
-                // The label colour on a quiet track: aqua is for playback progress, not for downloads.
                 ProgressView(value: progress).tint(Color(.label))
             }
         }

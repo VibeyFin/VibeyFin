@@ -19,6 +19,7 @@ struct RootView: View {
     @State private var ready = false
     @State private var screenWidth: CGFloat = 0
     @StateObject private var startup = StartupObservable()
+    @StateObject private var theme = ThemeObservable()
     @ObservedObject private var taps = NotificationTaps.shared
 
     /// Leaves the tabs and everything opened from them. Servers is the root, so back from "Who's
@@ -101,7 +102,7 @@ struct RootView: View {
                 ProfileFlightView(flight: flight, button: homeButtonFrame == .zero ? buttonFrame : homeButtonFrame)
             }
         }
-        .tint(Brand.accent)
+        .id(theme.themeId)
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { screenWidth = $0 }
         .environment(\.skeletonShimmerWidth, screenWidth > 0 ? screenWidth : nil)
         // Blank background until the app has worked out where to open, a moment of storage reads.
@@ -109,6 +110,7 @@ struct RootView: View {
             if !ready { Color(.systemBackground).ignoresSafeArea() }
         }
         .onAppear {
+            theme.start()
             startup.start { destination in
                 if destination is StartDestinationHome {
                     home = HomeObservable()

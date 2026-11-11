@@ -94,7 +94,7 @@ import app.vibeyfin.ui.seerr.SeerrTitleViewModel
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-/** The season picker a show's Request opens: 4K and quality when allowed, All missing seasons, a row for each season, and one aqua button. */
+/** The season picker a show's Request opens: 4K and quality when allowed, All missing seasons, a row for each season, and one action button. */
 @Composable
 fun SeerrSeasonPickerSheet(
     picker: SeerrSeasonPicker,
@@ -134,7 +134,14 @@ private fun ColumnScope.SeasonPickerContent(
                             selected = picker.is4k == is4k,
                             onClick = { onQuality(is4k) },
                             shape = SegmentedButtonDefaults.itemShape(index, 2),
-                            colors = SegmentedButtonDefaults.colors(activeContainerColor = VibeyFinTokens.Colors.accentSoft, activeContentColor = VibeyFinTokens.Colors.ink),
+                            colors = SegmentedButtonDefaults.colors(
+                                activeContainerColor = VibeyFinTokens.Colors.surface1,
+                                activeContentColor = VibeyFinTokens.Colors.ink,
+                                activeBorderColor = VibeyFinTokens.Colors.surface3,
+                                inactiveContainerColor = VibeyFinTokens.Colors.surface3,
+                                inactiveContentColor = VibeyFinTokens.Colors.inkMuted,
+                                inactiveBorderColor = VibeyFinTokens.Colors.surface3,
+                            ),
                         ) { Text(label) }
                     }
                 }
@@ -152,11 +159,10 @@ private fun ColumnScope.SeasonPickerContent(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(Strings.seerrAllMissingSeasons, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-                    // Aqua is for the one primary action, so the switch is light on dark
                     Switch(
                         checked = picker.allMissing,
                         onCheckedChange = null,
-                        colors = SwitchDefaults.colors(checkedTrackColor = VibeyFinTokens.Colors.ink, checkedThumbColor = VibeyFinTokens.Colors.bg),
+                        colors = SwitchDefaults.colors(checkedTrackColor = VibeyFinTokens.Colors.spark, checkedThumbColor = VibeyFinTokens.Colors.onSpark),
                     )
                 }
                 HorizontalDivider(Modifier.padding(horizontal = VibeyFinTokens.Space.s5), color = MaterialTheme.colorScheme.outlineVariant)
@@ -200,8 +206,8 @@ private fun SeasonRows(seasons: List<SeerrPickerSeason>, onSeason: (Int) -> Unit
                 onCheckedChange = null,
                 enabled = !season.locked,
                 colors = CheckboxDefaults.colors(
-                    checkedColor = VibeyFinTokens.Colors.ink,
-                    checkmarkColor = VibeyFinTokens.Colors.bg,
+                    checkedColor = VibeyFinTokens.Colors.spark,
+                    checkmarkColor = VibeyFinTokens.Colors.onSpark,
                     uncheckedColor = VibeyFinTokens.Colors.inkMuted,
                     disabledUncheckedColor = VibeyFinTokens.Colors.line,
                 ),

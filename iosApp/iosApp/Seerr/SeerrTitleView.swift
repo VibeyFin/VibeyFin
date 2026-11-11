@@ -123,11 +123,10 @@ struct SeerrTitleView: View {
         VStack(alignment: centered ? .center : .leading, spacing: Space.s3) {
             Text(title.title)
                 .font(.brandDisplay)
-                .tracking(-0.8)
+                .tracking(-0.4)
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(centered ? .center : .leading)
                 .lineLimit(3)
-            // Where it stands, as a tag at the start of the facts: a word or two with its symbol, never aqua.
             HStack(spacing: Space.s3) {
                 SeerrStateTag(text: state.tag, state: state.state)
                 if !state.facts.isEmpty {
@@ -151,7 +150,7 @@ struct SeerrTitleView: View {
         .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
     }
 
-    /// The one aqua button, sized as Play is. With nothing to do it stays, quiet and disabled, so the page doesn't jump.
+    /// With nothing to do the button stays, disabled, so the page doesn't jump.
     private func primaryButton(_ state: SeerrTitleUiState, _ primary: SeerrPrimary, centered: Bool) -> some View {
         PrimaryButton(action: { model.request() }) {
             // A plus and the words; with nothing to do, the state's own symbol and its name.
@@ -222,7 +221,7 @@ struct SeerrTitleView: View {
     }
 }
 
-/// Where a title stands, as a symbol and words in the primary colour (a failure in red); never aqua.
+/// Where a title stands, as a symbol and words in the primary colour (a failure in red).
 struct SeerrStatusLine: View {
     let text: String
     let state: RequestState
@@ -237,7 +236,7 @@ struct SeerrStatusLine: View {
     }
 }
 
-/// The state as a tag: its symbol alone on a quiet round chip, in the primary colour (a failure in red); never aqua. `text` is what
+/// The state as a tag: its symbol alone on a quiet round chip, in the primary colour (a failure in red). `text` is what
 /// VoiceOver says.
 struct SeerrStateTag: View {
     let text: String

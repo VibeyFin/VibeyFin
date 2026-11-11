@@ -203,7 +203,7 @@ private struct SwipeForLevels: ViewModifier {
 }
 
 /// The level a swipe set, on the side being swiped: a Liquid Glass capsule on iOS 26 (a `Brand.scrim` one before), filled
-/// from the bottom in white like Control Center, with the symbol at its foot in black once the fill reaches it. Never aqua.
+/// from the bottom in white like Control Center, with the symbol at its foot in black once the fill reaches it.
 struct SwipeLevelIndicator: View {
     @ObservedObject var swipe: PlayerSwipe
 
@@ -228,12 +228,12 @@ struct SwipeLevelIndicator: View {
             GeometryReader { proxy in
                 VStack(spacing: 0) {
                     Spacer(minLength: 0)
-                    Rectangle().fill(.white).frame(height: proxy.size.height * level)
+                    Rectangle().fill(Brand.onMedia).frame(height: proxy.size.height * level)
                 }
             }
             Image(systemName: symbol(kind, level))
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(level >= iconCovered ? Color.black : Color.white)
+                .foregroundStyle(level >= iconCovered ? Brand.onAction : Brand.onMedia)
                 .frame(height: 28)
                 .padding(.bottom, Space.s3)
         }

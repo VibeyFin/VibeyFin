@@ -219,7 +219,7 @@ private class Edges(val left: Int, val top: Int, val right: Int, val bottom: Int
 
 /**
  * The level a swipe set, on the side being swiped: a vertical pill on `scrim-strong` holding the track, filled from the bottom
- * in `ink` (never aqua), with the glyph at its foot. It shows at once and fades out [HIDE_AFTER_MS] after the finger lifts.
+ * in `ink`, with the glyph at its foot. It shows at once and fades out [HIDE_AFTER_MS] after the finger lifts.
  * TalkBack hears the level as it changes. It takes no touches.
  */
 @Composable

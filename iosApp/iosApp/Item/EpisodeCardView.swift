@@ -24,7 +24,7 @@ struct EpisodeCardView: View {
                 .overlay {
                     LinearGradient(
                         // The picture stays clear well down the card; only the lower part darkens, just enough for the white text to read.
-                        stops: [.init(color: .clear, location: 0), .init(color: .clear, location: 0.4), .init(color: .black.opacity(0.55), location: 0.75), .init(color: .black.opacity(0.78), location: 1)],
+                        stops: [.init(color: .clear, location: 0), .init(color: .clear, location: 0.4), .init(color: Brand.scrim.opacity(0.7), location: 0.75), .init(color: Brand.scrim, location: 1)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -34,21 +34,20 @@ struct EpisodeCardView: View {
                     if episode.played {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.title3)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Brand.onMedia)
                             .padding(Space.s3)
                             .accessibilityLabel(Strings.shared.watched)
                     }
                 }
                 .overlay(alignment: .bottom) {
-                    // Aqua is playback progress: how far into the episode the user got.
                     if let progress = episode.progress {
                         GeometryReader { proxy in
                             ZStack(alignment: .leading) {
                                 Rectangle().fill(Brand.progressTrack)
-                                Rectangle().fill(Brand.accent).frame(width: proxy.size.width * CGFloat(progress.floatValue))
+                                Rectangle().fill(Brand.spark).frame(width: proxy.size.width * CGFloat(progress.floatValue))
                             }
                         }
-                        .frame(height: 4)
+                        .frame(height: 3)
                     }
                 }
                 .frame(width: width)
@@ -92,19 +91,19 @@ struct EpisodeCardView: View {
             if let tag = Strings.shared.episodeTag(season: episode.seasonNumber, episode: episode.episodeNumber) {
                 Text(tag)
                     .font(.caption2.weight(.medium))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Brand.onMedia)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Brand.scrim))
             }
             Text(episode.title)
                 .font(.headline.weight(.bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(Brand.onMedia)
                 .lineLimit(1)
             // Two lines, always, so every card in the row is the same.
             Text(episode.overview ?? "")
                 .font(.subheadline)
-                .foregroundStyle(.white)
+                .foregroundStyle(Brand.onMedia)
                 .lineLimit(2, reservesSpace: true)
                 .multilineTextAlignment(.leading)
             HStack(spacing: Space.s3) {
@@ -116,7 +115,7 @@ struct EpisodeCardView: View {
                 }
             }
             .font(.caption.weight(.semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(Brand.onMedia)
             // The facts line stops short of the download button at the bottom-right.
             .padding(.trailing, download != nil || canDownload ? 36 : 0)
         }

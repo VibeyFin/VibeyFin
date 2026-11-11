@@ -12,9 +12,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
-/** Fails when the Kotlin tokens drift from design/tokens.json (the `android` theme column). */
+/** Fails when the Kotlin tokens drift from design/tokens.json (the `android` platform column of every theme). */
 class DesignTokensTest {
     private val tokens: JsonObject =
         Json.parseToJsonElement(File("../design/tokens.json").readText()).jsonObject
@@ -22,35 +21,6 @@ class DesignTokensTest {
     private fun family(name: String) = tokens.getValue(name).jsonObject.getValue("tokens").jsonArray
         .map { it.jsonObject }
         .associateBy { it.getValue("name").jsonPrimitive.content }
-
-    private val colors = VibeyFinTokens.Colors
-    private val actualColors: Map<String, Color> = mapOf(
-        "bg" to colors.bg,
-        "surface-1" to colors.surface1,
-        "surface-2" to colors.surface2,
-        "surface-3" to colors.surface3,
-        "line" to colors.line,
-        "line-strong" to colors.lineStrong,
-        "ink" to colors.ink,
-        "ink-muted" to colors.inkMuted,
-        "ink-subtle" to colors.inkSubtle,
-        "accent" to colors.accent,
-        "accent-pressed" to colors.accentPressed,
-        "on-accent" to colors.onAccent,
-        "accent-soft" to colors.accentSoft,
-        "on-accent-soft" to colors.onAccentSoft,
-        "danger" to colors.danger,
-        "scrim" to colors.scrim,
-        "scrim-strong" to colors.scrimStrong,
-        "progress-track" to colors.progressTrack,
-        "focus" to colors.focus,
-        "avatar-1" to colors.avatar1,
-        "avatar-2" to colors.avatar2,
-        "avatar-3" to colors.avatar3,
-        "avatar-4" to colors.avatar4,
-        "avatar-5" to colors.avatar5,
-        "avatar-6" to colors.avatar6,
-    )
 
     // glass is a preview stand-in (Android never uses glass); positive is an alias of ink
     private val notModelled = setOf("glass", "positive")
@@ -67,14 +37,22 @@ class DesignTokensTest {
     }
 
     @Test
-    fun everyAndroidColorTokenMatches() {
+    fun everyThemeHoldsEveryAndroidColorRole() {
         val json = family("color").filterKeys { it !in notModelled }
+        val themes = tokens.getValue("themes").jsonArray.map { it.jsonObject }
 
-        assertEquals(json.keys, actualColors.keys, "token names differ from design/tokens.json")
-        json.forEach { (name, token) ->
-            val expected = argb(token.getValue("value").jsonObject.getValue("android").jsonPrimitive.content)
+        assertEquals(themes.map { it.getValue("id").jsonPrimitive.content }.toSet(), ThemePalettes.all.keys, "theme ids differ from design/tokens.json")
+        themes.forEach { theme ->
+            val id = theme.getValue("id").jsonPrimitive.content
+            val overrides = theme.getValue("overrides").jsonObject
+            val actual = ThemePalettes.all.getValue(id).byRole
 
-            assertEquals(expected, actualColors.getValue(name).toArgb(), "color $name drifted")
+            assertEquals(json.keys, actual.keys, "role names of $id differ from design/tokens.json")
+            json.forEach { (role, token) ->
+                val value = (overrides[role] ?: token.getValue("value")).jsonObject.getValue("android").jsonPrimitive.content
+
+                assertEquals(argb(value), actual.getValue(role).toArgb(), "color $role of $id drifted, run ./gradlew generateThemes")
+            }
         }
     }
 
@@ -129,7 +107,14 @@ class DesignTokensTest {
     }
 
     @Test
-    fun thePrimaryActionColourIsAqua() {
-        assertTrue(VibeyFinTokens.Colors.accent.toArgb() == 0xFF3FE0D0.toInt())
+    fun anUnknownThemeIdFallsBackToTheDefaultTheme() {
+        assertEquals(ThemePalettes.all.getValue(ThemePalettes.DEFAULT_ID), ThemePalettes.byId("no-such-theme"))
+        assertEquals(ThemePalettes.all.getValue(ThemePalettes.DEFAULT_ID), ThemePalettes.byId(null))
+    }
+
+    @Test
+    fun theActionAndTheSparkKeepTheirBrandValues() {
+        assertEquals(0xFFFFFFFF.toInt(), VibeyFinTokens.Colors.action.toArgb())
+        assertEquals(0xFFE07A45.toInt(), VibeyFinTokens.Colors.spark.toArgb())
     }
 }

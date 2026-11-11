@@ -1,8 +1,6 @@
 import SwiftUI
 
-/// The one filter chip, on Home, a category page and Search (the mockup's FilterChips): a capsule on `surface-2`
-/// with `ink`; `active` fills it `ink` with `bg` text, like the season buttons. One that opens a list has a chevron.
-/// 44pt to touch, 36pt to look at. A capsule on the system background, never glass; aqua is not used here.
+/// The one filter chip, on Home, a category page and Search. One that opens a list has a chevron. 44pt to touch, 36pt to look at.
 struct FilterChipButton: View {
     let label: String
     var active = false
@@ -18,10 +16,10 @@ struct FilterChipButton: View {
                 }
             }
             .font(.subheadline.weight(.medium))
-            .foregroundStyle(active ? Color(.systemBackground) : Color.primary)
+            .foregroundStyle(active ? Brand.onSparkSoft : Color.primary)
             .padding(.horizontal, Space.s4)
             .frame(height: 36)
-            .background(Capsule().fill(active ? Color.primary : Color(.tertiarySystemBackground)))
+            .background(Capsule().fill(active ? Brand.sparkSoft : Color(.tertiarySystemBackground)))
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }

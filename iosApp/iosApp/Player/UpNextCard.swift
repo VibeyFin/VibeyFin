@@ -1,9 +1,8 @@
 import SwiftUI
 import Shared
 
-/// Offers the next episode in the last seconds of this one: its picture, "S1 E2 · title", how many
-/// seconds until it starts on its own, "Play now" (a white filled capsule; the player stays in Apple's
-/// scheme, never aqua) and "Watch credits", a glass capsule that dismisses it. The card is Liquid
+/// Offers the next episode when the credits start: its picture, "S1 E2 · title", how many seconds
+/// until it starts on its own, "Play now" and "Watch credits", which dismisses it. The card is Liquid
 /// Glass on iOS 26 and the scrim before that, over the video.
 struct UpNextCard: View {
     let upNext: UpNext
@@ -33,9 +32,10 @@ struct UpNextCard: View {
                 Button(action: onPlayNow) {
                     Label(Strings.shared.playNow.titleCased(), systemImage: "play.fill")
                         .font(.headline)
-                        .foregroundStyle(Color(.systemBackground))
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(Capsule().fill(Color.primary))
+                        .foregroundStyle(Brand.onAction)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: UpNextButton.height)
+                        .background(Capsule().fill(Brand.action))
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
@@ -43,15 +43,31 @@ struct UpNextCard: View {
                     Text(Strings.shared.watchCredits.titleCased())
                         .font(.headline)
                         .foregroundStyle(.primary)
-                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: UpNextButton.height)
+                        .modifier(UpNextSecondaryBackground())
                         .contentShape(Capsule())
                 }
-                .modifier(SkipButtonStyle())
+                .buttonStyle(.plain)
             }
         }
         .padding(Space.s3)
         .frame(width: 340)
         .modifier(UpNextBackground())
+    }
+}
+
+private enum UpNextButton {
+    static let height: CGFloat = 44
+}
+
+private struct UpNextSecondaryBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(in: .capsule)
+        } else {
+            content.background(Capsule().fill(Brand.scrim))
+        }
     }
 }
 

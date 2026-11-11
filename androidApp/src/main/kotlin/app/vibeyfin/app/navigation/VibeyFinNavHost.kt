@@ -42,7 +42,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
@@ -92,6 +91,7 @@ import app.vibeyfin.app.settings.SeerrSettingsRoute
 import app.vibeyfin.app.settings.SettingsRoute
 import app.vibeyfin.app.settings.pageIdOrRoot
 import app.vibeyfin.app.startup.StartupRoute
+import app.vibeyfin.app.theme.FixedColors
 import app.vibeyfin.app.theme.isTabletWidth
 import app.vibeyfin.app.whoswatching.SignInFlight
 import app.vibeyfin.app.whoswatching.WhoIsWatchingRoute
@@ -265,7 +265,7 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
     val tabs = Tab.entries.filter { !offline || it != Tab.Library }
 
     Scaffold(
-        containerColor = if (onPlayer) Color.Black else MaterialTheme.colorScheme.background,
+        containerColor = if (onPlayer) FixedColors.videoBackground else MaterialTheme.colorScheme.background,
         // No top inset: each screen keeps clear of the status bar itself, so a detail page's artwork runs up behind it
         // instead of under a strip of the page's color
         contentWindowInsets = if (onPlayer) {

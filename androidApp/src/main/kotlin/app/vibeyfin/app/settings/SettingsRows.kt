@@ -76,13 +76,13 @@ private fun Modifier.dimmedUnless(enabled: Boolean) = if (enabled) this else alp
 
 private val RowShape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md)
 
-/** A group's title above its card, in aqua text (`android.md`). */
+/** A group's title above its card. */
 @Composable
 fun SectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s4),
     )
 }
@@ -180,13 +180,12 @@ fun ToggleRow(item: ToggleItem, onToggle: (Boolean) -> Unit) {
     ) {
         RowText(item.title, item.help, Modifier.weight(1f))
 
-        // Aqua is for the one primary action, so the switch is light on dark instead
         Switch(
             checked = item.checked,
             onCheckedChange = null,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = VibeyFinTokens.Colors.bg,
-                checkedTrackColor = VibeyFinTokens.Colors.ink,
+                checkedThumbColor = VibeyFinTokens.Colors.onSpark,
+                checkedTrackColor = VibeyFinTokens.Colors.spark,
                 uncheckedThumbColor = VibeyFinTokens.Colors.inkMuted,
                 uncheckedTrackColor = VibeyFinTokens.Colors.surface3,
                 uncheckedBorderColor = VibeyFinTokens.Colors.lineStrong,
@@ -222,7 +221,7 @@ fun ChoiceRow(item: ChoiceItem, onChoose: (Int) -> Unit) {
     }
 }
 
-/** One option of an inline checklist: the chosen one is an `accent-soft` pill, with no tick. */
+/** One option of an inline checklist. */
 @Composable
 fun ChecklistRow(option: SettingOption, selected: Boolean, onClick: () -> Unit) {
     Box(Modifier.padding(horizontal = VibeyFinTokens.Space.s2, vertical = VibeyFinTokens.Space.s1)) {
@@ -230,19 +229,19 @@ fun ChecklistRow(option: SettingOption, selected: Boolean, onClick: () -> Unit) 
             text = option.label,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = if (selected) FontWeight.SemiBold else null,
-            color = if (selected) VibeyFinTokens.Colors.onAccentSoft else MaterialTheme.colorScheme.onSurface,
+            color = if (selected) VibeyFinTokens.Colors.onSparkSoft else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = VibeyFinTokens.Size.touch)
                 .clip(CircleShape)
-                .background(if (selected) VibeyFinTokens.Colors.accentSoft else Color.Transparent)
+                .background(if (selected) VibeyFinTokens.Colors.sparkSoft else Color.Transparent)
                 .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
                 .padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s3),
         )
     }
 }
 
-/** [selected] is for the tablet's list pane: the open page is an `accent-soft` pill. Null (the phone) draws no pill. */
+/** [selected] is for the tablet's list pane: the open page. Null (the phone) marks none. */
 @Composable
 fun LinkRow(item: LinkItem, selected: Boolean? = null, onOpen: () -> Unit) {
     val content: @Composable (Modifier) -> Unit = { modifier ->
@@ -252,7 +251,7 @@ fun LinkRow(item: LinkItem, selected: Boolean? = null, onOpen: () -> Unit) {
                 item.title,
                 item.help,
                 Modifier.weight(1f),
-                titleColor = if (selected == true) VibeyFinTokens.Colors.onAccentSoft else MaterialTheme.colorScheme.onSurface,
+                titleColor = if (selected == true) VibeyFinTokens.Colors.onSparkSoft else MaterialTheme.colorScheme.onSurface,
             )
             item.value?.let { Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -266,7 +265,7 @@ fun LinkRow(item: LinkItem, selected: Boolean? = null, onOpen: () -> Unit) {
             content(
                 Modifier
                     .clip(CircleShape)
-                    .background(if (selected) VibeyFinTokens.Colors.accentSoft else Color.Transparent)
+                    .background(if (selected) VibeyFinTokens.Colors.sparkSoft else Color.Transparent)
                     .selectable(selected = selected, role = Role.Button, onClick = onOpen),
             )
         }

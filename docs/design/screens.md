@@ -13,8 +13,8 @@ The Home tab: the same content, rows and rules on both platforms, with native ch
   buttons under it, pinned there while the page scrolls (as the Library's chips are); the backdrop and rows scroll under the system tab bar (the safe area provides the bottom inset).
 - Android: the tab header every tab shares (`TabHeader`: "Home" in `headlineSmall` at the left, the avatar at the right, no logo), the
   category buttons under it, pinned there while the page scrolls, rows scrolling behind the floating bar (their bottom padding leaves its space free).
-- Same on both: the page name ("Home") at the left, the profile at the right, as on every tab; category buttons (pinned) → hero (optional, see **Home hero**) → Continue watching → Recently added in each video library → a row for every genre, biggest first (a profile can limit them or turn them off). There is no row of the libraries: the Library tab is where they are browsed. If the libraries can't be listed, one "Recently added" row stands in for theirs with the error and Try again. A row with nothing in it is not shown, with no gap; each row loads and fails on its own; a header says "See all" and opens the library or the genre. Aqua only on Play and
-  progress (plus native tinting on iOS). The button row scrolls with the content.
+- Same on both: the page name ("Home") at the left, the profile at the right, as on every tab; category buttons (pinned) → hero (optional, see **Home hero**) → Continue watching → Recently added in each video library → a row for every genre, biggest first (a profile can limit them or turn them off). There is no row of the libraries: the Library tab is where they are browsed. If the libraries can't be listed, one "Recently added" row stands in for theirs with the error and Try again. A row with nothing in it is not shown, with no gap; each row loads and fails on its own; a header says "See all" and opens the library or the genre. Copper only on progress and
+  selection; Play is white. The button row scrolls with the content.
 
 ### Category buttons
 
@@ -37,7 +37,7 @@ a tap and for picking an entry.
   trailing dropdown arrow and opens a `ModalBottomSheet` with the player's `OptionList`.
 - The sheet: loading shows grey lines, an empty list says so, a failure offers Try again. The list is fetched once
   per session.
-- Both: aqua is not used in this row or the sheet. Accessibility: the row is a group named "Filter Home"; the
+- Both: the selected chip is `spark-soft`; nothing else in this row or the sheet is copper. Accessibility: the row is a group named "Filter Home"; the
   button that opens the sheet says "Categories, opens a list".
 
 ### Category page
@@ -49,10 +49,10 @@ The page a button or the sheet opens.
 - **Shows** are series by name; **Movies** are movies by name; **New** is movies and shows by when they were
   added to the server, newest first; a genre is its movies and shows by name.
 - **Sort and Genre** sit under the title as two buttons (a genre's own page has no Genre button). Each opens
-  the player's picker sheet (a title, one row per choice; the one in use is a soft `accent-soft` pill, not a tick). Sort: Name (A to Z), Recently
+  the player's picker sheet (a title, one row per choice; the one in use is a soft `spark-soft` pill, not a tick). Sort: Name (A to Z), Recently
   added (newest first; New starts here) and Rating (best first); Genre: All genres and each genre with how many titles
   it holds on this page: movies only on Movies, shows only on Shows, both on New; a genre with none of the page's kind
-  is left out. A button that changes the page shows filled (`accent-soft`), so it is clear what is applied. Choosing
+  is left out. A button that changes the page shows filled (`spark-soft`), so it is clear what is applied. Choosing
   reloads the list from the top. The buttons stay put while the list scrolls. These pages have no Year button, no year
   subtitles and no year strip (the Library tab does: see **Library**).
 - Back from an item's page returns to the same place in the list.
@@ -74,7 +74,7 @@ An optional card between the category buttons and Continue watching: one title, 
   VoiceOver / TalkBack on. Each page reads "Featured, 2 of 3: <title>, opens its page".
 - **Card:** a rounded card (`radius-artwork`), 4:3 on a phone and 2.6:1 from 600dp. The `Backdrop` fills it under a `scrim` that rises
   from the bottom; over it, centred: the `Logo`, a line of what it is (a movie or a show) and its genres.
-- **Buttons:** Play (the one aqua button) beside My List (a heart), 40dp tall, acting on the item showing. Play on a movie starts it; on a show it starts the next
+- **Buttons:** Play (the one white button) beside My List (a heart), 40dp tall, acting on the item showing. Play on a movie starts it; on a show it starts the next
   episode, else the first episode of the first season that is not Specials, else opens the page. Tapping the picture opens the page; a long press opens
   the poster menu (Details, Trailer, My List), the same sheet as a poster's.
 - **Loading:** Home waits until it has read the profile's hero setting, so the skeleton is in the first frame and never slides in; it
@@ -87,7 +87,7 @@ The Library tab: every movie and show in the library as a poster grid (three acr
 
 - **Buttons** under the title, one scrolling row of filled capsules: Movies, Shows, Collections, Sort, Genre, Year, People and Clear
   (Clear only when something is applied). Movies and Shows narrow the type; Collections lists the boxsets instead. A button that
-  changes the page shows filled `accent-soft`.
+  changes the page shows filled `spark-soft`.
 - **Year** picks a decade (2020s, 2010s, 2000s, 1990s, 1980s, and Older). **People** opens a sheet with a search field: type a name, pick
   an actor or director, and the grid lists their titles.
 - **Changing a filter** keeps the old list on screen, dimmed, until the new one arrives. Back from an item returns to the same place.
@@ -136,7 +136,7 @@ A long press on any poster, in a row, a grid or search results, or on a Home her
   **My List** (a heart, filled when it is on the list; adds or removes, and says which).
 - Android: the rows are there when the sheet opens. Lists do not carry trailers, so the sheet looks the title up; a grey line the height of a row holds the Trailer row's place while the
   server answers, and a title with no trailer never shows a Trailer row that then goes away. The lookup never undoes a My List change made in the meantime.
-- A held row lights up `accent-soft` and does not shrink. A change that could not be saved is taken back and the sheet says so in `danger`.
+- A held row lights up `spark-soft` and does not shrink. A change that could not be saved is taken back and the sheet says so in `danger`.
 - **iOS:** a native `.contextMenu` (the same as Continue watching and the episodes), so a finger can press, slide to a row and let go; the system draws it, lifts the poster and plays
   the haptic. Rows, in order: Details, Trailer, My List, Download (with a download: Pause or Resume and Remove), each with an SF Symbol and in title case. No header. SwiftUI fixes the
   rows as the finger lands, so they come from what the poster knows (My List from the item, Download from the user's permission) and a greyed "Checking for trailer…" row (`film`, disabled)
@@ -166,7 +166,7 @@ official rating, runtime, genres, overview, `UserData` (playback position, `IsFa
 - Layered over the image: the `Logo` image as the title, centered and large (the `brand-display` title,
   centered, when the item has no Logo) → facts line centered under it (year · rating · runtime · genres,
   `ink-muted`) → overview (3 lines + "More", left-aligned) → Play / Resume → secondary actions.
-- Play / Resume is the one aqua `primary` button on the screen, large (iOS
+- Play / Resume is the one white `action` button on the screen, large (iOS
   `.borderedProminent` capsule `.controlSize(.large)`, Android filled 56dp). The label says what happens:
   "Play", "Resume · 38m left" (with the play icon). It is full width until there is something to resume;
   then a round icon-only "start over" button (a circular arrow, the grey secondary button) sits beside it.
@@ -216,7 +216,7 @@ The hero, bar and secondary actions follow **Detail**.
   one peeking; more seasons scroll sideways. Labels are the season names Jellyfin returns ("Season 1",
   "Specials").
 - The selected season is marked. iOS: filled `ink` capsule with `bg` text. Android: selected `FilterChip`
-  in `accent-soft` / `on-accent-soft`. Aqua stays reserved for Play / Resume.
+  in `spark-soft` / `on-spark-soft`. Copper stays reserved for progress and selection; Play / Resume is white.
 - On open the row starts on the season of the episode Play / Resume will start, scrolled so that button
   is visible, and that episode is marked current in the list.
 - Tapping another season swaps the episode list in place: no navigation, no sheet, the hero stays where
@@ -236,12 +236,12 @@ One episode in a season list.
 rating, air date, and its `UserData` (played, resume position).
 
 - **Phone (compact width):** a row in a list down the page. A 148dp 1.6:1 picture on the left plays it (a check at its top once
-  watched, an aqua progress bar along its bottom edge when part watched, a brighter outline on the episode Play starts). On the
+  watched, a copper progress bar along its bottom edge when part watched, a brighter outline on the episode Play starts). On the
   right, the "S1 E4" tag, the title, a line with how long it is (or how much is left), its rating and air date, and two lines of
   synopsis; those open the episode's page.
 - **Regular width:** a card in a row that scrolls sideways, 380dp wide, 1.6:1, **all of its text on the still**: at
   the bottom, over a scrim, the "S1 E4" tag, the title, two lines of synopsis, and a line with how long it is (or how much is
-  left), its rating and the day it aired. A check sits at the top once watched, an aqua progress bar runs along the bottom edge
+  left), its rating and the day it aired. A check sits at the top once watched, a copper progress bar runs along the bottom edge
   when it is part watched, and the episode Play starts has a brighter outline.
 - On a card, a tap on the picture plays it and a tap on the words opens its page. A long press opens a menu on both platforms: **View episode** (its own page) and the watched mark.
 - Each episode has its own **download button**: at the end of the row on a phone, at the bottom-right of the still on a card, under the watched check (top-right); the facts line stops short of it so the release date is never covered. It is the
@@ -252,7 +252,7 @@ rating, air date, and its `UserData` (played, resume position).
 
 ## Downloads
 
-The Download action, the Downloads tab and the questions around them. Everything is in `ink`: aqua never signals status, and a
+The Download action, the Downloads tab and the questions around them. Everything is in `ink`: copper never signals status, and a
 download's progress is not playback progress.
 
 - **Download button** (fourth secondary action, icon over label). One picture for the state, drawn from the shared `DownloadBadge`:
@@ -309,7 +309,7 @@ backdrop with the details in a left column over it, then the same rows as on the
 - iPad: the floating glass tab bar stays at the top center (system-rendered with `.sidebarAdaptable`), with the profile avatar in the same row at the right and no second header row;
   glass back button left, Share and `…` right.
 - Android: the four destinations sit in the top app bar, centered (icon + label, the active one in an
-  `accent-soft` pill), over the backdrop with back on the left. No navigation
+  `spark-soft` pill), over the backdrop with back on the left. No navigation
   rail and no bottom bar at these widths.
 
 ### Below the hero
@@ -329,7 +329,7 @@ Only once the profile is signed in to Seerr, never on a kids profile. The refere
 - **Search:** "Not in your library" is the last group, with a "Not in library" filter chip. When the library has nothing, a line says so above it.
 - **Home:** My requests right after Continue watching; Trending, Popular movies, Popular shows and Coming soon after the
   library's rows and before the genres. Each loads on its own and is hidden when empty or failing.
-- **Title page:** the detail page's hero and layout. Status line in ink with its icon (danger for a failure). One aqua button:
+- **Title page:** the detail page's hero and layout. Status line in ink with its icon (danger for a failure). One white `action` button:
   Request, Request seasons, Request again; a quiet disabled one when there is nothing to do. Trailer, Request in 4K and Cancel
   request beside it. Seasons, Cast (not tappable), More like this.
 - **Poster menu and season picker:** a long press on a Seerr poster anywhere. A movie's Request sends at once; a show's opens the
@@ -383,14 +383,14 @@ addresses); **Sign out** in `danger` text with a confirmation. Sign out clears t
 downloads from the device and keeps the profile's tile in "Who's watching?", locked (the explicit sign-out the session rules allow). Name and avatar
 are edited in Jellyfin, not here. A kids profile has no Sign out _(planned with kids mode)_.
 
-**Quick Connect** (mockup **QuickConnectApprovePhone**) is reached from the profile menu (after the PIN to open Settings when that is on) and from the Profile page, under Switch profile. Its page: "On the other device, choose Quick Connect. Type the code it shows here to sign it in as Alex.", a Code field (number pad, digits only, six) and **Approve** (aqua, the page's one primary action; "Approving…" while busy). Approved says so under the field with a check in the text colour and clears it; a code the server never gave out, Quick Connect off on the server and an unreachable server are said under the field, which keeps the code. Not on a kids profile.
+**Quick Connect** (mockup **QuickConnectApprovePhone**) is reached from the profile menu (after the PIN to open Settings when that is on) and from the Profile page, under Switch profile. Its page: "On the other device, choose Quick Connect. Type the code it shows here to sign it in as Alex.", a Code field (number pad, digits only, six) and **Approve** (the white `action` button, the page's one primary action; "Approving…" while busy). Approved says so under the field with a check in the text colour and clears it; a code the server never gave out, Quick Connect off on the server and an unreachable server are said under the field, which keeps the code. Not on a kids profile.
 
 ### Quality
 
 A per-profile cap on what the server sends: **Maximum** by default (the original, direct play when possible),
 then 4K 40, 1080p 10, 720p 4 and 480p 1.5 Mbps. It is the one choice shown as a checklist: the rows sit inline in
 their own section, the section title once, the footer (help text) below, and the chosen row is a soft
-`accent-soft` pill with no tick, on both platforms. There is no quality menu in the player.
+`spark-soft` pill with no tick, on both platforms. There is no quality menu in the player.
 
 ### Skipping and autoplay
 
@@ -438,7 +438,7 @@ the left, the chosen page on the right.
 - iPad: `NavigationSplitView`, the root as an inset grouped sidebar list with the system selection, the page in
   the detail column with its own title; the back chevron is in the sidebar only.
 - Android: a plain two-column layout at the existing 600dp breakpoint (not `material3-adaptive`), the selected
-  row in an `accent-soft` pill.
+  row in an `spark-soft` pill.
 - At compact width (Split View, a folded device) it collapses to the phone's push navigation.
 
 ## Sign-in
@@ -451,12 +451,12 @@ From first launch to Home, and back out. The mockups are **SignInFlow** (the map
   circle on the profile's tint, the same as its tile; Jellyfin profile pictures aren't shown), at the tab header's size (iOS `.title2`
   bold, Android `headlineSmall`). Pushed pages add the platform's back button above it; sub-pages match Settings; sheets match
   the app's sheets.
-- **First launch:** the wordmark, "Connect to your Jellyfin server to start watching." and **Add server** (aqua). Android searches
+- **First launch:** the wordmark, "Connect to your Jellyfin server to start watching." and **Add server** (the white `action` button). Android searches
   the network and lists what answers; iOS can't search (no multicast entitlement) and says where to find the address instead.
 - **Servers:** a card per saved server (name, the address that worked last, version, how many addresses and profiles), a menu with
   **Server details** (its addresses, add or remove one) and **Remove server** (asks first; signs out its profiles on this device and
   deletes their downloads). Android adds "On your network". **Add server** at the foot is the secondary button with a leading +
-  (Android: tonal, its label in `ink`, since `on-accent-soft` on `accent-soft` reads too faintly; iOS: the grey bordered button).
+  (Android: `tonal` / `on-tonal`; iOS: the grey bordered button).
 - **Add a server:** a labelled field with help under it, focused on open; Go on the keyboard or Connect connects and puts the keyboard away; Connect → Found (or "you already have this server") →
   **Add server**, which goes straight to that server's Who's watching?. A failure is said under the field, which keeps the text.
 - **Who's watching?:** the server's name over the title, a tile per profile (lock badge when it needs a password or a PIN), then

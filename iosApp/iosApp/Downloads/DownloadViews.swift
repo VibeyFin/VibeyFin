@@ -14,8 +14,7 @@ struct DownloadActions {
 }
 
 /// What a download looks like, in one picture: the arrow when there is none, a ring that fills while it comes in (grey and still while
-/// it waits for Wi-Fi or a connection), pause bars, a warning, and a phone with a check once it is on the device. All in the label colour:
-/// aqua is for the one primary action and playback progress, and never signals status.
+/// it waits for Wi-Fi or a connection), pause bars, a warning, and a phone with a check once it is on the device.
 struct DownloadBadgeView: View {
     let badge: DownloadBadge
     let progress: Float?
@@ -107,7 +106,7 @@ struct EpisodeDownloadButton: View {
     }
 
     private func icon(_ badge: DownloadBadge, progress: Float?) -> some View {
-        DownloadBadgeView(badge: badge, progress: progress, tint: overPicture ? .white : .primary)
+        DownloadBadgeView(badge: badge, progress: progress, tint: overPicture ? Brand.onMedia : .primary)
             .font(.title3)
             .frame(width: 28, height: 28)
             .padding(overPicture ? 6 : 8)
@@ -157,7 +156,7 @@ struct DownloadConfirmSheet: View {
                     Toggle(isOn: Binding(get: { prompt.unwatchedOnly }, set: { _ in onToggleUnwatched() })) {
                         Text(Strings.shared.downloadUnwatchedOnly)
                     }
-                    .tint(Color(.label))
+                    .tint(Brand.spark)
                 }
             }
             Spacer(minLength: 0)

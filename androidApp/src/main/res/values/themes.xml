@@ -3,6 +3,6 @@
     <!-- Window theme only; all real styling is Compose (VibeyFinTheme). The dark window background
          avoids a white flash while the app starts. -->
     <style name="Theme.VibeyFin" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/ink</item>
+        <item name="android:windowBackground">@color/window_background</item>
     </style>
 </resources>

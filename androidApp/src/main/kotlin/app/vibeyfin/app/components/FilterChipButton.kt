@@ -13,9 +13,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import app.vibeyfin.app.theme.VibeyFinTokens
 
 /**
- * The one filter chip, on Home, a category page and Search (the mockup's FilterChips): filled `surface-2` with
- * `ink-muted`, no outline; [active] fills it with `accent-soft`. One that opens a list ([opensList]) has an arrow.
- * Aqua is never used here.
+ * The one filter chip, on Home, a category page and Search (the mockup's FilterChips). One that opens a list ([opensList]) has an arrow.
  */
 @Composable
 fun FilterChipButton(
@@ -35,9 +33,9 @@ fun FilterChipButton(
         },
         colors = if (active) {
             AssistChipDefaults.assistChipColors(
-                containerColor = VibeyFinTokens.Colors.accentSoft,
-                labelColor = VibeyFinTokens.Colors.onAccentSoft,
-                trailingIconContentColor = VibeyFinTokens.Colors.onAccentSoft,
+                containerColor = VibeyFinTokens.Colors.sparkSoft,
+                labelColor = VibeyFinTokens.Colors.onSparkSoft,
+                trailingIconContentColor = VibeyFinTokens.Colors.onSparkSoft,
             )
         } else {
             AssistChipDefaults.assistChipColors(

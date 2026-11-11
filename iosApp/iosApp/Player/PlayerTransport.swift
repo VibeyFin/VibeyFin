@@ -50,7 +50,7 @@ struct PlayerTransport: View {
     private func disc(symbol: String, label: String, diameter: CGFloat, font: Font, action: @escaping () -> Void) -> some View {
         let glyph = Image(systemName: symbol)
             .font(font.weight(.semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(Brand.onMedia)
             .frame(width: diameter, height: diameter)
             .contentShape(Circle())
         if #available(iOS 26.0, *) {
@@ -74,7 +74,7 @@ struct SeekFlash: View {
         Text(text)
             .font(.title3.weight(.semibold))
             .monospacedDigit()
-            .foregroundStyle(.white)
+            .foregroundStyle(Brand.onMedia)
             .padding(.horizontal, Space.s4)
             .padding(.vertical, Space.s2)
             .background(Capsule().fill(Brand.scrim))
