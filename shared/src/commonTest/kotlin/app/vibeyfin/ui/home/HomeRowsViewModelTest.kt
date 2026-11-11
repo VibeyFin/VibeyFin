@@ -231,8 +231,11 @@ class HomeRowsViewModelTest {
 
         app.profileSettings.setShowWatchedInRows(false)
 
-        viewModel.uiState.first { app.jellyfin.requestsTo("GET", "/Items/Latest").count { it.query["isPlayed"] == "false" } == 2 && it.rows.none { row -> row.loading } }
-        viewModel.uiState.first { app.jellyfin.requestsTo("GET", "/Items").count { it.query["filters"] == "IsUnplayed" } == 5 && it.rows.none { row -> row.loading } }
+        val latest = app.jellyfin.awaitRequests("GET", "/Items/Latest", count = 2) { it.query["isPlayed"] == "false" }
+        val genres = app.jellyfin.awaitRequests("GET", "/Items", count = 5) { it.query["filters"] == "IsUnplayed" }
+
+        assertEquals(2, latest.size)
+        assertEquals(5, genres.size)
     }
 
     @Test
