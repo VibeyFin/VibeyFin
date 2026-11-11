@@ -54,10 +54,13 @@ class SubtitleEntryTest {
         return server
     }
 
+    // Virtual time can run the second out before the fake server answers, so only an entry that should stay away uses it.
     private suspend fun ItemViewModel.offered(): Boolean {
         uiState.first { !it.loading }
         return withTimeoutOrNull(1.seconds) { uiState.first { it.offersSubtitleSearch } } != null
     }
+
+    private suspend fun ItemViewModel.shows(): Boolean = uiState.first { it.offersSubtitleSearch }.offersSubtitleSearch
 
     @Test
     fun theEntryAppearsOnceAFailedPermissionCheckPasses() = runTest {
@@ -102,16 +105,16 @@ class SubtitleEntryTest {
         signedIn(admin = false, allowed = true)
         val page = page()
 
-        assertTrue(page.offered())
+        assertTrue(page.shows())
         page.onRetry()
         page.uiState.first { !it.loading && it.item != null }
-        assertTrue(page.offered())
+        assertTrue(page.shows())
     }
 
     @Test
     fun aNonAdminWithThePermissionSeesTheEntry() = runTest {
         signedIn(admin = false, allowed = true)
-        assertTrue(page().offered())
+        assertTrue(page().shows())
     }
 
     @Test
@@ -123,7 +126,7 @@ class SubtitleEntryTest {
     @Test
     fun anEpisodeHasTheEntry() = runTest {
         signedIn(admin = false, allowed = true, type = "Episode")
-        assertTrue(page().offered())
+        assertTrue(page().shows())
     }
 
     @Test
