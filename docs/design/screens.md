@@ -370,8 +370,11 @@ A show is watched only once every episode is (the server's own rule). More like 
 has no such filter, so three times as many are asked for and the watched ones dropped on the device. Continue watching, My List,
 the hero (which never features a watched title anyway) and the library and category pages are not affected. On, Recently added
 still follows the profile's own Jellyfin preference "Hide watched content from latest media" (`HidePlayedInLatest`, on by
-default): the API has no way to ask Latest for watched titles past it. A row left empty is hidden, as any empty row. Changing it
-while Home is open asks for those rows again.
+default): the API has no way to ask Latest for watched titles past it, and the help text says so. A row left empty is hidden, as
+any empty row: Home's genre list is still picked from all genres, so a genre with nothing unwatched left drops out and Home shows
+one genre row fewer, with no empty state. More like this asks for 36 to keep 12, since `/Similar` can't be paged: a profile that
+has watched most of the similar titles gets a shorter row, or none, without a message. Changing the switch while Home is open
+asks for those rows again.
 
 ### Profile
 

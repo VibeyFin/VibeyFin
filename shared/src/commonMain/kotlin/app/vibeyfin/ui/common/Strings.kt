@@ -715,7 +715,7 @@ object Strings {
     fun homeGenreRowsTop(n: Int) = "Top $n"
 
     val showWatchedInRowsTitle = "Show watched titles in rows"
-    val showWatchedInRowsHelp = "Whether Recently added, genre rows and More like this show titles you've already watched."
+    val showWatchedInRowsHelp = "Whether Recently added, genre rows and More like this show titles you've already watched. With it on, Recently added still follows your Jellyfin setting."
 
     val stillWatchingTitle = "Ask if you're still watching"
     val stillWatchingHelp =
