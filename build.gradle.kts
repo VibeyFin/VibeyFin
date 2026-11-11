@@ -15,6 +15,8 @@ plugins {
     alias(libs.plugins.version.catalog.update)
 }
 
+apply(from = "gradle/theme-generator.gradle.kts")
+
 // Style checks: ./gradlew ktlintCheck and detekt; ktlintFormat fixes what it can
 val ktlintVersion = libs.versions.ktlint.get()
 
