@@ -9,9 +9,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
-/** The colour theme the signed-in profile uses; the default theme while nobody is signed in. */
+/** The signed-in profile's theme id; the default while nobody is signed in. */
 class ThemeViewModel(profileSettings: ProfileSettings) : ViewModel() {
     val themeId: StateFlow<String> = profileSettings.themeId
-        .map { it ?: ThemeIds.DEFAULT }
+        .map { id: String? -> id ?: ThemeIds.DEFAULT }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemeIds.DEFAULT)
 }
