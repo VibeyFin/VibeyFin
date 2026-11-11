@@ -12,6 +12,7 @@ enum class SettingKey {
     BingeThreshold,
     HomeGenreRows,
     HomeHeroItems,
+    ShowWatchedInRows,
     SkipBack,
     SkipForward,
     AutoSkip,

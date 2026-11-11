@@ -84,7 +84,7 @@ class MigrationTest {
                 database.count(
                     "account_settings",
                     "userId = 'u1' AND showPlaybackStats = 0 AND bingeThreshold = 3 AND homeGenreRows = 0 AND showHomeHero = 1 AND skipBackSeconds = 10 AND skipForwardSeconds = 10 AND autoSkipSegments = 0 AND bufferAheadSeconds = 20 AND maxStreamingBitrate = 0 AND captionsFollowSystem = 1 AND subtitleSize = 1 AND subtitleTextColor = 0 AND subtitleBackground = 1 AND kidsProfile = 0 AND pinHash IS NULL AND pinSalt IS NULL AND pinOpenProfile = 1 AND pinOpenSettings = 1 AND pinSwitchProfile = 1 AND notificationsEnabled = 0 AND notificationScope = 0 AND pictureInPicture = 1 " +
-                        "AND downloadOverMobile = 0 AND autoCleanWatched = 0 AND storageLimitMb = 0 AND homeHeroItems = 1 AND swipeGestures = 1 AND downloadNotifications = 1",
+                        "AND downloadOverMobile = 0 AND autoCleanWatched = 0 AND storageLimitMb = 0 AND homeHeroItems = 1 AND swipeGestures = 1 AND downloadNotifications = 1 AND showWatchedInRows = 1",
                 ),
                 "settings defaults, from v$version",
             )

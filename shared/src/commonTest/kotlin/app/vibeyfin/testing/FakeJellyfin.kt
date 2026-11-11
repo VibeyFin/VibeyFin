@@ -254,13 +254,13 @@ class FakeJellyfin(
      * returns them. For calls the code under test makes in the background: they end up on the
      * engine's threads, so the test can't know when they are done any other way.
      */
-    suspend fun awaitRequests(method: String, path: String, count: Int = 1): List<RecordedRequest> {
+    suspend fun awaitRequests(method: String, path: String, count: Int = 1, matching: (RecordedRequest) -> Boolean = { true }): List<RecordedRequest> {
         repeat(AWAIT_ATTEMPTS) {
-            val found = recording.withLock { requests.filter { it.method == method && it.path == path } }
+            val found = recording.withLock { requests.filter { it.method == method && it.path == path && matching(it) } }
             if (found.size >= count) return found
             withContext(Dispatchers.Default) { delay(AWAIT_STEP_MS) }
         }
-        throw AssertionError("Expected $count request(s) to $method $path, saw ${requestsTo(method, path).size}")
+        throw AssertionError("Expected $count request(s) to $method $path, saw ${requestsTo(method, path).count(matching)}")
     }
 
     /** What the server saw, in order, as `METHOD path`. */

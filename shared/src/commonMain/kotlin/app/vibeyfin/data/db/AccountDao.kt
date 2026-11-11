@@ -67,6 +67,12 @@ abstract class AccountDao {
     @Query("UPDATE account_settings SET homeGenreRows = :value WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun setHomeGenreRows(serverId: String, userId: String, value: Int)
 
+    @Query("SELECT showWatchedInRows FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeShowWatchedInRows(serverId: String, userId: String): Flow<Boolean?>
+
+    @Query("UPDATE account_settings SET showWatchedInRows = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setShowWatchedInRows(serverId: String, userId: String, value: Boolean)
+
     /** The hero's items: 0 while it is switched off, else how many. */
     @Query("SELECT CASE WHEN showHomeHero THEN homeHeroItems ELSE 0 END FROM account_settings WHERE serverId = :serverId AND userId = :userId")
     abstract fun observeHomeHeroItems(serverId: String, userId: String): Flow<Int?>

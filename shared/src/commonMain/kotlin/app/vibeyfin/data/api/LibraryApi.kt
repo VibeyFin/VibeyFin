@@ -76,13 +76,15 @@ suspend fun JellyfinApi.filteredItems(
     years: List<Int>? = null,
     /** Only titles this person appears in. */
     personId: String? = null,
+    /** Only what the user has not watched; a show only once every episode is watched. */
+    unplayedOnly: Boolean = false,
 ): ApiResult<ItemsResultDto> = get(
     "/Items",
     buildMap {
         years?.let { put("years", it.joinToString(",")) }
         personId?.let { put("personIds", it) }
         put("userId", userId)
-        if (favoritesOnly) put("filters", "IsFavorite")
+        itemFilters(favoritesOnly, unplayedOnly)?.let { put("filters", it) }
         fields?.let { put("fields", it) }
         put("recursive", "true")
         put("includeItemTypes", types.joinToString(","))
@@ -95,13 +97,25 @@ suspend fun JellyfinApi.filteredItems(
     retry = true,
 )
 
+private fun itemFilters(favoritesOnly: Boolean, unplayedOnly: Boolean): String? = listOfNotNull(
+    "IsFavorite".takeIf { favoritesOnly },
+    "IsUnplayed".takeIf { unplayedOnly },
+).joinToString(",").ifEmpty { null }
+
 /**
  * `GET /Items/Latest?parentId=`: what was added to the library most recently, newest first, as a plain list. Episodes
- * are grouped under their show and season by the server (`groupItems`), so a new season is one poster.
+ * are grouped under their show and season by the server (`groupItems`), so a new season is one poster. [unplayedOnly] leaves out
+ * what the user has watched.
  */
-suspend fun JellyfinApi.latestItems(userId: String, parentId: String, limit: Int): ApiResult<List<BaseItemDto>> = get(
+suspend fun JellyfinApi.latestItems(userId: String, parentId: String, limit: Int, unplayedOnly: Boolean = false): ApiResult<List<BaseItemDto>> = get(
     "/Items/Latest",
-    mapOf("userId" to userId, "parentId" to parentId, "limit" to limit.toString(), "groupItems" to "true"),
+    buildMap {
+        put("userId", userId)
+        put("parentId", parentId)
+        put("limit", limit.toString())
+        put("groupItems", "true")
+        if (unplayedOnly) put("isPlayed", "false")
+    },
     retry = true,
 )
 

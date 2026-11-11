@@ -103,6 +103,13 @@ private fun homeSection(v: SettingsValues) = SettingsSection(
             options = genreRowOptions(),
             visible = v.hasProfile,
         ),
+        ToggleItem(
+            SettingKey.ShowWatchedInRows,
+            Strings.showWatchedInRowsTitle,
+            Strings.showWatchedInRowsHelp,
+            checked = v.showWatchedInRows,
+            visible = v.hasProfile,
+        ),
     ),
 )
 

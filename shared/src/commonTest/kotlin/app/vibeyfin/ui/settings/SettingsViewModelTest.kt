@@ -339,6 +339,29 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `watched titles show in rows by default and the Home toggle hides them for this profile only`() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Users/Me", Reply.json("""{"Id":"u2","Name":"Sam"}"""))
+        app.accounts.saveSession("srv-1", "u2", "Sam", null, "token-2")
+        val viewModel = viewModel()
+        app.connection.activate("srv-1", "u1")
+        val opened = viewModel.uiState.first { it.hasProfile }
+        assertTrue(opened.checked(SettingKey.ShowWatchedInRows))
+        assertTrue(SettingKey.ShowWatchedInRows in opened.rootKeys())
+
+        viewModel.onToggle(SettingKey.ShowWatchedInRows, false)
+        viewModel.uiState.first { !it.checked(SettingKey.ShowWatchedInRows) }
+        assertEquals(false, app.profileSettings.showWatchedInRows.first())
+
+        app.connection.activate("srv-1", "u2")
+        assertTrue(viewModel.uiState.first { it.hasProfile && it.checked(SettingKey.ShowWatchedInRows) }.checked(SettingKey.ShowWatchedInRows))
+        assertEquals(true, app.profileSettings.showWatchedInRows.first())
+
+        app.connection.activate("srv-1", "u1")
+        viewModel.uiState.first { !it.checked(SettingKey.ShowWatchedInRows) }
+    }
+
+    @Test
     fun `buffer ahead defaults to 20 and follows its handler`() = runTest {
         app.signedIn()
         val viewModel = viewModel()

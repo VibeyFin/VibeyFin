@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -65,6 +66,12 @@ class ProfileSettings(
 
     /** How many items Home features above Continue watching, one of [HOME_HERO_CHOICES]; 0 is off. One by default. Null when nobody is signed in. */
     val homeHeroItems: Flow<Int?> = observe(ProfileSettingDefinitions.HomeHeroItems)
+
+    /** Whether Home's Recently added and genre rows, and More like this, include watched titles. On by default. Null when nobody is signed in. */
+    val showWatchedInRows: Flow<Boolean?> = observe(ProfileSettingDefinitions.ShowWatchedInRows)
+
+    /** True when the profile signed in now has switched watched titles out of the rows. */
+    suspend fun hidesWatchedInRows(): Boolean = showWatchedInRows.first() == false
 
     /** Seconds the skip-back button jumps; one of [SKIP_BACK_CHOICES]. Null when nobody is signed in. */
     val skipBackSeconds: Flow<Int?> = observe(ProfileSettingDefinitions.SkipBackSeconds)
@@ -197,6 +204,9 @@ class ProfileSettings(
 
     /** Accepts one of [HOME_HERO_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
     suspend fun setHomeHeroItems(value: Int) = set(ProfileSettingDefinitions.HomeHeroItems, value)
+
+    /** Does nothing when nobody is signed in. */
+    suspend fun setShowWatchedInRows(value: Boolean) = set(ProfileSettingDefinitions.ShowWatchedInRows, value)
 
     /** Does nothing when nobody is signed in. */
     suspend fun setShowPlaybackStats(value: Boolean) = set(ProfileSettingDefinitions.ShowPlaybackStats, value)

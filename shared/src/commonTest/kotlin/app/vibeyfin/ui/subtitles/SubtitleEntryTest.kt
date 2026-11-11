@@ -45,7 +45,7 @@ class SubtitleEntryTest {
         app.close()
     }
 
-    private fun page() = viewModels.track(ItemViewModel("m1", app.library, app.connection, app.watch, app.watchChanges, app.downloadRepository, app.playback, app.seerrRepository, app.seerr, app.subtitles))
+    private fun page() = viewModels.track(ItemViewModel("m1", app.library, app.connection, app.watch, app.watchChanges, app.downloadRepository, app.playback, app.seerrRepository, app.seerr, app.subtitles, app.profileSettings))
 
     private suspend fun signedIn(admin: Boolean, allowed: Boolean, type: String = "Movie"): FakeServer {
         val server = app.signedIn()

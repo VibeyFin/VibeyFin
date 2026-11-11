@@ -56,7 +56,7 @@ fun appModule() = module {
     viewModelOf(::TileMenuViewModel)
     viewModelOf(::SubtitleSearchViewModel)
     viewModel { params -> FilteredListViewModel(params.get(), get(), get(), get()) }
-    viewModel { params -> ItemViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { params -> ItemViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { params -> PlaybackViewModel(params.get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), startOver = params.getOrNull() ?: false) }
     viewModelOf(::StartupViewModel)
     viewModelOf(::NotificationOpenViewModel)

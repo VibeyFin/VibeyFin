@@ -11,6 +11,7 @@ import app.vibeyfin.domain.DownloadTarget
 import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.PlaybackNegotiation
 import app.vibeyfin.domain.PlaybackRepository
+import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SeerrConnection
 import app.vibeyfin.domain.SeerrRepository
 import app.vibeyfin.domain.SeerrState
@@ -235,6 +236,7 @@ class ItemViewModel(
     private val seerr: SeerrRepository,
     private val seerrConnection: SeerrConnection,
     subtitles: SubtitleRepository,
+    private val profileSettings: ProfileSettings,
 ) : ViewModel() {
     // Seerr's recommendations for this title, not in the library; mixed into "More like this".
     private var seerrSimilar: List<SeerrTitle> = emptyList()
@@ -556,7 +558,7 @@ class ItemViewModel(
 
     private suspend fun loadSimilar() {
         content.update { it.copy(similar = MediaRow("similar", Strings.moreLikeThis, loading = true)) }
-        val result = library.similar(itemId)
+        val result = library.similar(itemId, hideWatched = profileSettings.hidesWatchedInRows())
         content.update {
             val similar = when (result) {
                 is ApiResult.Success -> MediaRow("similar", Strings.moreLikeThis, items = result.value, loading = false)

@@ -175,6 +175,70 @@ class HomeRowsViewModelTest {
     }
 
     @Test
+    fun watchedTitlesStayInTheRowsByDefault() = runTest {
+        server()
+
+        viewModel().rowsLoaded(7)
+
+        assertTrue(app.jellyfin.requestsTo("GET", "/Items/Latest").none { "isPlayed" in it.query })
+        assertTrue(app.jellyfin.requestsTo("GET", "/Items").filter { it.query["genreIds"] != null }.none { "filters" in it.query })
+    }
+
+    @Test
+    fun aProfileThatHidesWatchedTitlesHasTheServerLeaveThemOutOfRecentlyAddedAndTheGenreRows() = runTest {
+        server()
+        app.profileSettings.setShowWatchedInRows(false)
+
+        viewModel().rowsLoaded(7)
+
+        val latest = app.jellyfin.requestsTo("GET", "/Items/Latest")
+        val genreRows = app.jellyfin.requestsTo("GET", "/Items").filter { it.query["genreIds"] != null }
+        assertEquals(listOf("false", "false"), latest.map { it.query["isPlayed"] })
+        assertEquals(List(5) { "IsUnplayed" }, genreRows.map { it.query["filters"] })
+        assertTrue(genreRows.all { it.query["limit"] == "20" })
+    }
+
+    @Test
+    fun hidingWatchedTitlesLeavesContinueWatchingAndMyListAlone() = runTest {
+        server()
+        app.profileSettings.setShowWatchedInRows(false)
+
+        viewModel().rowsLoaded(7)
+
+        val resume = app.jellyfin.requestsTo("GET", "/UserItems/Resume").single().query
+        val myList = app.jellyfin.requestsTo("GET", "/Items").filter { it.query["filters"]?.contains("IsFavorite") == true }
+        assertNull(resume["isPlayed"])
+        assertNull(resume["filters"])
+        assertTrue(myList.isNotEmpty())
+        assertTrue(myList.all { it.query["filters"] == "IsFavorite" })
+    }
+
+    @Test
+    fun aRowLeftEmptyByHidingWatchedTitlesIsHidden() = runTest {
+        server(genreItems = { genre -> if (genre == "g-drama") Reply.json(itemsJson()) else Reply.json(itemsJson(itemJson("top-$genre", "Top $genre"))) })
+        app.profileSettings.setShowWatchedInRows(false)
+
+        val rows = viewModel().rowsLoaded(6)
+
+        assertTrue(rows.none { it.title == "Drama" })
+    }
+
+    @Test
+    fun changingTheWatchedSettingWhileHomeIsOpenAsksForTheRowsAgain() = runTest {
+        server()
+        val viewModel = viewModel()
+        viewModel.rowsLoaded(7)
+
+        app.profileSettings.setShowWatchedInRows(false)
+
+        val latest = app.jellyfin.awaitRequests("GET", "/Items/Latest", count = 2) { it.query["isPlayed"] == "false" }
+        val genres = app.jellyfin.awaitRequests("GET", "/Items", count = 5) { it.query["filters"] == "IsUnplayed" }
+
+        assertEquals(2, latest.size)
+        assertEquals(5, genres.size)
+    }
+
+    @Test
     fun homeFeaturesOneRecentlyAddedItemThatHasABackdropAndALogo() = runTest {
         server(
             genreItems = { genre ->

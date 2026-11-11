@@ -176,9 +176,13 @@ scripts/test-server/seed-userdata.sh  # user data and the box set; run again any
 | Data | Items |
 | --- | --- |
 | Box set "Crown Collection" | Starlit Crown, Starlit Crown II |
-| Watched | Saga Show S01E01 |
+| Watched | Saga Show S01E01, Bare Item |
 | Partly watched (Continue watching) | Saga Show S01E02 at 1.2 s of 3 s (40 %), Neon Night at 2 s of 5 s |
 | My List (favourites) | Saga Show, Neon Night, Starlit Crown, Solo Season |
+
+"Show watched titles in rows" (issue #83) needs no new media. Off, Bare Item (a watched movie) leaves Recently added in Movies and
+More like this, and Saga Show (one episode of thirteen watched) stays: a show is watched only once every episode is. `/Items/Latest`
+already leaves watched titles out for `admin` without `isPlayed`, because the user's `HidePlayedInLatest` is on (Jellyfin's default).
 
 Remove from Continue watching (issue #32) needs no new media. Neon Night is a started movie. Saga Show S01E02 is an episode in
 progress: with its position at 0 the server names it again in Next Up, and it must stay gone. For a Next Up card, which has no

@@ -57,9 +57,13 @@ class LibraryRepository(private val connection: ConnectionManager) {
         }
     }
 
-    /** What the server thinks is like [id], at most [limit]: "More like this". */
-    suspend fun similar(id: String, limit: Int = SIMILAR_LIMIT): ApiResult<List<MediaItem>> = call { api, userId ->
-        api.similarItems(userId, id, limit).map { result -> result.items.map { it.toMediaItem(api.baseUrl) } }
+    /** What the server thinks is like [id], at most [limit]: "More like this"; without what was watched when [hideWatched]. */
+    suspend fun similar(id: String, limit: Int = SIMILAR_LIMIT, hideWatched: Boolean = false): ApiResult<List<MediaItem>> = call { api, userId ->
+        // Similar has no played filter on the server, so more are asked for and the watched ones dropped here.
+        val asked = if (hideWatched) limit * SIMILAR_OVERFETCH else limit
+        api.similarItems(userId, id, asked).map { result ->
+            result.items.map { it.toMediaItem(api.baseUrl) }.filterNot { hideWatched && it.played }.take(limit)
+        }
     }
 
     /** The trailer the server itself holds for [id], or null when it has none. */
@@ -139,9 +143,9 @@ class LibraryRepository(private val connection: ConnectionManager) {
         api.episodesOfSeason(userId, seriesId, seasonId).map { result -> result.items.map { it.toMediaItem(api.baseUrl) } }
     }
 
-    /** What was added to [libraryId] most recently, at most [limit], episodes grouped under their show. */
-    suspend fun latest(libraryId: String, limit: Int = ROW_LIMIT): ApiResult<List<MediaItem>> = call { api, userId ->
-        api.latestItems(userId, libraryId, limit).map { items ->
+    /** What was added to [libraryId] most recently, at most [limit], episodes grouped under their show; without what was watched when [hideWatched]. */
+    suspend fun latest(libraryId: String, limit: Int = ROW_LIMIT, hideWatched: Boolean = false): ApiResult<List<MediaItem>> = call { api, userId ->
+        api.latestItems(userId, libraryId, limit, unplayedOnly = hideWatched).map { items ->
             // A new episode or season is shown as its show, with the show's own poster, once however many are new.
             items.map { it.asSeries(api.baseUrl) ?: it.toMediaItem(api.baseUrl) }.distinctBy { it.id }
         }
@@ -194,6 +198,8 @@ class LibraryRepository(private val connection: ConnectionManager) {
         decade: Decade? = null,
         /** Only titles this person appears in (the Library page). */
         personId: String? = null,
+        /** Without what the user has watched (Home's genre rows). */
+        hideWatched: Boolean = false,
     ): ApiResult<ItemPage> = call { api, userId ->
         val types = when {
             filter == HomeFilter.Shows || type == TypeFilter.Shows -> listOf("Series")
@@ -210,7 +216,7 @@ class LibraryRepository(private val connection: ConnectionManager) {
             userId, types, (filter as? HomeFilter.Genre)?.id ?: genreId,
             sortBy = sortBy, sortOrder = sortOrder, startIndex = startIndex, limit = limit,
             favoritesOnly = filter == HomeFilter.MyList, fields = fields,
-            years = decade?.years?.toList(), personId = personId,
+            years = decade?.years?.toList(), personId = personId, unplayedOnly = hideWatched,
         ).map { result ->
             ItemPage(result.items.map { it.toMediaItem(api.baseUrl) }, result.totalRecordCount, result.startIndex)
         }
@@ -235,6 +241,9 @@ class LibraryRepository(private val connection: ConnectionManager) {
 
         /** "More like this" holds this many posters. */
         const val SIMILAR_LIMIT = 12
+
+        /** How many times [SIMILAR_LIMIT] is asked for when watched titles are left out of "More like this". */
+        const val SIMILAR_OVERFETCH = 3
     }
 }
 
