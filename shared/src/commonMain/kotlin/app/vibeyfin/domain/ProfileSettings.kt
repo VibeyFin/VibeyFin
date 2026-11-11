@@ -130,6 +130,12 @@ class ProfileSettings(
     /** The most the downloads may take, in megabytes; [NO_STORAGE_LIMIT] when there is no limit. Null when nobody is signed in. */
     val storageLimitMb: Flow<Long?> = observe(ProfileSettingDefinitions.StorageLimitMb)
 
+    /** The id of the profile's colour theme, one of [ThemeIds.all]; an unknown stored id is [ThemeIds.DEFAULT]. Null when nobody is signed in. */
+    val themeId: Flow<String?> = observe(ProfileSettingDefinitions.ThemeId)
+
+    /** Accepts one of [ThemeIds.all]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setThemeId(value: String) = set(ProfileSettingDefinitions.ThemeId, value)
+
     /** Accepts one of [SKIP_BACK_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
     suspend fun setSkipBackSeconds(value: Int) = set(ProfileSettingDefinitions.SkipBackSeconds, value)
 

@@ -8,6 +8,7 @@ import java.util.Locale
 val tokensFile: File = rootProject.file("design/tokens.json")
 val androidThemeFile: File = rootProject.file("androidApp/src/main/kotlin/app/vibeyfin/app/theme/GeneratedThemes.kt")
 val iosThemeFile: File = rootProject.file("iosApp/iosApp/App/GeneratedTheme.swift")
+val themeIdsFile: File = rootProject.file("shared/src/commonMain/kotlin/app/vibeyfin/domain/ThemeIds.kt")
 val windowColorsFile: File = rootProject.file("androidApp/src/main/res/values/colors.xml")
 val accentColorsetFile: File = rootProject.file("iosApp/iosApp/Assets.xcassets/AccentColor.colorset/Contents.json")
 val launchColorsetFile: File = rootProject.file("iosApp/iosApp/Assets.xcassets/LaunchBackground.colorset/Contents.json")
@@ -76,6 +77,10 @@ fun loadThemes(tokens: Map<*, *>): List<ThemeSpec> {
         overrides.forEach { (role, value) ->
             check(role in base) { "Theme ${theme["id"]} overrides unknown role $role" }
             val platforms: Map<*, *> = value as Map<*, *>
+
+            check(role in iosBrandRoles || platforms["ios"] == base.getValue(role as String)["ios"]) {
+                "Theme ${theme["id"]} changes $role on iOS, which reads it from Apple's semantic colours; only the brand roles can differ there"
+            }
 
             merged[role as String] = mapOf("ios" to platforms["ios"] as String, "android" to platforms["android"] as String)
         }
@@ -176,6 +181,22 @@ fun iosSource(themes: List<ThemeSpec>): String {
     return lines.joinToString("\n") + "\n"
 }
 
+fun themeIdsSource(themes: List<ThemeSpec>): String {
+    val lines: MutableList<String> = mutableListOf()
+
+    lines += "// $generatedNotice"
+    lines += "package app.vibeyfin.domain"
+    lines += ""
+    lines += "/** The ids of the app's themes, which a profile's theme setting accepts. */"
+    lines += "object ThemeIds {"
+    lines += "    const val DEFAULT: String = \"${themes.first { it.isDefault }.id}\""
+    lines += ""
+    lines += "    val all: Set<String> = setOf(${themes.joinToString(", ") { "\"${it.id}\"" }})"
+    lines += "}"
+
+    return lines.joinToString("\n") + "\n"
+}
+
 fun colorsetSource(value: String): String {
     val (rgb: Int, _) = parseColor(value)
     val components: List<String> = listOf(16, 8, 0).map { shift -> "0x%02X".format((rgb shr shift) and 0xFF) }
@@ -221,7 +242,7 @@ tasks.register("generateThemes") {
     description = "Writes the Kotlin and Swift colours, the window colour and the iOS colour sets from design/tokens.json"
     notCompatibleWithConfigurationCache("The generator is script code, which the configuration cache can not store")
     inputs.file(tokensFile)
-    outputs.files(androidThemeFile, iosThemeFile, windowColorsFile, accentColorsetFile, launchColorsetFile)
+    outputs.files(androidThemeFile, iosThemeFile, themeIdsFile, windowColorsFile, accentColorsetFile, launchColorsetFile)
 
     doLast {
         val tokens: Map<*, *> = JsonSlurper().parse(tokensFile) as Map<*, *>
@@ -230,6 +251,7 @@ tasks.register("generateThemes") {
 
         androidThemeFile.writeText(androidSource(themes))
         iosThemeFile.writeText(iosSource(themes))
+        themeIdsFile.writeText(themeIdsSource(themes))
         windowColorsFile.writeText(windowColorsSource(default.values.getValue("bg").getValue("android")))
         accentColorsetFile.writeText(colorsetSource(default.values.getValue("ink").getValue("ios")))
         launchColorsetFile.writeText(colorsetSource(default.values.getValue("bg").getValue("ios")))
