@@ -28,3 +28,9 @@ suspend fun JellyfinApi.downloadRemoteSubtitle(itemId: String, subtitleId: Strin
     method = HttpMethod.Post
     url("$baseUrl/Items/$itemId/RemoteSearch/Subtitles/${subtitleId.encodeURLPathPart()}")
 }
+
+/** `DELETE /Videos/{id}/Subtitles/{index}`: removes an external subtitle file for every user. Only an administrator may; a missing index is a 400. */
+suspend fun JellyfinApi.deleteSubtitle(itemId: String, streamIndex: Int): ApiResult<Unit> = execute({ }) {
+    method = HttpMethod.Delete
+    url("$baseUrl/Videos/$itemId/Subtitles/$streamIndex")
+}

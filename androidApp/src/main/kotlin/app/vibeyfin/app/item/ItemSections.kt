@@ -40,6 +40,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -551,21 +552,24 @@ private fun CastTile(person: CastMember, tile: Dp, onClick: () -> Unit) {
 private fun Modifier.matchSize(): Modifier = this.fillMaxWidth().fillMaxHeight()
 
 @Composable
-private fun SubtitleSearchRow(onClick: () -> Unit) {
+private fun TechnicalActionRow(icon: ImageVector, label: String, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         modifier = Modifier.fillMaxWidth().heightIn(min = VibeyFinTokens.Size.touch).clickable(role = Role.Button, onClick = onClick),
     ) {
-        Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(Strings.searchForSubtitles, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.weight(1f))
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.weight(1f))
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
+/** What the Subtitles line in Technical info opens: the search for more, and deleting a file the title has. */
+data class SubtitleActions(val onSearch: () -> Unit, val onDelete: () -> Unit)
+
 /** The file's details, collapsed until asked for. */
 @Composable
-fun TechnicalInfo(lines: List<TechnicalLine>, onSearchSubtitles: () -> Unit) {
+fun TechnicalInfo(lines: List<TechnicalLine>, subtitles: SubtitleActions) {
     var open by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
@@ -585,7 +589,8 @@ fun TechnicalInfo(lines: List<TechnicalLine>, onSearchSubtitles: () -> Unit) {
                         Text(row.text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
                         row.reason?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = VibeyFinTokens.Colors.inkMuted) }
                     }
-                    if (line.searchesSubtitles) SubtitleSearchRow(onSearchSubtitles)
+                    if (line.searchesSubtitles) TechnicalActionRow(Icons.Filled.Search, Strings.searchForSubtitles, subtitles.onSearch)
+                    if (line.deletesSubtitles) TechnicalActionRow(Icons.Filled.Delete, Strings.deleteSubtitles, subtitles.onDelete)
                 }
             }
         }

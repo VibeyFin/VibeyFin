@@ -821,6 +821,15 @@ object Strings {
 
     fun subtitlesAdded(language: String) = "$language subtitles added"
 
+    val deleteSubtitles = "Delete subtitles"
+    val deleteSubtitlesHelp = "Only subtitle files beside the video can be deleted."
+    val deleteSubtitleText = "They\u2019re deleted from the server for everyone and can\u2019t be brought back."
+    val deleteSubtitleConfirm = "Delete"
+
+    fun deleteSubtitleTitle(name: String) = "Delete \u201C$name\u201D?"
+
+    fun subtitleDeleted(name: String) = "$name deleted"
+
     /** Provider, format and rating; what the server left out is left out here too. */
     fun subtitleResultDetails(provider: String?, format: String?, rating: Double?, possiblyAdded: Boolean = false): String {
         val stars = rating?.takeIf { it > 0 }?.let { "\u2605 " + (it * 10).roundToInt().let { tenths -> "${tenths / 10}.${tenths % 10}" } }

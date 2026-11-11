@@ -3,6 +3,8 @@ package app.vibeyfin.domain
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.data.api.UserDto
+import app.vibeyfin.data.api.UserPolicyDto
+import app.vibeyfin.data.api.deleteSubtitle
 import app.vibeyfin.data.api.downloadRemoteSubtitle
 import app.vibeyfin.data.api.isRetryable
 import app.vibeyfin.data.api.map
@@ -14,6 +16,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.mapLatest
@@ -57,13 +60,23 @@ sealed interface SubtitleDownload {
     data class Failed(val error: ApiError) : SubtitleDownload
 }
 
+/** What came of asking the server to delete a subtitle file. */
+sealed interface SubtitleDeletion {
+    data object Deleted : SubtitleDeletion
+
+    /** The server had no such track any more: deleted elsewhere, or the indexes moved since the item was read. */
+    data object AlreadyGone : SubtitleDeletion
+
+    data class Failed(val error: ApiError) : SubtitleDeletion
+}
+
 /** Searching for subtitles through the server's providers, and adding one to an item for every client. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SubtitleRepository(
     private val connection: ConnectionManager,
     private val library: LibraryRepository,
-    profileSettings: ProfileSettings,
-    offlineMode: OfflineMode,
+    private val profileSettings: ProfileSettings,
+    private val offlineMode: OfflineMode,
     private val deviceInfo: DeviceInfo,
     private val preferences: DevicePreferences,
     private val pollEvery: Duration = 2.seconds,
@@ -73,6 +86,7 @@ class SubtitleRepository(
 ) {
     // A 403 means the policy changed after it was read; that profile's entry stays hidden until the app next starts.
     private val refused = MutableStateFlow(emptySet<ProfileRef>())
+    private val refusedDeleting = MutableStateFlow(emptySet<ProfileRef>())
 
     // The server doesn't say which provider result a track came from, so only what this device added is remembered.
     suspend fun addedTo(itemId: String): Set<String> {
@@ -82,11 +96,16 @@ class SubtitleRepository(
     }
 
     /** Whether to offer the search: online, not a kids profile, and the user's own policy allows it. Being an admin doesn't count. */
-    val available: Flow<Boolean> = combine(offlineMode.isOffline, profileSettings.kidsProfile, refused, connection.state) { offline, kids, refusedProfiles, state ->
-        !offline && kids == false && state.profileOrNull() !in refusedProfiles
-    }.distinctUntilChanged().mapLatest { it && allowedByPolicy() }
+    val available: Flow<Boolean> = offeredWhile(refused) { it.enableSubtitleManagement }
 
-    private suspend fun allowedByPolicy(): Boolean {
+    /** Whether to offer deleting a subtitle file: online, not a kids profile, and an administrator, the only users the server lets delete one. */
+    val deletable: Flow<Boolean> = offeredWhile(refusedDeleting) { it.isAdministrator }
+
+    private fun offeredWhile(refusals: StateFlow<Set<ProfileRef>>, allows: (UserPolicyDto) -> Boolean): Flow<Boolean> = combine(offlineMode.isOffline, profileSettings.kidsProfile, refusals, connection.state) { offline, kids, refusedProfiles, state ->
+        !offline && kids == false && state.profileOrNull() !in refusedProfiles
+    }.distinctUntilChanged().mapLatest { it && readPolicy()?.let(allows) == true }
+
+    private suspend fun readPolicy(): UserPolicyDto? {
         var read = readUser()
         var left = policyRechecks
 
@@ -94,7 +113,7 @@ class SubtitleRepository(
             delay(policyRecheckEvery)
             read = readUser()
         }
-        return read.valueOrNull()?.policy?.enableSubtitleManagement == true
+        return read.valueOrNull()?.policy
     }
 
     private suspend fun readUser(): ApiResult<UserDto> = connection.asConnected<ApiResult<UserDto>>(ApiResult.Failure(ApiError.Unauthorized)) { it.api.me() }
@@ -106,7 +125,7 @@ class SubtitleRepository(
 
     /** What the providers offer in [language], hash matches first, then the highest rated. */
     suspend fun search(itemId: String, language: String): ApiResult<List<RemoteSubtitle>> = connection.asConnected<ApiResult<List<RemoteSubtitle>>>(ApiResult.Failure(ApiError.Unauthorized)) { connected ->
-        noteRefusal(connected.api.remoteSubtitles(itemId, language)).map { results ->
+        noteRefusal(connected.api.remoteSubtitles(itemId, language), refused).map { results ->
             results.map { RemoteSubtitle(it.id, it.name?.takeIf { name -> name.isNotBlank() } ?: it.id, it.providerName, it.format, it.communityRating, it.isHashMatch == true) }
                 .sortedWith(compareByDescending<RemoteSubtitle> { it.isHashMatch }.thenByDescending { it.rating ?: -1.0 })
         }
@@ -120,7 +139,7 @@ class SubtitleRepository(
             is ApiResult.Success -> read.value.subtitleTracks
             is ApiResult.Failure -> return@asConnected SubtitleDownload.Failed(read.error)
         }
-        val sent = noteRefusal(connected.api.downloadRemoteSubtitle(itemId, subtitleId))
+        val sent = noteRefusal(connected.api.downloadRemoteSubtitle(itemId, subtitleId), refused)
         if (sent is ApiResult.Failure) return@asConnected SubtitleDownload.Failed(sent.error)
         repeat(polls) {
             delay(pollEvery)
@@ -136,6 +155,14 @@ class SubtitleRepository(
         SubtitleDownload.NotArrived
     }
 
+    /** Deletes the external subtitle file at [streamIndex] from the item on the server, for every user. */
+    suspend fun delete(itemId: String, streamIndex: Int): SubtitleDeletion = connection.asConnected<SubtitleDeletion>(SubtitleDeletion.Failed(ApiError.Unauthorized)) { connected ->
+        when (val result = noteRefusal(connected.api.deleteSubtitle(itemId, streamIndex), refusedDeleting)) {
+            is ApiResult.Success -> SubtitleDeletion.Deleted
+            is ApiResult.Failure -> if (result.error == ApiError.NotFound || (result.error as? ApiError.Unexpected)?.status == HTTP_BAD_REQUEST) SubtitleDeletion.AlreadyGone else SubtitleDeletion.Failed(result.error)
+        }
+    }
+
     // Compared by name, because adding a track can move the indexes of the others. A same-named pair still counts as a new one.
     private fun newTrack(before: List<StreamTrack>, after: List<StreamTrack>): StreamTrack? {
         if (after.size <= before.size) return null
@@ -143,8 +170,10 @@ class SubtitleRepository(
         return after.filterNot { known.remove(it.displayTitle) }.lastOrNull()
     }
 
-    private fun <T> noteRefusal(result: ApiResult<T>): ApiResult<T> {
-        if ((result as? ApiResult.Failure)?.error == ApiError.Forbidden) connection.state.value.profileOrNull()?.let { profile -> refused.update { it + profile } }
+    private fun <T> noteRefusal(result: ApiResult<T>, refusals: MutableStateFlow<Set<ProfileRef>>): ApiResult<T> {
+        if ((result as? ApiResult.Failure)?.error == ApiError.Forbidden) connection.state.value.profileOrNull()?.let { profile -> refusals.update { it + profile } }
         return result
     }
 }
+
+private const val HTTP_BAD_REQUEST = 400

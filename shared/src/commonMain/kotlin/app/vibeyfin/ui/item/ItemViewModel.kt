@@ -15,6 +15,7 @@ import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SeerrConnection
 import app.vibeyfin.domain.SeerrRepository
 import app.vibeyfin.domain.SeerrState
+import app.vibeyfin.domain.SubtitleDeletion
 import app.vibeyfin.domain.SubtitleRepository
 import app.vibeyfin.domain.WatchChanges
 import app.vibeyfin.domain.WatchRepository
@@ -136,12 +137,26 @@ data class ItemUiState(
     val exit: HomeExit? = null,
     /** The server lets this user add subtitles, and the device is online. */
     val canSearchSubtitles: Boolean = false,
+    /** The user is an administrator, the only users the server lets delete a subtitle file, and the device is online. */
+    val canDeleteSubtitles: Boolean = false,
+    /** The question before a subtitle file is deleted on the server; null when none is asked. */
+    val subtitleDeletePrompt: DeletableSubtitle? = null,
     /** A short message that goes by itself. */
     val notice: String? = null,
 ) {
     /** "Search for subtitles" in the technical info: a movie or an episode only, since subtitles belong to one file, and not what plays from a download. */
     val offersSubtitleSearch: Boolean
-        get() = canSearchSubtitles && item?.canPlay == true && download?.badge != DownloadBadge.Done
+        get() = canSearchSubtitles && hasOwnSubtitles
+
+    // Subtitles belong to one streamed file: a movie or an episode, and not what plays from a download.
+    private val hasOwnSubtitles: Boolean get() = item?.canPlay == true && download?.badge != DownloadBadge.Done
+
+    /** The title's external subtitle files, which "Delete subtitles" lists. */
+    val deletableSubtitles: List<DeletableSubtitle> get() = item?.deletableSubtitles().orEmpty()
+
+    /** "Delete subtitles" in the technical info: on the same titles as the search, and only when there is a file to delete. */
+    val offersSubtitleDelete: Boolean
+        get() = canDeleteSubtitles && hasOwnSubtitles && deletableSubtitles.isNotEmpty()
 
     /** The page's own movie or episode as a download, or null when it is not one. */
     val download: Download? get() = item?.let { downloads[it.id] }
@@ -187,7 +202,7 @@ data class ItemUiState(
         }
 
     /** The file's details, collapsed at the bottom of the page; empty when the server sent none. */
-    val technical: List<TechnicalLine> get() = item?.technicalLines(playoutTags, offersSubtitleSearch).orEmpty()
+    val technical: List<TechnicalLine> get() = item?.technicalLines(playoutTags, offersSubtitleSearch, offersSubtitleDelete).orEmpty()
 
     private val isSeries: Boolean get() = item?.kind == ItemKind.Series
 
@@ -235,7 +250,7 @@ class ItemViewModel(
     private val playback: PlaybackRepository,
     private val seerr: SeerrRepository,
     private val seerrConnection: SeerrConnection,
-    subtitles: SubtitleRepository,
+    private val subtitles: SubtitleRepository,
     private val profileSettings: ProfileSettings,
 ) : ViewModel() {
     // Seerr's recommendations for this title, not in the library; mixed into "More like this".
@@ -245,13 +260,16 @@ class ItemViewModel(
     private val downloadFlow = DownloadFlow(viewModelScope, downloads) { connection.state.value.profileOrNull() }
     private val canDownload = MutableStateFlow(true)
     private val canSearchSubtitles = MutableStateFlow(false)
+    private val canDeleteSubtitles = MutableStateFlow(false)
+    private var failedSubtitleDelete: DeletableSubtitle? = null
 
     private val downloadParts = downloadParts(connection, downloads, downloadFlow, canDownload)
 
-    val uiState: StateFlow<ItemUiState> = combine(content, connection.sessionEnded(), downloadParts, canSearchSubtitles) { content, exit, parts, canSearch ->
+    val uiState: StateFlow<ItemUiState> = combine(content, connection.sessionEnded(), downloadParts, canSearchSubtitles, canDeleteSubtitles) { content, exit, parts, canSearch, canDelete ->
         content.copy(
             exit = exit,
             canSearchSubtitles = canSearch,
+            canDeleteSubtitles = canDelete,
             downloads = parts.byId,
             canDownload = parts.canDownload,
             downloadPrompt = parts.prompt,
@@ -271,6 +289,45 @@ class ItemViewModel(
         viewModelScope.launch { changes.events.collect { refresh() } }
         viewModelScope.launch { probePlayout() }
         viewModelScope.launch { subtitles.available.collect { canSearchSubtitles.value = it } }
+        viewModelScope.launch { subtitles.deletable.collect { canDeleteSubtitles.value = it } }
+    }
+
+    /** Asks before deleting the subtitle file at [streamIndex]: it goes for every user and can't be undone. */
+    fun onDeleteSubtitle(streamIndex: Int) {
+        val track = content.value.item?.deletableSubtitles()?.firstOrNull { it.streamIndex == streamIndex } ?: return
+        content.update { it.copy(subtitleDeletePrompt = track) }
+    }
+
+    fun onCancelDeleteSubtitle() {
+        content.update { it.copy(subtitleDeletePrompt = null) }
+    }
+
+    fun onConfirmDeleteSubtitle() {
+        val track = content.value.subtitleDeletePrompt ?: return
+        content.update { it.copy(subtitleDeletePrompt = null) }
+        deleteSubtitle(track)
+    }
+
+    private fun deleteSubtitle(track: DeletableSubtitle) {
+        failedSubtitleDelete = null
+        content.update { it.copy(actionMessage = null) }
+        viewModelScope.launch {
+            val result = subtitles.delete(itemId, track.streamIndex)
+            // Deleting moves the indexes of the tracks after it, so the item is read again before anything else is deleted.
+            refresh()
+            when (result) {
+                SubtitleDeletion.Deleted -> content.update { it.copy(notice = Strings.subtitleDeleted(track.name)) }
+
+                SubtitleDeletion.AlreadyGone -> content.update { it.copy(notice = LoadMessages.SUBTITLE_ALREADY_GONE) }
+
+                is SubtitleDeletion.Failed if result.error == ApiError.Forbidden -> content.update { it.copy(notice = LoadMessages.SUBTITLE_DELETE_NOT_ALLOWED) }
+
+                is SubtitleDeletion.Failed -> {
+                    failedSubtitleDelete = track
+                    content.update { it.copy(actionMessage = LoadMessages.SUBTITLE_DELETE_FAILED) }
+                }
+            }
+        }
     }
 
     /** A subtitle reached the server: the page reads the item again, so the track is in the technical info. */
@@ -440,10 +497,15 @@ class ItemViewModel(
     }
 
     /** "Try again" on the failure message: the page was taken back, so doing the change again repeats it. */
-    fun onRetryAction() = when {
-        content.value.actionMessage == null && downloadFlow.message.value != null -> downloadFlow.retry()
-        failedFavorite -> onToggleFavorite()
-        else -> onTogglePlayed()
+    fun onRetryAction() {
+        val failedDelete = failedSubtitleDelete?.takeIf { content.value.actionMessage == LoadMessages.SUBTITLE_DELETE_FAILED }
+
+        when {
+            failedDelete != null -> deleteSubtitle(failedDelete)
+            content.value.actionMessage == null && downloadFlow.message.value != null -> downloadFlow.retry()
+            failedFavorite -> onToggleFavorite()
+            else -> onTogglePlayed()
+        }
     }
 
     fun onDismissMessage() {

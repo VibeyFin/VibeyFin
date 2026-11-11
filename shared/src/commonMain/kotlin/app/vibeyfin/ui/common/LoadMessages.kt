@@ -39,6 +39,9 @@ internal object LoadMessages {
     const val SUBTITLES_ADD_FAILED = "Couldn\u2019t add these subtitles. Check your connection and try again."
     const val SUBTITLES_DID_NOT_ARRIVE_HAS_ONE = "These subtitles didn\u2019t arrive. This title already has a subtitle file in this language, so the server may have kept it as it was. Otherwise the provider\u2019s daily limit may be reached."
     const val SUBTITLES_DID_NOT_ARRIVE = "These subtitles didn\u2019t arrive. The provider\u2019s daily limit may be reached. Try again tomorrow, or choose a result from another provider."
+    const val SUBTITLE_DELETE_FAILED = "Couldn\u2019t delete these subtitles. Check your connection and try again."
+    const val SUBTITLE_DELETE_NOT_ALLOWED = "Your account can\u2019t delete subtitles. Ask the server\u2019s admin to do it."
+    const val SUBTITLE_ALREADY_GONE = "These subtitles were already deleted from the server."
     const val PLAYBACK_NETWORK = "Lost the connection to the server. Check your network and try again."
 
     fun forError(error: ApiError): String = when (error) {
