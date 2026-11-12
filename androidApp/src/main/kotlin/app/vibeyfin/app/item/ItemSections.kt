@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,6 +51,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -95,6 +97,7 @@ import app.vibeyfin.app.downloads.DownloadActionMenuItem
 import app.vibeyfin.app.downloads.EpisodeDownloadButton
 import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
 import app.vibeyfin.app.seerr.SeerrTile
+import app.vibeyfin.app.theme.MenuPressIndication
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.model.CastMember
@@ -552,15 +555,35 @@ private fun CastTile(person: CastMember, tile: Dp, onClick: () -> Unit) {
 private fun Modifier.matchSize(): Modifier = this.fillMaxWidth().fillMaxHeight()
 
 @Composable
-private fun TechnicalActionRow(icon: ImageVector, label: String, onClick: () -> Unit) {
+private fun TechnicalActionButton(icon: ImageVector, label: String, iconTint: Color, onClick: () -> Unit) {
+    // Lights up where it is held instead of the app's usual shrink, like a menu row.
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-        modifier = Modifier.fillMaxWidth().heightIn(min = VibeyFinTokens.Size.touch).clickable(role = Role.Button, onClick = onClick),
+        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
+        modifier = Modifier
+            .minimumInteractiveComponentSize()
+            .heightIn(min = TECHNICAL_ACTION_HEIGHT)
+            .clip(CircleShape)
+            .background(VibeyFinTokens.Colors.surface2)
+            .clickable(interactionSource = null, indication = MenuPressIndication, role = Role.Button, onClick = onClick)
+            .padding(horizontal = VibeyFinTokens.Space.s4),
     ) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.weight(1f))
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(18.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+private val TECHNICAL_ACTION_HEIGHT = 40.dp
+
+@Composable
+private fun SubtitleActionButtons(line: TechnicalLine, subtitles: SubtitleActions) {
+    FlowRow(
+        modifier = Modifier.padding(top = VibeyFinTokens.Space.s2),
+        horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
+        verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
+    ) {
+        if (line.searchesSubtitles) TechnicalActionButton(Icons.Filled.Search, Strings.searchForSubtitles, MaterialTheme.colorScheme.onSurfaceVariant, subtitles.onSearch)
+        if (line.deletesSubtitles) TechnicalActionButton(Icons.Filled.Delete, Strings.deleteSubtitles, VibeyFinTokens.Colors.danger, subtitles.onDelete)
     }
 }
 
@@ -589,8 +612,7 @@ fun TechnicalInfo(lines: List<TechnicalLine>, subtitles: SubtitleActions) {
                         Text(row.text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
                         row.reason?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = VibeyFinTokens.Colors.inkMuted) }
                     }
-                    if (line.searchesSubtitles) TechnicalActionRow(Icons.Filled.Search, Strings.searchForSubtitles, subtitles.onSearch)
-                    if (line.deletesSubtitles) TechnicalActionRow(Icons.Filled.Delete, Strings.deleteSubtitles, subtitles.onDelete)
+                    if (line.searchesSubtitles || line.deletesSubtitles) SubtitleActionButtons(line, subtitles)
                 }
             }
         }

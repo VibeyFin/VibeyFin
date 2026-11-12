@@ -20,11 +20,13 @@ struct TechnicalInfoView: View {
                                 Text(reason).font(.footnote).foregroundStyle(.secondary)
                             }
                         }
-                        if line.searchesSubtitles {
-                            TechnicalActionRow(systemImage: "magnifyingglass", label: Strings.shared.searchForSubtitles, action: onSearchSubtitles)
-                        }
-                        if line.deletesSubtitles {
-                            TechnicalActionRow(systemImage: "trash", label: Strings.shared.deleteSubtitles, action: onDeleteSubtitles)
+                        if line.searchesSubtitles || line.deletesSubtitles {
+                            SubtitleActionButtons(
+                                searches: line.searchesSubtitles,
+                                deletes: line.deletesSubtitles,
+                                onSearch: onSearchSubtitles,
+                                onDelete: onDeleteSubtitles
+                            )
                         }
                     }
                 }
