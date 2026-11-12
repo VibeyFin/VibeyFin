@@ -6,11 +6,13 @@ import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.ViewModelTracker
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.item.DeletableSubtitle
+import app.vibeyfin.ui.item.ItemUiState
 import app.vibeyfin.ui.item.ItemViewModel
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -33,7 +35,7 @@ class SubtitleDeleteEntryTest {
     private val viewModels = ViewModelTracker()
 
     private val embedded = """{"Index":1,"Type":"Subtitle","DisplayTitle":"English - SUBRIP","IsExternal":false}"""
-    private val french = """{"Index":2,"Type":"Subtitle","DisplayTitle":"French - SUBRIP - External","IsExternal":true}"""
+    private val french = """{"Index":2,"Type":"Subtitle","Language":"fre","DisplayTitle":"French - SUBRIP - External","IsExternal":true,"Path":"/media/movies/Film/Film.fr.srt"}"""
 
     @BeforeTest
     fun setUp() {
@@ -70,7 +72,7 @@ class SubtitleDeleteEntryTest {
         signedIn(admin = true, embedded, french)
         val state = page().uiState.first { it.offersSubtitleDelete }
 
-        assertEquals(listOf(DeletableSubtitle(2, "French · SUBRIP · External")), state.deletableSubtitles)
+        assertEquals(listOf(DeletableSubtitle(2, "French", "Film.fr.srt")), state.deletableSubtitles)
         assertEquals(listOf("Subtitles"), state.technical.filter { it.deletesSubtitles }.map { it.label })
     }
 
@@ -96,7 +98,7 @@ class SubtitleDeleteEntryTest {
         page.uiState.first { it.offersSubtitleDelete }
 
         page.onDeleteSubtitle(2)
-        assertEquals(DeletableSubtitle(2, "French · SUBRIP · External"), page.uiState.value.subtitleDeletePrompt)
+        assertEquals(DeletableSubtitle(2, "French", "Film.fr.srt"), page.uiState.value.subtitleDeletePrompt)
         server.film(embedded)
         page.onConfirmDeleteSubtitle()
         val after = page.uiState.first { it.deletableSubtitles.isEmpty() }
@@ -104,7 +106,7 @@ class SubtitleDeleteEntryTest {
         assertEquals(1, app.jellyfin.requestsTo("DELETE", "/Videos/m1/Subtitles/2").size)
         assertNull(after.subtitleDeletePrompt)
         assertFalse(after.offersSubtitleDelete)
-        assertEquals("French · SUBRIP · External deleted", after.notice)
+        assertEquals("French subtitles deleted", after.notice)
     }
 
     @Test
@@ -198,5 +200,35 @@ class SubtitleDeleteEntryTest {
         page.onConfirmDeleteSubtitle()
 
         assertNotNull(page.uiState.first { it.exit != null }.exit)
+    }
+
+    @Test
+    fun twoFilesInOneLanguageAreToldApartByTheirFileNames() = runTest {
+        val forced = """{"Index":3,"Type":"Subtitle","DisplayTitle":"English - SUBRIP - External","IsForced":true,"IsExternal":true,"Path":"/media/movies/Film/Film.en.forced.srt"}"""
+        val english = """{"Index":4,"Type":"Subtitle","DisplayTitle":"English - SUBRIP - External","IsExternal":true,"Path":"/media/movies/Film/Film.en.srt"}"""
+        signedIn(admin = true, forced, english)
+
+        val state = page().uiState.first { it.offersSubtitleDelete }
+
+        assertEquals(listOf(DeletableSubtitle(3, "English · Forced", "Film.en.forced.srt"), DeletableSubtitle(4, "English", "Film.en.srt")), state.deletableSubtitles)
+    }
+
+    @Test
+    fun theTrackLeavesThePageAtOnceAndComesBackWhenTheDeleteFails() = runTest {
+        val server = signedIn(admin = true, embedded, french)
+        server.on("DELETE", "/Videos/m1/Subtitles/2", Reply.status(HttpStatusCode.ServiceUnavailable))
+        val page = page()
+        val states = mutableListOf<ItemUiState>()
+        page.uiState.first { it.offersSubtitleDelete }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { page.uiState.collect { states += it } }
+
+        page.onDeleteSubtitle(2)
+        page.onConfirmDeleteSubtitle()
+        val after = page.uiState.first { it.actionMessage != null }
+
+        val pending = states.first { it.deletableSubtitles.isEmpty() }
+        assertNull(pending.actionMessage)
+        assertFalse(pending.technical.single { it.label == "Subtitles" }.value.contains("French"))
+        assertEquals(listOf(2), after.deletableSubtitles.map { it.streamIndex })
     }
 }

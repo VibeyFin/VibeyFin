@@ -20,6 +20,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import app.vibeyfin.app.components.VibeyFinSheet
 import app.vibeyfin.app.theme.MenuPressIndication
 import app.vibeyfin.app.theme.VibeyFinTokens
@@ -44,10 +47,17 @@ fun SubtitleDeleteSheet(tracks: List<DeletableSubtitle>, onChoose: (Int) -> Unit
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = VibeyFinTokens.Size.touch)
-                            .clickable(role = Role.Button) { onChoose(track.streamIndex) }
+                            .clickable { onChoose(track.streamIndex) }
+                            .clearAndSetSemantics {
+                                contentDescription = track.description
+                                role = Role.Button
+                            }
                             .padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s3),
                     ) {
-                        Text(track.name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
+                            Text(track.name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                            track.fileName?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        }
                         Icon(Icons.Filled.Delete, contentDescription = null, tint = VibeyFinTokens.Colors.danger)
                     }
                 }

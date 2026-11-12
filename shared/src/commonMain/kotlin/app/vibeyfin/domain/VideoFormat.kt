@@ -26,6 +26,9 @@ data class StreamTrack(
     val forced: Boolean = false,
     val external: Boolean = false,
     val index: Int? = null,
+    val hearingImpaired: Boolean = false,
+    /** An external file's own name on the server, such as "Film.fr.srt". */
+    val fileName: String? = null,
 )
 
 internal fun MediaStreamDto.toStreamTrack(): StreamTrack = StreamTrack(
@@ -36,6 +39,8 @@ internal fun MediaStreamDto.toStreamTrack(): StreamTrack = StreamTrack(
     forced = isForced,
     external = isExternal,
     index = index,
+    hearingImpaired = isHearingImpaired,
+    fileName = path?.substringAfterLast('/')?.substringAfterLast('\\')?.takeIf { it.isNotBlank() },
 )
 
 internal fun MediaStreamDto.toVideoFormat(): VideoFormat = VideoFormat(

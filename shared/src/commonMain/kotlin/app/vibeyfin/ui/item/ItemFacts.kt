@@ -35,23 +35,40 @@ data class TechnicalLine(
 /** One row of a technical line, and why it is a transcode when it is one. */
 data class TechnicalRow(val text: String, val reason: String? = null)
 
-/** An external subtitle file the server can delete: its stream index on the item, and its name as Technical info shows it. */
-data class DeletableSubtitle(val streamIndex: Int, val name: String)
+/**
+ * An external subtitle file the server can delete: its stream index on the item, a short name ("English · Forced") and the file's
+ * own name, which tells two files in one language apart.
+ */
+data class DeletableSubtitle(val streamIndex: Int, val name: String, val fileName: String?) {
+    /** What a screen reader says for the row that deletes it. */
+    val description: String get() = Strings.deleteSubtitleDescription(name, fileName)
+}
 
 // Subtitles inside the video file can't be deleted, only the files beside it.
 internal fun MediaItem.deletableSubtitles(): List<DeletableSubtitle> = subtitleTracks.mapNotNull { track ->
     val index = track.index?.takeIf { track.external } ?: return@mapNotNull null
-    track.name()?.let { DeletableSubtitle(index, it) }
+    track.shortName()?.let { DeletableSubtitle(index, it, track.fileName) }
+}
+
+// The language and what kind of subtitle it is; the codec and "External" say nothing in a list of files.
+private fun StreamTrack.shortName(): String? {
+    val language = title ?: displayTitle?.substringBefore(" - ") ?: language ?: return null
+    return listOfNotNull(language, Strings.trackForced.takeIf { forced }, Strings.trackSdh.takeIf { hearingImpaired }).joinToString(" · ")
 }
 
 /**
  * The file's video as one line ("3840×2160 · HEVC · HDR10 · 24 fps · 8.2 Mbps"), then how much storage it takes ("4.2 GB"); each
  * only when the server sent it.
  */
-internal fun MediaItem.technicalLines(tags: PlayoutTags? = null, searchesSubtitles: Boolean = false, deletesSubtitles: Boolean = false): List<TechnicalLine> = listOfNotNull(
+internal fun MediaItem.technicalLines(
+    tags: PlayoutTags? = null,
+    searchesSubtitles: Boolean = false,
+    deletesSubtitles: Boolean = false,
+    deletingSubtitle: Int? = null,
+): List<TechnicalLine> = listOfNotNull(
     videoLine(tags?.video),
     audioLine(tags?.audio, tags?.audioTrack),
-    subtitlesLine(searchesSubtitles)?.let { it.copy(deletesSubtitles = deletesSubtitles && it.rows.isNotEmpty()) },
+    subtitlesLine(searchesSubtitles, deletingSubtitle)?.let { it.copy(deletesSubtitles = deletesSubtitles && it.rows.isNotEmpty()) },
     fileBytes?.let { TechnicalLine(Strings.technicalSize, Strings.fileSize(it)) },
 )
 
@@ -72,8 +89,8 @@ private fun String.withPlayout(tag: Playout?, codec: String?): String {
 }
 
 // A title with no subtitle tracks still has the line when it offers the search: that is the case the search is for
-private fun MediaItem.subtitlesLine(searches: Boolean): TechnicalLine? {
-    val line = tracksLine(Strings.technicalSubtitles, subtitleTracks)
+private fun MediaItem.subtitlesLine(searches: Boolean, deleting: Int?): TechnicalLine? {
+    val line = tracksLine(Strings.technicalSubtitles, subtitleTracks.filterNot { deleting != null && it.index == deleting })
 
     return if (searches) (line ?: TechnicalLine(Strings.technicalSubtitles, "")).copy(searchesSubtitles = true) else line
 }

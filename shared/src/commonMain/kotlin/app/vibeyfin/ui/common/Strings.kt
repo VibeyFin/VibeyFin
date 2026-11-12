@@ -640,6 +640,7 @@ object Strings {
     val technicalAudio = "Audio"
     val technicalSubtitles = "Subtitles"
     val trackForced = "Forced"
+    val trackSdh = "SDH"
     val trackExternal = "External"
 
     /** What a screen reader says for a season button, and for the row of them. */
@@ -822,13 +823,15 @@ object Strings {
     fun subtitlesAdded(language: String) = "$language subtitles added"
 
     val deleteSubtitles = "Delete subtitles"
-    val deleteSubtitlesHelp = "Only subtitle files beside the video can be deleted."
+    val deleteSubtitlesHelp = "Subtitles built into the video can\u2019t be deleted, so they aren\u2019t listed."
     val deleteSubtitleText = "They\u2019re deleted from the server for everyone and can\u2019t be brought back."
     val deleteSubtitleConfirm = "Delete"
 
-    fun deleteSubtitleTitle(name: String) = "Delete \u201C$name\u201D?"
+    fun deleteSubtitleTitle(name: String) = "Delete the $name subtitles?"
 
-    fun subtitleDeleted(name: String) = "$name deleted"
+    fun deleteSubtitleDescription(name: String, fileName: String?) = listOfNotNull("Delete the $name subtitles", fileName).joinToString(", ")
+
+    fun subtitleDeleted(name: String) = "$name subtitles deleted"
 
     /** Provider, format and rating; what the server left out is left out here too. */
     fun subtitleResultDetails(provider: String?, format: String?, rating: Double?, possiblyAdded: Boolean = false): String {

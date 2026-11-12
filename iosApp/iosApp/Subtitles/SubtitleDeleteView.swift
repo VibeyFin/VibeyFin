@@ -52,7 +52,13 @@ private struct SubtitleDeleteView: View {
                     ForEach(tracks, id: \.streamIndex) { track in
                         Button { onChoose(track.streamIndex) } label: {
                             HStack(spacing: Space.s3) {
-                                Text(track.name).foregroundStyle(.primary).multilineTextAlignment(.leading)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(track.name).foregroundStyle(.primary)
+                                    if let fileName = track.fileName {
+                                        Text(fileName).font(.footnote).foregroundStyle(.secondary)
+                                    }
+                                }
+                                .multilineTextAlignment(.leading)
                                 Spacer()
                                 Image(systemName: "trash").foregroundStyle(.red)
                             }
@@ -61,6 +67,9 @@ private struct SubtitleDeleteView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(PressableButtonStyle())
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(track.description_)
+                        .accessibilityAddTraits(.isButton)
                     }
                 }
             }

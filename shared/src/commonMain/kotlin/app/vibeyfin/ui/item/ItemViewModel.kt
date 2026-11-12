@@ -141,6 +141,8 @@ data class ItemUiState(
     val canDeleteSubtitles: Boolean = false,
     /** The question before a subtitle file is deleted on the server; null when none is asked. */
     val subtitleDeletePrompt: DeletableSubtitle? = null,
+    /** The stream index of the subtitle file being deleted: the page leaves it out until the server answers. */
+    val deletingSubtitle: Int? = null,
     /** A short message that goes by itself. */
     val notice: String? = null,
 ) {
@@ -152,7 +154,7 @@ data class ItemUiState(
     private val hasOwnSubtitles: Boolean get() = item?.canPlay == true && download?.badge != DownloadBadge.Done
 
     /** The title's external subtitle files, which "Delete subtitles" lists. */
-    val deletableSubtitles: List<DeletableSubtitle> get() = item?.deletableSubtitles().orEmpty()
+    val deletableSubtitles: List<DeletableSubtitle> get() = item?.deletableSubtitles().orEmpty().filterNot { it.streamIndex == deletingSubtitle }
 
     /** "Delete subtitles" in the technical info: on the same titles as the search, and only when there is a file to delete. */
     val offersSubtitleDelete: Boolean
@@ -202,7 +204,7 @@ data class ItemUiState(
         }
 
     /** The file's details, collapsed at the bottom of the page; empty when the server sent none. */
-    val technical: List<TechnicalLine> get() = item?.technicalLines(playoutTags, offersSubtitleSearch, offersSubtitleDelete).orEmpty()
+    val technical: List<TechnicalLine> get() = item?.technicalLines(playoutTags, offersSubtitleSearch, offersSubtitleDelete, deletingSubtitle).orEmpty()
 
     private val isSeries: Boolean get() = item?.kind == ItemKind.Series
 
@@ -310,11 +312,13 @@ class ItemViewModel(
 
     private fun deleteSubtitle(track: DeletableSubtitle) {
         failedSubtitleDelete = null
-        content.update { it.copy(actionMessage = null) }
+        content.update { it.copy(actionMessage = null, deletingSubtitle = track.streamIndex) }
         viewModelScope.launch {
             val result = subtitles.delete(itemId, track.streamIndex)
-            // Deleting moves the indexes of the tracks after it, so the item is read again before anything else is deleted.
-            refresh()
+            // Deleting moves the indexes of the tracks after it, so the item is read again before anything else is deleted, and the
+            // hidden index is let go in the same update, or another track that took it would vanish for a moment.
+            refresh { it.copy(deletingSubtitle = null) }
+            content.update { it.copy(deletingSubtitle = null) }
             when (result) {
                 SubtitleDeletion.Deleted -> content.update { it.copy(notice = Strings.subtitleDeleted(track.name)) }
 
@@ -399,11 +403,11 @@ class ItemViewModel(
         episodesJob = viewModelScope.launch { loadEpisodes(seasonId, setStart = false) }
     }
 
-    // Reads the item again without the spinner; a failure leaves the page as it was.
-    private suspend fun refresh() {
+    // Reads the item again without the spinner; a failure leaves the page as it was. [alongside] goes into the same update.
+    private suspend fun refresh(alongside: (ItemUiState) -> ItemUiState = { it }) {
         val shown = content.value.item ?: return
         val result = library.item(itemId) as? ApiResult.Success ?: return
-        content.update { it.copy(item = result.value, facts = result.value.facts()) }
+        content.update { alongside(it.copy(item = result.value, facts = result.value.facts())) }
         if (shown.kind == ItemKind.Series) {
             val next = watch.nextUpOf(itemId) as? ApiResult.Success
             if (next != null) content.update { it.copy(seasons = it.seasons.copy(startEpisode = next.value ?: it.seasons.startEpisode)) }
