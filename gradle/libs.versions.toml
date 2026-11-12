@@ -10,7 +10,7 @@ activity-compose = "1.13.0"
 # Storage, resolved 2026-10-19 (latest stable of each; DataStore 1.3.0 is still rc).
 # Room 3 (androidx.room3) is the current stable generation; Room 2.8.x is the previous one.
 room = "3.0.3"
-ksp = "2.3.12"
+ksp = "2.3.13"
 sqlite = "2.7.1"
 datastore = "1.3.0"
 androidx-test-runner = "1.7.0"
@@ -32,7 +32,7 @@ androidx-work = "2.12.0"
 androidx-benchmark = "1.5.0"
 androidx-baselineprofile = "1.5.0"
 androidx-profileinstaller = "1.4.1"
-androidx-uiautomator = "2.4.0"
+androidx-uiautomator = "2.4.1"
 
 # Android SDK levels (not dependencies). compileSdk 37 is required by the latest stable
 # lifecycle 2.11.0 / Compose 1.12.x AARs; targetSdk is a separate runtime-behaviour choice.
@@ -110,7 +110,7 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room3", version.ref = "room" }
-versions = { id = "io.github.ben-manes.versions", version = "0.66.0" }
+versions = { id = "io.github.ben-manes.versions", version = "0.67.0" }
 version-catalog-update = { id = "nl.littlerobots.version-catalog-update", version = "1.1.2" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "jlleitschuh-ktlint" }
 detekt = { id = "dev.detekt", version.ref = "detekt" }
