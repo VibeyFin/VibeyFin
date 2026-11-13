@@ -35,4 +35,14 @@ final class TitleCaseTests: XCTestCase {
         assertTitleCased("  spaced   out  ", "  Spaced   Out  ")
         assertTitleCased("of", "Of")
     }
+
+    func testOtherLanguagesAreReturnedAsWritten() {
+        XCTAssertEqual("Weiter ansehen".titleCased(forLanguage: "de"), "Weiter ansehen")
+        XCTAssertEqual("sign in".titleCased(forLanguage: "pt-BR"), "sign in")
+    }
+
+    func testEnglishVariantsAreStillTitleCased() {
+        XCTAssertEqual("sign in".titleCased(forLanguage: "en"), "Sign In")
+        XCTAssertEqual("sign in".titleCased(forLanguage: "en-GB"), "Sign In")
+    }
 }

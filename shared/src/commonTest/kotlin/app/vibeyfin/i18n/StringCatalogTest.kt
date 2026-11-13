@@ -48,8 +48,59 @@ class StringCatalogTest {
     fun missingEnglishFileIsEmptyNeverTheKey() {
         assertEquals("", StringCatalog(FakeStringSource(emptyMap())).text("hello"))
     }
+
+    private val germanFile: String = """
+        {
+          "hello": "Hallo",
+          "greeting": "Hallo {{name}}, du hast {{unread}} Nachrichten",
+          "titles_one": "{{count}} Titel",
+          "titles_other": "{{count}} Titel",
+          "blank": ""
+        }
+    """.trimIndent()
+
+    private val withGerman: StringCatalog = StringCatalog(FakeStringSource(mapOf("en" to englishFile.replace("\"hello\": \"Hello\",", "\"hello\": \"Hello\", \"blank\": \"Blank\", \"only_english\": \"Only English\","), "de" to germanFile)))
+
+    @Test
+    fun theSelectedLanguageSuppliesTheText() {
+        withGerman.select("de")
+        assertEquals("Hallo", withGerman.text("hello"))
+        assertEquals("Hallo Ann, du hast 4 Nachrichten", withGerman.text("greeting", mapOf("name" to "Ann", "unread" to "4")))
+        assertEquals("2 Titel", withGerman.plural("titles", 2))
+        assertEquals("de", withGerman.language.value)
+    }
+
+    @Test
+    fun aKeyTheLanguageLacksOrLeavesEmptyReadsEnglish() {
+        withGerman.select("de")
+        assertEquals("Only English", withGerman.text("only_english"))
+        assertEquals("Blank", withGerman.text("blank"))
+    }
+
+    @Test
+    fun aLanguageWithoutAFileReadsEnglish() {
+        withGerman.select("fr")
+        assertEquals("Hello", withGerman.text("hello"))
+        assertEquals("2 titles", withGerman.plural("titles", 2))
+    }
+
+    @Test
+    fun aBrokenLanguageFileReadsEnglish() {
+        val broken: StringCatalog = StringCatalog(FakeStringSource(mapOf("en" to englishFile, "de" to "{ not json")))
+        broken.select("de")
+        assertEquals("Hello", broken.text("hello"))
+    }
+
+    @Test
+    fun switchingBackToEnglishRestoresEnglish() {
+        withGerman.select("de")
+        withGerman.select("en")
+        assertEquals("Hello", withGerman.text("hello"))
+    }
 }
 
-class FakeStringSource(private val files: Map<String, String>) : StringSource {
+class FakeStringSource(private val files: Map<String, String>, private val languages: String? = null) : StringSource {
     override fun load(tag: String): String? = files[tag]
+
+    override fun loadLanguages(): String? = languages
 }

@@ -15,6 +15,9 @@ import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SearchHistory
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.SubtitleRepository
+import app.vibeyfin.i18n.AppLocale
+import app.vibeyfin.i18n.platformStringSource
+import app.vibeyfin.i18n.shippedLanguages
 import org.koin.dsl.module
 import kotlin.time.Clock
 
@@ -29,6 +32,7 @@ fun dataModule() = module {
     single { get<VibeyFinDatabase>().downloadDao() }
 
     single<DevicePreferences> { DataStoreDevicePreferences(get()) }
+    single { AppLocale(get(), get(), shippedLanguages(platformStringSource())) }
     single { ServerRepository(get(), get(), get(), get(), get()) }
     single { AccountRepository(get(), get(), get()) }
     single { ProfileSettings(get(), get()) }

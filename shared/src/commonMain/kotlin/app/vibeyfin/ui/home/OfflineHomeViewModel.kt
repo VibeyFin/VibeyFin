@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.OfflineLibrary
 import app.vibeyfin.domain.accountOrNull
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
 import app.vibeyfin.ui.downloads.profile
@@ -47,7 +48,7 @@ class OfflineHomeViewModel(
         if (profile == null) {
             flowOf(OfflineHomeUiState(loading = false))
         } else {
-            combine(offline.continueWatching(profile), offline.movies(profile), offline.shows(profile)) { continuing, movies, shows ->
+            combine(offline.continueWatching(profile), offline.movies(profile), offline.shows(profile), Texts.language) { continuing, movies, shows, _ ->
                 OfflineHomeUiState(
                     loading = false,
                     continueRow = ContinueRow(cards = continuing.map { it.toContinueCard() }),

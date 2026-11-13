@@ -15,6 +15,8 @@ class AndroidDeviceInfo(private val context: Context) : DeviceInfo {
 
     override val language: String get() = Locale.getDefault().toLanguageTag().substringBefore('-')
 
+    override val languageTag: String get() = Locale.getDefault().toLanguageTag()
+
     override val appVersion: String by lazy {
         val packages = context.packageManager
         val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

@@ -12,6 +12,7 @@ import app.vibeyfin.app.VibeyFinApp
 import app.vibeyfin.app.notifications.NewTitleTap
 import app.vibeyfin.app.notifications.NewTitleTapGate
 import app.vibeyfin.data.db.AccountDao
+import app.vibeyfin.i18n.AppLocale
 import app.vibeyfin.ui.notifications.NotificationOpenViewModel
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.get
@@ -27,6 +28,8 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+
+        get<AppLocale>().deviceLanguageChanged()
 
         // A recreated activity (rotation is handled without one, but process death is not) has handled its intent already;
         // the extras are also taken off once read, and a Recents relaunch is never read as a tap (NewTitleTap.from).

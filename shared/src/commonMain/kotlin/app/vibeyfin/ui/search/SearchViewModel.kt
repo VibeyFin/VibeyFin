@@ -19,6 +19,7 @@ import app.vibeyfin.domain.model.SeerrMediaType
 import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.domain.model.notInLibrary
 import app.vibeyfin.domain.profileOrNull
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
@@ -140,11 +141,18 @@ class SearchViewModel(
     private val seerrRepository: SeerrRepository,
 ) : ViewModel() {
     private val content = MutableStateFlow(SearchUiState())
+    private val failures = MutableStateFlow(SearchFailures())
     private var job: Job? = null
     private var seerrJob: Job? = null
     private val seerrState: StateFlow<SeerrState> = seerr.state
 
-    val uiState: StateFlow<SearchUiState> = combine(content, history.entries, connection.sessionEnded(), offlineMode.isOffline, seerrState) { content, history, exit, offline, seerr ->
+    val uiState: StateFlow<SearchUiState> = combine(
+        content,
+        history.entries,
+        connection.sessionEnded(),
+        offlineMode.isOffline,
+        combine(seerrState, failures, Texts.language) { seerr, failed, _ -> seerr to failed },
+    ) { content, history, exit, offline, (seerr, failed) ->
         val ready = seerr is SeerrState.Ready && !offline
         content.copy(
             history = history,
@@ -152,7 +160,9 @@ class SearchViewModel(
             offline = offline,
             seerrReady = ready,
             // Seerr signing out (or the app going offline) takes its group and its filter away at once.
-            seerr = content.seerr.takeIf { ready },
+            seerr = (failed.seerr?.let { SeerrSearch.Failed(SeerrMessages.forError(it)) } ?: content.seerr).takeIf { ready },
+            message = failed.search?.let { LoadMessages.forError(it) },
+            groups = content.groups.map { it.copy(title = it.kind.groupTitle()) },
             filter = if (!ready && content.filter == SearchFilter.NotInLibrary) SearchFilter.All else content.filter,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState(offline = offlineMode.isOffline.value))
@@ -175,10 +185,12 @@ class SearchViewModel(
         val term = text.trim()
         if (term.isEmpty()) {
             content.value = SearchUiState(query = text, filter = content.value.filter)
+            failures.value = SearchFailures()
             return
         }
         // What was found for the older text stays on screen, dimmed by `loading`, until the new answer replaces it.
-        content.update { it.copy(query = text, loading = true, message = null) }
+        content.update { it.copy(query = text, loading = true) }
+        failures.update { it.copy(search = null) }
         job = viewModelScope.launch {
             delay(DEBOUNCE_MS)
             search(term)
@@ -230,7 +242,8 @@ class SearchViewModel(
         val term = content.value.query.trim()
         if (term.isEmpty()) return
         job?.cancel()
-        content.update { it.copy(loading = true, message = null) }
+        content.update { it.copy(loading = true) }
+        failures.update { it.copy(search = null) }
         job = viewModelScope.launch { search(term) }
     }
 
@@ -239,15 +252,23 @@ class SearchViewModel(
         if (offlineMode.isOffline.value) {
             val profile = connection.state.value.profileOrNull()
             val found = if (profile == null) emptyList() else offlineLibrary.search(profile, term)
-            content.update { it.copy(loading = false, groups = found.grouped(), searched = term, message = null, seerr = null) }
+            content.update { it.copy(loading = false, groups = found.grouped(), searched = term, seerr = null) }
+            failures.value = SearchFailures()
             return
         }
         // Seerr is asked alongside the library and answers on its own: the library's groups never wait for it.
         coroutineScope {
             seerrJob = launch { searchSeerr(term) }
             when (val result = library.search(term)) {
-                is ApiResult.Success -> content.update { it.copy(loading = false, groups = result.value.grouped(), searched = term, message = null) }
-                is ApiResult.Failure -> content.update { it.copy(loading = false, message = LoadMessages.forError(result.error)) }
+                is ApiResult.Success -> {
+                    content.update { it.copy(loading = false, groups = result.value.grouped(), searched = term) }
+                    failures.update { it.copy(search = null) }
+                }
+
+                is ApiResult.Failure -> {
+                    content.update { it.copy(loading = false) }
+                    failures.update { it.copy(search = result.error) }
+                }
             }
         }
     }
@@ -255,33 +276,45 @@ class SearchViewModel(
     private suspend fun searchSeerr(term: String) {
         if (seerrState.value !is SeerrState.Ready) {
             content.update { it.copy(seerr = null) }
+            failures.update { it.copy(seerr = null) }
             return
         }
         content.update { it.copy(seerr = SeerrSearch.Searching) }
-        val found = when (val result = seerrRepository.search(term)) {
-            // A title Seerr knows is in the library is already among the library's groups.
-            is ApiResult.Success -> SeerrSearch.Found(result.value.titles.filter { it.notInLibrary() }.distinctBy { it.type to it.tmdbId })
+        failures.update { it.copy(seerr = null) }
+        when (val result = seerrRepository.search(term)) {
+            is ApiResult.Success -> {
+                // A title Seerr knows is in the library is already among the library's groups.
+                val found = SeerrSearch.Found(result.value.titles.filter { it.notInLibrary() }.distinctBy { it.type to it.tmdbId })
+                content.update { it.copy(seerr = found) }
+            }
 
             // Signed out of Seerr meanwhile: the group goes, as Seerr does.
-            is ApiResult.Failure -> if (result.error == ApiError.Unauthorized) null else SeerrSearch.Failed(SeerrMessages.forError(result.error))
+            is ApiResult.Failure -> if (result.error == ApiError.Unauthorized) {
+                content.update { it.copy(seerr = null) }
+            } else {
+                failures.update { it.copy(seerr = result.error) }
+            }
         }
-        content.update { it.copy(seerr = found) }
     }
 
-    private fun List<SearchResult>.grouped(): List<SearchGroup> = listOf(
-        SearchKind.Movie to Strings.searchMovies,
-        SearchKind.Show to Strings.searchShows,
-        SearchKind.Episode to Strings.searchEpisodes,
-        SearchKind.Person to Strings.searchPeople,
-        SearchKind.Collection to Strings.searchCollections,
-    ).mapNotNull { (kind, title) ->
-        filter { it.kind == kind }.takeIf { it.isNotEmpty() }?.let { SearchGroup(kind, title, it) }
+    private fun List<SearchResult>.grouped(): List<SearchGroup> = SearchKind.entries.mapNotNull { kind ->
+        filter { it.kind == kind }.takeIf { it.isNotEmpty() }?.let { SearchGroup(kind, kind.groupTitle(), it) }
     }
 
     companion object {
         /** How long after the last key a search starts. */
         const val DEBOUNCE_MS = 300L
     }
+}
+
+private data class SearchFailures(val search: ApiError? = null, val seerr: ApiError? = null)
+
+private fun SearchKind.groupTitle(): String = when (this) {
+    SearchKind.Movie -> Strings.searchMovies
+    SearchKind.Show -> Strings.searchShows
+    SearchKind.Episode -> Strings.searchEpisodes
+    SearchKind.Person -> Strings.searchPeople
+    SearchKind.Collection -> Strings.searchCollections
 }
 
 private val SearchFilter.kind: SearchKind

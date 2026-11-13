@@ -72,7 +72,7 @@ UI text stays native: SF Pro with Dynamic Type on iOS, Roboto and the M3 scale o
 | Drift | Why |
 | --- | --- |
 | iOS Liquid Glass bars and overlay buttons, Android opaque surfaces | Apple's material, M3 has none |
-| iOS Title Case, Android sentence case | Platform writing conventions |
+| iOS Title Case (English only), Android sentence case | Platform writing conventions; `titleCased()` returns other languages as written |
 | SF Pro vs Roboto, Dynamic Type vs the M3 scale | System fonts |
 | Button height 50pt vs 56dp (hero) and 40dp, hit area 44pt vs 48dp | Platform minimums |
 | Progress 3pt vs 4dp | Native component sizes |

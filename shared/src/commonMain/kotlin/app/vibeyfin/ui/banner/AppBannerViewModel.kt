@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.vibeyfin.data.api.ServerReachability
 import app.vibeyfin.domain.OfflineMode
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -39,7 +40,7 @@ class AppBannerViewModel(
     private val offline: OfflineMode,
     reachability: ServerReachability,
 ) : ViewModel() {
-    val banner: StateFlow<Banner?> = combine(offline.isOffline, reachability.unreachable) { isOffline, unreachable ->
+    val banner: StateFlow<Banner?> = combine(offline.isOffline, reachability.unreachable, Texts.language) { isOffline, unreachable, _ ->
         if (unreachable && !isOffline) Banner(Strings.serverUnreachableBannerTitle, Strings.serverUnreachableBannerHelp, BannerAction.UseOffline) else null
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 

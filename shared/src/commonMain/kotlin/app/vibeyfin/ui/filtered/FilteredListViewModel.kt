@@ -2,6 +2,7 @@ package app.vibeyfin.ui.filtered
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.Decade
@@ -17,6 +18,7 @@ import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.offersCollections
 import app.vibeyfin.domain.offersTypeFilter
 import app.vibeyfin.domain.offersYearAndPeople
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.children.ChildrenUiState
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
@@ -24,6 +26,7 @@ import app.vibeyfin.ui.common.sessionEnded
 import app.vibeyfin.ui.home.title
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -64,6 +67,19 @@ data class FilteredListUiState(
     val sheet: ListSheet? = null,
 )
 
+/** A picker as data: its text is made when the page is drawn, so a language change redraws it. */
+private data class SheetDraft(
+    val kind: ListChipKind,
+    val selectedId: String = "",
+    val rows: List<FilterOption>? = null,
+    val loading: Boolean = false,
+    val failure: ApiError? = null,
+    val query: String = "",
+    val searched: Boolean = false,
+) {
+    val searchable: Boolean get() = kind == ListChipKind.People
+}
+
 /** What the page is ordered and narrowed by; the page starts at the defaults. */
 private data class Selection(
     val sort: PageSort,
@@ -87,11 +103,13 @@ class FilteredListViewModel(
     changes: WatchChanges,
 ) : ViewModel() {
     /** The name at the top of the page. */
-    val title: String = filter.title
+    val title: String
+        get() = filter.title
 
     private val content = MutableStateFlow(ChildrenUiState())
+    private val listFailure = MutableStateFlow<ApiError?>(null)
     private val selection = MutableStateFlow(Selection(sort = filter.defaultSort))
-    private val sheet = MutableStateFlow<ListSheet?>(null)
+    private val sheet = MutableStateFlow<SheetDraft?>(null)
     private var genres: List<FilterOption>? = null
     private var sheetJob: Job? = null
     private var pageJob: Job? = null
@@ -103,8 +121,12 @@ class FilteredListViewModel(
     // Taken off My List here: a page the server answered before the change must not bring them back.
     private val removedFromList = mutableSetOf<String>()
 
-    val uiState: StateFlow<FilteredListUiState> = combine(content, selection, sheet, connection.sessionEnded()) { content, selection, sheet, exit ->
-        FilteredListUiState(content.copy(exit = exit), chipsFor(selection), sheet)
+    private val listState: Flow<ChildrenUiState> = combine(content, selection, listFailure, Texts.language) { content, selection, failure, _ ->
+        content.copy(message = failure?.let { LoadMessages.forError(it) }, emptyText = listEmptyText(selection))
+    }
+
+    val uiState: StateFlow<FilteredListUiState> = combine(listState, selection, sheet, connection.sessionEnded(), Texts.language) { list, selection, sheet, exit, _ ->
+        FilteredListUiState(list.copy(exit = exit), chipsFor(selection), sheet?.listSheet())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FilteredListUiState())
 
     init {
@@ -162,33 +184,16 @@ class FilteredListViewModel(
                 loadFirstPage()
             }
 
-            ListChipKind.Sort -> sheet.value = ListSheet(
-                kind = kind,
-                title = Strings.sortTitle,
-                options = PageSort.entries.map { FilterOption(it.name, sortLabel(it)) },
-                selectedId = current.sort.name,
-            )
+            ListChipKind.Sort -> sheet.value = SheetDraft(kind = kind, selectedId = current.sort.name)
 
             ListChipKind.Genre -> openGenres(current.genre?.id.orEmpty())
 
-            ListChipKind.Year -> sheet.value = ListSheet(
-                kind = kind,
-                title = Strings.yearTitle,
-                options = listOf(FilterOption("", Strings.allYears)) + Decade.entries.map { FilterOption(it.name, decadeLabel(it)) },
-                selectedId = current.decade?.name.orEmpty(),
-            )
+            ListChipKind.Year -> sheet.value = SheetDraft(kind = kind, selectedId = current.decade?.name.orEmpty())
 
             ListChipKind.People -> {
                 peopleJob?.cancel()
                 foundPeople = emptyList()
-                sheet.value = ListSheet(
-                    kind = kind,
-                    title = Strings.peopleTitle,
-                    selectedId = current.person?.id.orEmpty(),
-                    searchable = true,
-                    hint = Strings.peopleSearchHint,
-                    emptyText = Strings.peoplePrompt,
-                )
+                sheet.value = SheetDraft(kind = kind, selectedId = current.person?.id.orEmpty())
             }
 
             // Clear drops every filter and the order: the page is as it opened.
@@ -210,10 +215,10 @@ class FilteredListViewModel(
         val term = text.trim()
         if (term.isEmpty()) {
             foundPeople = emptyList()
-            sheet.value = open.copy(query = text, options = emptyList(), loading = false, message = null, emptyText = Strings.peoplePrompt)
+            sheet.value = open.copy(query = text, rows = emptyList(), loading = false, failure = null, searched = false)
             return
         }
-        sheet.value = open.copy(query = text, message = null)
+        sheet.value = open.copy(query = text, failure = null)
         peopleJob = viewModelScope.launch {
             delay(SEARCH_DEBOUNCE_MS)
             val result = library.searchPeople(term)
@@ -222,10 +227,10 @@ class FilteredListViewModel(
                     when (result) {
                         is ApiResult.Success -> {
                             foundPeople = result.value
-                            it.copy(options = result.value, emptyText = Strings.noPeopleFound, message = null)
+                            it.copy(rows = result.value, searched = true, failure = null)
                         }
 
-                        is ApiResult.Failure -> it.copy(options = emptyList(), message = LoadMessages.forError(result.error))
+                        is ApiResult.Failure -> it.copy(rows = emptyList(), failure = result.error)
                     }
                 }
             }
@@ -265,7 +270,7 @@ class FilteredListViewModel(
     /** "Try again" in the picker. */
     fun onRetrySheet() {
         val open = sheet.value ?: return
-        sheet.value = open.copy(loading = true, message = null)
+        sheet.value = open.copy(loading = true, failure = null)
         onChip(open.kind)
     }
 
@@ -273,20 +278,19 @@ class FilteredListViewModel(
     private fun openGenres(selectedId: String) {
         sheetJob?.cancel()
 
-        fun rows(options: List<FilterOption>) = listOf(FilterOption("", Strings.allGenres)) + options
         genres?.let {
-            sheet.value = ListSheet(ListChipKind.Genre, Strings.genreTitle, rows(it), selectedId)
+            sheet.value = SheetDraft(kind = ListChipKind.Genre, selectedId = selectedId, rows = it)
             return
         }
-        sheet.value = ListSheet(ListChipKind.Genre, Strings.genreTitle, loading = true, selectedId = selectedId)
+        sheet.value = SheetDraft(kind = ListChipKind.Genre, selectedId = selectedId, loading = true)
         sheetJob = viewModelScope.launch {
             val result = library.genres(filter, selection.value.type)
             if (result is ApiResult.Success) genres = result.value
             sheet.update { open ->
                 open?.takeIf { it.kind == ListChipKind.Genre }?.let {
                     when (result) {
-                        is ApiResult.Success -> it.copy(options = rows(result.value), loading = false, message = null)
-                        is ApiResult.Failure -> it.copy(loading = false, message = LoadMessages.forError(result.error))
+                        is ApiResult.Success -> it.copy(rows = result.value, loading = false, failure = null)
+                        is ApiResult.Failure -> it.copy(loading = false, failure = result.error)
                     }
                 }
             }
@@ -331,6 +335,43 @@ class FilteredListViewModel(
 
     private fun List<MediaItem>.withoutRemoved(): List<MediaItem> = if (removedFromList.isEmpty()) this else filterNot { it.id in removedFromList }
 
+    private fun SheetDraft.listSheet(): ListSheet = ListSheet(
+        kind = kind,
+        title = sheetTitle(),
+        options = sheetOptions(),
+        selectedId = selectedId,
+        loading = loading,
+        message = failure?.let { LoadMessages.forError(it) },
+        searchable = searchable,
+        query = query,
+        hint = if (searchable) Strings.peopleSearchHint else "",
+        emptyText = if (!searchable) {
+            null
+        } else if (searched) {
+            Strings.noPeopleFound
+        } else {
+            Strings.peoplePrompt
+        },
+    )
+
+    private fun SheetDraft.sheetTitle(): String = when (kind) {
+        ListChipKind.Sort -> Strings.sortTitle
+        ListChipKind.Year -> Strings.yearTitle
+        ListChipKind.Genre -> Strings.genreTitle
+        ListChipKind.People -> Strings.peopleTitle
+        ListChipKind.Movies, ListChipKind.Shows, ListChipKind.Collections, ListChipKind.Clear -> ""
+    }
+
+    private fun SheetDraft.sheetOptions(): List<FilterOption> = when (kind) {
+        ListChipKind.Sort -> PageSort.entries.map { FilterOption(it.name, sortLabel(it)) }
+        ListChipKind.Year -> listOf(FilterOption("", Strings.allYears)) + Decade.entries.map { FilterOption(it.name, decadeLabel(it)) }
+        ListChipKind.Genre -> rows?.let { listOf(FilterOption("", Strings.allGenres)) + it }.orEmpty()
+        else -> rows.orEmpty()
+    }
+
+    // A page that was narrowed says the filters left nothing, not that the library is empty.
+    private fun listEmptyText(selection: Selection): String = if (selection != Selection(sort = filter.defaultSort)) Strings.nothingMatchesFilters else Strings.emptyFolder
+
     private fun decadeLabel(decade: Decade) = when (decade) {
         Decade.Twenties -> Strings.decade2020s
         Decade.Tens -> Strings.decade2010s
@@ -349,9 +390,10 @@ class FilteredListViewModel(
     private suspend fun page(asked: Selection, startIndex: Int) = library.filteredPage(filter, asked.sort, asked.genre?.id, startIndex = startIndex, type = asked.type, decade = asked.decade, personId = asked.person?.id)
 
     private fun loadFirstPage() {
+        listFailure.value = null
         // The list on screen stays (dimmed) until the new one is in, and so does the count: nothing above it changes size or jumps.
         content.update { current ->
-            if (current.items.isNotEmpty() && current.message == null) {
+            if (current.items.isNotEmpty()) {
                 current.copy(refreshing = true, loadMoreFailed = false)
             } else {
                 ChildrenUiState(loading = true, total = current.total)
@@ -362,17 +404,21 @@ class FilteredListViewModel(
         pageJob = viewModelScope.launch {
             val result = page(asked, startIndex = 0)
             if (selection.value != asked) return@launch
-            content.value = when (result) {
-                is ApiResult.Success -> ChildrenUiState(
-                    items = result.value.items.withoutRemoved(),
-                    loading = false,
-                    hasMore = result.value.hasMore,
-                    total = result.value.total,
-                    // A page that was narrowed says the filters left nothing, not that the library is empty.
-                    emptyText = if (asked != Selection(sort = filter.defaultSort)) Strings.nothingMatchesFilters else Strings.emptyFolder,
-                )
+            when (result) {
+                is ApiResult.Success -> {
+                    listFailure.value = null
+                    content.value = ChildrenUiState(
+                        items = result.value.items.withoutRemoved(),
+                        loading = false,
+                        hasMore = result.value.hasMore,
+                        total = result.value.total,
+                    )
+                }
 
-                is ApiResult.Failure -> ChildrenUiState(loading = false, message = LoadMessages.forError(result.error))
+                is ApiResult.Failure -> {
+                    listFailure.value = result.error
+                    content.value = ChildrenUiState(loading = false)
+                }
             }
         }
     }

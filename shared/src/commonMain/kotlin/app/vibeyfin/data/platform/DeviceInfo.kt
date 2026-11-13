@@ -11,9 +11,14 @@ interface DeviceInfo {
     /** The device's language as an ISO 639-1 code, e.g. "de". */
     val language: String
 
+    /** The device's full language tag, e.g. "pt-BR". */
+    val languageTag: String get() = language
+
     /** False where subtitles are burned into the picture, so the caption style cannot apply. */
     val subtitleStyleApplies: Boolean get() = true
 
     /** True where the app notifies about downloads (iOS), so Settings offers the switch. */
     val downloadAlerts: Boolean get() = false
+
+    val languagePickedInSystem: Boolean get() = false
 }

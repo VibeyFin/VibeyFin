@@ -124,8 +124,25 @@ private fun deviceSection(v: SettingsValues) = SettingsSection(
             checked = v.alwaysAskWhoIsWatching,
         ),
         ToggleItem(SettingKey.OfflineMode, Strings.offlineModeTitle, Strings.offlineModeHelp, checked = v.offlineMode),
+        languageItem(v),
     ),
 )
+
+private fun languageItem(v: SettingsValues): ChoiceItem {
+    val options: List<SettingOption> = listOf(SettingOption(DEVICE_LANGUAGE, Strings.languageDeviceDefault)) +
+        v.appLanguages.mapIndexed { index, language -> SettingOption(index + 1, language.name, language.tag) }
+    val selected: Int = options.firstOrNull { it.code != null && it.code == v.appLanguage }?.value ?: DEVICE_LANGUAGE
+    return ChoiceItem(
+        SettingKey.AppLanguage,
+        Strings.languageTitle,
+        Strings.languageHelp,
+        value = selected,
+        options = options,
+        visible = v.appLanguages.size > 1,
+    )
+}
+
+internal const val DEVICE_LANGUAGE: Int = 0
 
 private fun downloadsSection(v: SettingsValues) = SettingsSection(
     Strings.tabDownloads,

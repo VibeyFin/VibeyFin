@@ -19,12 +19,15 @@ import app.vibeyfin.domain.model.SeerrSeason
 import app.vibeyfin.domain.model.SeerrSeasons
 import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.domain.model.SeerrTitleDetails
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.item.runtimeText
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
@@ -167,7 +170,8 @@ class SeerrTitleViewModel(
     private val clock: Clock,
 ) : ViewModel() {
     private val content = MutableStateFlow(SeerrTitleUiState())
-    val uiState: StateFlow<SeerrTitleUiState> = content.asStateFlow()
+    private val titleError = MutableStateFlow<ApiError?>(null)
+    private val episodeError = MutableStateFlow<ApiError?>(null)
 
     private var details: SeerrTitleDetails? = null
 
@@ -177,6 +181,15 @@ class SeerrTitleViewModel(
     // Whether Seerr answered the IMDb lookup, a "none" included, so a movie without a rating isn't looked up on every reload.
     private var imdbAsked = false
     private var lastAttempt: RequestAttempt? = null
+
+    // The quality profiles of each tier (false standard, true 4K), read once; null where Seerr has no server for it.
+    private val qualities = mutableMapOf<Boolean, QualityOptions?>()
+    private val qualitiesLoading = mutableSetOf<Boolean>()
+    private var chosenProfile: Int? = null
+
+    val uiState: StateFlow<SeerrTitleUiState> = combine(content, titleError, episodeError, Texts.language) { state, title, episode, _ ->
+        state.localized(title, episode)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, SeerrTitleUiState())
 
     init {
         load(showSkeleton = true)
@@ -198,14 +211,17 @@ class SeerrTitleViewModel(
     private fun loadEpisodes(season: Int) {
         episodesLoad?.cancel()
         content.update { it.copy(episodes = SeerrEpisodes(season)) }
+        episodeError.value = null
         episodesLoad = viewModelScope.launch {
             val result = repository.season(tmdbId, season, Strings::episodeNumber)
+            if (content.value.episodes?.season != season) return@launch
+            episodeError.value = (result as? ApiResult.Failure)?.error
             content.update { state ->
                 if (state.episodes?.season != season) return@update state
                 state.copy(
                     episodes = when (result) {
                         is ApiResult.Success -> SeerrEpisodes(season, result.value, loading = false)
-                        is ApiResult.Failure -> SeerrEpisodes(season, loading = false, message = SeerrMessages.forError(result.error))
+                        is ApiResult.Failure -> SeerrEpisodes(season, loading = false)
                     },
                 )
             }
@@ -308,11 +324,6 @@ class SeerrTitleViewModel(
         }
     }
 
-    // The quality profiles of each tier (false standard, true 4K), read once; null where Seerr has no server for it.
-    private val qualities = mutableMapOf<Boolean, QualityOptions?>()
-    private val qualitiesLoading = mutableSetOf<Boolean>()
-    private var chosenProfile: Int? = null
-
     private fun loadQualities(is4k: Boolean) {
         if (is4k in qualities || is4k in qualitiesLoading) return
         qualitiesLoading += is4k
@@ -377,7 +388,10 @@ class SeerrTitleViewModel(
     }
 
     private fun load(showSkeleton: Boolean) {
-        if (showSkeleton) content.update { it.copy(loading = true, message = null) }
+        if (showSkeleton) {
+            content.update { it.copy(loading = true, message = null) }
+            titleError.value = null
+        }
         if (type == SeerrMediaType.Movie && !imdbAsked) {
             viewModelScope.launch {
                 val rating = repository.imdbRating(tmdbId) as? ApiResult.Success ?: return@launch
@@ -391,6 +405,7 @@ class SeerrTitleViewModel(
             when (val result = repository.title(type, tmdbId)) {
                 is ApiResult.Success -> {
                     details = result.value
+                    titleError.value = null
                     // The page shows as soon as the title is read (keeping the More like this it had); the recommendations, slow at
                     // times, follow on their own
                     content.update { show(it, result.value, it.moreLikeThis) }
@@ -407,13 +422,34 @@ class SeerrTitleViewModel(
 
                 is ApiResult.Failure -> {
                     more.cancel()
-                    content.update { it.copy(loading = false, message = SeerrMessages.forError(result.error)) }
+                    titleError.value = result.error
+                    content.update { it.copy(loading = false) }
                 }
             }
         }
     }
 
     private fun show(current: SeerrTitleUiState, details: SeerrTitleDetails, similar: List<SeerrTitle>): SeerrTitleUiState {
+        val title = details.title
+        val inLibrary = title.jellyfinItemId != null && (title.state == RequestState.Available || title.state == RequestState.PartlyAvailable)
+        return current.presented(details).copy(
+            loading = false,
+            message = null,
+            moreLikeThis = similar,
+            openItem = if (inLibrary) title.jellyfinItemId else null,
+        )
+    }
+
+    private fun SeerrTitleUiState.localized(titleFailure: ApiError?, episodeFailure: ApiError?): SeerrTitleUiState {
+        val shown = details?.let { presented(it) } ?: this
+        return shown.copy(
+            message = titleFailure?.let(SeerrMessages::forError),
+            episodes = shown.episodes?.copy(message = episodeFailure?.let(SeerrMessages::forError)),
+            picker = shown.picker?.let { rebuilt(it) },
+        )
+    }
+
+    private fun SeerrTitleUiState.presented(details: SeerrTitleDetails): SeerrTitleUiState {
         val title = details.title
         val ready = seerr.state.value as? SeerrState.Ready
         val permissions = ready?.user?.permissions
@@ -423,10 +459,7 @@ class SeerrTitleViewModel(
         val latest = details.requests.filter { !it.is4k }.maxByOrNull { it.id }
         val latest4k = details.requests.filter { it.is4k }.maxByOrNull { it.id }
         val asker = latest?.takeIf { !it.byMe }?.requestedBy
-        val inLibrary = title.jellyfinItemId != null && (title.state == RequestState.Available || title.state == RequestState.PartlyAvailable)
-        return current.copy(
-            loading = false,
-            message = null,
+        return copy(
             title = title,
             facts = facts(details),
             genres = details.genres,
@@ -445,16 +478,16 @@ class SeerrTitleViewModel(
                 SeerrSeasonRow(season.number, season.label(), Strings.seerrEpisodeCount(season.episodeCount), season.year, season.state, Strings.seerrStateLabel(season.state))
             },
             cast = details.cast,
-            moreLikeThis = similar,
-            openItem = if (inLibrary) title.jellyfinItemId else null,
             menuSubtitle = Strings.seerrMenuSubtitle(Strings.seerrTitleMeta(title.year, title.type), title.state),
             menuStatus = Strings.seerrStateLabel(title.state),
             menuStatusDetail = if (title.state == RequestState.NotRequested) null else menuDetail(title.state, latest),
             canRequest = mayRequest && primary(title.state, mayRequest = true, missing = defaultSeasons(is4k = false).isNotEmpty()).enabled,
             // The picker keeps 4K open after a reload only if it is still offered
-            picker = current.picker?.takeIf { !it.is4k || offer4k },
+            picker = picker?.takeIf { !it.is4k || offer4k },
         )
     }
+
+    private fun rebuilt(current: SeerrSeasonPicker): SeerrSeasonPicker = picker(current.is4k, current.seasons.filter { it.selected }.map { it.number }.toSet(), current.allMissing)
 
     // [missing]: a show has seasons nobody asked for yet, which a partly available show can still request.
     private fun facts(details: SeerrTitleDetails) = listOfNotNull(

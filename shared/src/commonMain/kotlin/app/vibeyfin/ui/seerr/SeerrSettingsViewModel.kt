@@ -12,6 +12,7 @@ import app.vibeyfin.domain.SeerrRepository
 import app.vibeyfin.domain.SeerrState
 import app.vibeyfin.domain.model.RequestQuota
 import app.vibeyfin.domain.normalizeSeerrAddress
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -104,12 +105,12 @@ class SeerrSettingsViewModel(
         /** What was typed; null until the user types, so the field starts from the server's address. */
         val typed: String? = null,
         val connecting: Boolean = false,
-        val addressError: String? = null,
+        val addressIssue: AddressIssue? = null,
         /** "Change address" was tapped on a profile that isn't signed in. */
         val editing: Boolean = false,
         val version: String? = null,
         val quota: RequestQuota? = null,
-        val passwordSheet: SeerrPasswordSheet? = null,
+        val passwordSheet: PasswordAttempt? = null,
         val confirmDisconnect: Boolean = false,
         val seenVisible: Boolean = false,
         val leave: Boolean = false,
@@ -119,7 +120,7 @@ class SeerrSettingsViewModel(
     private var detailsFor: SeerrState.Ready? = null
     private var detailsLoad: Job? = null
 
-    val uiState: StateFlow<SeerrSettingsUiState> = combine(seerr.state, local) { state, page -> state(state, page) }
+    val uiState: StateFlow<SeerrSettingsUiState> = combine(seerr.state, local, Texts.language) { state, page, _ -> state(state, page) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, state(seerr.state.value, local.value))
 
     init {
@@ -141,8 +142,8 @@ class SeerrSettingsViewModel(
         val base = SeerrSettingsUiState(
             address = page.typed.orEmpty(),
             connecting = page.connecting,
-            addressError = page.addressError,
-            passwordSheet = page.passwordSheet,
+            addressError = page.addressIssue.text(),
+            passwordSheet = page.passwordSheet?.let { SeerrPasswordSheet(it.userName, it.submitting, it.failure?.let(SeerrMessages::forPassword)) },
             confirmDisconnect = page.confirmDisconnect,
             leave = page.leave,
         )
@@ -198,7 +199,7 @@ class SeerrSettingsViewModel(
     private fun showsField(state: SeerrState, page: Local): Boolean = page.connecting || page.editing || state == SeerrState.NotSet || state is SeerrState.Off
 
     fun onAddressChange(text: String) {
-        local.update { it.copy(typed = text, addressError = null) }
+        local.update { it.copy(typed = text, addressIssue = null) }
     }
 
     /** Checks the address, saves it for the server and signs this profile in. */
@@ -208,17 +209,17 @@ class SeerrSettingsViewModel(
         // From what was typed, not from [uiState], which may not have caught up with the last keystroke yet.
         val address = current.typed ?: seerr.state.value.address().orEmpty()
         if (normalizeSeerrAddress(address) == null) {
-            local.update { it.copy(addressError = SeerrMessages.INVALID_ADDRESS) }
+            local.update { it.copy(addressIssue = AddressIssue.Invalid) }
             return
         }
-        local.update { it.copy(connecting = true, addressError = null) }
+        local.update { it.copy(connecting = true, addressIssue = null) }
         viewModelScope.launch {
             val result = seerr.connect(address)
             val done = result == SeerrConnectResult.Connected || result == SeerrConnectResult.NeedsPassword
             local.update {
                 it.copy(
                     connecting = false,
-                    addressError = SeerrMessages.forConnect(result),
+                    addressIssue = if (done) null else AddressIssue.Refused(result),
                     editing = if (done) false else it.editing,
                     typed = if (done) null else it.typed,
                 )
@@ -228,7 +229,7 @@ class SeerrSettingsViewModel(
 
     /** "Change address": the field comes back, filled with the saved address. */
     fun onChangeAddress() {
-        local.update { it.copy(editing = true, typed = null, addressError = null) }
+        local.update { it.copy(editing = true, typed = null, addressIssue = null) }
     }
 
     fun onRetry() {
@@ -236,21 +237,21 @@ class SeerrSettingsViewModel(
     }
 
     fun onSignInWithPassword() {
-        connection.asAccount(Unit) { account -> local.update { it.copy(passwordSheet = SeerrPasswordSheet(account.name)) } }
+        connection.asAccount(Unit) { account -> local.update { it.copy(passwordSheet = PasswordAttempt(account.name)) } }
     }
 
     /** The password from the sheet. It goes to Seerr once and is never kept. */
     fun onSubmitPassword(password: String) {
         val sheet = local.value.passwordSheet ?: return
         if (sheet.submitting || password.isEmpty()) return
-        local.update { it.copy(passwordSheet = sheet.copy(submitting = true, error = null)) }
+        local.update { it.copy(passwordSheet = sheet.copy(submitting = true, failure = null)) }
         viewModelScope.launch {
             val result = seerr.signInWithPassword(password)
             local.update { page ->
                 if (result == SeerrPasswordResult.SignedIn) {
                     page.copy(passwordSheet = null)
                 } else {
-                    page.copy(passwordSheet = page.passwordSheet?.copy(submitting = false, error = SeerrMessages.forPassword(result)))
+                    page.copy(passwordSheet = page.passwordSheet?.copy(submitting = false, failure = result))
                 }
             }
         }
@@ -286,6 +287,24 @@ class SeerrSettingsViewModel(
             local.update { it.copy(version = version, quota = quota) }
         }
     }
+}
+
+private sealed interface AddressIssue {
+    data object Invalid : AddressIssue
+
+    data class Refused(val result: SeerrConnectResult) : AddressIssue
+}
+
+private data class PasswordAttempt(
+    val userName: String,
+    val submitting: Boolean = false,
+    val failure: SeerrPasswordResult? = null,
+)
+
+private fun AddressIssue?.text(): String? = when (this) {
+    null -> null
+    AddressIssue.Invalid -> SeerrMessages.INVALID_ADDRESS
+    is AddressIssue.Refused -> SeerrMessages.forConnect(result)
 }
 
 private fun SeerrState.address(): String? = when (this) {
