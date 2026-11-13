@@ -64,8 +64,8 @@ What works today:
   refresh
   on iOS). Tablets get a two-pane Settings.
 
-Not built yet: customisation of Home rows and tabs, Seerr, translations (issue #27),
-TV apps. Android has been run on an emulator against a local test server (see
+Not built yet: customisation of Home rows and tabs, Seerr, TV apps. Translations are in
+progress (issue #27); [help translate on Weblate](https://translate.lore-le.ch/workspaces/0e11631b-4809-477f-ab13-52e3dff0e7b6/), and see [`docs/translating.md`](docs/translating.md). Android has been run on an emulator against a local test server (see
 [`docs/test-server.md`](docs/test-server.md)); there has been no real-device pass yet,
 so real HDR output is unverified. **The iOS app builds and its unit tests pass on the simulator, but
 most screens have not been walked through by hand**,
