@@ -90,6 +90,14 @@ Only a card in progress has Remove; a Next Up card does not. Jellyfin has no "hi
 | Results | `GET /Items/{id}/RemoteSearch/Subtitles/{language}` | `language` is the three-letter code. The device's language goes through `TwoLetterISOLanguageName` in `GET /Localization/Cultures`; if those can't be read, the two-letter code goes as it is, which Jellyfin 12.2 accepts. A server with no provider answers `[]`, the same as a language with no results. Providers that fail or hit a limit are logged and also leave `[]`. |
 | Adding one | `POST /Items/{id}/RemoteSearch/Subtitles/{subtitleId}` | Answers 204 **even when the provider failed**, and only queues the refresh that lists the track. So the app compares the item's `MediaStreams` before and after, every 2 seconds for 30 seconds. The new track is found by `DisplayTitle`, because adding one can move the other indexes. |
 
+## Delete subtitles
+
+| What | Source | Notes |
+| --- | --- | --- |
+| Whether to offer it | `Policy.IsAdministrator` on `GET /Users/Me` | Jellyfin 12.2 refuses the delete with 403 for anyone else, `EnableSubtitleManagement` or not. Hidden on a kids profile and offline, and read again on a blip as for the search. A 403 hides it for that profile until the app starts again. |
+| Which tracks | `MediaStreams` of the item: `Type` `Subtitle` with `IsExternal` true | Only files beside the video can be deleted; tracks inside it are never listed. Named as Technical info names them. |
+| Deleting one | `DELETE /Videos/{id}/Subtitles/{index}` | `index` is the stream's `Index`. Answers 204 and the track is gone from the next read of the item at once. Deleting moves the indexes of the tracks after it, so the item is read again after every delete. 400 means the item has no such index any more: shown as already deleted. |
+
 ## Seerr
 
 Seerr is optional: nothing below shows until the profile is signed in to one (Settings › Requests › Seerr), and never on a kids

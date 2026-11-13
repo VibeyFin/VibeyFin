@@ -25,6 +25,8 @@ data class UserDto(
 data class UserPolicyDto(
     /** Whether the user may download media. The server's own default, when it leaves the field out, is that they may. */
     @SerialName("EnableContentDownloading") val enableContentDownloading: Boolean = true,
+    /** An administrator: the only users the server lets delete a subtitle file. */
+    @SerialName("IsAdministrator") val isAdministrator: Boolean = false,
     /** "Allow subtitle management". Off unless the server says so; being an admin doesn't grant it. */
     @SerialName("EnableSubtitleManagement") val enableSubtitleManagement: Boolean = false,
     @SerialName("MaxParentalRating") val maxParentalRating: Int? = null,

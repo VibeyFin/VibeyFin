@@ -142,6 +142,10 @@ data class MediaStreamDto(
     @SerialName("IsDefault") val isDefault: Boolean = false,
     /** A subtitle the file marks as forced: only the foreign dialogue, for viewers who understand the rest. */
     @SerialName("IsForced") val isForced: Boolean = false,
+    /** A subtitle for viewers who are deaf or hard of hearing (SDH). */
+    @SerialName("IsHearingImpaired") val isHearingImpaired: Boolean = false,
+    /** Where an external file sits on the server; sent to administrators. */
+    @SerialName("Path") val path: String? = null,
     /** For video: the picture size in pixels. */
     @SerialName("Width") val width: Int? = null,
     @SerialName("Height") val height: Int? = null,

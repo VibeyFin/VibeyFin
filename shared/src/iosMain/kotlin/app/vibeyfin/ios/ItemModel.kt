@@ -44,6 +44,12 @@ class ItemModel(itemId: String) {
 
     fun onDismissNotice() = host.viewModel.onDismissNotice()
 
+    fun onDeleteSubtitle(streamIndex: Int) = host.viewModel.onDeleteSubtitle(streamIndex)
+
+    fun onConfirmDeleteSubtitle() = host.viewModel.onConfirmDeleteSubtitle()
+
+    fun onCancelDeleteSubtitle() = host.viewModel.onCancelDeleteSubtitle()
+
     // Downloads.
 
     fun onDownload() = host.viewModel.onDownload()

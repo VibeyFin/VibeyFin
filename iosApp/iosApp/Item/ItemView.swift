@@ -9,6 +9,7 @@ struct ItemView: View {
     @Environment(\.playerSession) private var player
     @State private var scrollOffset: CGFloat = 0
     @State private var searchingSubtitles = false
+    @State private var deletingSubtitles = false
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     private let itemId: String
@@ -73,6 +74,14 @@ struct ItemView: View {
         )
         .failureBanner(model.state?.notice, actionLabel: nil, onRetry: {}, onDismiss: { model.dismissNotice() })
         .subtitleSearch(itemId: itemId, isPresented: $searchingSubtitles, onFailedWhileClosed: { model.notice($0) }, onAdded: { model.subtitleAdded($0) })
+        .subtitleDelete(
+            tracks: model.state?.deletableSubtitles ?? [],
+            isPresented: Binding(get: { deletingSubtitles && model.state?.offersSubtitleDelete == true }, set: { deletingSubtitles = $0 }),
+            prompt: model.state?.subtitleDeletePrompt,
+            onChoose: { model.deleteSubtitle($0) },
+            onConfirm: { model.confirmDeleteSubtitle() },
+            onCancel: { model.cancelDeleteSubtitle() }
+        )
         // The questions before a season or a show is downloaded, and before downloads are deleted.
         .downloadPrompts(
             prompt: model.state?.downloadPrompt,
@@ -143,7 +152,7 @@ struct ItemView: View {
             }
             similarSection(state)
             if !state.technical.isEmpty {
-                TechnicalInfoView(lines: state.technical) { searchingSubtitles = true }
+                TechnicalInfoView(lines: state.technical, onSearchSubtitles: { searchingSubtitles = true }, onDeleteSubtitles: { deletingSubtitles = true })
             }
         }
         .screenMargin()

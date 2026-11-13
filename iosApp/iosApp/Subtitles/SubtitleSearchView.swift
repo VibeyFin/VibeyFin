@@ -209,22 +209,3 @@ private struct ProblemView: View {
         .padding(.vertical, Space.s6)
     }
 }
-
-/// The way in on a title's page, under the technical info's subtitle tracks.
-struct SubtitleSearchRow: View {
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: Space.s3) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                Text(Strings.shared.searchForSubtitles.titleCased()).foregroundStyle(.primary)
-                Spacer()
-                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
-            }
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableButtonStyle())
-    }
-}

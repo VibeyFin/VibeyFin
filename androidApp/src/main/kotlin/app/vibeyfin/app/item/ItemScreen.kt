@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.components.ActionSnackbar
 import app.vibeyfin.app.components.BackButtonSpace
+import app.vibeyfin.app.components.DangerConfirmDialog
 import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.ItemSkeleton
 import app.vibeyfin.app.components.LoadError
@@ -43,12 +44,14 @@ import app.vibeyfin.app.downloads.RemoveConfirmDialog
 import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.navigation.sharedPoster
+import app.vibeyfin.app.subtitles.SubtitleDeleteSheet
 import app.vibeyfin.app.subtitles.SubtitleSearch
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.model.SeerrTitle
+import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.item.ItemUiState
 import app.vibeyfin.ui.item.ItemViewModel
@@ -73,6 +76,7 @@ fun ItemRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var searchingSubtitles by rememberSaveable { mutableStateOf(false) }
+    var deletingSubtitles by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(state.exit) {
         state.exit?.let(onExit)
@@ -108,7 +112,7 @@ fun ItemRoute(
         onRetryEpisodes = viewModel::onRetryEpisodes,
         onRetryAction = viewModel::onRetryAction,
         onDismissMessage = viewModel::onDismissMessage,
-        onSearchSubtitles = { searchingSubtitles = true },
+        subtitles = SubtitleActions(onSearch = { searchingSubtitles = true }, onDelete = { deletingSubtitles = true }),
         onDismissNotice = viewModel::onDismissNotice,
         downloads = DownloadCallbacks(
             onDownload = viewModel::onDownload,
@@ -134,6 +138,20 @@ fun ItemRoute(
     }
 
     state.removePrompt?.let { RemoveConfirmDialog(it, onConfirm = viewModel::onConfirmRemove, onDismiss = viewModel::onDismissRemoval) }
+
+    if (deletingSubtitles && state.offersSubtitleDelete) {
+        SubtitleDeleteSheet(
+            state.deletableSubtitles,
+            onChoose = { streamIndex ->
+                deletingSubtitles = false
+                viewModel.onDeleteSubtitle(streamIndex)
+            },
+            onDismiss = { deletingSubtitles = false },
+        )
+    }
+    state.subtitleDeletePrompt?.let {
+        DangerConfirmDialog(Strings.deleteSubtitleTitle(it.name), Strings.deleteSubtitleText, Strings.deleteSubtitleConfirm, onConfirm = viewModel::onConfirmDeleteSubtitle, onDismiss = viewModel::onCancelDeleteSubtitle)
+    }
 }
 
 @Composable
@@ -157,7 +175,7 @@ fun ItemScreen(
     onRetryEpisodes: () -> Unit,
     onRetryAction: () -> Unit,
     onDismissMessage: () -> Unit,
-    onSearchSubtitles: () -> Unit,
+    subtitles: SubtitleActions,
     onDismissNotice: () -> Unit,
     downloads: DownloadCallbacks = DownloadCallbacks.None,
     onOpenSeerr: (SeerrTitle) -> Unit = {},
@@ -191,7 +209,7 @@ fun ItemScreen(
                         BoxWithConstraints(Modifier.fillMaxSize()) {
                             ItemPage(
                                 item, state, wide = maxWidth >= WIDE_FROM, screenWidth = maxWidth, screenHeight = maxHeight,
-                                onPlay, onPlayEpisode, onOpen, onOpenSeries, onToggleFavorite, onTogglePlayed, onToggleEpisodePlayed, onSelectSeason, onRetrySimilar, onRetryCollections, onRetrySeasons, onRetryEpisodes, onOpenPerson, onRetryExtras, onSearchSubtitles,
+                                onPlay, onPlayEpisode, onOpen, onOpenSeries, onToggleFavorite, onTogglePlayed, onToggleEpisodePlayed, onSelectSeason, onRetrySimilar, onRetryCollections, onRetrySeasons, onRetryEpisodes, onOpenPerson, onRetryExtras, subtitles,
                                 downloads = downloads,
                                 onOpenSeerr = onOpenSeerr,
                             )
@@ -241,7 +259,7 @@ private fun ItemPage(
     onRetryEpisodes: () -> Unit,
     onOpenPerson: (String) -> Unit,
     onRetryExtras: () -> Unit,
-    onSearchSubtitles: () -> Unit,
+    subtitles: SubtitleActions,
     downloads: DownloadCallbacks,
     onOpenSeerr: (SeerrTitle) -> Unit,
 ) {
@@ -269,7 +287,7 @@ private fun ItemPage(
                 SimilarSection(row, state.similarTiles, margin, onOpen, onOpenSeerr, onRetry = onRetrySimilar, tileWidth = if (wide) POSTER_WIDE else VibeyFinTokens.Size.posterWidth)
             }
 
-            if (state.technical.isNotEmpty()) TechnicalInfo(state.technical, onSearchSubtitles)
+            if (state.technical.isNotEmpty()) TechnicalInfo(state.technical, subtitles)
 
             Spacer(Modifier.height(VibeyFinTokens.Space.s5))
         }

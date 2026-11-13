@@ -39,6 +39,18 @@ final class ItemObservable: ObservableObject {
         model.onDismissNotice()
     }
 
+    func deleteSubtitle(_ streamIndex: Int32) {
+        model.onDeleteSubtitle(streamIndex: streamIndex)
+    }
+
+    func confirmDeleteSubtitle() {
+        model.onConfirmDeleteSubtitle()
+    }
+
+    func cancelDeleteSubtitle() {
+        model.onCancelDeleteSubtitle()
+    }
+
     func togglePlayed() {
         model.onTogglePlayed()
     }

@@ -5,6 +5,7 @@ import Shared
 struct TechnicalInfoView: View {
     let lines: [TechnicalLine]
     let onSearchSubtitles: () -> Void
+    let onDeleteSubtitles: () -> Void
     @State private var open = false
 
     var body: some View {
@@ -19,8 +20,13 @@ struct TechnicalInfoView: View {
                                 Text(reason).font(.footnote).foregroundStyle(.secondary)
                             }
                         }
-                        if line.searchesSubtitles {
-                            SubtitleSearchRow(action: onSearchSubtitles)
+                        if line.searchesSubtitles || line.deletesSubtitles {
+                            SubtitleActionButtons(
+                                searches: line.searchesSubtitles,
+                                deletes: line.deletesSubtitles,
+                                onSearch: onSearchSubtitles,
+                                onDelete: onDeleteSubtitles
+                            )
                         }
                     }
                 }
