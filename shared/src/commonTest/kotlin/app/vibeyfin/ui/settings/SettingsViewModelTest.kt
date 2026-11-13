@@ -1140,7 +1140,7 @@ class SettingsViewModelTest {
 
         assertEquals("PG", limits.infoValue(SettingKey.RatingLimit))
         assertEquals("horror, gore", limits.infoValue(SettingKey.BlockedTags))
-        assertEquals("Weekdays 08:00 to 20:30, Saturdays 22:00 to 06:00 the next day", limits.infoValue(SettingKey.AllowedHours))
+        assertEquals("Weekdays 8:00 AM to 8:30 PM, Saturdays 10:00 PM to 6:00 AM the next day", limits.infoValue(SettingKey.AllowedHours))
         assertEquals(Strings.serverPolicyGroup, limits.kidsPage().sections.first { SettingKey.RatingLimit in it.items.map { i -> i.key } }.title)
         assertFalse(SettingKey.PolicyStatus in limits.kidsKeys())
 

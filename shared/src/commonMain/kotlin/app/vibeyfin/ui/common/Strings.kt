@@ -7,6 +7,7 @@ import app.vibeyfin.domain.SubtitleMode
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.RequestState
 import app.vibeyfin.domain.model.SeerrMediaType
+import app.vibeyfin.i18n.Formats
 import app.vibeyfin.i18n.plural
 import app.vibeyfin.i18n.text
 import kotlin.math.roundToInt
@@ -54,7 +55,7 @@ object Strings {
 
     fun cantReachServer(name: String): String = text("cant_reach_server", "name" to name)
 
-    fun triedAddresses(addresses: List<String>): String = text("tried_addresses_start") + addresses.joinToStringAnd() + text("tried_addresses_end")
+    fun triedAddresses(addresses: List<String>): String = text("tried_addresses", "addresses" to addresses.joinToStringAnd())
 
     fun sessionEndedFor(name: String): String = text("session_ended_for", "name" to name)
 
@@ -98,7 +99,7 @@ object Strings {
 
     fun quickConnectCode(code: String): String = if (code.length == 6) code.take(3) + " " + code.drop(3) else code
 
-    fun quickConnectSpokenCode(code: String): String = text("quick_connect_spoken_code") + code.toList().joinToString(" ")
+    fun quickConnectSpokenCode(code: String): String = text("quick_connect_spoken_code", "code" to code.toList().joinToString(" "))
 
     fun quickConnectWaiting(expiresIn: Duration): String {
         val seconds = expiresIn.inWholeSeconds.coerceAtLeast(0)
@@ -134,8 +135,7 @@ object Strings {
         text("server_meta_addresses", "count" to addresses).takeIf { addresses > 1 },
         when (profiles) {
             0 -> null
-            1 -> text("server_meta_one_profile")
-            else -> text("server_meta_profiles", "count" to profiles)
+            else -> plural("server_meta_profiles", profiles)
         },
     ).joinToString(" · ")
 
@@ -143,14 +143,12 @@ object Strings {
 
     fun removeServerMessage(profiles: Int): String = when (profiles) {
         0 -> text("remove_server_message_none")
-        1 -> text("remove_server_message_one")
-        else -> text("remove_server_message_other", "count" to profiles)
+        else -> plural("remove_server_message", profiles)
     }
 
     fun removeServerHelp(profiles: Int): String = when (profiles) {
         0 -> text("remove_server_help_none")
-        1 -> text("remove_server_help_one")
-        else -> text("remove_server_help_other", "count" to profiles)
+        else -> plural("remove_server_help", profiles)
     }
 
     // Add server
@@ -167,7 +165,7 @@ object Strings {
     val saveAddress: String get() = text("save_address")
     val done: String get() = text("done")
 
-    fun alsoReachableAt(addresses: List<String>): String = text("also_reachable_at") + addresses.joinToString(", ")
+    fun alsoReachableAt(addresses: List<String>): String = text("also_reachable_at", "addresses" to addresses.joinToString(", "))
 
     fun alreadySaved(addressIsNew: Boolean): String = if (addressIsNew) {
         text("already_saved_new_address")
@@ -240,18 +238,14 @@ object Strings {
     val clearFilters: String get() = text("clear_filters")
 
     /** "1,284 titles" under the Library's title. */
-    fun libraryCount(count: Int): String {
-        val digits = count.toString()
-        val grouped = digits.reversed().chunked(3).joinToString(",").reversed()
-        return if (count == 1) text("library_count_one") else text("library_count_other", "count" to grouped)
-    }
+    fun libraryCount(count: Int): String = plural("library_count", count, "count" to Formats.current.integer(count.toLong()))
 
     fun sortChip(label: String): String = text("sort_chip", "label" to label)
 
     fun genreChip(name: String): String = text("genre_chip", "name" to name)
 
     /** What a screen reader says for a sheet row that holds [count] titles. */
-    fun titleCount(name: String, count: Int): String = if (count == 1) text("title_count_one", "name" to name) else text("title_count_other", "name" to name, "count" to count)
+    fun titleCount(name: String, count: Int): String = plural("title_count", count, "name" to name)
 
     /** In the Categories sheet when the server has none. */
     val noCategories: String get() = text("no_categories")
@@ -288,13 +282,11 @@ object Strings {
         val year = parts.getOrNull(0)?.toIntOrNull() ?: return null
         val month = parts.getOrNull(1)?.toIntOrNull()?.takeIf { it in 1..12 } ?: return null
         val day = parts.getOrNull(2)?.take(2)?.toIntOrNull() ?: return null
-        return text("release_date", "day" to day, "month" to MONTHS[month - 1], "year" to year)
+        return text("release_date", "day" to day, "month" to Formats.current.monthName(month, false), "year" to year)
     }
 
-    private val MONTHS: List<String> get() = listOf(text("month_january"), text("month_february"), text("month_march"), text("month_april"), text("month_may"), text("month_june"), text("month_july"), text("month_august"), text("month_september"), text("month_october"), text("month_november"), text("month_december"))
-
     /** A rating tag on a picture: "★ 8.1". */
-    fun ratingTag(rating: Double): String = "★ ${kotlin.math.round(rating * 10) / 10.0}"
+    fun ratingTag(rating: Double): String = "★ ${Formats.current.decimal(kotlin.math.round(rating * 10) / 10.0, 1, 1)}"
 
     val markSeriesWatched: String get() = text("mark_series_watched")
     val markSeriesUnwatched: String get() = text("mark_series_unwatched")
@@ -483,22 +475,21 @@ object Strings {
         ".mp3" to "mp3",
     )
 
-    fun statsResolution(width: Int, height: Int): String = "$width × $height"
+    fun statsResolution(width: Int, height: Int): String = text("stats_resolution", "width" to width, "height" to height)
 
     /** `24 fps`, `23.98 fps`: two decimals at most, none when the rate is whole. */
     fun statsFrameRate(framesPerSecond: Float): String {
         val hundredths = (framesPerSecond * 100).roundToInt()
-        val rate = if (hundredths % 100 == 0) (hundredths / 100).toString() else (hundredths / 100f).toString()
-        return text("stats_frame_rate", "rate" to rate)
+        return text("stats_frame_rate", "rate" to Formats.current.decimal(hundredths / 100.0, 0, 2))
     }
 
     /** `850 kbps` below a megabit, `4.5 Mbps` from there. Used for bitrate and throughput. */
-    fun statsBitrate(kbps: Int): String = if (kbps < 1000) text("stats_bitrate_kbps", "kbps" to kbps) else text("stats_bitrate_mbps", "megabits" to kbps / 1000, "decimal" to (kbps % 1000) / 100)
+    fun statsBitrate(kbps: Int): String = if (kbps < 1000) text("stats_bitrate_kbps", "kbps" to kbps) else text("stats_bitrate_mbps", "megabits" to Formats.current.decimal((kbps / 100) / 10.0, 1, 1))
 
     /** `12.3 s` of video buffered ahead. */
     fun statsBuffer(milliseconds: Long): String {
         val tenths = (milliseconds.coerceAtLeast(0) / 100)
-        return text("stats_buffer", "seconds" to tenths / 10, "decimal" to tenths % 10)
+        return text("stats_buffer", "seconds" to Formats.current.decimal(tenths / 10.0, 1, 1))
     }
 
     /** What sits between the parts of one meta line, such as the series name and the episode. */
@@ -538,12 +529,7 @@ object Strings {
     /** `1x`, `0.75x`, `1.5x`. */
     fun speedValue(speed: Float): String {
         val hundredths = (speed * 100).roundToInt()
-        val number = when {
-            hundredths % 100 == 0 -> (hundredths / 100).toString()
-            hundredths % 10 == 0 -> "${hundredths / 100}.${(hundredths % 100) / 10}"
-            else -> "${hundredths / 100}.${(hundredths % 100).toString().padStart(2, '0')}"
-        }
-        return text("speed_value", "number" to number)
+        return text("speed_value", "number" to Formats.current.decimal(hundredths / 100.0, 0, 2))
     }
 
     /** The page of a movie, an episode or a show: its sections, and what the Play button says for a show. */
@@ -827,7 +813,7 @@ object Strings {
 
     /** Provider, format and rating; what the server left out is left out here too. */
     fun subtitleResultDetails(provider: String?, format: String?, rating: Double?, possiblyAdded: Boolean = false): String {
-        val stars = rating?.takeIf { it > 0 }?.let { "★ " + (it * 10).roundToInt().let { tenths -> "${tenths / 10}.${tenths % 10}" } }
+        val stars = rating?.takeIf { it > 0 }?.let { "★ " + Formats.current.decimal((it * 10).roundToInt() / 10.0, 1, 1) }
         return listOfNotNull(provider, format?.uppercase(), stars, if (possiblyAdded) text("subtitle_result_details_possibly_added") else null).joinToString(" · ")
     }
 
@@ -860,12 +846,11 @@ object Strings {
      */
     fun languagesSummary(audio: String?, subtitles: String?, mode: SubtitleMode): String {
         if (audio == null && subtitles == null && mode == SubtitleMode.Default) return languagesDefaultsSummary
-        val which = subtitles?.let { text("languages_summary_subtitles_named", "name" to it) } ?: text("languages_summary_subtitles")
         val subs = when (mode) {
-            SubtitleMode.Default -> text("languages_summary_subs_default", "phrase" to which)
-            SubtitleMode.Always -> text("languages_summary_subs_always", "phrase" to which)
-            SubtitleMode.OnlyForced -> text("languages_summary_subs_only_forced", "phrase" to which)
-            SubtitleMode.Smart -> text("languages_summary_subs_smart", "phrase" to which)
+            SubtitleMode.Default -> subtitles?.let { text("languages_summary_named_subs_default", "name" to it) } ?: text("languages_summary_any_subs_default")
+            SubtitleMode.Always -> subtitles?.let { text("languages_summary_named_subs_always", "name" to it) } ?: text("languages_summary_any_subs_always")
+            SubtitleMode.OnlyForced -> subtitles?.let { text("languages_summary_named_subs_only_forced", "name" to it) } ?: text("languages_summary_any_subs_only_forced")
+            SubtitleMode.Smart -> subtitles?.let { text("languages_summary_named_subs_smart", "name" to it) } ?: text("languages_summary_any_subs_smart")
             SubtitleMode.None -> text("languages_summary_subs_none")
         }
         return "${audio ?: anyLanguage} · $subs"
@@ -924,13 +909,18 @@ object Strings {
     /** A rating the server has no name for: "Level 10". Level 0 is the strictest cap, not "all". */
     fun serverPolicyLevel(level: Int): String = text("server_policy_level", "level" to level)
 
-    /** One access window: "Weekdays 08:00 to 20:30", or "Saturdays 22:00 to 06:00 the next day" when it runs overnight. */
+    /** One access window: "Weekdays 8:00 AM to 8:30 PM", or "Saturdays 10:00 PM to 6:00 AM the next day" when it runs overnight. */
     fun serverPolicyWindow(days: String, startMinutes: Int, endMinutes: Int): String {
-        val overnight = if (startMinutes > endMinutes) text("server_policy_window_overnight") else ""
-        return text("server_policy_window", "days" to days, "start" to hhmm(startMinutes), "end" to hhmm(endMinutes), "overnight" to overnight)
+        val start: String = hhmm(startMinutes)
+        val end: String = hhmm(endMinutes)
+        return if (startMinutes > endMinutes) {
+            text("server_policy_window_next_day", "days" to days, "start" to start, "end" to end)
+        } else {
+            text("server_policy_window", "days" to days, "start" to start, "end" to end)
+        }
     }
 
-    private fun hhmm(minutes: Int): String = "${(minutes / 60).toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}"
+    private fun hhmm(minutes: Int): String = Formats.current.time(minutes).replace('\u202f', ' ').replace('\u00a0', ' ')
 
     val serverPolicyEveryday: String get() = text("server_policy_everyday")
     val serverPolicyWeekdays: String get() = text("server_policy_weekdays")
@@ -1042,7 +1032,7 @@ object Strings {
 
     private fun tenths(value: Double): String {
         val rounded = (value * 10).roundToInt()
-        return "${rounded / 10}.${rounded % 10}"
+        return Formats.current.decimal(rounded / 10.0, 1, 1)
     }
 
     /** The line under a download that is coming in; [total] is null until the server has said how big the file is. */
@@ -1119,7 +1109,7 @@ object Strings {
 
     private fun hundredths(value: Long, unit: Long): String {
         val rounded = (value * 100 + unit / 2) / unit
-        return "${rounded / 100}.${(rounded % 100).toString().padStart(2, '0')}"
+        return Formats.current.decimal(rounded / 100.0, 2, 2)
     }
 
     private const val MEGABYTE: Long = 1_000_000
@@ -1147,9 +1137,9 @@ object Strings {
     val downloadConfirmAction: String get() = text("download_confirm_action")
     val downloadNothingNew: String get() = text("download_nothing_new")
 
-    fun downloadConfirmSize(bytes: Long, episodes: Int): String? = if (bytes > 0) text("download_confirm_size_with_verb", "verb" to (if (episodes == 1) text("download_confirm_size_it_takes") else text("download_confirm_size_they_take")), "size" to fileSize(bytes)) else null
+    fun downloadConfirmSize(bytes: Long, episodes: Int): String? = if (bytes > 0) plural("download_confirm_size_about", episodes, "size" to fileSize(bytes)) else null
 
-    fun removeConfirmTitle(count: Int, title: String): String = if (count == 1) text("remove_confirm_title_single", "title" to title) else text("remove_confirm_title_multiple", "count" to count)
+    fun removeConfirmTitle(count: Int, title: String): String = plural("remove_confirm_title", count, "title" to title)
 
     fun removeConfirmBody(bytes: Long): String = if (bytes > 0) text("remove_confirm_body_with_size", "size" to fileSize(bytes)) else text("remove_confirm_body")
 
@@ -1203,15 +1193,32 @@ object Strings {
      * What is left of the quota, for the kinds that have one, and how often it starts again when Seerr says: "3 movies and 2 seasons
      * this week". Seerr counts a show's requests in seasons.
      */
-    fun seerrQuotaLeft(movies: Int?, seasons: Int?, days: Int?): String {
-        val what = listOfNotNull(movies?.let(::collectionMovieCount), seasons?.let(::seasonCount)).joinToString(text("seerr_quota_left_and"))
-        val often = when (days) {
-            null -> ""
-            1 -> text("seerr_quota_left_a_day")
-            7 -> text("seerr_quota_left_this_week")
-            else -> text("seerr_quota_left_every_days", "days" to days)
-        }
-        return what + often
+    fun seerrQuotaLeft(movies: Int?, seasons: Int?, days: Int?): String = when {
+        movies != null && seasons != null -> quotaLeftBoth(collectionMovieCount(movies), seasonCount(seasons), days)
+        movies != null -> quotaLeftMovies(collectionMovieCount(movies), days)
+        seasons != null -> quotaLeftSeasons(seasonCount(seasons), days)
+        else -> quotaLeftMovies("", days)
+    }
+
+    private fun quotaLeftMovies(movies: String, days: Int?): String = when (days) {
+        null -> text("seerr_quota_left_movies", "movies" to movies)
+        1 -> text("seerr_quota_left_movies_a_day", "movies" to movies)
+        7 -> text("seerr_quota_left_movies_this_week", "movies" to movies)
+        else -> plural("seerr_quota_left_movies_every_days", days, "movies" to movies)
+    }
+
+    private fun quotaLeftSeasons(seasons: String, days: Int?): String = when (days) {
+        null -> text("seerr_quota_left_seasons", "seasons" to seasons)
+        1 -> text("seerr_quota_left_seasons_a_day", "seasons" to seasons)
+        7 -> text("seerr_quota_left_seasons_this_week", "seasons" to seasons)
+        else -> plural("seerr_quota_left_seasons_every_days", days, "seasons" to seasons)
+    }
+
+    private fun quotaLeftBoth(movies: String, seasons: String, days: Int?): String = when (days) {
+        null -> text("seerr_quota_left_movies_and_seasons", "movies" to movies, "seasons" to seasons)
+        1 -> text("seerr_quota_left_movies_and_seasons_a_day", "movies" to movies, "seasons" to seasons)
+        7 -> text("seerr_quota_left_movies_and_seasons_this_week", "movies" to movies, "seasons" to seasons)
+        else -> plural("seerr_quota_left_movies_and_seasons_every_days", days, "movies" to movies, "seasons" to seasons)
     }
 
     val seerrDisconnect: String get() = text("seerr_disconnect")
@@ -1264,7 +1271,7 @@ object Strings {
     /** A rating out of 10 in a facts line, the library's and Seerr's alike: "★ 8.7". */
     fun starRating(score: Double): String {
         val tenths = (score * 10 + 0.5).toInt()
-        return "★ ${tenths / 10}.${tenths % 10}"
+        return "★ ${Formats.current.decimal(tenths / 10.0, 1, 1)}"
     }
 
     fun seerrEpisodeCount(count: Int): String = plural("seerr_episode_count", count)
@@ -1325,19 +1332,11 @@ object Strings {
 
     /** Under the status row of a Seerr poster menu: "By you, 2 days ago · Waiting for approval". */
     fun seerrMenuStatusDetail(state: RequestState, byMe: Boolean, requestedBy: String?, daysAgo: Int?): String {
-        val who = when {
-            byMe -> text("seerr_menu_status_detail_by_you")
-            requestedBy != null -> text("seerr_menu_status_detail_by", "name" to requestedBy)
-            else -> null
+        val asked: String? = when {
+            byMe -> menuAskedByYou(daysAgo)
+            requestedBy != null -> menuAskedBy(requestedBy, daysAgo)
+            else -> menuAskedWhen(daysAgo)
         }
-        val whenAsked = daysAgo?.let {
-            when (it) {
-                0 -> text("seerr_menu_status_detail_today")
-                1 -> text("seerr_menu_status_detail_yesterday")
-                else -> text("seerr_menu_status_detail_days_ago", "days" to it)
-            }
-        }
-        val asked = listOfNotNull(who, whenAsked).joinToString(", ").takeIf { it.isNotEmpty() }
         val next = when (state) {
             RequestState.Requested -> text("seerr_menu_status_detail_requested")
             RequestState.Approved -> text("seerr_menu_status_detail_approved")
@@ -1347,6 +1346,27 @@ object Strings {
             RequestState.NotRequested, RequestState.Available -> null
         }
         return listOfNotNull(asked, next).joinToString(" · ")
+    }
+
+    private fun menuAskedByYou(daysAgo: Int?): String = when (daysAgo) {
+        null -> text("seerr_menu_status_detail_by_you")
+        0 -> text("seerr_menu_status_detail_by_you_today")
+        1 -> text("seerr_menu_status_detail_by_you_yesterday")
+        else -> plural("seerr_menu_status_detail_by_you_days_ago", daysAgo)
+    }
+
+    private fun menuAskedBy(name: String, daysAgo: Int?): String = when (daysAgo) {
+        null -> text("seerr_menu_status_detail_by", "name" to name)
+        0 -> text("seerr_menu_status_detail_by_name_today", "name" to name)
+        1 -> text("seerr_menu_status_detail_by_name_yesterday", "name" to name)
+        else -> plural("seerr_menu_status_detail_by_name_days_ago", daysAgo, "name" to name)
+    }
+
+    private fun menuAskedWhen(daysAgo: Int?): String? = when (daysAgo) {
+        null -> null
+        0 -> text("seerr_menu_status_detail_today")
+        1 -> text("seerr_menu_status_detail_yesterday")
+        else -> plural("seerr_menu_status_detail_days_ago", daysAgo)
     }
 
     // Seerr on Home: My requests and the discover rows, and their pages
@@ -1361,14 +1381,12 @@ object Strings {
     val seerrFilterAvailable: String get() = text("seerr_filter_available")
     val seerrFilterDeclined: String get() = text("seerr_filter_declined")
 
-    private val monthNames: List<String> get() = listOf(text("month_short_jan"), text("month_short_feb"), text("month_short_mar"), text("month_short_apr"), text("month_short_may"), text("month_short_jun"), text("month_short_jul"), text("month_short_aug"), text("month_short_sep"), text("month_short_oct"), text("month_short_nov"), text("month_short_dec"))
-
     /** A release date ("2026-12-12") as Coming soon shows it: "Dec 12". Null when it can't be read. */
     fun seerrReleaseDay(date: String?): String? {
         val parts = date?.split("-")?.takeIf { it.size >= 3 } ?: return null
         val month = parts[1].toIntOrNull()?.takeIf { it in 1..12 } ?: return null
         val day = parts[2].take(2).toIntOrNull() ?: return null
-        return text("seerr_release_day", "month" to monthNames[month - 1], "day" to day)
+        return text("seerr_release_day", "month" to Formats.current.monthName(month, true), "day" to day)
     }
 
     /** The line under a title in a poster's menu: "Movie · 2022", "Show · 2019", "S1 E4 · The Show". */
@@ -1388,7 +1406,7 @@ object Strings {
             sorted.isEmpty() -> null
             sorted.size == 1 -> text("seerr_request_kind_season", "number" to sorted.first())
             sorted == (sorted.first()..sorted.last()).toList() -> text("seerr_request_kind_seasons_range", "first" to sorted.first(), "last" to sorted.last())
-            else -> text("seerr_request_kind_seasons") + sorted.joinToString(", ")
+            else -> text("seerr_request_kind_seasons", "numbers" to sorted.joinToString(", "))
         }
         listOfNotNull(text("seerr_request_kind_show"), which).joinToString(" · ")
     }
@@ -1402,19 +1420,26 @@ object Strings {
             RequestState.Failed -> text("seerr_request_when_failed")
             RequestState.Requested, RequestState.NotRequested -> text("seerr_request_when_requested")
         }
-        val whenText = when (daysAgo) {
-            null -> null
-            0 -> text("seerr_request_when_today")
-            1 -> text("seerr_request_when_yesterday")
-            in 2..6 -> text("seerr_request_when_days_ago", "days" to daysAgo)
-            in 7..13 -> text("seerr_request_when_last_week")
-            else -> text("seerr_request_when_weeks_ago", "weeks" to (daysAgo / 7))
+        return when (daysAgo) {
+            null -> what
+            0 -> text("seerr_request_status_today", "what" to what)
+            1 -> text("seerr_request_status_yesterday", "what" to what)
+            in 2..6 -> plural("seerr_request_status_days_ago", daysAgo, "what" to what)
+            in 7..13 -> text("seerr_request_status_last_week", "what" to what)
+            else -> plural("seerr_request_status_weeks_ago", daysAgo / 7, "what" to what)
         }
-        return listOfNotNull(what, whenText).joinToString(" ")
     }
 
     /** What a screen reader says for a Seerr poster: "Harbour Bridge, 2025 · Movie, not in your library, can be requested". */
-    fun seerrTitleDescription(title: String, meta: String, state: RequestState): String = text("seerr_title_description", "title" to title, "meta" to meta, "state" to (seerrStateLabel(state)?.lowercase() ?: text("seerr_title_description_can_request")))
+    fun seerrTitleDescription(title: String, meta: String, state: RequestState): String = when (state) {
+        RequestState.NotRequested -> text("seerr_title_description_not_requested", "title" to title, "meta" to meta)
+        RequestState.Requested -> text("seerr_title_description_requested", "title" to title, "meta" to meta)
+        RequestState.Approved -> text("seerr_title_description_approved", "title" to title, "meta" to meta)
+        RequestState.PartlyAvailable -> text("seerr_title_description_partly_available", "title" to title, "meta" to meta)
+        RequestState.Available -> text("seerr_title_description_available", "title" to title, "meta" to meta)
+        RequestState.Declined -> text("seerr_title_description_declined", "title" to title, "meta" to meta)
+        RequestState.Failed -> text("seerr_title_description_failed", "title" to title, "meta" to meta)
+    }
 }
 
-private fun List<String>.joinToStringAnd() = if (size < 2) joinToString() else dropLast(1).joinToString(", ") + " and " + last()
+private fun List<String>.joinToStringAnd(): String = if (size < 2) joinToString() else text("list_and", "leading" to dropLast(1).joinToString(", "), "last" to last())
