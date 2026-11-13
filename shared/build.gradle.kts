@@ -89,6 +89,19 @@ kotlin {
     }
 }
 
+val stringResources = tasks.register<Sync>("stringResources") {
+    from(layout.projectDirectory.dir("strings")) { include("*.json") }
+    into(layout.buildDirectory.dir("generated/stringResources/strings"))
+}
+
+kotlin.sourceSets.androidMain {
+    resources.srcDir(stringResources.map { it.destinationDir.parentFile })
+}
+
+kotlin.sourceSets.getByName("androidHostTest") {
+    resources.srcDir(stringResources.map { it.destinationDir.parentFile })
+}
+
 room3 {
     // Exported schemas are checked in so migrations can be tested against them.
     schemaDirectory("$projectDir/schemas")
@@ -167,4 +180,8 @@ dependencies {
     add("kspIosSimulatorArm64", libs.room.compiler)
 
     sqliteHostNatives(libs.sqlite.bundled.jvm)
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest>().configureEach {
+    environment("SIMCTL_CHILD_VIBEYFIN_STRINGS_DIR", layout.projectDirectory.dir("strings").asFile.path)
 }

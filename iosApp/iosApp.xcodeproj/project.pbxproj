@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		A1000000000000000000F005 /* AetherEngine in Frameworks */ = {isa = PBXBuildFile; productRef = A1000000000000000000F006 /* AetherEngine */; };
+		A1000000000000000000F010 /* strings in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000F011 /* strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -37,6 +38,7 @@
 		A10000000000000000000001 /* VibeyFin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VibeyFin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000002 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		A10000000000000000000014 /* iosAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iosAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1000000000000000000F011 /* strings */ = {isa = PBXFileReference; lastKnownFileType = folder; name = strings; path = ../shared/strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -96,6 +98,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000008 /* Configuration */,
+				A1000000000000000000F011 /* strings */,
 				A10000000000000000000015 /* Tests */,
 				A10000000000000000000004 /* iosApp */,
 				A10000000000000000000009 /* Products */,
@@ -215,6 +218,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1000000000000000000F010 /* strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
