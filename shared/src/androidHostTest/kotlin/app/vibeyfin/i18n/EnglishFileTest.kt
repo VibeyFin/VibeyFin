@@ -64,4 +64,15 @@ class EnglishFileTest {
         }.distinct()
         assertEquals(emptyList(), mismatches)
     }
+
+    @Test
+    fun noMessagePropertyHoldsALiteral() {
+        val literalProperty: Regex = Regex("""^\s+(private )?(const )?val \w+(: String)? = ".*"""")
+        val files: List<String> = listOf("Strings", "LoadMessages", "SignInMessages", "SeerrMessages")
+        val offenders: List<String> = File("src/commonMain").walkTopDown()
+            .filter { it.nameWithoutExtension in files }
+            .flatMap { file -> file.readLines().filter { literalProperty.containsMatchIn(it) && "appName" !in it }.map { "${file.name}: ${it.trim()}" } }
+            .toList()
+        assertEquals(emptyList(), offenders)
+    }
 }
