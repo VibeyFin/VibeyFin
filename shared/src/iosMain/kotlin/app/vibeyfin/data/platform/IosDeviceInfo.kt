@@ -4,6 +4,7 @@ import platform.Foundation.NSBundle
 import platform.Foundation.NSLocale
 import platform.Foundation.currentLocale
 import platform.Foundation.languageCode
+import platform.Foundation.preferredLanguages
 import platform.UIKit.UIDevice
 
 class IosDeviceInfo : DeviceInfo {
@@ -15,7 +16,11 @@ class IosDeviceInfo : DeviceInfo {
 
     override val downloadAlerts: Boolean = true
 
+    override val languagePickedInSystem: Boolean = true
+
     override val language: String = NSLocale.currentLocale.languageCode
+
+    override val languageTag: String get() = (NSLocale.preferredLanguages.firstOrNull() as? String) ?: language
 
     override val appVersion: String =
         NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String ?: "0"

@@ -7,6 +7,7 @@ enum class SettingsPageId { Root, Profile, Quality, AudioSubtitles, Skipping, Ki
 enum class SettingKey {
     ProfileCard,
     AlwaysAsk,
+    AppLanguage,
     ShowStats,
     About,
     BingeThreshold,

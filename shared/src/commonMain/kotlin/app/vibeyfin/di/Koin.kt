@@ -4,6 +4,7 @@ import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.NetworkMonitor
 import app.vibeyfin.domain.OfflineSync
 import app.vibeyfin.domain.PlaybackRecovery
+import app.vibeyfin.i18n.AppLocale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.koin.core.KoinApplication
@@ -23,6 +24,7 @@ fun initKoin(platform: KoinAppDeclaration = {}): KoinApplication = startKoin {
     modules(platformModule(), appModule())
 }.also { app ->
     val koin = app.koin
+    koin.get<AppLocale>().start(koin.get<CoroutineScope>(ApplicationScope))
     koin.get<CoroutineScope>(ApplicationScope).launch { koin.get<PlaybackRecovery>().recoverOnStart() }
     koin.get<CoroutineScope>(ApplicationScope).launch { koin.get<DownloadRepository>().resumePending() }
     // What was watched offline is sent now, and again whenever a connection comes back.

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.vibeyfin.domain.AccountRepository
 import app.vibeyfin.domain.ServerRemoval
 import app.vibeyfin.domain.ServerRepository
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,12 +25,12 @@ data class ServerDetailsUiState(
     val profileCount: Int = 0,
     val confirmRemove: Boolean = false,
     val removed: Boolean = false,
+    val removeHelp: String = Strings.removeServerHelp(profileCount),
+    val removeTitle: String = Strings.removeServerTitle(name),
+    val removeMessage: String = Strings.removeServerMessage(profileCount),
 ) {
     /** A server keeps at least one address; remove the server instead. */
     val canRemoveAddress: Boolean get() = addresses.size > 1
-    val removeHelp: String get() = Strings.removeServerHelp(profileCount)
-    val removeTitle: String get() = Strings.removeServerTitle(name)
-    val removeMessage: String get() = Strings.removeServerMessage(profileCount)
 }
 
 class ServerDetailsViewModel(
@@ -43,7 +44,7 @@ class ServerDetailsViewModel(
     private val local = MutableStateFlow(Local())
 
     val uiState: StateFlow<ServerDetailsUiState> =
-        combine(servers.servers, accounts.observeProfileCounts(), local) { saved, counts, local ->
+        combine(servers.servers, accounts.observeProfileCounts(), local, Texts.language) { saved, counts, local, _ ->
             val server = saved.find { it.id == serverId }
                 ?: return@combine ServerDetailsUiState(loading = false, removed = true)
             ServerDetailsUiState(

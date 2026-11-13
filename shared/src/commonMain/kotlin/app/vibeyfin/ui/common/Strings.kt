@@ -656,6 +656,10 @@ object Strings {
     fun positionDescription(positionMs: Long, durationMs: Long): String = text("position_description", "position" to clock(positionMs), "duration" to clock(durationMs))
 
     // Settings
+    val languageTitle: String get() = text("language_title")
+    val languageDeviceDefault: String get() = text("language_device_default")
+    val languageHelp: String get() = text("language_help")
+
     val alwaysAskWhoIsWatchingTitle: String get() = text("always_ask_who_is_watching_title")
     val playbackStatsTitle: String get() = text("playback_stats_title")
     val playbackSection: String get() = text("playback_section")

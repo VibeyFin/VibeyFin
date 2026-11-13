@@ -2,6 +2,7 @@ package app.vibeyfin.di
 
 import app.vibeyfin.data.platform.DeviceInfo
 import app.vibeyfin.domain.ServerRemoval
+import app.vibeyfin.i18n.AppLocale
 import app.vibeyfin.ui.addserver.AddServerViewModel
 import app.vibeyfin.ui.banner.AppBannerViewModel
 import app.vibeyfin.ui.children.ChildrenViewModel
@@ -64,7 +65,7 @@ fun appModule() = module {
     viewModelOf(::NotificationOpenViewModel)
     viewModel {
         val device = get<DeviceInfo>()
-        SettingsViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(ApplicationScope), device.appVersion, device.subtitleStyleApplies, downloadAlerts = device.downloadAlerts, seerr = get())
+        SettingsViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(ApplicationScope), device.appVersion, device.subtitleStyleApplies, downloadAlerts = device.downloadAlerts, seerr = get(), appLanguages = if (device.languagePickedInSystem) emptyList() else get<AppLocale>().languages)
     }
     viewModelOf(::AppBannerViewModel)
     viewModelOf(::DownloadsViewModel)

@@ -847,5 +847,14 @@
   "load_subtitle_delete_not_allowed": "Your account can’t delete subtitles. Ask the server’s admin to do it.",
   "load_subtitle_already_gone": "These subtitles were already deleted from the server.",
   "track_sdh": "SDH",
-  "stats_resolution": "{{width}} × {{height}}"
+  "stats_resolution": "{{width}} × {{height}}",
+  "connection_issue_invalid_address": "That doesn't look like a server address. Try an IP address like 192.168.1.20:8096, or a web address like https://jellyfin.example.com.",
+  "connection_issue_unreachable": "Couldn't reach a server at that address. Check the address and port, make sure the server is on, and that this device can reach its network.",
+  "connection_issue_tls_failed": "The secure connection failed, which usually means a self-signed or expired certificate. If the server is on your home network, try http:// with port 8096. Otherwise, fix the server's certificate.",
+  "connection_issue_server_unavailable": "The server answered with an error (HTTP {{status}}). It may still be starting up, or the proxy in front of it can't reach Jellyfin. Try again in a minute.",
+  "connection_issue_not_jellyfin": "Something answered at that address, but it isn't a Jellyfin server (HTTP {{status}}). Check the port: Jellyfin usually listens on 8096.",
+  "connection_issue_version_too_old": "This server runs Jellyfin {{found}}. VibeyFin needs {{minimum}} or newer. Update the server, then try again.",
+  "language_title": "Language",
+  "language_device_default": "Device language",
+  "language_help": "Changes the language of VibeyFin. System screens such as permission prompts and the share sheet keep your device language."
 }

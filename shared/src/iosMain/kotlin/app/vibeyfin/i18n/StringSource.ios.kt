@@ -13,11 +13,14 @@ private const val TEST_DIRECTORY_VARIABLE: String = "VIBEYFIN_STRINGS_DIR"
 
 @OptIn(ExperimentalForeignApi::class)
 private object BundleStringSource : StringSource {
-    override fun load(tag: String): String? {
-        val bundled: String? = NSBundle.mainBundle.pathForResource("strings/$tag", "json")
-        // Unit tests run outside the app bundle; Gradle points them at shared/strings
+    override fun load(tag: String): String? = read(NSBundle.mainBundle.pathForResource("strings/$tag", "json"), "$tag.json")
+
+    override fun loadLanguages(): String? = read(NSBundle.mainBundle.pathForResource("languages", "json"), "../languages.json")
+
+    // Unit tests run outside the app bundle; Gradle points them at shared/strings
+    private fun read(bundled: String?, testFile: String): String? {
         val testDirectory: String? = NSProcessInfo.processInfo.environment[TEST_DIRECTORY_VARIABLE] as? String
-        val path: String = bundled ?: testDirectory?.let { "$it/$tag.json" } ?: return null
+        val path: String = bundled ?: testDirectory?.let { "$it/$testFile" } ?: return null
         return NSString.stringWithContentsOfFile(path, NSUTF8StringEncoding, null)
     }
 }

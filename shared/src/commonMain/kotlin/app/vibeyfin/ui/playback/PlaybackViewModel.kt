@@ -2,6 +2,7 @@ package app.vibeyfin.ui.playback
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.domain.BingeCounter
 import app.vibeyfin.domain.ConnectionManager
@@ -27,12 +28,14 @@ import app.vibeyfin.domain.SegmentType
 import app.vibeyfin.domain.SubtitleFile
 import app.vibeyfin.domain.SubtitleRepository
 import app.vibeyfin.domain.TrickplayTrack
+import app.vibeyfin.domain.VideoFormat
 import app.vibeyfin.domain.WatchRepository
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.profileOrNull
 import app.vibeyfin.domain.toDiagnostics
 import app.vibeyfin.domain.withLive
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
@@ -42,6 +45,7 @@ import app.vibeyfin.ui.item.episodeLabel
 import app.vibeyfin.ui.subtitles.SubtitleAdded
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -318,6 +322,8 @@ class PlaybackViewModel(
     private val countdownStep: Duration = 1.seconds,
 ) : ViewModel() {
     private val content = MutableStateFlow(PlaybackUiState())
+    private val textSource = MutableStateFlow(PlaybackText())
+    private val rendered: Flow<PlaybackUiState> = combine(content, textSource, Texts.language) { state, source, _ -> state.withText(source) }
 
     // The four subtitle style settings, in the order of the [PlaybackUiState] fields.
     private val subtitleStyle = combine(
@@ -328,7 +334,7 @@ class PlaybackViewModel(
     ) { follow, size, color, background -> SubtitleSettings(follow, size, color, background) }
 
     val uiState: StateFlow<PlaybackUiState> = combine(
-        content,
+        rendered,
         connection.sessionEnded(),
         profileSettings.showPlaybackStats,
         profileSettings.bufferAheadSeconds,
@@ -695,7 +701,7 @@ class PlaybackViewModel(
     fun onFailed(failure: PlaybackFailure) {
         val failed = content.value.stream ?: return
         // A file on the device has no other way to be offered: whatever went wrong, it won't play.
-        if (local != null) return giveUp(LoadMessages.PLAYBACK_FAILED)
+        if (local != null) return giveUp(PlaybackProblem.Failed)
         when (failure) {
             PlaybackFailure.Network -> retrySameStream(failed)
             PlaybackFailure.Unauthorized -> askAgainAfterRejection()
@@ -720,7 +726,7 @@ class PlaybackViewModel(
     // wait with the spinner showing, and the server hears the video is paused meanwhile. When the tries
     // are used up it is an error with "Try again", not a transcode, which would need the same connection.
     private fun retrySameStream(failed: PlaybackStream) {
-        val wait = retryDelays.getOrNull(networkRetries) ?: return giveUp(LoadMessages.PLAYBACK_NETWORK, lostConnection = true)
+        val wait = retryDelays.getOrNull(networkRetries) ?: return giveUp(PlaybackProblem.Network, lostConnection = true)
         if (networkRetries == 0 && !reauthorized) failedAtMs = lastPositionMs
         cancelCountdown()
         networkRetries++
@@ -739,7 +745,7 @@ class PlaybackViewModel(
     // that is only stale gets a fresh stream address. Only once, so a stream that keeps being refused
     // ends as an error.
     private fun askAgainAfterRejection() {
-        if (reauthorized) return giveUp(LoadMessages.PLAYBACK_FAILED)
+        if (reauthorized) return giveUp(PlaybackProblem.Failed)
         if (networkRetries == 0) failedAtMs = lastPositionMs
         reauthorized = true
         active.stop(lastPositionMs, failed = true)
@@ -748,18 +754,24 @@ class PlaybackViewModel(
 
     // The device can't play it: once more as a transcode, then an error.
     private fun fallBackToTranscode() {
-        if (method == PlayMethod.Transcode) return giveUp(LoadMessages.PLAYBACK_FAILED)
+        if (method == PlayMethod.Transcode) return giveUp(PlaybackProblem.Failed)
         active.stop(lastPositionMs, failed = true)
         transcodeOnly = true
         open(startAtMs = lastPositionMs)
     }
 
-    private fun giveUp(message: String, lostConnection: Boolean = false) {
+    private fun giveUp(problem: PlaybackProblem, lostConnection: Boolean = false) {
         cancelCountdown()
         active.stop(lastPositionMs, failed = true)
         method = null
         this.lostConnection = lostConnection
-        content.update { it.copy(stream = null, loading = false, message = message, pendingSeekMs = null) }
+        content.update { it.copy(stream = null, loading = false, message = problemMessage(problem), pendingSeekMs = null) }
+    }
+
+    // Kept as the problem, so the message is written again when the language changes.
+    private fun problemMessage(problem: PlaybackProblem): String {
+        textSource.update { it.copy(problem = problem) }
+        return problem.message()
     }
 
     override fun onCleared() {
@@ -784,11 +796,11 @@ class PlaybackViewModel(
                     begin(server ?: downloaded.item, honourStartOver = true, downloaded = downloaded)
                 }
 
-                offlineMode.isOffline.value -> content.update { it.copy(loading = false, message = LoadMessages.NOT_DOWNLOADED) }
+                offlineMode.isOffline.value -> content.update { it.copy(loading = false, message = problemMessage(PlaybackProblem.NotDownloaded)) }
 
                 else -> when (val result = library.item(itemId)) {
                     is ApiResult.Success -> begin(result.value, honourStartOver = true)
-                    is ApiResult.Failure -> content.update { it.copy(loading = false, message = LoadMessages.forError(result.error)) }
+                    is ApiResult.Failure -> content.update { it.copy(loading = false, message = problemMessage(PlaybackProblem.Load(result.error))) }
                 }
             }
         }
@@ -802,6 +814,7 @@ class PlaybackViewModel(
         item = found
         started = true
         lastPositionMs = startAtMs
+        textSource.update { it.copy(item = found) }
         content.update {
             it.copy(
                 title = found.title,
@@ -827,6 +840,7 @@ class PlaybackViewModel(
             // Only if the user is still on the episode this was asked for.
             if (item?.id == current.id) {
                 next = found
+                textSource.update { it.copy(next = found) }
                 content.update { it.copy(nextEpisode = Strings.metaLine(found.episodeLabel(), found.title)) }
             }
         }
@@ -1053,6 +1067,7 @@ class PlaybackViewModel(
         subtitleNow = ready.subtitleStreamIndex
         active.begin(ready)
         liveDiagnostics = null
+        textSource.update { it.copy(format = ready.videoFormat, audioTracks = ready.audioTracks, subtitleTracks = ready.subtitleTracks) }
         content.update {
             it.copy(
                 loading = false,
@@ -1094,6 +1109,7 @@ class PlaybackViewModel(
                     active.begin(ready)
                     liveDiagnostics = null
                     loadTrickplay(ready.mediaSourceId)
+                    textSource.update { it.copy(format = ready.videoFormat, audioTracks = ready.audioTracks, subtitleTracks = ready.subtitleTracks) }
                     content.update {
                         it.copy(
                             loading = false,
@@ -1121,14 +1137,62 @@ class PlaybackViewModel(
                 }
 
                 PlaybackNegotiation.NoCompatibleStream ->
-                    content.update { it.copy(loading = false, message = LoadMessages.NO_COMPATIBLE_STREAM) }
+                    content.update { it.copy(loading = false, message = problemMessage(PlaybackProblem.NoCompatibleStream)) }
 
                 is PlaybackNegotiation.Failed ->
-                    content.update { it.copy(loading = false, message = LoadMessages.forError(negotiation.error)) }
+                    content.update { it.copy(loading = false, message = problemMessage(PlaybackProblem.Load(negotiation.error))) }
             }
         }
     }
 }
+
+// What the player shows as text, kept as the things it is made of, so it is written again in the language that is current.
+private data class PlaybackText(
+    val item: MediaItem? = null,
+    val next: MediaItem? = null,
+    val problem: PlaybackProblem? = null,
+    val format: VideoFormat? = null,
+    val audioTracks: List<PlaybackTrack> = emptyList(),
+    val subtitleTracks: List<PlaybackTrack> = emptyList(),
+)
+
+private sealed interface PlaybackProblem {
+    data object Failed : PlaybackProblem
+
+    data object Network : PlaybackProblem
+
+    data object NotDownloaded : PlaybackProblem
+
+    data object NoCompatibleStream : PlaybackProblem
+
+    data class Load(val error: ApiError) : PlaybackProblem
+
+    fun message(): String = when (this) {
+        Failed -> LoadMessages.PLAYBACK_FAILED
+        Network -> LoadMessages.PLAYBACK_NETWORK
+        NotDownloaded -> LoadMessages.NOT_DOWNLOADED
+        NoCompatibleStream -> LoadMessages.NO_COMPATIBLE_STREAM
+        is Load -> LoadMessages.forError(error)
+    }
+}
+
+// Only the text changes: the flags and the stream stay as the content state has them.
+private fun PlaybackUiState.withText(source: PlaybackText): PlaybackUiState = copy(
+    subtitle = subtitle?.let { source.item?.let(::subtitleLine) },
+    nextEpisode = nextEpisode?.let { source.next?.let(::nextLine) },
+    message = message?.let { source.problem?.message() },
+    badge = badge?.let { source.format?.badge() },
+    audioTracks = audioTracks.map { option -> option.copy(label = source.audioTracks.labelOf(option.index)) },
+    subtitleTracks = subtitleTracks.map { option ->
+        option.copy(label = if (option.index == SUBTITLES_OFF) Strings.subtitlesOff else source.subtitleTracks.labelOf(option.index))
+    },
+)
+
+private fun subtitleLine(item: MediaItem): String? = Strings.metaLine(item.seriesName, item.episodeLabel())
+
+private fun nextLine(item: MediaItem): String? = Strings.metaLine(item.episodeLabel(), item.title)
+
+private fun List<PlaybackTrack>.labelOf(index: Int): String = firstOrNull { it.index == index }?.name ?: Strings.track(index)
 
 // Picking between audio tracks needs at least two.
 private fun List<PlaybackTrack>.toAudioOptions(): List<TrackOption> = if (size < 2) emptyList() else map { TrackOption(it.index, it.name ?: Strings.track(it.index), it.selected) }

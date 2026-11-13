@@ -40,6 +40,8 @@ class DataStoreDevicePreferences(
 
     override val offlineMode: Flow<Boolean> = dataStore.data.map { it[OFFLINE_MODE] ?: false }
 
+    override val appLanguage: Flow<String?> = dataStore.data.map { it[APP_LANGUAGE] }
+
     override suspend fun setLastServer(serverId: String?) {
         dataStore.edit { prefs ->
             if (prefs[LAST_SERVER_ID] != serverId) prefs.remove(LAST_USER_ID)
@@ -69,6 +71,10 @@ class DataStoreDevicePreferences(
         dataStore.edit { it[OFFLINE_MODE] = value }
     }
 
+    override suspend fun setAppLanguage(tag: String?) {
+        dataStore.edit { prefs -> if (tag == null) prefs.remove(APP_LANGUAGE) else prefs[APP_LANGUAGE] = tag }
+    }
+
     private fun addedSubtitlesKey(serverId: String, itemId: String) = stringSetPreferencesKey("added_subtitles.$serverId.$itemId")
 
     private companion object {
@@ -77,5 +83,6 @@ class DataStoreDevicePreferences(
         val LAST_USER_ID = stringPreferencesKey("last_user_id")
         val OFFLINE_MODE = booleanPreferencesKey("offline_mode")
         val ALWAYS_ASK = booleanPreferencesKey("always_ask_who_is_watching")
+        val APP_LANGUAGE = stringPreferencesKey("app_language")
     }
 }

@@ -8,6 +8,7 @@ import app.vibeyfin.data.api.authorizeQuickConnect
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.accountOrNull
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.whoswatching.SignInMessages
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,36 +36,56 @@ data class ApproveQuickConnectUiState(
  * It asks first whether the server has Quick Connect on, because Jellyfin answers an approval with 401 while it is off, and a 401 would
  * end this profile's session.
  */
+private enum class ApproveFailure {
+    Off,
+    CodeUnknown,
+    Unreachable,
+    Failed,
+    ;
+
+    fun message(): String = when (this) {
+        Off -> SignInMessages.QUICK_CONNECT_APPROVE_OFF
+        CodeUnknown -> SignInMessages.QUICK_CONNECT_CODE_UNKNOWN
+        Unreachable -> SignInMessages.UNREACHABLE
+        Failed -> SignInMessages.QUICK_CONNECT_APPROVE_FAILED
+    }
+}
+
 class ApproveQuickConnectViewModel(private val connection: ConnectionManager) : ViewModel() {
-    private data class Local(val code: String = "", val approving: Boolean = false, val done: String? = null, val error: String? = null)
+    private data class Local(
+        val code: String = "",
+        val approving: Boolean = false,
+        val approvedFor: String? = null,
+        val error: ApproveFailure? = null,
+    )
 
     private val local = MutableStateFlow(Local())
 
-    val uiState: StateFlow<ApproveQuickConnectUiState> = combine(local, connection.state) { local, connected ->
+    val uiState: StateFlow<ApproveQuickConnectUiState> = combine(local, connection.state, Texts.language) { local, connected, _ ->
         ApproveQuickConnectUiState(
             code = local.code,
             profileName = connected.accountOrNull()?.name.orEmpty(),
             approving = local.approving,
-            done = local.done,
-            error = local.error,
+            done = local.approvedFor?.let(Strings::quickConnectApprovedFor),
+            error = local.error?.message(),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ApproveQuickConnectUiState())
 
     fun onCodeChange(code: String) {
         val digits = code.filter { it.isDigit() }.take(QUICK_CONNECT_CODE_LENGTH)
-        local.update { if (it.approving) it else it.copy(code = digits, done = null, error = null) }
+        local.update { if (it.approving) it else it.copy(code = digits, approvedFor = null, error = null) }
     }
 
     fun onApprove() {
         val current = local.value
         if (current.approving || current.code.length != QUICK_CONNECT_CODE_LENGTH) return
         connection.asConnected(Unit) { connected ->
-            local.update { it.copy(approving = true, done = null, error = null) }
+            local.update { it.copy(approving = true, approvedFor = null, error = null) }
             viewModelScope.launch {
                 val error = approve(connected, current.code)
                 local.update {
                     if (error == null) {
-                        Local(done = Strings.quickConnectApprovedFor(connected.account.name))
+                        Local(approvedFor = connected.account.name)
                     } else {
                         it.copy(approving = false, error = error)
                     }
@@ -73,21 +94,21 @@ class ApproveQuickConnectViewModel(private val connection: ConnectionManager) : 
         }
     }
 
-    private suspend fun approve(connected: ConnectionState.Connected, code: String): String? {
+    private suspend fun approve(connected: ConnectionState.Connected, code: String): ApproveFailure? {
         val api = connected.api
         when (val enabled = api.quickConnectEnabled()) {
-            is ApiResult.Success -> if (!enabled.value) return SignInMessages.QUICK_CONNECT_APPROVE_OFF
+            is ApiResult.Success -> if (!enabled.value) return ApproveFailure.Off
             is ApiResult.Failure -> return failure(enabled.error)
         }
         return when (val approved = api.authorizeQuickConnect(code, connected.account.userId)) {
-            is ApiResult.Success -> if (approved.value) null else SignInMessages.QUICK_CONNECT_APPROVE_FAILED
+            is ApiResult.Success -> if (approved.value) null else ApproveFailure.Failed
             is ApiResult.Failure -> failure(approved.error)
         }
     }
 
-    private fun failure(error: ApiError): String = when (error) {
-        ApiError.NotFound -> SignInMessages.QUICK_CONNECT_CODE_UNKNOWN
-        ApiError.Network -> SignInMessages.UNREACHABLE
-        else -> SignInMessages.QUICK_CONNECT_APPROVE_FAILED
+    private fun failure(error: ApiError): ApproveFailure = when (error) {
+        ApiError.NotFound -> ApproveFailure.CodeUnknown
+        ApiError.Network -> ApproveFailure.Unreachable
+        else -> ApproveFailure.Failed
     }
 }

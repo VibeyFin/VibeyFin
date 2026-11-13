@@ -4,18 +4,21 @@ import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.DownloadAttempt
 import app.vibeyfin.domain.DownloadCandidate
+import app.vibeyfin.domain.DownloadFailure
 import app.vibeyfin.domain.DownloadPlan
 import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.DownloadState
 import app.vibeyfin.domain.DownloadTarget
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.domain.observeProgress
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -23,6 +26,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -77,8 +81,8 @@ class DownloadFlow(
     val removal: StateFlow<RemovePrompt?> = _removal
 
     // A download that could not be started, with what to try.
-    private val _message = MutableStateFlow<String?>(null)
-    val message: StateFlow<String?> = _message
+    private val _message = MutableStateFlow<DownloadMessage?>(null)
+    val message: StateFlow<String?> = combine(_message, Texts.language) { raw, _ -> raw?.text() }.stateIn(scope, SharingStarted.Eagerly, null)
 
     private val _canDownload = MutableStateFlow(true)
 
@@ -100,13 +104,13 @@ class DownloadFlow(
             when (val plan = downloads.plan(profile, target)) {
                 is DownloadAttempt.Failure -> {
                     _prompt.value = null
-                    _message.value = plan.text()
+                    _message.value = DownloadMessage.Failed(plan.failure)
                 }
 
                 is DownloadAttempt.Success -> if (ask) {
                     _prompt.update { it?.copy(loading = false, plan = plan.value) }
                 } else if (plan.value.candidates.isEmpty()) {
-                    _message.value = LoadMessages.DOWNLOAD_NO_FILE
+                    _message.value = DownloadMessage.NoFile
                 } else {
                     enqueue(profile, plan.value, plan.value.missing)
                 }
@@ -140,7 +144,7 @@ class DownloadFlow(
 
     private suspend fun enqueue(profile: ProfileRef, plan: DownloadPlan, items: List<DownloadCandidate>) {
         val result = downloads.enqueue(profile, plan, items)
-        if (result is DownloadAttempt.Failure) _message.value = result.text()
+        if (result is DownloadAttempt.Failure) _message.value = DownloadMessage.Failed(result.failure)
     }
 
     /** Pauses, resumes or removes one [download] at once; removing several goes through [askRemove]. */
@@ -188,8 +192,18 @@ class DownloadFlow(
     fun dismissMessage() {
         _message.value = null
     }
+}
 
-    private fun DownloadAttempt.Failure.text(): String = failure?.message() ?: unreachableMessage()
+private sealed interface DownloadMessage {
+    fun text(): String
+
+    data class Failed(val failure: DownloadFailure?) : DownloadMessage {
+        override fun text(): String = failure?.message() ?: unreachableMessage()
+    }
+
+    data object NoFile : DownloadMessage {
+        override fun text(): String = LoadMessages.DOWNLOAD_NO_FILE
+    }
 }
 
 /** What a screen with download buttons observes besides its own state: the profile's downloads, and the flow's questions and message. */

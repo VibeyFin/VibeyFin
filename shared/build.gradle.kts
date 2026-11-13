@@ -90,16 +90,20 @@ kotlin {
 }
 
 val stringResources = tasks.register<Sync>("stringResources") {
-    from(layout.projectDirectory.dir("strings")) { include("*.json") }
-    into(layout.buildDirectory.dir("generated/stringResources/strings"))
+    from(layout.projectDirectory.dir("strings")) {
+        include("*.json")
+        into("strings")
+    }
+    from(layout.projectDirectory.file("languages.json"))
+    into(layout.buildDirectory.dir("generated/stringResources"))
 }
 
 kotlin.sourceSets.androidMain {
-    resources.srcDir(stringResources.map { it.destinationDir.parentFile })
+    resources.srcDir(stringResources.map { it.destinationDir })
 }
 
 kotlin.sourceSets.getByName("androidHostTest") {
-    resources.srcDir(stringResources.map { it.destinationDir.parentFile })
+    resources.srcDir(stringResources.map { it.destinationDir })
 }
 
 room3 {

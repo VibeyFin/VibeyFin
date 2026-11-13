@@ -37,6 +37,10 @@ Once the English change reaches `main`, the GitHub webhook tells Weblate and the
    - the tag in `CFBundleLocalizations` in `iosApp/iosApp/Info.plist`.
 3. `scripts/check-languages.sh` fails CI until all of these agree. Run it locally to check.
 
+## Choosing the language in the app
+
+Android has a Language row in Settings (Device language or any shipped language). On iOS there is no in-app row: the app follows the per-app language in the system Settings app (Settings > VibeyFin > Language), which iOS lists once `CFBundleLocalizations` names more than one language.
+
 ## Merging Weblate pull requests
 
 Weblate pull requests are squash-merged like every other pull request in this repo. Lock the component on Weblate while a pull request is under review, so no new changes land in it.

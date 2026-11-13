@@ -14,6 +14,7 @@ import app.vibeyfin.domain.model.SeerrPage
 import app.vibeyfin.domain.model.SeerrRequest
 import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.domain.model.notInLibrary
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -21,10 +22,13 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
@@ -136,7 +140,8 @@ class SeerrHomeViewModel(
     private val clock: Clock,
 ) : ViewModel() {
     private val content = MutableStateFlow(SeerrHomeUiState())
-    val uiState: StateFlow<SeerrHomeUiState> = content.asStateFlow()
+    val uiState: StateFlow<SeerrHomeUiState> = combine(content, Texts.language) { state, _ -> state.titled() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SeerrHomeUiState())
 
     private val titles = RequestTitles(repository)
     private var load: Job? = null
@@ -206,6 +211,11 @@ class SeerrHomeViewModel(
         val tiles = titles.titlesOf(recent).map { it.second }.distinctBy { it.type to it.tmdbId }
         content.update { it.copy(requests = SeerrRow(null, Strings.seerrMyRequests, tiles, loading = false).takeIf { row -> row.isVisible }) }
     }
+
+    private fun SeerrHomeUiState.titled(): SeerrHomeUiState = copy(
+        requests = requests?.copy(title = Strings.seerrMyRequests),
+        discover = discover.map { row -> row.kind?.let { row.copy(title = it.title()) } ?: row },
+    )
 
     private fun row(kind: SeerrListKind, found: List<SeerrTitle>, loading: Boolean) = SeerrRow(
         kind = kind,
@@ -278,7 +288,10 @@ class SeerrListViewModel(
             showsDates = kind == SeerrListKind.ComingSoon,
         ),
     )
-    val uiState: StateFlow<SeerrListUiState> = content.asStateFlow()
+    private val failure = MutableStateFlow<ApiError?>(null)
+    val uiState: StateFlow<SeerrListUiState> = combine(content, failure, Texts.language) { state, error, _ ->
+        state.copy(title = kind.title(), message = error?.let(SeerrMessages::forError))
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, content.value)
 
     private val cursor = PageCursor()
 
@@ -288,14 +301,17 @@ class SeerrListViewModel(
 
     /** Try again: the first page when it never came, otherwise the page that failed. */
     fun onRetry() {
-        if (cursor.page == 0) content.update { it.copy(loading = true, message = null) }
+        if (cursor.page == 0) {
+            content.update { it.copy(loading = true, message = null) }
+            failure.value = null
+        }
         load()
     }
 
     /** The grid came near its end: the next page, if there is one. */
     fun onLoadMore() {
         val state = content.value
-        if (cursor.canLoadMore(blocked = state.message != null || state.loadMoreFailed)) load()
+        if (cursor.canLoadMore(blocked = failure.value != null || state.loadMoreFailed)) load()
     }
 
     /** A chip: only movies, only shows, or (tapping the chosen one again) both. */
@@ -310,7 +326,8 @@ class SeerrListViewModel(
             do {
                 val result = repository.page(kind, cursor.page + 1)
                 if (result is ApiResult.Failure) {
-                    content.update { it.failed(cursor.page == 0, result.error) }
+                    if (cursor.page == 0) failure.value = result.error
+                    content.update { it.failed(cursor.page == 0) }
                     return@start
                 }
                 val page = (result as ApiResult.Success).value
@@ -325,8 +342,8 @@ class SeerrListViewModel(
     }
 
     // A later page failing leaves what is shown; the first one failing is the page's error state.
-    private fun SeerrListUiState.failed(first: Boolean, error: ApiError) = if (first) {
-        copy(loading = false, loadingMore = false, message = SeerrMessages.forError(error))
+    private fun SeerrListUiState.failed(first: Boolean) = if (first) {
+        copy(loading = false, loadingMore = false)
     } else {
         copy(loadingMore = false, loadMoreFailed = true)
     }
@@ -372,9 +389,12 @@ class MyRequestsViewModel(
     private val clock: Clock,
 ) : ViewModel() {
     private val titles = RequestTitles(repository)
-    private val loaded = MutableStateFlow<List<RequestListItem>>(emptyList())
+    private val loaded = MutableStateFlow<List<Pair<SeerrRequest, SeerrTitle>>>(emptyList())
+    private val failure = MutableStateFlow<ApiError?>(null)
     private val content = MutableStateFlow(MyRequestsUiState())
-    val uiState: StateFlow<MyRequestsUiState> = content.asStateFlow()
+    val uiState: StateFlow<MyRequestsUiState> = combine(content, loaded, failure, Texts.language) { state, requests, error, _ ->
+        state.copy(items = items(requests, state.filter), message = error?.let(SeerrMessages::forError))
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, content.value)
 
     private val cursor = PageCursor()
 
@@ -384,17 +404,19 @@ class MyRequestsViewModel(
 
     fun onFilter(filter: RequestFilter) {
         content.update { it.copy(filter = filter) }
-        show()
     }
 
     fun onLoadMore() {
         val state = content.value
-        if (cursor.canLoadMore(blocked = state.message != null || state.loadMoreFailed)) load()
+        if (cursor.canLoadMore(blocked = failure.value != null || state.loadMoreFailed)) load()
     }
 
     /** Try again: the first page when it never came, otherwise the page that failed. */
     fun onRetry() {
-        if (cursor.page == 0) content.update { it.copy(loading = true, message = null) }
+        if (cursor.page == 0) {
+            content.update { it.copy(loading = true, message = null) }
+            failure.value = null
+        }
         load()
     }
 
@@ -404,45 +426,35 @@ class MyRequestsViewModel(
             when (val result = repository.myRequests(page = cursor.page + 1)) {
                 is ApiResult.Success -> {
                     cursor.reached(result.value.page, result.value.pages)
-                    val items = titles.titlesOf(result.value.requests).map { (request, title) ->
-                        RequestListItem(
-                            request = request,
-                            title = title,
-                            kind = Strings.seerrRequestKind(request.type, title.year, request.seasons),
-                            stateLabel = Strings.seerrStateLabel(request.state) ?: Strings.seerrStateLabel(RequestState.Requested).orEmpty(),
-                            changed = Strings.seerrRequestWhen(request.state, daysSince(clock, request.updatedAt ?: request.createdAt)),
-                        )
-                    }
-                    loaded.value = (loaded.value + items).distinctBy { it.request.id }
+                    loaded.value = (loaded.value + titles.titlesOf(result.value.requests)).distinctBy { it.first.id }
                     // The requests and the end of loading arrive together, so "nothing requested yet" never flashes by.
-                    content.update { shown(it.copy(loading = false, loadingMore = false, message = null)) }
+                    content.update { it.copy(loading = false, loadingMore = false) }
                 }
 
                 // A later page failing leaves what is shown; the first one failing is the page's error state.
-                is ApiResult.Failure -> content.update {
-                    if (cursor.page == 0) {
-                        it.copy(loading = false, loadingMore = false, message = SeerrMessages.forError(result.error))
-                    } else {
-                        it.copy(loadingMore = false, loadMoreFailed = true)
-                    }
+                is ApiResult.Failure -> {
+                    if (cursor.page == 0) failure.value = result.error
+                    content.update { if (cursor.page == 0) it.copy(loading = false, loadingMore = false) else it.copy(loadingMore = false, loadMoreFailed = true) }
                 }
             }
         }
     }
 
-    private fun show() {
-        content.update(::shown)
+    private fun items(requests: List<Pair<SeerrRequest, SeerrTitle>>, filter: RequestFilter): List<RequestListItem> = requests.filter { (request, _) ->
+        when (filter) {
+            RequestFilter.All -> true
+            RequestFilter.Waiting -> request.state == RequestState.Requested
+            RequestFilter.Approved -> request.state == RequestState.Approved
+            RequestFilter.Available -> request.state == RequestState.Available || request.state == RequestState.PartlyAvailable
+            RequestFilter.Declined -> request.state == RequestState.Declined
+        }
+    }.map { (request, title) ->
+        RequestListItem(
+            request = request,
+            title = title,
+            kind = Strings.seerrRequestKind(request.type, title.year, request.seasons),
+            stateLabel = Strings.seerrStateLabel(request.state) ?: Strings.seerrStateLabel(RequestState.Requested).orEmpty(),
+            changed = Strings.seerrRequestWhen(request.state, daysSince(clock, request.updatedAt ?: request.createdAt)),
+        )
     }
-
-    private fun shown(state: MyRequestsUiState): MyRequestsUiState = state.copy(
-        items = loaded.value.filter { item ->
-            when (state.filter) {
-                RequestFilter.All -> true
-                RequestFilter.Waiting -> item.request.state == RequestState.Requested
-                RequestFilter.Approved -> item.request.state == RequestState.Approved
-                RequestFilter.Available -> item.request.state == RequestState.Available || item.request.state == RequestState.PartlyAvailable
-                RequestFilter.Declined -> item.request.state == RequestState.Declined
-            }
-        },
-    )
 }

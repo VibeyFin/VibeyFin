@@ -2,6 +2,7 @@ package app.vibeyfin.ui.children
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.Download
@@ -11,6 +12,7 @@ import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.profileOrNull
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
@@ -123,11 +125,12 @@ class ChildrenViewModel(
     private val downloads: DownloadRepository,
 ) : ViewModel() {
     private val content = MutableStateFlow(ChildrenUiState())
+    private val loadError = MutableStateFlow<ApiError?>(null)
     private val downloadFlow = DownloadFlow(viewModelScope, downloads) { connection.state.value.profileOrNull() }
     private val canDownload = MutableStateFlow(true)
     private val downloadParts = downloadParts(connection, downloads, downloadFlow, canDownload)
 
-    val uiState: StateFlow<ChildrenUiState> = combine(content, connection.sessionEnded(), downloadParts) { content, exit, parts ->
+    val uiState: StateFlow<ChildrenUiState> = combine(content, connection.sessionEnded(), downloadParts, loadError, Texts.language) { content, exit, parts, error, _ ->
         content.copy(
             exit = exit,
             downloads = parts.byId,
@@ -135,6 +138,8 @@ class ChildrenViewModel(
             downloadPrompt = parts.prompt,
             removePrompt = parts.removal,
             downloadMessage = parts.message,
+            message = error?.let { LoadMessages.forError(it) },
+            emptyText = Strings.emptyFolder,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ChildrenUiState())
 
@@ -216,6 +221,7 @@ class ChildrenViewModel(
     }
 
     private fun loadFirstPage() {
+        loadError.value = null
         content.update { ChildrenUiState(loading = true, series = it.series, collection = it.collection) }
         viewModelScope.launch {
             // Updated in one step: the lookup of the series or collection may land at any time, and must not be overwritten.
@@ -230,8 +236,9 @@ class ChildrenViewModel(
                     )
                 }
 
-                is ApiResult.Failure -> content.update {
-                    ChildrenUiState(loading = false, message = LoadMessages.forError(result.error), series = it.series, collection = it.collection)
+                is ApiResult.Failure -> {
+                    loadError.value = result.error
+                    content.update { ChildrenUiState(loading = false, series = it.series, collection = it.collection) }
                 }
             }
         }

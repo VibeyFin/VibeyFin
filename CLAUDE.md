@@ -119,7 +119,7 @@ apps share are in `guardrails.md`; which Jellyfin field drives which UI is in `j
 - Use the platform's own component when it has one (buttons, sheets, menus, tab bar, text fields);
   build custom only for posters, rows, the hero and the player. Never fake Liquid Glass.
 - Copy: `Strings` is written in sentence case, plain verbs; errors say what happened and how to fix
-  it. iOS shows button, tab and title labels in title case through one helper, `titleCased()`;
+  it. iOS shows button, tab and title labels in title case through one helper, `titleCased()`, which leaves any language other than English as written;
   Android uses the text as is.
 - Colours are generated from `design/tokens.json` by `./gradlew generateThemes` (Android `GeneratedThemes.kt`, iOS
   `GeneratedTheme.swift`, the window colour and the iOS colour sets). The files are committed and CI fails when they differ
