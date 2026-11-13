@@ -11,10 +11,12 @@ import app.vibeyfin.testing.ViewModelTracker
 import app.vibeyfin.testing.authJson
 import app.vibeyfin.testing.publicUsersJson
 import app.vibeyfin.testing.virtualClock
+import app.vibeyfin.ui.common.Strings
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -80,5 +82,46 @@ class WhoIsWatchingLanguageTest {
 
         val after = viewModel.uiState.first { it != before }
         assertEquals("Das Passwort stimmt nicht.", after.error)
+    }
+
+    @Test
+    fun theQuickConnectSheetFollowsTheLanguage() = runTest {
+        TestLanguages.installGerman("sign_in_quick_connect_off" to "Schnellverbindung ist ausgeschaltet.")
+        server.on("POST", "/QuickConnect/Initiate", Reply.status(HttpStatusCode.Unauthorized))
+        val viewModel = viewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.loaded()
+        viewModel.onQuickConnectTapped()
+        val before = viewModel.uiState.first { (it.sheet as? SignInSheet.QuickConnect)?.message != null }
+        assertEquals(SignInMessages.QUICK_CONNECT_OFF, (before.sheet as SignInSheet.QuickConnect).message)
+
+        Texts.select("de")
+
+        val after = viewModel.uiState.first { it != before }
+        assertEquals("Schnellverbindung ist ausgeschaltet.", (after.sheet as SignInSheet.QuickConnect).message)
+    }
+
+    @Test
+    fun thePinSheetFollowsTheLanguage() = runTest {
+        TestLanguages.installGerman(
+            "pin_prompt_open_profile" to "PIN für dieses Profil eingeben.",
+            "pin_prompt_wrong" to "Falsche PIN.",
+        )
+        app.accounts.saveSession("srv-1", "u1", "Alex", null, "token-u1")
+        app.setPin("u1", "1234")
+        val viewModel = viewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        val alex = viewModel.loaded().profiles.first { it.name == "Alex" }
+        viewModel.onProfileTapped(alex)
+        viewModel.onSubmitPin("0000")
+        val before = viewModel.uiState.first { it.pinPrompt?.error != null }.pinPrompt!!
+        assertEquals(Strings.pinPromptOpenProfile, before.message)
+        assertEquals(Strings.pinPromptWrong, before.error)
+
+        Texts.select("de")
+
+        val after = viewModel.uiState.first { it.pinPrompt?.message != before.message }.pinPrompt!!
+        assertEquals("PIN für dieses Profil eingeben.", after.message)
+        assertEquals("Falsche PIN.", after.error)
     }
 }

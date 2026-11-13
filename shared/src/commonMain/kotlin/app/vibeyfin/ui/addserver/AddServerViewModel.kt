@@ -8,10 +8,13 @@ import app.vibeyfin.domain.ResolvedServer
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.ServerResolver
 import app.vibeyfin.domain.model.Server
+import app.vibeyfin.i18n.Texts
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -26,10 +29,8 @@ sealed interface AddServerStep {
         val addressIsNew get() = existing == null || server.address !in existing.addresses
     }
 
-    data class Failed(val issue: ConnectionIssue) : AddServerStep {
-        /** What went wrong and what to try, worded once for every platform. */
-        val message: String get() = issue.message()
-    }
+    /** [message] is what went wrong and what to try; the view model re-words it when the language changes. */
+    data class Failed(val issue: ConnectionIssue, val message: String = issue.message()) : AddServerStep
 }
 
 data class AddServerUiState(
@@ -48,7 +49,9 @@ class AddServerViewModel(
     private val servers: ServerRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AddServerUiState(address = initialAddress.orEmpty()))
-    val uiState: StateFlow<AddServerUiState> = _uiState.asStateFlow()
+
+    val uiState: StateFlow<AddServerUiState> = combine(_uiState, Texts.language) { state, _ -> state.rendered() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.rendered())
 
     private var connectJob: Job? = null
 
@@ -75,6 +78,10 @@ class AddServerViewModel(
             _uiState.update { it.copy(step = step) }
         }
     }
+
+    private fun AddServerUiState.rendered(): AddServerUiState = copy(step = step.rendered())
+
+    private fun AddServerStep.rendered(): AddServerStep = if (this is AddServerStep.Failed) AddServerStep.Failed(issue) else this
 
     fun onConfirm() {
         val state = _uiState.value

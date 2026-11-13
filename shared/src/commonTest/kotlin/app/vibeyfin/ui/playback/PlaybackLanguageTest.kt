@@ -6,7 +6,12 @@ import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.TestLanguages
 import app.vibeyfin.testing.ViewModelTracker
+import app.vibeyfin.testing.itemJson
+import app.vibeyfin.testing.itemsJson
+import app.vibeyfin.testing.mediaSourceJson
+import app.vibeyfin.testing.playbackInfoJson
 import app.vibeyfin.ui.common.LoadMessages
+import app.vibeyfin.ui.common.Strings
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -62,5 +67,35 @@ class PlaybackLanguageTest {
 
         val after = viewModel.uiState.first { it != before }
         assertEquals("Der Server meldet einen Fehler (HTTP 503).", after.message)
+    }
+
+    @Test
+    fun `the Off row of a title with no subtitles follows the language`() = runTest {
+        TestLanguages.installGerman("subtitles_off" to "Aus")
+        serverAllowingSubtitleSearch()
+        val viewModel = viewModels.track(
+            PlaybackViewModel(
+                "m1", app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge,
+                app.offlineLibrary, app.offline, app.localReporter(reporterScope), app.subtitles,
+            ),
+        )
+        val before = viewModel.uiState.first { it.stream != null && it.offersSubtitleSearch }
+        assertEquals(listOf(Strings.subtitlesOff), before.subtitleChoices.map { it.label })
+
+        Texts.select("de")
+
+        val after = viewModel.uiState.first { it.subtitleChoices.any { option -> option.label == "Aus" } }
+        assertEquals(listOf("Aus"), after.subtitleChoices.map { it.label })
+    }
+
+    // A signed-in server that offers "Heat" to play with no subtitle tracks, and lets Alex search for subtitles.
+    private suspend fun serverAllowingSubtitleSearch() {
+        val server = app.signedIn()
+        server.on("GET", "/Items", Reply.json(itemsJson(itemJson("m1", "Heat", year = 1995))))
+        server.on("POST", "/Items/m1/PlaybackInfo", Reply.json(playbackInfoJson(mediaSourceJson())))
+        server.on("POST", "/Sessions/Playing", Reply.noContent())
+        server.on("POST", "/Sessions/Playing/Progress", Reply.noContent())
+        server.on("POST", "/Sessions/Playing/Stopped", Reply.noContent())
+        app.jellyfin.server("http://nas:8096").on("GET", "/Users/Me", Reply.json("""{"Id":"u1","Name":"Alex","Policy":{"EnableSubtitleManagement":true}}"""))
     }
 }

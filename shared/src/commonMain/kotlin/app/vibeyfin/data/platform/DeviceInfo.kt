@@ -21,4 +21,6 @@ interface DeviceInfo {
     val downloadAlerts: Boolean get() = false
 
     val languagePickedInSystem: Boolean get() = false
+
+    val debugBuild: Boolean get() = false
 }
