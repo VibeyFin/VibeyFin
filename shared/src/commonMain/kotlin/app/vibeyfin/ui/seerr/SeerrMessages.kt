@@ -41,16 +41,24 @@ internal object SeerrMessages {
     }
 
     /** The request limit is used up: how many this profile may ask for, and how often, as Seerr counts them. */
-    fun quotaReached(limit: Int?, days: Int?, movies: Boolean): String {
-        if (limit == null) return text("seerr_message_quota_reached_try_later")
-        val what = if (movies) Strings.collectionMovieCount(limit) else Strings.seasonCount(limit)
-        val often = when (days) {
-            null -> ""
-            1 -> text("seerr_message_quota_reached_often_day")
-            7 -> text("seerr_message_quota_reached_often_week")
-            else -> text("seerr_message_quota_reached_often_days", "days" to days)
-        }
-        return text("seerr_message_quota_reached_can_request", "what" to what, "often" to often)
+    fun quotaReached(limit: Int?, days: Int?, movies: Boolean): String = when {
+        limit == null -> text("seerr_message_quota_reached_try_later")
+        movies -> quotaReachedMovies(Strings.collectionMovieCount(limit), days)
+        else -> quotaReachedSeasons(Strings.seasonCount(limit), days)
+    }
+
+    private fun quotaReachedMovies(movies: String, days: Int?): String = when (days) {
+        null -> text("seerr_message_quota_reached_movies", "movies" to movies)
+        1 -> text("seerr_message_quota_reached_movies_a_day", "movies" to movies)
+        7 -> text("seerr_message_quota_reached_movies_a_week", "movies" to movies)
+        else -> plural("seerr_message_quota_reached_movies_every_days", days, "movies" to movies)
+    }
+
+    private fun quotaReachedSeasons(seasons: String, days: Int?): String = when (days) {
+        null -> text("seerr_message_quota_reached_seasons", "seasons" to seasons)
+        1 -> text("seerr_message_quota_reached_seasons_a_day", "seasons" to seasons)
+        7 -> text("seerr_message_quota_reached_seasons_a_week", "seasons" to seasons)
+        else -> plural("seerr_message_quota_reached_seasons_every_days", days, "seasons" to seasons)
     }
 
     /** A show's request asked for more seasons than the limit has left. */
