@@ -147,7 +147,7 @@ object Strings {
     }
 
     fun removeServerHelp(profiles: Int): String = when (profiles) {
-        0 -> text("remove_server_help_none")
+        0 -> text("remove_server_message_none")
         else -> plural("remove_server_help", profiles)
     }
 
@@ -1103,12 +1103,12 @@ object Strings {
     fun downloadFailedTitle(title: String): String = text("download_failed_title", "title" to title)
 
     /** The second line of the system progress: how much of the video in hand is here, "1.23 GB of 4.50 GB"; just the first part while the size is unknown. */
-    fun downloadSizeProgress(done: Long, total: Long?): String = if (total != null && total > 0) text("download_size_progress_of", "done" to preciseFileSize(done), "total" to preciseFileSize(total)) else preciseFileSize(done)
+    fun downloadSizeProgress(done: Long, total: Long?): String = if (total != null && total > 0) text("download_progress_of", "done" to preciseFileSize(done), "total" to preciseFileSize(total)) else preciseFileSize(done)
 
     /** A file size with two decimals, in MB below a gigabyte: "512.34 MB", "1.23 GB". Decimal units, like [fileSize]. */
     fun preciseFileSize(bytes: Long): String {
         val value = bytes.coerceAtLeast(0)
-        return if (value >= GIGABYTE) text("precise_file_size_gb", "size" to hundredths(value, GIGABYTE)) else text("precise_file_size_mb", "size" to hundredths(value, MEGABYTE))
+        return if (value >= GIGABYTE) text("file_size_gb", "size" to hundredths(value, GIGABYTE)) else text("file_size_mb", "size" to hundredths(value, MEGABYTE))
     }
 
     private fun hundredths(value: Long, unit: Long): String {
@@ -1153,7 +1153,7 @@ object Strings {
 
     fun seasonDownloadedCount(done: Int, total: Int): String = text("season_downloaded_count", "done" to done, "total" to total)
 
-    val downloadSeasonButton: String get() = text("download_season_button")
+    val downloadSeasonButton: String get() = text("download_season")
 
     /** How long a download has left, from its speed: "Under 1m left", "7m left", "1h 20m left". */
     fun downloadTimeLeft(seconds: Long): String = if (seconds < 60) text("download_time_left_under_minute") else timeLeftShort(seconds * 1_000)

@@ -29,7 +29,11 @@ class StringCatalog(private val source: StringSource) {
     val language: StateFlow<String> get() = activeTag
 
     fun select(tag: String) {
-        val table: Map<String, String> = if (tag == ENGLISH) emptyMap() else parse(source.load(tag))
+        val table: Map<String, String> = when (tag) {
+            ENGLISH -> emptyMap()
+            PseudoLocale.TAG -> english.mapValues { PseudoLocale.apply(it.value) }
+            else -> parse(source.load(tag))
+        }
         active = ActiveLanguage(tag, table)
         activeTag.value = tag
     }

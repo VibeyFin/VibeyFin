@@ -35,7 +35,7 @@ Once the English change reaches `main`, the GitHub webhook tells Weblate and the
    - an entry in `shared/languages.json` with the language's own name (`{ "tag": "de", "name": "Deutsch" }`),
    - the tag in `androidApp/src/main/res/xml/locales_config.xml`,
    - the tag in `CFBundleLocalizations` in `iosApp/iosApp/Info.plist`.
-3. `scripts/check-languages.sh` fails CI until all of these agree. Run it locally to check.
+3. `scripts/check-languages.sh` fails CI until the three lists agree and the language has a plural rule. A language file that is not listed yet is still being translated: it may be empty, `{}` or partial and CI does not mind. Run the script locally to check.
 
 ## Choosing the language in the app
 
@@ -46,5 +46,3 @@ Android has a Language row in Settings (Device language or any shipped language)
 Weblate pull requests are squash-merged like every other pull request in this repo. Lock the component on Weblate while a pull request is under review, so no new changes land in it.
 
 Weblate's own docs caution against squash merging, because its local commits then have no match upstream. If a push to the `weblate` branch ever starts failing after a merge, an admin runs Repository maintenance, "Reset and reapply translations", on the component. That keeps the pending translations and resets the rest to `main`.
-
-The server side (project, component, webhook, add-ons) is in [`weblate-setup.md`](weblate-setup.md).
