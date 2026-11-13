@@ -213,7 +213,7 @@ class SeerrTitleViewModel(
         content.update { it.copy(episodes = SeerrEpisodes(season)) }
         episodeError.value = null
         episodesLoad = viewModelScope.launch {
-            val result = repository.season(tmdbId, season, Strings::episodeNumber)
+            val result = repository.season(tmdbId, season)
             if (content.value.episodes?.season != season) return@launch
             episodeError.value = (result as? ApiResult.Failure)?.error
             content.update { state ->
@@ -444,10 +444,14 @@ class SeerrTitleViewModel(
         val shown = details?.let { presented(it) } ?: this
         return shown.copy(
             message = titleFailure?.let(SeerrMessages::forError),
-            episodes = shown.episodes?.copy(message = episodeFailure?.let(SeerrMessages::forError)),
+            episodes = shown.episodes?.let { season ->
+                season.copy(episodes = season.episodes.map { it.namedForShow() }, message = episodeFailure?.let(SeerrMessages::forError))
+            },
             picker = shown.picker?.let { rebuilt(it) },
         )
     }
+
+    private fun SeerrEpisode.namedForShow(): SeerrEpisode = if (title.isBlank()) copy(title = Strings.episodeNumber(number)) else this
 
     private fun SeerrTitleUiState.presented(details: SeerrTitleDetails): SeerrTitleUiState {
         val title = details.title

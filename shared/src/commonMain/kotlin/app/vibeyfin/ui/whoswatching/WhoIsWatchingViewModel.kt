@@ -54,11 +54,11 @@ sealed interface SignInSheet {
         val expiresIn: Duration? = null,
         val approved: Boolean = false,
         val stop: QuickConnectStop? = null,
+        val status: String? = null,
+        val message: String? = null,
     ) : SignInSheet {
         val shownCode: String? get() = code?.let(Strings::quickConnectCode)
         val spokenCode: String? get() = code?.let(Strings::quickConnectSpokenCode)
-        val status: String? get() = expiresIn?.takeIf { stop == null && !approved }?.let(Strings::quickConnectWaiting)
-        val message: String? get() = stop?.let(SignInMessages::forQuickConnect)
     }
 }
 
@@ -156,7 +156,7 @@ class WhoIsWatchingViewModel(
                 serverReachable = !local.loaded || local.public != null,
                 triedAddresses = local.server?.addresses.orEmpty(),
                 quickConnectAvailable = local.public?.quickConnectEnabled == true && !local.quickConnectOff,
-                sheet = local.sheet,
+                sheet = local.sheet?.rendered(),
                 signingIn = local.signingIn,
                 openingUserId = local.openingUserId,
                 notice = expiredUserId(connected)?.let { id -> profiles.find { it.userId == id } }?.name?.let(Strings::sessionEndedFor),
@@ -336,6 +336,15 @@ class WhoIsWatchingViewModel(
     private fun stopQuickConnect() {
         quickConnectJob?.cancel()
         countdownJob?.cancel()
+    }
+
+    private fun SignInSheet.rendered(): SignInSheet = when (this) {
+        is SignInSheet.QuickConnect -> copy(
+            status = expiresIn?.takeIf { stop == null && !approved }?.let(Strings::quickConnectWaiting),
+            message = stop?.let(SignInMessages::forQuickConnect),
+        )
+
+        else -> this
     }
 
     private fun expiredUserId(state: ConnectionState): String? = (state as? ConnectionState.Expired)?.takeIf { it.serverId == serverId }?.userId

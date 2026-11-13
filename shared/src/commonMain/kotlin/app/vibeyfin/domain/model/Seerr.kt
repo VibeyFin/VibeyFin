@@ -123,6 +123,7 @@ data class SeerrQuality(val serverId: Int, val profileId: Int)
 data class SeerrEpisode(
     val season: Int,
     val number: Int,
+    /** The name from TMDB; blank when it has none, and the screen then shows the number. */
     val title: String,
     val overview: String?,
     /** "2011-04-17". */

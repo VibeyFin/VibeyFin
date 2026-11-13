@@ -1,6 +1,7 @@
 package app.vibeyfin.data.platform
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
@@ -16,6 +17,8 @@ class AndroidDeviceInfo(private val context: Context) : DeviceInfo {
     override val language: String get() = Locale.getDefault().toLanguageTag().substringBefore('-')
 
     override val languageTag: String get() = Locale.getDefault().toLanguageTag()
+
+    override val debugBuild: Boolean get() = context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
 
     override val appVersion: String by lazy {
         val packages = context.packageManager

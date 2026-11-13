@@ -1,7 +1,9 @@
 #!/bin/bash
-# Fails when the shipped languages disagree: shared/strings/*.json, shared/languages.json, Android's locales_config.xml and
-# iOS's CFBundleLocalizations must list the same tags, each needs a plural rule, and every translation must use only keys
-# and {{placeholders}} that en.json has.
+# Fails when the shipped languages disagree: shared/languages.json, Android's locales_config.xml and iOS's CFBundleLocalizations
+# must list the same tags, and each shipped language needs a strings file and a plural rule. A strings file that is not listed yet
+# is a language still being translated: it may be empty, {} or partial, and it needs no plural rule until it ships. Every file
+# that has text must use only {{placeholders}} that en.json has; keys en.json lacks are only warned about (English may have
+# dropped them since the translation was last synced).
 set -e
 cd "$(dirname "$0")/.."
 python3 -I - <<'PY'
@@ -22,7 +24,7 @@ if 'en' not in listed:
 if not all(names):
     errors.append('every languages.json entry needs a name')
 
-sources = {'shared/strings/*.json': files, 'shared/languages.json': set(listed), 'locales_config.xml': android, 'CFBundleLocalizations': ios}
+sources = {'shared/languages.json': set(listed), 'locales_config.xml': android, 'CFBundleLocalizations': ios}
 for label, tags in sources.items():
     for other_label, other in sources.items():
         if label < other_label:
@@ -31,8 +33,11 @@ for label, tags in sources.items():
             for tag in sorted(other - tags):
                 errors.append('%s has %s but %s does not' % (other_label, tag, label))
 
+for tag in sorted(set(listed) - files):
+    errors.append('shared/languages.json lists %s but shared/strings/%s.json does not exist' % (tag, tag))
+
 rules = open('shared/src/commonMain/kotlin/app/vibeyfin/i18n/PluralRules.kt').read()
-for tag in sorted(files):
+for tag in sorted(set(listed)):
     base = tag.split('-')[0]
     if '"%s"' % base not in rules:
         errors.append('PluralRules.kt has no rule for %s' % base)
@@ -46,15 +51,25 @@ for key, value in english.items():
     allowed.setdefault(base, set()).update(placeholder.findall(value))
     allowed[base].add('count') if suffix.search(key) else None
 
+warnings = []
 for tag in sorted(files - {'en'}):
-    translation = json.load(open('shared/strings/%s.json' % tag))
+    text = open('shared/strings/%s.json' % tag).read().strip()
+    if not text:
+        continue
+    try:
+        translation = json.loads(text)
+    except ValueError as problem:
+        errors.append('%s.json is not valid JSON: %s' % (tag, problem))
+        continue
     for key, value in translation.items():
         base = suffix.sub('', key)
         if base not in allowed or (key not in english and not suffix.search(key)):
-            errors.append('%s.json has %s, which en.json does not' % (tag, key))
-        elif not set(placeholder.findall(value)) <= allowed[base]:
+            warnings.append('%s.json has %s, which en.json does not' % (tag, key))
+        elif value and not set(placeholder.findall(value)) <= allowed[base]:
             errors.append('%s.json %s uses placeholders en.json does not: %s' % (tag, key, sorted(set(placeholder.findall(value)) - allowed[base])))
 
+for warning in warnings:
+    print('warning: ' + warning)
 if errors:
     print('\n'.join(errors))
     sys.exit(1)

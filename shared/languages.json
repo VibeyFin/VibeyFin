@@ -1,3 +1,4 @@
 [
-  { "tag": "en", "name": "English" }
+  { "tag": "en", "name": "English" },
+  { "tag": "de", "name": "Deutsch" }
 ]

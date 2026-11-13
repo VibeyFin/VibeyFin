@@ -183,6 +183,8 @@ data class PlaybackUiState(
     val audioTracks: List<TrackOption> = emptyList(),
     /** The subtitle tracks to pick from, "Off" first; empty when the file has none. */
     val subtitleTracks: List<TrackOption> = emptyList(),
+    /** The rows of the Subtitles list: a title with no subtitles has just "Off" when the search can add one. Rendered with the text. */
+    val subtitleChoices: List<TrackOption> = emptyList(),
     /** Why nothing is playing, with what to try. */
     val message: String? = null,
     /** The next episode is about to start; null when there is none or nobody is being offered it. */
@@ -249,10 +251,6 @@ data class PlaybackUiState(
 
     /** Whether the Subtitles list ends with "Search for subtitles". */
     val offersSubtitleSearch: Boolean get() = canSearchSubtitles && subtitleSearchItemId != null
-
-    /** The rows of the Subtitles list: a title with no subtitles has just "Off" when the search can add one. */
-    val subtitleChoices: List<TrackOption>
-        get() = subtitleTracks.ifEmpty { if (offersSubtitleSearch) listOf(TrackOption(SUBTITLES_OFF, Strings.subtitlesOff, selected = true)) else emptyList() }
 }
 
 /** The speeds the player offers. */
@@ -1177,16 +1175,24 @@ private sealed interface PlaybackProblem {
 }
 
 // Only the text changes: the flags and the stream stay as the content state has them.
-private fun PlaybackUiState.withText(source: PlaybackText): PlaybackUiState = copy(
-    subtitle = subtitle?.let { source.item?.let(::subtitleLine) },
-    nextEpisode = nextEpisode?.let { source.next?.let(::nextLine) },
-    message = message?.let { source.problem?.message() },
-    badge = badge?.let { source.format?.badge() },
-    audioTracks = audioTracks.map { option -> option.copy(label = source.audioTracks.labelOf(option.index)) },
-    subtitleTracks = subtitleTracks.map { option ->
+private fun PlaybackUiState.withText(source: PlaybackText): PlaybackUiState {
+    val subtitles = subtitleTracks.map { option ->
         option.copy(label = if (option.index == SUBTITLES_OFF) Strings.subtitlesOff else source.subtitleTracks.labelOf(option.index))
-    },
-)
+    }
+    return copy(
+        subtitle = subtitle?.let { source.item?.let(::subtitleLine) },
+        nextEpisode = nextEpisode?.let { source.next?.let(::nextLine) },
+        message = message?.let { source.problem?.message() },
+        badge = badge?.let { source.format?.badge() },
+        audioTracks = audioTracks.map { option -> option.copy(label = source.audioTracks.labelOf(option.index)) },
+        subtitleTracks = subtitles,
+        subtitleChoices = if (subtitles.isEmpty() && offersSubtitleSearch) {
+            listOf(TrackOption(SUBTITLES_OFF, Strings.subtitlesOff, selected = true))
+        } else {
+            subtitles
+        },
+    )
+}
 
 private fun subtitleLine(item: MediaItem): String? = Strings.metaLine(item.seriesName, item.episodeLabel())
 
