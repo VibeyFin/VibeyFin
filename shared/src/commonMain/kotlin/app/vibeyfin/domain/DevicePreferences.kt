@@ -19,7 +19,6 @@ interface DevicePreferences {
     /** The "Offline mode" switch: when on, the app uses only its downloads even with a network. Off by default. */
     val offlineMode: Flow<Boolean>
 
-    /** The tag of the language picked in Settings; null is Device language. */
     val appLanguage: Flow<String?>
 
     /** Switching to a different server forgets the last profile, which belonged to the old one. */

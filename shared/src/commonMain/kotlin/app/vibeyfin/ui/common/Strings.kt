@@ -280,7 +280,6 @@ object Strings {
         return text("release_date", "day" to day, "month" to Formats.current.monthName(month, false), "year" to year)
     }
 
-    /** A rating tag on a picture: "★ 8.1". */
     fun ratingTag(rating: Double): String = "★ ${Formats.current.decimal(kotlin.math.round(rating * 10) / 10.0, 1, 1)}"
 
     val markSeriesWatched: String get() = text("mark_series_watched")
@@ -827,10 +826,6 @@ object Strings {
         SubtitleMode.None -> text("subtitle_mode_footer_none")
     }
 
-    /**
-     * The root's one-line summary of the languages: "German · English subtitles always". [audio] and [subtitles] are language
-     * names, null for no preference. Nothing set reads as the server's defaults.
-     */
     fun languagesSummary(audio: String?, subtitles: String?, mode: SubtitleMode): String {
         if (audio == null && subtitles == null && mode == SubtitleMode.Default) return languagesDefaultsSummary
         val subs = when (mode) {
@@ -896,7 +891,6 @@ object Strings {
     /** A rating the server has no name for: "Level 10". Level 0 is the strictest cap, not "all". */
     fun serverPolicyLevel(level: Int): String = text("server_policy_level", "level" to level)
 
-    /** One access window: "Weekdays 8:00 AM to 8:30 PM", or "Saturdays 10:00 PM to 6:00 AM the next day" when it runs overnight. */
     fun serverPolicyWindow(days: String, startMinutes: Int, endMinutes: Int): String {
         val start: String = hhmm(startMinutes)
         val end: String = hhmm(endMinutes)

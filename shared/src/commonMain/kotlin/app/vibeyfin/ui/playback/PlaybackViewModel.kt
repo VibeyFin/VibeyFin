@@ -183,7 +183,6 @@ data class PlaybackUiState(
     val audioTracks: List<TrackOption> = emptyList(),
     /** The subtitle tracks to pick from, "Off" first; empty when the file has none. */
     val subtitleTracks: List<TrackOption> = emptyList(),
-    /** The rows of the Subtitles list: a title with no subtitles has just "Off" when the search can add one. Rendered with the text. */
     val subtitleChoices: List<TrackOption> = emptyList(),
     /** Why nothing is playing, with what to try. */
     val message: String? = null,
@@ -766,7 +765,6 @@ class PlaybackViewModel(
         content.update { it.copy(stream = null, loading = false, message = problemMessage(problem), pendingSeekMs = null) }
     }
 
-    // Kept as the problem, so the message is written again when the language changes.
     private fun problemMessage(problem: PlaybackProblem): String {
         textSource.update { it.copy(problem = problem) }
         return problem.message()
@@ -1144,7 +1142,6 @@ class PlaybackViewModel(
     }
 }
 
-// What the player shows as text, kept as the things it is made of, so it is written again in the language that is current.
 private data class PlaybackText(
     val item: MediaItem? = null,
     val next: MediaItem? = null,
@@ -1174,7 +1171,6 @@ private sealed interface PlaybackProblem {
     }
 }
 
-// Only the text changes: the flags and the stream stay as the content state has them.
 private fun PlaybackUiState.withText(source: PlaybackText): PlaybackUiState {
     val subtitles = subtitleTracks.map { option ->
         option.copy(label = if (option.index == SUBTITLES_OFF) Strings.subtitlesOff else source.subtitleTracks.labelOf(option.index))

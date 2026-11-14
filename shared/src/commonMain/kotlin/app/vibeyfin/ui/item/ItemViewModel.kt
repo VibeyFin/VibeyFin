@@ -246,7 +246,6 @@ data class ItemUiState(
 
 private enum class ItemAction { MarkWatched, MarkUnwatched, AddToMyList, RemoveFromMyList, SubtitleDelete }
 
-/** The causes of the page's messages, kept as they came: the text is worded from them whenever the state is read. */
 private data class ItemFailures(
     val load: ApiError? = null,
     val action: ItemAction? = null,

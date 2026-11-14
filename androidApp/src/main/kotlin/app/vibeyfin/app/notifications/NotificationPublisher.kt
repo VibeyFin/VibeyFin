@@ -81,7 +81,6 @@ class NotificationPublisher(private val context: Context) : NewTitlesPublisher {
     }
 
     private companion object {
-        /** Every new-title notification has this id; the tag tells them apart. */
         const val NOTIFICATION_ID = 7001
     }
 }

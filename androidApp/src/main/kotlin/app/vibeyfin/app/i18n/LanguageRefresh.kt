@@ -8,7 +8,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
-/** Makes every composable that reads [app.vibeyfin.ui.common.Strings] draw again when the app language changes, without recreating the activity. */
 object LanguageRefresh {
     private var currentLanguage: String by mutableStateOf(Texts.language.value)
 

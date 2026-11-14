@@ -29,11 +29,6 @@ enum class PinReason {
     ChoosePin,
 }
 
-/**
- * The PIN sheet, worded for the current language. [error] says what went wrong; while [lockedSeconds] is set, too many wrong
- * PINs were entered and the keypad waits that many more seconds (counting down). After "Forgot PIN?" the sheet asks for the
- * profile's Jellyfin password instead ([forgot]), and [checking] is true while the server checks it.
- */
 data class PinPrompt(
     val reason: PinReason,
     val message: String,
@@ -47,7 +42,6 @@ data class PinPrompt(
     val profileName: String = "",
 )
 
-/** Why the PIN sheet shows an error, kept as a cause so its text is worded when the sheet is shown. */
 private sealed interface PinFault {
     data object Wrong : PinFault
 

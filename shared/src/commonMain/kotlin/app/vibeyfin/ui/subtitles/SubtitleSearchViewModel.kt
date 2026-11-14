@@ -85,7 +85,6 @@ private sealed interface SearchFault {
     data class Failed(val error: ApiError) : SearchFault
 }
 
-/** The causes behind the sheet's results and messages, kept as they came: the text is worded from them whenever the state is read. */
 private data class SearchFindings(
     val remote: List<RemoteSubtitle> = emptyList(),
     val possiblyAddedIds: Set<String> = emptySet(),

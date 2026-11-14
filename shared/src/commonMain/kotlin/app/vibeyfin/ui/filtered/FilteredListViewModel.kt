@@ -67,7 +67,6 @@ data class FilteredListUiState(
     val sheet: ListSheet? = null,
 )
 
-/** A picker as data: its text is made when the page is drawn, so a language change redraws it. */
 private data class SheetDraft(
     val kind: ListChipKind,
     val selectedId: String = "",
