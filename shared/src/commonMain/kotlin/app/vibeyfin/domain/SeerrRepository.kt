@@ -83,7 +83,6 @@ class SeerrRepository(private val seerr: SeerrConnection) {
         }
     }
 
-    /** The episodes of [season] of the show [tmdbId]; one without a name has a blank title. */
     suspend fun season(tmdbId: Int, season: Int): ApiResult<List<SeerrEpisode>> = seerr.call { api, _ ->
         api.showSeason(tmdbId, season).map { details ->
             details.episodes.sortedBy { it.episodeNumber }.map { episode ->

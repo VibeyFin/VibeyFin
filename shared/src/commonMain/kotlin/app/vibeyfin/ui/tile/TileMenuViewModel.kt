@@ -132,7 +132,6 @@ class TileMenuViewModel(
     // The title whose My List write is out: a lookup that started before it must not undo it.
     private var writingId: String? = null
 
-    // The My List change that failed, worded when the state is read so a language change reaches it.
     private val favoriteFailure: MutableStateFlow<FavoriteFailure?> = MutableStateFlow(null)
 
     val uiState: StateFlow<TileMenuUiState> = combine(

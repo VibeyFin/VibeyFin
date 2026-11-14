@@ -42,9 +42,7 @@ sealed interface LanguageStatus {
  */
 data class SettingsValues(
     val alwaysAskWhoIsWatching: Boolean = false,
-    /** The language picked in Settings; null is Device language. */
     val appLanguage: String? = null,
-    /** The languages the app ships; the row is hidden while there is only one. */
     val appLanguages: List<AppLanguage> = emptyList(),
     val appVersion: String = "",
     /** False where subtitles are burned into the picture (iOS), so the style cannot apply. */

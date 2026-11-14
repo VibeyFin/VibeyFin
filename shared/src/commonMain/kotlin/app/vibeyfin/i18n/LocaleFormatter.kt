@@ -2,7 +2,6 @@ package app.vibeyfin.i18n
 
 import kotlinx.coroutines.flow.MutableStateFlow
 
-/** Numbers, month names and clock times as a language writes them. Rounding stays in the caller, so only the separators and names change. */
 interface LocaleFormatter {
     fun integer(value: Long): String
 

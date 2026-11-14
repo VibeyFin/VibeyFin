@@ -47,7 +47,6 @@ data class PersonUiState(
     val noAppearances: Boolean get() = !appearancesLoading && appearancesMessage == null && movies.items.isEmpty() && shows.items.isEmpty()
 }
 
-/** The causes of the page's messages, kept as they came: the text is worded from them whenever the state is read. */
 private data class PersonFailures(val person: ApiError? = null, val appearances: ApiError? = null)
 
 private fun PersonUiState.localized(failures: PersonFailures): PersonUiState = copy(
