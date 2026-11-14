@@ -80,6 +80,7 @@ class StringCatalogTest {
     @Test
     fun aLanguageWithoutAFileReadsEnglish() {
         withGerman.select("fr")
+        assertEquals("en", withGerman.language.value)
         assertEquals("Hello", withGerman.text("hello"))
         assertEquals("2 titles", withGerman.plural("titles", 2))
     }
@@ -88,7 +89,25 @@ class StringCatalogTest {
     fun aBrokenLanguageFileReadsEnglish() {
         val broken: StringCatalog = StringCatalog(FakeStringSource(mapOf("en" to englishFile, "de" to "{ not json")))
         broken.select("de")
+        assertEquals("en", broken.language.value)
         assertEquals("Hello", broken.text("hello"))
+    }
+
+    @Test
+    fun aMissingSingularFormReadsEnglishSingularNotTheLanguagePlural() {
+        val onlyPlural: StringCatalog = StringCatalog(FakeStringSource(mapOf("en" to englishFile, "de" to """{ "titles_other": "{{count}} Titel" }""")))
+        onlyPlural.select("de")
+        assertEquals("1 title", onlyPlural.plural("titles", 1))
+        assertEquals("2 Titel", onlyPlural.plural("titles", 2))
+    }
+
+    @Test
+    fun resetClearsTheReadHook() {
+        var reads: Int = 0
+        Texts.onRead { reads++ }
+        Texts.reset()
+        text("hello")
+        assertEquals(0, reads)
     }
 
     @Test

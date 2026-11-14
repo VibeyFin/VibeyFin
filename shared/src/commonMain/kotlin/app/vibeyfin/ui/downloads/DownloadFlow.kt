@@ -11,7 +11,7 @@ import app.vibeyfin.domain.DownloadState
 import app.vibeyfin.domain.DownloadTarget
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.domain.observeProgress
-import app.vibeyfin.i18n.Texts
+import app.vibeyfin.i18n.localized
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.CoroutineScope
@@ -82,7 +82,7 @@ class DownloadFlow(
 
     // A download that could not be started, with what to try.
     private val _message = MutableStateFlow<DownloadMessage?>(null)
-    val message: StateFlow<String?> = combine(_message, Texts.language) { raw, _ -> raw?.text() }.stateIn(scope, SharingStarted.Eagerly, null)
+    val message: StateFlow<String?> = _message.localized { raw -> raw?.text() }.stateIn(scope, SharingStarted.Eagerly, null)
 
     private val _canDownload = MutableStateFlow(true)
 

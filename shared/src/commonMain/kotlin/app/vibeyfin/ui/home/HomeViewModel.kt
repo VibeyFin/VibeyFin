@@ -24,6 +24,7 @@ import app.vibeyfin.domain.model.ItemPage
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.profileOrNull
 import app.vibeyfin.i18n.Texts
+import app.vibeyfin.i18n.localized
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.PinPrompt
 import app.vibeyfin.ui.common.PinSheetControls
@@ -251,7 +252,7 @@ class HomeViewModel(
     // Signed in, the libraries are always on their way, so the first thing to show is loading, not empty.
     private val libraries = MutableStateFlow(Libraries(loading = true))
     private val continueRow = MutableStateFlow(ContinueSource(loading = true))
-    private val continueView: Flow<ContinueRow> = combine(continueRow, Texts.language) { source, _ -> source.toRow() }
+    private val continueView: Flow<ContinueRow> = continueRow.localized { source -> source.toRow() }
     private val refreshing = MutableStateFlow(false)
 
     private var continueReload: Job? = null
@@ -259,9 +260,9 @@ class HomeViewModel(
     private var continueLoadedAt: Instant? = null
 
     private val actionMessage = MutableStateFlow<ActionFailure?>(null)
-    private val actionText: Flow<String?> = combine(actionMessage, Texts.language) { failure, _ -> failure?.message() }
+    private val actionText: Flow<String?> = actionMessage.localized { failure -> failure?.message() }
     private val removedCard = MutableStateFlow<RemovedCard?>(null)
-    private val removedNotice: Flow<String?> = combine(removedCard, Texts.language) { removed, _ -> removed?.let { Strings.removedFromContinueWatching } }
+    private val removedNotice: Flow<String?> = removedCard.localized { removed -> removed?.let { Strings.removedFromContinueWatching } }
 
     private val latestRows = MutableStateFlow<List<RowSource>>(emptyList())
     private val genreRows = MutableStateFlow<List<RowSource>>(emptyList())
@@ -284,7 +285,7 @@ class HomeViewModel(
     }
 
     private val categoryUi = MutableStateFlow(CategoryUi())
-    private val categories: Flow<CategoryScreen> = combine(categoryUi, Texts.language) { ui, _ ->
+    private val categories: Flow<CategoryScreen> = categoryUi.localized { ui ->
         CategoryScreen(sheet = ui.sheet?.toSheet(), openList = ui.openList, heroNav = ui.heroNav)
     }
     private var sheetJob: Job? = null

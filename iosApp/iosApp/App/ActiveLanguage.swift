@@ -2,12 +2,11 @@ import Foundation
 import Observation
 import Shared
 
-/// The language tag the app shows. Reading `tag` while a view draws makes SwiftUI draw that view again when the language changes.
 @Observable
 final class ActiveLanguage {
     static let shared = ActiveLanguage()
 
-    private(set) var tag: String = "en"
+    private(set) var tag: String = StringCatalogKt.DEFAULT_LANGUAGE
 
     @ObservationIgnored private let model = LanguageModel()
     @ObservationIgnored private var started = false

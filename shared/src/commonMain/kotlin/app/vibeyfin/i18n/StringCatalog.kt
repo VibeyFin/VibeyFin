@@ -8,45 +8,45 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.concurrent.Volatile
 
-private const val ENGLISH: String = "en"
+const val DEFAULT_LANGUAGE: String = "en"
 
 private val placeholder: Regex = Regex("""\{\{(\w+)\}\}""")
 
 private class ActiveLanguage(val tag: String, val table: Map<String, String>)
 
-/**
- * The texts of the active language over English: a key the active language lacks, or leaves empty, is read from English, and a key
- * English lacks is empty text, never the key.
- */
+// A key the active language lacks or leaves empty reads English; a key English lacks is empty text, never the key.
 class StringCatalog(private val source: StringSource) {
-    private val english: Map<String, String> by lazy { parse(source.load(ENGLISH)) }
+    private val english: Map<String, String> by lazy { parse(source.load(DEFAULT_LANGUAGE)) }
 
     @Volatile
-    private var active: ActiveLanguage = ActiveLanguage(ENGLISH, emptyMap())
+    private var active: ActiveLanguage = ActiveLanguage(DEFAULT_LANGUAGE, emptyMap())
 
-    private val activeTag: MutableStateFlow<String> = MutableStateFlow(ENGLISH)
+    private val activeTag: MutableStateFlow<String> = MutableStateFlow(DEFAULT_LANGUAGE)
 
     val language: StateFlow<String> get() = activeTag
 
     fun select(tag: String) {
         val table: Map<String, String> = when (tag) {
-            ENGLISH -> emptyMap()
+            DEFAULT_LANGUAGE -> emptyMap()
             PseudoLocale.TAG -> english.mapValues { PseudoLocale.apply(it.value) }
             else -> parse(source.load(tag))
         }
-        active = ActiveLanguage(tag, table)
-        activeTag.value = tag
+        val loaded: Boolean = tag == DEFAULT_LANGUAGE || table.isNotEmpty()
+        val shown: String = if (loaded) tag else DEFAULT_LANGUAGE
+
+        active = ActiveLanguage(shown, table)
+        activeTag.value = shown
     }
 
     fun text(key: String, args: Map<String, String> = emptyMap()): String = fill(template(active.table[key], english[key]), args)
 
     fun plural(key: String, count: Int, args: Map<String, String> = emptyMap()): String {
         val current: ActiveLanguage = active
-        val template: String = template(pluralForm(current.table, current.tag, key, count), pluralForm(english, ENGLISH, key, count))
+        val template: String = template(pluralForm(current.table, current.tag, key, count), pluralForm(english, DEFAULT_LANGUAGE, key, count) ?: english["${key}_other"])
         return fill(template, mapOf("count" to count.toString()) + args)
     }
 
-    private fun pluralForm(table: Map<String, String>, tag: String, key: String, count: Int): String? = table["${key}_${PluralRules.category(tag, count)}"]?.takeIf { it.isNotEmpty() } ?: table["${key}_other"]
+    private fun pluralForm(table: Map<String, String>, tag: String, key: String, count: Int): String? = table["${key}_${PluralRules.category(tag, count)}"]?.takeIf { it.isNotEmpty() }
 
     private fun template(translated: String?, fallback: String?): String = translated?.takeIf { it.isNotEmpty() } ?: fallback.orEmpty()
 
@@ -96,7 +96,8 @@ object Texts {
 
     fun reset() {
         replacement = null
-        platformCatalog.select(ENGLISH)
+        readHook = null
+        platformCatalog.select(DEFAULT_LANGUAGE)
     }
 }
 

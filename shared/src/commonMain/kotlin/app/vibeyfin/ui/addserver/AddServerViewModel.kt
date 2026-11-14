@@ -8,7 +8,7 @@ import app.vibeyfin.domain.ResolvedServer
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.ServerResolver
 import app.vibeyfin.domain.model.Server
-import app.vibeyfin.i18n.Texts
+import app.vibeyfin.i18n.localized
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,7 +29,6 @@ sealed interface AddServerStep {
         val addressIsNew get() = existing == null || server.address !in existing.addresses
     }
 
-    /** [message] is what went wrong and what to try; the view model re-words it when the language changes. */
     data class Failed(val issue: ConnectionIssue, val message: String = issue.message()) : AddServerStep
 }
 
@@ -50,7 +49,7 @@ class AddServerViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AddServerUiState(address = initialAddress.orEmpty()))
 
-    val uiState: StateFlow<AddServerUiState> = combine(_uiState, Texts.language) { state, _ -> state.rendered() }
+    val uiState: StateFlow<AddServerUiState> = _uiState.localized { state -> state.rendered() }
         .stateIn(viewModelScope, SharingStarted.Eagerly, _uiState.value.rendered())
 
     private var connectJob: Job? = null
