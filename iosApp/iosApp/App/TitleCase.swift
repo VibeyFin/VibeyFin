@@ -1,4 +1,5 @@
 import Foundation
+import Shared
 
 extension String {
     /// Apple's headline-style capitalisation for button, tab and title labels on iOS: every word
@@ -12,7 +13,7 @@ extension String {
 
     /// Title case is an English convention, so any other language is returned as written.
     func titleCased(forLanguage languageTag: String) -> String {
-        guard languageTag == "en" || languageTag.hasPrefix("en-") else { return self }
+        guard languageTag == StringCatalogKt.DEFAULT_LANGUAGE || languageTag.hasPrefix("\(StringCatalogKt.DEFAULT_LANGUAGE)-") else { return self }
         let smallWords: Set<String> = [
             "a", "an", "the", "and", "but", "for", "nor", "or", "so", "yet",
             "as", "at", "by", "from", "in", "into", "of", "off", "on", "onto",

@@ -1,5 +1,6 @@
 package app.vibeyfin.i18n
 
+import app.vibeyfin.domain.DevicePreferences
 import app.vibeyfin.testing.FakeDeviceInfo
 import app.vibeyfin.testing.TestApp
 import app.vibeyfin.testing.TestLanguages
@@ -7,13 +8,17 @@ import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.milliseconds
 
 class AppLocaleTest {
     private val shipped: List<AppLanguage> = listOf(AppLanguage("en", "English"), AppLanguage("de", "Deutsch"), AppLanguage("pt-BR", "Português (Brasil)"))
@@ -33,6 +38,16 @@ class AppLocaleTest {
     }
 
     private fun appLocale(deviceTag: String): AppLocale = AppLocale(app.preferences, FakeDeviceInfo(language = deviceTag.substringBefore('-'), languageTag = deviceTag), shipped)
+
+    @Test
+    fun `a saved choice that never loads does not block the start`() {
+        val neverLoads: DevicePreferences = object : DevicePreferences by app.preferences {
+            override val appLanguage: Flow<String?> = flow { awaitCancellation() }
+        }
+        val locale = AppLocale(neverLoads, FakeDeviceInfo(language = "de", languageTag = "de-DE"), shipped, startupReadTimeout = 50.milliseconds)
+
+        assertEquals("de", locale.language.value)
+    }
 
     @Test
     fun `the device language is used while nothing is chosen`() {

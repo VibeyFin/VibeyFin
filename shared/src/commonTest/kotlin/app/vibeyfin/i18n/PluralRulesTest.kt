@@ -21,6 +21,11 @@ class PluralRulesTest {
     }
 
     @Test
+    fun onlyListedLanguagesAreSupported() {
+        assertEquals(listOf(true, true, true, false), listOf("en", "de", "de-AT", "xx").map(PluralRules::supports))
+    }
+
+    @Test
     fun anUnknownLanguageFallsBackToEnglishRules() {
         assertEquals("one", PluralRules.category("xx", 1))
         assertEquals("other", PluralRules.category("xx", 2))

@@ -15,6 +15,7 @@ import app.vibeyfin.domain.model.SeerrRequest
 import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.domain.model.notInLibrary
 import app.vibeyfin.i18n.Texts
+import app.vibeyfin.i18n.localized
 import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -140,7 +141,7 @@ class SeerrHomeViewModel(
     private val clock: Clock,
 ) : ViewModel() {
     private val content = MutableStateFlow(SeerrHomeUiState())
-    val uiState: StateFlow<SeerrHomeUiState> = combine(content, Texts.language) { state, _ -> state.titled() }
+    val uiState: StateFlow<SeerrHomeUiState> = content.localized { state -> state.titled() }
         .stateIn(viewModelScope, SharingStarted.Eagerly, SeerrHomeUiState())
 
     private val titles = RequestTitles(repository)
