@@ -56,11 +56,20 @@ import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
 
 /** The destinations of the main navigation bar. Each keeps its own back stack. */
-enum class Tab(val graph: Any, val root: Any, val label: String) {
-    Home(HomeTab, app.vibeyfin.app.navigation.Home, Strings.tabHome),
-    Search(SearchTab, app.vibeyfin.app.navigation.Search, Strings.tabSearch),
-    Library(LibraryTab, app.vibeyfin.app.navigation.Library, Strings.tabLibrary),
-    Downloads(DownloadsTab, app.vibeyfin.app.navigation.Downloads, Strings.tabDownloads),
+enum class Tab(val graph: Any, val root: Any) {
+    Home(HomeTab, app.vibeyfin.app.navigation.Home),
+    Search(SearchTab, app.vibeyfin.app.navigation.Search),
+    Library(LibraryTab, app.vibeyfin.app.navigation.Library),
+    Downloads(DownloadsTab, app.vibeyfin.app.navigation.Downloads),
+    ;
+
+    val label: String
+        get() = when (this) {
+            Home -> Strings.tabHome
+            Search -> Strings.tabSearch
+            Library -> Strings.tabLibrary
+            Downloads -> Strings.tabDownloads
+        }
 }
 
 private val BAR_HEIGHT: Dp = 64.dp
