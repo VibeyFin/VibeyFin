@@ -51,14 +51,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** The buttons under a category page's title. */
-enum class ListChipKind { Movies, Shows, Collections, Filters, Sort, Order, Genre, Year, People, Clear }
+enum class ListChipKind { Movies, Shows, Collections, Sort, Filters, People, Clear }
 
 /** One of them: [label] already says what is chosen ("Sort: Rating"), and [active] is true when it narrows or reorders the page. */
 data class ListChip(val kind: ListChipKind, val label: String, val active: Boolean) {
-    /** These open a list (and show an arrow); Movies, Shows, Collections and Order switch on and off. */
+    /** Sort, Filters and People open a list (and show an arrow); Movies, Shows and Collections switch on and off. */
     val opensList: Boolean
-        get() = kind == ListChipKind.Sort || kind == ListChipKind.Genre || kind == ListChipKind.Year ||
-            kind == ListChipKind.People || kind == ListChipKind.Filters
+        get() = kind == ListChipKind.Sort || kind == ListChipKind.Filters || kind == ListChipKind.People
 }
 
 /** Which list a sheet shows: a chip's own, the Filters list, or one of the filters it opens. */
@@ -138,6 +137,9 @@ private val NEEDS_CHOICES = setOf(
 
 private const val FAVOURITES_ROW = "Favourites"
 private const val GENRE_MATCH_ROW = "GenreMatch"
+
+// The Sort sheet's Ascending and Descending rows, apart from the orders' own ids.
+private const val ORDER_ROW = "Order:"
 
 /**
  * The page a category button, the Categories sheet or the Library tab opens: the movies and shows of one type or genre,
@@ -224,16 +226,10 @@ class FilteredListViewModel(
 
             ListChipKind.Collections -> applyFilters(withType(current, TypeFilter.Collections))
 
-            ListChipKind.Order -> applyFilters(current.copy(order = if (current.orderOn(filter) == current.sortOn(filter).naturalOrder) current.orderOn(filter).flipped() else null))
-
             // Clear drops every filter and the order: the page is as it opened.
             ListChipKind.Clear -> applyFilters(FilterSet())
 
             ListChipKind.Sort -> open(ListSheetKind.Sort)
-
-            ListChipKind.Genre -> open(ListSheetKind.Genre)
-
-            ListChipKind.Year -> open(ListSheetKind.Year)
 
             ListChipKind.People -> open(ListSheetKind.People)
 
@@ -267,6 +263,8 @@ class FilteredListViewModel(
         val open = openSheet.value ?: return
         when (open.kind) {
             ListSheetKind.Filters -> pickFilter(id)
+
+            ListSheetKind.Sort -> pickSort(id)
 
             in MULTI_SELECT -> pickMany(open, id)
 
@@ -345,6 +343,19 @@ class FilteredListViewModel(
         }
     }
 
+    // The Sort sheet holds the orders and, below them, which way the list runs; it stays open for both.
+    private fun pickSort(id: String) {
+        val current = filters.value
+        val sort = current.sortOn(filter)
+        val order = SortOrder.entries.firstOrNull { ORDER_ROW + it.name == id }
+
+        if (order != null) {
+            applyFilters(current.copy(order = order.takeIf { it != sort.naturalOrder }))
+            return
+        }
+        PageSort.entries.firstOrNull { it.name == id }?.let { applyFilters(current.copy(sort = it.takeIf { picked -> picked != filter.defaultSort }, order = null)) }
+    }
+
     // In a sheet of several values a row is added or taken away and the sheet stays; the first row clears them all.
     private fun pickMany(open: OpenSheet, id: String) {
         val current = filters.value
@@ -388,8 +399,6 @@ class FilteredListViewModel(
         val clear = id.isEmpty()
 
         return when (kind) {
-            ListSheetKind.Sort -> PageSort.entries.firstOrNull { it.name == id }?.let { set.copy(sort = it.takeIf { sort -> sort != filter.defaultSort }, order = null) }
-
             ListSheetKind.Year, ListSheetKind.YearFrom, ListSheetKind.YearTo -> set.copy(years = pickedYears(kind, id, set.years, years))
 
             ListSheetKind.People -> set.copy(person = if (clear) null else foundPeople.named(id) ?: set.person)
@@ -410,7 +419,7 @@ class FilteredListViewModel(
 
             ListSheetKind.Quality -> set.copy(quality = VideoQuality.entries.firstOrNull { it.name == id })
 
-            ListSheetKind.Filters, ListSheetKind.Genre, ListSheetKind.Studio, ListSheetKind.Tag,
+            ListSheetKind.Sort, ListSheetKind.Filters, ListSheetKind.Genre, ListSheetKind.Studio, ListSheetKind.Tag,
             ListSheetKind.AudioLanguage, ListSheetKind.SubtitleLanguage,
             -> null
         }
@@ -466,23 +475,13 @@ class FilteredListViewModel(
             add(ListChip(ListChipKind.Shows, Strings.filterShows, active = set.type == TypeFilter.Shows))
             if (filter.offersCollections) add(ListChip(ListChipKind.Collections, Strings.searchCollections, active = set.type == TypeFilter.Collections))
         }
+        add(ListChip(ListChipKind.Sort, Strings.sortChip(sortLabel(sort)), active = set.sort != null || set.order != null))
         if (!collections) add(ListChip(ListChipKind.Filters, if (count > 0) Strings.filtersChip(count) else Strings.filtersButton, active = count > 0))
-        add(ListChip(ListChipKind.Sort, Strings.sortChip(sortLabel(sort)), active = set.sort != null))
-        if (sort != PageSort.Random) add(ListChip(ListChipKind.Order, orderLabel(sort, set.orderOn(filter)), active = set.order != null))
-        // A genre's own page is already one genre; collections have none to pick.
-        if (filter !is HomeFilter.Genre && !collections) add(ListChip(ListChipKind.Genre, genreChipLabel(set), active = set.genres.isNotEmpty()))
-        if (!collections) add(ListChip(ListChipKind.Year, set.years?.let { Strings.yearChip(yearLabel(it)) } ?: Strings.yearButton, active = set.years != null))
         if (filter.offersPeople && !collections) {
             add(ListChip(ListChipKind.People, set.person?.let { Strings.peopleChip(it.name) } ?: Strings.peopleButton, active = set.person != null))
         }
         // Once anything is narrowed or reordered, one button puts the page back as it opened.
         if (set != FilterSet()) add(ListChip(ListChipKind.Clear, Strings.clearFilters, active = false))
-    }
-
-    private fun genreChipLabel(set: FilterSet): String = when (set.genres.size) {
-        0 -> Strings.genreButton
-        1 -> Strings.genreChip(set.genres.single().name)
-        else -> Strings.genresChip(set.genres.size)
     }
 
     private fun sheetFor(open: OpenSheet, set: FilterSet): ListSheet {
@@ -538,7 +537,7 @@ class FilteredListViewModel(
         val values = loaded?.values ?: FilterValues()
 
         return when (kind) {
-            ListSheetKind.Sort -> PageSort.entries.map { ListSheetRow(it.name, sortLabel(it), selected = it == set.sortOn(filter)) }
+            ListSheetKind.Sort -> sortRows(set)
 
             ListSheetKind.Genre -> anyRow(Strings.allGenres, set.genres.isEmpty()) + genres.orEmpty().map { it.row(selected = set.genres.any { genre -> genre.id == it.id }) }
 
@@ -577,6 +576,15 @@ class FilteredListViewModel(
         }
     }
 
+    // Every order, then Ascending and Descending; a random order runs no way, so it has neither.
+    private fun sortRows(set: FilterSet): List<ListSheetRow> {
+        val sort = set.sortOn(filter)
+        val orders = PageSort.entries.map { ListSheetRow(it.name, sortLabel(it), selected = it == sort) }
+
+        if (sort == PageSort.Random) return orders
+        return orders + SortOrder.entries.map { ListSheetRow(ORDER_ROW + it.name, orderLabel(it), selected = it == set.orderOn(filter)) }
+    }
+
     private fun yearRows(kind: ListSheetKind, range: YearRange?, years: List<Int>): List<ListSheetRow> = when (kind) {
         ListSheetKind.YearFrom -> anyRow(Strings.filterAny, range == null) + years.map { ListSheetRow(it.toString(), it.toString(), selected = range?.from == it) }
 
@@ -594,9 +602,12 @@ class FilteredListViewModel(
 
         fun row(kind: ListSheetKind, detail: String?): Boolean = add(ListSheetRow(kind.name, sheetTitle(kind), detail ?: Strings.filterAny, selected = detail != null))
 
+        // A genre's own page is already one genre.
+        if (filter !is HomeFilter.Genre) row(ListSheetKind.Genre, manyLabel(set.genres.map { it.name }))
+        if (set.genres.size > 1) add(ListSheetRow(GENRE_MATCH_ROW, Strings.genreMatchTitle, genreMatchLabel(set.genreMatch), selected = set.genreMatch == GenreMatch.All))
+        row(ListSheetKind.Year, set.years?.let(::yearLabel))
         row(ListSheetKind.Watched, set.watched?.let(::watchedLabel))
         if (filter != HomeFilter.MyList) add(ListSheetRow(FAVOURITES_ROW, Strings.onlyMyList, if (set.favouritesOnly) Strings.filterOn else Strings.filterOff, selected = set.favouritesOnly))
-        if (set.genres.size > 1) add(ListSheetRow(GENRE_MATCH_ROW, Strings.genreMatchTitle, genreMatchLabel(set.genreMatch), selected = set.genreMatch == GenreMatch.All))
         if (values.years.isNotEmpty()) {
             row(ListSheetKind.YearFrom, set.years?.from?.toString())
             row(ListSheetKind.YearTo, set.years?.to?.toString())
@@ -666,8 +677,6 @@ class FilteredListViewModel(
         }
     }
 }
-
-private fun SortOrder.flipped(): SortOrder = if (this == SortOrder.Ascending) SortOrder.Descending else SortOrder.Ascending
 
 private fun FilterOption.row(selected: Boolean): ListSheetRow = ListSheetRow(id, name, count?.let { Formats.current.integer(it.toLong()) }, selected)
 

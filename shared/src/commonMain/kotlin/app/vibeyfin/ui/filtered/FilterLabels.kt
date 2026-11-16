@@ -40,18 +40,7 @@ internal fun sortLabel(sort: PageSort): String = when (sort) {
     PageSort.Random -> Strings.sortRandom
 }
 
-/** What the Order button says for [sort] running [order]. */
-internal fun orderLabel(sort: PageSort, order: SortOrder): String {
-    val ascending = order == SortOrder.Ascending
-
-    return when (sort) {
-        PageSort.Name -> if (ascending) Strings.orderAToZ else Strings.orderZToA
-        PageSort.Added, PageSort.ReleaseDate, PageSort.LastPlayed -> if (ascending) Strings.orderOldestFirst else Strings.orderNewestFirst
-        PageSort.Rating, PageSort.CriticRating, PageSort.PlayCount -> if (ascending) Strings.orderLowestFirst else Strings.orderHighestFirst
-        PageSort.Runtime -> if (ascending) Strings.orderShortestFirst else Strings.orderLongestFirst
-        PageSort.Random -> Strings.sortRandom
-    }
-}
+internal fun orderLabel(order: SortOrder): String = if (order == SortOrder.Ascending) Strings.sortAscending else Strings.sortDescending
 
 internal fun decadeLabel(decade: Decade): String = when (decade) {
     Decade.Twenties -> Strings.decade2020s
@@ -103,6 +92,8 @@ internal fun manyLabel(names: List<String>): String? = when (names.size) {
 
 /** How many of the filters behind the Filters button narrow the page. */
 internal fun FilterSet.filtersSheetCount(): Int = listOf(
+    genres.isNotEmpty(),
+    years != null,
     watched != null,
     favouritesOnly,
     minCommunityRating != null,

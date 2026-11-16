@@ -211,14 +211,10 @@ object Strings {
     val sortRating: String get() = text("sort_rating")
     val sortTitle: String get() = text("sort_title")
     val genreTitle: String get() = text("genre_title")
-    val genreButton: String get() = text("genre_button")
     val allGenres: String get() = text("all_genres")
 
     /** The Year and People filters. */
-    val yearButton: String get() = text("year_button")
     val yearTitle: String get() = text("year_title")
-
-    fun yearChip(label: String): String = text("year_chip", "label" to label)
 
     val allYears: String get() = text("all_years")
     val decade2020s: String get() = text("decade_2020s")
@@ -242,8 +238,6 @@ object Strings {
 
     fun sortChip(label: String): String = text("sort_chip", "label" to label)
 
-    fun genreChip(name: String): String = text("genre_chip", "name" to name)
-
     /** What a screen reader says for a sheet row that holds [count] titles. */
     fun titleCount(name: String, count: Int): String = plural("title_count", count, "name" to name)
 
@@ -254,20 +248,12 @@ object Strings {
     val sortLastPlayed: String get() = text("sort_last_played")
     val sortPlayCount: String get() = text("sort_play_count")
     val sortRandom: String get() = text("sort_random")
-    val orderAToZ: String get() = text("order_a_to_z")
-    val orderZToA: String get() = text("order_z_to_a")
-    val orderNewestFirst: String get() = text("order_newest_first")
-    val orderOldestFirst: String get() = text("order_oldest_first")
-    val orderHighestFirst: String get() = text("order_highest_first")
-    val orderLowestFirst: String get() = text("order_lowest_first")
-    val orderShortestFirst: String get() = text("order_shortest_first")
-    val orderLongestFirst: String get() = text("order_longest_first")
+    val sortAscending: String get() = text("sort_ascending")
+    val sortDescending: String get() = text("sort_descending")
     val filtersButton: String get() = text("filters_button")
     val filtersTitle: String get() = text("filters_title")
 
     fun filtersChip(count: Int): String = text("filters_chip", "count" to Formats.current.integer(count.toLong()))
-
-    fun genresChip(count: Int): String = plural("genres_chip", count, "count" to count)
 
     val filterAny: String get() = text("filter_any")
     val filterOn: String get() = text("filter_on")

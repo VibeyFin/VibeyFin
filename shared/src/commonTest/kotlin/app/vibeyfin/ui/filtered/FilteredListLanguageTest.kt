@@ -78,7 +78,7 @@ class FilteredListLanguageTest {
         viewModel.uiState.first { it.sheet?.kind == ListSheetKind.Filters && it.sheet.loading == false }
 
         Texts.select("de")
-        val watched = viewModel.uiState.first { it.sheet?.rows?.firstOrNull()?.label == "Gesehen" }.sheet?.rows?.first()
+        val watched = viewModel.uiState.first { state -> state.sheet?.rows?.any { it.label == "Gesehen" } == true }.sheet?.rows?.first { it.id == "Watched" }
 
         assertEquals("Alle", watched?.detail)
     }
