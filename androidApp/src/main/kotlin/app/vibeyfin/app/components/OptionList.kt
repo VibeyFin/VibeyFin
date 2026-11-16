@@ -46,6 +46,8 @@ data class OptionRow(
     val description: String? = null,
     /** A row that does something rather than choosing a value: drawn before the label. */
     val icon: ImageVector? = null,
+    /** Drawn after [detail], such as the arrow that says which way a sort runs. */
+    val trailingIcon: ImageVector? = null,
 )
 
 /**
@@ -78,12 +80,14 @@ fun OptionList(title: String, options: List<OptionRow>, onSelect: (String) -> Un
                             fontWeight = if (option.selected) FontWeight.SemiBold else null,
                         )
                     },
-                    trailingContent = if (option.detail != null) {
+                    trailingContent = if (option.detail != null || option.trailingIcon != null) {
                         {
-                            Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3), verticalAlignment = Alignment.CenterVertically) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1), verticalAlignment = Alignment.CenterVertically) {
+                                val tint = if (option.selected) VibeyFinTokens.Colors.onSparkSoft else MaterialTheme.colorScheme.onSurfaceVariant
                                 option.detail?.let {
-                                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(it, style = MaterialTheme.typography.bodyMedium, color = tint)
                                 }
+                                option.trailingIcon?.let { Icon(it, contentDescription = null, tint = tint) }
                             }
                         }
                     } else {

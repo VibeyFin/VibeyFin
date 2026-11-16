@@ -77,7 +77,14 @@ struct FilteredListView: View {
                 PickerSheetView(
                     title: sheet.title,
                     rows: sheet.rows.map { row in
-                        PickerRow(id: row.id, label: row.label, selected: row.selected, detail: row.detail)
+                        PickerRow(
+                            id: row.id,
+                            label: row.label,
+                            selected: row.selected,
+                            detail: row.detail,
+                            description: row.description_,
+                            trailingSymbol: row.direction.map { $0 == SortOrder.ascending ? "chevron.up" : "chevron.down" }
+                        )
                     },
                     loading: sheet.loading,
                     message: sheet.message,

@@ -1,6 +1,7 @@
 package app.vibeyfin.ui.filtered
 
 import app.vibeyfin.domain.HomeFilter
+import app.vibeyfin.domain.SortOrder
 import app.vibeyfin.testing.FakeServer
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TICKS_PER_MINUTE
@@ -193,11 +194,16 @@ class FilteredListViewModelTest {
 
         assertEquals("Sort by", sheet.title)
         assertEquals(
-            listOf("Name", "Recently added", "Rating", "Critic rating", "Release date", "Runtime", "Last played", "Times played", "Random", "Ascending", "Descending"),
+            listOf("Name", "Recently added", "Rating", "Critic rating", "Release date", "Runtime", "Last played", "Times played", "Random"),
             sheet.rows.map { it.label },
         )
-        assertEquals(listOf("Name", "Order:Ascending"), sheet.rows.filter { it.selected }.map { it.id })
-        assertEquals(listOf("Ascending", "Descending"), sheet.rows.takeLast(2).map { it.label })
+        // Only the order in use says which way it runs.
+        val inUse = sheet.rows.single { it.selected }
+        assertEquals("Name", inUse.id)
+        assertEquals("A to Z", inUse.detail)
+        assertEquals(SortOrder.Ascending, inUse.direction)
+        assertEquals("Name, A to Z. Tap again to turn it round.", inUse.description)
+        assertTrue(sheet.rows.filterNot { it.selected }.all { it.detail == null && it.direction == null })
     }
 
     @Test
@@ -213,7 +219,8 @@ class FilteredListViewModelTest {
 
         assertEquals("Sort: Rating", state.chip(ListChipKind.Sort).label)
         // The sheet stays, so the order can be turned round too; Rating runs best first.
-        assertEquals(listOf("Rating", "Order:Descending"), state.sheet?.rows?.filter { it.selected }?.map { it.id })
+        val inUse = state.sheet?.rows?.single { it.selected }
+        assertEquals("Rating" to "Highest first", inUse?.id to inUse?.detail)
         val last = app.jellyfin.requestsTo("GET", "/Items").last().query
         assertEquals("CommunityRating,SortName", last["sortBy"])
         assertEquals("0", last["startIndex"])
@@ -516,11 +523,8 @@ class FilteredListViewModelTest {
 
         viewModel.onChip(ListChipKind.Sort)
         viewModel.onDismissSheet()
-        viewModel.onChip(ListChipKind.Sort)
-        viewModel.onPick("Name")
 
-        // Picking the order already in use asks the server nothing.
-        assertEquals(ListSheetKind.Sort, viewModel.uiState.value.sheet?.kind)
+        assertNull(viewModel.uiState.value.sheet)
         assertEquals(requests, app.jellyfin.requestsTo("GET", "/Items").size)
     }
 
@@ -769,21 +773,38 @@ class FilteredListViewModelTest {
     }
 
     @Test
+    fun anotherOrderStartsTheWayItNaturallyRuns() = runTest {
+        app.signedIn().categorised()
+        val viewModel = viewModel(HomeFilter.Movies)
+        viewModel.settled()
+        viewModel.onChip(ListChipKind.Sort)
+        viewModel.onPick("Name")
+        viewModel.uiState.first { !it.list.refreshing && it.chip(ListChipKind.Sort).active }
+
+        viewModel.onPick("Added")
+        val state = viewModel.uiState.first { !it.list.refreshing && it.sheet?.rows?.single { row -> row.selected }?.id == "Added" }
+
+        assertEquals("Newest first", state.sheet?.rows?.single { it.selected }?.detail)
+        assertEquals("DateCreated" to "Descending", app.jellyfin.requestsTo("GET", "/Items").last().query.let { it["sortBy"] to it["sortOrder"] })
+    }
+
+    @Test
     fun theSortSheetTurnsTheOrderRoundAndBack() = runTest {
         app.signedIn().categorised()
         val viewModel = viewModel(HomeFilter.Movies)
         viewModel.settled()
         viewModel.onChip(ListChipKind.Sort)
 
-        viewModel.onPick("Order:Descending")
+        viewModel.onPick("Name")
         val turned = viewModel.uiState.first { !it.list.refreshing && it.chip(ListChipKind.Sort).active }
         assertEquals("Descending", app.jellyfin.requestsTo("GET", "/Items").last().query["sortOrder"])
-        assertEquals(listOf("Name", "Order:Descending"), turned.sheet?.rows?.filter { it.selected }?.map { it.id })
+        assertEquals("Z to A", turned.sheet?.rows?.single { it.selected }?.detail)
+        assertEquals(SortOrder.Descending, turned.sheet?.rows?.single { it.selected }?.direction)
 
-        viewModel.onPick("Order:Ascending")
+        viewModel.onPick("Name")
         val back = viewModel.uiState.first { !it.list.refreshing && !it.chip(ListChipKind.Sort).active }
         assertEquals("Ascending", app.jellyfin.requestsTo("GET", "/Items").last().query["sortOrder"])
-        assertEquals(listOf("Name", "Order:Ascending"), back.sheet?.rows?.filter { it.selected }?.map { it.id })
+        assertEquals("A to Z", back.sheet?.rows?.single { it.selected }?.detail)
     }
 
     @Test
@@ -796,7 +817,12 @@ class FilteredListViewModelTest {
         viewModel.onPick("Random")
         val state = viewModel.uiState.first { !it.list.refreshing && it.chip(ListChipKind.Sort).active }
 
-        assertTrue(state.sheet?.rows.orEmpty().none { it.id.startsWith("Order:") })
+        assertTrue(state.sheet?.rows.orEmpty().none { it.direction != null })
+
+        // Tapping Random again shuffles nothing round: it stays as it is.
+        val requests = app.jellyfin.requestsTo("GET", "/Items").size
+        viewModel.onPick("Random")
+        assertEquals(requests, app.jellyfin.requestsTo("GET", "/Items").size)
     }
 
     @Test

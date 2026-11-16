@@ -10,6 +10,8 @@ struct PickerRow: Identifiable {
     var detail: String?
     /// What VoiceOver says for the row, when the label alone is not enough.
     var description: String?
+    /// An SF Symbol after `detail`, such as the arrow that says which way a sort runs.
+    var trailingSymbol: String?
 }
 
 /// A list to pick from in a sheet: a title and one row per choice, the one in use lit as a soft pill. Loading is grey lines,
@@ -74,6 +76,11 @@ struct PickerSheetView: View {
                             if let detail = row.detail {
                                 Text(detail)
                                     .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if let symbol = row.trailingSymbol {
+                                Image(systemName: symbol)
+                                    .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(.secondary)
                             }
                         }

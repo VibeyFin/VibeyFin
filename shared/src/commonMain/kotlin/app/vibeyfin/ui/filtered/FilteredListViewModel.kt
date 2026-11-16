@@ -84,7 +84,16 @@ enum class ListSheetKind {
 }
 
 /** One row of a sheet: [detail] is small text at its end (a count, or what a filter is set to); [selected] rows are in use. */
-data class ListSheetRow(val id: String, val label: String, val detail: String? = null, val selected: Boolean = false)
+data class ListSheetRow(
+    val id: String,
+    val label: String,
+    val detail: String? = null,
+    val selected: Boolean = false,
+    /** On the order in use in the Sort sheet: which way the list runs, drawn as an arrow after [detail]. */
+    val direction: SortOrder? = null,
+    /** What a screen reader says for the row, when the label alone is not enough. */
+    val description: String? = null,
+)
 
 /** The picker a chip opens: loading, its rows, or why they didn't load. In a [multiSelect] sheet a tap adds or removes a row and the sheet stays open. */
 data class ListSheet(
@@ -137,9 +146,6 @@ private val NEEDS_CHOICES = setOf(
 
 private const val FAVOURITES_ROW = "Favourites"
 private const val GENRE_MATCH_ROW = "GenreMatch"
-
-// The Sort sheet's Ascending and Descending rows, apart from the orders' own ids.
-private const val ORDER_ROW = "Order:"
 
 /**
  * The page a category button, the Categories sheet or the Library tab opens: the movies and shows of one type or genre,
@@ -343,17 +349,18 @@ class FilteredListViewModel(
         }
     }
 
-    // The Sort sheet holds the orders and, below them, which way the list runs; it stays open for both.
+    // Another order starts the way it naturally runs; the order in use tapped again turns round. The sheet stays open.
     private fun pickSort(id: String) {
         val current = filters.value
         val sort = current.sortOn(filter)
-        val order = SortOrder.entries.firstOrNull { ORDER_ROW + it.name == id }
+        val picked = PageSort.entries.firstOrNull { it.name == id } ?: return
 
-        if (order != null) {
-            applyFilters(current.copy(order = order.takeIf { it != sort.naturalOrder }))
+        if (picked == sort && sort != PageSort.Random) {
+            val turned = if (current.orderOn(filter) == SortOrder.Ascending) SortOrder.Descending else SortOrder.Ascending
+            applyFilters(current.copy(order = turned.takeIf { it != sort.naturalOrder }))
             return
         }
-        PageSort.entries.firstOrNull { it.name == id }?.let { applyFilters(current.copy(sort = it.takeIf { picked -> picked != filter.defaultSort }, order = null)) }
+        applyFilters(current.copy(sort = picked.takeIf { it != filter.defaultSort }, order = null))
     }
 
     // In a sheet of several values a row is added or taken away and the sheet stays; the first row clears them all.
@@ -576,13 +583,19 @@ class FilteredListViewModel(
         }
     }
 
-    // Every order, then Ascending and Descending; a random order runs no way, so it has neither.
+    // One row per order; the one in use says which way it runs. A random order runs no way.
     private fun sortRows(set: FilterSet): List<ListSheetRow> {
         val sort = set.sortOn(filter)
-        val orders = PageSort.entries.map { ListSheetRow(it.name, sortLabel(it), selected = it == sort) }
+        val order = set.orderOn(filter)
 
-        if (sort == PageSort.Random) return orders
-        return orders + SortOrder.entries.map { ListSheetRow(ORDER_ROW + it.name, orderLabel(it), selected = it == set.orderOn(filter)) }
+        return PageSort.entries.map { row ->
+            if (row != sort || row == PageSort.Random) {
+                ListSheetRow(row.name, sortLabel(row), selected = row == sort)
+            } else {
+                val direction = orderLabel(row, order)
+                ListSheetRow(row.name, sortLabel(row), direction, selected = true, direction = order, description = Strings.sortRowDescription(sortLabel(row), direction))
+            }
+        }
     }
 
     private fun yearRows(kind: ListSheetKind, range: YearRange?, years: List<Int>): List<ListSheetRow> = when (kind) {

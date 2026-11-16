@@ -4,10 +4,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.children.ChildrenScreen
 import app.vibeyfin.app.components.FilterChipButton
@@ -16,6 +20,7 @@ import app.vibeyfin.app.components.PickerSearch
 import app.vibeyfin.app.components.PickerSheet
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.HomeFilter
+import app.vibeyfin.domain.SortOrder
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.filtered.FilteredListViewModel
 import app.vibeyfin.ui.filtered.ListChip
@@ -76,7 +81,9 @@ private fun ListChips(chips: List<ListChip>, onTap: (ListChip) -> Unit) {
 @Composable
 private fun ListPicker(sheet: ListSheet, onPick: (String) -> Unit, onDismiss: () -> Unit, onRetry: () -> Unit, onQuery: (String) -> Unit) {
     val rows = remember(sheet.rows) {
-        sheet.rows.map { row -> OptionRow(key = row.id, label = row.label, selected = row.selected, detail = row.detail) }
+        sheet.rows.map { row ->
+            OptionRow(key = row.id, label = row.label, selected = row.selected, detail = row.detail, description = row.description, trailingIcon = row.direction?.let(::directionIcon))
+        }
     }
     val searchFoundNothing = sheet.rows.isEmpty() && !sheet.loading && sheet.message == null
 
@@ -93,3 +100,5 @@ private fun ListPicker(sheet: ListSheet, onPick: (String) -> Unit, onDismiss: ()
         search = if (sheet.searchable) PickerSearch(sheet.query, sheet.hint, onQuery) else null,
     )
 }
+
+private fun directionIcon(order: SortOrder): ImageVector = if (order == SortOrder.Ascending) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown

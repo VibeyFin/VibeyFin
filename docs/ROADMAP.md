@@ -185,8 +185,8 @@ _Starts after the state audit (see Cross-cutting)._
 - [x] Library browse (Android built and run; iOS written and only parsed): the Library tab is every movie and show as a poster grid (three across on a phone) with the title count under its name, and buttons for Movies, Shows, Collections, Sort, Genre, Year (by decade), People (searched by name) and Clear. Changing a filter keeps the old list dimmed and the count in place until the new list is in, so nothing jumps. Sheets show the chosen row as a soft pill, not a tick
 - [x] More filters that combine (#23; Android built, iOS built and its tests run): the Library tab and every category page
   share one `FilterSet` (`shared/.../domain/FilterSet.kt`), serialisable and versioned so a custom row can save it. The buttons
-  are Movies, Shows (and Collections on the Library), Sort, Filters, then People on the Library. Sort lists nine orders and,
-  under them, Ascending and Descending (none for Random). Filters lists genre (several, matching any or all), release year (a
+  are Movies, Shows (and Collections on the Library), Sort, Filters, then People on the Library. Sort lists nine orders, one row
+  each: the one in use says which way it runs ("A to Z", an arrow) and tapping it again turns it round (not Random). Filters lists genre (several, matching any or all), release year (a
   decade, one year, or a From and To range), watched state, Only My List, ratings, age rating, studio, tags, library, runtime,
   date added, resolution and format, and audio and subtitle language; a filter with nothing to pick is left out. Runtime, date
   added, critic rating (Jellyfin 12.2 ignores `minCriticRating`), HDR, Dolby Vision and "all genres" are checked on the

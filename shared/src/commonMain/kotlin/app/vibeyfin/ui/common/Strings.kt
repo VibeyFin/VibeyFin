@@ -248,8 +248,18 @@ object Strings {
     val sortLastPlayed: String get() = text("sort_last_played")
     val sortPlayCount: String get() = text("sort_play_count")
     val sortRandom: String get() = text("sort_random")
-    val sortAscending: String get() = text("sort_ascending")
-    val sortDescending: String get() = text("sort_descending")
+    val orderAToZ: String get() = text("order_a_to_z")
+    val orderZToA: String get() = text("order_z_to_a")
+    val orderNewestFirst: String get() = text("order_newest_first")
+    val orderOldestFirst: String get() = text("order_oldest_first")
+    val orderHighestFirst: String get() = text("order_highest_first")
+    val orderLowestFirst: String get() = text("order_lowest_first")
+    val orderShortestFirst: String get() = text("order_shortest_first")
+    val orderLongestFirst: String get() = text("order_longest_first")
+
+    /** What a screen reader says for the order in use in the Sort sheet. */
+    fun sortRowDescription(label: String, direction: String): String = text("sort_row_description", "label" to label, "direction" to direction)
+
     val filtersButton: String get() = text("filters_button")
     val filtersTitle: String get() = text("filters_title")
 
