@@ -218,16 +218,16 @@ class FilteredListViewModel(
     fun onChip(kind: ListChipKind) {
         val current = filters.value
         when (kind) {
-            ListChipKind.Movies -> apply(withType(current, TypeFilter.Movies))
+            ListChipKind.Movies -> applyFilters(withType(current, TypeFilter.Movies))
 
-            ListChipKind.Shows -> apply(withType(current, TypeFilter.Shows))
+            ListChipKind.Shows -> applyFilters(withType(current, TypeFilter.Shows))
 
-            ListChipKind.Collections -> apply(withType(current, TypeFilter.Collections))
+            ListChipKind.Collections -> applyFilters(withType(current, TypeFilter.Collections))
 
-            ListChipKind.Order -> apply(current.copy(order = if (current.orderOn(filter) == current.sortOn(filter).naturalOrder) current.orderOn(filter).flipped() else null))
+            ListChipKind.Order -> applyFilters(current.copy(order = if (current.orderOn(filter) == current.sortOn(filter).naturalOrder) current.orderOn(filter).flipped() else null))
 
             // Clear drops every filter and the order: the page is as it opened.
-            ListChipKind.Clear -> apply(FilterSet())
+            ListChipKind.Clear -> applyFilters(FilterSet())
 
             ListChipKind.Sort -> open(ListSheetKind.Sort)
 
@@ -273,7 +273,7 @@ class FilteredListViewModel(
             else -> {
                 val next = picked(open.kind, id, filters.value) ?: return
                 closeOrReturn(open)
-                apply(next)
+                applyFilters(next)
             }
         }
     }
@@ -291,11 +291,12 @@ class FilteredListViewModel(
     }
 
     private fun open(kind: ListSheetKind, fromFilters: Boolean = false) {
+        val needsGenres = kind == ListSheetKind.Genre && genres == null
+        val needsChoices = kind in NEEDS_CHOICES && choices == null
+
         sheetJob?.cancel()
         peopleJob?.cancel()
         if (kind == ListSheetKind.People) foundPeople = emptyList()
-        val needsGenres = kind == ListSheetKind.Genre && genres == null
-        val needsChoices = kind in NEEDS_CHOICES && choices == null
         openSheet.value = OpenSheet(kind, loading = needsGenres || needsChoices, fromFilters = fromFilters)
         if (needsGenres) sheetJob = viewModelScope.launch { finishLoading(kind, loadGenres()) }
         if (needsChoices) sheetJob = viewModelScope.launch { finishLoading(kind, loadChoices()) }
@@ -318,13 +319,15 @@ class FilteredListViewModel(
         val values = async { library.filterValues(filter, asked) }
         val studios = async { library.studios(filter, asked) }
         val libraries = async { library.videoLibraries() }
-        val loaded = listOf(values.await(), studios.await(), libraries.await())
-        val failure = loaded.filterIsInstance<ApiResult.Failure>().firstOrNull()
+        val loadedValues = values.await()
+        val loadedStudios = studios.await()
+        val loadedLibraries = libraries.await()
+        val failure = listOf(loadedValues, loadedStudios, loadedLibraries).filterIsInstance<ApiResult.Failure>().firstOrNull()
         val result = failure ?: ApiResult.Success(
             FilterChoices(
-                values = values.await().valueOrNull() ?: FilterValues(),
-                studios = studios.await().valueOrNull().orEmpty(),
-                libraries = libraries.await().valueOrNull().orEmpty(),
+                values = loadedValues.valueOrNull() ?: FilterValues(),
+                studios = loadedStudios.valueOrNull().orEmpty(),
+                libraries = loadedLibraries.valueOrNull().orEmpty(),
             ),
         )
 
@@ -336,8 +339,8 @@ class FilteredListViewModel(
     private fun pickFilter(id: String) {
         val current = filters.value
         when (id) {
-            FAVOURITES_ROW -> apply(current.copy(favouritesOnly = !current.favouritesOnly))
-            GENRE_MATCH_ROW -> apply(current.copy(genreMatch = if (current.genreMatch == GenreMatch.All) GenreMatch.Any else GenreMatch.All))
+            FAVOURITES_ROW -> applyFilters(current.copy(favouritesOnly = !current.favouritesOnly))
+            GENRE_MATCH_ROW -> applyFilters(current.copy(genreMatch = if (current.genreMatch == GenreMatch.All) GenreMatch.Any else GenreMatch.All))
             else -> ListSheetKind.entries.firstOrNull { it.name == id }?.let { open(it, fromFilters = true) }
         }
     }
@@ -347,10 +350,10 @@ class FilteredListViewModel(
         val current = filters.value
         if (id.isEmpty()) {
             closeOrReturn(open)
-            apply(cleared(open.kind, current))
+            applyFilters(cleared(open.kind, current))
             return
         }
-        apply(toggled(open.kind, id, current) ?: return)
+        applyFilters(toggled(open.kind, id, current) ?: return)
     }
 
     private fun closeOrReturn(open: OpenSheet) {
@@ -421,11 +424,11 @@ class FilteredListViewModel(
 
     // A range with one bound left open runs to the oldest or newest year there is; with both open there is no range.
     private fun bounded(from: Int?, to: Int?, years: List<Int>): YearRange? {
-        if (from == null && to == null) return null
-        val low = from ?: years.minOrNull() ?: to ?: return null
-        val high = to ?: years.maxOrNull() ?: low
+        val unbounded = from == null && to == null
+        val low = from ?: years.minOrNull() ?: to
+        val high = to ?: years.maxOrNull() ?: from
 
-        return YearRange(minOf(low, high), maxOf(low, high))
+        return if (unbounded || low == null || high == null) null else YearRange(minOf(low, high), maxOf(low, high))
     }
 
     private fun withType(set: FilterSet, tapped: TypeFilter): FilterSet {
@@ -442,7 +445,7 @@ class FilteredListViewModel(
         }
     }
 
-    private fun apply(next: FilterSet) {
+    private fun applyFilters(next: FilterSet) {
         val current = filters.value
         if (next == current) return
         if (next.type != current.type || next.library != current.library) {
@@ -589,7 +592,7 @@ class FilteredListViewModel(
         val values = loaded?.values ?: FilterValues()
         val shows = filter == HomeFilter.Shows || set.type == TypeFilter.Shows
 
-        fun row(kind: ListSheetKind, detail: String?) = add(ListSheetRow(kind.name, sheetTitle(kind), detail ?: Strings.filterAny, selected = detail != null))
+        fun row(kind: ListSheetKind, detail: String?): Boolean = add(ListSheetRow(kind.name, sheetTitle(kind), detail ?: Strings.filterAny, selected = detail != null))
 
         row(ListSheetKind.Watched, set.watched?.let(::watchedLabel))
         if (filter != HomeFilter.MyList) add(ListSheetRow(FAVOURITES_ROW, Strings.onlyMyList, if (set.favouritesOnly) Strings.filterOn else Strings.filterOff, selected = set.favouritesOnly))

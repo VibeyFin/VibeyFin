@@ -265,7 +265,7 @@ object Strings {
     val filtersButton: String get() = text("filters_button")
     val filtersTitle: String get() = text("filters_title")
 
-    fun filtersChip(count: Int): String = text("filters_chip", "count" to count)
+    fun filtersChip(count: Int): String = text("filters_chip", "count" to Formats.current.integer(count.toLong()))
 
     fun genresChip(count: Int): String = plural("genres_chip", count, "count" to count)
 
@@ -290,11 +290,11 @@ object Strings {
 
     val communityRatingTitle: String get() = text("community_rating_title")
 
-    fun ratingAtLeast(rating: Int): String = text("rating_at_least", "rating" to rating)
+    fun ratingAtLeast(rating: Int): String = text("rating_at_least", "rating" to Formats.current.integer(rating.toLong()))
 
     val criticRatingTitle: String get() = text("critic_rating_title")
 
-    fun criticRatingAtLeast(percent: Int): String = text("critic_rating_at_least", "percent" to percent)
+    fun criticRatingAtLeast(percent: Int): String = text("critic_rating_at_least", "percent" to Formats.current.integer(percent.toLong()))
 
     val ageRatingTitle: String get() = text("age_rating_title")
 
@@ -306,9 +306,9 @@ object Strings {
     val allLibraries: String get() = text("all_libraries")
     val runtimeTitle: String get() = text("runtime_title")
 
-    fun runtimeUnder(minutes: Int): String = text("runtime_under", "minutes" to minutes)
+    fun runtimeUnder(minutes: Int): String = text("runtime_under", "minutes" to Formats.current.integer(minutes.toLong()))
 
-    fun runtimeOver(minutes: Int): String = text("runtime_over", "minutes" to minutes)
+    fun runtimeOver(minutes: Int): String = text("runtime_over", "minutes" to Formats.current.integer(minutes.toLong()))
 
     val addedTitle: String get() = text("added_title")
     val addedWeek: String get() = text("added_week")
