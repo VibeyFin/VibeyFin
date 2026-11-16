@@ -111,16 +111,7 @@ class NewTitlesPoller(
             is ApiResult.Failure -> return result
         }
         val myList = when (
-            val result = api.filteredItems(
-                userId,
-                types = listOf("Series"),
-                genreId = null,
-                sortBy = "SortName",
-                sortOrder = "Ascending",
-                startIndex = 0,
-                limit = FOLLOW_LIMIT,
-                favoritesOnly = true,
-            )
+            val result = api.filteredItems(userId, FilterSet(type = TypeFilter.Shows).serverQuery(HomeFilter.MyList), startIndex = 0, limit = FOLLOW_LIMIT)
         ) {
             is ApiResult.Success -> result.value.items
             is ApiResult.Failure -> return result
@@ -148,16 +139,7 @@ class NewTitlesPoller(
         val all = mutableListOf<BaseItemDto>()
         repeat(MAX_PAGES) { page ->
             val items = when (
-                val r = api.filteredItems(
-                    userId,
-                    types = listOf("Movie", "Episode"),
-                    genreId = null,
-                    sortBy = "DateCreated",
-                    sortOrder = "Descending",
-                    startIndex = page * PAGE_SIZE,
-                    limit = PAGE_SIZE,
-                    fields = "DateCreated",
-                )
+                val r = api.filteredItems(userId, ADDED_QUERY, startIndex = page * PAGE_SIZE, limit = PAGE_SIZE, fields = "DateCreated")
             ) {
                 is ApiResult.Success -> r.value.items
                 is ApiResult.Failure -> return r
@@ -179,6 +161,9 @@ class NewTitlesPoller(
         /** Bounds a runaway listing (a whole library imported at once) to this many pages of [PAGE_SIZE]. */
         const val MAX_PAGES = 10
         const val FOLLOW_LIMIT = 200
+
+        /** Movies and episodes, newest addition first. */
+        val ADDED_QUERY = mapOf("recursive" to "true", "includeItemTypes" to "Movie,Episode", "sortBy" to "DateCreated", "sortOrder" to "Descending")
 
         /** Older additions are never reported; the background work may not run for days, on iOS especially. */
         val MAX_AGE = 14.days

@@ -26,7 +26,7 @@ import org.koin.core.parameter.parametersOf
 
 /**
  * The page a category button or the Categories sheet opens, titled with its name ("Shows", "New", "Action"). It is
- * drawn like a folder's list, with Sort and Genre buttons under the title that open the player's picker sheet.
+ * drawn like a folder's list, with the filter buttons under the title; Filters, Sort, Genre and the like open a picker sheet.
  */
 @Composable
 fun FilteredListRoute(
@@ -75,13 +75,10 @@ private fun ListChips(chips: List<ListChip>, onTap: (ListChip) -> Unit) {
 
 @Composable
 private fun ListPicker(sheet: ListSheet, onPick: (String) -> Unit, onDismiss: () -> Unit, onRetry: () -> Unit, onQuery: (String) -> Unit) {
-    val rows = remember(sheet.options, sheet.selectedId) {
-        sheet.options.map { option ->
-            OptionRow(key = option.id, label = option.name, selected = option.id == sheet.selectedId, detail = option.count?.toString())
-        }
+    val rows = remember(sheet.rows) {
+        sheet.rows.map { row -> OptionRow(key = row.id, label = row.label, selected = row.selected, detail = row.detail) }
     }
-
-    val searchFoundNothing = sheet.options.isEmpty() && !sheet.loading && sheet.message == null
+    val searchFoundNothing = sheet.rows.isEmpty() && !sheet.loading && sheet.message == null
 
     PickerSheet(
         title = sheet.title,

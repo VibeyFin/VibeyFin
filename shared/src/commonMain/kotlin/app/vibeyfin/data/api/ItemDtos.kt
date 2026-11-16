@@ -18,6 +18,7 @@ data class BaseItemDto(
     @SerialName("Overview") val overview: String? = null,
     @SerialName("Genres") val genres: List<String> = emptyList(),
     @SerialName("CommunityRating") val communityRating: Double? = null,
+    @SerialName("CriticRating") val criticRating: Double? = null,
     @SerialName("OfficialRating") val officialRating: String? = null,
     @SerialName("ImageTags") val imageTags: Map<String, String> = emptyMap(),
     @SerialName("BackdropImageTags") val backdropImageTags: List<String> = emptyList(),
@@ -112,4 +113,26 @@ data class ItemsResultDto(
     @SerialName("Items") val items: List<BaseItemDto> = emptyList(),
     @SerialName("TotalRecordCount") val totalRecordCount: Int = 0,
     @SerialName("StartIndex") val startIndex: Int = 0,
+)
+
+/** A name with its server value, as `/Items/Filters2` lists languages (`English (eng)`, `eng`). */
+@Serializable
+data class NameValueDto(
+    @SerialName("Name") val name: String? = null,
+    @SerialName("Value") val value: String? = null,
+)
+
+/** `QueryFilters`: what the titles in a scope can be narrowed by. */
+@Serializable
+data class QueryFiltersDto(
+    @SerialName("Tags") val tags: List<String> = emptyList(),
+    @SerialName("AudioLanguages") val audioLanguages: List<NameValueDto> = emptyList(),
+    @SerialName("SubtitleLanguages") val subtitleLanguages: List<NameValueDto> = emptyList(),
+)
+
+/** `QueryFiltersLegacy`: the years and age ratings of one library. */
+@Serializable
+data class LegacyFiltersDto(
+    @SerialName("OfficialRatings") val officialRatings: List<String> = emptyList(),
+    @SerialName("Years") val years: List<Int> = emptyList(),
 )

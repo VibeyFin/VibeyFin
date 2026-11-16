@@ -69,7 +69,7 @@ class TestApp {
     val policy = ProfilePolicy(connection)
     val languages = LanguagePreferences(connection, database.accountDao())
     val router = StartupRouter(servers, accounts, preferences, connection, pins)
-    val library = LibraryRepository(connection)
+    val library = LibraryRepository(connection, clock)
     val searchHistory = SearchHistory(InMemoryPreferencesDataStore(), connection)
     val serverRemoval = ServerRemoval(servers, accounts, searchHistory, preferences, connection)
     val watchChanges = WatchChanges()

@@ -75,7 +75,7 @@ fun apiModule() = module {
     single { DownloadRunner(get(), get(), get(), get(), get(), get(), get(), speeds = get(), external = getOrNull(), playable = getOrNull(), alerts = getOrNull() ?: NoDownloadAlerts) }
     single { AuthRepository(get(), get(), get(), get()) }
     single { StartupRouter(get(), get(), get(), get(), get()) }
-    single { LibraryRepository(get()) }
+    single { LibraryRepository(get(), get()) }
     single { WatchRepository(get(), get(), get()) }
 
     single(ApplicationScope) { CoroutineScope(SupervisorJob() + Dispatchers.Default) }

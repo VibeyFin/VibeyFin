@@ -2,7 +2,7 @@ import SwiftUI
 import Shared
 
 /// The page a category button or the Categories list opens, titled with its name ("Shows", "New", "Action"). It is
-/// drawn like a folder's list, with Sort and Genre buttons under the title that open a list to pick from.
+/// drawn like a folder's list, with the filter buttons under the title; Filters, Sort, Genre and the like open a list to pick from.
 struct FilteredListView: View {
     @StateObject private var model: FilteredListObservable
 
@@ -76,17 +76,12 @@ struct FilteredListView: View {
             if let sheet = model.state?.sheet {
                 PickerSheetView(
                     title: sheet.title,
-                    rows: sheet.options.map { option in
-                        PickerRow(
-                            id: option.id,
-                            label: option.name,
-                            selected: option.id == sheet.selectedId,
-                            detail: option.count.map { String($0.int32Value) }
-                        )
+                    rows: sheet.rows.map { row in
+                        PickerRow(id: row.id, label: row.label, selected: row.selected, detail: row.detail)
                     },
                     loading: sheet.loading,
                     message: sheet.message,
-                    emptyText: sheet.searchable && sheet.options.isEmpty && !sheet.loading && sheet.message == nil ? sheet.emptyText : nil,
+                    emptyText: sheet.searchable && sheet.rows.isEmpty && !sheet.loading && sheet.message == nil ? sheet.emptyText : nil,
                     onPick: { model.pick($0) },
                     onRetry: { model.retrySheet() },
                     search: sheet.searchable ? Binding(get: { peopleQuery }, set: { peopleQuery = $0; model.sheetQuery($0) }) : nil,
