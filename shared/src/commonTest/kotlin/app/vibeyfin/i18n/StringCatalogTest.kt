@@ -1,7 +1,9 @@
 package app.vibeyfin.i18n
 
+import app.vibeyfin.ui.common.Strings
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class StringCatalogTest {
     private val englishFile: String = """
@@ -161,6 +163,15 @@ class StringCatalogTest {
     fun theLanguageSwitchFindsNoFileWhenNoLayerHasIt() {
         layeredCatalog.select("fr")
         assertEquals("en", layeredCatalog.language.value)
+    }
+
+    @Test
+    fun aClientThatLoadsOnlyCommonDoesNotShowMobileText() {
+        Texts.useLayers(listOf(StringLayers.COMMON))
+        assertEquals("", Strings.downloadedTitle("Heat"))
+        assertTrue(Strings.tryAgain.isNotEmpty())
+        Texts.reset()
+        assertEquals("Downloaded Heat", Strings.downloadedTitle("Heat"))
     }
 
     @Test

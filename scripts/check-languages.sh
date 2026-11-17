@@ -13,7 +13,7 @@ import glob, json, os, plistlib, re, sys
 errors = []
 
 layers = sorted(os.path.basename(p) for p in glob.glob('shared/strings/*') if os.path.isdir(p))
-files = {layer: {os.path.basename(p)[:-5] for p in glob.glob('shared/strings/%s/*.json' % layer)} for layer in layers}
+tags_by_layer = {layer: {os.path.basename(p)[:-5] for p in glob.glob('shared/strings/%s/*.json' % layer)} for layer in layers}
 if not layers:
     errors.append('shared/strings has no layer folders')
 listed = [entry['tag'] for entry in json.load(open('shared/languages.json'))]
@@ -38,7 +38,7 @@ for label, tags in sources.items():
                 errors.append('%s has %s but %s does not' % (other_label, tag, label))
 
 for layer in layers:
-    for tag in sorted((set(listed) | {'en'}) - files[layer]):
+    for tag in sorted((set(listed) | {'en'}) - tags_by_layer[layer]):
         errors.append('shared/strings/%s/%s.json does not exist but %s is listed in shared/languages.json' % (layer, tag, tag))
 
 rules = open('shared/src/commonMain/kotlin/app/vibeyfin/i18n/PluralRules.kt').read()
@@ -68,13 +68,13 @@ def read_layer(layer, tag):
 english_layers = {layer: read_layer(layer, 'en') for layer in layers}
 english = {}
 allowed = {}
-earlier = {}
+seen_in_layers = {}
 for layer in layers:
     for key, value in english_layers[layer].items():
-        for other_layer, other_value in earlier.get(key, []):
+        for other_layer, other_value in seen_in_layers.get(key, []):
             if other_value == value:
                 errors.append('%s is in %s and %s with the same English text: keep it in one layer (a duplicate must override with different text)' % (key, other_layer, layer))
-        earlier.setdefault(key, []).append((layer, value))
+        seen_in_layers.setdefault(key, []).append((layer, value))
         english[key] = value
         base = suffix.sub('', key)
         allowed.setdefault(base, set()).update(placeholder.findall(value))
@@ -82,7 +82,7 @@ for layer in layers:
 
 warnings = []
 for layer in layers:
-    for tag in sorted(files[layer] - {'en'}):
+    for tag in sorted(tags_by_layer[layer] - {'en'}):
         translation = read_layer(layer, tag)
         for key, value in translation.items():
             base = suffix.sub('', key)

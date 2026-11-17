@@ -7,7 +7,7 @@ import app.vibeyfin.ui.common.Strings
 fun downloadedTitle(downloads: List<CompletedDownload>): String {
     val show: String? = downloads.map { it.seriesName }.distinct().singleOrNull()
     return when {
-        downloads.size == 1 -> Strings.downloadedOne(downloads.single().title)
+        downloads.size == 1 -> Strings.downloadedTitle(downloads.single().title)
         show != null -> Strings.downloadedEpisodes(downloads.size, show)
         else -> Strings.downloadedVideos(downloads.size)
     }

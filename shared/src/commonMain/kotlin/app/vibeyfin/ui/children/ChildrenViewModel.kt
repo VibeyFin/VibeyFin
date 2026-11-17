@@ -87,7 +87,7 @@ data class ChildrenUiState(
             return listOf(
                 CollectionGroup(Strings.collectionMovies, items.filter { it.kind == ItemKind.Movie }.sortedWith(oldestFirst)),
                 CollectionGroup(Strings.collectionShows, items.filter { it.kind == ItemKind.Series }.sortedWith(oldestFirst)),
-                CollectionGroup(Strings.collectionOther, items.filter { it.kind != ItemKind.Movie && it.kind != ItemKind.Series }.sortedWith(oldestFirst)),
+                CollectionGroup(Strings.collectionMore, items.filter { it.kind != ItemKind.Movie && it.kind != ItemKind.Series }.sortedWith(oldestFirst)),
             ).filter { it.items.isNotEmpty() }
         }
 

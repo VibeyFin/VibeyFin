@@ -71,9 +71,9 @@ object Texts {
     private var replacement: StringCatalog? = null
     private var readHook: (() -> Unit)? = null
     private var layers: List<String> = StringLayers.mobileClient
-    private val platformCatalog: StringCatalog by lazy { StringCatalog(platformStringSource(), layers) }
+    private var platformCatalog: StringCatalog? = null
 
-    val catalog: StringCatalog get() = replacement ?: platformCatalog
+    val catalog: StringCatalog get() = replacement ?: platformCatalog ?: StringCatalog(platformStringSource(), layers).also { platformCatalog = it }
 
     val language: StateFlow<String> get() = catalog.language
 
@@ -95,7 +95,9 @@ object Texts {
 
     /** Names the layers this client loads, once at startup and before the first text is read. */
     fun useLayers(names: List<String>) {
+        if (names == layers) return
         layers = names
+        platformCatalog = null
     }
 
     /** For tests: reads from [catalog] until [reset]. */
@@ -106,7 +108,8 @@ object Texts {
     fun reset() {
         replacement = null
         readHook = null
-        platformCatalog.select(DEFAULT_LANGUAGE)
+        useLayers(StringLayers.mobileClient)
+        platformCatalog?.select(DEFAULT_LANGUAGE)
     }
 }
 

@@ -73,7 +73,7 @@ data class SubtitleSearchUiState(
     val exit: HomeExit? = null,
 )
 
-private enum class DownloadFault { NotArrived, NotArrivedHasOne, AddFailed }
+private enum class DownloadFault { NotArrived, NotArrivedHasFile, AddFailed }
 
 private sealed interface SearchFault {
     data class NoResults(val language: String) : SearchFault
@@ -115,7 +115,7 @@ private fun SearchFault.problem(): SubtitleSearchProblem = when (this) {
 
 private fun DownloadFault.message(): SubtitleSearchMessage = when (this) {
     DownloadFault.NotArrived -> SubtitleSearchMessage(LoadMessages.SUBTITLES_DID_NOT_ARRIVE, canRetry = false)
-    DownloadFault.NotArrivedHasOne -> SubtitleSearchMessage(LoadMessages.SUBTITLES_DID_NOT_ARRIVE_HAS_ONE, canRetry = false)
+    DownloadFault.NotArrivedHasFile -> SubtitleSearchMessage(LoadMessages.SUBTITLES_DID_NOT_ARRIVE_HAS_FILE, canRetry = false)
     DownloadFault.AddFailed -> SubtitleSearchMessage(LoadMessages.SUBTITLES_ADD_FAILED, canRetry = true)
 }
 
@@ -200,7 +200,7 @@ class SubtitleSearchViewModel(
                     content.update { it.copy(added = SubtitleAdded(item, outcome.streamIndex, language)) }
                 }
 
-                SubtitleDownload.NotArrived -> findings.update { it.copy(downloadFault = if (existing.isEmpty()) DownloadFault.NotArrived else DownloadFault.NotArrivedHasOne) }
+                SubtitleDownload.NotArrived -> findings.update { it.copy(downloadFault = if (existing.isEmpty()) DownloadFault.NotArrived else DownloadFault.NotArrivedHasFile) }
 
                 is SubtitleDownload.Failed -> onDownloadFailed(id, outcome.error)
             }

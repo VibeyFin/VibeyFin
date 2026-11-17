@@ -68,6 +68,16 @@ class EnglishFileTest {
     }
 
     @Test
+    fun aPluralPairLivesInOneLayer() {
+        val split: List<String> = englishByLayer.flatMap { (layer, texts) ->
+            texts.keys.filter { it.endsWith("_one") || it.endsWith("_other") }
+                .filter { key -> pluralSuffixes.any { suffix -> baseKey(key) + suffix !in texts } }
+                .map { "$layer/$it" }
+        }
+        assertEquals(emptyList(), split)
+    }
+
+    @Test
     fun pluralKeysHaveBothForms() {
         val incomplete: List<String> = calls.filter { it.kind == "plural" }.map { it.key }.distinct()
             .filter { "${it}_one" !in english || "${it}_other" !in english }

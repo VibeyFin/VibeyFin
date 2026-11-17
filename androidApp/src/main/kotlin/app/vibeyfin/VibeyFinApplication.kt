@@ -7,6 +7,7 @@ import app.vibeyfin.app.notifications.NotificationChannels
 import app.vibeyfin.data.db.AccountDao
 import app.vibeyfin.di.ApplicationScope
 import app.vibeyfin.di.initKoin
+import app.vibeyfin.i18n.StringLayers
 import app.vibeyfin.i18n.Texts
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.drop
@@ -17,7 +18,7 @@ class VibeyFinApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        val koin = initKoin {
+        val koin = initKoin(StringLayers.mobileClient) {
             androidContext(this@VibeyFinApplication)
         }.koin
 
