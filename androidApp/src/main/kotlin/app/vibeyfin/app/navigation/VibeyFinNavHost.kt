@@ -21,12 +21,14 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -93,6 +95,7 @@ import app.vibeyfin.app.settings.pageIdOrRoot
 import app.vibeyfin.app.startup.StartupRoute
 import app.vibeyfin.app.theme.FixedColors
 import app.vibeyfin.app.theme.isTabletWidth
+import app.vibeyfin.app.theme.navigationBarHeight
 import app.vibeyfin.app.whoswatching.SignInFlight
 import app.vibeyfin.app.whoswatching.WhoIsWatchingRoute
 import app.vibeyfin.app.whoswatching.rememberSignInFlight
@@ -256,24 +259,19 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
 
     BackHandler(enabled = atOtherRoot) { select(Tab.Home) }
 
-    // The player is the whole screen: no inset of its own for the camera cut-out, so no bar of the page's color beside the picture
-    // (a foldable's cover screen, a phone turned sideways), and a black window behind it.
     val onPlayer = backStackEntry?.opensPlayer() == true
 
     val playerTurns = rememberPlayerTurns()
 
     val tabs = Tab.entries.filter { !offline || it != Tab.Library }
+    val bottomBarPadding = navigationBarHeight() + if (currentTab != null) FLOATING_BAR_SPACE else 0.dp
 
     Scaffold(
+        // A black window behind the player, so no edge of the page's color shows beside the picture as it turns
         containerColor = if (onPlayer) FixedColors.videoBackground else MaterialTheme.colorScheme.background,
-        // No top inset: each screen keeps clear of the status bar itself, so a detail page's artwork runs up behind it
-        // instead of under a strip of the page's color
-        contentWindowInsets = if (onPlayer) {
-            WindowInsets(0, 0, 0, 0)
-        } else {
-            ScaffoldDefaults.contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
-        },
-    ) { padding ->
+        // No insets: pages draw edge to edge and keep their own text and controls clear of the bars and cut-outs
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    ) {
         val tileMenu: TileMenuViewModel = koinViewModel()
         val uriHandler = LocalUriHandler.current
         val openTrailerUrl: (String) -> Unit = { url -> uriHandler.openUri(url) }
@@ -288,7 +286,7 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
             SeerrMenuHost(title, navController, notices, openTrailerUrl, onReopen = { seerrMenu = it }) { seerrMenu = null }
         }
 
-        Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
+        Box(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize()) {
                 val shownBanner = banner.takeIf { !onPlayer }
 
@@ -298,7 +296,7 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
                 SharedTransitionLayout(Modifier.weight(1f).then(if (shownBanner != null) Modifier.consumeWindowInsets(WindowInsets.statusBars) else Modifier)) {
                     CompositionLocalProvider(
                         LocalSharedTransitionScope provides this,
-                        LocalBottomBarPadding provides if (currentTab != null) FLOATING_BAR_SPACE else 0.dp,
+                        LocalBottomBarPadding provides bottomBarPadding,
                         LocalProfileButton provides profileButtonSlot(navController, offline, leave, signInFlight),
                         LocalTileLongPress provides { item -> tileMenu.onOpen(item) },
                         // A title the library has gets the library's own menu; the Seerr one is for what can still be requested
@@ -326,14 +324,17 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
 
             signInFlight.Overlay()
             // What a request from a Seerr poster menu came to, over whatever screen the menu was on
-            SnackbarHost(notices, Modifier.align(Alignment.BottomCenter).padding(bottom = if (currentTab != null) FLOATING_BAR_SPACE else 0.dp))
+            SnackbarHost(
+                notices,
+                Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)).padding(bottom = bottomBarPadding),
+            )
 
             if (currentTab != null) {
                 FloatingNavigationBar(
                     selected = currentTab,
                     tabs = tabs,
                     onSelect = select,
-                    modifier = Modifier.align(Alignment.BottomCenter),
+                    modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)),
                 )
             }
         }

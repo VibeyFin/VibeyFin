@@ -2,8 +2,12 @@ package app.vibeyfin.app.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
@@ -33,7 +37,7 @@ fun BackButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
 fun BoxScope.FloatingBackButton(onClick: () -> Unit) {
     BackButton(
         onClick = onClick,
-        modifier = Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(start = screenMargin() - ChipInset, top = VibeyFinTokens.Space.s2),
+        modifier = Modifier.align(Alignment.TopStart).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).padding(start = screenMargin() - ChipInset, top = VibeyFinTokens.Space.s2),
     )
 }
 

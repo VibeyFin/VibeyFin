@@ -1,8 +1,12 @@
 package app.vibeyfin.app.components
 
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
@@ -16,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.pageInsetsPadding
 import app.vibeyfin.ui.common.Strings
 
 /**
@@ -47,7 +52,8 @@ fun BoxScope.ActionSnackbar(
         hostState = host,
         modifier = Modifier
             .align(Alignment.BottomCenter)
-            .safeDrawingPadding()
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+            .pageInsetsPadding()
             .padding(bottom = LocalBottomBarPadding.current)
             .padding(VibeyFinTokens.Space.s2),
     ) { data ->

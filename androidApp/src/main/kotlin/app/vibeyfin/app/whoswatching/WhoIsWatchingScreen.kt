@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -74,9 +74,11 @@ import app.vibeyfin.app.components.TabHeader
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.components.skeletonProfiles
+import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.settings.PinSheet
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.animationsEnabled
+import app.vibeyfin.app.theme.pageInsetsPadding
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.Profile
 import app.vibeyfin.domain.model.ProfileRef
@@ -176,7 +178,7 @@ private fun WhoIsWatchingScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer { alpha = 1f - zoom().coerceAtMost(1f) }
-                    .safeDrawingPadding()
+                    .pageInsetsPadding()
                     .padding(horizontal = screenMargin()),
             ) {
                 TabHeader(
@@ -201,6 +203,7 @@ private fun WhoIsWatchingScreen(
                     verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s5),
                     horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
                     userScrollEnabled = !state.loading,
+                    contentPadding = PaddingValues(bottom = LocalBottomBarPadding.current),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     if (state.loading) {

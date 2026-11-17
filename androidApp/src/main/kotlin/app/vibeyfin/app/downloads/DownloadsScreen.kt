@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -62,6 +61,7 @@ import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.pageInsetsPadding
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.DownloadRunner
@@ -123,7 +123,7 @@ fun DownloadsScreen(
     onRemoveAll: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Box(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = screenMargin())) {
+        Box(Modifier.fillMaxSize().pageInsetsPadding().padding(horizontal = screenMargin())) {
             when {
                 state.loading -> Header(state, onRemoveAll)
 

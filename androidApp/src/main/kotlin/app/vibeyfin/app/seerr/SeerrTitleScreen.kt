@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -95,7 +94,9 @@ import app.vibeyfin.app.navigation.LocalOpenTrailerUrl
 import app.vibeyfin.app.navigation.LocalSeerrLongPress
 import app.vibeyfin.app.theme.BrandDisplay
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.detailMargin
 import app.vibeyfin.app.theme.isTabletWidth
+import app.vibeyfin.app.theme.pageInsetsPadding
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.RequestState
 import app.vibeyfin.domain.model.SeerrCastMember
@@ -147,12 +148,12 @@ fun SeerrTitleRoute(
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val wide = maxWidth >= WIDE_FROM
-            val margin = if (wide) VibeyFinTokens.Space.s6 else screenMargin()
+            val margin = detailMargin(wide)
 
             when {
                 state.loading && state.title == null -> ItemSkeleton(wide = wide, screenWidth = maxWidth, screenHeight = maxHeight, margin = margin)
 
-                state.title == null -> Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+                state.title == null -> Column(Modifier.fillMaxSize().pageInsetsPadding()) {
                     Spacer(Modifier.height(BackButtonSpace))
                     LoadError(state.message.orEmpty(), viewModel::onRetry, Modifier.padding(horizontal = margin))
                 }

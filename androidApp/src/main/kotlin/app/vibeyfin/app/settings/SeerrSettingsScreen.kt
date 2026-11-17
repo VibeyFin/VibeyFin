@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -59,8 +58,10 @@ import app.vibeyfin.app.components.SheetColumn
 import app.vibeyfin.app.components.SheetTitle
 import app.vibeyfin.app.components.VibeyFinSheet
 import app.vibeyfin.app.components.vibeyFinTextFieldColors
+import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.theme.ContentMaxWidth
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.pageInsetsPadding
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.seerr.SeerrFix
@@ -77,10 +78,10 @@ fun SeerrSettingsRoute(onBack: () -> Unit, onMyRequests: () -> Unit = {}, viewMo
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize().safeDrawingPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(modifier = Modifier.fillMaxSize().pageInsetsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Spacer(Modifier.height(BackButtonSpace))
                 Column(
-                    modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                    modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = LocalBottomBarPadding.current),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     SeerrSettingsContent(viewModel, content, onLeave = onBack, onMyRequests = onMyRequests)

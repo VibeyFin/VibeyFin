@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -83,6 +82,7 @@ import app.vibeyfin.app.navigation.LocalTileLongPress
 import app.vibeyfin.app.seerr.SeerrPosterPlaceholder
 import app.vibeyfin.app.seerr.SeerrPosterTile
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.pageInsetsPadding
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.SearchKind
 import app.vibeyfin.domain.model.SearchResult
@@ -171,7 +171,7 @@ fun SearchScreen(
     LaunchedEffect(Unit) { if (state.query.isEmpty()) focus.requestFocus() }
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         // The grids use the whole width, on a tablet too: more columns, not a narrow centered column
-        Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
+        Box(Modifier.fillMaxSize().pageInsetsPadding(), contentAlignment = Alignment.TopCenter) {
             Column(Modifier.fillMaxSize()) {
                 TabHeader(Strings.tabSearch)
                 TextField(
