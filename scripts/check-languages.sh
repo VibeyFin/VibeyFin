@@ -68,13 +68,14 @@ def read_layer(layer, tag):
 english_layers = {layer: read_layer(layer, 'en') for layer in layers}
 english = {}
 allowed = {}
-owner = {}
+earlier = {}
 for layer in layers:
     for key, value in english_layers[layer].items():
-        if key in english and english[key] == value:
-            errors.append('%s is in %s and %s with the same English text: keep it in one layer (a duplicate must override with different text)' % (key, owner[key], layer))
+        for other_layer, other_value in earlier.get(key, []):
+            if other_value == value:
+                errors.append('%s is in %s and %s with the same English text: keep it in one layer (a duplicate must override with different text)' % (key, other_layer, layer))
+        earlier.setdefault(key, []).append((layer, value))
         english[key] = value
-        owner[key] = layer
         base = suffix.sub('', key)
         allowed.setdefault(base, set()).update(placeholder.findall(value))
         allowed[base].add('count') if suffix.search(key) else None

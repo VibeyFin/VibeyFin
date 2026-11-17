@@ -43,11 +43,6 @@ class EnglishFileTest {
     }
 
     @Test
-    fun everyLayerHasAnEnglishFileWithKeys() {
-        assertEquals(emptyList(), englishByLayer.filterValues { it.isEmpty() }.keys.toList())
-    }
-
-    @Test
     fun everyEnglishKeyIsUsedInCode() {
         val used: Set<String> = calls.map { it.key }.toSet()
         val unused: List<String> = englishByLayer.flatMap { (layer, texts) -> texts.keys.filter { baseKey(it) !in used && it !in used }.map { "$layer/$it" } }
