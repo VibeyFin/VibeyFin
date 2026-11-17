@@ -57,50 +57,58 @@ suspend fun JellyfinApi.genres(userId: String, types: List<String> = listOf("Mov
 )
 
 /**
- * `GET /Items` across every library, for one category page: a type, and optionally a genre, a page at a time.
- * [genreId] is the server's own filter; [sortBy] is a comma-separated list of its sort keys.
+ * `GET /Items` for one category page, a page at a time: [query] holds the page's types, order and filters, as
+ * `FilterSet.serverQuery` builds them.
  */
 suspend fun JellyfinApi.filteredItems(
     userId: String,
-    types: List<String>,
-    genreId: String?,
-    sortBy: String,
-    sortOrder: String,
+    query: Map<String, String>,
     startIndex: Int,
     limit: Int,
-    /** Only what the user has put on My List. */
-    favoritesOnly: Boolean = false,
     /** Extra fields the server leaves out of a list unless asked, comma-separated (`Genres`). */
     fields: String? = null,
-    /** Only titles from these production years. */
-    years: List<Int>? = null,
-    /** Only titles this person appears in. */
-    personId: String? = null,
-    /** Only what the user has not watched; a show only once every episode is watched. */
-    unplayedOnly: Boolean = false,
 ): ApiResult<ItemsResultDto> = get(
     "/Items",
     buildMap {
-        years?.let { put("years", it.joinToString(",")) }
-        personId?.let { put("personIds", it) }
+        putAll(query)
         put("userId", userId)
-        itemFilters(favoritesOnly, unplayedOnly)?.let { put("filters", it) }
         fields?.let { put("fields", it) }
-        put("recursive", "true")
-        put("includeItemTypes", types.joinToString(","))
-        put("sortBy", sortBy)
-        put("sortOrder", sortOrder)
         put("startIndex", startIndex.toString())
         put("limit", limit.toString())
-        genreId?.let { put("genreIds", it) }
     },
     retry = true,
 )
 
-private fun itemFilters(favoritesOnly: Boolean, unplayedOnly: Boolean): String? = listOfNotNull(
-    "IsFavorite".takeIf { favoritesOnly },
-    "IsUnplayed".takeIf { unplayedOnly },
-).joinToString(",").ifEmpty { null }
+/** `GET /Studios`: the studios and networks of the [types] [userId] can see, with how many titles each holds. */
+suspend fun JellyfinApi.studios(userId: String, types: List<String>, parentId: String?): ApiResult<ItemsResultDto> = get(
+    "/Studios",
+    buildMap {
+        put("userId", userId)
+        put("includeItemTypes", types.joinToString(","))
+        put("fields", "ItemCounts")
+        parentId?.let { put("parentId", it) }
+    },
+    retry = true,
+)
+
+/** `GET /Items/Filters2`: the tags and the audio and subtitle languages among the [types] [userId] can see. */
+suspend fun JellyfinApi.queryFilters(userId: String, types: List<String>, parentId: String?): ApiResult<QueryFiltersDto> = get(
+    "/Items/Filters2",
+    buildMap {
+        put("userId", userId)
+        put("includeItemTypes", types.joinToString(","))
+        put("recursive", "true")
+        parentId?.let { put("parentId", it) }
+    },
+    retry = true,
+)
+
+/** `GET /Items/Filters`: the years and age ratings in one library; the server answers with nothing unless given [parentId]. */
+suspend fun JellyfinApi.legacyFilters(userId: String, types: List<String>, parentId: String): ApiResult<LegacyFiltersDto> = get(
+    "/Items/Filters",
+    mapOf("userId" to userId, "includeItemTypes" to types.joinToString(","), "parentId" to parentId),
+    retry = true,
+)
 
 /**
  * `GET /Items/Latest?parentId=`: what was added to the library most recently, newest first, as a plain list. Episodes

@@ -3,6 +3,7 @@ package app.vibeyfin.app.components
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,13 +28,16 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.unit.dp
 import app.vibeyfin.app.theme.MenuPressIndication
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.ui.common.Strings
 
 /** One row of an [OptionList]: [key] is handed back when it is chosen. */
 data class OptionRow(
@@ -46,6 +50,8 @@ data class OptionRow(
     val description: String? = null,
     /** A row that does something rather than choosing a value: drawn before the label. */
     val icon: ImageVector? = null,
+    /** Drawn after [detail], such as the arrow that says which way a sort runs. */
+    val trailingIcon: ImageVector? = null,
 )
 
 /**
@@ -58,14 +64,7 @@ fun OptionList(title: String, options: List<OptionRow>, onSelect: (String) -> Un
     // No stretch at the ends of the list.
     CompositionLocalProvider(LocalOverscrollFactory provides null, LocalIndication provides MenuPressIndication) {
         LazyColumn(modifier.nestedScroll(remember { KeepAtListEnd })) {
-            item {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s2),
-                )
-            }
+            item { OptionListTitle(title) }
 
             items(options, key = { it.key }) { option ->
                 ListItem(
@@ -78,12 +77,14 @@ fun OptionList(title: String, options: List<OptionRow>, onSelect: (String) -> Un
                             fontWeight = if (option.selected) FontWeight.SemiBold else null,
                         )
                     },
-                    trailingContent = if (option.detail != null) {
+                    trailingContent = if (option.detail != null || option.trailingIcon != null) {
                         {
-                            Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3), verticalAlignment = Alignment.CenterVertically) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1), verticalAlignment = Alignment.CenterVertically) {
+                                val tint = if (option.selected) VibeyFinTokens.Colors.onSparkSoft else MaterialTheme.colorScheme.onSurfaceVariant
                                 option.detail?.let {
-                                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(it, style = MaterialTheme.typography.bodyMedium, color = tint)
                                 }
+                                option.trailingIcon?.let { Icon(it, contentDescription = null, tint = tint) }
                             }
                         }
                     } else {
@@ -102,6 +103,34 @@ fun OptionList(title: String, options: List<OptionRow>, onSelect: (String) -> Un
             }
         }
     }
+}
+
+/** An [OptionList] while its options load: the same title and rows, each a gray label and a gray count where the real ones go. */
+@Composable
+fun OptionListSkeleton(title: String, modifier: Modifier = Modifier, rowCount: Int = 6) {
+    Column(modifier) {
+        OptionListTitle(title)
+        Column(Modifier.clearAndSetSemantics { contentDescription = Strings.loadingPage }) {
+            repeat(rowCount) {
+                ListItem(
+                    headlineContent = { SkeletonLine(160.dp, MaterialTheme.typography.bodyLarge) },
+                    trailingContent = { SkeletonLine(28.dp, MaterialTheme.typography.bodyMedium) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s2),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun OptionListTitle(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s4, vertical = VibeyFinTokens.Space.s2),
+    )
 }
 
 // Scrolling past the list's end must not move the sheet; pulling down at the top still reaches it, so a swipe down closes it

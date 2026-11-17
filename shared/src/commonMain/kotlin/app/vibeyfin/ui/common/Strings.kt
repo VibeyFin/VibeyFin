@@ -211,14 +211,10 @@ object Strings {
     val sortRating: String get() = text("sort_rating")
     val sortTitle: String get() = text("sort_title")
     val genreTitle: String get() = text("genre_title")
-    val genreButton: String get() = text("genre_button")
     val allGenres: String get() = text("all_genres")
 
-    /** The Library page's extra filters. */
-    val yearButton: String get() = text("year_button")
+    /** The Year and People filters. */
     val yearTitle: String get() = text("year_title")
-
-    fun yearChip(label: String): String = text("year_chip", "label" to label)
 
     val allYears: String get() = text("all_years")
     val decade2020s: String get() = text("decade_2020s")
@@ -239,10 +235,83 @@ object Strings {
 
     fun sortChip(label: String): String = text("sort_chip", "label" to label)
 
-    fun genreChip(name: String): String = text("genre_chip", "name" to name)
-
     /** What a screen reader says for a sheet row that holds [count] titles. */
     fun titleCount(name: String, count: Int): String = plural("title_count", count, "name" to name)
+
+    /** More orders for the Sort sheet, the Order button beside it, and the Filters button with every other filter. */
+    val sortCriticRating: String get() = text("sort_critic_rating")
+    val sortReleaseDate: String get() = text("sort_release_date")
+    val sortRuntime: String get() = text("sort_runtime")
+    val sortLastPlayed: String get() = text("sort_last_played")
+    val sortPlayCount: String get() = text("sort_play_count")
+    val sortRandom: String get() = text("sort_random")
+    val orderAToZ: String get() = text("order_a_to_z")
+    val orderZToA: String get() = text("order_z_to_a")
+    val orderNewestFirst: String get() = text("order_newest_first")
+    val orderOldestFirst: String get() = text("order_oldest_first")
+    val orderHighestFirst: String get() = text("order_highest_first")
+    val orderLowestFirst: String get() = text("order_lowest_first")
+    val orderShortestFirst: String get() = text("order_shortest_first")
+    val orderLongestFirst: String get() = text("order_longest_first")
+
+    /** What a screen reader says for the order in use in the Sort sheet. */
+    fun sortRowDescription(label: String, direction: String): String = text("sort_row_description", "label" to label, "direction" to direction)
+
+    val filtersButton: String get() = text("filters_button")
+    val filtersTitle: String get() = text("filters_title")
+
+    fun filtersChip(count: Int): String = text("filters_chip", "count" to Formats.current.integer(count.toLong()))
+
+    val filterAny: String get() = text("filter_any")
+    val filterOn: String get() = text("filter_on")
+    val filterOff: String get() = text("filter_off")
+
+    fun selectedCount(count: Int): String = plural("selected_count", count, "count" to count)
+
+    val watchedTitle: String get() = text("watched_title")
+    val watchedUnwatched: String get() = text("watched_unwatched")
+    val watchedWatched: String get() = text("watched_watched")
+    val watchedInProgress: String get() = text("watched_in_progress")
+    val onlyMyList: String get() = text("only_my_list")
+    val genreMatchTitle: String get() = text("genre_match_title")
+    val genreMatchAny: String get() = text("genre_match_any")
+    val genreMatchAll: String get() = text("genre_match_all")
+    val yearFromTitle: String get() = text("year_from_title")
+    val yearToTitle: String get() = text("year_to_title")
+
+    fun yearRange(from: Int, to: Int): String = text("year_range", "from" to from, "to" to to)
+
+    val communityRatingTitle: String get() = text("community_rating_title")
+
+    fun ratingAtLeast(rating: Int): String = text("rating_at_least", "rating" to Formats.current.integer(rating.toLong()))
+
+    val criticRatingTitle: String get() = text("critic_rating_title")
+
+    fun criticRatingAtLeast(percent: Int): String = text("critic_rating_at_least", "percent" to Formats.current.integer(percent.toLong()))
+
+    val ageRatingTitle: String get() = text("age_rating_title")
+
+    fun ageRatingUpTo(rating: String): String = text("age_rating_up_to", "rating" to rating)
+
+    val studioTitle: String get() = text("studio_title")
+    val tagTitle: String get() = text("tag_title")
+    val libraryTitle: String get() = text("library_title")
+    val allLibraries: String get() = text("all_libraries")
+    val runtimeTitle: String get() = text("runtime_title")
+
+    fun runtimeUnder(minutes: Int): String = text("runtime_under", "minutes" to Formats.current.integer(minutes.toLong()))
+
+    fun runtimeOver(minutes: Int): String = text("runtime_over", "minutes" to Formats.current.integer(minutes.toLong()))
+
+    val addedTitle: String get() = text("added_title")
+    val addedWeek: String get() = text("added_week")
+    val addedMonth: String get() = text("added_month")
+    val addedYear: String get() = text("added_year")
+    val resolutionTitle: String get() = text("resolution_title")
+    val qualityHd: String get() = text("quality_hd")
+    val qualityUhd: String get() = text("quality_uhd")
+    val qualityHdr: String get() = text("quality_hdr")
+    val qualityDolbyVision: String get() = text("quality_dolby_vision")
 
     /** In the Categories sheet when the server has none. */
     val noCategories: String get() = text("no_categories")

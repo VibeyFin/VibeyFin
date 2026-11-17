@@ -133,9 +133,9 @@ class HomeFilterRepositoryTest {
     fun eachSortOrdersByTheServersKeys() = runTest {
         app.signedIn().on("GET", "/Items", Reply.json(itemsJson(itemJson("a"))))
 
-        app.library.filteredPage(HomeFilter.Movies, sort = PageSort.Name).success()
-        app.library.filteredPage(HomeFilter.Movies, sort = PageSort.Added).success()
-        app.library.filteredPage(HomeFilter.Movies, sort = PageSort.Rating).success()
+        app.library.filteredPage(HomeFilter.Movies, FilterSet(sort = PageSort.Name)).success()
+        app.library.filteredPage(HomeFilter.Movies, FilterSet(sort = PageSort.Added)).success()
+        app.library.filteredPage(HomeFilter.Movies, FilterSet(sort = PageSort.Rating)).success()
 
         val (name, added, rating) = app.jellyfin.requestsTo("GET", "/Items").map { it.query }
         assertEquals("SortName" to "Ascending", name["sortBy"] to name["sortOrder"])
@@ -147,7 +147,7 @@ class HomeFilterRepositoryTest {
     fun aShowsPageCanBeNarrowedToAGenre() = runTest {
         app.signedIn().on("GET", "/Items", Reply.json(itemsJson(itemJson("a"))))
 
-        app.library.filteredPage(HomeFilter.Shows, genreId = "g-drama").success()
+        app.library.filteredPage(HomeFilter.Shows, FilterSet(genres = listOf(NamedValue("g-drama", "Drama")))).success()
 
         val query = query("/Items")
         assertEquals("g-drama", query["genreIds"])
@@ -158,7 +158,7 @@ class HomeFilterRepositoryTest {
     fun aGenresOwnPageKeepsItsGenreWhateverElseIsAsked() = runTest {
         app.signedIn().on("GET", "/Items", Reply.json(itemsJson(itemJson("a"))))
 
-        app.library.filteredPage(HomeFilter.Genre("g1", "Drama"), genreId = "other").success()
+        app.library.filteredPage(HomeFilter.Genre("g1", "Drama"), FilterSet(genres = listOf(NamedValue("other", "Other")))).success()
 
         assertEquals("g1", query("/Items")["genreIds"])
     }

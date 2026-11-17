@@ -3,7 +3,9 @@ package app.vibeyfin.domain
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.data.api.BaseItemDto
+import app.vibeyfin.data.api.ItemsResultDto
 import app.vibeyfin.data.api.JellyfinApi
+import app.vibeyfin.data.api.NameValueDto
 import app.vibeyfin.data.api.collectionsOf
 import app.vibeyfin.data.api.episodesOfSeason
 import app.vibeyfin.data.api.filteredItems
@@ -13,28 +15,34 @@ import app.vibeyfin.data.api.items
 import app.vibeyfin.data.api.itemsById
 import app.vibeyfin.data.api.itemsOfPerson
 import app.vibeyfin.data.api.latestItems
+import app.vibeyfin.data.api.legacyFilters
 import app.vibeyfin.data.api.localTrailers
 import app.vibeyfin.data.api.map
 import app.vibeyfin.data.api.persons
+import app.vibeyfin.data.api.queryFilters
 import app.vibeyfin.data.api.searchHints
 import app.vibeyfin.data.api.seasonsOf
 import app.vibeyfin.data.api.similarItems
 import app.vibeyfin.data.api.specialFeatures
+import app.vibeyfin.data.api.studios
 import app.vibeyfin.data.api.userViews
 import app.vibeyfin.domain.model.CastMember
+import app.vibeyfin.domain.model.FilteredPage
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.ItemPage
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.model.Person
 import app.vibeyfin.domain.model.SearchKind
 import app.vibeyfin.domain.model.SearchResult
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 /**
  * What is on the server for the signed-in profile: its libraries, what is inside them, and one
  * item's metadata. Reads the current session from [ConnectionManager] on every call, so it follows
  * a switch of address or profile. With nobody signed in every call is [ApiError.Unauthorized].
  */
-class LibraryRepository(private val connection: ConnectionManager) {
+class LibraryRepository(private val connection: ConnectionManager, private val clock: Clock) {
     suspend fun libraries(): ApiResult<List<MediaItem>> = call { api, userId ->
         api.userViews(userId).map { result -> result.items.map { it.toMediaItem(api.baseUrl) } }
     }
@@ -156,19 +164,12 @@ class LibraryRepository(private val connection: ConnectionManager) {
      * Shows only shows, and everywhere else (Home's Categories, New) both; a genre with none of the page's kind is left out.
      */
     suspend fun genres(filter: HomeFilter? = null, type: TypeFilter? = null): ApiResult<List<FilterOption>> = call { api, userId ->
-        val kind = when {
-            filter == HomeFilter.Movies || type == TypeFilter.Movies -> GenreKind.Movies
-            filter == HomeFilter.Shows || type == TypeFilter.Shows -> GenreKind.Shows
-            else -> GenreKind.Both
-        }
+        val kind = genreKind(filter, type)
         val all = api.genres(userId, kind.types).map { result -> result.items.toOptions(kind) }
         if (filter != HomeFilter.MyList || all !is ApiResult.Success) return@call all
         // On My List the numbers are the titles on the list, not the whole library's: the server cannot count a genre among
         // favourites, so they are counted from the list itself.
-        val favourites = api.filteredItems(
-            userId, kind.types, genreId = null, sortBy = "SortName", sortOrder = "Ascending",
-            startIndex = 0, limit = MY_LIST_GENRE_SCAN, favoritesOnly = true, fields = "Genres",
-        )
+        val favourites = api.filteredItems(userId, FilterSet(type = type).serverQuery(filter), startIndex = 0, limit = MY_LIST_GENRE_SCAN, fields = "Genres")
         when (favourites) {
             is ApiResult.Failure -> favourites
 
@@ -180,46 +181,74 @@ class LibraryRepository(private val connection: ConnectionManager) {
     }
 
     /**
-     * One page of the category page for [filter], across every library: Shows (series), Movies, New, or a genre's
-     * movies and shows, in [sort] order, optionally narrowed to a [genreId] (on a page that is not itself a genre).
-     * Name is A to Z, Added is what reached the server most recently, Rating is best first.
+     * One page of [filter]'s category page, across every library, ordered and narrowed by [filters]. When some of them
+     * can't be applied by the server ([FilterSet.needsDevicePass]) the server's pages are read and checked here, and the
+     * total is only known once the whole list has been read.
      */
     suspend fun filteredPage(
         filter: HomeFilter,
-        sort: PageSort = filter.defaultSort,
-        genreId: String? = null,
+        filters: FilterSet = FilterSet(),
         startIndex: Int = 0,
         limit: Int = PAGE_SIZE,
-        /** On a page that lists both (My List, New): only movies or only shows. */
-        type: TypeFilter? = null,
         /** Extra fields the server leaves out of a list unless asked, comma-separated (`Genres`). */
         fields: String? = null,
-        /** Only titles from this decade (the Library page). */
-        decade: Decade? = null,
-        /** Only titles this person appears in (the Library page). */
-        personId: String? = null,
-        /** Without what the user has watched (Home's genre rows). */
-        hideWatched: Boolean = false,
-    ): ApiResult<ItemPage> = call { api, userId ->
-        val types = when {
-            filter == HomeFilter.Shows || type == TypeFilter.Shows -> listOf("Series")
-            filter == HomeFilter.Movies || type == TypeFilter.Movies -> listOf("Movie")
-            type == TypeFilter.Collections -> listOf("BoxSet")
-            else -> listOf("Movie", "Series")
+    ): ApiResult<FilteredPage> = call { api, userId ->
+        val query = filters.serverQuery(filter)
+
+        if (!filters.needsDevicePass) {
+            api.filteredItems(userId, query, startIndex, limit, fields).map { it.toFilteredPage(api.baseUrl) }
+        } else {
+            val asked = (fields?.split(",").orEmpty() + filters.deviceFields()).distinct().joinToString(",")
+            api.scanOnDevice(userId, filters, query, startIndex, limit, asked, clock.now())
         }
-        val (sortBy, sortOrder) = when (sort) {
-            PageSort.Name -> "SortName" to "Ascending"
-            PageSort.Added -> "DateCreated" to "Descending"
-            PageSort.Rating -> "CommunityRating,SortName" to "Descending"
+    }
+
+    /** The studios and networks to pick from on [filter]'s page, with how many of its kind of title each holds. */
+    suspend fun studios(filter: HomeFilter, filters: FilterSet): ApiResult<List<FilterOption>> = call { api, userId ->
+        val kind = genreKind(filter, filters.type)
+        api.studios(userId, kind.types, filters.library?.id).map { result -> result.items.toOptions(kind) }
+    }
+
+    /** The libraries of films and shows, to narrow a page to one. */
+    suspend fun videoLibraries(): ApiResult<List<FilterOption>> = libraries().map { all ->
+        all.filter { it.holdsVideo && it.collectionType != "boxsets" }.map { FilterOption(it.id, it.title) }
+    }
+
+    /**
+     * The years, age ratings, tags and languages among [filter]'s titles, in [filters]' library or every one. The server
+     * gives years and age ratings only per library, so those are read from each library and merged.
+     */
+    suspend fun filterValues(filter: HomeFilter, filters: FilterSet): ApiResult<FilterValues> = call { api, userId ->
+        val types = filters.itemTypes(filter)
+        val libraryIds = filters.library?.let { listOf(it.id) }
+            ?: when (val all = videoLibraries()) {
+                is ApiResult.Failure -> return@call all
+                is ApiResult.Success -> all.value.map { it.id }
+            }
+        val named = when (val result = api.queryFilters(userId, types, filters.library?.id)) {
+            is ApiResult.Failure -> return@call result
+            is ApiResult.Success -> result.value
         }
-        api.filteredItems(
-            userId, types, (filter as? HomeFilter.Genre)?.id ?: genreId,
-            sortBy = sortBy, sortOrder = sortOrder, startIndex = startIndex, limit = limit,
-            favoritesOnly = filter == HomeFilter.MyList, fields = fields,
-            years = decade?.years?.toList(), personId = personId, unplayedOnly = hideWatched,
-        ).map { result ->
-            ItemPage(result.items.map { it.toMediaItem(api.baseUrl) }, result.totalRecordCount, result.startIndex)
+        val perLibrary = libraryIds.map { id ->
+            when (val result = api.legacyFilters(userId, types, id)) {
+                is ApiResult.Failure -> return@call result
+                is ApiResult.Success -> result.value
+            }
         }
+        val scores = (api.parentalRatings() as? ApiResult.Success)?.value.orEmpty()
+            .mapNotNull { rating -> rating.name?.let { name -> rating.value?.let { name to it } } }
+            .toMap()
+        val ratings = perLibrary.flatMap { it.officialRatings }.filter { it.isNotBlank() }.distinct()
+
+        ApiResult.Success(
+            FilterValues(
+                years = perLibrary.flatMap { it.years }.distinct().sortedDescending(),
+                ageRatings = ratings.filter { it in scores }.sortedWith(compareBy({ scores[it] }, { it })),
+                tags = named.tags.filter { it.isNotBlank() }.distinct().sortedBy { it.lowercase() },
+                audioLanguages = named.audioLanguages.toLanguageOptions(),
+                subtitleLanguages = named.subtitleLanguages.toLanguageOptions(),
+            ),
+        )
     }
 
     private suspend fun <T> call(block: suspend (JellyfinApi, String) -> ApiResult<T>): ApiResult<T> = connection.asConnected(ApiResult.Failure(ApiError.Unauthorized)) { block(it.api, it.account.userId) }
@@ -232,6 +261,10 @@ class LibraryRepository(private val connection: ConnectionManager) {
 
         /** The People filter lists at most this many matches. */
         const val PEOPLE_LIMIT = 30
+
+        /** A page read when some filters are checked on the device, and how many are read at most once one title matched. */
+        const val SCAN_PAGE_SIZE = 100
+        const val SCAN_PAGES = 5
 
         /** The most favourites read to count My List's genres. */
         const val MY_LIST_GENRE_SCAN = 500
@@ -383,6 +416,58 @@ private fun BaseItemDto.asSeries(baseUrl: String): MediaItem? {
         resumePositionMs = 0,
         played = false,
     )
+}
+
+// Reads the server's pages from [startIndex] and keeps what passes the device's filters, until [limit] are found or the
+// list ends. Once something is found it stops after a few pages, so one call never reads the whole library twice.
+private suspend fun JellyfinApi.scanOnDevice(
+    userId: String,
+    filters: FilterSet,
+    query: Map<String, String>,
+    startIndex: Int,
+    limit: Int,
+    fields: String,
+    now: Instant,
+): ApiResult<FilteredPage> {
+    val found = mutableListOf<MediaItem>()
+    var next = startIndex
+    var pagesRead = 0
+    var exhausted = false
+
+    while (!exhausted && keepReading(found.size, limit, pagesRead)) {
+        val page = when (val result = filteredItems(userId, query, next, LibraryRepository.SCAN_PAGE_SIZE, fields)) {
+            is ApiResult.Failure -> return result
+            is ApiResult.Success -> result.value
+        }
+        pagesRead++
+        for (dto in page.items) {
+            next++
+            if (filters.matchesOnDevice(dto, now)) found += dto.toMediaItem(baseUrl)
+            if (found.size == limit) break
+        }
+        exhausted = page.items.isEmpty() || next >= page.totalRecordCount
+    }
+    return ApiResult.Success(FilteredPage(found, total = found.size.takeIf { exhausted && startIndex == 0 }, nextIndex = next, hasMore = !exhausted))
+}
+
+private fun keepReading(found: Int, limit: Int, pagesRead: Int): Boolean = found < limit && (found == 0 || pagesRead < LibraryRepository.SCAN_PAGES)
+
+private fun ItemsResultDto.toFilteredPage(baseUrl: String): FilteredPage = FilteredPage(
+    items = items.map { it.toMediaItem(baseUrl) },
+    total = totalRecordCount,
+    nextIndex = startIndex + items.size,
+    hasMore = items.isNotEmpty() && startIndex + items.size < totalRecordCount,
+)
+
+private fun List<NameValueDto>.toLanguageOptions(): List<FilterOption> = mapNotNull { language ->
+    val code = language.value?.takeIf { it.isNotBlank() && it != "und" } ?: return@mapNotNull null
+    FilterOption(code, language.name?.takeIf { it.isNotBlank() } ?: code)
+}.distinctBy { it.id }.sortedBy { it.name.lowercase() }
+
+private fun genreKind(filter: HomeFilter?, type: TypeFilter?): GenreKind = when {
+    filter == HomeFilter.Movies || type == TypeFilter.Movies -> GenreKind.Movies
+    filter == HomeFilter.Shows || type == TypeFilter.Shows -> GenreKind.Shows
+    else -> GenreKind.Both
 }
 
 /** Which titles a genre's count is made of. */

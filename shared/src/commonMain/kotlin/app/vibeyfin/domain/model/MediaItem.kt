@@ -133,4 +133,12 @@ data class ItemPage(
     val hasMore: Boolean get() = items.isNotEmpty() && startIndex + items.size < total
 }
 
+/** One page of a category page. [total] is null while unknown (filters checked on the device); [nextIndex] is where the next page starts on the server. */
+data class FilteredPage(
+    val items: List<MediaItem>,
+    val total: Int?,
+    val nextIndex: Int,
+    val hasMore: Boolean,
+)
+
 private val VIDEO_COLLECTIONS = setOf("movies", "tvshows", "homevideos", "musicvideos", "boxsets")

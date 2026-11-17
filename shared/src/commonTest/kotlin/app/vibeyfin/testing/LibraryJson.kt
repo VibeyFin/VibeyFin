@@ -13,6 +13,7 @@ fun itemJson(
     overview: String? = null,
     genres: List<String> = emptyList(),
     communityRating: Double? = null,
+    criticRating: Double? = null,
     officialRating: String? = null,
     primaryTag: String? = null,
     backdropTag: String? = null,
@@ -47,6 +48,10 @@ fun itemJson(
     productionLocations: List<String> = emptyList(),
     /** `ImageBlurHashes` as the server sends it: image type, then image tag, then the hash. */
     blurHashes: Map<String, Map<String, String>> = emptyMap(),
+    /** When the item reached the server (`fields=DateCreated`). */
+    dateCreated: String? = null,
+    /** The video track's `VideoRangeType` (`SDR`, `HDR10`, `DOVI`), sent as one stream (`fields=MediaStreams`). */
+    videoRange: String? = null,
 ): String {
     fun string(value: String?) = value?.let { "\"$it\"" } ?: "null"
     val fields = listOf(
@@ -60,6 +65,7 @@ fun itemJson(
         """"Overview":${string(overview)}""",
         """"Genres":[${genres.joinToString(",") { "\"$it\"" }}]""",
         """"CommunityRating":${communityRating ?: "null"}""",
+        """"CriticRating":${criticRating ?: "null"}""",
         """"OfficialRating":${string(officialRating)}""",
         """"ImageTags":{${listOfNotNull(primaryTag?.let { "\"Primary\":\"$it\"" }, thumbTag?.let { "\"Thumb\":\"$it\"" }, logoTag?.let { "\"Logo\":\"$it\"" }).joinToString(",")}}""",
         """"BackdropImageTags":[${backdropTag?.let { "\"$it\"" } ?: ""}]""",
@@ -89,6 +95,8 @@ fun itemJson(
         """"ChildCount":${childCount ?: "null"}""",
         """"PremiereDate":${string(premiereDate)}""",
         """"ProductionLocations":[${productionLocations.joinToString(",") { "\"$it\"" }}]""",
+        """"DateCreated":${string(dateCreated)}""",
+        """"MediaStreams":[${videoRange?.let { "{\"Index\":0,\"Type\":\"Video\",\"VideoRangeType\":\"$it\"}" } ?: ""}]""",
         """"SomethingWeDontRead":true""",
     )
     return fields.joinToString(prefix = "{", postfix = "}")

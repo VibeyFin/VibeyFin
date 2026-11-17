@@ -176,7 +176,7 @@ fun ChildrenScreen(
 
                 when {
                     state.loading -> LazyVerticalGrid(
-                        columns = GridCells.Adaptive(if (isRoot) 104.dp else 130.dp),
+                        columns = GridCells.Adaptive(posterMinWidth(isRoot, LocalConfiguration.current.screenWidthDp >= 600)),
                         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
                         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
                         userScrollEnabled = false,
@@ -304,14 +304,8 @@ private fun ItemGrid(
     // Saved with the screen, so coming back from an item's page finds the list where it was left
     val gridState = rememberLazyGridState()
 
-    // A new list (a filter changed) starts at its top
     val firstId = state.items.firstOrNull()?.id
-    var firstShown by remember { mutableStateOf(true) }
-
-    LaunchedEffect(firstId) {
-        if (firstShown) firstShown = false else gridState.scrollToItem(0)
-    }
-
+    var listedFirstId by remember { mutableStateOf(firstId) }
     val margin = screenMargin()
     val wide = LocalConfiguration.current.screenWidthDp >= 600
     val nearEnd by remember {
@@ -320,6 +314,12 @@ private fun ItemGrid(
 
             (info.visibleItemsInfo.lastOrNull()?.index ?: 0) >= info.totalItemsCount - LOAD_AHEAD
         }
+    }
+
+    // A new list (a filter changed) starts at its top. Requested before it is measured, or the grid first follows the old top poster's key, then snaps back
+    if (firstId != listedFirstId) {
+        listedFirstId = firstId
+        gridState.requestScrollToItem(0)
     }
 
     // Keyed on the count too: a short page can leave the end in view, which needs another page

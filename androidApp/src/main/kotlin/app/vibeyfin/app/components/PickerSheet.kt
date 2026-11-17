@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import app.vibeyfin.app.theme.VibeyFinTokens
 
 /** The search field of a [PickerSheet]. */
@@ -29,7 +28,7 @@ class PickerSearch(val query: String, val hint: String, val onChange: (String) -
 
 /**
  * A list to pick from in a bottom sheet, drawn like the player's audio and subtitle pickers ([OptionList]): a title
- * and one row each. Loading is gray lines, an empty list says so, a failure offers Try again. Used by Home's Categories
+ * and one row each. Loading is gray rows shaped like the real ones, an empty list says so, a failure offers Try again. Used by Home's Categories
  * and by a category page's Sort and Genre.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,10 +73,7 @@ fun PickerSheet(
         }
 
         when {
-            loading -> Column(plain, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                repeat(5) { SkeletonLine(width = 160.dp, style = MaterialTheme.typography.bodyLarge) }
-            }
+            loading -> OptionListSkeleton(title, modifier = modifier)
 
             message != null -> Column(plain, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)

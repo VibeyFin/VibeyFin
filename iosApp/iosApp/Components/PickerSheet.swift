@@ -10,9 +10,11 @@ struct PickerRow: Identifiable {
     var detail: String?
     /// What VoiceOver says for the row, when the label alone is not enough.
     var description: String?
+    /// An SF Symbol after `detail`, such as the arrow that says which way a sort runs.
+    var trailingSymbol: String?
 }
 
-/// A list to pick from in a sheet: a title and one row per choice, the one in use lit as a soft pill. Loading is grey lines,
+/// A list to pick from in a sheet: a title and one row per choice, the one in use lit as a soft pill. Loading is grey rows shaped like the real ones,
 /// an empty list says so, a failure offers Try again. Used by Home's Categories and by a category page's Sort and
 /// Genre. The player picks tracks from a `Menu`, but these lists load when opened and need those states.
 struct PickerSheetView: View {
@@ -47,13 +49,20 @@ struct PickerSheetView: View {
                 .padding(.horizontal, Space.s4)
             }
             if loading {
-                VStack(alignment: .leading, spacing: Space.s3) {
-                    ForEach(0..<5, id: \.self) { _ in
+                List(0..<6, id: \.self) { _ in
+                    HStack(spacing: Space.s3) {
                         SkeletonLine(font: .body, width: 160)
+                        Spacer()
+                        SkeletonLine(font: .subheadline, width: 28)
                     }
+                    .padding(.horizontal, Space.s3)
+                    .padding(.vertical, Space.s2)
+                    .listRowBackground(Color.clear)
                 }
-                .padding(.horizontal, Space.s4)
-                Spacer(minLength: 0)
+                .listStyle(.plain)
+                .scrollDisabled(true)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Strings.shared.loadingPage)
             } else if let message {
                 LoadErrorView(message: message, onRetry: onRetry)
                     .padding(.horizontal, Space.s4)
@@ -74,6 +83,11 @@ struct PickerSheetView: View {
                             if let detail = row.detail {
                                 Text(detail)
                                     .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if let symbol = row.trailingSymbol {
+                                Image(systemName: symbol)
+                                    .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(.secondary)
                             }
                         }

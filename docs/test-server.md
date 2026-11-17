@@ -223,6 +223,39 @@ return to "Who's watching?" and sign in as `kids` again: the Settings tab asks f
 right one opens). Home as `kids` lists Kid Friendly but not Grown Up Only or Tagged For Adults; as `admin` it lists all
 three. Signing in as `kids` also needs the server's password prompt only once, as for any profile.
 
+## Library filters
+
+For the filters on the Library tab and the category pages (issue #23). One fixture is new; the rest are the fixtures above,
+listed here by the filter they exercise. After adding `critics-pick` to an existing server: `make-media.sh`, then
+`POST /Library/Refresh`.
+
+| Fixture | Where | What it is | Needed by |
+| --- | --- | --- | --- |
+| `critics-pick` | `movies/Critics Pick (2001)/` | 5 s clip (the Quiet Harbor clip copied), `.nfo` with `lockdata`: rated PG, critic rating 92, community rating 8.4, studio Neon, tag `festival`, genres Drama and Comedy | Critic rating 90% or more (the only match), Rating 8 or more, the `festival` tag, Neon, and Drama plus Comedy matching all of them |
+
+Seen on Jellyfin 12.2, as `admin`:
+
+| Filter | What to pick | What the Library lists |
+| --- | --- | --- |
+| Watched | In progress | The titles `seed-userdata.sh` left part-watched (Neon Night, Saga Show, Test Show) |
+| Genres, any | Drama and Thriller | The 22 titles with either |
+| Genres, all | Drama and Thriller | Neon Night, Starlit Crown, Starlit Crown II; no count until the whole list is read, as it is checked on the device |
+| Year | 1999, or From 2003 To 2005 | Old Classic; Filler 01 to 03 |
+| Rating | 7 or more | Critics Pick, Starlit Crown, Starlit Crown II |
+| Critic rating | 90% or more | Critics Pick only. Jellyfin 12.2 ignores `minCriticRating` (every value returns every title), so the app checks it on the device |
+| Age rating | PG-13 and under | Everything but Grown Up Only (unrated titles stay, as on the server) |
+| Studio | Neon | Critics Pick, Old Classic, Quiet Harbor, Saga Show |
+| Tags | `no-kids` | Tagged For Adults |
+| Library | Failures | The 8 failure clips |
+| Runtime | Under 30 min / Over 90 min | Every title (the clips are seconds long, the shows minutes) / nothing |
+| Date added | In the last week | What `make-media.sh` made in the last seven days (the server's `DateCreated`) |
+| Resolution | HD / HDR | HDR Sample (1280x720, HDR10); 4K only finds `uhd-load`, and Dolby Vision only a hand-added `dv-p8` |
+| Audio language | German | Languages, Download Languages |
+| Subtitle language | French | Delete Subtitles |
+
+The server can't filter by runtime, date added, critic rating, HDR, Dolby Vision or "all genres": the app asks for the rest
+and checks those on each title, reading on until a page is full.
+
 ## A series that gains an episode (notifications)
 
 For the Phase 6 new-title notifications. `make-media.sh` writes a series with one 3 s episode (the page fixtures' clip

@@ -10,6 +10,7 @@
 #     Jellyfin reads the .nfo as local metadata (no online lookup).
 #   movies/Filler 01 (2003) ... Filler 24 (2026)   copies of one clip, genres in turn, to fill a category page
 #   movies/Kid Friendly (G), Grown Up Only (R), Tagged For Adults (G, tag no-kids) (2026)   rated clips for the kids user
+#   movies/Critics Pick (2001)   PG, critic rating 92, rating 8.4, studio Neon, tag festival: for the Library filters
 #   failures/<Name> (2026)/<Name> (2026).mkv         20 s clips with one thing a player may refuse: Plain Clip (the
 #                                                    baseline), DTS Audio, MKV VP9 Opus, AV1 AC3, Text Subtitles, Image
 #                                                    Subtitles, Languages (English and German audio, three text subtitles),
@@ -159,6 +160,9 @@ rated_movie() { # $1 = folder name, $2 = title, $3 = year, $4 = rating, $5 = ext
 rated_movie "Kid Friendly (2026)" "Kid Friendly" 2026 "G"
 rated_movie "Grown Up Only (2026)" "Grown Up Only" 2026 "R"
 rated_movie "Tagged For Adults (2026)" "Tagged For Adults" 2026 "G" "<tag>no-kids</tag>"
+# Library filters (issue #23): a critic and community rating, a studio, a tag and two genres, so rating, studio, tag and
+# "all genres" filters each have something to find that the other fixtures don't.
+rated_movie "Critics Pick (2001)" "Critics Pick" 2001 "PG" "<criticrating>92</criticrating><rating>8.4</rating><studio>Neon</studio><tag>festival</tag><genre>Drama</genre><genre>Comedy</genre>"
 # Failure fixtures: 20 s clips, no chapters (so no segments), in the Failures library (no trickplay).
 failure() { # $1 = title, $2 = extension, rest = ffmpeg arguments after the two generated inputs
   local title="$1" ext="$2" out

@@ -11,6 +11,7 @@ import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.DownloadTarget
 import app.vibeyfin.domain.FilterOption
+import app.vibeyfin.domain.FilterSet
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.PageSort
@@ -19,8 +20,9 @@ import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SearchHistory
 import app.vibeyfin.domain.WatchChanges
 import app.vibeyfin.domain.WatchRepository
+import app.vibeyfin.domain.WatchedFilter
+import app.vibeyfin.domain.model.FilteredPage
 import app.vibeyfin.domain.model.ItemKind
-import app.vibeyfin.domain.model.ItemPage
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.profileOrNull
 import app.vibeyfin.i18n.Texts
@@ -692,7 +694,7 @@ class HomeViewModel(
     }
 
     private suspend fun loadGenreRow(filter: HomeFilter.Genre, quiet: Boolean) {
-        val result = library.filteredPage(filter, PageSort.Rating, limit = LibraryRepository.ROW_LIMIT, hideWatched = profileSettings.hidesWatchedInRows())
+        val result = library.filteredPage(filter, FilterSet(sort = PageSort.Rating, watched = WatchedFilter.Unwatched.takeIf { profileSettings.hidesWatchedInRows() }), limit = LibraryRepository.ROW_LIMIT)
         genreRows.updateRow(genreId(filter)) { row ->
             when (result) {
                 is ApiResult.Success -> row.copy(items = result.value.items, loading = false, error = null)
@@ -760,8 +762,8 @@ class HomeViewModel(
     // Picks up to [count] featured items from what was added lately and from My List. A failure shows no hero: it is optional.
     private suspend fun loadHero(count: Int) {
         val (added, favourites) = coroutineScope {
-            val added = async { library.filteredPage(HomeFilter.New, PageSort.Added, limit = HERO_CANDIDATES, fields = "Genres") }
-            val favourites = async { library.filteredPage(HomeFilter.MyList, PageSort.Added, limit = HERO_CANDIDATES, fields = "Genres") }
+            val added = async { library.filteredPage(HomeFilter.New, FilterSet(sort = PageSort.Added), limit = HERO_CANDIDATES, fields = "Genres") }
+            val favourites = async { library.filteredPage(HomeFilter.MyList, FilterSet(sort = PageSort.Added), limit = HERO_CANDIDATES, fields = "Genres") }
             added.await() to favourites.await()
         }
         val candidates = listOf(added, favourites).flatMap { (it as? ApiResult.Success)?.value?.items.orEmpty() }
@@ -770,7 +772,7 @@ class HomeViewModel(
 
     // What is on My List, newest additions first; the row is hidden while it is empty.
     private suspend fun loadMyList(quiet: Boolean) {
-        val result = library.filteredPage(HomeFilter.MyList, PageSort.Added, limit = LibraryRepository.ROW_LIMIT)
+        val result = library.filteredPage(HomeFilter.MyList, FilterSet(sort = PageSort.Added), limit = LibraryRepository.ROW_LIMIT)
         myListRow.update { row ->
             val base = row ?: RowSource(MY_LIST_ID, SeeAll.MyList)
             when (result) {
@@ -784,9 +786,9 @@ class HomeViewModel(
     // Brings the featured items' hearts in line with My List, which may have changed elsewhere (a poster's menu, a long press on
     // the hero, an item's page). On the list is certain; off it only when the row holds the whole list. One whose own write is
     // still in flight keeps what was tapped.
-    private fun syncHeroFavourites(myList: ItemPage) {
+    private fun syncHeroFavourites(myList: FilteredPage) {
         val onList = myList.items.mapTo(mutableSetOf()) { it.id }
-        val complete = myList.total <= myList.items.size
+        val complete = !myList.hasMore
         hero.update { state ->
             state.copy(
                 items = state.items.map { item ->
