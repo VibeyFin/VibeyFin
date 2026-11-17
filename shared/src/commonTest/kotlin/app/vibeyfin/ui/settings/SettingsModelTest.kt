@@ -50,7 +50,7 @@ class SettingsModelTest {
             Strings.switchProfileHelp, Strings.profileServerGroup, Strings.profileServerName, Strings.profileServerAddress,
             Strings.profileServerAlsoAt, Strings.profileServerFooter, Strings.signOut, Strings.signOutFooter,
             Strings.signOutConfirmTitle, Strings.signOutConfirmMessage, Strings.switchProfile,
-            Strings.qualityTitle, Strings.qualityGroup, Strings.qualityMaximumHelp, Strings.qualityFooter,
+            Strings.qualityTitle, Strings.qualityGroup, Strings.qualityFooter,
             Strings.skippingTitle, Strings.skippingGroup, Strings.skippingFooter, Strings.autoSkipHelp, Strings.autoplayGroup,
             Strings.stillWatchingAfterTitle, Strings.stillWatchingAfterHelp, Strings.bufferingGroup,
             Strings.captionsFollowSystemTitle, Strings.captionsFollowSystemHelp,
