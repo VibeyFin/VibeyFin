@@ -33,7 +33,7 @@ internal object SignInMessages {
         is SignInResult.Failed -> when (val error = result.error) {
             is ApiError.Server -> text("sign_in_for_failure_server", "status" to error.status)
             ApiError.Network -> UNREACHABLE
-            else -> text("sign_in_for_failure_unknown")
+            else -> text("sign_in_for_failure_generic")
         }
 
         SignInResult.SignedIn -> ""

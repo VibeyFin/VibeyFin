@@ -35,7 +35,7 @@ internal object LoadMessages {
     val SUBTITLES_UNREACHABLE_TEXT: String get() = text("load_subtitles_unreachable_text")
     val SUBTITLES_SEARCH_FAILED_TITLE: String get() = text("load_subtitles_search_failed_title")
     val SUBTITLES_ADD_FAILED: String get() = text("load_subtitles_add_failed")
-    val SUBTITLES_DID_NOT_ARRIVE_HAS_ONE: String get() = text("load_subtitles_did_not_arrive_existing")
+    val SUBTITLES_DID_NOT_ARRIVE_HAS_ONE: String get() = text("load_subtitles_did_not_arrive_has_file")
     val SUBTITLES_DID_NOT_ARRIVE: String get() = text("load_subtitles_did_not_arrive")
     val SUBTITLE_DELETE_FAILED: String get() = text("load_subtitle_delete_failed")
     val SUBTITLE_DELETE_NOT_ALLOWED: String get() = text("load_subtitle_delete_not_allowed")
