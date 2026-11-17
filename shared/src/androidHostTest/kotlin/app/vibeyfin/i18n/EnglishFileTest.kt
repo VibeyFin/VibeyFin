@@ -13,8 +13,13 @@ class EnglishFileTest {
     private val placeholderPattern: Regex = Regex("""\{\{(\w+)\}\}""")
     private val pluralSuffixes: Set<String> = setOf("_one", "_other")
 
-    private val english: Map<String, String> = Json.parseToJsonElement(File("strings/en.json").readText())
-        .jsonObject.mapValues { it.value.jsonPrimitive.content }
+    private val layers: List<File> = File("strings").listFiles { file -> file.isDirectory }.orEmpty().sortedBy { it.name }
+
+    private val englishByLayer: Map<String, Map<String, String>> = layers.associate { layer ->
+        layer.name to Json.parseToJsonElement(File(layer, "en.json").readText()).jsonObject.mapValues { it.value.jsonPrimitive.content }
+    }
+
+    private val english: Map<String, String> = englishByLayer.values.fold(emptyMap()) { table, layer -> table + layer }
 
     private val calls: List<Call> = File("src").walkTopDown()
         .filter { it.extension == "kt" && "Test" !in it.path && "/i18n/" !in it.path }
@@ -38,9 +43,14 @@ class EnglishFileTest {
     }
 
     @Test
+    fun everyLayerHasAnEnglishFileWithKeys() {
+        assertEquals(emptyList(), englishByLayer.filterValues { it.isEmpty() }.keys.toList())
+    }
+
+    @Test
     fun everyEnglishKeyIsUsedInCode() {
         val used: Set<String> = calls.map { it.key }.toSet()
-        val unused: List<String> = english.keys.filter { baseKey(it) !in used && it !in used }
+        val unused: List<String> = englishByLayer.flatMap { (layer, texts) -> texts.keys.filter { baseKey(it) !in used && it !in used }.map { "$layer/$it" } }
         assertEquals(emptyList(), unused)
     }
 
@@ -48,6 +58,18 @@ class EnglishFileTest {
     fun noTextKeyEndsLikeAPluralForm() {
         val clashing: List<String> = calls.filter { it.kind == "text" && baseKey(it.key) != it.key }.map { it.key }.distinct()
         assertEquals(emptyList(), clashing)
+    }
+
+    @Test
+    fun aKeyInTwoLayersIsAnOverrideWithDifferentText() {
+        val copies: List<String> = englishByLayer.entries.toList().let { entries ->
+            entries.flatMapIndexed { index, (layer, texts) ->
+                entries.drop(index + 1).flatMap { (otherLayer, other) ->
+                    texts.keys.intersect(other.keys).filter { texts.getValue(it) == other.getValue(it) }.map { "$it in $layer and $otherLayer" }
+                }
+            }
+        }
+        assertEquals(emptyList(), copies)
     }
 
     @Test

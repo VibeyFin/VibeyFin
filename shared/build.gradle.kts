@@ -91,7 +91,7 @@ kotlin {
 
 val stringResources = tasks.register<Sync>("stringResources") {
     from(layout.projectDirectory.dir("strings")) {
-        include("*.json")
+        include("*/*.json")
         into("strings")
     }
     from(layout.projectDirectory.file("languages.json"))

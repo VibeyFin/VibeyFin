@@ -15,8 +15,9 @@ private val placeholder: Regex = Regex("""\{\{(\w+)\}\}""")
 private class ActiveLanguage(val tag: String, val table: Map<String, String>)
 
 // A key the active language lacks or leaves empty reads English; a key English lacks is empty text, never the key.
-class StringCatalog(private val source: StringSource) {
-    private val english: Map<String, String> by lazy { parse(source.load(DEFAULT_LANGUAGE)) }
+// [layers] are in override order, so a later layer wins a duplicate key in every language.
+class StringCatalog(private val source: StringSource, private val layers: List<String>) {
+    private val english: Map<String, String> by lazy { merged(DEFAULT_LANGUAGE) }
 
     @Volatile
     private var active: ActiveLanguage = ActiveLanguage(DEFAULT_LANGUAGE, emptyMap())
@@ -29,7 +30,7 @@ class StringCatalog(private val source: StringSource) {
         val table: Map<String, String> = when (tag) {
             DEFAULT_LANGUAGE -> emptyMap()
             PseudoLocale.TAG -> english.mapValues { PseudoLocale.apply(it.value) }
-            else -> parse(source.load(tag))
+            else -> merged(tag)
         }
         val loaded: Boolean = tag == DEFAULT_LANGUAGE || table.isNotEmpty()
         val shown: String = if (loaded) tag else DEFAULT_LANGUAGE
@@ -52,6 +53,8 @@ class StringCatalog(private val source: StringSource) {
 
     private fun fill(template: String, args: Map<String, String>): String = placeholder.replace(template) { match -> args[match.groupValues[1]] ?: match.value }
 
+    private fun merged(tag: String): Map<String, String> = layers.fold(emptyMap()) { table, layer -> table + parse(source.load(layer, tag)) }
+
     private fun parse(file: String?): Map<String, String> {
         if (file == null) return emptyMap()
         return try {
@@ -67,7 +70,8 @@ class StringCatalog(private val source: StringSource) {
 object Texts {
     private var replacement: StringCatalog? = null
     private var readHook: (() -> Unit)? = null
-    private val platformCatalog: StringCatalog by lazy { StringCatalog(platformStringSource()) }
+    private var layers: List<String> = StringLayers.mobileClient
+    private val platformCatalog: StringCatalog by lazy { StringCatalog(platformStringSource(), layers) }
 
     val catalog: StringCatalog get() = replacement ?: platformCatalog
 
@@ -87,6 +91,11 @@ object Texts {
 
     fun select(tag: String) {
         catalog.select(tag)
+    }
+
+    /** Names the layers this client loads, once at startup and before the first text is read. */
+    fun useLayers(names: List<String>) {
+        layers = names
     }
 
     /** For tests: reads from [catalog] until [reset]. */

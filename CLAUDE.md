@@ -82,7 +82,7 @@ Device ID: generate a UUID once per install and persist it.
 - All user-facing text lives in `shared/`: titles, labels, buttons, help text, empty states and
   accessibility descriptions in `Strings` (`ui/common/Strings.kt`), errors in `LoadMessages`,
   `SignInMessages` and `ConnectionIssueMessage`. Native screens hold no string literals; they read
-  `Strings` (`Strings.shared` in Swift). Add the key to `shared/strings/en.json` and `Strings` first, then use it from both apps (rules in
+  `Strings` (`Strings.shared` in Swift). Add the key to `shared/strings/<layer>/en.json` (`common`, or `mobile` for phone-only text) and `Strings` first, then use it from both apps (rules in
   `docs/translating.md`; `scripts/check-languages.sh` keeps the language lists in step).
 - One `ConnectionManager` owns the current server, profile and authenticated HTTP client as a
   `StateFlow`. Features read from it; nothing else holds tokens.

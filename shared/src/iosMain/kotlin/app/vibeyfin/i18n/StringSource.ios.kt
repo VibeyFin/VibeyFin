@@ -13,7 +13,7 @@ private const val TEST_DIRECTORY_VARIABLE: String = "VIBEYFIN_STRINGS_DIR"
 
 @OptIn(ExperimentalForeignApi::class)
 private object BundleStringSource : StringSource {
-    override fun load(tag: String): String? = read(NSBundle.mainBundle.pathForResource("strings/$tag", "json"), "$tag.json")
+    override fun load(layer: String, tag: String): String? = read(NSBundle.mainBundle.pathForResource("strings/$layer/$tag", "json"), "$layer/$tag.json")
 
     override fun loadLanguages(): String? = read(NSBundle.mainBundle.pathForResource("languages", "json"), "../languages.json")
 
