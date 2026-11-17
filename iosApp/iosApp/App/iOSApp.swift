@@ -10,6 +10,7 @@ struct iOSApp: App {
 
     init() {
         IosEntryKt.startKoinIos()
+        ActiveLanguage.shared.start()
         // Both must be in place before launch ends: the background task's handler, and the delegate that gets a tap which launched the app.
         NewTitlesScheduler.register()
         DownloadSystemProgress.shared.register()
@@ -24,7 +25,10 @@ struct iOSApp: App {
         }
         // At launch and each time the app comes back: the next background check is asked for, or dropped when nobody wants one.
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { NewTitlesScheduler.refresh() }
+            if phase == .active {
+                ActiveLanguage.shared.deviceLanguageChanged()
+                NewTitlesScheduler.refresh()
+            }
         }
     }
 }

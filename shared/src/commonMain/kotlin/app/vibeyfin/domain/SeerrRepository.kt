@@ -83,14 +83,13 @@ class SeerrRepository(private val seerr: SeerrConnection) {
         }
     }
 
-    /** The episodes of [season] of the show [tmdbId]; one without a name is called what [untitled] makes of its number. */
-    suspend fun season(tmdbId: Int, season: Int, untitled: (episode: Int) -> String): ApiResult<List<SeerrEpisode>> = seerr.call { api, _ ->
+    suspend fun season(tmdbId: Int, season: Int): ApiResult<List<SeerrEpisode>> = seerr.call { api, _ ->
         api.showSeason(tmdbId, season).map { details ->
             details.episodes.sortedBy { it.episodeNumber }.map { episode ->
                 SeerrEpisode(
                     season = episode.seasonNumber ?: season,
                     number = episode.episodeNumber,
-                    title = episode.name?.takeIf { it.isNotBlank() } ?: untitled(episode.episodeNumber),
+                    title = episode.name?.takeIf { it.isNotBlank() }.orEmpty(),
                     overview = episode.overview?.takeIf { it.isNotBlank() },
                     airDate = episode.airDate?.takeIf { it.isNotBlank() },
                     // Seerr sends a whole URL at TMDB's largest size; a card needs far less

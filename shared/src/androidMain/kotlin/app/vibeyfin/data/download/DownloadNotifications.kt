@@ -26,7 +26,6 @@ internal class DownloadNotifications(private val context: Context) {
     }
 
     private fun ensureChannel() {
-        if (manager.getNotificationChannel(CHANNEL_ID) != null) return
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, Strings.downloadsChannelName, NotificationManager.IMPORTANCE_LOW).apply {
                 setShowBadge(false)

@@ -3,7 +3,7 @@ import XCTest
 
 final class TitleCaseTests: XCTestCase {
     private func assertTitleCased(_ input: String, _ expected: String, line: UInt = #line) {
-        XCTAssertEqual(input.titleCased(), expected, line: line)
+        XCTAssertEqual(input.titleCased(forLanguage: "en"), expected, line: line)
     }
 
     func testSmallWordsStayLowercaseExceptAtTheEdges() {
@@ -34,5 +34,15 @@ final class TitleCaseTests: XCTestCase {
         assertTitleCased("done", "Done")
         assertTitleCased("  spaced   out  ", "  Spaced   Out  ")
         assertTitleCased("of", "Of")
+    }
+
+    func testOtherLanguagesAreReturnedAsWritten() {
+        XCTAssertEqual("Weiter ansehen".titleCased(forLanguage: "de"), "Weiter ansehen")
+        XCTAssertEqual("sign in".titleCased(forLanguage: "pt-BR"), "sign in")
+    }
+
+    func testEnglishVariantsAreStillTitleCased() {
+        XCTAssertEqual("sign in".titleCased(forLanguage: "en"), "Sign In")
+        XCTAssertEqual("sign in".titleCased(forLanguage: "en-GB"), "Sign In")
     }
 }

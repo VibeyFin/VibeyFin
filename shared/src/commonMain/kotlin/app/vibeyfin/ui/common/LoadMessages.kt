@@ -1,55 +1,53 @@
 package app.vibeyfin.ui.common
 
 import app.vibeyfin.data.api.ApiError
+import app.vibeyfin.i18n.text
 import app.vibeyfin.ui.whoswatching.SignInMessages
 
 /** What went wrong loading something from the server and what to try, worded once for every platform. */
 internal object LoadMessages {
-    const val FORBIDDEN = "This account isn't allowed to see that. Ask the server's admin for access."
-    const val NOT_FOUND = "That isn't on the server any more. It may have been removed or moved."
-    const val UNEXPECTED = "The server sent something VibeyFin couldn't read. Try again, and update the server if it keeps happening."
+    val FORBIDDEN: String get() = text("load_forbidden")
+    val NOT_FOUND: String get() = text("load_not_found")
+    val UNEXPECTED: String get() = text("load_unexpected")
 
-    const val NO_COMPATIBLE_STREAM =
-        "The server can't play this on your device. Ask the server's admin to check the file's format."
-    const val PLAYBACK_FAILED = "This video wouldn't play. Try again, or ask the server's admin to check the file."
-    const val ADD_TO_MY_LIST_FAILED = "Couldn't add this to My List. Check your connection and try again."
-    const val REMOVE_FROM_MY_LIST_FAILED = "Couldn't remove this from My List. Check your connection and try again."
-    const val MARK_WATCHED_FAILED = "Couldn't mark this as watched. Check your connection and try again."
-    const val MARK_UNWATCHED_FAILED = "Couldn't mark this as unwatched. Check your connection and try again."
-    const val REMOVE_FROM_CONTINUE_FAILED = "Couldn't remove this from Continue watching. Check your connection and try again."
-    const val RESTORE_TO_CONTINUE_FAILED = "Couldn't put this back in Continue watching. Check your connection and try again."
-    const val DOWNLOAD_FORBIDDEN =
-        "This account isn't allowed to download. Ask the server's admin to turn downloads on for it."
-    const val DOWNLOAD_NO_SPACE = "There isn't enough space on this device. Remove a download or free some space, then try again."
-    const val DOWNLOAD_STORAGE_LIMIT = "This would go over your storage limit for downloads. Remove a download or raise the limit in Settings."
-    const val DOWNLOAD_INTERRUPTED = "The download failed. Remove it and try again."
-    const val DOWNLOAD_SIGN_IN = "Sign in again to go on with this download."
-    const val DOWNLOAD_NOT_ON_SERVER = "This is no longer on the server, so it can't be downloaded."
-    const val DOWNLOAD_UNPLAYABLE = "This video is in a format this device can't play, so it can't be downloaded here."
-    const val DOWNLOAD_NO_FILE = "This has no file to download."
-    const val NOT_DOWNLOADED = "This isn't downloaded, so it can't open without a connection."
-    const val LANGUAGES_UNREACHABLE =
-        "Can\u2019t reach your server, so these can\u2019t change right now. They\u2019re saved on your Jellyfin account; try again when you\u2019re back online."
-    const val LANGUAGES_SAVE_FAILED = "Couldn\u2019t save that to your Jellyfin account. Check your connection and try again."
-    const val SUBTITLES_NOT_ALLOWED_TITLE = "You can\u2019t add subtitles"
-    const val SUBTITLES_NOT_ALLOWED_TEXT = "Ask an admin to turn on \u201CAllow subtitle management\u201D for your account."
-    const val SUBTITLES_UNREACHABLE_TITLE = "Can\u2019t reach your server"
-    const val SUBTITLES_UNREACHABLE_TEXT = "Check your connection and try again."
-    const val SUBTITLES_SEARCH_FAILED_TITLE = "Couldn\u2019t search for subtitles"
-    const val SUBTITLES_ADD_FAILED = "Couldn\u2019t add these subtitles. Check your connection and try again."
-    const val SUBTITLES_DID_NOT_ARRIVE_HAS_ONE = "These subtitles didn\u2019t arrive. This title already has a subtitle file in this language, so the server may have kept it as it was. Otherwise the provider\u2019s daily limit may be reached."
-    const val SUBTITLES_DID_NOT_ARRIVE = "These subtitles didn\u2019t arrive. The provider\u2019s daily limit may be reached. Try again tomorrow, or choose a result from another provider."
-    const val SUBTITLE_DELETE_FAILED = "Couldn\u2019t delete these subtitles. Check your connection and try again."
-    const val SUBTITLE_DELETE_NOT_ALLOWED = "Your account can\u2019t delete subtitles. Ask the server\u2019s admin to do it."
-    const val SUBTITLE_ALREADY_GONE = "These subtitles were already deleted from the server."
-    const val PLAYBACK_NETWORK = "Lost the connection to the server. Check your network and try again."
+    val NO_COMPATIBLE_STREAM: String get() = text("load_no_compatible_stream")
+    val PLAYBACK_FAILED: String get() = text("load_playback_failed")
+    val ADD_TO_MY_LIST_FAILED: String get() = text("load_add_to_my_list_failed")
+    val REMOVE_FROM_MY_LIST_FAILED: String get() = text("load_remove_from_my_list_failed")
+    val MARK_WATCHED_FAILED: String get() = text("load_mark_watched_failed")
+    val MARK_UNWATCHED_FAILED: String get() = text("load_mark_unwatched_failed")
+    val REMOVE_FROM_CONTINUE_FAILED: String get() = text("load_remove_from_continue_failed")
+    val RESTORE_TO_CONTINUE_FAILED: String get() = text("load_restore_to_continue_failed")
+    val DOWNLOAD_FORBIDDEN: String get() = text("load_download_forbidden")
+    val DOWNLOAD_NO_SPACE: String get() = text("load_download_no_space")
+    val DOWNLOAD_STORAGE_LIMIT: String get() = text("load_download_storage_limit")
+    val DOWNLOAD_INTERRUPTED: String get() = text("load_download_interrupted")
+    val DOWNLOAD_SIGN_IN: String get() = text("load_download_sign_in")
+    val DOWNLOAD_NOT_ON_SERVER: String get() = text("load_download_not_on_server")
+    val DOWNLOAD_UNPLAYABLE: String get() = text("load_download_unplayable")
+    val DOWNLOAD_NO_FILE: String get() = text("load_download_no_file")
+    val NOT_DOWNLOADED: String get() = text("load_not_downloaded")
+    val LANGUAGES_UNREACHABLE: String get() = text("load_languages_unreachable")
+    val LANGUAGES_SAVE_FAILED: String get() = text("load_languages_save_failed")
+    val SUBTITLES_NOT_ALLOWED_TITLE: String get() = text("load_subtitles_not_allowed_title")
+    val SUBTITLES_NOT_ALLOWED_TEXT: String get() = text("load_subtitles_not_allowed_text")
+    val SUBTITLES_UNREACHABLE_TITLE: String get() = text("load_subtitles_unreachable_title")
+    val SUBTITLES_UNREACHABLE_TEXT: String get() = text("load_subtitles_unreachable_text")
+    val SUBTITLES_SEARCH_FAILED_TITLE: String get() = text("load_subtitles_search_failed_title")
+    val SUBTITLES_ADD_FAILED: String get() = text("load_subtitles_add_failed")
+    val SUBTITLES_DID_NOT_ARRIVE_HAS_ONE: String get() = text("load_subtitles_did_not_arrive_has_one")
+    val SUBTITLES_DID_NOT_ARRIVE: String get() = text("load_subtitles_did_not_arrive")
+    val SUBTITLE_DELETE_FAILED: String get() = text("load_subtitle_delete_failed")
+    val SUBTITLE_DELETE_NOT_ALLOWED: String get() = text("load_subtitle_delete_not_allowed")
+    val SUBTITLE_ALREADY_GONE: String get() = text("load_subtitle_already_gone")
+    val PLAYBACK_NETWORK: String get() = text("load_playback_network")
 
     fun forError(error: ApiError): String = when (error) {
         ApiError.Network -> SignInMessages.UNREACHABLE
         ApiError.Unauthorized -> SignInMessages.SESSION_ENDED
         ApiError.Forbidden -> FORBIDDEN
         ApiError.NotFound -> NOT_FOUND
-        is ApiError.Server -> "The server answered with an error (HTTP ${error.status}). Try again in a minute."
+        is ApiError.Server -> text("load_for_error_server", "status" to error.status)
         is ApiError.Unexpected, ApiError.BadResponse -> UNEXPECTED
     }
 }

@@ -23,6 +23,8 @@ import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.ItemPage
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.profileOrNull
+import app.vibeyfin.i18n.Texts
+import app.vibeyfin.i18n.localized
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.PinPrompt
 import app.vibeyfin.ui.common.PinSheetControls
@@ -37,6 +39,7 @@ import app.vibeyfin.ui.item.seasonIndex
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -128,6 +131,12 @@ private data class HeroState(val items: List<MediaItem> = emptyList(), val loadi
 
 /** The sheet and the page to open, which change together. */
 private data class CategoryUi(
+    val sheet: SheetSource? = null,
+    val openList: HomeFilter? = null,
+    val heroNav: HeroNav? = null,
+)
+
+private data class CategoryScreen(
     val sheet: FilterSheet? = null,
     val openList: HomeFilter? = null,
     val heroNav: HeroNav? = null,
@@ -156,13 +165,68 @@ private const val MY_LIST_ID = "my-list"
 private const val LIBRARIES_FAILED_ID = "latest:failed"
 
 // A card "Remove from Continue watching" took out, and where it was.
-private data class RemovedCard(val card: ContinueCard, val index: Int)
+private data class RemovedCard(val item: MediaItem, val index: Int)
 
 private data class Libraries(
     val items: List<MediaItem> = emptyList(),
     val loading: Boolean = false,
-    val message: String? = null,
+    val error: ApiError? = null,
 )
+
+private data class ContinueSource(
+    val items: List<MediaItem> = emptyList(),
+    val loading: Boolean = false,
+    val error: ApiError? = null,
+) {
+    fun toRow(): ContinueRow = ContinueRow(cards = items.map { it.toContinueCard() }, loading = loading, message = error?.let { LoadMessages.forError(it) })
+}
+
+private data class RowSource(
+    val id: String,
+    val seeAll: SeeAll? = null,
+    val items: List<MediaItem> = emptyList(),
+    val loading: Boolean = true,
+    val error: ApiError? = null,
+) {
+    fun toRow(): MediaRow = MediaRow(id = id, title = title(), items = items, loading = loading, message = error?.let { LoadMessages.forError(it) }, seeAll = seeAll)
+
+    private fun title(): String = when (val to = seeAll) {
+        is SeeAll.Library -> Strings.recentlyAddedIn(to.library.title)
+        is SeeAll.Genre -> to.filter.name
+        SeeAll.MyList -> Strings.myList
+        null -> Strings.recentlyAdded
+    }
+}
+
+private enum class ActionFailure {
+    MarkWatched,
+    RemoveFromContinue,
+    RestoreToContinue,
+    AddToMyList,
+    RemoveFromMyList,
+}
+
+private fun ActionFailure.message(): String = when (this) {
+    ActionFailure.MarkWatched -> LoadMessages.MARK_WATCHED_FAILED
+    ActionFailure.RemoveFromContinue -> LoadMessages.REMOVE_FROM_CONTINUE_FAILED
+    ActionFailure.RestoreToContinue -> LoadMessages.RESTORE_TO_CONTINUE_FAILED
+    ActionFailure.AddToMyList -> LoadMessages.ADD_TO_MY_LIST_FAILED
+    ActionFailure.RemoveFromMyList -> LoadMessages.REMOVE_FROM_MY_LIST_FAILED
+}
+
+private data class SheetSource(
+    val options: List<FilterOption> = emptyList(),
+    val loading: Boolean = true,
+    val error: ApiError? = null,
+) {
+    fun toSheet(): FilterSheet = FilterSheet(
+        kind = CategoryKind.Categories,
+        title = Strings.filterCategories,
+        options = options,
+        loading = loading,
+        message = error?.let { LoadMessages.forError(it) },
+    )
+}
 
 // Coming back to Home reloads Continue watching if it has been this long since it last loaded.
 private val FOREGROUND_REFRESH_AFTER = 60.seconds
@@ -187,21 +251,24 @@ class HomeViewModel(
 
     // Signed in, the libraries are always on their way, so the first thing to show is loading, not empty.
     private val libraries = MutableStateFlow(Libraries(loading = true))
-    private val continueRow = MutableStateFlow(ContinueRow(loading = true))
+    private val continueRow = MutableStateFlow(ContinueSource(loading = true))
+    private val continueView: Flow<ContinueRow> = continueRow.localized { source -> source.toRow() }
     private val refreshing = MutableStateFlow(false)
 
     private var continueReload: Job? = null
     private var refresh: Job? = null
     private var continueLoadedAt: Instant? = null
 
-    private val actionMessage = MutableStateFlow<String?>(null)
+    private val actionMessage = MutableStateFlow<ActionFailure?>(null)
+    private val actionText: Flow<String?> = actionMessage.localized { failure -> failure?.message() }
     private val removedCard = MutableStateFlow<RemovedCard?>(null)
+    private val removedNotice: Flow<String?> = removedCard.localized { removed -> removed?.let { Strings.removedFromContinueWatching } }
 
-    private val latestRows = MutableStateFlow<List<MediaRow>>(emptyList())
-    private val genreRows = MutableStateFlow<List<MediaRow>>(emptyList())
+    private val latestRows = MutableStateFlow<List<RowSource>>(emptyList())
+    private val genreRows = MutableStateFlow<List<RowSource>>(emptyList())
 
     // The first row under Continue watching; hidden while the user has nothing on My List.
-    private val myListRow = MutableStateFlow<MediaRow?>(null)
+    private val myListRow = MutableStateFlow<RowSource?>(null)
 
     // Picked once per session (a new profile or address picks again).
     private val hero = MutableStateFlow(HeroState())
@@ -212,18 +279,21 @@ class HomeViewModel(
     // False from a new session until Continue watching has answered once; the rows below wait for it (a later retry of it
     // does not hide them again).
     private val continueAnswered = MutableStateFlow(false)
-    private val rows = combine(myListRow, latestRows, genreRows, continueAnswered) { myList, latest, genres, answered ->
+    private val rows = combine(myListRow, latestRows, genreRows, continueAnswered, Texts.language) { myList, latest, genres, answered, _ ->
         // Shown from top to bottom: each waits for the rows above it, Continue watching first.
-        revealInOrder(listOfNotNull(myList) + latest + genres, aboveLoading = !answered).filter { it.isVisible }
+        revealInOrder((listOfNotNull(myList) + latest + genres).map { it.toRow() }, aboveLoading = !answered).filter { it.isVisible }
     }
 
     private val categoryUi = MutableStateFlow(CategoryUi())
+    private val categories: Flow<CategoryScreen> = categoryUi.localized { ui ->
+        CategoryScreen(sheet = ui.sheet?.toSheet(), openList = ui.openList, heroNav = ui.heroNav)
+    }
     private var sheetJob: Job? = null
 
     // The sheets' lists, fetched once per session when first opened.
     private var genreOptions: List<FilterOption>? = null
 
-    private val screen = combine(connection.state, exit, libraries, continueRow, refreshing) { state, exit, libraries, continueRow, refreshing ->
+    private val screen = combine(connection.state, exit, libraries, continueView, refreshing) { state, exit, libraries, continueRow, refreshing ->
         when (state) {
             is ConnectionState.Connected -> HomeUiState(
                 userName = state.account.name,
@@ -245,7 +315,7 @@ class HomeViewModel(
         }
     }
 
-    private val content = combine(screen, actionMessage, categoryUi, rows, hero) { screen, message, categories, rows, hero ->
+    private val content = combine(screen, actionText, categories, rows, hero) { screen, message, categories, rows, hero ->
         // A signed-in Home waits for the hero setting to be read, so everything appears in the same first frame.
         if (screen.userName != null && !hero.ready) return@combine HomeUiState()
         screen.copy(
@@ -266,12 +336,12 @@ class HomeViewModel(
         profileSettings.kidsProfile,
         profile.pinPrompt,
         downloadParts(connection, downloads, downloadFlow, downloadFlow.canDownload),
-        removedCard,
+        removedNotice,
     ) { content, kids, prompt, parts, removed ->
         content.copy(
             kidsProfile = kids == true,
             pinPrompt = prompt,
-            actionMessage = if (removed != null) Strings.removedFromContinueWatching else content.actionMessage ?: parts.message,
+            actionMessage = removed ?: content.actionMessage ?: parts.message,
             canUndo = removed != null,
             downloads = parts.byId,
             canDownload = parts.canDownload,
@@ -295,7 +365,7 @@ class HomeViewModel(
                     genreOptions = null
                     latestRows.value = emptyList()
                     genreRows.value = emptyList()
-                    myListRow.value = MediaRow(MY_LIST_ID, Strings.myList, seeAll = SeeAll.MyList)
+                    myListRow.value = RowSource(MY_LIST_ID, SeeAll.MyList)
                     // The grey card is up from the first state when the profile has the hero on, so it is there, not slid in later.
                     val slots = profileSettings.homeHeroItems.first() ?: ProfileSettings.DEFAULT_HOME_HERO_ITEMS
                     hero.value = HeroState(loading = slots > 0, ready = true, slots = slots)
@@ -351,12 +421,12 @@ class HomeViewModel(
     /** "Try again" on one row: only it reloads. */
     fun onRetryRow(id: String) {
         if (id == MY_LIST_ID) {
-            myListRow.update { it?.copy(loading = true, message = null) }
+            myListRow.update { it?.copy(loading = true, error = null) }
             viewModelScope.launch { loadMyList(quiet = false) }
             return
         }
         if (id == LIBRARIES_FAILED_ID) {
-            latestRows.updateRow(id) { it.copy(loading = true, message = null) }
+            latestRows.updateRow(id) { it.copy(loading = true, error = null) }
             viewModelScope.launch {
                 loadLibraries()
                 loadLatestRows(quiet = false)
@@ -368,12 +438,12 @@ class HomeViewModel(
         viewModelScope.launch {
             when (to) {
                 is SeeAll.Library -> {
-                    latestRows.updateRow(id) { it.copy(loading = true, message = null) }
+                    latestRows.updateRow(id) { it.copy(loading = true, error = null) }
                     loadLatest(to.library, quiet = false)
                 }
 
                 is SeeAll.Genre -> {
-                    genreRows.updateRow(id) { it.copy(loading = true, message = null) }
+                    genreRows.updateRow(id) { it.copy(loading = true, error = null) }
                     loadGenreRow(to.filter, quiet = false)
                 }
 
@@ -392,72 +462,72 @@ class HomeViewModel(
      * instead, so no message.
      */
     fun onMarkWatched(cardId: String) {
-        takeCardOut(cardId, LoadMessages.MARK_WATCHED_FAILED, { onMarkWatched(cardId) }) { watch.setPlayed(cardId, played = true) }
+        takeCardOut(cardId, ActionFailure.MarkWatched, { onMarkWatched(cardId) }) { watch.setPlayed(cardId, played = true) }
     }
 
     /** "Remove from Continue watching": like [onMarkWatched], and once it is saved the message offers Undo. */
     fun onRemoveFromContinueWatching(cardId: String) {
-        if (continueRow.value.cards.none { it.id == cardId && it.canRemove }) return
-        takeCardOut(cardId, LoadMessages.REMOVE_FROM_CONTINUE_FAILED, { onRemoveFromContinueWatching(cardId) }, removed = { removedCard.value = it }) { card ->
-            watch.removeFromContinueWatching(card.id, card.seriesId)
+        if (continueRow.value.items.none { it.id == cardId && it.resumePositionMs > 0 }) return
+        takeCardOut(cardId, ActionFailure.RemoveFromContinue, { onRemoveFromContinueWatching(cardId) }, removed = { removedCard.value = it }) { item ->
+            watch.removeFromContinueWatching(item.id, item.seriesId)
         }
     }
 
     private fun takeCardOut(
         cardId: String,
-        failure: String,
+        failure: ActionFailure,
         retry: () -> Unit,
         removed: (RemovedCard) -> Unit = {},
-        save: suspend (ContinueCard) -> ApiResult<Unit>,
+        save: suspend (MediaItem) -> ApiResult<Unit>,
     ) {
         val row = continueRow.value
-        val index = row.cards.indexOfFirst { it.id == cardId }
+        val index = row.items.indexOfFirst { it.id == cardId }
         if (index < 0 || !changing.add(cardId)) return
-        val card = row.cards[index]
+        val item = row.items[index]
         actionMessage.value = null
         removedCard.value = null
-        continueRow.value = row.copy(cards = row.cards - card)
+        continueRow.value = row.copy(items = row.items - item)
         viewModelScope.launch {
-            val result = save(card)
+            val result = save(item)
             changing.remove(cardId)
             when (result) {
-                is ApiResult.Success -> removed(RemovedCard(card, index))
+                is ApiResult.Success -> removed(RemovedCard(item, index))
 
                 is ApiResult.Failure -> {
-                    putCardBack(card, index)
+                    putCardBack(item, index)
                     failed(result.error, failure, retry)
                 }
             }
         }
     }
 
-    private fun putCardBack(card: ContinueCard, index: Int) {
+    private fun putCardBack(item: MediaItem, index: Int) {
         continueRow.update { current ->
-            if (current.cards.any { it.id == card.id }) {
+            if (current.items.any { it.id == item.id }) {
                 current
             } else {
-                current.copy(cards = current.cards.toMutableList().apply { add(index.coerceAtMost(size), card) })
+                current.copy(items = current.items.toMutableList().apply { add(index.coerceAtMost(size), item) })
             }
         }
     }
 
-    private fun failed(error: ApiError, message: String, retry: () -> Unit) {
+    private fun failed(error: ApiError, failure: ActionFailure, retry: () -> Unit) {
         if (error == ApiError.Unauthorized) return
         retryFailed = retry
-        actionMessage.value = message
+        actionMessage.value = failure
     }
 
     private fun undoRemoval(removed: RemovedCard) {
-        val card = removed.card
-        if (!changing.add(card.id)) return
+        val item = removed.item
+        if (!changing.add(item.id)) return
         removedCard.value = null
-        putCardBack(card, removed.index)
+        putCardBack(item, removed.index)
         viewModelScope.launch {
-            val result = watch.restoreToContinueWatching(card.id, card.seriesId, card.resumePositionMs)
-            changing.remove(card.id)
+            val result = watch.restoreToContinueWatching(item.id, item.seriesId, item.resumePositionMs)
+            changing.remove(item.id)
             if (result is ApiResult.Failure) {
-                continueRow.update { current -> current.copy(cards = current.cards.filterNot { it.id == card.id }) }
-                failed(result.error, LoadMessages.RESTORE_TO_CONTINUE_FAILED) { undoRemoval(removed) }
+                continueRow.update { current -> current.copy(items = current.items.filterNot { it.id == item.id }) }
+                failed(result.error, ActionFailure.RestoreToContinue) { undoRemoval(removed) }
             }
         }
     }
@@ -486,8 +556,8 @@ class HomeViewModel(
 
     /** "Download" in a Continue watching card's menu: a movie or an episode goes straight into the queue. */
     fun onDownload(cardId: String) {
-        val card = continueRow.value.cards.firstOrNull { it.id == cardId } ?: return
-        downloadFlow.start(DownloadTarget.Item(cardId), card.title, ask = false)
+        val item = continueRow.value.items.firstOrNull { it.id == cardId } ?: return
+        downloadFlow.start(DownloadTarget.Item(cardId), item.toContinueCard().title, ask = false)
     }
 
     /** Pause, resume or remove (after asking) the download of a Continue watching card. */
@@ -546,13 +616,13 @@ class HomeViewModel(
     // [first] puts the skeleton up (a new session, or "Try again"); otherwise the cards on screen stay
     // until the answer replaces them, and a failure leaves them as they were.
     private suspend fun loadContinue(first: Boolean) {
-        if (first) continueRow.value = ContinueRow(loading = true)
+        if (first) continueRow.value = ContinueSource(loading = true)
         val result = watch.continueWatching()
         continueLoadedAt = clock.now()
         continueAnswered.value = true
         when (result) {
-            is ApiResult.Success -> continueRow.value = ContinueRow(cards = result.value.map { it.toContinueCard() })
-            is ApiResult.Failure -> if (first) continueRow.value = ContinueRow(message = LoadMessages.forError(result.error))
+            is ApiResult.Success -> continueRow.value = ContinueSource(items = result.value)
+            is ApiResult.Failure -> if (first) continueRow.value = ContinueSource(error = result.error)
         }
     }
 
@@ -561,15 +631,15 @@ class HomeViewModel(
         if (!quiet || before.items.isEmpty()) libraries.value = Libraries(loading = true)
         libraries.value = when (val result = library.libraries()) {
             is ApiResult.Success -> Libraries(items = result.value)
-            is ApiResult.Failure -> if (quiet && before.items.isNotEmpty()) before else Libraries(message = LoadMessages.forError(result.error))
+            is ApiResult.Failure -> if (quiet && before.items.isNotEmpty()) before else Libraries(error = result.error)
         }
     }
 
     // One "Recently added" row per library that holds video; the rows keep their order while each loads on its own.
     private suspend fun loadLatestRows(quiet: Boolean) {
         // Without the libraries there is nothing to ask for: one row says why, where their rows would be, and tries again.
-        libraries.value.message?.let { message ->
-            latestRows.value = listOf(MediaRow(LIBRARIES_FAILED_ID, Strings.recentlyAdded, loading = false, message = message))
+        libraries.value.error?.let { error ->
+            latestRows.value = listOf(RowSource(LIBRARIES_FAILED_ID, loading = false, error = error))
             return
         }
         val videoLibraries = libraries.value.items.filter { it.holdsVideo }.take(MAX_LATEST_ROWS)
@@ -577,7 +647,7 @@ class HomeViewModel(
             videoLibraries.map { lib ->
                 // A refresh keeps what is on screen until the answer comes.
                 old.firstOrNull { it.id == latestId(lib) }?.takeIf { quiet }
-                    ?: MediaRow(latestId(lib), Strings.recentlyAddedIn(lib.title), seeAll = SeeAll.Library(lib))
+                    ?: RowSource(latestId(lib), SeeAll.Library(lib))
             }
         }
         coroutineScope { videoLibraries.forEach { lib -> launch { loadLatest(lib, quiet) } } }
@@ -587,7 +657,7 @@ class HomeViewModel(
         val result = library.latest(lib.id, hideWatched = profileSettings.hidesWatchedInRows())
         latestRows.updateRow(latestId(lib)) { row ->
             when (result) {
-                is ApiResult.Success -> row.copy(items = result.value, loading = false, message = null)
+                is ApiResult.Success -> row.copy(items = result.value, loading = false, error = null)
                 is ApiResult.Failure -> failed(row, result.error, quiet)
             }
         }
@@ -613,7 +683,7 @@ class HomeViewModel(
         genreRows.update { old ->
             filters.map { filter ->
                 old.firstOrNull { it.id == genreId(filter) }?.takeIf { quiet }
-                    ?: MediaRow(genreId(filter), filter.name, seeAll = SeeAll.Genre(filter))
+                    ?: RowSource(genreId(filter), SeeAll.Genre(filter))
             }
         }
         // Every genre has a row, so only a few ask the server at a time, in the order they are shown.
@@ -625,7 +695,7 @@ class HomeViewModel(
         val result = library.filteredPage(filter, PageSort.Rating, limit = LibraryRepository.ROW_LIMIT, hideWatched = profileSettings.hidesWatchedInRows())
         genreRows.updateRow(genreId(filter)) { row ->
             when (result) {
-                is ApiResult.Success -> row.copy(items = result.value.items, loading = false, message = null)
+                is ApiResult.Success -> row.copy(items = result.value.items, loading = false, error = null)
                 is ApiResult.Failure -> failed(row, result.error, quiet)
             }
         }
@@ -670,7 +740,7 @@ class HomeViewModel(
             if (result is ApiResult.Failure) {
                 hero.update { it.withItem(itemId) { item -> item.copy(isFavorite = before.isFavorite) } }
                 if (result.error != ApiError.Unauthorized) {
-                    actionMessage.value = if (target) LoadMessages.ADD_TO_MY_LIST_FAILED else LoadMessages.REMOVE_FROM_MY_LIST_FAILED
+                    actionMessage.value = if (target) ActionFailure.AddToMyList else ActionFailure.RemoveFromMyList
                 }
             }
         }
@@ -702,9 +772,9 @@ class HomeViewModel(
     private suspend fun loadMyList(quiet: Boolean) {
         val result = library.filteredPage(HomeFilter.MyList, PageSort.Added, limit = LibraryRepository.ROW_LIMIT)
         myListRow.update { row ->
-            val base = row ?: MediaRow(MY_LIST_ID, Strings.myList, seeAll = SeeAll.MyList)
+            val base = row ?: RowSource(MY_LIST_ID, SeeAll.MyList)
             when (result) {
-                is ApiResult.Success -> base.copy(items = result.value.items, loading = false, message = null)
+                is ApiResult.Success -> base.copy(items = result.value.items, loading = false, error = null)
                 is ApiResult.Failure -> failed(base, result.error, quiet)
             }
         }
@@ -732,13 +802,13 @@ class HomeViewModel(
     }
 
     // A refresh that fails leaves the row as it was; a first load or a retry shows why.
-    private fun failed(row: MediaRow, error: ApiError, quiet: Boolean) = if (quiet && row.items.isNotEmpty()) row.copy(loading = false) else row.copy(items = emptyList(), loading = false, message = LoadMessages.forError(error))
+    private fun failed(row: RowSource, error: ApiError, quiet: Boolean): RowSource = if (quiet && row.items.isNotEmpty()) row.copy(loading = false) else row.copy(items = emptyList(), loading = false, error = error)
 
     private fun latestId(lib: MediaItem) = "latest:${lib.id}"
 
     private fun genreId(filter: HomeFilter.Genre) = "genre:${filter.id}"
 
-    private fun MutableStateFlow<List<MediaRow>>.updateRow(id: String, transform: (MediaRow) -> MediaRow) = update { rows -> rows.map { if (it.id == id) transform(it) else it } }
+    private fun MutableStateFlow<List<RowSource>>.updateRow(id: String, transform: (RowSource) -> RowSource) = update { rows -> rows.map { if (it.id == id) transform(it) else it } }
 
     /**
      * A tap on a category button. Shows, Movies and New open their page at once; Studios and Categories open a
@@ -773,22 +843,13 @@ class HomeViewModel(
     /** "Try again" in the sheet. */
     fun onRetrySheet() {
         val sheet = categoryUi.value.sheet ?: return
-        categoryUi.update { it.copy(sheet = sheet.copy(loading = true, message = null)) }
+        categoryUi.update { it.copy(sheet = sheet.copy(loading = true, error = null)) }
         loadSheet()
     }
 
     private fun openSheet() {
         val cached = genreOptions
-        categoryUi.update {
-            it.copy(
-                sheet = FilterSheet(
-                    kind = CategoryKind.Categories,
-                    title = Strings.filterCategories,
-                    options = cached.orEmpty(),
-                    loading = cached == null,
-                ),
-            )
-        }
+        categoryUi.update { it.copy(sheet = SheetSource(options = cached.orEmpty(), loading = cached == null)) }
         if (cached == null) loadSheet()
     }
 
@@ -801,8 +862,8 @@ class HomeViewModel(
                 val sheet = ui.sheet ?: return@update ui
                 ui.copy(
                     sheet = when (result) {
-                        is ApiResult.Success -> sheet.copy(options = result.value, loading = false, message = null)
-                        is ApiResult.Failure -> sheet.copy(loading = false, message = LoadMessages.forError(result.error))
+                        is ApiResult.Success -> sheet.copy(options = result.value, loading = false, error = null)
+                        is ApiResult.Failure -> sheet.copy(loading = false, error = result.error)
                     },
                 )
             }

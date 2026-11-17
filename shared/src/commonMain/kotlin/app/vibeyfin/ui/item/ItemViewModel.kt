@@ -10,6 +10,7 @@ import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.DownloadTarget
 import app.vibeyfin.domain.LibraryRepository
 import app.vibeyfin.domain.PlaybackNegotiation
+import app.vibeyfin.domain.PlaybackPlan
 import app.vibeyfin.domain.PlaybackRepository
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SeerrConnection
@@ -25,6 +26,7 @@ import app.vibeyfin.domain.model.SeerrMediaType
 import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.domain.model.notInLibrary
 import app.vibeyfin.domain.profileOrNull
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
@@ -43,6 +45,7 @@ import app.vibeyfin.ui.subtitles.SubtitleAdded
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -241,6 +244,43 @@ data class ItemUiState(
     val canStartOver: Boolean get() = resuming
 }
 
+private enum class ItemAction { MarkWatched, MarkUnwatched, AddToMyList, RemoveFromMyList, SubtitleDelete }
+
+private data class ItemFailures(
+    val load: ApiError? = null,
+    val action: ItemAction? = null,
+    val similar: ApiError? = null,
+    val collections: ApiError? = null,
+    val extras: ApiError? = null,
+    val seasons: ApiError? = null,
+    val episodes: ApiError? = null,
+    val plan: PlaybackPlan? = null,
+)
+
+private fun ItemUiState.localized(failures: ItemFailures): ItemUiState = copy(
+    facts = item?.facts().orEmpty(),
+    message = failures.load?.let(LoadMessages::forError),
+    actionMessage = failures.action?.message(),
+    playout = failures.plan?.toPlayoutTags(),
+    similar = similar?.localized(Strings.moreLikeThis, failures.similar),
+    collections = collections?.localized(Strings.inCollections, failures.collections),
+    extras = extras?.localized(Strings.extras, failures.extras),
+    seasons = seasons.copy(
+        message = failures.seasons?.let(LoadMessages::forError),
+        episodes = seasons.episodes.copy(message = failures.episodes?.let(LoadMessages::forError)),
+    ),
+)
+
+private fun MediaRow.localized(title: String, failure: ApiError?): MediaRow = copy(title = title, message = failure?.let(LoadMessages::forError))
+
+private fun ItemAction.message(): String = when (this) {
+    ItemAction.MarkWatched -> LoadMessages.MARK_WATCHED_FAILED
+    ItemAction.MarkUnwatched -> LoadMessages.MARK_UNWATCHED_FAILED
+    ItemAction.AddToMyList -> LoadMessages.ADD_TO_MY_LIST_FAILED
+    ItemAction.RemoveFromMyList -> LoadMessages.REMOVE_FROM_MY_LIST_FAILED
+    ItemAction.SubtitleDelete -> LoadMessages.SUBTITLE_DELETE_FAILED
+}
+
 /** One item's page: its metadata, its cast and what is like it, and for a show its seasons and episodes. */
 class ItemViewModel(
     private val itemId: String,
@@ -258,6 +298,7 @@ class ItemViewModel(
     // Seerr's recommendations for this title, not in the library; mixed into "More like this".
     private var seerrSimilar: List<SeerrTitle> = emptyList()
     private val content = MutableStateFlow(ItemUiState())
+    private val failures = MutableStateFlow(ItemFailures())
     private var episodesJob: Job? = null
     private val downloadFlow = DownloadFlow(viewModelScope, downloads) { connection.state.value.profileOrNull() }
     private val canDownload = MutableStateFlow(true)
@@ -267,7 +308,9 @@ class ItemViewModel(
 
     private val downloadParts = downloadParts(connection, downloads, downloadFlow, canDownload)
 
-    val uiState: StateFlow<ItemUiState> = combine(content, connection.sessionEnded(), downloadParts, canSearchSubtitles, canDeleteSubtitles) { content, exit, parts, canSearch, canDelete ->
+    private val localizedContent: Flow<ItemUiState> = combine(content, failures, Texts.language) { content, failures, _ -> content.localized(failures) }
+
+    val uiState: StateFlow<ItemUiState> = combine(localizedContent, connection.sessionEnded(), downloadParts, canSearchSubtitles, canDeleteSubtitles) { content, exit, parts, canSearch, canDelete ->
         content.copy(
             exit = exit,
             canSearchSubtitles = canSearch,
@@ -312,7 +355,8 @@ class ItemViewModel(
 
     private fun deleteSubtitle(track: DeletableSubtitle) {
         failedSubtitleDelete = null
-        content.update { it.copy(actionMessage = null, deletingSubtitle = track.streamIndex) }
+        failures.update { it.copy(action = null) }
+        content.update { it.copy(deletingSubtitle = track.streamIndex) }
         viewModelScope.launch {
             val result = subtitles.delete(itemId, track.streamIndex)
             // Deleting moves the indexes of the tracks after it, so the item is read again before anything else is deleted, and the
@@ -328,7 +372,7 @@ class ItemViewModel(
 
                 is SubtitleDeletion.Failed -> {
                     failedSubtitleDelete = track
-                    content.update { it.copy(actionMessage = LoadMessages.SUBTITLE_DELETE_FAILED) }
+                    failures.update { it.copy(action = ItemAction.SubtitleDelete) }
                 }
             }
         }
@@ -358,10 +402,10 @@ class ItemViewModel(
         combine(target, downloadParts) { id, parts -> id to (id?.let { parts.byId[it]?.badge } == DownloadBadge.Done) }
             .distinctUntilChanged()
             .collectLatest { (id, downloaded) ->
-                content.update { it.copy(playout = null) }
+                failures.update { it.copy(plan = null) }
                 if (id == null || downloaded) return@collectLatest
                 val ready = playback.negotiate(id) as? PlaybackNegotiation.Ready ?: return@collectLatest
-                content.update { it.copy(playout = ready.plan.toPlayoutTags()) }
+                failures.update { it.copy(plan = ready.plan) }
             }
     }
 
@@ -399,6 +443,7 @@ class ItemViewModel(
         if (!force && current.selectedId == seasonId) return
         episodesJob?.cancel()
         // The old season's cards go at once, so the page shows the new season loading, not the old one under another name.
+        failures.update { it.copy(episodes = null) }
         content.update { it.copy(seasons = it.seasons.copy(selectedId = seasonId, episodes = EpisodeList(loading = true))) }
         episodesJob = viewModelScope.launch { loadEpisodes(seasonId, setStart = false) }
     }
@@ -407,7 +452,7 @@ class ItemViewModel(
     private suspend fun refresh(alongside: (ItemUiState) -> ItemUiState = { it }) {
         val shown = content.value.item ?: return
         val result = library.item(itemId) as? ApiResult.Success ?: return
-        content.update { alongside(it.copy(item = result.value, facts = result.value.facts())) }
+        content.update { alongside(it.copy(item = result.value)) }
         if (shown.kind == ItemKind.Series) {
             val next = watch.nextUpOf(itemId) as? ApiResult.Success
             if (next != null) content.update { it.copy(seasons = it.seasons.copy(startEpisode = next.value ?: it.seasons.startEpisode)) }
@@ -432,12 +477,14 @@ class ItemViewModel(
         writing = true
         val target = !before.played
         val shown = before.copy(played = target, resumePositionMs = 0)
-        content.update { it.copy(item = shown, facts = shown.facts(), actionMessage = null) }
+        failures.update { it.copy(action = null) }
+        content.update { it.copy(item = shown) }
         viewModelScope.launch {
             val result = watch.setPlayed(itemId, target)
             writing = false
             if (result is ApiResult.Failure) {
-                content.update { it.copy(item = before, facts = before.facts(), actionMessage = failureMessage(result.error, target)) }
+                content.update { it.copy(item = before) }
+                failures.update { it.copy(action = failureAction(result.error, target)) }
             } else if (before.kind == ItemKind.Series) {
                 // Every episode changed with it: the list's marks and what Play starts are read again.
                 loadSeasons()
@@ -454,7 +501,7 @@ class ItemViewModel(
             val result = watch.setPlayed(episodeId, target)
             if (result is ApiResult.Failure) {
                 replaceEpisode(before)
-                content.update { it.copy(actionMessage = failureMessage(result.error, target)) }
+                failures.update { it.copy(action = failureAction(result.error, target)) }
             }
         }
     }
@@ -463,10 +510,10 @@ class ItemViewModel(
         state.copy(seasons = state.seasons.copy(episodes = state.seasons.episodes.copy(items = state.seasons.episodes.items.map { if (it.id == episode.id) episode else it })))
     }
 
-    private fun failureMessage(error: ApiError, markedWatched: Boolean) = when {
+    private fun failureAction(error: ApiError, markedWatched: Boolean): ItemAction? = when {
         error == ApiError.Unauthorized -> null
-        markedWatched -> LoadMessages.MARK_WATCHED_FAILED
-        else -> LoadMessages.MARK_UNWATCHED_FAILED
+        markedWatched -> ItemAction.MarkWatched
+        else -> ItemAction.MarkUnwatched
     }
 
     private var writingFavorite = false
@@ -484,36 +531,38 @@ class ItemViewModel(
         writingFavorite = true
         failedFavorite = false
         val target = !before.isFavorite
-        content.update { it.copy(item = before.copy(isFavorite = target), actionMessage = null) }
+        failures.update { it.copy(action = null) }
+        content.update { it.copy(item = before.copy(isFavorite = target)) }
         viewModelScope.launch {
             val result = watch.setFavorite(itemId, target)
             writingFavorite = false
             if (result is ApiResult.Failure) {
                 failedFavorite = result.error != ApiError.Unauthorized
-                val message = when {
+                val action: ItemAction? = when {
                     result.error == ApiError.Unauthorized -> null
-                    target -> LoadMessages.ADD_TO_MY_LIST_FAILED
-                    else -> LoadMessages.REMOVE_FROM_MY_LIST_FAILED
+                    target -> ItemAction.AddToMyList
+                    else -> ItemAction.RemoveFromMyList
                 }
-                content.update { it.copy(item = it.item?.copy(isFavorite = before.isFavorite), actionMessage = message) }
+                content.update { it.copy(item = it.item?.copy(isFavorite = before.isFavorite)) }
+                failures.update { it.copy(action = action) }
             }
         }
     }
 
     /** "Try again" on the failure message: the page was taken back, so doing the change again repeats it. */
     fun onRetryAction() {
-        val failedDelete = failedSubtitleDelete?.takeIf { content.value.actionMessage == LoadMessages.SUBTITLE_DELETE_FAILED }
+        val failedDelete = failedSubtitleDelete?.takeIf { failures.value.action == ItemAction.SubtitleDelete }
 
         when {
             failedDelete != null -> deleteSubtitle(failedDelete)
-            content.value.actionMessage == null && downloadFlow.message.value != null -> downloadFlow.retry()
+            failures.value.action == null && downloadFlow.message.value != null -> downloadFlow.retry()
             failedFavorite -> onToggleFavorite()
             else -> onTogglePlayed()
         }
     }
 
     fun onDismissMessage() {
-        content.update { it.copy(actionMessage = null) }
+        failures.update { it.copy(action = null) }
         downloadFlow.dismissMessage()
     }
 
@@ -567,12 +616,13 @@ class ItemViewModel(
 
     private fun load() {
         episodesJob?.cancel()
+        failures.value = ItemFailures()
         content.value = ItemUiState(loading = true)
         viewModelScope.launch {
             when (val result = library.item(itemId)) {
                 is ApiResult.Success -> {
                     val item = result.value
-                    content.value = ItemUiState(item = item, facts = item.facts(), loading = false, trailer = item.remoteTrailerUrl?.takeIf { item.canHaveTrailer }?.let { Trailer.Remote(it) })
+                    content.value = ItemUiState(item = item, loading = false, trailer = item.remoteTrailerUrl?.takeIf { item.canHaveTrailer }?.let { Trailer.Remote(it) })
                     // The rest of the page loads on its own: each part fails and retries alone.
                     coroutineScope {
                         launch { loadSimilar() }
@@ -586,7 +636,10 @@ class ItemViewModel(
                     }
                 }
 
-                is ApiResult.Failure -> content.value = ItemUiState(loading = false, message = LoadMessages.forError(result.error))
+                is ApiResult.Failure -> {
+                    content.value = ItemUiState(loading = false)
+                    failures.value = ItemFailures(load = result.error)
+                }
             }
         }
     }
@@ -598,12 +651,14 @@ class ItemViewModel(
 
     private suspend fun loadExtras() {
         content.update { it.copy(extras = MediaRow("extras", Strings.extras, loading = true)) }
+        failures.update { it.copy(extras = null) }
         val result = library.specialFeatures(itemId)
+        failures.update { it.copy(extras = (result as? ApiResult.Failure)?.error) }
         content.update {
             it.copy(
                 extras = when (result) {
                     is ApiResult.Success -> MediaRow("extras", Strings.extras, items = result.value, loading = false)
-                    is ApiResult.Failure -> MediaRow("extras", Strings.extras, loading = false, message = LoadMessages.forError(result.error))
+                    is ApiResult.Failure -> MediaRow("extras", Strings.extras, loading = false)
                 },
             )
         }
@@ -611,12 +666,14 @@ class ItemViewModel(
 
     private suspend fun loadCollections() {
         content.update { it.copy(collections = MediaRow("collections", Strings.inCollections, loading = true)) }
+        failures.update { it.copy(collections = null) }
         val result = library.collectionsOf(itemId)
+        failures.update { it.copy(collections = (result as? ApiResult.Failure)?.error) }
         content.update {
             it.copy(
                 collections = when (result) {
                     is ApiResult.Success -> MediaRow("collections", Strings.inCollections, items = result.value, loading = false)
-                    is ApiResult.Failure -> MediaRow("collections", Strings.inCollections, loading = false, message = LoadMessages.forError(result.error))
+                    is ApiResult.Failure -> MediaRow("collections", Strings.inCollections, loading = false)
                 },
             )
         }
@@ -624,11 +681,13 @@ class ItemViewModel(
 
     private suspend fun loadSimilar() {
         content.update { it.copy(similar = MediaRow("similar", Strings.moreLikeThis, loading = true)) }
+        failures.update { it.copy(similar = null) }
         val result = library.similar(itemId, hideWatched = profileSettings.hidesWatchedInRows())
+        failures.update { it.copy(similar = (result as? ApiResult.Failure)?.error) }
         content.update {
             val similar = when (result) {
                 is ApiResult.Success -> MediaRow("similar", Strings.moreLikeThis, items = result.value, loading = false)
-                is ApiResult.Failure -> MediaRow("similar", Strings.moreLikeThis, loading = false, message = LoadMessages.forError(result.error))
+                is ApiResult.Failure -> MediaRow("similar", Strings.moreLikeThis, loading = false)
             }
             it.copy(similar = similar, similarTiles = mixSimilar(similar.items, seerrSimilar))
         }
@@ -654,6 +713,7 @@ class ItemViewModel(
     // The seasons and the episode to watch next, then the episodes of the season that episode is in.
     private suspend fun loadSeasons() {
         // A reload (after marking the whole show) keeps the Play button it had.
+        failures.update { it.copy(seasons = null, episodes = null) }
         content.update { it.copy(seasons = SeasonsState(loading = true, startEpisode = it.seasons.startEpisode, playSettled = it.seasons.playSettled)) }
         val (seasons, next) = coroutineScope {
             val seasons = async { library.seasons(itemId) }
@@ -661,7 +721,8 @@ class ItemViewModel(
             seasons.await() to next.await()
         }
         if (seasons is ApiResult.Failure) {
-            content.update { it.copy(seasons = SeasonsState(message = LoadMessages.forError(seasons.error), playSettled = true)) }
+            failures.update { it.copy(seasons = seasons.error) }
+            content.update { it.copy(seasons = SeasonsState(playSettled = true)) }
             return
         }
         val list = (seasons as ApiResult.Success).value
@@ -692,6 +753,7 @@ class ItemViewModel(
         val result = library.episodes(itemId, seasonId)
         // Another season was chosen while this was out: its own answer is the one that counts.
         if (content.value.seasons.selectedId != seasonId) return
+        failures.update { it.copy(episodes = (result as? ApiResult.Failure)?.error) }
         content.update { state ->
             val seasons = state.seasons
             state.copy(
@@ -702,7 +764,7 @@ class ItemViewModel(
                         startEpisode = seasons.startEpisode ?: if (setStart) result.value.firstOrNull() else null,
                     )
 
-                    is ApiResult.Failure -> seasons.copy(episodes = EpisodeList(message = LoadMessages.forError(result.error)))
+                    is ApiResult.Failure -> seasons.copy(episodes = EpisodeList())
                 }.let { it.copy(playSettled = true) },
             )
         }

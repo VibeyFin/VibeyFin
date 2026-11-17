@@ -16,6 +16,7 @@ import app.vibeyfin.domain.mergeProfiles
 import app.vibeyfin.domain.model.Profile
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.domain.model.Server
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.common.PinGate
 import app.vibeyfin.ui.common.PinPrompt
 import app.vibeyfin.ui.common.PinReason
@@ -53,15 +54,26 @@ sealed interface SignInSheet {
         val expiresIn: Duration? = null,
         val approved: Boolean = false,
         val stop: QuickConnectStop? = null,
+        val status: String? = null,
+        val message: String? = null,
     ) : SignInSheet {
         val shownCode: String? get() = code?.let(Strings::quickConnectCode)
         val spokenCode: String? get() = code?.let(Strings::quickConnectSpokenCode)
-        val status: String? get() = expiresIn?.takeIf { stop == null && !approved }?.let(Strings::quickConnectWaiting)
-        val message: String? get() = stop?.let(SignInMessages::forQuickConnect)
     }
 }
 
 enum class QuickConnectStop { Expired, Off, Unreachable, Failed }
+
+private sealed interface LoginProblem {
+    data object Unreachable : LoginProblem
+
+    data class Rejected(val result: SignInResult, val passwordOnly: Boolean) : LoginProblem
+
+    fun message(): String = when (this) {
+        Unreachable -> SignInMessages.UNREACHABLE
+        is Rejected -> SignInMessages.forFailure(result, passwordOnly)
+    }
+}
 
 data class WhoIsWatchingUiState(
     /** True until the server has answered or failed to, so the grid doesn't jump. */
@@ -114,8 +126,8 @@ class WhoIsWatchingViewModel(
         val sheet: SignInSheet? = null,
         val signingIn: Boolean = false,
         val openingUserId: String? = null,
-        val sheetNotice: String? = null,
-        val error: String? = null,
+        val sessionEndedNotice: Boolean = false,
+        val error: LoginProblem? = null,
         val signedIn: Boolean = false,
         val openedUserId: String? = null,
     ) {
@@ -132,7 +144,7 @@ class WhoIsWatchingViewModel(
     private var shownProfiles: List<Profile> = emptyList()
 
     val uiState: StateFlow<WhoIsWatchingUiState> =
-        combine(accounts.observeAccounts(serverId), local, pin.prompt, connection.state) { saved, local, pinPrompt, connected ->
+        combine(accounts.observeAccounts(serverId), local, pin.prompt, connection.state, Texts.language) { saved, local, pinPrompt, connected, _ ->
             val merged = mergeProfiles(saved, local.public)
             // While a profile opens the tiles keep their places, so the zoom starts from the one that was tapped
             val profiles = if (local.busy) merged.inOrderOf(shownProfiles) else merged
@@ -144,12 +156,12 @@ class WhoIsWatchingViewModel(
                 serverReachable = !local.loaded || local.public != null,
                 triedAddresses = local.server?.addresses.orEmpty(),
                 quickConnectAvailable = local.public?.quickConnectEnabled == true && !local.quickConnectOff,
-                sheet = local.sheet,
+                sheet = local.sheet?.rendered(),
                 signingIn = local.signingIn,
                 openingUserId = local.openingUserId,
                 notice = expiredUserId(connected)?.let { id -> profiles.find { it.userId == id } }?.name?.let(Strings::sessionEndedFor),
-                sheetNotice = local.sheetNotice,
-                error = local.error,
+                sheetNotice = SignInMessages.SESSION_ENDED.takeIf { local.sessionEndedNotice },
+                error = local.error?.message(),
                 signedIn = local.signedIn,
                 openedUserId = local.openedUserId,
                 pinPrompt = pinPrompt,
@@ -218,7 +230,7 @@ class WhoIsWatchingViewModel(
         viewModelScope.launch {
             if (!profile.hasSession) {
                 val ended = profile.userId == expiredUserId(connection.state.value)
-                return@launch withoutSession(profile, notice = SignInMessages.SESSION_ENDED.takeIf { ended })
+                return@launch withoutSession(profile, sessionEnded = ended)
             }
             local.update { it.copy(openingUserId = profile.userId, error = null) }
             when (connection.activate(serverId, profile.userId)) {
@@ -226,11 +238,11 @@ class WhoIsWatchingViewModel(
 
                 ActivateResult.Expired, ActivateResult.Unknown -> {
                     local.update { it.copy(openingUserId = null) }
-                    withoutSession(profile, notice = SignInMessages.SESSION_ENDED)
+                    withoutSession(profile, sessionEnded = true)
                 }
 
                 ActivateResult.Unreachable ->
-                    local.update { it.copy(openingUserId = null, error = SignInMessages.UNREACHABLE) }
+                    local.update { it.copy(openingUserId = null, error = LoginProblem.Unreachable) }
             }
         }
     }
@@ -238,7 +250,7 @@ class WhoIsWatchingViewModel(
     fun onOtherUserTapped() {
         if (local.value.signedIn) return
         stopQuickConnect()
-        local.update { it.copy(sheet = SignInSheet.OtherUser, error = null, sheetNotice = null) }
+        local.update { it.copy(sheet = SignInSheet.OtherUser, error = null, sessionEndedNotice = false) }
     }
 
     /** Signs in with [password] for the profile in the open password sheet, or checks it after "Forgot PIN?". */
@@ -256,7 +268,7 @@ class WhoIsWatchingViewModel(
     fun onQuickConnectTapped() {
         if (local.value.signedIn) return
         stopQuickConnect()
-        local.update { it.copy(sheet = SignInSheet.QuickConnect(), error = null, sheetNotice = null) }
+        local.update { it.copy(sheet = SignInSheet.QuickConnect(), error = null, sessionEndedNotice = false) }
         quickConnectJob = viewModelScope.launch {
             auth.quickConnect(serverId, pollNow).collect(::onQuickConnect)
         }
@@ -268,7 +280,7 @@ class WhoIsWatchingViewModel(
 
     fun onDismissSheet() {
         stopQuickConnect()
-        local.update { it.copy(sheet = null, error = null, sheetNotice = null) }
+        local.update { it.copy(sheet = null, error = null, sessionEndedNotice = false) }
     }
 
     private fun onQuickConnect(state: QuickConnectState) {
@@ -326,16 +338,25 @@ class WhoIsWatchingViewModel(
         countdownJob?.cancel()
     }
 
+    private fun SignInSheet.rendered(): SignInSheet = when (this) {
+        is SignInSheet.QuickConnect -> copy(
+            status = expiresIn?.takeIf { stop == null && !approved }?.let(Strings::quickConnectWaiting),
+            message = stop?.let(SignInMessages::forQuickConnect),
+        )
+
+        else -> this
+    }
+
     private fun expiredUserId(state: ConnectionState): String? = (state as? ConnectionState.Expired)?.takeIf { it.serverId == serverId }?.userId
 
     // A profile with no usable session: sign in without a password if it has none, else ask.
-    private suspend fun withoutSession(profile: Profile, notice: String?) {
+    private suspend fun withoutSession(profile: Profile, sessionEnded: Boolean) {
         if (!profile.needsPassword) {
             local.update { it.copy(openingUserId = profile.userId) }
             signInNow(profile.name, "", passwordOnly = true, userId = profile.userId)
             local.update { it.copy(openingUserId = null) }
         } else {
-            local.update { it.copy(sheet = SignInSheet.Password(profile), sheetNotice = notice, error = null) }
+            local.update { it.copy(sheet = SignInSheet.Password(profile), sessionEndedNotice = sessionEnded, error = null) }
         }
     }
 
@@ -348,11 +369,11 @@ class WhoIsWatchingViewModel(
         local.update { it.copy(signingIn = true, error = null) }
         when (val result = auth.signIn(serverId, username, password)) {
             SignInResult.SignedIn -> local.update {
-                it.copy(signingIn = false, sheet = null, sheetNotice = null, signedIn = true, openedUserId = userId)
+                it.copy(signingIn = false, sheet = null, sessionEndedNotice = false, signedIn = true, openedUserId = userId)
             }
 
             else -> local.update {
-                it.copy(signingIn = false, error = SignInMessages.forFailure(result, passwordOnly))
+                it.copy(signingIn = false, error = LoginProblem.Rejected(result, passwordOnly))
             }
         }
     }

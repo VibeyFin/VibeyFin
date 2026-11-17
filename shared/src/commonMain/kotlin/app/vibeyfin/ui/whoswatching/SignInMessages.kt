@@ -2,22 +2,21 @@ package app.vibeyfin.ui.whoswatching
 
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.domain.SignInResult
+import app.vibeyfin.i18n.text
 
 /** What went wrong signing in and what to try, worded once for every platform. */
 internal object SignInMessages {
-    const val WRONG_PASSWORD = "That password didn't work. Check it and try again."
-    const val WRONG_CREDENTIALS = "That username or password didn't work. Check them and try again."
-    const val SESSION_ENDED = "Your session ended. Sign in again."
-    const val UNREACHABLE =
-        "Couldn't reach the server. Check that it's on and that this device can reach its network."
+    val WRONG_PASSWORD: String get() = text("sign_in_wrong_password")
+    val WRONG_CREDENTIALS: String get() = text("sign_in_wrong_credentials")
+    val SESSION_ENDED: String get() = text("sign_in_session_ended")
+    val UNREACHABLE: String get() = text("sign_in_unreachable")
 
-    const val QUICK_CONNECT_EXPIRED = "That code expired before it was approved. Get a new one and try again."
-    const val QUICK_CONNECT_OFF =
-        "This server doesn't allow Quick Connect. Sign in with a password instead, or ask the server's admin to turn Quick Connect on."
-    const val QUICK_CONNECT_FAILED = "Quick Connect didn't work. Try again."
-    const val QUICK_CONNECT_CODE_UNKNOWN = "This server didn't give out that code. Check it on the other device, or get a new one there."
-    const val QUICK_CONNECT_APPROVE_OFF = "Quick Connect is off on this server. The server's admin can turn it on in the Jellyfin dashboard."
-    const val QUICK_CONNECT_APPROVE_FAILED = "Couldn't approve that code. Try again."
+    val QUICK_CONNECT_EXPIRED: String get() = text("sign_in_quick_connect_expired")
+    val QUICK_CONNECT_OFF: String get() = text("sign_in_quick_connect_off")
+    val QUICK_CONNECT_FAILED: String get() = text("sign_in_quick_connect_failed")
+    val QUICK_CONNECT_CODE_UNKNOWN: String get() = text("sign_in_quick_connect_code_unknown")
+    val QUICK_CONNECT_APPROVE_OFF: String get() = text("sign_in_quick_connect_approve_off")
+    val QUICK_CONNECT_APPROVE_FAILED: String get() = text("sign_in_quick_connect_approve_failed")
 
     fun forQuickConnect(stop: QuickConnectStop): String = when (stop) {
         QuickConnectStop.Expired -> QUICK_CONNECT_EXPIRED
@@ -32,9 +31,9 @@ internal object SignInMessages {
         SignInResult.ServerUnreachable -> UNREACHABLE
 
         is SignInResult.Failed -> when (val error = result.error) {
-            is ApiError.Server -> "The server answered with an error (HTTP ${error.status}). Try again in a minute."
+            is ApiError.Server -> text("sign_in_for_failure_server", "status" to error.status)
             ApiError.Network -> UNREACHABLE
-            else -> "Something went wrong signing in. Try again."
+            else -> text("sign_in_for_failure_other")
         }
 
         SignInResult.SignedIn -> ""

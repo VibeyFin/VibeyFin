@@ -7,6 +7,9 @@ import app.vibeyfin.domain.SubtitleMode
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.RequestState
 import app.vibeyfin.domain.model.SeerrMediaType
+import app.vibeyfin.i18n.Formats
+import app.vibeyfin.i18n.plural
+import app.vibeyfin.i18n.text
 import kotlin.math.roundToInt
 import kotlin.time.Duration
 
@@ -23,260 +26,248 @@ object Strings {
     val appName = "VibeyFin"
 
     // Actions used on several screens
-    val tryAgain = "Try again"
-    val cancel = "Cancel"
-    val back = "Back"
-    val searchAgain = "Search again"
-    val searching = "Searching"
-    val addServer = "Add server"
-    val signIn = "Sign in"
-    val signingIn = "Signing in"
-    val signOut = "Sign out"
-    val settings = "Settings"
+    val tryAgain: String get() = text("try_again")
+    val cancel: String get() = text("cancel")
+    val back: String get() = text("back")
+    val searchAgain: String get() = text("search_again")
+    val searching: String get() = text("searching")
+    val addServer: String get() = text("add_server")
+    val signIn: String get() = text("sign_in")
+    val signingIn: String get() = text("signing_in")
+    val signOut: String get() = text("sign_out")
+    val settings: String get() = text("settings")
 
     // Who's watching
-    val whoIsWatching = "Who's watching?"
-    val otherUser = "Other user"
-    val cantReachServerHelp = "Profiles saved on this device still show, but signing in needs the server."
-    val username = "Username"
-    val password = "Password"
-    val signInAsAnotherUser = "Sign in as another user"
-    val passwordNotKept = "VibeyFin doesn\u2019t keep your password."
-    val required = "Required"
-    val showPassword = "Show password"
-    val hidePassword = "Hide password"
-    val useQuickConnectInstead = "Use Quick Connect instead"
-    val signInWithPassword = "Sign in with password"
+    val whoIsWatching: String get() = text("who_is_watching")
+    val otherUser: String get() = text("other_user")
+    val cantReachServerHelp: String get() = text("cant_reach_server_help")
+    val username: String get() = text("username")
+    val password: String get() = text("password")
+    val signInAsAnotherUser: String get() = text("sign_in_as_another_user")
+    val passwordNotKept: String get() = text("password_not_kept")
+    val required: String get() = text("required")
+    val showPassword: String get() = text("show_password")
+    val hidePassword: String get() = text("hide_password")
+    val useQuickConnectInstead: String get() = text("use_quick_connect_instead")
+    val signInWithPassword: String get() = text("sign_in_with_password")
 
-    fun signInAs(name: String) = "Sign in as $name"
+    fun signInAs(name: String): String = text("sign_in_as", "name" to name)
 
-    fun cantReachServer(name: String) = "Can't reach $name"
+    fun cantReachServer(name: String): String = text("cant_reach_server", "name" to name)
 
-    fun triedAddresses(addresses: List<String>) = "Tried " + addresses.joinToStringAnd() + "."
+    fun triedAddresses(addresses: List<String>): String = text("tried_addresses", "addresses" to addresses.joinToStringAnd())
 
-    fun sessionEndedFor(name: String) = "$name's session ended. Sign in again to keep watching."
+    fun sessionEndedFor(name: String): String = text("session_ended_for", "name" to name)
 
-    fun serverMenu(name: String) = "$name, server menu"
+    fun serverMenu(name: String): String = text("server_menu", "name" to name)
 
-    fun moreFor(name: String) = "More for $name"
+    fun moreFor(name: String): String = text("more_for", "name" to name)
 
-    fun profileTile(name: String, needsPassword: Boolean, needsPin: Boolean, opening: Boolean) = when {
-        opening -> "Opening $name"
-        needsPassword -> "$name, needs a password"
-        needsPin -> "$name, asks for a PIN"
+    fun profileTile(name: String, needsPassword: Boolean, needsPin: Boolean, opening: Boolean): String = when {
+        opening -> text("profile_tile_opening", "name" to name)
+        needsPassword -> text("profile_tile_needs_password", "name" to name)
+        needsPin -> text("profile_tile_needs_pin", "name" to name)
         else -> name
     }
 
     // Quick Connect
-    val quickConnect = "Quick Connect"
-    val quickConnectTile = "Quick Connect, sign in with a code"
-    val quickConnectLead = "Sign in with a code instead of a password."
-    val quickConnectSteps = listOf(
-        "On a phone, computer or TV that's signed in to Jellyfin, open your profile.",
-        "Choose Quick Connect.",
-        "Enter this code.",
+    val quickConnect: String get() = text("quick_connect")
+    val quickConnectTile: String get() = text("quick_connect_tile")
+    val quickConnectLead: String get() = text("quick_connect_lead")
+    val quickConnectSteps: List<String> get() = listOf(
+        text("quick_connect_step_open_profile"),
+        text("quick_connect_step_choose"),
+        text("quick_connect_step_enter_code"),
     )
-    val quickConnectGettingCode = "Getting a code\u2026"
-    val quickConnectApproved = "Approved"
-    val quickConnectSigningIn = "Signing in\u2026"
-    val quickConnectNewCode = "Get a new code"
-    val quickConnectApproveHelp = "Sign in on another device with the code it shows."
+    val quickConnectGettingCode: String get() = text("quick_connect_getting_code")
+    val quickConnectApproved: String get() = text("quick_connect_approved")
+    val quickConnectSigningIn: String get() = text("quick_connect_signing_in")
+    val quickConnectNewCode: String get() = text("quick_connect_new_code")
+    val quickConnectApproveHelp: String get() = text("quick_connect_approve_help")
 
-    fun quickConnectApproveLead(name: String) = "On the other device, choose Quick Connect. Type the code it shows here to sign it in as $name."
+    fun quickConnectApproveLead(name: String): String = text("quick_connect_approve_lead", "name" to name)
 
-    val quickConnectCodeLabel = "Code"
-    val quickConnectCodePlaceholder = "6 digits"
-    val quickConnectApprove = "Approve"
-    val quickConnectApproving = "Approving\u2026"
+    val quickConnectCodeLabel: String get() = text("quick_connect_code_label")
+    val quickConnectCodePlaceholder: String get() = text("quick_connect_code_placeholder")
+    val quickConnectApprove: String get() = text("quick_connect_approve")
+    val quickConnectApproving: String get() = text("quick_connect_approving")
 
-    fun quickConnectApprovedFor(name: String) = "Approved. The other device is signing in as $name."
+    fun quickConnectApprovedFor(name: String): String = text("quick_connect_approved_for", "name" to name)
 
-    val copyCode = "Copy code"
-    val codeCopied = "Code copied"
+    val copyCode: String get() = text("copy_code")
+    val codeCopied: String get() = text("code_copied")
 
-    fun quickConnectCode(code: String) = if (code.length == 6) code.take(3) + " " + code.drop(3) else code
+    fun quickConnectCode(code: String): String = if (code.length == 6) code.take(3) + " " + code.drop(3) else code
 
-    fun quickConnectSpokenCode(code: String) = "Code " + code.toList().joinToString(" ")
+    fun quickConnectSpokenCode(code: String): String = text("quick_connect_spoken_code", "code" to code.toList().joinToString(" "))
 
     fun quickConnectWaiting(expiresIn: Duration): String {
         val seconds = expiresIn.inWholeSeconds.coerceAtLeast(0)
-        return "Waiting for approval \u00b7 code expires in ${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"
+        return text("quick_connect_waiting", "minutes" to (seconds / 60), "seconds" to (seconds % 60).toString().padStart(2, '0'))
     }
 
     // Servers
-    val servers = "Servers"
-    val onYourNetwork = "On your network"
-    val addToServers = "Add"
-    val noServersFoundHelp = "No servers found on your network. A server on another network or behind a VPN needs its address."
-    val noNewServersFound = "No new servers found."
-    val lookingForServers = "Looking for servers\u2026"
-    val welcomeLead = "Connect to your Jellyfin server to start watching."
-    val welcomeAddressHelp = "Use the address you open Jellyfin with in a browser, like 192.168.1.20:8096 or jellyfin.example.com."
-    val addServerByAddress = "Add server by address"
-    val serverDetails = "Server details"
-    val removeServer = "Remove server"
-    val addresses = "Addresses"
-    val addAddress = "Add address"
-    val removeAddress = "Remove address"
-    val lastWorked = "Last worked"
-    val addressesHelp = "VibeyFin tries the address that worked last first, then the others in order."
-    val addressesSwipeHelp = "Swipe an address to remove it."
-    val serverSection = "Server"
-    val version = "Version"
-    val profilesOnDevice = "Profiles on this device"
+    val servers: String get() = text("servers")
+    val onYourNetwork: String get() = text("on_your_network")
+    val addToServers: String get() = text("add_to_servers")
+    val noServersFoundHelp: String get() = text("no_servers_found_help")
+    val noNewServersFound: String get() = text("no_new_servers_found")
+    val lookingForServers: String get() = text("looking_for_servers")
+    val welcomeLead: String get() = text("welcome_lead")
+    val welcomeAddressHelp: String get() = text("welcome_address_help")
+    val addServerByAddress: String get() = text("add_server_by_address")
+    val serverDetails: String get() = text("server_details")
+    val removeServer: String get() = text("remove_server")
+    val addresses: String get() = text("addresses")
+    val addAddress: String get() = text("add_address")
+    val removeAddress: String get() = text("remove_address")
+    val lastWorked: String get() = text("last_worked")
+    val addressesHelp: String get() = text("addresses_help")
+    val addressesSwipeHelp: String get() = text("addresses_swipe_help")
+    val serverSection: String get() = text("server_section")
+    val version: String get() = text("version")
+    val profilesOnDevice: String get() = text("profiles_on_device")
 
-    fun jellyfinVersion(version: String) = "Jellyfin $version"
+    fun jellyfinVersion(version: String): String = text("jellyfin_version", "version" to version)
 
-    fun serverMeta(version: String?, addresses: Int, profiles: Int) = listOfNotNull(
+    fun serverMeta(version: String?, addresses: Int, profiles: Int): String = listOfNotNull(
         version?.let(::jellyfinVersion),
-        "$addresses addresses".takeIf { addresses > 1 },
+        text("server_meta_addresses", "count" to addresses).takeIf { addresses > 1 },
         when (profiles) {
             0 -> null
-            1 -> "1 profile"
-            else -> "$profiles profiles"
+            else -> plural("server_meta_profiles", profiles)
         },
-    ).joinToString(" \u00b7 ")
+    ).joinToString(" · ")
 
-    fun removeServerTitle(name: String) = "Remove $name?"
+    fun removeServerTitle(name: String): String = text("remove_server_title", "name" to name)
 
-    fun removeServerMessage(profiles: Int) = when (profiles) {
-        0 -> "Nothing changes on the server."
-        1 -> "1 profile is signed out on this device and its downloads are deleted. Nothing changes on the server."
-        else -> "$profiles profiles are signed out on this device and their downloads are deleted. Nothing changes on the server."
+    fun removeServerMessage(profiles: Int): String = when (profiles) {
+        0 -> text("remove_server_message_none")
+        else -> plural("remove_server_message", profiles)
     }
 
-    fun removeServerHelp(profiles: Int) = when (profiles) {
-        0 -> "Nothing changes on the server."
-        1 -> "Signs out its profile on this device and deletes its downloads. Nothing changes on the server."
-        else -> "Signs out its $profiles profiles on this device and deletes their downloads. Nothing changes on the server."
+    fun removeServerHelp(profiles: Int): String = when (profiles) {
+        0 -> text("remove_server_message_none")
+        else -> plural("remove_server_help", profiles)
     }
 
     // Add server
-    val addAServer = "Add a server"
-    val serverAddress = "Server address"
-    val serverAddressExample = "192.168.1.20:8096"
-    val serverAddressHelp = "Without http:// or a port, VibeyFin tries https, then http, on the usual ports."
+    val addAServer: String get() = text("add_a_server")
+    val serverAddress: String get() = text("server_address")
+    val serverAddressExample: String get() = text("server_address_example")
+    val serverAddressHelp: String get() = text("server_address_help")
 
-    fun addServerNext(name: String) = "Next: choose who's watching on $name."
+    fun addServerNext(name: String): String = text("add_server_next", "name" to name)
 
-    val connect = "Connect"
-    val connecting = "Connecting"
-    val found = "Found"
-    val saveAddress = "Save address"
-    val done = "Done"
+    val connect: String get() = text("connect")
+    val connecting: String get() = text("connecting")
+    val found: String get() = text("found")
+    val saveAddress: String get() = text("save_address")
+    val done: String get() = text("done")
 
-    fun alsoReachableAt(addresses: List<String>) = "Also reachable at " + addresses.joinToString(", ")
+    fun alsoReachableAt(addresses: List<String>): String = text("also_reachable_at", "addresses" to addresses.joinToString(", "))
 
-    fun alreadySaved(addressIsNew: Boolean) = if (addressIsNew) {
-        "You already have this server. This adds the new address to it."
+    fun alreadySaved(addressIsNew: Boolean): String = if (addressIsNew) {
+        text("already_saved_new_address")
     } else {
-        "You already have this server at this address."
+        text("already_saved_existing_address")
     }
 
     // Home and browsing
-    val home = "Home"
+    val home: String get() = text("home")
 
     /** The header of a library's row of what was added most recently. */
-    fun recentlyAddedIn(library: String) = "Recently added in $library"
+    fun recentlyAddedIn(library: String): String = text("recently_added_in", "library" to library)
 
     /** The header of the row that stands in for those when the libraries couldn't be listed. */
-    val recentlyAdded = "Recently added"
+    val recentlyAdded: String get() = text("recently_added")
 
     /** The action in a row's header that opens the whole list, and what a screen reader says for it. */
-    val seeAll = "See all"
+    val seeAll: String get() = text("see_all")
 
-    fun seeAllIn(row: String) = "See all, $row"
+    fun seeAllIn(row: String): String = text("see_all_in", "row" to row)
 
     /** The main navigation bar: its labels, and the name a screen reader gives the bar. */
-    val tabHome = "Home"
-    val tabLibrary = "Library"
-    val tabDownloads = "Downloads"
-    val mainNavigation = "Main navigation"
+    val tabHome: String get() = text("tab_home")
+    val tabLibrary: String get() = text("tab_library")
+    val tabDownloads: String get() = text("tab_downloads")
+    val mainNavigation: String get() = text("main_navigation")
 
     /** The category buttons under Home's header, in the order they are shown. */
-    val filterShows = "Shows"
-    val filterMovies = "Movies"
-    val filterNew = "New"
-    val filterCategories = "Categories"
+    val filterShows: String get() = text("filter_shows")
+    val filterMovies: String get() = text("filter_movies")
+    val filterNew: String get() = text("filter_new")
+    val filterCategories: String get() = text("filter_categories")
 
     /** What a screen reader says for the group of category buttons. */
-    val filterHome = "Filter Home"
+    val filterHome: String get() = text("filter_home")
 
     /** What a screen reader says for a button that opens a list of genres. */
-    fun opensList(label: String) = "$label, opens a list"
+    fun opensList(label: String): String = text("opens_list", "label" to label)
 
     /** The Sort and Genre buttons on a category page, and the rows of their sheets. */
-    val sortName = "Name"
-    val sortAdded = "Recently added"
-    val sortRating = "Rating"
-    val sortTitle = "Sort by"
-    val genreTitle = "Genre"
-    val genreButton = "Genre"
-    val allGenres = "All genres"
+    val sortName: String get() = text("sort_name")
+    val sortAdded: String get() = text("sort_added")
+    val sortRating: String get() = text("sort_rating")
+    val sortTitle: String get() = text("sort_title")
+    val genreTitle: String get() = text("genre_title")
+    val genreButton: String get() = text("genre_button")
+    val allGenres: String get() = text("all_genres")
 
     /** The Library page's extra filters. */
-    val yearButton = "Year"
-    val yearTitle = "Release year"
+    val yearButton: String get() = text("year_button")
+    val yearTitle: String get() = text("year_title")
 
-    fun yearChip(label: String) = "Year: $label"
+    fun yearChip(label: String): String = text("year_chip", "label" to label)
 
-    val allYears = "All years"
-    val decade2020s = "2020s"
-    val decade2010s = "2010s"
-    val decade2000s = "2000s"
-    val decade1990s = "1990s"
-    val decade1980s = "1980s"
-    val decadeOlder = "Before 1980"
-    val peopleButton = "People"
-    val peopleTitle = "People"
+    val allYears: String get() = text("all_years")
+    val decade2020s: String get() = text("decade_2020s")
+    val decade2010s: String get() = text("decade_2010s")
+    val decade2000s: String get() = text("decade_2000s")
+    val decade1990s: String get() = text("decade_1990s")
+    val decade1980s: String get() = text("decade_1980s")
+    val decadeOlder: String get() = text("decade_older")
+    val peopleButton: String get() = text("people_button")
+    val peopleTitle: String get() = text("people_title")
 
-    fun peopleChip(name: String) = "With $name"
+    fun peopleChip(name: String): String = text("people_chip", "name" to name)
 
-    val peopleSearchHint = "Search for an actor or a director"
-    val peoplePrompt = "Type a name to find someone."
-    val noPeopleFound = "Nobody by that name."
-    val clearFilters = "Clear"
+    val peopleSearchHint: String get() = text("people_search_hint")
+    val peoplePrompt: String get() = text("people_prompt")
+    val noPeopleFound: String get() = text("no_people_found")
+    val clearFilters: String get() = text("clear_filters")
 
-    /** "1,284 titles" under the Library's title. */
-    fun libraryCount(count: Int): String {
-        val digits = count.toString()
-        val grouped = digits.reversed().chunked(3).joinToString(",").reversed()
-        return if (count == 1) "1 title" else "$grouped titles"
-    }
+    fun sortChip(label: String): String = text("sort_chip", "label" to label)
 
-    fun sortChip(label: String) = "Sort: $label"
-
-    fun genreChip(name: String) = "Genre: $name"
+    fun genreChip(name: String): String = text("genre_chip", "name" to name)
 
     /** What a screen reader says for a sheet row that holds [count] titles. */
-    fun titleCount(name: String, count: Int) = if (count == 1) "$name, 1 title" else "$name, $count titles"
+    fun titleCount(name: String, count: Int): String = plural("title_count", count, "name" to name)
 
     /** In the Categories sheet when the server has none. */
-    val noCategories = "This server has no categories."
+    val noCategories: String get() = text("no_categories")
 
-    /** On the Library and Downloads tabs until their features land. */
-    val notAvailableYet = "Not available yet"
-    val switchProfile = "Switch profile"
-    val switchServer = "Switch server"
-    val emptyFolder = "There's nothing in here yet."
-    val nothingMatchesFilters = "Nothing matches these filters. Try taking one off, or tap Clear."
-    val loadMoreFailed = "Couldn't load the rest of this list. Check your connection and try again."
+    val switchProfile: String get() = text("switch_profile")
+    val switchServer: String get() = text("switch_server")
+    val emptyFolder: String get() = text("empty_folder")
+    val nothingMatchesFilters: String get() = text("nothing_matches_filters")
+    val loadMoreFailed: String get() = text("load_more_failed")
 
-    val continueWatching = "Continue watching"
+    val continueWatching: String get() = text("continue_watching")
 
     /** The label of the Watched button under Play; its state is the tick. */
-    val watchedAction = "Watched"
-    val viewEpisode = "View episode"
+    val watchedAction: String get() = text("watched_action")
+    val viewEpisode: String get() = text("view_episode")
 
     /** "S1 E4" on an episode's card; "E4" when the season is not known. */
-    fun episodeNumber(number: Int) = "Episode $number"
+    fun episodeNumber(number: Int): String = text("episode_number", "number" to number)
 
     /** The tag at the start of a Seerr page's facts: where the title stands in one or two words. */
-    fun seerrTag(state: RequestState): String = seerrStateLabel(state) ?: "Not in your library"
+    fun seerrTag(state: RequestState): String = seerrStateLabel(state) ?: text("seerr_tag_not_in_library")
 
     fun episodeTag(season: Int?, episode: Int?): String? = when {
-        season != null && episode != null -> "S$season E$episode"
-        episode != null -> "E$episode"
+        season != null && episode != null -> text("episode_tag_season_episode", "season" to season, "episode" to episode)
+        episode != null -> text("episode_tag_episode", "episode" to episode)
         else -> null
     }
 
@@ -286,65 +277,62 @@ object Strings {
         val year = parts.getOrNull(0)?.toIntOrNull() ?: return null
         val month = parts.getOrNull(1)?.toIntOrNull()?.takeIf { it in 1..12 } ?: return null
         val day = parts.getOrNull(2)?.take(2)?.toIntOrNull() ?: return null
-        return "$day ${MONTHS[month - 1]} $year"
+        return text("release_date", "day" to day, "month" to Formats.current.monthName(month, false), "year" to year)
     }
 
-    private val MONTHS = listOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
+    fun ratingTag(rating: Double): String = "★ ${Formats.current.decimal(kotlin.math.round(rating * 10) / 10.0, 1, 1)}"
 
-    /** A rating tag on a picture: "\u2605 8.1". */
-    fun ratingTag(rating: Double): String = "\u2605 ${kotlin.math.round(rating * 10) / 10.0}"
-
-    val markSeriesWatched = "Mark series as watched"
-    val markSeriesUnwatched = "Mark series as unwatched"
-    val markWatched = "Mark as watched"
-    val markUnwatched = "Mark as unwatched"
-    val removeFromContinueWatching = "Remove from Continue watching"
-    val removedFromContinueWatching = "Removed from Continue watching"
-    val undo = "Undo"
-    val details = "Details"
+    val markSeriesWatched: String get() = text("mark_series_watched")
+    val markSeriesUnwatched: String get() = text("mark_series_unwatched")
+    val markWatched: String get() = text("mark_watched")
+    val markUnwatched: String get() = text("mark_unwatched")
+    val removeFromContinueWatching: String get() = text("remove_from_continue_watching")
+    val removedFromContinueWatching: String get() = text("removed_from_continue_watching")
+    val undo: String get() = text("undo")
+    val details: String get() = text("details")
 
     /** In an item's facts, once the server says the user has watched it. */
-    val watched = "Watched"
+    val watched: String get() = text("watched")
 
     /** What a screen reader offers for a long press on a poster, a card or a search result: it opens the poster menu. */
-    val showOptions = "Show options"
+    val showOptions: String get() = text("show_options")
 
     /** What a screen reader says for the "…" menu on the item page. */
-    val moreActions = "More actions"
+    val moreActions: String get() = text("more_actions")
 
     /** What a screen reader says while the Continue watching row is still loading. */
-    val loadingContinueWatching = "Loading Continue watching"
+    val loadingContinueWatching: String get() = text("loading_continue_watching")
 
     /** What a screen reader says while a screen shows grey placeholders instead of its content. */
-    val loadingPage = "Loading"
+    val loadingPage: String get() = text("loading_page")
 
     /**
      * What a screen reader says for a Continue watching card: the title, what it is (the episode, or
      * a movie's year) and, for something in progress, how far in the user is.
      */
-    fun continueCardLabel(title: String, detail: String?, percentWatched: Int?) = listOfNotNull(title, detail, percentWatched?.let { "$it% watched" }).joinToString(", ")
+    fun continueCardLabel(title: String, detail: String?, percentWatched: Int?): String = listOfNotNull(title, detail, percentWatched?.let { text("continue_card_percent_watched", "percent" to it) }).joinToString(", ")
 
     /** What a screen reader says for a poster: the title and, when known, the year. */
-    fun cardLabel(title: String, year: Int?) = listOfNotNull(title, year?.toString()).joinToString(", ")
+    fun cardLabel(title: String, year: Int?): String = listOfNotNull(title, year?.toString()).joinToString(", ")
 
     // Playback
-    val play = "Play"
-    val startOver = "Start over"
+    val play: String get() = text("play")
+    val startOver: String get() = text("start_over")
 
     /** The card in the last seconds of an episode that offers the next one. */
-    val upNext = "Up next"
-    val playNow = "Play now"
+    val upNext: String get() = text("up_next")
+    val playNow: String get() = text("play_now")
 
     /** The player's icon button that starts the next episode now; its hint is the episode's label and title. */
-    val nextEpisode = "Next episode"
+    val nextEpisode: String get() = text("next_episode")
 
     /** Dismisses the card and plays the episode out to the end of its credits. */
-    val watchCredits = "Watch credits"
+    val watchCredits: String get() = text("watch_credits")
 
-    fun upNextIn(seconds: Int) = "Starts in $seconds"
+    fun upNextIn(seconds: Int): String = text("up_next_in", "seconds" to seconds)
 
     /** The Resume button when the length isn't known. */
-    val resume = "Resume"
+    val resume: String get() = text("resume")
 
     /** How much is left to watch: "38m left", or "1h 52m left" from an hour. Never under a minute. */
     fun timeLeftShort(remainingMs: Long): String {
@@ -352,87 +340,87 @@ object Strings {
         val hours = minutes / 60
         val rest = minutes % 60
         val left = when {
-            hours == 0L -> "${rest}m"
-            rest == 0L -> "${hours}h"
-            else -> "${hours}h ${rest}m"
+            hours == 0L -> text("time_left_short_minutes", "rest" to rest)
+            rest == 0L -> text("time_left_short_hours", "hours" to hours)
+            else -> text("time_left_short_hours_minutes", "hours" to hours, "rest" to rest)
         }
-        return "$left left"
+        return text("time_left_short", "left" to left)
     }
 
     /** The Resume button: "Resume · 38m left". */
-    fun resumeTimeLeft(remainingMs: Long) = "Resume · ${timeLeftShort(remainingMs)}"
+    fun resumeTimeLeft(remainingMs: Long): String = text("resume_time_left", "timeLeft" to timeLeftShort(remainingMs))
 
-    val pause = "Pause"
-    val close = "Close"
-    val playbackPosition = "Playback position"
-    val audio = "Audio"
-    val subtitles = "Subtitles"
-    val subtitlesOff = "Off"
-    val audioAndSubtitles = "Audio and subtitles"
+    val pause: String get() = text("pause")
+    val close: String get() = text("close")
+    val playbackPosition: String get() = text("playback_position")
+    val audio: String get() = text("audio")
+    val subtitles: String get() = text("subtitles")
+    val subtitlesOff: String get() = text("subtitles_off")
+    val audioAndSubtitles: String get() = text("audio_and_subtitles")
 
     /** The player button that turns the video into a small window over other apps. */
-    val pictureInPicture = "Picture in picture"
+    val pictureInPicture: String get() = text("picture_in_picture")
 
     /** The player's status while the video plays on another screen over AirPlay: the receiver's [device] name, or a generic one when the system gave none. */
-    fun playingOn(device: String?): String = device?.trim()?.takeIf { it.isNotEmpty() }?.let { "Playing on $it" } ?: "Playing on AirPlay"
+    fun playingOn(device: String?): String = device?.trim()?.takeIf { it.isNotEmpty() }?.let { text("playing_on", "device" to it) } ?: text("playing_on_airplay")
 
     /** The level a swipe on the player set, for the indicator's screen-reader text: "Volume 60%". */
-    fun volumeLevel(percent: Int) = "Volume $percent%"
+    fun volumeLevel(percent: Int): String = text("volume_level", "percent" to percent)
 
-    fun brightnessLevel(percent: Int) = "Brightness $percent%"
+    fun brightnessLevel(percent: Int): String = text("brightness_level", "percent" to percent)
 
     /** The name of the Android notification channel for the media controls shown while a video plays. */
-    val playbackNotificationChannel = "Playback"
+    val playbackNotificationChannel: String get() = text("playback_notification_channel")
 
     /** One spoken phrase for a label and its value, "Bitrate, 4.5 Mbps", where the two are drawn apart. */
-    fun labelled(label: String, value: String) = "$label, $value"
+    fun labelled(label: String, value: String): String = text("labelled", "label" to label, "value" to value)
 
     // Playback stats
-    fun statsMethod(method: PlayMethod) = when (method) {
-        PlayMethod.DirectPlay -> "Direct play"
-        PlayMethod.DirectStream -> "Direct stream"
-        PlayMethod.Transcode -> "Transcode"
+    fun statsMethod(method: PlayMethod): String = when (method) {
+        PlayMethod.DirectPlay -> text("stats_method_direct_play")
+        PlayMethod.DirectStream -> text("stats_method_direct_stream")
+        PlayMethod.Transcode -> text("stats_method_transcode")
     }
 
     /** How a stream plays, after its codec in the item screen's technical info: "HEVC (Direct play)". */
-    fun playoutTag(method: PlayMethod) = "(${statsMethod(method)})"
+    fun playoutTag(method: PlayMethod): String = text("playout_tag", "method" to statsMethod(method))
 
     /** The server's transcode reason in plain words; an unknown one is its name, split into words. */
-    fun transcodeReason(code: String) = when (code) {
-        "ContainerNotSupported" -> "The file type isn't supported"
-        "VideoCodecNotSupported" -> "The video format isn't supported"
-        "AudioCodecNotSupported" -> "The audio format isn't supported"
-        "SubtitleCodecNotSupported" -> "The subtitle format isn't supported"
-        "VideoProfileNotSupported", "VideoLevelNotSupported" -> "The video profile isn't supported"
-        "VideoRangeTypeNotSupported" -> "The HDR format isn't supported"
-        "VideoResolutionNotSupported" -> "The resolution is too high"
-        "VideoBitDepthNotSupported" -> "The video's bit depth isn't supported"
-        "VideoFramerateNotSupported" -> "The frame rate isn't supported"
-        "AudioChannelsNotSupported" -> "The audio has too many channels"
-        "AudioIsExternal", "SecondaryAudioNotSupported" -> "The audio track is separate"
-        "ContainerBitrateExceedsLimit", "VideoBitrateNotSupported", "AudioBitrateNotSupported" -> "The bitrate is above the limit"
+    fun transcodeReason(code: String): String = when (code) {
+        "ContainerNotSupported" -> text("transcode_reason_container_not_supported")
+        "VideoCodecNotSupported" -> text("transcode_reason_video_codec_not_supported")
+        "AudioCodecNotSupported" -> text("transcode_reason_audio_codec_not_supported")
+        "SubtitleCodecNotSupported" -> text("transcode_reason_subtitle_codec_not_supported")
+        "VideoProfileNotSupported", "VideoLevelNotSupported" -> text("transcode_reason_video_profile_not_supported")
+        "VideoRangeTypeNotSupported" -> text("transcode_reason_video_range_type_not_supported")
+        "VideoResolutionNotSupported" -> text("transcode_reason_video_resolution_not_supported")
+        "VideoBitDepthNotSupported" -> text("transcode_reason_video_bit_depth_not_supported")
+        "VideoFramerateNotSupported" -> text("transcode_reason_video_framerate_not_supported")
+        "AudioChannelsNotSupported" -> text("transcode_reason_audio_channels_not_supported")
+        "AudioIsExternal", "SecondaryAudioNotSupported" -> text("transcode_reason_audio_is_external")
+        "ContainerBitrateExceedsLimit", "VideoBitrateNotSupported", "AudioBitrateNotSupported" -> text("transcode_reason_container_bitrate_exceeds_limit")
         else -> code.replace(Regex("(?<=[a-z])(?=[A-Z])"), " ").lowercase().replaceFirstChar(Char::uppercase)
     }
 
-    val statsLabelMethod = "Method"
-    val statsLabelReasons = "Reasons"
-    val statsLabelEngine = "Engine"
-    val statsEngineAvPlayer = "AVPlayer"
+    val statsLabelMethod: String get() = text("stats_label_method")
+    val statsLabelReasons: String get() = text("stats_label_reasons")
+    val statsLabelEngine: String get() = text("stats_label_engine")
+    val statsEngineAvPlayer: String get() = text("stats_engine_av_player")
 
     /** Aether, with how it shows the picture (the engine's own name for the route). */
-    fun statsEngineAether(route: String) = "Aether $route"
+    fun statsEngineAether(route: String): String = text("stats_engine_aether", "route" to route)
 
-    val statsLabelVideo = "Video"
-    val statsLabelAudio = "Audio"
-    val statsLabelResolution = "Resolution"
-    val statsLabelFrameRate = "Frame rate"
-    val statsLabelBitrate = "Bitrate"
-    val statsLabelDroppedFrames = "Dropped frames"
-    val statsLabelThroughput = "Throughput"
-    val statsLabelBuffer = "Buffer"
+    val statsLabelVideo: String get() = text("stats_label_video")
+    val statsLabelAudio: String get() = text("stats_label_audio")
+    val statsLabelResolution: String get() = text("stats_label_resolution")
+    val statsLabelFrameRate: String get() = text("stats_label_frame_rate")
+    val statsLabelBitrate: String get() = text("stats_label_bitrate")
+    val statsLabelDroppedFrames: String get() = text("stats_label_dropped_frames")
+    val statsLabelThroughput: String get() = text("stats_label_throughput")
+    val statsLabelBuffer: String get() = text("stats_label_buffer")
 
     /** Shown for a stat nobody can tell. */
-    val statsUnavailable = "–"
+    val statsUnavailable: String get() = text("stats_unavailable")
 
     /**
      * The short codec name the stats overlay shows ("h264", "eac3 atmos"), the same on both platforms.
@@ -444,7 +432,7 @@ object Strings {
         return CODEC_NAMES[key] ?: key.substringAfter('/').removePrefix("x-")
     }
 
-    private val CODEC_NAMES = mapOf(
+    private val CODEC_NAMES: Map<String, String> = mapOf(
         // Android MIME types
         "video/avc" to "h264",
         "video/hevc" to "hevc",
@@ -481,26 +469,25 @@ object Strings {
         ".mp3" to "mp3",
     )
 
-    fun statsResolution(width: Int, height: Int) = "$width × $height"
+    fun statsResolution(width: Int, height: Int): String = text("stats_resolution", "width" to width, "height" to height)
 
     /** `24 fps`, `23.98 fps`: two decimals at most, none when the rate is whole. */
     fun statsFrameRate(framesPerSecond: Float): String {
         val hundredths = (framesPerSecond * 100).roundToInt()
-        val text = if (hundredths % 100 == 0) (hundredths / 100).toString() else (hundredths / 100f).toString()
-        return "$text fps"
+        return text("stats_frame_rate", "rate" to Formats.current.decimal(hundredths / 100.0, 0, 2))
     }
 
     /** `850 kbps` below a megabit, `4.5 Mbps` from there. Used for bitrate and throughput. */
-    fun statsBitrate(kbps: Int) = if (kbps < 1000) "$kbps kbps" else "${kbps / 1000}.${(kbps % 1000) / 100} Mbps"
+    fun statsBitrate(kbps: Int): String = if (kbps < 1000) text("stats_bitrate_kbps", "kbps" to kbps) else text("stats_bitrate_mbps", "megabits" to Formats.current.decimal((kbps / 100) / 10.0, 1, 1))
 
     /** `12.3 s` of video buffered ahead. */
     fun statsBuffer(milliseconds: Long): String {
         val tenths = (milliseconds.coerceAtLeast(0) / 100)
-        return "${tenths / 10}.${tenths % 10} s"
+        return text("stats_buffer", "seconds" to Formats.current.decimal(tenths / 10.0, 1, 1))
     }
 
     /** What sits between the parts of one meta line, such as the series name and the episode. */
-    const val META_SEPARATOR = "  ·  "
+    val META_SEPARATOR: String get() = text("meta_separator")
 
     /** The player's one meta line: the [subtitle] then the picture [badge], what is there; null when neither is. */
     fun metaLine(subtitle: String?, badge: String?): String? = listOfNotNull(subtitle, badge).filter { it.isNotBlank() }.joinToString(META_SEPARATOR).ifEmpty { null }
@@ -516,144 +503,139 @@ object Strings {
 
     /** The button that jumps over a marked part of the video. */
     fun skip(type: SegmentType): String = when (type) {
-        SegmentType.Intro -> "Skip intro"
-        SegmentType.Outro -> "Skip credits"
-        SegmentType.Recap -> "Skip recap"
-        SegmentType.Preview -> "Skip preview"
-        SegmentType.Commercial -> "Skip ad"
+        SegmentType.Intro -> text("skip_intro")
+        SegmentType.Outro -> text("skip_credits")
+        SegmentType.Recap -> text("skip_recap")
+        SegmentType.Preview -> text("skip_preview")
+        SegmentType.Commercial -> text("skip_ad")
         SegmentType.Unknown -> ""
     }
 
     // Format badges
-    val badgeDolbyVision = "Dolby Vision"
-    val badgeHdr10 = "HDR10"
-    val badgeHlg = "HLG"
-    val badge4k = "4K"
-    val badgeHd = "HD"
+    val badgeDolbyVision: String get() = text("badge_dolby_vision")
+    val badgeHdr10: String get() = text("badge_hdr10")
+    val badgeHlg: String get() = text("badge_hlg")
+    val badge4k: String get() = text("badge_4k")
+    val badgeHd: String get() = text("badge_hd")
 
-    val speed = "Speed"
+    val speed: String get() = text("speed")
 
     /** `1x`, `0.75x`, `1.5x`. */
     fun speedValue(speed: Float): String {
         val hundredths = (speed * 100).roundToInt()
-        val text = when {
-            hundredths % 100 == 0 -> (hundredths / 100).toString()
-            hundredths % 10 == 0 -> "${hundredths / 100}.${(hundredths % 100) / 10}"
-            else -> "${hundredths / 100}.${(hundredths % 100).toString().padStart(2, '0')}"
-        }
-        return "${text}x"
+        return text("speed_value", "number" to Formats.current.decimal(hundredths / 100.0, 0, 2))
     }
 
     /** The page of a movie, an episode or a show: its sections, and what the Play button says for a show. */
-    val cast = "Cast"
-    val inCollections = "Collections"
+    val cast: String get() = text("cast")
+    val inCollections: String get() = text("in_collections")
 
     /** The actions under Play on an item's page. My List is the server's favourites. */
-    val myList = "My List"
+    val myList: String get() = text("my_list")
 
-    fun myListAction(onList: Boolean) = if (onList) "Remove from My List" else "Add to My List"
+    fun myListAction(onList: Boolean): String = if (onList) text("my_list_action_remove") else text("my_list_action_add")
 
-    val trailer = "Trailer"
+    val trailer: String get() = text("trailer")
 
     /** The poster menu's greyed row while the server is still asked whether the title has a trailer. */
-    val checkingTrailer = "Checking for trailer\u2026"
-    val download = "Download"
+    val checkingTrailer: String get() = text("checking_trailer")
+    val download: String get() = text("download")
 
     /** What a season's button says: always "Season 3"; the server's own names ("Series 3", "Season 3") are not used. 0 is Specials. */
-    val specials = "Specials"
+    val specials: String get() = text("specials")
 
-    fun season(number: Int) = "Season $number"
+    fun season(number: Int): String = text("season", "number" to number)
 
-    val moreLikeThis = "More like this"
-    val technicalInfo = "Technical info"
-    val more = "More"
-    val less = "Less"
+    val moreLikeThis: String get() = text("more_like_this")
+    val technicalInfo: String get() = text("technical_info")
+    val more: String get() = text("more")
+    val less: String get() = text("less")
 
     /** Search. */
-    val tabSearch = "Search"
-    val searchHint = "Search movies, shows and people"
-    val searchPrompt = "Find something to watch"
-    val searchPromptHelp = "Type a title, a show or a name."
-    val clearSearch = "Clear"
+    val tabSearch: String get() = text("tab_search")
+    val searchHint: String get() = text("search_hint")
+    val searchPrompt: String get() = text("search_prompt")
+    val searchPromptHelp: String get() = text("search_prompt_help")
+    val clearSearch: String get() = text("clear_search")
 
-    fun featured(title: String) = "Featured: $title, opens its page"
+    fun featured(title: String): String = text("featured", "title" to title)
 
     /** One page of the hero's carousel, [index] counted from 1. */
-    fun featuredPage(title: String, index: Int, count: Int) = "Featured, $index of $count: $title, opens its page"
+    fun featuredPage(title: String, index: Int, count: Int): String = text("featured_page", "index" to index, "count" to count, "title" to title)
 
-    val recentSearches = "Recent searches"
-    val clearHistory = "Clear all"
+    val recentSearches: String get() = text("recent_searches")
+    val clearHistory: String get() = text("clear_history")
 
-    fun removeFromHistory(term: String) = "Remove $term from recent searches"
+    fun removeFromHistory(term: String): String = text("remove_from_history", "term" to term)
 
-    fun noSearchResults(query: String) = "Nothing found for \u201C$query\u201D"
+    fun noSearchResults(query: String): String = text("no_search_results", "query" to query)
 
-    val noSearchResultsHelp = "Check the spelling, or try fewer words."
-    val searchAll = "All"
-    val searchMovies = "Movies"
-    val searchShows = "Shows"
-    val searchEpisodes = "Episodes"
-    val searchPeople = "People"
-    val searchCollections = "Collections"
+    val noSearchResultsHelp: String get() = text("no_search_results_help")
+    val searchAll: String get() = text("search_all")
+    val searchMovies: String get() = text("search_movies")
+    val searchShows: String get() = text("search_shows")
+    val searchEpisodes: String get() = text("search_episodes")
+    val searchPeople: String get() = text("search_people")
+    val searchCollections: String get() = text("search_collections")
 
-    fun searchResultDescription(title: String, subtitle: String?) = if (subtitle.isNullOrBlank()) title else "$title, $subtitle"
+    fun searchResultDescription(title: String, subtitle: String?): String = if (subtitle.isNullOrBlank()) title else text("search_result_description", "title" to title, "subtitle" to subtitle)
 
     /** A cast member's page. */
-    fun born(year: Int) = "Born $year"
+    fun born(year: Int): String = text("born", "year" to year)
 
-    val noAppearances = "Nothing in your library yet."
-    val noBiography = "No biography on the server."
+    val noAppearances: String get() = text("no_appearances")
+    val noBiography: String get() = text("no_biography")
 
-    fun personDescription(name: String, role: String?) = if (role.isNullOrBlank()) "$name, opens their page" else "$name as $role, opens their page"
+    fun personDescription(name: String, role: String?): String = if (role.isNullOrBlank()) text("person_description_without_role", "name" to name) else text("person_description_with_role", "name" to name, "role" to role)
 
-    val extras = "Extras"
+    val extras: String get() = text("extras")
 
     /** The sub-headings of a collection's members. */
-    val collectionMovies = "Movies"
-    val collectionShows = "Shows"
-    val collectionOther = "More"
+    val collectionMovies: String get() = text("collection_movies")
+    val collectionShows: String get() = text("collection_shows")
+    val collectionOther: String get() = text("collection_other")
 
-    fun collectionMovieCount(count: Int) = if (count == 1) "1 movie" else "$count movies"
+    fun collectionMovieCount(count: Int): String = plural("collection_movie_count", count)
 
-    fun collectionShowCount(count: Int) = if (count == 1) "1 show" else "$count shows"
+    fun collectionShowCount(count: Int): String = plural("collection_show_count", count)
 
-    fun collectionTitles(count: Int) = if (count == 1) "1 title" else "$count titles"
+    fun collectionTitles(count: Int): String = plural("collection_titles", count)
 
-    fun seasonCount(count: Int) = if (count == 1) "1 season" else "$count seasons"
+    fun seasonCount(count: Int): String = plural("season_count", count)
 
-    fun playEpisode(episode: String) = "Play $episode"
+    fun playEpisode(episode: String): String = text("play_episode", "episode" to episode)
 
-    fun resumeEpisodeFrom(episode: String, positionMs: Long) = "Resume $episode from ${clock(positionMs)}"
+    fun resumeEpisodeFrom(episode: String, positionMs: Long): String = text("resume_episode_from", "episode" to episode, "position" to clock(positionMs))
 
     /** The link from an episode's or a season's page to its show: what a screen reader says for it. */
-    fun goToSeries(name: String) = "Go to $name"
+    fun goToSeries(name: String): String = text("go_to_series", "name" to name)
 
     /** An episode's length in its row. */
-    fun minutesShort(minutes: Int) = "$minutes min"
+    fun minutesShort(minutes: Int): String = text("minutes_short", "minutes" to minutes)
 
     /** The label of the video line in the collapsed technical info, and the long-press entry on an episode. */
-    val technicalVideo = "Video"
+    val technicalVideo: String get() = text("technical_video")
 
     /** The label of the line in the technical info that says how much storage the file takes. */
-    val technicalSize = "Size"
+    val technicalSize: String get() = text("technical_size")
 
-    val technicalAudio = "Audio"
-    val technicalSubtitles = "Subtitles"
-    val trackForced = "Forced"
-    val trackSdh = "SDH"
-    val trackExternal = "External"
+    val technicalAudio: String get() = text("technical_audio")
+    val technicalSubtitles: String get() = text("technical_subtitles")
+    val trackForced: String get() = text("track_forced")
+    val trackSdh: String get() = text("track_sdh")
+    val trackExternal: String get() = text("track_external")
 
     /** What a screen reader says for a season button, and for the row of them. */
-    fun seasonDescription(name: String, selected: Boolean) = if (selected) "$name, selected" else name
+    fun seasonDescription(name: String, selected: Boolean): String = if (selected) text("season_description_selected", "name" to name) else name
 
-    fun seasonsDescription(count: Int) = "Seasons, $count"
+    fun seasonsDescription(count: Int): String = text("seasons_description", "count" to count)
 
     /** In the season's list when it holds nothing, and when the show has no seasons. */
-    val noEpisodes = "There are no episodes in this season yet."
-    val noSeasons = "This show has no seasons yet."
+    val noEpisodes: String get() = text("no_episodes")
+    val noSeasons: String get() = text("no_seasons")
 
     /** A track the file gives no name or language for. */
-    fun track(index: Int) = "Track ${index + 1}"
+    fun track(index: Int): String = text("track", "number" to index + 1)
 
     /** A time in a video as a clock: `4:07`, or `1:24:30` from an hour on. */
     fun clock(milliseconds: Long): String {
@@ -667,374 +649,352 @@ object Strings {
     }
 
     /** How much of the video is left, shown opposite the elapsed time: `−1:12`, with a true minus sign (U+2212), not a hyphen. */
-    fun timeLeft(positionMs: Long, durationMs: Long) = "\u2212" + clock((durationMs - positionMs).coerceAtLeast(0))
+    fun timeLeft(positionMs: Long, durationMs: Long): String = "−" + clock((durationMs - positionMs).coerceAtLeast(0))
 
     /** What a screen reader says for the scrubber. */
-    fun positionDescription(positionMs: Long, durationMs: Long) = "${clock(positionMs)} of ${clock(durationMs)}"
+    fun positionDescription(positionMs: Long, durationMs: Long): String = text("position_description", "position" to clock(positionMs), "duration" to clock(durationMs))
 
     // Settings
-    val alwaysAskWhoIsWatchingTitle = "Always ask who's watching"
-    val alwaysAskWhoIsWatchingHelp =
-        "Show the profile screen every time the app opens instead of going straight to the last profile."
-    val playbackStatsTitle = "Show playback stats"
-    val playbackStatsHelp =
-        "Show codec, bitrate and how the server is delivering the video in the player. Applies to this profile."
-    val playbackSection = "Playback"
-    val skipBack = "Skip back"
-    val skipForward = "Skip forward"
+    val languageTitle: String get() = text("language_title")
+    val languageDeviceDefault: String get() = text("language_device_default")
+    val languageHelp: String get() = text("language_help")
 
-    fun skipSeconds(seconds: Int) = "$seconds seconds"
+    val alwaysAskWhoIsWatchingTitle: String get() = text("always_ask_who_is_watching_title")
+    val playbackStatsTitle: String get() = text("playback_stats_title")
+    val playbackSection: String get() = text("playback_section")
+    val skipBack: String get() = text("skip_back")
+    val skipForward: String get() = text("skip_forward")
 
-    fun skipBackLabel(seconds: Int) = "Back $seconds seconds"
+    fun skipBackLabel(seconds: Int): String = text("skip_back_label", "seconds" to seconds)
 
-    fun skipForwardLabel(seconds: Int) = "Forward $seconds seconds"
+    fun skipForwardLabel(seconds: Int): String = text("skip_forward_label", "seconds" to seconds)
 
-    fun seekFlash(seconds: Int) = "${seconds}s"
+    fun seekFlash(seconds: Int): String = text("seek_flash", "seconds" to seconds)
 
-    val autoSkipSegments = "Auto skip intros and recaps"
-    val autoSkipSegmentsHelp = "Jump past marked intros and recaps without asking."
-    val bufferAhead = "Buffer ahead"
-    val bufferAheadAuto = "Auto"
+    val autoSkipSegments: String get() = text("auto_skip_segments")
+    val bufferAhead: String get() = text("buffer_ahead")
+    val bufferAheadAuto: String get() = text("buffer_ahead_auto")
 
-    fun bufferAheadChoice(seconds: Int) = if (seconds == 0) bufferAheadAuto else "$seconds seconds"
+    val bufferAheadHelp: String get() = text("buffer_ahead_help")
+    val heroMovie: String get() = text("hero_movie")
+    val heroShow: String get() = text("hero_show")
+    val homeHeroItemsTitle: String get() = text("home_hero_items_title")
+    val homeHeroItemsOff: String get() = text("home_hero_items_off")
 
-    val bufferAheadHelp =
-        "How much video the player loads ahead of where you are. A longer buffer rides out a slow connection but uses more data and memory. Auto leaves it to the device's player."
-    val skipHelp = "These set the player's buttons and the double-tap on the left and right of the picture."
-    val heroMovie = "Movie"
-    val heroShow = "Show"
-    val homeHeroItemsTitle = "Featured titles on Home"
-    val homeHeroItemsOff = "Off"
+    fun homeHeroItemsCount(n: Int): String = plural("home_hero_items_count", n)
 
-    fun homeHeroItemsCount(n: Int) = if (n == 1) "1 title" else "$n titles"
+    val homeGenreRowsTitle: String get() = text("home_genre_rows_title")
+    val homeGenreRowsAll: String get() = text("home_genre_rows_all")
+    val homeGenreRowsNone: String get() = text("home_genre_rows_none")
 
-    val homeGenreRowsTitle = "Genre rows on Home"
-    val homeGenreRowsHelp = "How many genres get a row on Home, the biggest first."
-    val homeGenreRowsAll = "All genres"
-    val homeGenreRowsNone = "None"
+    fun homeGenreRowsTop(n: Int): String = text("home_genre_rows_top", "count" to n)
 
-    fun homeGenreRowsTop(n: Int) = "Top $n"
+    val showWatchedInRowsTitle: String get() = text("show_watched_in_rows_title")
+    val showWatchedInRowsHelp: String get() = text("show_watched_in_rows_help")
 
-    val showWatchedInRowsTitle = "Show watched titles in rows"
-    val showWatchedInRowsHelp = "Whether Recently added, genre rows and More like this show titles you've already watched. With it on, Recently added still follows your Jellyfin setting."
-
-    val stillWatchingTitle = "Ask if you're still watching"
-    val stillWatchingHelp =
-        "Pause and ask after several episodes in a row so the next one doesn't play to an empty room. Applies to this profile."
-    val stillWatchingOff = "Off"
+    val stillWatchingOff: String get() = text("still_watching_off")
 
     /** The question that pauses the player after several episodes in a row. */
-    val stillWatchingPrompt = "Are you still watching?"
-    val stillWatchingContinue = "Keep watching"
-    val stillWatchingStop = "Stop watching"
+    val stillWatchingPrompt: String get() = text("still_watching_prompt")
+    val stillWatchingContinue: String get() = text("still_watching_continue")
+    val stillWatchingStop: String get() = text("still_watching_stop")
 
-    fun stillWatchingAfter(n: Int) = "After $n episodes"
+    fun stillWatchingAfter(n: Int): String = text("still_watching_after", "count" to n)
 
     // Settings pages, groups and rows (the data-driven Settings screen)
-    val settingsRootTitle = "Settings"
-    val settingsProfileCardHelp = "Profile, server and sign-out"
+    val settingsRootTitle: String get() = text("settings_root_title")
+    val settingsProfileCardHelp: String get() = text("settings_profile_card_help")
 
-    val settingsGroupHome = "Home"
-    val settingsGroupKids = "Kids and PIN"
-    val settingsGroupDevice = "This device"
-    val settingsGroupAdvanced = "Advanced"
-    val settingsKidsFooter = "Applies to this profile only."
-    val settingsDeviceHelp = "Otherwise the last profile reopens."
+    val settingsGroupHome: String get() = text("settings_group_home")
+    val settingsGroupKids: String get() = text("settings_group_kids")
+    val settingsGroupDevice: String get() = text("settings_group_device")
+    val settingsGroupAdvanced: String get() = text("settings_group_advanced")
+    val settingsKidsFooter: String get() = text("settings_kids_footer")
+    val settingsDeviceHelp: String get() = text("settings_device_help")
 
-    val settingsAbout = "About VibeyFin"
+    val settingsAbout: String get() = text("settings_about")
 
     // Profile page
-    val profilePageTitle = "Profile"
-    val profileAccountGroup = "Account"
-    val switchProfileHelp = "Asks for the PIN first if one is set."
-    val profileServerGroup = "Server"
-    val profileServerName = "Server"
-    val profileServerAddress = "Address"
-    val profileServerAlsoAt = "Also reachable at"
-    val profileServerFooter = "Read only. Add or remove servers from \u201CWho\u2019s watching?\u201D."
-    val signOutFooter =
-        "Asks to confirm. Your tile stays in \u201CWho\u2019s watching?\u201D and asks for the password next time. Not shown on a kids profile."
-    val signOutConfirmTitle = "Sign out of this profile?"
-    val signOutConfirmMessage = "The downloads of this profile are deleted from this device. Your tile stays in \u201CWho\u2019s watching?\u201D and asks for the password next time."
+    val profilePageTitle: String get() = text("profile_page_title")
+    val profileAccountGroup: String get() = text("profile_account_group")
+    val switchProfileHelp: String get() = text("switch_profile_help")
+    val profileServerGroup: String get() = text("profile_server_group")
+    val profileServerName: String get() = text("profile_server_name")
+    val profileServerAddress: String get() = text("profile_server_address")
+    val profileServerAlsoAt: String get() = text("profile_server_also_at")
+    val profileServerFooter: String get() = text("profile_server_footer")
+    val signOutFooter: String get() = text("sign_out_footer")
+    val signOutConfirmTitle: String get() = text("sign_out_confirm_title")
+    val signOutConfirmMessage: String get() = text("sign_out_confirm_message")
 
     // Quality page
-    val qualityTitle = "Quality"
-    val qualityGroup = "Maximum quality"
-    val qualityMaximum = "Maximum"
-    val qualityMaximumHelp = "Original quality, direct play when possible."
-    val qualityFooter =
-        "The cap for everything this profile plays. Lower uses less data; the server may transcode to fit."
+    val qualityTitle: String get() = text("quality_title")
+    val qualityGroup: String get() = text("quality_group")
+    val qualityMaximum: String get() = text("quality_maximum")
+    val qualityFooter: String get() = text("quality_footer")
 
     /** The label of one stream-quality cap, given in bits per second; 0 is Maximum. Anything off the list reads as Maximum. */
-    fun qualityLabel(bitsPerSecond: Int) = when (bitsPerSecond) {
-        40_000_000 -> "4K \u00B7 40 Mbps"
-        10_000_000 -> "1080p \u00B7 10 Mbps"
-        4_000_000 -> "720p \u00B7 4 Mbps"
-        1_500_000 -> "480p \u00B7 1.5 Mbps"
+    fun qualityLabel(bitsPerSecond: Int): String = when (bitsPerSecond) {
+        40_000_000 -> text("quality_label_4k")
+        10_000_000 -> text("quality_label_1080p")
+        4_000_000 -> text("quality_label_720p")
+        1_500_000 -> text("quality_label_480p")
         else -> qualityMaximum
     }
 
     // Skipping and autoplay page
-    val skippingTitle = "Skipping and autoplay"
-    val skippingGroup = "Skipping"
-    val skippingFooter =
-        "Back: 5, 10, 15 or 30 s. Forward: 10, 15, 30, 45 or 60 s. These are the intervals the player's button glyphs come in, so the button and the setting agree."
-    val autoSkipHelp = "Off by default. The Skip buttons show either way."
-    val autoplayGroup = "Autoplay"
-    val stillWatchingAfterTitle = "Still watching after"
-    val stillWatchingAfterHelp = "Off, or after 2 to 5 episodes in a row."
-    val pictureInPictureHelp =
-        "On by default. The player offers picture in picture and starts it when you leave the app. Off, playback pauses when you leave."
-    val swipeGesturesGroup = "Gestures"
-    val swipeGestures = "Swipe for volume and brightness"
-    val swipeGesturesHelp =
-        "Swipe up or down on the right of the player to change the volume, on the left to change the brightness. The brightness goes back to normal when the player closes."
-    val bufferingGroup = "Buffering"
+    val skippingTitle: String get() = text("skipping_title")
+    val skippingGroup: String get() = text("skipping_group")
+    val skippingFooter: String get() = text("skipping_footer")
+    val autoSkipHelp: String get() = text("auto_skip_help")
+    val autoplayGroup: String get() = text("autoplay_group")
+    val stillWatchingAfterTitle: String get() = text("still_watching_after_title")
+    val stillWatchingAfterHelp: String get() = text("still_watching_after_help")
+    val pictureInPictureHelp: String get() = text("picture_in_picture_help")
+    val swipeGesturesGroup: String get() = text("swipe_gestures_group")
+    val swipeGestures: String get() = text("swipe_gestures")
+    val swipeGesturesHelp: String get() = text("swipe_gestures_help")
+    val bufferingGroup: String get() = text("buffering_group")
 
-    fun skipSecondsShort(seconds: Int) = "$seconds s"
+    fun skipSecondsShort(seconds: Int): String = text("skip_seconds_short", "seconds" to seconds)
 
     /** The root's one-line summary of the skipping page: "10 s · 10 s · Still watching after 3". */
-    fun skippingSummary(back: Int, forward: Int, stillWatching: Int) = "${skipSecondsShort(back)} \u00B7 ${skipSecondsShort(forward)} \u00B7 " +
-        if (stillWatching == 0) "Still watching off" else "Still watching after $stillWatching"
+    fun skippingSummary(back: Int, forward: Int, stillWatching: Int): String = "${skipSecondsShort(back)} · ${skipSecondsShort(forward)} · " +
+        if (stillWatching == 0) text("skipping_summary_still_watching_off") else text("skipping_summary_still_watching_after", "count" to stillWatching)
 
     // Audio and subtitles page: the preferred languages, kept on the Jellyfin account
-    val audioLanguageTitle = "Audio language"
-    val audioLanguageFooter = "Plays the track in this language when the video has one, otherwise the video\u2019s default track."
-    val subtitleLanguageTitle = "Subtitle language"
-    val subtitleModeTitle = "When subtitles show"
-    val rememberTracksTitle = "Remember what I pick in the player"
-    val rememberTracksHelp = "The next episode starts with the tracks you chose."
-    val languagesFooter =
-        "Saved to your Jellyfin account, so your other Jellyfin apps use them too. A track you pick in the player still wins for that video."
-    val languagesLoading = "Reading your Jellyfin account\u2026"
-    val anyLanguage = "Any language"
-    val anyLanguageAudioHelp = "The video\u2019s default track."
-    val anyLanguageSubtitleHelp = "Subtitles in whatever language the video has first."
-    val languageListGroup = "Languages"
-    val languageListFooter = "The languages your Jellyfin server knows, by the names it uses on tracks."
-    val searchLanguages = "Search languages"
-    val searchForSubtitles = "Search for subtitles"
-    val subtitleSearchLanguage = "Language"
-    val subtitleMatch = "Match"
-    val noSubtitlesHint = "Try another language. If no language finds any, the server may need a subtitle provider plugin, such as OpenSubtitles. An admin can add one in the Jellyfin dashboard."
+    val audioLanguageTitle: String get() = text("audio_language_title")
+    val audioLanguageFooter: String get() = text("audio_language_footer")
+    val subtitleLanguageTitle: String get() = text("subtitle_language_title")
+    val subtitleModeTitle: String get() = text("subtitle_mode_title")
+    val rememberTracksTitle: String get() = text("remember_tracks_title")
+    val rememberTracksHelp: String get() = text("remember_tracks_help")
+    val languagesFooter: String get() = text("languages_footer")
+    val languagesLoading: String get() = text("languages_loading")
+    val anyLanguage: String get() = text("any_language")
+    val anyLanguageAudioHelp: String get() = text("any_language_audio_help")
+    val anyLanguageSubtitleHelp: String get() = text("any_language_subtitle_help")
+    val languageListGroup: String get() = text("language_list_group")
+    val languageListFooter: String get() = text("language_list_footer")
+    val searchLanguages: String get() = text("search_languages")
+    val searchForSubtitles: String get() = text("search_for_subtitles")
+    val subtitleSearchLanguage: String get() = text("subtitle_search_language")
+    val subtitleMatch: String get() = text("subtitle_match")
+    val noSubtitlesHint: String get() = text("no_subtitles_hint")
 
-    fun noSubtitlesFound(language: String) = "No subtitles found in $language"
+    fun noSubtitlesFound(language: String): String = text("no_subtitles_found", "language" to language)
 
-    fun subtitlesAdded(language: String) = "$language subtitles added"
+    fun subtitlesAdded(language: String): String = text("subtitles_added", "language" to language)
 
-    val deleteSubtitles = "Delete subtitles"
-    val deleteSubtitlesHelp = "Subtitles built into the video can\u2019t be deleted, so they aren\u2019t listed."
-    val deleteSubtitleText = "They\u2019re deleted from the server for everyone and can\u2019t be brought back."
-    val deleteSubtitleConfirm = "Delete"
+    val deleteSubtitles: String get() = text("delete_subtitles")
+    val deleteSubtitlesHelp: String get() = text("delete_subtitles_help")
+    val deleteSubtitleText: String get() = text("delete_subtitle_text")
+    val deleteSubtitleConfirm: String get() = text("delete_subtitle_confirm")
 
-    fun deleteSubtitleTitle(name: String) = "Delete the $name subtitles?"
+    fun deleteSubtitleTitle(name: String): String = text("delete_subtitle_title", "name" to name)
 
-    fun deleteSubtitleDescription(name: String, fileName: String?) = listOfNotNull("Delete the $name subtitles", fileName).joinToString(", ")
+    fun deleteSubtitleDescription(name: String, fileName: String?): String = listOfNotNull(text("delete_subtitle_description", "name" to name), fileName).joinToString(", ")
 
-    fun subtitleDeleted(name: String) = "$name subtitles deleted"
+    fun subtitleDeleted(name: String): String = text("subtitle_deleted", "name" to name)
 
     /** Provider, format and rating; what the server left out is left out here too. */
     fun subtitleResultDetails(provider: String?, format: String?, rating: Double?, possiblyAdded: Boolean = false): String {
-        val stars = rating?.takeIf { it > 0 }?.let { "\u2605 " + (it * 10).roundToInt().let { tenths -> "${tenths / 10}.${tenths % 10}" } }
-        return listOfNotNull(provider, format?.uppercase(), stars, if (possiblyAdded) "May already be added" else null).joinToString(" \u00B7 ")
+        val stars = rating?.takeIf { it > 0 }?.let { "★ " + Formats.current.decimal((it * 10).roundToInt() / 10.0, 1, 1) }
+        return listOfNotNull(provider, format?.uppercase(), stars, if (possiblyAdded) text("subtitle_result_details_possibly_added") else null).joinToString(" · ")
     }
 
-    fun subtitleResultDescription(name: String, details: String, isMatch: Boolean, added: Boolean): String = listOfNotNull(name, details, if (isMatch) "Matches this file" else null, if (added) "Already added" else null).joinToString(", ")
+    fun subtitleResultDescription(name: String, details: String, isMatch: Boolean, added: Boolean): String = listOfNotNull(name, details, if (isMatch) text("subtitle_result_description_matches") else null, if (added) text("subtitle_result_description_already_added") else null).joinToString(", ")
 
-    val noLanguageMatches = "No language matches"
-    val languagesDefaultsSummary = "Server defaults"
+    val noLanguageMatches: String get() = text("no_language_matches")
+    val languagesDefaultsSummary: String get() = text("languages_defaults_summary")
 
     /** The label of one subtitle mode. */
-    fun subtitleModeLabel(mode: SubtitleMode) = when (mode) {
-        SubtitleMode.Default -> "Default"
-        SubtitleMode.Always -> "Always"
-        SubtitleMode.OnlyForced -> "Only forced"
-        SubtitleMode.Smart -> "Smart"
-        SubtitleMode.None -> "Off"
+    fun subtitleModeLabel(mode: SubtitleMode): String = when (mode) {
+        SubtitleMode.Default -> text("subtitle_mode_label_default")
+        SubtitleMode.Always -> text("subtitle_mode_label_always")
+        SubtitleMode.OnlyForced -> text("subtitle_mode_label_only_forced")
+        SubtitleMode.Smart -> text("subtitle_mode_label_smart")
+        SubtitleMode.None -> text("subtitle_mode_label_none")
     }
 
     /** What the mode in use does, under the Subtitles group. */
-    fun subtitleModeFooter(mode: SubtitleMode) = when (mode) {
-        SubtitleMode.Default -> "Default: subtitles the video marks as default or forced."
-        SubtitleMode.Always -> "Always: whenever there are subtitles in your language."
-        SubtitleMode.OnlyForced -> "Only forced: just the lines for foreign dialogue."
-        SubtitleMode.Smart -> "Smart: only when the audio isn\u2019t in your language."
-        SubtitleMode.None -> "Off: never, unless you turn them on in the player."
+    fun subtitleModeFooter(mode: SubtitleMode): String = when (mode) {
+        SubtitleMode.Default -> text("subtitle_mode_footer_default")
+        SubtitleMode.Always -> text("subtitle_mode_footer_always")
+        SubtitleMode.OnlyForced -> text("subtitle_mode_footer_only_forced")
+        SubtitleMode.Smart -> text("subtitle_mode_footer_smart")
+        SubtitleMode.None -> text("subtitle_mode_footer_none")
     }
 
-    /**
-     * The root's one-line summary of the languages: "German \u00B7 English subtitles always". [audio] and [subtitles] are language
-     * names, null for no preference. Nothing set reads as the server's defaults.
-     */
     fun languagesSummary(audio: String?, subtitles: String?, mode: SubtitleMode): String {
         if (audio == null && subtitles == null && mode == SubtitleMode.Default) return languagesDefaultsSummary
-        val which = subtitles?.let { "$it subtitles" } ?: "subtitles"
         val subs = when (mode) {
-            SubtitleMode.Default -> "$which as marked"
-            SubtitleMode.Always -> "$which always"
-            SubtitleMode.OnlyForced -> "$which only when forced"
-            SubtitleMode.Smart -> "$which when needed"
-            SubtitleMode.None -> "subtitles off"
+            SubtitleMode.Default -> subtitles?.let { text("languages_summary_named_subs_default", "name" to it) } ?: text("languages_summary_any_subs_default")
+            SubtitleMode.Always -> subtitles?.let { text("languages_summary_named_subs_always", "name" to it) } ?: text("languages_summary_any_subs_always")
+            SubtitleMode.OnlyForced -> subtitles?.let { text("languages_summary_named_subs_only_forced", "name" to it) } ?: text("languages_summary_any_subs_only_forced")
+            SubtitleMode.Smart -> subtitles?.let { text("languages_summary_named_subs_smart", "name" to it) } ?: text("languages_summary_any_subs_smart")
+            SubtitleMode.None -> text("languages_summary_subs_none")
         }
-        return "${audio ?: anyLanguage} \u00B7 $subs"
+        return "${audio ?: anyLanguage} · $subs"
     }
 
     // Subtitle style, on the Audio and subtitles page
-    val captionsFollowSystemTitle = "Use system caption style"
-    val captionsFollowSystemHelp = "Follows the OS caption settings."
-    val captionsFollowSystemFooter = "Turn off to set your own below."
-    val subtitleStyleGroup = "Subtitle style"
-    val subtitleStyleIosNote = "Applies to text subtitles only; iOS burns subtitles in for now"
-    val subtitleSizeTitle = "Size"
-    val subtitleSizeSmall = "S"
-    val subtitleSizeMedium = "M"
-    val subtitleSizeLarge = "L"
-    val subtitleSizeExtraLarge = "XL"
-    val subtitleColorTitle = "Text"
-    val subtitleColorWhite = "White"
-    val subtitleColorYellow = "Yellow"
-    val subtitleColorLightBlue = "Light blue"
-    val subtitleBackgroundTitle = "Background"
-    val subtitleBackgroundNone = "None"
-    val subtitleBackgroundShadow = "Shadow"
-    val subtitleBackgroundBox = "Box"
-    val subtitleReset = "Reset to defaults"
-    val subtitlePreviewSample = "This is how subtitles will look."
+    val captionsFollowSystemTitle: String get() = text("captions_follow_system_title")
+    val captionsFollowSystemHelp: String get() = text("captions_follow_system_help")
+    val captionsFollowSystemFooter: String get() = text("captions_follow_system_footer")
+    val subtitleStyleGroup: String get() = text("subtitle_style_group")
+    val subtitleStyleIosNote: String get() = text("subtitle_style_ios_note")
+    val subtitleSizeTitle: String get() = text("subtitle_size_title")
+    val subtitleSizeSmall: String get() = text("subtitle_size_small")
+    val subtitleSizeMedium: String get() = text("subtitle_size_medium")
+    val subtitleSizeLarge: String get() = text("subtitle_size_large")
+    val subtitleSizeExtraLarge: String get() = text("subtitle_size_extra_large")
+    val subtitleColorTitle: String get() = text("subtitle_color_title")
+    val subtitleColorWhite: String get() = text("subtitle_color_white")
+    val subtitleColorYellow: String get() = text("subtitle_color_yellow")
+    val subtitleColorLightBlue: String get() = text("subtitle_color_light_blue")
+    val subtitleBackgroundTitle: String get() = text("subtitle_background_title")
+    val subtitleBackgroundNone: String get() = text("subtitle_background_none")
+    val subtitleBackgroundShadow: String get() = text("subtitle_background_shadow")
+    val subtitleBackgroundBox: String get() = text("subtitle_background_box")
+    val subtitleReset: String get() = text("subtitle_reset")
+    val subtitlePreviewSample: String get() = text("subtitle_preview_sample")
 
     // Kids and PIN page
-    val kidsPinTitle = "Kids and PIN"
-    val kidsProfileTitle = "Kids profile"
-    val kidsProfileHelp = "Hides Advanced settings and signing out. The server's own limits still apply."
-    val pinGroup = "PIN"
-    val pinTitle = "PIN"
-    val pinHelp = "4 digits."
-    val pinFooter = "A household lock, not security. It keeps the next person on the sofa out of Settings and other profiles."
-    val pinSet = "Set PIN"
-    val pinChange = "Change PIN"
-    val pinRemove = "Remove PIN"
-    val pinAskGroup = "Ask for the PIN to"
-    val pinAskOpenProfile = "Open this profile"
-    val pinAskOpenSettings = "Open Settings"
-    val pinAskSwitchProfile = "Switch profile"
-    val serverPolicyGroup = "Set by your Jellyfin server"
-    val serverPolicyRating = "Highest rating"
-    val serverPolicyBlockedTags = "Blocked tags"
-    val serverPolicyHours = "Allowed hours"
-    val serverPolicyAnyTime = "Any time"
-    val serverPolicyFooter = "Read only. An admin changes these in Jellyfin; the server enforces them."
-    val serverPolicyLoading = "Checking your Jellyfin server\u2026"
-    val serverPolicyFailed = "Couldn\u2019t read the limits from your Jellyfin server."
-    val serverPolicyNone = "No limits are set on your Jellyfin server"
-    val serverPolicyNoRating = "No limit"
-    val serverPolicyNoTags = "None"
-    val pinSetDescription = "A 4-digit PIN is set"
+    val kidsPinTitle: String get() = text("kids_pin_title")
+    val kidsProfileTitle: String get() = text("kids_profile_title")
+    val kidsProfileHelp: String get() = text("kids_profile_help")
+    val pinGroup: String get() = text("pin_group")
+    val pinTitle: String get() = text("pin_title")
+    val pinHelp: String get() = text("pin_help")
+    val pinFooter: String get() = text("pin_footer")
+    val pinSet: String get() = text("pin_set")
+    val pinChange: String get() = text("pin_change")
+    val pinRemove: String get() = text("pin_remove")
+    val pinAskGroup: String get() = text("pin_ask_group")
+    val pinAskOpenProfile: String get() = text("pin_ask_open_profile")
+    val pinAskOpenSettings: String get() = text("pin_ask_open_settings")
+    val pinAskSwitchProfile: String get() = text("pin_ask_switch_profile")
+    val serverPolicyGroup: String get() = text("server_policy_group")
+    val serverPolicyRating: String get() = text("server_policy_rating")
+    val serverPolicyBlockedTags: String get() = text("server_policy_blocked_tags")
+    val serverPolicyHours: String get() = text("server_policy_hours")
+    val serverPolicyAnyTime: String get() = text("server_policy_any_time")
+    val serverPolicyFooter: String get() = text("server_policy_footer")
+    val serverPolicyLoading: String get() = text("server_policy_loading")
+    val serverPolicyFailed: String get() = text("server_policy_failed")
+    val serverPolicyNone: String get() = text("server_policy_none")
+    val serverPolicyNoRating: String get() = text("server_policy_no_rating")
+    val serverPolicyNoTags: String get() = text("server_policy_no_tags")
+    val pinSetDescription: String get() = text("pin_set_description")
 
     /** A rating the server has no name for: "Level 10". Level 0 is the strictest cap, not "all". */
-    fun serverPolicyLevel(level: Int) = "Level $level"
+    fun serverPolicyLevel(level: Int): String = text("server_policy_level", "level" to level)
 
-    /** One access window: "Weekdays 08:00 to 20:30", or "Saturdays 22:00 to 06:00 the next day" when it runs overnight. */
     fun serverPolicyWindow(days: String, startMinutes: Int, endMinutes: Int): String {
-        val overnight = if (startMinutes > endMinutes) " the next day" else ""
-        return "$days ${hhmm(startMinutes)} to ${hhmm(endMinutes)}$overnight"
+        val start: String = hhmm(startMinutes)
+        val end: String = hhmm(endMinutes)
+        return if (startMinutes > endMinutes) {
+            text("server_policy_window_next_day", "days" to days, "start" to start, "end" to end)
+        } else {
+            text("server_policy_window", "days" to days, "start" to start, "end" to end)
+        }
     }
 
-    private fun hhmm(minutes: Int) = "${(minutes / 60).toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}"
+    private fun hhmm(minutes: Int): String = Formats.current.time(minutes).replace('\u202f', ' ').replace('\u00a0', ' ')
 
-    val serverPolicyEveryday = "Every day"
-    val serverPolicyWeekdays = "Weekdays"
-    val serverPolicyWeekends = "Weekends"
-    val serverPolicySundays = "Sundays"
-    val serverPolicyMondays = "Mondays"
-    val serverPolicyTuesdays = "Tuesdays"
-    val serverPolicyWednesdays = "Wednesdays"
-    val serverPolicyThursdays = "Thursdays"
-    val serverPolicyFridays = "Fridays"
-    val serverPolicySaturdays = "Saturdays"
+    val serverPolicyEveryday: String get() = text("server_policy_everyday")
+    val serverPolicyWeekdays: String get() = text("server_policy_weekdays")
+    val serverPolicyWeekends: String get() = text("server_policy_weekends")
+    val serverPolicySundays: String get() = text("server_policy_sundays")
+    val serverPolicyMondays: String get() = text("server_policy_mondays")
+    val serverPolicyTuesdays: String get() = text("server_policy_tuesdays")
+    val serverPolicyWednesdays: String get() = text("server_policy_wednesdays")
+    val serverPolicyThursdays: String get() = text("server_policy_thursdays")
+    val serverPolicyFridays: String get() = text("server_policy_fridays")
+    val serverPolicySaturdays: String get() = text("server_policy_saturdays")
 
     // PIN prompt
-    val pinPromptEnter = "Enter PIN"
-    val pinPromptNew = "Choose a PIN"
-    val pinPromptConfirm = "Enter the PIN again"
-    val pinPromptWrong = "That PIN is wrong. Try again."
-    val pinPromptMismatch = "The PINs don't match. Try again."
-    val pinPromptOpenProfile = "Enter this profile's PIN to open it."
-    val pinPromptOpenSettings = "Enter your PIN to open Settings."
-    val pinPromptSwitchProfile = "Enter your PIN to switch profile."
-    val pinPromptChangePin = "Enter your current PIN to change it."
-    val pinPromptRemovePin = "Enter your PIN to remove it."
-    val pinPromptKidsOff = "Enter your PIN to turn off kids mode."
+    val pinPromptEnter: String get() = text("pin_prompt_enter")
+    val pinPromptNew: String get() = text("pin_prompt_new")
+    val pinPromptConfirm: String get() = text("pin_prompt_confirm")
+    val pinPromptWrong: String get() = text("pin_prompt_wrong")
+    val pinPromptMismatch: String get() = text("pin_prompt_mismatch")
+    val pinPromptOpenProfile: String get() = text("pin_prompt_open_profile")
+    val pinPromptOpenSettings: String get() = text("pin_prompt_open_settings")
+    val pinPromptSwitchProfile: String get() = text("pin_prompt_switch_profile")
+    val pinPromptChangePin: String get() = text("pin_prompt_change_pin")
+    val pinPromptRemovePin: String get() = text("pin_prompt_remove_pin")
+    val pinPromptKidsOff: String get() = text("pin_prompt_kids_off")
 
-    fun pinPromptAttemptsLeft(attempts: Int) = if (attempts == 1) "That PIN is wrong. 1 try left before a short wait." else "That PIN is wrong. $attempts tries left before a short wait."
+    fun pinPromptAttemptsLeft(attempts: Int): String = plural("pin_prompt_attempts_left", attempts)
 
-    fun pinPromptLocked(seconds: Int) = if (seconds == 1) "Too many wrong PINs. Try again in 1 second." else "Too many wrong PINs. Try again in $seconds seconds."
+    fun pinPromptLocked(seconds: Int): String = plural("pin_prompt_locked", seconds)
 
-    val pinForgot = "Forgot PIN?"
+    val pinForgot: String get() = text("pin_forgot")
 
-    fun pinForgotMessage(name: String) = "Enter $name's Jellyfin password to remove the PIN. Kids mode stays as it is; the password is not saved."
+    fun pinForgotMessage(name: String): String = text("pin_forgot_message", "name" to name)
 
-    val pinForgotSubmit = "Remove PIN"
+    val pinForgotSubmit: String get() = text("pin_forgot_submit")
 
     /** The keypad's delete key, and the four dots read out by a screen reader. */
-    val pinKeypadDelete = "Delete"
+    val pinKeypadDelete: String get() = text("pin_keypad_delete")
 
-    fun pinDigitsEntered(count: Int) = if (count == 1) "1 of 4 digits entered" else "$count of 4 digits entered"
+    fun pinDigitsEntered(count: Int): String = plural("pin_digits_entered", count)
 
     // Notifications page
-    val notificationsTitle = "Notifications"
-    val notificationsOn = "On"
-    val notificationsOff = "Off"
-    val notificationsToggle = "Notify me about new episodes and movies"
-    val notificationsWhichGroup = "Which shows"
-    val notificationsFollowed = "Shows I follow and new movies"
-    val notificationsEverything = "Everything new in the library"
-    val notificationsBlocked = "Notifications are blocked for VibeyFin. Allow them in system settings, then switch this on again."
+    val notificationsTitle: String get() = text("notifications_title")
+    val notificationsOn: String get() = text("notifications_on")
+    val notificationsToggle: String get() = text("notifications_toggle")
+    val notificationsWhichGroup: String get() = text("notifications_which_group")
+    val notificationsFollowed: String get() = text("notifications_followed")
+    val notificationsEverything: String get() = text("notifications_everything")
+    val notificationsBlocked: String get() = text("notifications_blocked")
 
-    fun notificationsScopeLabel(scope: Int) = if (scope == ProfileSettings.NOTIFY_EVERYTHING) notificationsEverything else notificationsFollowed
+    fun notificationsScopeLabel(scope: Int): String = if (scope == ProfileSettings.NOTIFY_EVERYTHING) notificationsEverything else notificationsFollowed
 
-    val downloadNotificationsToggle = "Download notifications"
-    val downloadNotificationsFooter = "Tells you when downloads finish or fail. VibeyFin asks for permission the first time a download starts; if you declined, allow notifications in system settings."
-
-    val notificationsFooter =
-        "Jellyfin sends no push, so the app checks in the background: expect a delay. Switching this on asks for notification permission."
+    val downloadNotificationsToggle: String get() = text("download_notifications_toggle")
+    val downloadNotificationsFooter: String get() = text("download_notifications_footer")
+    val notificationsFooter: String get() = text("notifications_footer")
 
     // New-title notifications: one per movie, one per episode. No name starts with "new": Kotlin/Native renames those for Swift.
-    val addedMovieNotificationTitle = "New movie"
+    val addedMovieNotificationTitle: String get() = text("added_movie_notification_title")
 
     /** The title of an episode's notification; [seriesName] is null when the server did not say which show. */
-    fun addedEpisodeNotificationTitle(seriesName: String?) = if (seriesName.isNullOrBlank()) "New episode" else "New episode of $seriesName"
+    fun addedEpisodeNotificationTitle(seriesName: String?): String = if (seriesName.isNullOrBlank()) text("added_episode_notification_title") else text("added_episode_notification_title_of_series", "series" to seriesName)
 
     /** The body: the title, plus whose it is when more than one profile on this device gets notifications. */
-    fun addedTitleNotificationBody(title: String, profileName: String?) = if (profileName == null) title else "$title, for $profileName"
+    fun addedTitleNotificationBody(title: String, profileName: String?): String = if (profileName == null) title else text("added_title_notification_body_for_profile", "title" to title, "profile" to profileName)
 
     // New-title notifications on Android: the channel, and the summary over several new episodes of one show
-    val addedTitlesChannel = "New episodes and movies"
-    val addedTitlesChannelDescription = "New episodes of the shows you follow and new movies, for each profile with notifications on"
+    val addedTitlesChannel: String get() = text("added_titles_channel")
+    val addedTitlesChannelDescription: String get() = text("added_titles_channel_description")
 
     /** The summary over a show's episodes, which may come from several checks; [seriesName] is null when the server did not say which show. */
-    fun addedEpisodesSummary(seriesName: String?) = if (seriesName.isNullOrBlank()) "New episodes" else "New episodes of $seriesName"
+    fun addedEpisodesSummary(seriesName: String?): String = if (seriesName.isNullOrBlank()) text("added_episodes_summary") else text("added_episodes_summary_of_series", "series" to seriesName)
 
     /** The summary's body: the episodes this check found, plus whose they are as in [addedTitleNotificationBody]. */
-    fun addedEpisodesSummaryBody(titles: List<String>, profileName: String?) = addedTitleNotificationBody(titles.joinToString(", "), profileName)
+    fun addedEpisodesSummaryBody(titles: List<String>, profileName: String?): String = addedTitleNotificationBody(titles.joinToString(", "), profileName)
 
     // Downloads and offline mode
-    val downloadsEmptyTitle = "Nothing downloaded yet"
-    val downloadsEmptyHelp = "Download a movie or an episode to watch it without a connection."
-    val downloaded = "Downloaded"
-    val downloading = "Downloading"
+    val downloadsEmptyTitle: String get() = text("downloads_empty_title")
+    val downloadsEmptyHelp: String get() = text("downloads_empty_help")
+    val downloaded: String get() = text("downloaded")
+    val downloading: String get() = text("downloading")
 
-    val downloadQueued = "Waiting to download"
-    val downloadWaitingForWifi = "Waiting for Wi-Fi"
-    val downloadWaitingForNetwork = "Waiting for a connection"
-    val downloadWaitingForServer = "Waiting for the server"
-    val downloadPaused = "Paused"
-    val downloadFailed = "Download failed"
-    val remove = "Remove"
-    val removeDownload = "Remove download"
-    val removeAllDownloads = "Remove all downloads"
-    val downloadEpisode = "Download episode"
-    val downloadSeason = "Download season"
-    val downloadAllEpisodes = "Download all episodes"
-    val downloadUnwatchedOnly = "Only episodes I haven't watched"
+    val downloadQueued: String get() = text("download_queued")
+    val downloadWaitingForWifi: String get() = text("download_waiting_for_wifi")
+    val downloadWaitingForNetwork: String get() = text("download_waiting_for_network")
+    val downloadWaitingForServer: String get() = text("download_waiting_for_server")
+    val downloadPaused: String get() = text("download_paused")
+    val downloadFailed: String get() = text("download_failed")
+    val remove: String get() = text("remove")
+    val removeDownload: String get() = text("remove_download")
+    val removeAllDownloads: String get() = text("remove_all_downloads")
+    val downloadEpisode: String get() = text("download_episode")
+    val downloadSeason: String get() = text("download_season")
+    val downloadAllEpisodes: String get() = text("download_all_episodes")
+    val downloadUnwatchedOnly: String get() = text("download_unwatched_only")
 
     /** A file size in the units people read: "850 MB", "1.4 GB". Decimal units, as the server and the system's storage screen use. */
     fun fileSize(bytes: Long): String {
@@ -1043,342 +1003,364 @@ object Strings {
         val gb = mb * 1_000
         val value = bytes.coerceAtLeast(0).toDouble()
         return when {
-            value >= gb -> "${tenths(value / gb)} GB"
-            value >= mb -> "${(value / mb).roundToInt()} MB"
-            value >= kb -> "${(value / kb).roundToInt()} KB"
-            else -> "${value.toInt()} B"
+            value >= gb -> text("file_size_gb", "size" to tenths(value / gb))
+            value >= mb -> text("file_size_mb", "size" to (value / mb).roundToInt())
+            value >= kb -> text("file_size_kb", "size" to (value / kb).roundToInt())
+            else -> text("file_size_b", "size" to value.toInt())
         }
     }
 
     private fun tenths(value: Double): String {
         val rounded = (value * 10).roundToInt()
-        return "${rounded / 10}.${rounded % 10}"
+        return Formats.current.decimal(rounded / 10.0, 1, 1)
     }
 
     /** The line under a download that is coming in; [total] is null until the server has said how big the file is. */
-    fun downloadProgress(done: Long, total: Long?) = if (total == null || total <= 0) fileSize(done) else "${fileSize(done)} of ${fileSize(total)}"
+    fun downloadProgress(done: Long, total: Long?): String = if (total == null || total <= 0) fileSize(done) else text("download_progress_of", "done" to fileSize(done), "total" to fileSize(total))
 
-    fun downloadStorageUsed(bytes: Long) = "${fileSize(bytes)} used"
+    fun downloadStorageUsed(bytes: Long): String = text("download_storage_used", "size" to fileSize(bytes))
 
     /** Above how much the downloads take, in the storage card at the top of Downloads (Android). */
-    val downloadsStorageHeading = "On this device"
+    val downloadsStorageHeading: String get() = text("downloads_storage_heading")
 
-    fun downloadConfirmTitle(episodes: Int) = if (episodes == 1) "Download 1 episode?" else "Download $episodes episodes?"
+    fun downloadConfirmTitle(episodes: Int): String = plural("download_confirm_title", episodes)
 
-    fun downloadConfirmSize(bytes: Long) = "They take about ${fileSize(bytes)}."
+    fun downloadConfirmSize(bytes: Long): String = text("download_confirm_size", "size" to fileSize(bytes))
 
     /** What a screen reader says for a download's state; the sighted see an icon or a ring. */
-    fun downloadStateDescription(title: String, state: String) = "$title, $state"
+    fun downloadStateDescription(title: String, state: String): String = text("download_state_description", "title" to title, "state" to state)
 
-    val offlineBannerTitle = "You're offline"
-    val offlineBannerHelp = "Showing what you've downloaded."
+    val offlineBannerHelp: String get() = text("offline_banner_help")
 
     /** The toast when the app goes offline for want of a network. */
-    val offlineToast = "You're offline. Showing what you've downloaded."
+    val offlineToast: String get() = text("offline_toast")
 
     /** The toast when Offline mode is switched on. */
-    val offlineModeToast = "Offline mode is on. Showing what you've downloaded."
-    val offlineByChoiceHelp = "Offline mode is on. Showing what you've downloaded."
-    val goOnline = "Go online"
-    val serverUnreachableBannerTitle = "Can't reach the server"
-    val useOffline = "Use offline"
-    val serverUnreachableBannerHelp = "You can still watch what you've downloaded."
-    val offlineModeTitle = "Offline mode"
-    val offlineModeHelp = "Use only your downloads, even when you're online."
-    val offlineSearchHint = "Search your downloads"
-    val offlineSearchPrompt = "Find something you've downloaded"
-    val offlineSearchEmpty = "Nothing you've downloaded matches. Try another word."
-    val downloadOverMobileTitle = "Download over mobile data"
-    val downloadOverMobileHelp = "Off: downloads wait for Wi-Fi. Applies to this profile."
-    val autoCleanWatchedTitle = "Remove downloads once watched"
-    val autoCleanWatchedHelp = "Free the space when you finish a download. Applies to this profile."
-    val storageLimitTitle = "Storage limit for downloads"
-    val storageLimitHelp = "New downloads wait when the limit is reached. Applies to this profile."
-    val storageLimitNone = "No limit"
-    val purgeDownloadsTitle = "Delete downloaded files"
-    val purgeDownloadsHelp = "Removes every download of this profile and any leftover files, also those shown in the Files app."
-    val purgeDownloadsConfirmTitle = "Delete all downloaded files?"
-    val purgeDownloadsConfirmMessage = "The downloads of this profile are deleted from this device. Other profiles keep theirs. You can download again at any time."
-    val deleteFiles = "Delete"
+    val offlineModeToast: String get() = text("offline_mode_toast")
+    val goOnline: String get() = text("go_online")
+    val serverUnreachableBannerTitle: String get() = text("server_unreachable_banner_title")
+    val useOffline: String get() = text("use_offline")
+    val serverUnreachableBannerHelp: String get() = text("server_unreachable_banner_help")
+    val offlineModeTitle: String get() = text("offline_mode_title")
+    val offlineModeHelp: String get() = text("offline_mode_help")
+    val offlineSearchHint: String get() = text("offline_search_hint")
+    val offlineSearchPrompt: String get() = text("offline_search_prompt")
+    val offlineSearchEmpty: String get() = text("offline_search_empty")
+    val downloadOverMobileTitle: String get() = text("download_over_mobile_title")
+    val downloadOverMobileHelp: String get() = text("download_over_mobile_help")
+    val storageLimitTitle: String get() = text("storage_limit_title")
+    val storageLimitHelp: String get() = text("storage_limit_help")
+    val storageLimitNone: String get() = text("storage_limit_none")
+    val purgeDownloadsTitle: String get() = text("purge_downloads_title")
+    val purgeDownloadsHelp: String get() = text("purge_downloads_help")
+    val purgeDownloadsConfirmTitle: String get() = text("purge_downloads_confirm_title")
+    val purgeDownloadsConfirmMessage: String get() = text("purge_downloads_confirm_message")
+    val deleteFiles: String get() = text("delete_files")
 
     /** The notification that shows while downloads run in the background. */
-    val downloadsChannelName = "Downloads"
-    val downloadsNotificationIdle = "Downloading"
+    val downloadsChannelName: String get() = text("downloads_channel_name")
+    val downloadsNotificationIdle: String get() = text("downloads_notification_idle")
 
-    fun downloadingNotificationTitle(title: String) = "Downloading $title"
+    fun downloadingNotificationTitle(title: String): String = text("downloading_notification_title", "title" to title)
 
     /** The notifications for downloads that finished or failed while the app was away. */
-    fun downloadedOne(title: String): String = "Downloaded $title"
+    fun downloadedOne(title: String): String = text("downloaded_one", "title" to title)
 
-    fun downloadedEpisodes(count: Int, show: String): String = "Downloaded $count episodes for $show"
+    fun downloadedEpisodes(count: Int, show: String): String = text("downloaded_episodes", "count" to count, "show" to show)
 
-    fun downloadedVideos(count: Int): String = "Downloaded $count videos"
+    fun downloadedVideos(count: Int): String = text("downloaded_videos", "count" to count)
 
-    val downloadsReadyBody = "Ready to watch offline."
+    val downloadsReadyBody: String get() = text("downloads_ready_body")
 
-    fun downloadFailedTitle(title: String): String = "Download failed: $title"
+    fun downloadFailedTitle(title: String): String = text("download_failed_title", "title" to title)
 
     /** The second line of the system progress: how much of the video in hand is here, "1.23 GB of 4.50 GB"; just the first part while the size is unknown. */
-    fun downloadSizeProgress(done: Long, total: Long?): String = if (total != null && total > 0) "${preciseFileSize(done)} of ${preciseFileSize(total)}" else preciseFileSize(done)
+    fun downloadSizeProgress(done: Long, total: Long?): String = if (total != null && total > 0) text("download_progress_of", "done" to preciseFileSize(done), "total" to preciseFileSize(total)) else preciseFileSize(done)
 
     /** A file size with two decimals, in MB below a gigabyte: "512.34 MB", "1.23 GB". Decimal units, like [fileSize]. */
     fun preciseFileSize(bytes: Long): String {
         val value = bytes.coerceAtLeast(0)
-        return if (value >= GIGABYTE) "${hundredths(value, GIGABYTE)} GB" else "${hundredths(value, MEGABYTE)} MB"
+        return if (value >= GIGABYTE) text("file_size_gb", "size" to hundredths(value, GIGABYTE)) else text("file_size_mb", "size" to hundredths(value, MEGABYTE))
     }
 
     private fun hundredths(value: Long, unit: Long): String {
         val rounded = (value * 100 + unit / 2) / unit
-        return "${rounded / 100}.${(rounded % 100).toString().padStart(2, '0')}"
+        return Formats.current.decimal(rounded / 100.0, 2, 2)
     }
 
     private const val MEGABYTE: Long = 1_000_000
     private const val GIGABYTE: Long = 1_000_000_000
 
-    fun downloadsWaiting(count: Int) = if (count == 1) "1 more waiting" else "$count more waiting"
+    fun downloadsWaiting(count: Int): String = plural("downloads_waiting", count)
 
     // Downloads: the actions, the confirmations and the Downloads screen.
-    fun downloadedWithSize(bytes: Long) = if (bytes > 0) "$downloaded · ${fileSize(bytes)}" else downloaded
 
-    val pauseDownload = "Pause download"
-    val resumeDownload = "Resume download"
-    val retryDownload = "Retry download"
-    val resumeAllDownloads = "Resume all"
-    val retryFailedDownloads = "Retry failed"
+    val pauseDownload: String get() = text("pause_download")
+    val resumeDownload: String get() = text("resume_download")
+    val retryDownload: String get() = text("retry_download")
+    val resumeAllDownloads: String get() = text("resume_all_downloads")
+    val retryFailedDownloads: String get() = text("retry_failed_downloads")
 
-    fun downloadSeasonNamed(season: String) = "Download $season"
+    fun downloadSeasonNamed(season: String): String = text("download_season_named", "season" to season)
 
-    fun removeDownloadsOf(count: Int) = if (count == 1) "Remove 1 download" else "Remove $count downloads"
+    fun removeDownloadsOf(count: Int): String = plural("remove_downloads_of", count)
 
-    fun downloadedCount(count: Int) = "$count downloaded"
+    fun downloadedCount(count: Int): String = text("downloaded_count", "count" to count)
 
-    fun downloadActionDescription(title: String, state: String) = "Download $title, $state"
+    fun downloadActionDescription(title: String, state: String): String = text("download_action_description", "title" to title, "state" to state)
 
-    val downloadConfirmAction = "Download"
-    val downloadNothingNew = "Everything here is already downloaded."
+    val downloadConfirmAction: String get() = text("download_confirm_action")
+    val downloadNothingNew: String get() = text("download_nothing_new")
 
-    fun downloadConfirmSize(bytes: Long, episodes: Int) = if (bytes > 0) "${if (episodes == 1) "It takes" else "They take"} about ${fileSize(bytes)}." else null
+    fun downloadConfirmSize(bytes: Long, episodes: Int): String? = if (bytes > 0) plural("download_confirm_size_about", episodes, "size" to fileSize(bytes)) else null
 
-    fun removeConfirmTitle(count: Int, title: String) = if (count == 1) "Remove $title?" else "Remove $count downloads?"
+    fun removeConfirmTitle(count: Int, title: String): String = plural("remove_confirm_title", count, "title" to title)
 
-    fun removeConfirmBody(bytes: Long) = if (bytes > 0) "This frees ${fileSize(bytes)}. You can download it again later." else "You can download it again later."
+    fun removeConfirmBody(bytes: Long): String = if (bytes > 0) text("remove_confirm_body_with_size", "size" to fileSize(bytes)) else text("remove_confirm_body")
 
-    val removeConfirmAction = "Remove"
+    val removeConfirmAction: String get() = text("remove_confirm_action")
 
-    fun showDownloadLine(episodes: Int, bytes: Long) = listOfNotNull(if (episodes == 1) "1 episode" else "$episodes episodes", if (bytes > 0) fileSize(bytes) else null).joinToString(" · ")
+    fun showDownloadLine(episodes: Int, bytes: Long): String = listOfNotNull(plural("show_download_line_episodes", episodes), if (bytes > 0) fileSize(bytes) else null).joinToString(" · ")
 
-    fun seasonDownloadedCount(done: Int, total: Int) = "$done of $total downloaded"
+    fun seasonDownloadedCount(done: Int, total: Int): String = text("season_downloaded_count", "done" to done, "total" to total)
 
-    val downloadSeasonButton = "Download season"
+    val downloadSeasonButton: String get() = text("download_season")
 
     /** How long a download has left, from its speed: "Under 1m left", "7m left", "1h 20m left". */
-    fun downloadTimeLeft(seconds: Long) = if (seconds < 60) "Under 1m left" else timeLeftShort(seconds * 1_000)
+    fun downloadTimeLeft(seconds: Long): String = if (seconds < 60) text("download_time_left_under_minute") else timeLeftShort(seconds * 1_000)
 
-    val downloadLabelWaiting = "Waiting"
-    val downloadLabelFailed = "Failed"
+    val downloadLabelWaiting: String get() = text("download_label_waiting")
+    val downloadLabelFailed: String get() = text("download_label_failed")
 
-    fun downloadDescription(title: String) = "Download $title"
+    fun downloadDescription(title: String): String = text("download_description", "title" to title)
 
-    fun storageLimitGb(gb: Int) = "$gb GB"
+    fun storageLimitGb(gb: Int): String = text("storage_limit_gb", "gigabytes" to gb)
 
     // Seerr: connecting it in Settings. Errors are in SeerrMessages.
-    val requestsSection = "Requests"
-    val seerr = "Seerr"
-    val seerrRowHelp = "Find and request titles that aren\u2019t in your library."
-    val seerrNotSetUp = "Not set up"
-    val seerrConnected = "Connected"
-    val seerrOff = "Off"
-    val seerrNotSignedIn = "Not signed in"
-    val seerrLead = "Connect Seerr to find and request titles that aren\u2019t in your library yet."
-    val seerrAddress = "Seerr address"
-    val seerrAddressPlaceholder = "requests.example.org"
-    val seerrAddressHelp = "Set up once for this server. Every profile signs in by itself, with no password."
-    val seerrAddressSharedHelp = "Other profiles on this server use this address. Changing it changes it for them too."
-    val seerrConnecting = "Connecting\u2026"
-    val seerrSigningIn = "Signing in\u2026"
-    val seerrServerSection = "Seerr"
-    val seerrAddressRow = "Address"
-    val seerrVersion = "Version"
-    val seerrThisProfile = "This profile"
+    val requestsSection: String get() = text("requests_section")
+    val seerr: String get() = text("seerr")
+    val seerrRowHelp: String get() = text("seerr_row_help")
+    val seerrNotSetUp: String get() = text("seerr_not_set_up")
+    val seerrConnected: String get() = text("seerr_connected")
+    val seerrOff: String get() = text("seerr_off")
+    val seerrNotSignedIn: String get() = text("seerr_not_signed_in")
+    val seerrLead: String get() = text("seerr_lead")
+    val seerrAddress: String get() = text("seerr_address")
+    val seerrAddressPlaceholder: String get() = text("seerr_address_placeholder")
+    val seerrAddressHelp: String get() = text("seerr_address_help")
+    val seerrAddressSharedHelp: String get() = text("seerr_address_shared_help")
+    val seerrConnecting: String get() = text("seerr_connecting")
+    val seerrSigningIn: String get() = text("seerr_signing_in")
+    val seerrServerSection: String get() = text("seerr_server_section")
+    val seerrAddressRow: String get() = text("seerr_address_row")
+    val seerrVersion: String get() = text("seerr_version")
+    val seerrThisProfile: String get() = text("seerr_this_profile")
 
-    fun seerrSignedInAs(name: String) = "Signed in as $name"
+    fun seerrSignedInAs(name: String): String = text("seerr_signed_in_as", "name" to name)
 
-    val seerrSignedInAutomatically = "Signed in automatically"
-    val seerrSignedInWithPassword = "Signed in with your password"
-    val seerrSignInWithPassword = "Sign in with password"
-    val seerrChangeAddress = "Change address"
-    val seerrRequestsLeft = "Requests left"
+    val seerrSignedInAutomatically: String get() = text("seerr_signed_in_automatically")
+    val seerrSignedInWithPassword: String get() = text("seerr_signed_in_with_password")
+    val seerrSignInWithPassword: String get() = text("seerr_sign_in_with_password")
+    val seerrChangeAddress: String get() = text("seerr_change_address")
+    val seerrRequestsLeft: String get() = text("seerr_requests_left")
 
     /**
      * What is left of the quota, for the kinds that have one, and how often it starts again when Seerr says: "3 movies and 2 seasons
      * this week". Seerr counts a show's requests in seasons.
      */
-    fun seerrQuotaLeft(movies: Int?, seasons: Int?, days: Int?): String {
-        val what = listOfNotNull(movies?.let(::collectionMovieCount), seasons?.let(::seasonCount)).joinToString(" and ")
-        val often = when (days) {
-            null -> ""
-            1 -> " a day"
-            7 -> " this week"
-            else -> " every $days days"
-        }
-        return what + often
+    fun seerrQuotaLeft(movies: Int?, seasons: Int?, days: Int?): String = when {
+        movies != null && seasons != null -> quotaLeftBoth(collectionMovieCount(movies), seasonCount(seasons), days)
+        movies != null -> quotaLeftMovies(collectionMovieCount(movies), days)
+        seasons != null -> quotaLeftSeasons(seasonCount(seasons), days)
+        else -> quotaLeftMovies("", days)
     }
 
-    val seerrDisconnect = "Disconnect Seerr"
-    val seerrDisconnectHelp = "Signs this profile out of Seerr and hides it here. Other profiles on this server keep it. Your requests stay in Seerr."
-    val seerrDisconnectConfirmTitle = "Disconnect Seerr?"
-    val seerrDisconnectConfirmMessage = "This profile is signed out of Seerr and stops seeing it. Other profiles on this server keep it."
-    val seerrDisconnectConfirm = "Disconnect"
-    val seerrPasswordTitle = "Sign in to Seerr"
-    val seerrPasswordReason = "Quick Connect is off on your Jellyfin server, so Seerr needs your Jellyfin password once."
-    val seerrUser = "User"
+    private fun quotaLeftMovies(movies: String, days: Int?): String = when (days) {
+        null -> text("seerr_quota_left_movies", "movies" to movies)
+        1 -> text("seerr_quota_left_movies_a_day", "movies" to movies)
+        7 -> text("seerr_quota_left_movies_this_week", "movies" to movies)
+        else -> plural("seerr_quota_left_movies_every_days", days, "movies" to movies)
+    }
+
+    private fun quotaLeftSeasons(seasons: String, days: Int?): String = when (days) {
+        null -> text("seerr_quota_left_seasons", "seasons" to seasons)
+        1 -> text("seerr_quota_left_seasons_a_day", "seasons" to seasons)
+        7 -> text("seerr_quota_left_seasons_this_week", "seasons" to seasons)
+        else -> plural("seerr_quota_left_seasons_every_days", days, "seasons" to seasons)
+    }
+
+    private fun quotaLeftBoth(movies: String, seasons: String, days: Int?): String = when (days) {
+        null -> text("seerr_quota_left_movies_and_seasons", "movies" to movies, "seasons" to seasons)
+        1 -> text("seerr_quota_left_movies_and_seasons_a_day", "movies" to movies, "seasons" to seasons)
+        7 -> text("seerr_quota_left_movies_and_seasons_this_week", "movies" to movies, "seasons" to seasons)
+        else -> plural("seerr_quota_left_movies_and_seasons_every_days", days, "movies" to movies, "seasons" to seasons)
+    }
+
+    val seerrDisconnect: String get() = text("seerr_disconnect")
+    val seerrDisconnectHelp: String get() = text("seerr_disconnect_help")
+    val seerrDisconnectConfirmTitle: String get() = text("seerr_disconnect_confirm_title")
+    val seerrDisconnectConfirmMessage: String get() = text("seerr_disconnect_confirm_message")
+    val seerrDisconnectConfirm: String get() = text("seerr_disconnect_confirm")
+    val seerrPasswordTitle: String get() = text("seerr_password_title")
+    val seerrPasswordReason: String get() = text("seerr_password_reason")
+    val seerrUser: String get() = text("seerr_user")
 
     // Seerr titles in search, and Seerr posters anywhere
-    val seerrNotInLibrary = "Not in your library"
-    val seerrNotInLibraryChip = "Not in library"
+    val seerrNotInLibrary: String get() = text("seerr_not_in_library")
+    val seerrNotInLibraryChip: String get() = text("seerr_not_in_library_chip")
 
-    fun libraryNoMatch(query: String) = "Nothing in your library matches \u201c$query\u201d."
+    fun libraryNoMatch(query: String): String = text("library_no_match", "query" to query)
 
     /** The line under a Seerr poster: "2025 · Movie". */
-    fun seerrTitleMeta(year: Int?, type: SeerrMediaType) = listOfNotNull(year?.toString(), if (type == SeerrMediaType.Movie) "Movie" else "Show").joinToString(" \u00b7 ")
+    fun seerrTitleMeta(year: Int?, type: SeerrMediaType): String = listOfNotNull(year?.toString(), if (type == SeerrMediaType.Movie) text("seerr_title_meta_movie") else text("seerr_title_meta_show")).joinToString(" · ")
 
     /** The word on a Seerr poster's pill; null for a title nobody asked for, which shows the + disc instead. */
     fun seerrStateLabel(state: RequestState): String? = when (state) {
         RequestState.NotRequested -> null
-        RequestState.Requested -> "Requested"
-        RequestState.Approved -> "Approved"
-        RequestState.PartlyAvailable -> "Partly available"
-        RequestState.Available -> "Available"
-        RequestState.Declined -> "Declined"
-        RequestState.Failed -> "Failed"
+        RequestState.Requested -> text("seerr_state_label_requested")
+        RequestState.Approved -> text("seerr_state_label_approved")
+        RequestState.PartlyAvailable -> text("seerr_state_label_partly_available")
+        RequestState.Available -> text("seerr_state_label_available")
+        RequestState.Declined -> text("seerr_state_label_declined")
+        RequestState.Failed -> text("seerr_state_label_failed")
     }
 
     // The Seerr page of a title, its poster menu and requesting. Errors are in SeerrMessages.
-    val seerrRequest = "Request"
-    val seerrRequestSeasons = "Request seasons"
-    val seerrRequestAgain = "Request again"
-    val seerrRequest4k = "Request in 4K"
+    val seerrRequest: String get() = text("seerr_request")
+    val seerrRequestSeasons: String get() = text("seerr_request_seasons")
+    val seerrRequestAgain: String get() = text("seerr_request_again")
+    val seerrRequest4k: String get() = text("seerr_request_4k")
 
     /** Under Request in 4K in the poster menu. */
-    val seerrRequest4kQuota = "Uses your 4K quota"
-    val seerrCancelRequest = "Cancel request"
-    val seerrMoreLikeThis = "More like this"
-    val seerrSeasons = "Seasons"
-    val seerrAllMissingSeasons = "All missing seasons"
-    val seerrQuality = "Quality"
-    val seerrStandard = "Standard"
-    val seerr4k = "4K"
-    val seerrView = "View"
-    val seerrRequestCancelled = "Request cancelled"
+    val seerrRequest4kQuota: String get() = text("seerr_request_4k_quota")
+    val seerrCancelRequest: String get() = text("seerr_cancel_request")
+    val seerrMoreLikeThis: String get() = text("seerr_more_like_this")
+    val seerrAllMissingSeasons: String get() = text("seerr_all_missing_seasons")
+    val seerrQuality: String get() = text("seerr_quality")
+    val seerrStandard: String get() = text("seerr_standard")
+    val seerr4k: String get() = text("seerr_4k")
+    val seerrView: String get() = text("seerr_view")
+    val seerrRequestCancelled: String get() = text("seerr_request_cancelled")
 
     /** A rating out of 10 in a facts line, the library's and Seerr's alike: "★ 8.7". */
     fun starRating(score: Double): String {
         val tenths = (score * 10 + 0.5).toInt()
-        return "\u2605 ${tenths / 10}.${tenths % 10}"
+        return "★ ${Formats.current.decimal(tenths / 10.0, 1, 1)}"
     }
 
-    fun seerrEpisodeCount(count: Int) = if (count == 1) "1 episode" else "$count episodes"
+    fun seerrEpisodeCount(count: Int): String = plural("seerr_episode_count", count)
 
     /** A season's tile in the request sheet: its number, "SP" for Specials. */
-    fun seerrSeasonTile(number: Int) = if (number == 0) "SP" else number.toString()
+    fun seerrSeasonTile(number: Int): String = if (number == 0) text("seerr_season_tile_specials") else number.toString()
 
     /** The episode count under a season's tile: "10 ep". */
-    fun seerrEpisodeCountShort(count: Int) = "$count ep"
+    fun seerrEpisodeCountShort(count: Int): String = text("seerr_episode_count_short", "count" to count)
 
     /** What a screen reader says for a season's tile: "Season 3, 10 episodes, Available". */
-    fun seerrSeasonTileDescription(name: String, episodes: String, state: String?) = listOfNotNull(name, episodes, state).joinToString(", ")
+    fun seerrSeasonTileDescription(name: String, episodes: String, state: String?): String = listOfNotNull(name, episodes, state).joinToString(", ")
 
-    fun seerrRequestSeasonCount(count: Int) = if (count == 1) "Request 1 season" else "Request $count seasons"
+    fun seerrRequestSeasonCount(count: Int): String = plural("seerr_request_season_count", count)
 
-    fun seerrPickerSubtitle(title: String, seasons: Int) = "$title \u00b7 ${seasonCount(seasons)}"
+    fun seerrPickerSubtitle(title: String, seasons: Int): String = text("seerr_picker_subtitle", "title" to title, "seasons" to seasonCount(seasons))
 
     /** The request sheet's subtitle for a movie: "Low Tide · 2025 · Movie". */
-    fun seerrPickerMovieSubtitle(title: String, meta: String) = "$title \u00b7 $meta"
+    fun seerrPickerMovieSubtitle(title: String, meta: String): String = text("seerr_picker_movie_subtitle", "title" to title, "meta" to meta)
 
     /** A quality profile Seerr sent without a name, by its number: "Profile 4". */
-    fun seerrQualityNumber(id: Int) = "Profile $id"
+    fun seerrQualityNumber(id: Int): String = text("seerr_quality_number", "id" to id)
 
     /** What a screen reader says for a Seerr page's state tag and facts: "Requested, 2025, PG-13, 1 h 36 min". */
-    fun seerrTagDescription(status: String?, facts: List<String>) = listOfNotNull(status, factsLine(facts).takeIf { facts.isNotEmpty() }).joinToString(", ")
+    fun seerrTagDescription(status: String?, facts: List<String>): String = listOfNotNull(status, factsLine(facts).takeIf { facts.isNotEmpty() }).joinToString(", ")
 
-    fun seerrRequested(title: String) = "Requested $title"
+    fun seerrRequested(title: String): String = text("seerr_requested", "title" to title)
 
     /**
      * The line under a title's overview: where it stands, and who asked when someone did. [requestedBy] is the requester's name, or
      * null when it is the profile itself or not known; [byMe] says it is the profile.
      */
     fun seerrStatusLine(state: RequestState, byMe: Boolean, requestedBy: String?): String = when (state) {
-        RequestState.NotRequested -> "Not in your library"
+        RequestState.NotRequested -> text("seerr_status_line_not_requested")
 
         RequestState.Requested -> when {
-            byMe -> "Requested by you \u00b7 Waiting for approval"
-            requestedBy != null -> "Requested by $requestedBy \u00b7 Waiting for approval"
-            else -> "Requested \u00b7 Waiting for approval"
+            byMe -> text("seerr_status_line_requested_by_me")
+            requestedBy != null -> text("seerr_status_line_requested_by", "name" to requestedBy)
+            else -> text("seerr_status_line_requested")
         }
 
-        RequestState.Approved -> "Approved \u00b7 Added when the download finishes"
+        RequestState.Approved -> text("seerr_status_line_approved")
 
-        RequestState.PartlyAvailable -> "Some seasons are in your library"
+        RequestState.PartlyAvailable -> text("seerr_status_line_partly_available")
 
-        RequestState.Available -> "In your library"
+        RequestState.Available -> text("seerr_status_line_available")
 
-        RequestState.Declined -> "Declined \u00b7 You can ask again"
+        RequestState.Declined -> text("seerr_status_line_declined")
 
-        RequestState.Failed -> "The download failed \u00b7 Seerr will try again"
+        RequestState.Failed -> text("seerr_status_line_failed")
     }
 
     /** The second status line, for a 4K request: "4K · Requested by you · Waiting for approval". */
-    fun seerr4kLine(line: String) = "4K \u00b7 $line"
+    fun seerr4kLine(line: String): String = text("seerr_4k_line", "line" to line)
 
     /** Under a Seerr poster menu's title: "2025 · Movie · Not in your library", or the state's word. */
-    fun seerrMenuSubtitle(meta: String, state: RequestState) = "$meta \u00b7 ${seerrStateLabel(state) ?: "Not in your library"}"
+    fun seerrMenuSubtitle(meta: String, state: RequestState): String = text("seerr_menu_subtitle", "meta" to meta, "state" to (seerrStateLabel(state) ?: text("seerr_menu_subtitle_not_in_library")))
 
     /** Under the status row of a Seerr poster menu: "By you, 2 days ago · Waiting for approval". */
     fun seerrMenuStatusDetail(state: RequestState, byMe: Boolean, requestedBy: String?, daysAgo: Int?): String {
-        val who = when {
-            byMe -> "By you"
-            requestedBy != null -> "By $requestedBy"
-            else -> null
+        val asked: String? = when {
+            byMe -> menuAskedByYou(daysAgo)
+            requestedBy != null -> menuAskedBy(requestedBy, daysAgo)
+            else -> menuAskedWhen(daysAgo)
         }
-        val whenAsked = daysAgo?.let {
-            when (it) {
-                0 -> "today"
-                1 -> "yesterday"
-                else -> "$it days ago"
-            }
-        }
-        val asked = listOfNotNull(who, whenAsked).joinToString(", ").takeIf { it.isNotEmpty() }
         val next = when (state) {
-            RequestState.Requested -> "Waiting for approval"
-            RequestState.Approved -> "Added when the download finishes"
-            RequestState.Failed -> "Seerr will try again"
-            RequestState.Declined -> "You can ask again"
-            RequestState.PartlyAvailable -> "Some seasons are in your library"
+            RequestState.Requested -> text("seerr_menu_status_detail_requested")
+            RequestState.Approved -> text("seerr_menu_status_detail_approved")
+            RequestState.Failed -> text("seerr_menu_status_detail_failed")
+            RequestState.Declined -> text("seerr_menu_status_detail_declined")
+            RequestState.PartlyAvailable -> text("seerr_menu_status_detail_partly_available")
             RequestState.NotRequested, RequestState.Available -> null
         }
-        return listOfNotNull(asked, next).joinToString(" \u00b7 ")
+        return listOfNotNull(asked, next).joinToString(" · ")
+    }
+
+    private fun menuAskedByYou(daysAgo: Int?): String = when (daysAgo) {
+        null -> text("seerr_menu_status_detail_by_you")
+        0 -> text("seerr_menu_status_detail_by_you_today")
+        1 -> text("seerr_menu_status_detail_by_you_yesterday")
+        else -> plural("seerr_menu_status_detail_by_you_days_ago", daysAgo)
+    }
+
+    private fun menuAskedBy(name: String, daysAgo: Int?): String = when (daysAgo) {
+        null -> text("seerr_menu_status_detail_by", "name" to name)
+        0 -> text("seerr_menu_status_detail_by_name_today", "name" to name)
+        1 -> text("seerr_menu_status_detail_by_name_yesterday", "name" to name)
+        else -> plural("seerr_menu_status_detail_by_name_days_ago", daysAgo, "name" to name)
+    }
+
+    private fun menuAskedWhen(daysAgo: Int?): String? = when (daysAgo) {
+        null -> null
+        0 -> text("seerr_menu_status_detail_today")
+        1 -> text("seerr_menu_status_detail_yesterday")
+        else -> plural("seerr_menu_status_detail_days_ago", daysAgo)
     }
 
     // Seerr on Home: My requests and the discover rows, and their pages
-    val seerrMyRequests = "My requests"
-    val seerrTrending = "Trending"
-    val seerrPopularMovies = "Popular movies"
-    val seerrPopularShows = "Popular shows"
-    val seerrComingSoon = "Coming soon"
-    val seerrNoRequests = "You haven\u2019t requested anything yet. Search for a title that isn\u2019t in your library to request it."
-    val seerrFilterWaiting = "Waiting"
-    val seerrFilterApproved = "Approved"
-    val seerrFilterAvailable = "Available"
-    val seerrFilterDeclined = "Declined"
-
-    private val monthNames = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+    val seerrMyRequests: String get() = text("seerr_my_requests")
+    val seerrTrending: String get() = text("seerr_trending")
+    val seerrPopularMovies: String get() = text("seerr_popular_movies")
+    val seerrPopularShows: String get() = text("seerr_popular_shows")
+    val seerrComingSoon: String get() = text("seerr_coming_soon")
+    val seerrNoRequests: String get() = text("seerr_no_requests")
+    val seerrFilterWaiting: String get() = text("seerr_filter_waiting")
+    val seerrFilterApproved: String get() = text("seerr_filter_approved")
+    val seerrFilterAvailable: String get() = text("seerr_filter_available")
+    val seerrFilterDeclined: String get() = text("seerr_filter_declined")
 
     /** A release date ("2026-12-12") as Coming soon shows it: "Dec 12". Null when it can't be read. */
     fun seerrReleaseDay(date: String?): String? {
         val parts = date?.split("-")?.takeIf { it.size >= 3 } ?: return null
         val month = parts[1].toIntOrNull()?.takeIf { it in 1..12 } ?: return null
         val day = parts[2].take(2).toIntOrNull() ?: return null
-        return "${monthNames[month - 1]} $day"
+        return text("seerr_release_day", "month" to Formats.current.monthName(month, true), "day" to day)
     }
 
     /** The line under a title in a poster's menu: "Movie · 2022", "Show · 2019", "S1 E4 · The Show". */
@@ -1391,40 +1373,47 @@ object Strings {
 
     /** What a request is for: "Movie · 2022", "Show · Seasons 1–2", "Show · Season 3". */
     fun seerrRequestKind(type: SeerrMediaType, year: Int?, seasons: List<Int>): String = if (type == SeerrMediaType.Movie) {
-        listOfNotNull("Movie", year?.toString()).joinToString(" \u00b7 ")
+        listOfNotNull(text("seerr_request_kind_movie"), year?.toString()).joinToString(" · ")
     } else {
         val sorted = seasons.sorted()
         val which = when {
             sorted.isEmpty() -> null
-            sorted.size == 1 -> "Season ${sorted.first()}"
-            sorted == (sorted.first()..sorted.last()).toList() -> "Seasons ${sorted.first()}\u2013${sorted.last()}"
-            else -> "Seasons " + sorted.joinToString(", ")
+            sorted.size == 1 -> text("seerr_request_kind_season", "number" to sorted.first())
+            sorted == (sorted.first()..sorted.last()).toList() -> text("seerr_request_kind_seasons_range", "first" to sorted.first(), "last" to sorted.last())
+            else -> text("seerr_request_kind_seasons", "numbers" to sorted.joinToString(", "))
         }
-        listOfNotNull("Show", which).joinToString(" \u00b7 ")
+        listOfNotNull(text("seerr_request_kind_show"), which).joinToString(" · ")
     }
 
     /** When a request last changed, said as what happened: "Requested 2 days ago", "Approved yesterday", "Added to your library today". */
     fun seerrRequestWhen(state: RequestState, daysAgo: Int?): String {
         val what = when (state) {
-            RequestState.Available, RequestState.PartlyAvailable -> "Added to your library"
-            RequestState.Approved -> "Approved"
-            RequestState.Declined -> "Declined"
-            RequestState.Failed -> "Failed"
-            RequestState.Requested, RequestState.NotRequested -> "Requested"
+            RequestState.Available, RequestState.PartlyAvailable -> text("seerr_request_when_added_to_library")
+            RequestState.Approved -> text("seerr_request_when_approved")
+            RequestState.Declined -> text("seerr_request_when_declined")
+            RequestState.Failed -> text("seerr_request_when_failed")
+            RequestState.Requested, RequestState.NotRequested -> text("seerr_request_when_requested")
         }
-        val whenText = when (daysAgo) {
-            null -> null
-            0 -> "today"
-            1 -> "yesterday"
-            in 2..6 -> "$daysAgo days ago"
-            in 7..13 -> "last week"
-            else -> "${daysAgo / 7} weeks ago"
+        return when (daysAgo) {
+            null -> what
+            0 -> text("seerr_request_status_today", "what" to what)
+            1 -> text("seerr_request_status_yesterday", "what" to what)
+            in 2..6 -> plural("seerr_request_status_days_ago", daysAgo, "what" to what)
+            in 7..13 -> text("seerr_request_status_last_week", "what" to what)
+            else -> plural("seerr_request_status_weeks_ago", daysAgo / 7, "what" to what)
         }
-        return listOfNotNull(what, whenText).joinToString(" ")
     }
 
     /** What a screen reader says for a Seerr poster: "Harbour Bridge, 2025 · Movie, not in your library, can be requested". */
-    fun seerrTitleDescription(title: String, meta: String, state: RequestState) = "$title, $meta, ${seerrStateLabel(state)?.lowercase() ?: "not in your library, can be requested"}"
+    fun seerrTitleDescription(title: String, meta: String, state: RequestState): String = when (state) {
+        RequestState.NotRequested -> text("seerr_title_description_not_requested", "title" to title, "meta" to meta)
+        RequestState.Requested -> text("seerr_title_description_requested", "title" to title, "meta" to meta)
+        RequestState.Approved -> text("seerr_title_description_approved", "title" to title, "meta" to meta)
+        RequestState.PartlyAvailable -> text("seerr_title_description_partly_available", "title" to title, "meta" to meta)
+        RequestState.Available -> text("seerr_title_description_available", "title" to title, "meta" to meta)
+        RequestState.Declined -> text("seerr_title_description_declined", "title" to title, "meta" to meta)
+        RequestState.Failed -> text("seerr_title_description_failed", "title" to title, "meta" to meta)
+    }
 }
 
-private fun List<String>.joinToStringAnd() = if (size < 2) joinToString() else dropLast(1).joinToString(", ") + " and " + last()
+private fun List<String>.joinToStringAnd(): String = if (size < 2) joinToString() else text("list_and", "leading" to dropLast(1).joinToString(", "), "last" to last())

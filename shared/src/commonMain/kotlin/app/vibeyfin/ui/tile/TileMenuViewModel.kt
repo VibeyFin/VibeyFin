@@ -14,6 +14,7 @@ import app.vibeyfin.domain.WatchRepository
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.profileOrNull
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
@@ -38,6 +39,13 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+private enum class FavoriteFailure { Add, Remove }
+
+private fun FavoriteFailure.message(): String = when (this) {
+    FavoriteFailure.Add -> LoadMessages.ADD_TO_MY_LIST_FAILED
+    FavoriteFailure.Remove -> LoadMessages.REMOVE_FROM_MY_LIST_FAILED
+}
 
 /** What the menu of a poster offers: the poster's item, and whether it has a trailer (known a moment after the menu opens). */
 data class TileMenuUiState(
@@ -124,15 +132,19 @@ class TileMenuViewModel(
     // The title whose My List write is out: a lookup that started before it must not undo it.
     private var writingId: String? = null
 
+    private val favoriteFailure: MutableStateFlow<FavoriteFailure?> = MutableStateFlow(null)
+
     val uiState: StateFlow<TileMenuUiState> = combine(
         // Progress is only drawn while a menu is open; closed, the menu must not rebuild whatever shows it for every byte that arrives.
         content,
+        favoriteFailure,
+        Texts.language,
         connection.sessionEnded(),
         downloadParts(connection, downloads, downloadFlow, downloadFlow.canDownload, live = content.map { it.item != null }),
-    ) { content, exit, parts ->
+    ) { content, failure, _, exit, parts ->
         content.copy(
             exit = exit,
-            actionMessage = content.actionMessage ?: parts.message,
+            actionMessage = failure?.message() ?: parts.message,
             downloads = parts.byId,
             canDownload = parts.canDownload,
             downloadPrompt = parts.prompt,
@@ -164,6 +176,7 @@ class TileMenuViewModel(
         readDownloadPermission()
         // The same poster again (iOS asks early) keeps what the first look-up found.
         val kept = content.value.takeIf { it.item?.id == item.id }
+        favoriteFailure.value = null
         content.value = TileMenuUiState(
             item = kept?.item ?: item.withKnownFavorite(),
             trailer = kept?.trailer,
@@ -193,6 +206,7 @@ class TileMenuViewModel(
 
     fun onClose() {
         lookup?.cancel()
+        favoriteFailure.value = null
         content.value = TileMenuUiState()
     }
 
@@ -211,13 +225,13 @@ class TileMenuViewModel(
             writingId = null
             if (result is ApiResult.Failure) {
                 knownFavorites[before.id] = before.isFavorite
-                content.update { it.copy(actionMessage = failureMessage(result.error, target)) }
+                favoriteFailure.value = failureFavorite(result.error, target)
             }
         }
     }
 
     fun onDismissMessage() {
-        content.update { it.copy(actionMessage = null) }
+        favoriteFailure.value = null
         downloadFlow.dismissMessage()
     }
 
@@ -265,9 +279,9 @@ class TileMenuViewModel(
         return detail.remoteTrailerUrl?.let { Trailer.Remote(it) }
     }
 
-    private fun failureMessage(error: ApiError, added: Boolean) = when {
+    private fun failureFavorite(error: ApiError, added: Boolean): FavoriteFailure? = when {
         error == ApiError.Unauthorized -> null
-        added -> LoadMessages.ADD_TO_MY_LIST_FAILED
-        else -> LoadMessages.REMOVE_FROM_MY_LIST_FAILED
+        added -> FavoriteFailure.Add
+        else -> FavoriteFailure.Remove
     }
 }

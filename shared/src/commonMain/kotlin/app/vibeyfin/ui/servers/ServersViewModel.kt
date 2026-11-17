@@ -8,8 +8,10 @@ import app.vibeyfin.domain.LanDiscovery
 import app.vibeyfin.domain.ServerRemoval
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.model.Server
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -19,9 +21,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class ServerRow(val server: Server, val profileCount: Int) {
-    val meta: String get() = Strings.serverMeta(server.version, server.addresses.size, profileCount)
-}
+data class ServerRow(val server: Server, val profileCount: Int, val meta: String = Strings.serverMeta(server.version, server.addresses.size, profileCount))
 
 data class ServersUiState(
     /** True until the saved servers have been read, so the empty state doesn't flash first. */
@@ -46,10 +46,13 @@ class ServersViewModel(
     private val confirmRemoveId = MutableStateFlow<String?>(null)
     private var searchJob: Job? = null
 
+    private val savedRows: Flow<List<ServerRow>> = combine(servers.servers, accounts.observeProfileCounts(), Texts.language) { saved, counts, _ ->
+        saved.map { ServerRow(it, counts[it.id] ?: 0) }
+    }
+
     val uiState: StateFlow<ServersUiState> =
-        combine(servers.servers, accounts.observeProfileCounts(), found, searching, confirmRemoveId) { saved, counts, found, searching, removeId ->
-            val savedIds = saved.mapTo(mutableSetOf()) { it.id }
-            val rows = saved.map { ServerRow(it, counts[it.id] ?: 0) }
+        combine(savedRows, found, searching, confirmRemoveId) { rows, found, searching, removeId ->
+            val savedIds = rows.mapTo(mutableSetOf()) { it.server.id }
             ServersUiState(
                 loading = false,
                 servers = rows,

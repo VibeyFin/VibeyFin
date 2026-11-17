@@ -14,9 +14,13 @@ import app.vibeyfin.domain.SeerrConnection
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.SubtitleMode
 import app.vibeyfin.domain.hashPin
+import app.vibeyfin.i18n.AppLanguage
+import app.vibeyfin.i18n.AppLocale
+import app.vibeyfin.testing.FakeDeviceInfo
 import app.vibeyfin.testing.FakeServer
 import app.vibeyfin.testing.Reply
 import app.vibeyfin.testing.TestApp
+import app.vibeyfin.testing.TestLanguages
 import app.vibeyfin.testing.ViewModelTracker
 import app.vibeyfin.testing.authJson
 import app.vibeyfin.ui.common.LoadMessages
@@ -90,8 +94,9 @@ class SettingsViewModelTest {
         appVersion: String = "",
         seerr: SeerrConnection? = null,
         downloadAlerts: Boolean = true,
+        appLanguages: List<AppLanguage> = emptyList(),
     ) = viewModels.track(
-        SettingsViewModel(preferences, profileSettings, app.connection, app.servers, pins, app.policy, app.languages, app.auth, app.downloadRepository, applicationScope, appVersion, downloadAlerts = downloadAlerts, seerr = seerr),
+        SettingsViewModel(preferences, profileSettings, app.connection, app.servers, pins, app.policy, app.languages, app.auth, app.downloadRepository, applicationScope, appVersion, downloadAlerts = downloadAlerts, seerr = seerr, appLanguages = appLanguages),
     )
 
     @Test
@@ -119,6 +124,59 @@ class SettingsViewModelTest {
 
         assertFalse(viewModel.uiState.first { it.kidsProfile }.rootKeys().contains(SettingKey.Seerr))
         assertFalse(viewModel.uiState.first { it.kidsProfile }.page(SettingsPageId.Profile).keys().contains(SettingKey.QuickConnect))
+    }
+
+    private val twoLanguages = listOf(AppLanguage("en", "English"), AppLanguage("de", "Deutsch"))
+
+    @Test
+    fun `the language row needs a second language to be shown`() = runTest {
+        app.signedIn()
+
+        assertFalse(viewModel(appLanguages = listOf(AppLanguage("en", "English"))).uiState.first { !it.locked }.rootKeys().contains(SettingKey.AppLanguage))
+        assertTrue(viewModel(appLanguages = twoLanguages).uiState.first { !it.locked }.rootKeys().contains(SettingKey.AppLanguage))
+    }
+
+    @Test
+    fun `the language row lists Device language first and each language by its own name`() = runTest {
+        app.signedIn()
+
+        val row = viewModel(appLanguages = twoLanguages).uiState.first { it.rootKeys().contains(SettingKey.AppLanguage) }.item(SettingKey.AppLanguage) as ChoiceItem
+
+        assertEquals(listOf(Strings.languageDeviceDefault, "English", "Deutsch"), row.options.map { it.label })
+        assertEquals(DEVICE_LANGUAGE, row.value)
+    }
+
+    @Test
+    fun `picking a language saves it and selects its row`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel(appLanguages = twoLanguages)
+        viewModel.uiState.first { it.rootKeys().contains(SettingKey.AppLanguage) }
+
+        viewModel.onChoose(SettingKey.AppLanguage, 2)
+
+        assertEquals("de", app.preferences.appLanguage.first())
+        assertEquals(2, viewModel.uiState.first { (it.item(SettingKey.AppLanguage) as ChoiceItem).value == 2 }.value(SettingKey.AppLanguage))
+
+        viewModel.onChoose(SettingKey.AppLanguage, DEVICE_LANGUAGE)
+
+        assertEquals(null, app.preferences.appLanguage.first())
+    }
+
+    @Test
+    fun `the pages draw again in the new language when it changes`() = runTest {
+        app.signedIn()
+        TestLanguages.installGerman("settings_root_title" to "Einstellungen")
+        try {
+            val viewModel = viewModel(appLanguages = twoLanguages)
+            assertEquals(Strings.settingsRootTitle, viewModel.uiState.first { !it.locked }.page(SettingsPageId.Root).title)
+
+            app.preferences.setAppLanguage("de")
+            AppLocale(app.preferences, FakeDeviceInfo(), twoLanguages).start(applicationScope)
+
+            assertEquals("Einstellungen", viewModel.uiState.first { it.page(SettingsPageId.Root).title == "Einstellungen" }.page(SettingsPageId.Root).title)
+        } finally {
+            TestLanguages.reset()
+        }
     }
 
     @Test
@@ -1140,7 +1198,7 @@ class SettingsViewModelTest {
 
         assertEquals("PG", limits.infoValue(SettingKey.RatingLimit))
         assertEquals("horror, gore", limits.infoValue(SettingKey.BlockedTags))
-        assertEquals("Weekdays 08:00 to 20:30, Saturdays 22:00 to 06:00 the next day", limits.infoValue(SettingKey.AllowedHours))
+        assertEquals("Weekdays 8:00 AM to 8:30 PM, Saturdays 10:00 PM to 6:00 AM the next day", limits.infoValue(SettingKey.AllowedHours))
         assertEquals(Strings.serverPolicyGroup, limits.kidsPage().sections.first { SettingKey.RatingLimit in it.items.map { i -> i.key } }.title)
         assertFalse(SettingKey.PolicyStatus in limits.kidsKeys())
 

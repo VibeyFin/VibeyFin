@@ -1,0 +1,3 @@
+# Weblate pull requests only touch these paths; GitHub asks these owners to review them.
+/shared/strings/    @llettieri @Liam-2601
+/shared/languages.json    @llettieri @Liam-2601

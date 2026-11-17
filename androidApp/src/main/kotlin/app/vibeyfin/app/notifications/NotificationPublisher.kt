@@ -77,6 +77,17 @@ class NotificationPublisher(private val context: Context) : NewTitlesPublisher {
 
     // Creating an existing channel only updates it, so this runs before every post
     private fun ensureChannel(manager: NotificationManagerCompat) {
+        NotificationChannels.register(manager)
+    }
+
+    private companion object {
+        const val NOTIFICATION_ID = 7001
+    }
+}
+
+/** Creating a channel again with the same id only updates its name and description, which is how a language change reaches system settings. */
+object NotificationChannels {
+    internal fun register(manager: NotificationManagerCompat) {
         manager.createNotificationChannel(
             NotificationChannelCompat.Builder(NEW_TITLES_CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_DEFAULT)
                 .setName(Strings.addedTitlesChannel)
@@ -85,8 +96,8 @@ class NotificationPublisher(private val context: Context) : NewTitlesPublisher {
         )
     }
 
-    private companion object {
-        /** Every new-title notification has this id; the tag tells them apart. */
-        const val NOTIFICATION_ID = 7001
+    fun rename(context: Context) {
+        val manager: NotificationManagerCompat = NotificationManagerCompat.from(context)
+        if (manager.getNotificationChannelCompat(NEW_TITLES_CHANNEL_ID) != null) register(manager)
     }
 }

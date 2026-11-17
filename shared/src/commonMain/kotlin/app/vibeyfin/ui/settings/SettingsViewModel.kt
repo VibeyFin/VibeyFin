@@ -25,6 +25,8 @@ import app.vibeyfin.domain.accountOrNull
 import app.vibeyfin.domain.model.Account
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.domain.model.Server
+import app.vibeyfin.i18n.AppLanguage
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.common.KidsGuard
 import app.vibeyfin.ui.common.PinGate
 import app.vibeyfin.ui.common.PinPrompt
@@ -98,6 +100,8 @@ class SettingsViewModel(
     private val subtitleStyleApplies: Boolean = true,
     private val downloadAlerts: Boolean = false,
     seerr: SeerrConnection? = null,
+    private val appLanguages: List<AppLanguage> = emptyList(),
+    language: StateFlow<String> = Texts.language,
 ) : ViewModel(),
     PinSheetControls {
     private val confirmSignOut = MutableStateFlow(false)
@@ -184,6 +188,8 @@ class SettingsViewModel(
         live(closePage),
         live(confirmPurgeDownloads),
         live(seerr?.state ?: MutableStateFlow<SeerrState>(SeerrState.Hidden)),
+        unread(preferences.appLanguage),
+        live(language),
     )
 
     /** Eager, so the reads start with the ViewModel and not when the screen first draws. */
@@ -201,6 +207,8 @@ class SettingsViewModel(
         val kids = settings.readOrNull(ProfileSettingDefinitions.KidsProfile)
         val values = SettingsValues(
             alwaysAskWhoIsWatching = v[ALWAYS_ASK] as Boolean? ?: defaults.alwaysAskWhoIsWatching,
+            appLanguage = v[APP_LANGUAGE] as String?,
+            appLanguages = appLanguages,
             appVersion = appVersion,
             subtitleStyleApplies = subtitleStyleApplies,
             hasProfile = settings.hasProfile,
@@ -366,6 +374,8 @@ class SettingsViewModel(
                 }
 
                 // In gigabytes; 0 is no limit.
+                SettingKey.AppLanguage -> preferences.setAppLanguage(appLanguages.getOrNull(value - 1)?.tag)
+
                 SettingKey.StorageLimit -> {
                     profileSettings.setStorageLimitMb(value * MB_PER_GB)
                     downloads.schedule()
@@ -584,5 +594,6 @@ private const val SEARCHES = 15
 private const val CLOSE_PAGE = 16
 private const val CONFIRM_PURGE_DOWNLOADS = 17
 private const val SEERR = 18
+private const val APP_LANGUAGE = 19
 
 private const val MB_PER_GB = 1_000L

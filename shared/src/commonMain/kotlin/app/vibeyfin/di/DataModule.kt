@@ -3,6 +3,7 @@ package app.vibeyfin.di
 import androidx.room3.RoomDatabase
 import app.vibeyfin.data.db.VibeyFinDatabase
 import app.vibeyfin.data.db.buildVibeyFinDatabase
+import app.vibeyfin.data.platform.DeviceInfo
 import app.vibeyfin.data.prefs.DataStoreDevicePreferences
 import app.vibeyfin.domain.AccountRepository
 import app.vibeyfin.domain.DevicePreferences
@@ -15,6 +16,10 @@ import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SearchHistory
 import app.vibeyfin.domain.ServerRepository
 import app.vibeyfin.domain.SubtitleRepository
+import app.vibeyfin.i18n.AppLocale
+import app.vibeyfin.i18n.PseudoLocale
+import app.vibeyfin.i18n.platformStringSource
+import app.vibeyfin.i18n.shippedLanguages
 import org.koin.dsl.module
 import kotlin.time.Clock
 
@@ -29,6 +34,10 @@ fun dataModule() = module {
     single { get<VibeyFinDatabase>().downloadDao() }
 
     single<DevicePreferences> { DataStoreDevicePreferences(get()) }
+    single {
+        val debugBuild: Boolean = get<DeviceInfo>().debugBuild
+        AppLocale(get(), get(), shippedLanguages(platformStringSource()) + if (debugBuild) listOf(PseudoLocale.language) else emptyList())
+    }
     single { ServerRepository(get(), get(), get(), get(), get()) }
     single { AccountRepository(get(), get(), get()) }
     single { ProfileSettings(get(), get()) }

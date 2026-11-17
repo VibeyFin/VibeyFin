@@ -4,6 +4,7 @@ import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.PinLock
 import app.vibeyfin.domain.PinResult
 import app.vibeyfin.domain.SignInResult
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.whoswatching.SignInMessages
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -11,7 +12,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -29,13 +29,9 @@ enum class PinReason {
     ChoosePin,
 }
 
-/**
- * The PIN sheet. [error] says what went wrong; while [lockedSeconds] is set, too many wrong PINs were entered and the
- * keypad waits that many more seconds (counting down). After "Forgot PIN?" the sheet asks for the profile's Jellyfin
- * password instead ([forgot]), and [checking] is true while the server checks it.
- */
 data class PinPrompt(
     val reason: PinReason,
+    val message: String,
     val error: String? = null,
     val lockedSeconds: Int? = null,
     val forgot: Boolean = false,
@@ -44,22 +40,58 @@ data class PinPrompt(
     val confirming: Boolean = false,
     /** The profile whose PIN this is, for the Forgot PIN text. */
     val profileName: String = "",
+)
+
+private sealed interface PinFault {
+    data object Wrong : PinFault
+
+    data class AttemptsLeft(val attempts: Int) : PinFault
+
+    data object Mismatch : PinFault
+
+    data class Rejected(val result: SignInResult) : PinFault
+
+    fun message(): String = when (this) {
+        Wrong -> Strings.pinPromptWrong
+        is AttemptsLeft -> Strings.pinPromptAttemptsLeft(attempts)
+        Mismatch -> Strings.pinPromptMismatch
+        is Rejected -> SignInMessages.forFailure(result, passwordOnly = true)
+    }
+}
+
+private data class PinPromptState(
+    val reason: PinReason,
+    val fault: PinFault? = null,
+    val lockedSeconds: Int? = null,
+    val forgot: Boolean = false,
+    val checking: Boolean = false,
+    val confirming: Boolean = false,
+    val profileName: String = "",
 ) {
-    /** The line under the sheet's title. */
-    val message: String
-        get() = if (forgot) {
-            Strings.pinForgotMessage(profileName)
-        } else {
-            when (reason) {
-                PinReason.OpenProfile -> Strings.pinPromptOpenProfile
-                PinReason.OpenSettings -> Strings.pinPromptOpenSettings
-                PinReason.SwitchProfile -> Strings.pinPromptSwitchProfile
-                PinReason.ChangePin -> Strings.pinPromptChangePin
-                PinReason.RemovePin -> Strings.pinPromptRemovePin
-                PinReason.KidsOff -> Strings.pinPromptKidsOff
-                PinReason.ChoosePin -> if (confirming) Strings.pinPromptConfirm else Strings.pinPromptNew
-            }
+    fun render(): PinPrompt = PinPrompt(
+        reason = reason,
+        message = message(),
+        error = lockedSeconds?.let { Strings.pinPromptLocked(it) } ?: fault?.message(),
+        lockedSeconds = lockedSeconds,
+        forgot = forgot,
+        checking = checking,
+        confirming = confirming,
+        profileName = profileName,
+    )
+
+    private fun message(): String = if (forgot) {
+        Strings.pinForgotMessage(profileName)
+    } else {
+        when (reason) {
+            PinReason.OpenProfile -> Strings.pinPromptOpenProfile
+            PinReason.OpenSettings -> Strings.pinPromptOpenSettings
+            PinReason.SwitchProfile -> Strings.pinPromptSwitchProfile
+            PinReason.ChangePin -> Strings.pinPromptChangePin
+            PinReason.RemovePin -> Strings.pinPromptRemovePin
+            PinReason.KidsOff -> Strings.pinPromptKidsOff
+            PinReason.ChoosePin -> if (confirming) Strings.pinPromptConfirm else Strings.pinPromptNew
         }
+    }
 }
 
 /**
@@ -81,8 +113,8 @@ class PinGate(
         val choosing: Boolean = false,
     )
 
-    private val _prompt = MutableStateFlow<PinPrompt?>(null)
-    val prompt: StateFlow<PinPrompt?> = _prompt.asStateFlow()
+    private val shown = MutableStateFlow<PinPrompt?>(null)
+    val prompt: StateFlow<PinPrompt?> = shown.asStateFlow()
 
     private var pending: Pending? = null
     private var countdown: Job? = null
@@ -90,6 +122,21 @@ class PinGate(
 
     // The first of the two entries while choosing a PIN.
     private var chosen: String? = null
+
+    private var sheet: PinPromptState? = null
+
+    init {
+        scope.launch { Texts.language.collect { shown.value = sheet?.render() } }
+    }
+
+    private fun show(next: PinPromptState?) {
+        sheet = next
+        shown.value = next?.render()
+    }
+
+    private fun edit(change: (PinPromptState) -> PinPromptState) {
+        sheet?.let { show(change(it)) }
+    }
 
     /** Opens the sheet for [userId]'s PIN; [onPass] runs after the right PIN (or password), [onDismiss] if it is closed. */
     fun ask(
@@ -103,7 +150,7 @@ class PinGate(
         countdown?.cancel()
         chosen = null
         pending = Pending(serverId, userId, username, onPass, onDismiss)
-        _prompt.value = PinPrompt(reason, profileName = username)
+        show(PinPromptState(reason, profileName = username))
     }
 
     /**
@@ -114,23 +161,23 @@ class PinGate(
         countdown?.cancel()
         chosen = null
         pending = Pending(serverId, userId, username, onPass = {}, onDismiss = {}, choosing = true)
-        _prompt.value = PinPrompt(PinReason.ChoosePin, profileName = username)
+        show(PinPromptState(PinReason.ChoosePin, profileName = username))
     }
 
     fun submitPin(pin: String) {
         val asked = pending ?: return
-        val prompt = _prompt.value ?: return
+        val prompt = sheet ?: return
         if (prompt.lockedSeconds != null || prompt.forgot) return
         scope.launch {
             // PINs typed quickly are checked in order, and one that arrives after the sheet closed or locked is dropped.
             checks.withLock {
-                if (pending !== asked || _prompt.value?.lockedSeconds != null) return@withLock
+                if (pending !== asked || sheet?.lockedSeconds != null) return@withLock
                 if (asked.choosing) return@withLock choosePin(asked, pin)
                 when (val result = pins.verify(asked.serverId, asked.userId, pin)) {
                     PinResult.Ok -> pass(asked)
 
-                    is PinResult.Wrong -> _prompt.update {
-                        it?.copy(error = if (result.attemptsLeft > 2) Strings.pinPromptWrong else Strings.pinPromptAttemptsLeft(result.attemptsLeft))
+                    is PinResult.Wrong -> edit {
+                        it.copy(fault = if (result.attemptsLeft > 2) PinFault.Wrong else PinFault.AttemptsLeft(result.attemptsLeft))
                     }
 
                     is PinResult.Locked -> lockFor(result.secondsLeft)
@@ -145,7 +192,7 @@ class PinGate(
         when {
             first == null -> {
                 chosen = pin
-                _prompt.update { it?.copy(confirming = true, error = null) }
+                edit { it.copy(confirming = true, fault = null) }
             }
 
             first == pin -> {
@@ -155,7 +202,7 @@ class PinGate(
 
             else -> {
                 chosen = null
-                _prompt.update { it?.copy(confirming = false, error = Strings.pinPromptMismatch) }
+                edit { it.copy(confirming = false, fault = PinFault.Mismatch) }
             }
         }
     }
@@ -163,15 +210,15 @@ class PinGate(
     /** "Forgot PIN?": the sheet asks for the profile's Jellyfin password instead. */
     fun forgotPin() {
         if (pending?.choosing != false) return
-        _prompt.update { it?.copy(forgot = true, error = null) }
+        edit { it.copy(forgot = true, fault = null) }
     }
 
     /** Checks [password] by signing in as the profile; a right one removes its PIN and opens what the PIN guarded. */
     fun submitPassword(password: String) {
         val asked = pending ?: return
-        val prompt = _prompt.value
+        val prompt = sheet
         if (prompt == null || !prompt.forgot || prompt.checking) return
-        _prompt.update { it?.copy(checking = true, error = null) }
+        edit { it.copy(checking = true, fault = null) }
         scope.launch {
             when (val result = auth.signIn(asked.serverId, asked.username, password)) {
                 // Signing in made the profile the current one, which is the profile removePin works on.
@@ -180,7 +227,7 @@ class PinGate(
                     pass(asked)
                 }
 
-                else -> _prompt.update { it?.copy(checking = false, error = SignInMessages.forFailure(result, passwordOnly = true)) }
+                else -> edit { it.copy(checking = false, fault = PinFault.Rejected(result)) }
             }
         }
     }
@@ -201,7 +248,7 @@ class PinGate(
         countdown?.cancel()
         chosen = null
         pending = null
-        _prompt.value = null
+        show(null)
     }
 
     private companion object {
@@ -212,10 +259,10 @@ class PinGate(
         countdown?.cancel()
         countdown = scope.launch {
             for (left in seconds downTo 1) {
-                _prompt.update { it?.copy(error = Strings.pinPromptLocked(left), lockedSeconds = left) }
+                edit { it.copy(fault = null, lockedSeconds = left) }
                 delay(1_000)
             }
-            _prompt.update { it?.copy(error = null, lockedSeconds = null) }
+            edit { it.copy(lockedSeconds = null) }
         }
     }
 }

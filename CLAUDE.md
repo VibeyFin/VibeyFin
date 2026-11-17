@@ -82,7 +82,8 @@ Device ID: generate a UUID once per install and persist it.
 - All user-facing text lives in `shared/`: titles, labels, buttons, help text, empty states and
   accessibility descriptions in `Strings` (`ui/common/Strings.kt`), errors in `LoadMessages`,
   `SignInMessages` and `ConnectionIssueMessage`. Native screens hold no string literals; they read
-  `Strings` (`Strings.shared` in Swift). Add the text there first, then use it from both apps.
+  `Strings` (`Strings.shared` in Swift). Add the key to `shared/strings/en.json` and `Strings` first, then use it from both apps (rules in
+  `docs/translating.md`; `scripts/check-languages.sh` keeps the language lists in step).
 - One `ConnectionManager` owns the current server, profile and authenticated HTTP client as a
   `StateFlow`. Features read from it; nothing else holds tokens.
 - A 401 from any authenticated call goes through one place, `ConnectionManager.expireSession`, which
@@ -118,7 +119,7 @@ apps share are in `guardrails.md`; which Jellyfin field drives which UI is in `j
 - Use the platform's own component when it has one (buttons, sheets, menus, tab bar, text fields);
   build custom only for posters, rows, the hero and the player. Never fake Liquid Glass.
 - Copy: `Strings` is written in sentence case, plain verbs; errors say what happened and how to fix
-  it. iOS shows button, tab and title labels in title case through one helper, `titleCased()`;
+  it. iOS shows button, tab and title labels in title case through one helper, `titleCased()`, which leaves any language other than English as written;
   Android uses the text as is.
 - Colours are generated from `design/tokens.json` by `./gradlew generateThemes` (Android `GeneratedThemes.kt`, iOS
   `GeneratedTheme.swift`, the window colour and the iOS colour sets). The files are committed and CI fails when they differ

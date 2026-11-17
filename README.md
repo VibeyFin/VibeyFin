@@ -64,8 +64,8 @@ What works today:
   refresh
   on iOS). Tablets get a two-pane Settings.
 
-Not built yet: customisation of Home rows and tabs, Seerr, translations (issue #27),
-TV apps. Android has been run on an emulator against a local test server (see
+Not built yet: customisation of Home rows and tabs, Seerr, TV apps. Translations are in
+progress, see [Translating](#translating). Android has been run on an emulator against a local test server (see
 [`docs/test-server.md`](docs/test-server.md)); there has been no real-device pass yet,
 so real HDR output is unverified. **The iOS app builds and its unit tests pass on the simulator, but
 most screens have not been walked through by hand**,
@@ -149,6 +149,33 @@ target, which also needs Xcode.
 - A release APK and a debug build share one package name but are signed with different keys, so
   installing one over the other fails until the first is uninstalled.
 
+## Translating
+
+[![Translation status](https://translate.lore-le.ch/widget/vibeyfin/multi-auto.svg)](https://translate.lore-le.ch/engage/vibeyfin/)
+
+VibeyFin is translated on [Weblate](https://translate.lore-le.ch/workspaces/0e11631b-4809-477f-ab13-52e3dff0e7b6/).
+You don't need to know Kotlin, Swift or Git: sign in, pick your language and start translating. One
+set of strings feeds both the Android and the iOS app. Missing a language? Ask for it in an issue.
+
+Guidelines:
+
+- Keep `{{placeholders}}` such as `{{name}}` and `{{count}}` exactly as written. Move them where your
+  language needs them, but never rename or drop one.
+- Keys ending in `_one` and `_other` are plural forms. Add the forms your language uses (`_few`,
+  `_many` and so on).
+- Leave product names alone: VibeyFin, Jellyfin, Seerr, Quick Connect.
+- Follow the glossary on Weblate (My List, Who's watching?, Continue watching, Home, Downloads) so
+  terms stay consistent.
+- Stay under the length limit shown for tab, button and chip labels.
+- Write in sentence case with plain verbs; errors say what happened and how to fix it.
+
+Weblate opens a pull request with your work and a maintainer reviews and merges it. Please don't edit
+`shared/strings/*.json` by hand, except `en.json`, the source text. The full workflow, including
+adding a language and changing English text, is in [`docs/translating.md`](docs/translating.md).
+
+By contributing a translation you agree that it is released under the same license as the
+project's source code, [MPL-2.0](LICENSE).
+
 ## Built with
 
 Kotlin, Jetpack Compose and Material 3, SwiftUI, Media3 ExoPlayer and AVPlayer, Ktor,
@@ -158,6 +185,17 @@ pinned in [`gradle/libs.versions.toml`](gradle/libs.versions.toml).
 
 The official Jellyfin Kotlin SDK is JVM-only, so the app talks to the Jellyfin REST API directly
 through a thin Ktor client.
+
+## License
+
+VibeyFin is licensed under the [Mozilla Public License 2.0](LICENSE). The VibeyFin name and logo are
+not covered by it.
+
+The Android build bundles Jellyfin's FFmpeg audio decoder (`org.jellyfin.media3:media3-ffmpeg-decoder`),
+which is GPL-3.0, so an Android APK that includes it is distributed under the GPL-3.0. MPL-2.0 is
+compatible with that. The iOS build uses AetherEngine (LGPL-3.0 with an App Store exception) and
+dynamically linked FFmpeg (LGPL-2.1+). All third-party components and their licences are listed in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ## Where to read more
 

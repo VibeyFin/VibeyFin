@@ -1,4 +1,5 @@
 import Foundation
+import Shared
 
 extension String {
     /// Apple's headline-style capitalisation for button, tab and title labels on iOS: every word
@@ -7,6 +8,12 @@ extension String {
     /// changed, and a word that already has a capital or a digit after its first letter ("iPhone",
     /// "S2:E4") is left alone. Not for errors, help text, server names or anything the user typed.
     func titleCased() -> String {
+        titleCased(forLanguage: ActiveLanguage.shared.tag)
+    }
+
+    /// Title case is an English convention, so any other language is returned as written.
+    func titleCased(forLanguage languageTag: String) -> String {
+        guard languageTag == StringCatalogKt.DEFAULT_LANGUAGE || languageTag.hasPrefix("\(StringCatalogKt.DEFAULT_LANGUAGE)-") else { return self }
         let smallWords: Set<String> = [
             "a", "an", "the", "and", "but", "for", "nor", "or", "so", "yet",
             "as", "at", "by", "from", "in", "into", "of", "off", "on", "onto",

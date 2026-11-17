@@ -8,6 +8,7 @@ import app.vibeyfin.domain.PinGates
 import app.vibeyfin.domain.PolicySummary
 import app.vibeyfin.domain.ProfileSettings
 import app.vibeyfin.domain.SubtitleMode
+import app.vibeyfin.i18n.AppLanguage
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 
@@ -41,6 +42,8 @@ sealed interface LanguageStatus {
  */
 data class SettingsValues(
     val alwaysAskWhoIsWatching: Boolean = false,
+    val appLanguage: String? = null,
+    val appLanguages: List<AppLanguage> = emptyList(),
     val appVersion: String = "",
     /** False where subtitles are burned into the picture (iOS), so the style cannot apply. */
     val subtitleStyleApplies: Boolean = true,

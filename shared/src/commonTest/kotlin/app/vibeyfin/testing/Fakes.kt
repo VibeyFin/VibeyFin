@@ -126,6 +126,7 @@ class FakeDeviceInfo(
     override val deviceName: String = "Test phone",
     override val appVersion: String = "1.0.0",
     override val language: String = "en",
+    override val languageTag: String = language,
 ) : DeviceInfo
 
 /**

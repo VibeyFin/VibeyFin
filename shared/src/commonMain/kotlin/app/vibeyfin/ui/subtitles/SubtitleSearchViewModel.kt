@@ -14,6 +14,7 @@ import app.vibeyfin.domain.StreamTrack
 import app.vibeyfin.domain.SubtitleDownload
 import app.vibeyfin.domain.SubtitleRepository
 import app.vibeyfin.domain.namedBy
+import app.vibeyfin.i18n.Texts
 import app.vibeyfin.ui.common.LoadMessages
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.common.sessionEnded
@@ -21,6 +22,7 @@ import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.settings.languageChoices
 import app.vibeyfin.ui.settings.matchesLanguageSearch
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -71,6 +73,52 @@ data class SubtitleSearchUiState(
     val exit: HomeExit? = null,
 )
 
+private enum class DownloadFault { NotArrived, NotArrivedHasOne, AddFailed }
+
+private sealed interface SearchFault {
+    data class NoResults(val language: String) : SearchFault
+
+    data object NotAllowed : SearchFault
+
+    data object Unreachable : SearchFault
+
+    data class Failed(val error: ApiError) : SearchFault
+}
+
+private data class SearchFindings(
+    val remote: List<RemoteSubtitle> = emptyList(),
+    val possiblyAddedIds: Set<String> = emptySet(),
+    val addedIds: Set<String> = emptySet(),
+    val fault: SearchFault? = null,
+    val downloadFault: DownloadFault? = null,
+)
+
+private fun SubtitleSearchUiState.localized(findings: SearchFindings): SubtitleSearchUiState = copy(
+    results = findings.remote.map { it.toResultRow(findings) },
+    problem = findings.fault?.problem(),
+    message = findings.downloadFault?.message(),
+)
+
+private fun RemoteSubtitle.toResultRow(findings: SearchFindings): SubtitleResultRow {
+    val possiblyAdded: Boolean = id in findings.possiblyAddedIds
+    val added: Boolean = id in findings.addedIds
+    val details: String = Strings.subtitleResultDetails(provider, format, rating, possiblyAdded)
+    return SubtitleResultRow(id, name, details, isHashMatch, added, Strings.subtitleResultDescription(name, details, isHashMatch, added))
+}
+
+private fun SearchFault.problem(): SubtitleSearchProblem = when (this) {
+    is SearchFault.NoResults -> SubtitleSearchProblem(Strings.noSubtitlesFound(language), Strings.noSubtitlesHint, canRetry = false)
+    SearchFault.NotAllowed -> SubtitleSearchProblem(LoadMessages.SUBTITLES_NOT_ALLOWED_TITLE, LoadMessages.SUBTITLES_NOT_ALLOWED_TEXT, canRetry = false)
+    SearchFault.Unreachable -> SubtitleSearchProblem(LoadMessages.SUBTITLES_UNREACHABLE_TITLE, LoadMessages.SUBTITLES_UNREACHABLE_TEXT, canRetry = true)
+    is SearchFault.Failed -> SubtitleSearchProblem(LoadMessages.SUBTITLES_SEARCH_FAILED_TITLE, LoadMessages.forError(error), canRetry = true)
+}
+
+private fun DownloadFault.message(): SubtitleSearchMessage = when (this) {
+    DownloadFault.NotArrived -> SubtitleSearchMessage(LoadMessages.SUBTITLES_DID_NOT_ARRIVE, canRetry = false)
+    DownloadFault.NotArrivedHasOne -> SubtitleSearchMessage(LoadMessages.SUBTITLES_DID_NOT_ARRIVE_HAS_ONE, canRetry = false)
+    DownloadFault.AddFailed -> SubtitleSearchMessage(LoadMessages.SUBTITLES_ADD_FAILED, canRetry = true)
+}
+
 /**
  * The "Search for subtitles" sheet of a screen, which lives as long as the screen, so a download goes on when the sheet closes.
  * The language chosen here applies to this search only; opening the sheet again starts from the profile's language.
@@ -81,8 +129,11 @@ class SubtitleSearchViewModel(
     connection: ConnectionManager,
 ) : ViewModel() {
     private val content = MutableStateFlow(SubtitleSearchUiState())
+    private val findings = MutableStateFlow(SearchFindings())
 
-    val uiState: StateFlow<SubtitleSearchUiState> = combine(content, connection.sessionEnded()) { content, exit -> content.copy(exit = exit) }
+    private val localizedContent: Flow<SubtitleSearchUiState> = combine(content, findings, Texts.language) { content, findings, _ -> content.localized(findings) }
+
+    val uiState: StateFlow<SubtitleSearchUiState> = combine(localizedContent, connection.sessionEnded()) { content, exit -> content.copy(exit = exit) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SubtitleSearchUiState())
 
     private var itemId = ""
@@ -94,7 +145,6 @@ class SubtitleSearchViewModel(
     private var failedDownload: String? = null
     private var chosenLanguage = false
     private var existing: List<StreamTrack> = emptyList()
-    private var alreadyAdded: Set<String> = emptySet()
 
     /** The sheet opens on [item]: it searches straight away. A download still going for that item is simply shown again. */
     fun onOpen(item: String) {
@@ -105,6 +155,7 @@ class SubtitleSearchViewModel(
         failedDownload = null
         chosenLanguage = false
         searching?.cancel()
+        findings.update { SearchFindings(addedIds = it.addedIds) }
         content.update { SubtitleSearchUiState(added = it.added) }
         searching = viewModelScope.launch {
             readLanguages()
@@ -134,23 +185,22 @@ class SubtitleSearchViewModel(
 
     /** Adds the result [id] to the item on the server. */
     fun onChoose(id: String) {
-        if (downloading?.isActive == true || id in alreadyAdded) return
+        if (downloading?.isActive == true || id in findings.value.addedIds) return
         val item = itemId
         val language = languageName()
         failedDownload = null
-        content.update { it.copy(downloadingId = id, message = null) }
+        content.update { it.copy(downloadingId = id) }
+        findings.update { it.copy(downloadFault = null) }
         downloading = viewModelScope.launch {
             val outcome = subtitles.download(item, id)
             content.update { it.copy(downloadingId = null) }
             when (outcome) {
                 is SubtitleDownload.Added -> {
-                    alreadyAdded = alreadyAdded + id
-                    content.update {
-                        it.copy(added = SubtitleAdded(item, outcome.streamIndex, language), results = it.results.map { row -> if (row.id == id) row.markedAdded() else row })
-                    }
+                    findings.update { it.copy(addedIds = it.addedIds + id) }
+                    content.update { it.copy(added = SubtitleAdded(item, outcome.streamIndex, language)) }
                 }
 
-                SubtitleDownload.NotArrived -> content.update { it.copy(message = SubtitleSearchMessage(if (existing.isEmpty()) LoadMessages.SUBTITLES_DID_NOT_ARRIVE else LoadMessages.SUBTITLES_DID_NOT_ARRIVE_HAS_ONE, canRetry = false)) }
+                SubtitleDownload.NotArrived -> findings.update { it.copy(downloadFault = if (existing.isEmpty()) DownloadFault.NotArrived else DownloadFault.NotArrivedHasOne) }
 
                 is SubtitleDownload.Failed -> onDownloadFailed(id, outcome.error)
             }
@@ -161,11 +211,11 @@ class SubtitleSearchViewModel(
         when (error) {
             ApiError.Unauthorized -> Unit
 
-            ApiError.Forbidden -> content.update { it.copy(results = emptyList(), problem = notAllowed()) }
+            ApiError.Forbidden -> findings.update { it.copy(remote = emptyList(), fault = SearchFault.NotAllowed) }
 
             else -> {
                 failedDownload = id
-                content.update { it.copy(message = SubtitleSearchMessage(LoadMessages.SUBTITLES_ADD_FAILED, canRetry = true)) }
+                findings.update { it.copy(downloadFault = DownloadFault.AddFailed) }
             }
         }
     }
@@ -186,7 +236,7 @@ class SubtitleSearchViewModel(
 
     fun onDismissMessage() {
         failedDownload = null
-        content.update { it.copy(message = null) }
+        findings.update { it.copy(downloadFault = null) }
     }
 
     fun onAddedHandled() {
@@ -194,29 +244,32 @@ class SubtitleSearchViewModel(
     }
 
     private suspend fun search() {
-        content.update {
-            it.copy(loading = true, results = emptyList(), problem = null, message = null, languageName = languageName(), languages = languageRows(it.languageQuery))
-        }
+        content.update { it.copy(loading = true, languageName = languageName(), languages = languageRows(it.languageQuery)) }
+        findings.update { it.copy(remote = emptyList(), fault = null, downloadFault = null) }
         existing = subtitles.externalTracks(itemId).filter { inSearchLanguage(it) }
-        alreadyAdded = if (existing.isEmpty()) emptySet() else subtitles.addedTo(itemId)
+        val addedIds: Set<String> = if (existing.isEmpty()) emptySet() else subtitles.addedTo(itemId)
+        findings.update { it.copy(addedIds = addedIds) }
         when (val result = subtitles.search(itemId, languageCode)) {
-            is ApiResult.Success -> content.update {
-                val problem = if (result.value.isEmpty()) SubtitleSearchProblem(Strings.noSubtitlesFound(languageName()), Strings.noSubtitlesHint, canRetry = false) else null
-                it.copy(loading = false, results = result.value.map { subtitle -> subtitle.toRow(possiblyAdded = existing.any(subtitle::namedBy)) }, problem = problem)
+            is ApiResult.Success -> {
+                val possiblyAddedIds: Set<String> = result.value.filter { subtitle -> existing.any(subtitle::namedBy) }.map { it.id }.toSet()
+                val fault: SearchFault? = if (result.value.isEmpty()) SearchFault.NoResults(languageName()) else null
+                findings.update { it.copy(remote = result.value, possiblyAddedIds = possiblyAddedIds, fault = fault) }
+                content.update { it.copy(loading = false) }
             }
 
-            is ApiResult.Failure -> content.update { it.copy(loading = false, problem = problemFor(result.error)) }
+            is ApiResult.Failure -> {
+                findings.update { it.copy(fault = faultFor(result.error)) }
+                content.update { it.copy(loading = false) }
+            }
         }
     }
 
-    private fun problemFor(error: ApiError): SubtitleSearchProblem? = when (error) {
+    private fun faultFor(error: ApiError): SearchFault? = when (error) {
         ApiError.Unauthorized -> null
-        ApiError.Forbidden -> notAllowed()
-        ApiError.Network -> SubtitleSearchProblem(LoadMessages.SUBTITLES_UNREACHABLE_TITLE, LoadMessages.SUBTITLES_UNREACHABLE_TEXT, canRetry = true)
-        else -> SubtitleSearchProblem(LoadMessages.SUBTITLES_SEARCH_FAILED_TITLE, LoadMessages.forError(error), canRetry = true)
+        ApiError.Forbidden -> SearchFault.NotAllowed
+        ApiError.Network -> SearchFault.Unreachable
+        else -> SearchFault.Failed(error)
     }
-
-    private fun notAllowed() = SubtitleSearchProblem(LoadMessages.SUBTITLES_NOT_ALLOWED_TITLE, LoadMessages.SUBTITLES_NOT_ALLOWED_TEXT, canRetry = false)
 
     private fun languageName() = known.firstOrNull { it.matches(languageCode) }?.name ?: languageCode
 
@@ -224,17 +277,9 @@ class SubtitleSearchViewModel(
         .filter { matchesLanguageSearch(it.name, it.code, query) }
         .map { SubtitleLanguageRow(it.code, it.name, it.matches(languageCode)) }
 
-    private fun SubtitleResultRow.markedAdded(): SubtitleResultRow = copy(added = true, spoken = Strings.subtitleResultDescription(name, details, isMatch, added = true))
-
     private fun inSearchLanguage(track: StreamTrack): Boolean {
         val language = track.language ?: return false
 
         return known.firstOrNull { it.matches(languageCode) }?.matches(language) ?: language.equals(languageCode, ignoreCase = true)
-    }
-
-    private fun RemoteSubtitle.toRow(possiblyAdded: Boolean): SubtitleResultRow {
-        val details = Strings.subtitleResultDetails(provider, format, rating, possiblyAdded)
-        val added = id in alreadyAdded
-        return SubtitleResultRow(id, name, details, isHashMatch, added, Strings.subtitleResultDescription(name, details, isHashMatch, added))
     }
 }

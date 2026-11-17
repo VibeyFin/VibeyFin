@@ -3,10 +3,12 @@ package app.vibeyfin.app.player
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.vibeyfin.R
@@ -74,14 +77,14 @@ fun UpNextCard(upNext: UpNext, onPlayNow: () -> Unit, onWatchCredits: () -> Unit
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2), modifier = Modifier.fillMaxWidth()) {
-            Button(onClick = onPlayNow, modifier = Modifier.weight(1f).height(UP_NEXT_BUTTON_HEIGHT)) {
+            Button(onClick = onPlayNow, contentPadding = UP_NEXT_BUTTON_PADDING, modifier = Modifier.weight(1f).heightIn(min = UP_NEXT_BUTTON_HEIGHT)) {
                 Icon(painter = painterResource(R.drawable.ic_play), contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text(Strings.playNow, maxLines = 1)
+                Text(Strings.playNow, maxLines = 2, textAlign = TextAlign.Center)
             }
 
-            FilledTonalButton(onClick = onWatchCredits, modifier = Modifier.weight(1f).height(UP_NEXT_BUTTON_HEIGHT)) {
-                Text(Strings.watchCredits, maxLines = 1)
+            FilledTonalButton(onClick = onWatchCredits, contentPadding = UP_NEXT_BUTTON_PADDING, modifier = Modifier.weight(1f).heightIn(min = UP_NEXT_BUTTON_HEIGHT)) {
+                Text(Strings.watchCredits, maxLines = 2, textAlign = TextAlign.Center)
             }
         }
     }
@@ -89,3 +92,4 @@ fun UpNextCard(upNext: UpNext, onPlayNow: () -> Unit, onWatchCredits: () -> Unit
 
 private val UP_NEXT_WIDTH = 340.dp
 private val UP_NEXT_BUTTON_HEIGHT = 44.dp
+private val UP_NEXT_BUTTON_PADDING = PaddingValues(horizontal = 12.dp, vertical = 8.dp)

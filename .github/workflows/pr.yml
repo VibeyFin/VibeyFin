@@ -31,6 +31,12 @@ jobs:
       - run: ./gradlew generateThemes
       - run: git diff --exit-code
 
+  languages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: ./scripts/check-languages.sh
+
   swiftlint:
     runs-on: ubuntu-latest
     container: ghcr.io/realm/swiftlint:0.65.1
