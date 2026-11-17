@@ -185,7 +185,7 @@ class FilteredListViewModel(
 
     val uiState: StateFlow<FilteredListUiState> = combine(listState, filters, openSheet, connection.sessionEnded(), Texts.language) { list, filters, open, exit, _ ->
         FilteredListUiState(list.copy(exit = exit), chipsFor(filters), open?.let { sheetFor(it, filters) })
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FilteredListUiState())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FilteredListUiState(chips = chipsFor(filters.value)))
 
     init {
         loadFirstPage()

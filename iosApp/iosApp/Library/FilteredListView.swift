@@ -35,25 +35,16 @@ struct FilteredListView: View {
                         .screenMargin()
                         .padding(.top, Space.s5)
                 }
-                if let state = model.state {
-                    ListChipRow(chips: state.chips) { model.chip($0.kind) }
-                } else {
-                    // The chips' height is held until they arrive, so the grid below doesn't drop when they do.
-                    Color.clear.frame(height: 44)
-                }
+                ListChipRow(chips: model.state.chips) { model.chip($0.kind) }
                 ScrollView {
                     VStack(alignment: .leading, spacing: Space.s4) {
-                        if let state = model.state {
-                            content(state.list)
-                        } else {
-                            PosterSkeletonGrid(minimumWidth: isRoot ? 104 : 130)
-                        }
+                        content(model.state.list)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .screenMargin()
                     .padding(.bottom, Space.s5)
                     // The old list stays, dimmed, until the new one is in: nothing jumps.
-                    .opacity(model.state?.list.refreshing == true ? 0.45 : 1)
+                    .opacity(model.state.list.refreshing ? 0.45 : 1)
                 }
             }
         }
@@ -66,14 +57,14 @@ struct FilteredListView: View {
         // Only the chevron, no "Back" label. The swipe from the edge still goes back.
         .toolbarRole(.editor)
         .navigationBarBackButtonHidden(isRoot)
-        .onChange(of: model.state?.list.exit != nil) { _, hasExit in
-            if hasExit, let exit = model.state?.list.exit { onExit(exit) }
+        .onChange(of: model.state.list.exit != nil) { _, hasExit in
+            if hasExit, let exit = model.state.list.exit { onExit(exit) }
         }
         .sheet(isPresented: Binding(
-            get: { model.state?.sheet != nil },
+            get: { model.state.sheet != nil },
             set: { if !$0 { model.dismissSheet() } }
         )) {
-            if let sheet = model.state?.sheet {
+            if let sheet = model.state.sheet {
                 PickerSheetView(
                     title: sheet.title,
                     rows: sheet.rows.map { row in

@@ -15,6 +15,9 @@ class FilteredListModel(filter: HomeFilter) {
     /** The name at the top of the page. */
     val title: String get() = host.viewModel.title
 
+    /** The state now, so the page's first frame already has its buttons and its loading grid. */
+    val state: FilteredListUiState get() = host.viewModel.uiState.value
+
     fun observe(onChange: (FilteredListUiState) -> Unit) = host.observe(host.viewModel.uiState, onChange)
 
     fun onLoadMore() = host.viewModel.onLoadMore()

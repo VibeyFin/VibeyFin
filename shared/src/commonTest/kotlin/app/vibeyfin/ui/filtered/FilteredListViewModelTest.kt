@@ -96,6 +96,16 @@ class FilteredListViewModelTest {
     }
 
     @Test
+    fun theButtonsAreThereBeforeTheFirstPageLoads() = runTest {
+        app.signedIn().listOf(emptyList(), 60)
+
+        val first = viewModel(HomeFilter.Movies).uiState.value
+
+        assertTrue(first.list.loading)
+        assertEquals(listOf(ListChipKind.Sort, ListChipKind.Filters), first.chips.map { it.kind })
+    }
+
+    @Test
     fun aPageWithNothingInItIsEmptyNotLoading() = runTest {
         app.signedIn().listOf(emptyList(), 60)
 

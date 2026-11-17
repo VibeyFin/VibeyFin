@@ -176,7 +176,7 @@ fun ChildrenScreen(
 
                 when {
                     state.loading -> LazyVerticalGrid(
-                        columns = GridCells.Adaptive(if (isRoot) 104.dp else 130.dp),
+                        columns = GridCells.Adaptive(posterMinWidth(isRoot, LocalConfiguration.current.screenWidthDp >= 600)),
                         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
                         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
                         userScrollEnabled = false,
