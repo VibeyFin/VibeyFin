@@ -466,14 +466,6 @@ class FilteredListViewModelTest {
     }
 
     @Test
-    fun theLibraryCountIsGroupedByThousands() {
-        assertEquals("1,284 titles", Strings.libraryCount(1284))
-        assertEquals("12 titles", Strings.libraryCount(12))
-        assertEquals("1 title", Strings.libraryCount(1))
-        assertEquals("1,000,000 titles", Strings.libraryCount(1_000_000))
-    }
-
-    @Test
     fun theGenrePickerNarrowsAShowsPageAndAllGenresClearsIt() = runTest {
         app.signedIn().categorised()
         val viewModel = viewModel(HomeFilter.Shows)

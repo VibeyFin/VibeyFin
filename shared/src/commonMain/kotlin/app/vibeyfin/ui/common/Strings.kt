@@ -233,9 +233,6 @@ object Strings {
     val noPeopleFound: String get() = text("no_people_found")
     val clearFilters: String get() = text("clear_filters")
 
-    /** "1,284 titles" under the Library's title. */
-    fun libraryCount(count: Int): String = plural("library_count", count, "count" to Formats.current.integer(count.toLong()))
-
     fun sortChip(label: String): String = text("sort_chip", "label" to label)
 
     /** What a screen reader says for a sheet row that holds [count] titles. */
@@ -319,8 +316,6 @@ object Strings {
     /** In the Categories sheet when the server has none. */
     val noCategories: String get() = text("no_categories")
 
-    /** On the Library and Downloads tabs until their features land. */
-    val notAvailableYet: String get() = text("not_available_yet")
     val switchProfile: String get() = text("switch_profile")
     val switchServer: String get() = text("switch_server")
     val emptyFolder: String get() = text("empty_folder")
@@ -734,14 +729,10 @@ object Strings {
     val languageHelp: String get() = text("language_help")
 
     val alwaysAskWhoIsWatchingTitle: String get() = text("always_ask_who_is_watching_title")
-    val alwaysAskWhoIsWatchingHelp: String get() = text("always_ask_who_is_watching_help")
     val playbackStatsTitle: String get() = text("playback_stats_title")
-    val playbackStatsHelp: String get() = text("playback_stats_help")
     val playbackSection: String get() = text("playback_section")
     val skipBack: String get() = text("skip_back")
     val skipForward: String get() = text("skip_forward")
-
-    fun skipSeconds(seconds: Int): String = text("skip_seconds", "seconds" to seconds)
 
     fun skipBackLabel(seconds: Int): String = text("skip_back_label", "seconds" to seconds)
 
@@ -750,14 +741,10 @@ object Strings {
     fun seekFlash(seconds: Int): String = text("seek_flash", "seconds" to seconds)
 
     val autoSkipSegments: String get() = text("auto_skip_segments")
-    val autoSkipSegmentsHelp: String get() = text("auto_skip_segments_help")
     val bufferAhead: String get() = text("buffer_ahead")
     val bufferAheadAuto: String get() = text("buffer_ahead_auto")
 
-    fun bufferAheadChoice(seconds: Int): String = if (seconds == 0) bufferAheadAuto else text("buffer_ahead_choice", "seconds" to seconds)
-
     val bufferAheadHelp: String get() = text("buffer_ahead_help")
-    val skipHelp: String get() = text("skip_help")
     val heroMovie: String get() = text("hero_movie")
     val heroShow: String get() = text("hero_show")
     val homeHeroItemsTitle: String get() = text("home_hero_items_title")
@@ -766,7 +753,6 @@ object Strings {
     fun homeHeroItemsCount(n: Int): String = plural("home_hero_items_count", n)
 
     val homeGenreRowsTitle: String get() = text("home_genre_rows_title")
-    val homeGenreRowsHelp: String get() = text("home_genre_rows_help")
     val homeGenreRowsAll: String get() = text("home_genre_rows_all")
     val homeGenreRowsNone: String get() = text("home_genre_rows_none")
 
@@ -775,8 +761,6 @@ object Strings {
     val showWatchedInRowsTitle: String get() = text("show_watched_in_rows_title")
     val showWatchedInRowsHelp: String get() = text("show_watched_in_rows_help")
 
-    val stillWatchingTitle: String get() = text("still_watching_title")
-    val stillWatchingHelp: String get() = text("still_watching_help")
     val stillWatchingOff: String get() = text("still_watching_off")
 
     /** The question that pauses the player after several episodes in a row. */
@@ -816,7 +800,6 @@ object Strings {
     val qualityTitle: String get() = text("quality_title")
     val qualityGroup: String get() = text("quality_group")
     val qualityMaximum: String get() = text("quality_maximum")
-    val qualityMaximumHelp: String get() = text("quality_maximum_help")
     val qualityFooter: String get() = text("quality_footer")
 
     /** The label of one stream-quality cap, given in bits per second; 0 is Maximum. Anything off the list reads as Maximum. */
@@ -1031,7 +1014,6 @@ object Strings {
     // Notifications page
     val notificationsTitle: String get() = text("notifications_title")
     val notificationsOn: String get() = text("notifications_on")
-    val notificationsOff: String get() = text("notifications_off")
     val notificationsToggle: String get() = text("notifications_toggle")
     val notificationsWhichGroup: String get() = text("notifications_which_group")
     val notificationsFollowed: String get() = text("notifications_followed")
@@ -1117,7 +1099,6 @@ object Strings {
     /** What a screen reader says for a download's state; the sighted see an icon or a ring. */
     fun downloadStateDescription(title: String, state: String): String = text("download_state_description", "title" to title, "state" to state)
 
-    val offlineBannerTitle: String get() = text("offline_banner_title")
     val offlineBannerHelp: String get() = text("offline_banner_help")
 
     /** The toast when the app goes offline for want of a network. */
@@ -1125,7 +1106,6 @@ object Strings {
 
     /** The toast when Offline mode is switched on. */
     val offlineModeToast: String get() = text("offline_mode_toast")
-    val offlineByChoiceHelp: String get() = text("offline_by_choice_help")
     val goOnline: String get() = text("go_online")
     val serverUnreachableBannerTitle: String get() = text("server_unreachable_banner_title")
     val useOffline: String get() = text("use_offline")
@@ -1137,8 +1117,6 @@ object Strings {
     val offlineSearchEmpty: String get() = text("offline_search_empty")
     val downloadOverMobileTitle: String get() = text("download_over_mobile_title")
     val downloadOverMobileHelp: String get() = text("download_over_mobile_help")
-    val autoCleanWatchedTitle: String get() = text("auto_clean_watched_title")
-    val autoCleanWatchedHelp: String get() = text("auto_clean_watched_help")
     val storageLimitTitle: String get() = text("storage_limit_title")
     val storageLimitHelp: String get() = text("storage_limit_help")
     val storageLimitNone: String get() = text("storage_limit_none")
@@ -1185,7 +1163,6 @@ object Strings {
     fun downloadsWaiting(count: Int): String = plural("downloads_waiting", count)
 
     // Downloads: the actions, the confirmations and the Downloads screen.
-    fun downloadedWithSize(bytes: Long): String = if (bytes > 0) text("downloaded_with_size", "downloaded" to downloaded, "size" to fileSize(bytes)) else downloaded
 
     val pauseDownload: String get() = text("pause_download")
     val resumeDownload: String get() = text("resume_download")
@@ -1327,7 +1304,6 @@ object Strings {
     val seerrRequest4kQuota: String get() = text("seerr_request_4k_quota")
     val seerrCancelRequest: String get() = text("seerr_cancel_request")
     val seerrMoreLikeThis: String get() = text("seerr_more_like_this")
-    val seerrSeasons: String get() = text("seerr_seasons")
     val seerrAllMissingSeasons: String get() = text("seerr_all_missing_seasons")
     val seerrQuality: String get() = text("seerr_quality")
     val seerrStandard: String get() = text("seerr_standard")
