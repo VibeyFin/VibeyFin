@@ -749,7 +749,7 @@
     "skip_preview":"Skip preview",
     "skip_recap":"Skip recap",
     "skip_seconds_short":"{{seconds}} s",
-    "skipping_footer":"Back: 5, 10, 15 or 30 s. Forward: 10, 15, 30, 45 or 60 s. These are the intervals the player's button glyphs come in, so the button and the setting agree.",
+    "skipping_footer":"Back: 5, 10, 15 or 30 s. Forward: 10, 15, 30, 45 or 60 s. These match the skip buttons in the player.",
     "skipping_group":"Skipping",
     "skipping_summary_still_watching_after":"Still watching after {{count}}",
     "skipping_summary_still_watching_off":"Still watching off",
