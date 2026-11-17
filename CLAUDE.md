@@ -192,3 +192,17 @@ Follow this strict top-to-bottom layout within scopes:
 `reference/reel-android/` (if present) is an earlier Android-only prototype. Use it for UI ideas,
 the colour system and the step-1 storage design (Room entities, session rules, tests). Port into
 KMP; don't copy Android-only APIs into `commonMain`.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for VibeyFin/VibeyFin (via the `gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: root `GLOSSARY.md` and `docs/adr/`. See `docs/agents/domain.md`.
