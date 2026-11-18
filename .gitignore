@@ -40,3 +40,9 @@ scripts/test-server/data/
 docs/plans/
 docs/superpowers/
 docs/checklists/
+
+# Agent-written domain docs and scratch issues stay local (docs/agents/ config is committed)
+GLOSSARY.md
+GLOSSARY-MAP.md
+docs/adr/
+.scratch/
