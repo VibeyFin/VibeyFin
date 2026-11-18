@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -23,9 +22,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridItemScope
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -61,9 +58,11 @@ import app.vibeyfin.app.components.SkeletonLine
 import app.vibeyfin.app.components.skeletonCount
 import app.vibeyfin.app.components.skeletonTiles
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
+import app.vibeyfin.app.navigation.verticalPageScroll
 import app.vibeyfin.app.theme.BrandDisplay
 import app.vibeyfin.app.theme.ContentMaxWidth
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.pageInsetsPadding
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.model.Person
@@ -117,7 +116,7 @@ private fun PersonColumn(state: PersonUiState, onOpen: (MediaItem) -> Unit, onRe
     val margin = screenMargin()
 
     Column(
-        modifier = Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(bottom = LocalBottomBarPadding.current),
+        modifier = Modifier.fillMaxSize().pageInsetsPadding().verticalPageScroll(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(BackButtonSpace))
@@ -154,7 +153,7 @@ private fun PersonGrid(state: PersonUiState, onOpen: (MediaItem) -> Unit, onRetr
 
     LazyVerticalGrid(
         columns = GridCells.Adaptive(POSTER_WIDE),
-        modifier = Modifier.fillMaxSize().safeDrawingPadding(),
+        modifier = Modifier.fillMaxSize().pageInsetsPadding(),
         contentPadding = PaddingValues(start = margin, end = margin, bottom = bottomSpace),
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),

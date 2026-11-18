@@ -59,7 +59,7 @@ import app.vibeyfin.app.components.BackButton
 import app.vibeyfin.app.components.ChipButton
 import app.vibeyfin.app.components.ChipInset
 import app.vibeyfin.app.theme.VibeyFinTokens
-import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.app.theme.pageMargin
 import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.launch
 
@@ -167,8 +167,8 @@ private fun TopBar(
             .background(scrimBand(atTop = true))
             .safeDrawingPadding()
             .padding(
-                start = screenMargin() - ChipInset,
-                end = screenMargin(),
+                start = pageMargin() - ChipInset,
+                end = pageMargin(),
                 top = VibeyFinTokens.Space.s2,
                 bottom = VibeyFinTokens.Space.s5,
             ),
@@ -384,7 +384,7 @@ private fun Scrubber(
             .fillMaxWidth()
             .background(scrimBand(atTop = false))
             .safeDrawingPadding()
-            .padding(horizontal = screenMargin(), vertical = VibeyFinTokens.Space.s2)
+            .padding(horizontal = pageMargin(), vertical = VibeyFinTokens.Space.s2)
             .padding(top = VibeyFinTokens.Space.s4),
     ) {
         Box {

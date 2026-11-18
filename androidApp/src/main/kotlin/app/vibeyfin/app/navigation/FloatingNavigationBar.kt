@@ -82,7 +82,7 @@ private val ICON_ITEM_WIDTH: Dp = 56.dp
 /** What a tab's list leaves free at its bottom so its last row clears the floating bar: the bar and the gap under it. */
 val FLOATING_BAR_SPACE: Dp = BAR_HEIGHT + VibeyFinTokens.Space.s3 * 2
 
-/** The space the floating bar takes over the content; 0 where there is no bar. Every scrolling page of a tab adds it at the bottom. */
+/** What a scrolling page leaves free at its bottom: the navigation bar and, on a tab, the floating bar, less the open keyboard. Add it through [verticalPageScroll] or a list's contentPadding. */
 val LocalBottomBarPadding = compositionLocalOf { 0.dp }
 
 /**

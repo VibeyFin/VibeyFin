@@ -8,10 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -35,6 +32,7 @@ import app.vibeyfin.app.components.DangerConfirmDialog
 import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
+import app.vibeyfin.app.navigation.verticalPageScroll
 import app.vibeyfin.app.settings.ButtonRow
 import app.vibeyfin.app.settings.RowFrame
 import app.vibeyfin.app.settings.RowText
@@ -44,6 +42,7 @@ import app.vibeyfin.app.settings.SectionHeader
 import app.vibeyfin.app.settings.ValueRow
 import app.vibeyfin.app.theme.ContentMaxWidth
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.pageInsetsPadding
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.servers.ServerAddressRow
@@ -94,7 +93,7 @@ fun ServerDetailsScreen(
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
             Column(
-                modifier = Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()),
+                modifier = Modifier.fillMaxSize().pageInsetsPadding().verticalPageScroll(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Spacer(Modifier.height(BackButtonSpace))

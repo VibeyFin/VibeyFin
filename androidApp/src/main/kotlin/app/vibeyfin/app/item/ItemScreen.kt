@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -47,6 +46,8 @@ import app.vibeyfin.app.navigation.sharedPoster
 import app.vibeyfin.app.subtitles.SubtitleDeleteSheet
 import app.vibeyfin.app.subtitles.SubtitleSearch
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.detailMargin
+import app.vibeyfin.app.theme.pageInsetsPadding
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
@@ -196,10 +197,10 @@ fun ItemScreen(
             Crossfade(targetState = phase, animationSpec = tween(ITEM_FADE_MS), label = "item page") { shown ->
                 when (shown) {
                     ItemPhase.Loading -> BoxWithConstraints(Modifier.fillMaxSize()) {
-                        ItemSkeleton(wide = maxWidth >= WIDE_FROM, screenWidth = maxWidth, screenHeight = maxHeight, margin = if (maxWidth >= WIDE_FROM) VibeyFinTokens.Space.s6 else screenMargin())
+                        ItemSkeleton(wide = maxWidth >= WIDE_FROM, screenWidth = maxWidth, screenHeight = maxHeight, margin = detailMargin(maxWidth >= WIDE_FROM))
                     }
 
-                    ItemPhase.Failed -> Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+                    ItemPhase.Failed -> Column(Modifier.fillMaxSize().pageInsetsPadding()) {
                         Spacer(Modifier.height(BackButtonSpace))
                         LoadError(message = state.message.orEmpty(), onRetry = onRetry, modifier = Modifier.padding(horizontal = screenMargin()))
                     }
@@ -263,7 +264,7 @@ private fun ItemPage(
     downloads: DownloadCallbacks,
     onOpenSeerr: (SeerrTitle) -> Unit,
 ) {
-    val margin = if (wide) VibeyFinTokens.Space.s6 else screenMargin()
+    val margin = detailMargin(wide)
     val sections: @Composable () -> Unit = {
         Column(
             modifier = Modifier.padding(horizontal = margin, vertical = VibeyFinTokens.Space.s5),

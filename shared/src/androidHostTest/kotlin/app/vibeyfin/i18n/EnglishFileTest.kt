@@ -45,6 +45,12 @@ class EnglishFileTest {
     }
 
     @Test
+    fun noTextKeyEndsLikeAPluralForm() {
+        val clashing: List<String> = calls.filter { it.kind == "text" && baseKey(it.key) != it.key }.map { it.key }.distinct()
+        assertEquals(emptyList(), clashing)
+    }
+
+    @Test
     fun pluralKeysHaveBothForms() {
         val incomplete: List<String> = calls.filter { it.kind == "plural" }.map { it.key }.distinct()
             .filter { "${it}_one" !in english || "${it}_other" !in english }

@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -59,6 +58,7 @@ import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.navigation.LocalSeerrLongPress
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.isTabletWidth
+import app.vibeyfin.app.theme.pageInsetsPadding
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.RequestState
 import app.vibeyfin.domain.model.SeerrMediaType
@@ -233,7 +233,7 @@ private fun RequestFilter.label() = when (this) {
 private fun PageFrame(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().safeDrawingPadding(), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
+            Column(Modifier.fillMaxSize().pageInsetsPadding(), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
                 Spacer(Modifier.height(BackButtonSpace))
                 Text(
                     title,

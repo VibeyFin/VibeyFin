@@ -662,7 +662,7 @@ object Strings {
     /** The sub-headings of a collection's members. */
     val collectionMovies: String get() = text("collection_movies")
     val collectionShows: String get() = text("collection_shows")
-    val collectionOther: String get() = text("collection_other")
+    val collectionOther: String get() = text("collection_more")
 
     fun collectionMovieCount(count: Int): String = plural("collection_movie_count", count)
 
@@ -1133,7 +1133,7 @@ object Strings {
     fun downloadingNotificationTitle(title: String): String = text("downloading_notification_title", "title" to title)
 
     /** The notifications for downloads that finished or failed while the app was away. */
-    fun downloadedOne(title: String): String = text("downloaded_one", "title" to title)
+    fun downloadedOne(title: String): String = text("downloaded_title", "title" to title)
 
     fun downloadedEpisodes(count: Int, show: String): String = text("downloaded_episodes", "count" to count, "show" to show)
 

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -76,6 +75,7 @@ import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.seerr.SeerrRowSection
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.app.theme.pageInsetsPadding
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.HomeFilter
@@ -221,7 +221,7 @@ fun HomeScreen(
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         // No side margin on the column: the Continue watching row runs to the screen edge, so the
         // header and the grid each apply the margin themselves.
-        Column(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+        Column(modifier = Modifier.fillMaxSize().pageInsetsPadding()) {
             TabHeader(Strings.home)
 
             if (state.serverId != null) {

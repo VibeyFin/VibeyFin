@@ -35,7 +35,7 @@ import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.subtitles.SubtitleSearch
 import app.vibeyfin.app.theme.FixedColors
 import app.vibeyfin.app.theme.VibeyFinTokens
-import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.app.theme.pageMargin
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.playback.PlaybackUiState
 import app.vibeyfin.ui.playback.PlaybackViewModel
@@ -113,7 +113,7 @@ internal fun PlayerContent(
         if (overlaysShown) SwipeLevelIndicator(swipe)
 
         state.message?.let { message ->
-            Column(Modifier.align(Alignment.Center).safeDrawingPadding().padding(horizontal = screenMargin())) {
+            Column(Modifier.align(Alignment.Center).safeDrawingPadding().padding(horizontal = pageMargin())) {
                 LoadError(message = message, onRetry = viewModel::onRetry)
             }
         }
@@ -216,7 +216,7 @@ private fun BoxScope.StatusOverlays(state: PlaybackUiState, chrome: PlayerChrome
     if (noError && diagnostics != null) {
         StatsOverlay(
             diagnostics,
-            Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(start = screenMargin(), top = STATS_TOP_INSET),
+            Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(start = pageMargin(), top = STATS_TOP_INSET),
         )
     }
 
@@ -241,7 +241,7 @@ private fun BoxScope.StatusOverlays(state: PlaybackUiState, chrome: PlayerChrome
         SkipButton(
             label = skip.label,
             onClick = viewModel::onSkip,
-            modifier = Modifier.align(Alignment.BottomEnd).safeDrawingPadding().padding(end = screenMargin(), bottom = 16.dp + lift),
+            modifier = Modifier.align(Alignment.BottomEnd).safeDrawingPadding().padding(end = pageMargin(), bottom = 16.dp + lift),
         )
     }
 }
@@ -312,7 +312,7 @@ private fun BoxScope.UpNextOverlay(state: PlaybackUiState, visible: Boolean, vie
         visible = state.upNext != null && visible,
         enter = scaleIn(tween(UP_NEXT_MS), initialScale = UP_NEXT_START_SCALE) + fadeIn(tween(UP_NEXT_MS)),
         exit = scaleOut(tween(UP_NEXT_EXIT_MS), targetScale = UP_NEXT_START_SCALE) + fadeOut(tween(UP_NEXT_EXIT_MS)),
-        modifier = Modifier.align(Alignment.BottomEnd).safeDrawingPadding().padding(end = screenMargin(), bottom = 72.dp),
+        modifier = Modifier.align(Alignment.BottomEnd).safeDrawingPadding().padding(end = pageMargin(), bottom = 72.dp),
     ) {
         lastUpNext?.let { upNext ->
             UpNextCard(upNext = upNext, onPlayNow = viewModel::onPlayNow, onWatchCredits = viewModel::onWatchCredits)
