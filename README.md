@@ -157,6 +157,10 @@ VibeyFin is translated on [Weblate](https://translate.lore-le.ch/workspaces/0e11
 You don't need to know Kotlin, Swift or Git: sign in, pick your language and start translating. One
 set of strings feeds both the Android and the iOS app. Missing a language? Ask for it in an issue.
 
+The text comes in sets. Today there are two: Common (what every app shows) and Mobile (downloads and
+offline, for phones and tablets), and a TV set may follow. On Weblate each set is its own component, so
+you translate shared text once and pick the component you want to work on. Nothing else changes for you.
+
 Guidelines:
 
 - Keep `{{placeholders}}` such as `{{name}}` and `{{count}}` exactly as written. Move them where your
@@ -170,7 +174,7 @@ Guidelines:
 - Write in sentence case with plain verbs; errors say what happened and how to fix it.
 
 Weblate opens a pull request with your work and a maintainer reviews and merges it. Please don't edit
-`shared/strings/*.json` by hand, except `en.json`, the source text. The full workflow, including
+`shared/strings/<set>/*.json` by hand, except `en.json`, the source text. The full workflow, including
 adding a language and changing English text, is in [`docs/translating.md`](docs/translating.md).
 
 By contributing a translation you agree that it is released under the same license as the

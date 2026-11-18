@@ -11,8 +11,12 @@ class TranslationFilesTest {
     private val placeholderPattern: Regex = Regex("""\{\{(\w+)\}\}""")
     private val pluralSuffix: Regex = Regex("_(one|other)$")
 
-    private fun load(tag: String): Map<String, String> = Json.parseToJsonElement(File("strings/$tag.json").readText())
+    private val layers: List<String> = File("strings").listFiles { file -> file.isDirectory }.orEmpty().map { it.name }.sorted()
+
+    private fun load(layer: String, tag: String): Map<String, String> = Json.parseToJsonElement(File("strings/$layer/$tag.json").readText())
         .jsonObject.mapValues { it.value.jsonPrimitive.content }
+
+    private fun load(tag: String): Map<String, String> = layers.fold(emptyMap()) { table, layer -> table + load(layer, tag) }
 
     private val english: Map<String, String> = load(DEFAULT_LANGUAGE)
     private val translations: Map<String, Map<String, String>> = Json.decodeFromString<List<AppLanguage>>(File("languages.json").readText())
@@ -28,6 +32,12 @@ class TranslationFilesTest {
         .mapValues { it.value.toSet() }
 
     private fun forEachTranslation(check: (tag: String, texts: Map<String, String>) -> Unit) = translations.forEach { (tag, texts) -> check(tag, texts) }
+
+    @Test
+    fun everyLayerHasAFileForEveryShippedLanguage() {
+        val missing: List<String> = layers.flatMap { layer -> (translations.keys + DEFAULT_LANGUAGE).filter { !File("strings/$layer/$it.json").exists() }.map { "$layer/$it" } }
+        assertEquals(emptyList(), missing)
+    }
 
     @Test
     fun everyShippedLanguageHasAPluralRule() {

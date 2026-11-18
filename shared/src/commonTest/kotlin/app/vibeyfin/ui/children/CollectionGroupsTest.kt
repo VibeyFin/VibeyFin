@@ -27,7 +27,7 @@ class CollectionGroupsTest {
             ),
         )
 
-        assertEquals(listOf(Strings.collectionMovies, Strings.collectionShows, Strings.collectionOther), state.collectionGroups.map { it.title })
+        assertEquals(listOf(Strings.collectionMovies, Strings.collectionShows, Strings.collectionMore), state.collectionGroups.map { it.title })
         assertEquals(listOf("early", "late"), state.collectionGroups.first().items.map { it.id })
     }
 

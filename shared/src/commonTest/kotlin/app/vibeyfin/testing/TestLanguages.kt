@@ -1,6 +1,7 @@
 package app.vibeyfin.testing
 
 import app.vibeyfin.i18n.StringCatalog
+import app.vibeyfin.i18n.StringLayers
 import app.vibeyfin.i18n.StringSource
 import app.vibeyfin.i18n.Texts
 import app.vibeyfin.i18n.platformStringSource
@@ -15,10 +16,11 @@ object TestLanguages {
         Texts.install(
             StringCatalog(
                 object : StringSource {
-                    override fun load(tag: String): String? = if (tag == "de") german else real.load(tag)
+                    override fun load(layer: String, tag: String): String? = if (tag == "de") german.takeIf { layer == StringLayers.COMMON } else real.load(layer, tag)
 
                     override fun loadLanguages(): String? = real.loadLanguages()
                 },
+                StringLayers.mobileClient,
             ),
         )
     }
