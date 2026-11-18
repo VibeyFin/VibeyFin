@@ -18,6 +18,8 @@ class ItemModel(itemId: String) {
 
     fun onTogglePlayed() = host.viewModel.onTogglePlayed()
 
+    fun onToggleSeasonPlayed(): Unit = host.viewModel.onToggleSeasonPlayed()
+
     fun onToggleFavorite() = host.viewModel.onToggleFavorite()
 
     fun onSelectSeason(seasonId: String) = host.viewModel.onSelectSeason(seasonId)

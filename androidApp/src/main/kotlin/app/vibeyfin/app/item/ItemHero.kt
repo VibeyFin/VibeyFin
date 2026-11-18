@@ -193,6 +193,7 @@ fun HeroDetails(
     onToggleFavorite: () -> Unit,
     onPlayTrailer: (String) -> Unit,
     onTogglePlayed: () -> Unit,
+    onToggleSeasonPlayed: () -> Unit,
     downloads: DownloadCallbacks,
 ) {
     Column(
@@ -241,13 +242,13 @@ fun HeroDetails(
             SkeletonBlock(Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge), shape = RoundedCornerShape(50))
         }
 
-        ActionButtons(state, onToggleFavorite, onPlayTrailer, onTogglePlayed, downloads)
+        ActionButtons(state, onToggleFavorite, onPlayTrailer, onTogglePlayed, onToggleSeasonPlayed, downloads)
     }
 }
 
 // Four places of one width, so fewer actions (an episode has no trailer) keep their place and the last ones stay empty
 @Composable
-private fun ActionButtons(state: ItemUiState, onToggleFavorite: () -> Unit, onPlayTrailer: (String) -> Unit, onTogglePlayed: () -> Unit, downloads: DownloadCallbacks) {
+private fun ActionButtons(state: ItemUiState, onToggleFavorite: () -> Unit, onPlayTrailer: (String) -> Unit, onTogglePlayed: () -> Unit, onToggleSeasonPlayed: () -> Unit, downloads: DownloadCallbacks) {
     val openTrailerUrl = LocalOpenTrailerUrl.current
 
     ActionRow(Modifier.fillMaxWidth()) {
@@ -270,19 +271,43 @@ private fun ActionButtons(state: ItemUiState, onToggleFavorite: () -> Unit, onPl
             }
         }
 
-        if (state.canMark) {
-            ActionButton(
-                label = Strings.watchedAction,
-                description = state.markLabel,
-                icon = { modifier -> Icon(rememberVectorPainter(if (state.watched) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle), contentDescription = null, tint = VibeyFinTokens.Colors.ink, modifier = modifier) },
-                popKey = state.watched,
-                onClick = onTogglePlayed,
-            )
-        }
+        if (state.canMark) WatchedButton(state, onTogglePlayed, onToggleSeasonPlayed)
 
         if (state.offersDownload) DownloadButton(state, downloads)
     }
 }
+
+// Tapping flips a movie or an episode; on a show it opens a menu with the selected season and the whole series, like Download
+@Composable
+private fun WatchedButton(state: ItemUiState, onTogglePlayed: () -> Unit, onToggleSeasonPlayed: () -> Unit) {
+    var menu by remember { mutableStateOf(false) }
+    val isSeries = state.item?.kind == ItemKind.Series
+    val seasonMarkLabel = state.seasonMarkLabel
+
+    ActionButton(
+        label = Strings.watchedAction,
+        description = if (isSeries) Strings.watchedAction else state.markLabel,
+        icon = { modifier -> Icon(rememberVectorPainter(watchedIcon(state.watched)), contentDescription = null, tint = VibeyFinTokens.Colors.ink, modifier = modifier) },
+        popKey = state.watched,
+        onClick = { if (isSeries) menu = true else onTogglePlayed() },
+        menu = {
+            VibeyFinMenu(expanded = menu, onDismiss = { menu = false }) {
+                if (seasonMarkLabel != null) {
+                    VibeyFinMenuItem(seasonMarkLabel, watchedIcon(state.seasonWatched)) {
+                        menu = false
+                        onToggleSeasonPlayed()
+                    }
+                }
+                VibeyFinMenuItem(state.markLabel, watchedIcon(state.watched)) {
+                    menu = false
+                    onTogglePlayed()
+                }
+            }
+        },
+    )
+}
+
+private fun watchedIcon(watched: Boolean): ImageVector = if (watched) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle
 
 // Tapping starts a movie or an episode with no download; otherwise, and for a show, it opens a menu
 @Composable

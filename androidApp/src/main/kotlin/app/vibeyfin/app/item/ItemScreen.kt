@@ -104,6 +104,7 @@ fun ItemRoute(
         onToggleFavorite = viewModel::onToggleFavorite,
         onRetry = viewModel::onRetry,
         onTogglePlayed = viewModel::onTogglePlayed,
+        onToggleSeasonPlayed = viewModel::onToggleSeasonPlayed,
         onToggleEpisodePlayed = viewModel::onToggleEpisodePlayed,
         onSelectSeason = viewModel::onSelectSeason,
         onRetrySimilar = viewModel::onRetrySimilar,
@@ -167,6 +168,7 @@ fun ItemScreen(
     onToggleFavorite: () -> Unit,
     onRetry: () -> Unit,
     onTogglePlayed: () -> Unit,
+    onToggleSeasonPlayed: () -> Unit,
     onToggleEpisodePlayed: (String) -> Unit,
     onSelectSeason: (String) -> Unit,
     onRetrySimilar: () -> Unit,
@@ -210,7 +212,7 @@ fun ItemScreen(
                         BoxWithConstraints(Modifier.fillMaxSize()) {
                             ItemPage(
                                 item, state, wide = maxWidth >= WIDE_FROM, screenWidth = maxWidth, screenHeight = maxHeight,
-                                onPlay, onPlayEpisode, onOpen, onOpenSeries, onToggleFavorite, onTogglePlayed, onToggleEpisodePlayed, onSelectSeason, onRetrySimilar, onRetryCollections, onRetrySeasons, onRetryEpisodes, onOpenPerson, onRetryExtras, subtitles,
+                                onPlay, onPlayEpisode, onOpen, onOpenSeries, onToggleFavorite, onTogglePlayed, onToggleSeasonPlayed, onToggleEpisodePlayed, onSelectSeason, onRetrySimilar, onRetryCollections, onRetrySeasons, onRetryEpisodes, onOpenPerson, onRetryExtras, subtitles,
                                 downloads = downloads,
                                 onOpenSeerr = onOpenSeerr,
                             )
@@ -252,6 +254,7 @@ private fun ItemPage(
     onOpenSeries: (String) -> Unit,
     onToggleFavorite: () -> Unit,
     onTogglePlayed: () -> Unit,
+    onToggleSeasonPlayed: () -> Unit,
     onToggleEpisodePlayed: (String) -> Unit,
     onSelectSeason: (String) -> Unit,
     onRetrySimilar: () -> Unit,
@@ -306,7 +309,7 @@ private fun ItemPage(
                 // At least the picture's height; taller when the text needs more room, so nothing is cut off
                 Box(Modifier.fillMaxWidth().heightIn(min = heroHeight)) {
                     Column(Modifier.align(Alignment.BottomCenter).padding(horizontal = margin).padding(bottom = VibeyFinTokens.Space.s4)) {
-                        HeroDetails(item, state, centered = true, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer = onPlayEpisode, onTogglePlayed = onTogglePlayed, downloads = downloads)
+                        HeroDetails(item, state, centered = true, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer = onPlayEpisode, onTogglePlayed = onTogglePlayed, onToggleSeasonPlayed = onToggleSeasonPlayed, downloads = downloads)
                     }
                 }
 
@@ -326,7 +329,7 @@ private fun ItemPage(
         Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
             Spacer(Modifier.height(screenHeight * FIRST_SCREEN_CLEAR))
             Column(Modifier.fillMaxWidth(0.46f).widthIn(max = 520.dp).padding(horizontal = margin)) {
-                HeroDetails(item, state, centered = false, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer = onPlayEpisode, onTogglePlayed = onTogglePlayed, downloads = downloads)
+                HeroDetails(item, state, centered = false, onPlay, onOpenSeries, onToggleFavorite, onPlayTrailer = onPlayEpisode, onTogglePlayed = onTogglePlayed, onToggleSeasonPlayed = onToggleSeasonPlayed, downloads = downloads)
             }
 
             sections()

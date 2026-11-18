@@ -200,6 +200,11 @@ progress: with its position at 0 the server names it again in Next Up, and it mu
 Remove, mark `show-e01` watched (`POST /UserPlayedItems/{id}`). `seed-userdata.sh` resets the Saga Show
 and Neon Night data, not Test Show's.
 
+Mark a season watched (issue #91) needs no new media. Saga Show Season 1 is partly watched (E01 watched, E02 in progress), so its
+menu offers "Mark season as watched". `POST /UserPlayedItems/{seasonId}` marks all eight episodes, clears E02's position (it
+leaves Continue watching) and moves Next Up to S02E01; the show stays unwatched while Specials and Season 2 aren't.
+`DELETE` unmarks all eight, E01 included. The same works for `kids`. Run `seed-userdata.sh` afterwards to reset it.
+
 ## Kids user and rated fixtures
 
 For the Phase 6 profile limits and the Settings PIN. `make-media.sh` writes three more 5 s movies (the Quiet Harbor clip
