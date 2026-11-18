@@ -12,10 +12,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
@@ -58,7 +56,7 @@ import app.vibeyfin.app.components.SheetColumn
 import app.vibeyfin.app.components.SheetTitle
 import app.vibeyfin.app.components.VibeyFinSheet
 import app.vibeyfin.app.components.vibeyFinTextFieldColors
-import app.vibeyfin.app.navigation.LocalBottomBarPadding
+import app.vibeyfin.app.navigation.verticalPageScroll
 import app.vibeyfin.app.theme.ContentMaxWidth
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.pageInsetsPadding
@@ -81,7 +79,7 @@ fun SeerrSettingsRoute(onBack: () -> Unit, onMyRequests: () -> Unit = {}, viewMo
             Column(modifier = Modifier.fillMaxSize().pageInsetsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Spacer(Modifier.height(BackButtonSpace))
                 Column(
-                    modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = LocalBottomBarPadding.current),
+                    modifier = Modifier.weight(1f).fillMaxWidth().verticalPageScroll(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     SeerrSettingsContent(viewModel, content, onLeave = onBack, onMyRequests = onMyRequests)

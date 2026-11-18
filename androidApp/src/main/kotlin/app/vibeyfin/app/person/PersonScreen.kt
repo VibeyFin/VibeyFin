@@ -22,9 +22,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridItemScope
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -60,6 +58,7 @@ import app.vibeyfin.app.components.SkeletonLine
 import app.vibeyfin.app.components.skeletonCount
 import app.vibeyfin.app.components.skeletonTiles
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
+import app.vibeyfin.app.navigation.verticalPageScroll
 import app.vibeyfin.app.theme.BrandDisplay
 import app.vibeyfin.app.theme.ContentMaxWidth
 import app.vibeyfin.app.theme.VibeyFinTokens
@@ -117,7 +116,7 @@ private fun PersonColumn(state: PersonUiState, onOpen: (MediaItem) -> Unit, onRe
     val margin = screenMargin()
 
     Column(
-        modifier = Modifier.fillMaxSize().pageInsetsPadding().verticalScroll(rememberScrollState()).padding(bottom = LocalBottomBarPadding.current),
+        modifier = Modifier.fillMaxSize().pageInsetsPadding().verticalPageScroll(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(BackButtonSpace))

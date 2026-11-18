@@ -36,6 +36,10 @@ fun sideInset(): Dp {
 @Composable
 fun navigationBarHeight(): Dp = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
+/** The height of the open keyboard, from the bottom of the screen; 0 when it is closed. */
+@Composable
+fun keyboardHeight(): Dp = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+
 /** Status bar and keyboard only: the sides are in [screenMargin] and the navigation bar in each list's bottom padding, so lists run under it. */
 @Composable
 fun Modifier.pageInsetsPadding(): Modifier = this

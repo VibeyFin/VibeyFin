@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
@@ -95,6 +94,7 @@ import app.vibeyfin.app.settings.pageIdOrRoot
 import app.vibeyfin.app.startup.StartupRoute
 import app.vibeyfin.app.theme.FixedColors
 import app.vibeyfin.app.theme.isTabletWidth
+import app.vibeyfin.app.theme.keyboardHeight
 import app.vibeyfin.app.theme.navigationBarHeight
 import app.vibeyfin.app.whoswatching.SignInFlight
 import app.vibeyfin.app.whoswatching.WhoIsWatchingRoute
@@ -264,7 +264,8 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
     val playerTurns = rememberPlayerTurns()
 
     val tabs = Tab.entries.filter { !offline || it != Tab.Library }
-    val bottomBarPadding = navigationBarHeight() + if (currentTab != null) FLOATING_BAR_SPACE else 0.dp
+    // Less the keyboard, which pageInsetsPadding lifts the page by: the two would otherwise add up
+    val bottomBarPadding = (navigationBarHeight() + (if (currentTab != null) FLOATING_BAR_SPACE else 0.dp) - keyboardHeight()).coerceAtLeast(0.dp)
 
     Scaffold(
         // A black window behind the player, so no edge of the page's color shows beside the picture as it turns
@@ -326,7 +327,7 @@ fun VibeyFinNavHost(notificationOpen: NotificationOpenViewModel) {
             // What a request from a Seerr poster menu came to, over whatever screen the menu was on
             SnackbarHost(
                 notices,
-                Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)).padding(bottom = bottomBarPadding),
+                Modifier.align(Alignment.BottomCenter).bottomOverlayPadding(bottomBarPadding),
             )
 
             if (currentTab != null) {

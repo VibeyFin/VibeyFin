@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.VerticalDivider
@@ -28,7 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FloatingBackButton
-import app.vibeyfin.app.navigation.LocalBottomBarPadding
+import app.vibeyfin.app.navigation.verticalPageScroll
 import app.vibeyfin.app.theme.pageInsetsPadding
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.ui.settings.SettingKey
@@ -68,7 +66,7 @@ fun SettingsTabletScreen(
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxSize().pageInsetsPadding()) {
-                Column(Modifier.width(ListPaneWidth).fillMaxHeight().verticalScroll(rememberScrollState()).padding(bottom = LocalBottomBarPadding.current)) {
+                Column(Modifier.width(ListPaneWidth).fillMaxHeight().verticalPageScroll()) {
                     Spacer(Modifier.height(BackButtonSpace))
 
                     if (root != null) {
@@ -87,7 +85,7 @@ fun SettingsTabletScreen(
 
                 VerticalDivider(Modifier.fillMaxHeight(), color = MaterialTheme.colorScheme.outlineVariant)
                 Column(
-                    Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(bottom = LocalBottomBarPadding.current),
+                    Modifier.weight(1f).fillMaxHeight().verticalPageScroll(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Spacer(Modifier.height(BackButtonSpace))

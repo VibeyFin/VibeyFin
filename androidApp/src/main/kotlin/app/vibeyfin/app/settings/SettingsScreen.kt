@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -37,7 +35,7 @@ import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.OptionRow
 import app.vibeyfin.app.components.PickerSearch
 import app.vibeyfin.app.components.PickerSheet
-import app.vibeyfin.app.navigation.LocalBottomBarPadding
+import app.vibeyfin.app.navigation.verticalPageScroll
 import app.vibeyfin.app.theme.ContentMaxWidth
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.pageInsetsPadding
@@ -208,7 +206,7 @@ fun SettingsPageScreen(
             Column(modifier = Modifier.fillMaxSize().pageInsetsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Spacer(Modifier.height(BackButtonSpace))
                 Column(
-                    modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = LocalBottomBarPadding.current),
+                    modifier = Modifier.weight(1f).fillMaxWidth().verticalPageScroll(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     SettingsPageBody(page, hasPage, content, selectedLink = null, onToggle, onChoose, onAction, onOpen = { onOpen(it.target) })
