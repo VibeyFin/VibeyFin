@@ -351,6 +351,8 @@ object Strings {
 
     fun ratingTag(rating: Double): String = "★ ${Formats.current.decimal(kotlin.math.round(rating * 10) / 10.0, 1, 1)}"
 
+    val markSeasonWatched: String get() = text("mark_season_watched")
+    val markSeasonUnwatched: String get() = text("mark_season_unwatched")
     val markSeriesWatched: String get() = text("mark_series_watched")
     val markSeriesUnwatched: String get() = text("mark_series_unwatched")
     val markWatched: String get() = text("mark_watched")

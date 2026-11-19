@@ -206,6 +206,17 @@ data class ItemUiState(
             else -> Strings.markWatched
         }
 
+    /** Every episode of the selected season is watched; a season with any left still offers to mark it watched. */
+    val seasonWatched: Boolean get() = seasons.episodes.items.isNotEmpty() && seasons.episodes.items.all { it.played }
+
+    /** The entry that marks the selected season, worded for what it will do; null on a movie and until the season's episodes are shown. */
+    val seasonMarkLabel: String?
+        get() = when {
+            !isSeries || seasons.episodes.loading || seasons.episodes.items.isEmpty() -> null
+            seasonWatched -> Strings.markSeasonUnwatched
+            else -> Strings.markSeasonWatched
+        }
+
     /** The file's details, collapsed at the bottom of the page; empty when the server sent none. */
     val technical: List<TechnicalLine> get() = item?.technicalLines(playoutTags, offersSubtitleSearch, offersSubtitleDelete, deletingSubtitle).orEmpty()
 
@@ -243,6 +254,8 @@ data class ItemUiState(
     /** Whether "Start over" is offered beside the primary button: only when there is something to resume. */
     val canStartOver: Boolean get() = resuming
 }
+
+private data class SeasonMark(val seasonId: String, val watched: Boolean)
 
 private enum class ItemAction { MarkWatched, MarkUnwatched, AddToMyList, RemoveFromMyList, SubtitleDelete }
 
@@ -455,7 +468,10 @@ class ItemViewModel(
         content.update { alongside(it.copy(item = result.value)) }
         if (shown.kind == ItemKind.Series) {
             val next = watch.nextUpOf(itemId) as? ApiResult.Success
-            if (next != null) content.update { it.copy(seasons = it.seasons.copy(startEpisode = next.value ?: it.seasons.startEpisode)) }
+            if (next != null) {
+                val start = next.value ?: firstEpisode()
+                content.update { it.copy(seasons = it.seasons.copy(startEpisode = start ?: it.seasons.startEpisode)) }
+            }
             // The marks in the list follow what was just watched.
             content.value.seasons.selectedId?.let { season ->
                 (library.episodes(itemId, season) as? ApiResult.Success)?.let { episodes ->
@@ -463,6 +479,13 @@ class ItemViewModel(
                 }
             }
         }
+    }
+
+    // Nothing next up (never started, or finished): Play starts the first real season's first episode, as when the page opened.
+    private suspend fun firstEpisode(): MediaItem? {
+        val seasons = content.value.seasons.seasons
+        val opening = seasons.firstOrNull { (it.seasonIndex ?: 0) > 0 } ?: seasons.firstOrNull() ?: return null
+        return (library.episodes(itemId, opening.id) as? ApiResult.Success)?.value?.firstOrNull()
     }
 
     private var writing = false
@@ -475,6 +498,7 @@ class ItemViewModel(
         val before = content.value.item ?: return
         if (!(before.canPlay || before.kind == ItemKind.Series) || writing) return
         writing = true
+        failedSeason = null
         val target = !before.played
         val shown = before.copy(played = target, resumePositionMs = 0)
         failures.update { it.copy(action = null) }
@@ -496,6 +520,7 @@ class ItemViewModel(
     fun onToggleEpisodePlayed(episodeId: String) {
         val before = content.value.seasons.episodes.items.firstOrNull { it.id == episodeId } ?: return
         val target = !before.played
+        failedSeason = null
         replaceEpisode(before.copy(played = target, resumePositionMs = 0))
         viewModelScope.launch {
             val result = watch.setPlayed(episodeId, target)
@@ -504,6 +529,41 @@ class ItemViewModel(
                 failures.update { it.copy(action = failureAction(result.error, target)) }
             }
         }
+    }
+
+    private var writingSeason = false
+
+    // The season mark that last failed, so "Try again" repeats that one.
+    private var failedSeason: SeasonMark? = null
+
+    /** "Mark season as watched" (or unwatched, once all of it is): shown on every episode at once, taken back if it can't be saved. */
+    fun onToggleSeasonPlayed() {
+        val state = content.value
+        val seasonId = state.seasons.selectedId ?: return
+        if (state.seasonMarkLabel == null || writingSeason) return
+        markSeason(seasonId, !state.seasonWatched)
+    }
+
+    private fun markSeason(seasonId: String, target: Boolean) {
+        val before = content.value.seasons.episodes.takeIf { content.value.seasons.selectedId == seasonId }
+        writingSeason = true
+        failedSeason = null
+        failedFavorite = false
+        failures.update { it.copy(action = null) }
+        before?.let { shown -> replaceEpisodes(seasonId, shown.copy(items = shown.items.map { it.copy(played = target, resumePositionMs = 0) })) }
+        viewModelScope.launch {
+            val result = watch.setPlayed(seasonId, target)
+            writingSeason = false
+            if (result is ApiResult.Failure) {
+                before?.let { replaceEpisodes(seasonId, it) }
+                failedSeason = SeasonMark(seasonId, target).takeIf { result.error != ApiError.Unauthorized }
+                failures.update { it.copy(action = failureAction(result.error, target)) }
+            }
+        }
+    }
+
+    private fun replaceEpisodes(seasonId: String, episodes: EpisodeList): Unit = content.update { state ->
+        if (state.seasons.selectedId != seasonId) state else state.copy(seasons = state.seasons.copy(episodes = episodes))
     }
 
     private fun replaceEpisode(episode: MediaItem) = content.update { state ->
@@ -530,6 +590,7 @@ class ItemViewModel(
         if (writingFavorite) return
         writingFavorite = true
         failedFavorite = false
+        failedSeason = null
         val target = !before.isFavorite
         failures.update { it.copy(action = null) }
         content.update { it.copy(item = before.copy(isFavorite = target)) }
@@ -552,16 +613,19 @@ class ItemViewModel(
     /** "Try again" on the failure message: the page was taken back, so doing the change again repeats it. */
     fun onRetryAction() {
         val failedDelete = failedSubtitleDelete?.takeIf { failures.value.action == ItemAction.SubtitleDelete }
+        val seasonToRetry = failedSeason
 
         when {
             failedDelete != null -> deleteSubtitle(failedDelete)
             failures.value.action == null && downloadFlow.message.value != null -> downloadFlow.retry()
+            seasonToRetry != null -> markSeason(seasonToRetry.seasonId, seasonToRetry.watched)
             failedFavorite -> onToggleFavorite()
             else -> onTogglePlayed()
         }
     }
 
     fun onDismissMessage() {
+        failedSeason = null
         failures.update { it.copy(action = null) }
         downloadFlow.dismissMessage()
     }

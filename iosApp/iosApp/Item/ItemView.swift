@@ -209,6 +209,7 @@ struct ItemView: View {
                             onToggleFavorite: { model.toggleFavorite() },
                             onPlayTrailer: onPlayTrailer,
                             onTogglePlayed: { model.togglePlayed() },
+                            onToggleSeasonPlayed: { model.toggleSeasonPlayed() },
                             downloads: downloadActions
                         )
                         sections
@@ -252,6 +253,7 @@ struct ItemView: View {
                             onToggleFavorite: { model.toggleFavorite() },
                             onPlayTrailer: onPlayTrailer,
                             onTogglePlayed: { model.togglePlayed() },
+                            onToggleSeasonPlayed: { model.toggleSeasonPlayed() },
                             downloads: downloadActions
                         )
                         .frame(maxWidth: min(proxy.size.width * 0.46, 520), alignment: .leading)

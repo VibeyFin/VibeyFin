@@ -229,6 +229,142 @@ class ItemDetailViewModelTest {
         assertTrue(viewModel.uiState.value.watched)
     }
 
+    // A season written on the server marks its episodes, as Jellyfin does.
+    private fun markSeasonOnServer(episodes: List<String>, reply: Reply) = { _: app.vibeyfin.testing.RecordedRequest ->
+        watchedOnServer += episodes
+        reply
+    }
+
+    @Test
+    fun theSelectedSeasonCanBeMarkedWatchedInOneGo() = runTest {
+        val server = server()
+        server.on("POST", "/UserPlayedItems/s1", markSeasonOnServer(listOf("e11", "e12"), Reply.json("""{"Played":true}""")))
+        val inFlight = server.hold("POST", "/UserPlayedItems/s1")
+        val viewModel = viewModel("show")
+
+        val state = viewModel.shown()
+        viewModel.onToggleSeasonPlayed()
+
+        assertEquals("Mark season as watched", state.seasonMarkLabel)
+        // Shown at once, before the server has answered.
+        assertTrue(viewModel.uiState.value.seasons.episodes.items.all { it.played })
+        assertEquals("Mark season as unwatched", viewModel.uiState.value.seasonMarkLabel)
+        inFlight.open()
+        assertEquals(1, app.jellyfin.requestsTo("POST", "/UserPlayedItems/s1").size)
+        assertTrue(viewModel.uiState.value.seasons.episodes.items.all { it.played })
+        assertNull(viewModel.uiState.value.actionMessage)
+    }
+
+    @Test
+    fun aSeasonMarkThatCantBeSavedIsTakenBackAndTryAgainRepeatsIt() = runTest {
+        val server = server()
+        server.on("POST", "/UserPlayedItems/s1", Reply.status(HttpStatusCode.ServiceUnavailable))
+        val viewModel = viewModel("show")
+        viewModel.shown()
+
+        viewModel.onToggleSeasonPlayed()
+        val failed = viewModel.uiState.first { it.actionMessage != null }
+
+        assertTrue(failed.seasons.episodes.items.none { it.played })
+        assertEquals("Couldn't mark this as watched. Check your connection and try again.", failed.actionMessage)
+
+        val tried = app.jellyfin.requestsTo("POST", "/UserPlayedItems/s1").size
+        server.on("POST", "/UserPlayedItems/s1", markSeasonOnServer(listOf("e11", "e12"), Reply.json("""{"Played":true}""")))
+        viewModel.onRetryAction()
+        val saved = viewModel.uiState.first { it.actionMessage == null && it.seasonWatched }
+
+        assertEquals(tried + 1, app.jellyfin.requestsTo("POST", "/UserPlayedItems/s1").size)
+        assertEquals(0, app.jellyfin.requestsTo("POST", "/UserPlayedItems/show").size)
+        assertEquals("Mark season as unwatched", saved.seasonMarkLabel)
+    }
+
+    @Test
+    fun aDismissedSeasonFailureIsNotWhatTryAgainRepeatsLater() = runTest {
+        val server = server()
+        server.on("POST", "/UserPlayedItems/s1", Reply.status(HttpStatusCode.ServiceUnavailable))
+        server.on("POST", "/UserPlayedItems/e11", Reply.status(HttpStatusCode.ServiceUnavailable))
+        val viewModel = viewModel("show")
+        viewModel.shown()
+        viewModel.onToggleSeasonPlayed()
+        viewModel.uiState.first { it.actionMessage != null }
+        viewModel.onDismissMessage()
+        val seasonTries = app.jellyfin.requestsTo("POST", "/UserPlayedItems/s1").size
+
+        viewModel.onToggleEpisodePlayed("e11")
+        viewModel.uiState.first { it.actionMessage != null }
+        viewModel.onRetryAction()
+
+        assertEquals(seasonTries, app.jellyfin.requestsTo("POST", "/UserPlayedItems/s1").size)
+    }
+
+    @Test
+    fun aWatchedSeasonCanBeMarkedUnwatched() = runTest {
+        watchedOnServer += listOf("e11", "e12")
+        val server = server()
+        server.on("DELETE", "/UserPlayedItems/s1") { _ ->
+            watchedOnServer -= setOf("e11", "e12")
+            Reply.json("""{"Played":false}""")
+        }
+        val viewModel = viewModel("show")
+
+        val state = viewModel.shown()
+        viewModel.onToggleSeasonPlayed()
+
+        assertEquals("Mark season as unwatched", state.seasonMarkLabel)
+        assertEquals(1, app.jellyfin.requestsTo("DELETE", "/UserPlayedItems/s1").size)
+        assertTrue(viewModel.uiState.value.seasons.episodes.items.none { it.played })
+        assertEquals("Mark season as watched", viewModel.uiState.value.seasonMarkLabel)
+    }
+
+    @Test
+    fun aPartlyWatchedSeasonOffersToMarkTheRestWatched() = runTest {
+        watchedOnServer += "e11"
+        server()
+
+        val state = viewModel("show").shown()
+
+        assertFalse(state.seasonWatched)
+        assertEquals("Mark season as watched", state.seasonMarkLabel)
+    }
+
+    @Test
+    fun aMarkedSeasonMovesPlayOn() = runTest {
+        val server = server(nextUp = itemsJson(episode("e11", 1, 1)))
+        server.on("POST", "/UserPlayedItems/s1") { _ ->
+            watchedOnServer += listOf("e11", "e12")
+            server.on("GET", "/Shows/NextUp", Reply.json(itemsJson(episode("e21", 2, 1))))
+            Reply.json("""{"Played":true}""")
+        }
+        val viewModel = viewModel("show")
+        assertEquals("e11", viewModel.shown().playTarget?.id)
+
+        viewModel.onToggleSeasonPlayed()
+        val moved = viewModel.uiState.first { it.playTarget?.id == "e21" }
+
+        // The page stays on the season that was marked.
+        assertEquals("s1", moved.seasons.selectedId)
+        assertTrue(moved.seasons.episodes.items.all { it.played })
+    }
+
+    @Test
+    fun theLastSeasonMarkedWatchedMarksTheShowAndPlayGoesBackToTheStart() = runTest {
+        watchedOnServer += listOf("e11", "e12", "e21", "e22", "e23")
+        val server = server(nextUp = itemsJson(episode("e24", 2, 4, positionMin = 10)))
+        server.on("POST", "/UserPlayedItems/s2") { _ ->
+            watchedOnServer += listOf("e24", "show")
+            server.on("GET", "/Shows/NextUp", Reply.json(itemsJson()))
+            Reply.json("""{"Played":true}""")
+        }
+        val viewModel = viewModel("show")
+        assertEquals("e24", viewModel.shown().playTarget?.id)
+
+        viewModel.onToggleSeasonPlayed()
+        val finished = viewModel.uiState.first { it.watched && it.playTarget?.id != "e24" }
+
+        assertEquals("e11", finished.playTarget?.id)
+        assertEquals("s2", finished.seasons.selectedId)
+    }
+
     @Test
     fun anotherSeasonSwapsTheListWhenItArrives() = runTest {
         val server = server()
