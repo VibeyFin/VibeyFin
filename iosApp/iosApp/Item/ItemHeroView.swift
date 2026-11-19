@@ -14,6 +14,7 @@ struct ItemHeroView: View {
     let onToggleFavorite: () -> Void
     let onPlayTrailer: (String) -> Void
     let onTogglePlayed: () -> Void
+    let onToggleSeasonPlayed: () -> Void
     let downloads: DownloadActions
 
     var body: some View {
@@ -26,6 +27,7 @@ struct ItemHeroView: View {
             onToggleFavorite: onToggleFavorite,
             onPlayTrailer: onPlayTrailer,
             onTogglePlayed: onTogglePlayed,
+            onToggleSeasonPlayed: onToggleSeasonPlayed,
             downloads: downloads
         )
         .padding(.horizontal, Space.s4)
@@ -162,6 +164,7 @@ struct HeroDetailsView: View {
     let onToggleFavorite: () -> Void
     let onPlayTrailer: (String) -> Void
     let onTogglePlayed: () -> Void
+    let onToggleSeasonPlayed: () -> Void
     let downloads: DownloadActions
 
     @Environment(\.openURL) private var openURL
@@ -297,19 +300,46 @@ struct HeroDetailsView: View {
                 }
             }
             if state.canMark {
-                HeroActionButton(
-                    label: Strings.shared.watchedAction,
-                    description: state.markLabel,
-                    systemImage: state.watched ? "checkmark.circle.fill" : "checkmark.circle",
-                    pop: state.watched,
-                    action: onTogglePlayed
-                )
+                watchedButton
             }
             if state.offersDownload {
                 downloadButton
             }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    /// Watched: a tap flips a movie or an episode. On a show it opens a menu, like Download: the selected season, then the whole series.
+    @ViewBuilder
+    private var watchedButton: some View {
+        let systemImage = Self.watchedSymbol(state.watched)
+        if item.kind == ItemKind.series {
+            Menu {
+                if let seasonMarkLabel = state.seasonMarkLabel {
+                    Button(action: onToggleSeasonPlayed) {
+                        Label(seasonMarkLabel.titleCased(), systemImage: Self.watchedSymbol(state.seasonWatched))
+                    }
+                }
+                Button(action: onTogglePlayed) {
+                    Label(state.markLabel.titleCased(), systemImage: systemImage)
+                }
+            } label: {
+                HeroActionFace(label: Strings.shared.watchedAction, systemImage: systemImage, pop: state.watched)
+            }
+            .accessibilityLabel(Strings.shared.watchedAction)
+        } else {
+            HeroActionButton(
+                label: Strings.shared.watchedAction,
+                description: state.markLabel,
+                systemImage: systemImage,
+                pop: state.watched,
+                action: onTogglePlayed
+            )
+        }
+    }
+
+    private static func watchedSymbol(_ watched: Bool) -> String {
+        watched ? "checkmark.circle.fill" : "checkmark.circle"
     }
 
     /// Download: the arrow when there is nothing, the ring while it comes in, the check once it is here. A tap starts a movie or an

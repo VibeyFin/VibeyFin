@@ -12,21 +12,32 @@ struct HeroActionButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: Space.s1) {
-                Image(systemName: systemImage)
-                    .font(.title2)
-                    .id(systemImage)
-                    .transition(.scale.combined(with: .opacity))
-                    .animation(.spring(response: 0.3, dampingFraction: 0.45), value: pop)
-                // Medium weight in the full ink: the labels read against the picture.
-                Text(label.titleCased()).font(.caption.weight(.medium))
-            }
-            .foregroundStyle(.primary)
-            .frame(minWidth: 64, maxWidth: .infinity, minHeight: 72)
-            .contentShape(Rectangle())
+            HeroActionFace(label: label, systemImage: systemImage, pop: pop)
         }
         .buttonStyle(PressableButtonStyle())
         .accessibilityLabel(description)
+    }
+}
+
+/// An action's icon over its label, for a button or a menu in the action row.
+struct HeroActionFace: View {
+    let label: String
+    let systemImage: String
+    var pop: Bool?
+
+    var body: some View {
+        VStack(spacing: Space.s1) {
+            Image(systemName: systemImage)
+                .font(.title2)
+                .id(systemImage)
+                .transition(.scale.combined(with: .opacity))
+                .animation(.spring(response: 0.3, dampingFraction: 0.45), value: pop)
+            // Medium weight in the full ink: the labels read against the picture.
+            Text(label.titleCased()).font(.caption.weight(.medium))
+        }
+        .foregroundStyle(.primary)
+        .frame(minWidth: 64, maxWidth: .infinity, minHeight: 72)
+        .contentShape(Rectangle())
     }
 }
 

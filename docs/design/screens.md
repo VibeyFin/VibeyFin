@@ -224,6 +224,11 @@ The hero, bar and secondary actions follow **Detail**.
   it is. Keep the previous list visible until the new one loads.
 - Accessibility: the row is a tab list (each season a tab, the list its panel), announced with the season
   count.
+- **Mark a season watched** (issue #91): on a show, the **Watched** action opens a menu, like Download: "Mark season as
+  watched" for the selected season, then "Mark series as watched". The season entry reads "Mark season as unwatched" once every
+  episode in it is watched; a partly watched season offers watched, which marks the rest. No confirmation (it is undone the same
+  way). The episodes' checks change at once, then the show's mark, Play / Resume and Continue watching follow from the server; the
+  page stays on the season. A failure puts the checks back and says so with **Try again**. Not offline. Mockup: `SeasonWatched`.
 
 ### Episodes
 

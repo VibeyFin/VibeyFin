@@ -202,6 +202,8 @@
     "loading_page":"Loading",
     "looking_for_servers":"Looking for servers…",
     "main_navigation":"Main navigation",
+    "mark_season_unwatched":"Mark season as unwatched",
+    "mark_season_watched":"Mark season as watched",
     "mark_series_unwatched":"Mark series as unwatched",
     "mark_series_watched":"Mark series as watched",
     "mark_unwatched":"Mark as unwatched",

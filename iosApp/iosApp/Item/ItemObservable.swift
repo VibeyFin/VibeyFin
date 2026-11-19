@@ -55,6 +55,10 @@ final class ItemObservable: ObservableObject {
         model.onTogglePlayed()
     }
 
+    func toggleSeasonPlayed() {
+        model.onToggleSeasonPlayed()
+    }
+
     func retryExtras() { model.onRetryExtras() }
 
     func toggleFavorite() {
