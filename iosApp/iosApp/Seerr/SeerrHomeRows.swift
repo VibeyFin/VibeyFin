@@ -62,7 +62,7 @@ struct SeerrRowView: View {
                 .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                 .clipped()
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
+                HorizontalRow {
                     LazyHStack(alignment: .top, spacing: Space.s3) {
                         ForEach(row.titles, id: \.self) { title in
                             SeerrTileButton(
@@ -74,10 +74,7 @@ struct SeerrRowView: View {
                             .frame(width: 112)
                         }
                     }
-                    .screenMargin()
-                    .liftRoomInside()
                 }
-                .liftRoom()
             }
         }
     }
@@ -192,13 +189,14 @@ struct MyRequestsView: View {
         ScrollView {
             if let state = model.state {
                 VStack(alignment: .leading, spacing: Space.s3) {
-                    ScrollView(.horizontal, showsIndicators: false) {
+                    HorizontalRow(scrollsUnderStrip: false, lifts: false) {
                         HStack(spacing: Space.s2) {
                             ForEach(Self.filters, id: \.0) { filter, label in
                                 FilterChipButton(label: label.titleCased(), active: state.filter == filter) { model.filter(filter) }
                             }
                         }
                     }
+                    .screenMarginBleed()
                     if let message = state.message {
                         LoadErrorView(message: message, onRetry: { model.retry() })
                     } else if state.loading {

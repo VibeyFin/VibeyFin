@@ -80,10 +80,9 @@ extension EnvironmentValues {
 struct TabHeader<Trailing: View>: View {
     let title: String
     var horizontalMargin = true
-    /// A tab root: on an iPad with the tab bar at the top the profile is in the system bar instead, so there is no row.
+    /// A tab root: the title and the profile are in the system bar instead, so there is no row.
     private let tabRoot: Bool
     private let trailing: Trailing
-    @Environment(\.horizontalSizeClass) private var sizeClass
 
     init(title: String, horizontalMargin: Bool = true, @ViewBuilder trailing: () -> Trailing) {
         self.init(title: title, horizontalMargin: horizontalMargin, tabRoot: false, trailing: trailing())
@@ -97,9 +96,8 @@ struct TabHeader<Trailing: View>: View {
     }
 
     var body: some View {
-        // On an iPad with the tab bar at the top, the page is named by the selected tab and the profile sits in that row (TabShell).
-        if tabRoot && UIDevice.current.userInterfaceIdiom == .pad && sizeClass == .regular {
-            // The profile is in the navigation bar next to the tab bar (`tabRootBar`), so there is no row of ours.
+        if tabRoot {
+            // The title and the profile are in the system navigation bar (`tabRootBar`), so there is no row of ours.
             EmptyView()
         } else {
             row
@@ -234,32 +232,43 @@ struct HeaderMenuButton: UIViewRepresentable {
     }
 }
 
-/// An iPad with the tab bar at the top (regular width): the system puts that bar in the navigation bar's own row, so the four tab
-/// roots keep the navigation bar, empty, and the profile takes its trailing slot: one row, and the system keeps the content clear of
-/// it. (Hiding the bar and laying a row of our own over it left the content under the tab bar after a page had been opened and closed.)
-/// Everywhere else the bar is hidden and `TabHeader` draws the row. `enabled` is false for a screen that is only sometimes a root.
+/// The four tab roots keep the system navigation bar and put the profile in its trailing slot, so the system moves it to the side
+/// with the other bar buttons when the bars lay out vertically (iPhone Duo) and keeps the content clear of it. At regular width the tab bar
+/// names the page; at compact width the page's title is the bar's leading item. `enabled` is false for a screen that is only sometimes a root.
 extension View {
-    func tabRootBar(enabled: Bool = true) -> some View { modifier(TabRootBar(enabled: enabled)) }
+    func tabRootBar(title: String, enabled: Bool = true) -> some View { modifier(TabRootBar(title: title, enabled: enabled)) }
 }
 
 private struct TabRootBar: ViewModifier {
+    let title: String
     let enabled: Bool
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     /// The avatar is already a circle: on iOS 26 the system's glass capsule behind a bar button would be a second, different shape.
     @ToolbarContentBuilder private var profileItem: some ToolbarContent {
-        if #available(iOS 26.0, *) {
-            ToolbarItem(placement: .topBarTrailing) { ProfileButton() }
-                .sharedBackgroundVisibility(.hidden)
-        } else {
-            ToolbarItem(placement: .topBarTrailing) { ProfileButton() }
-        }
+        ToolbarItem(placement: .topBarTrailing) { ProfileButton() }
+            .verticalOnFoldables()
+            .withoutGlassBackground()
+    }
+
+    @ToolbarContentBuilder private var titleItem: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) { pageTitle }
+            .withoutGlassBackground()
+    }
+
+    private var pageTitle: some View {
+        Text(title.titleCased())
+            .font(.title2.bold())
+            .foregroundStyle(.primary)
+            .lineLimit(1)
+            .fixedSize()
+            .accessibilityAddTraits(.isHeader)
     }
 
     func body(content: Content) -> some View {
         if !enabled {
             content.toolbar(.automatic, for: .navigationBar)
-        } else if UIDevice.current.userInterfaceIdiom == .pad && sizeClass == .regular {
+        } else if sizeClass == .regular {
             content
                 .navigationBarTitleDisplayMode(.inline)
                 // The editor role keeps the bar to its compact height; the default one reserved a band above the content.
@@ -268,7 +277,32 @@ private struct TabRootBar: ViewModifier {
                 .topEdgeEffectHidden()
                 .toolbar { profileItem }
         } else {
-            content.toolbar(.hidden, for: .navigationBar)
+            content
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(.hidden, for: .navigationBar)
+                .topEdgeEffectHidden()
+                .toolbar {
+                    titleItem
+                    profileItem
+                }
+        }
+    }
+}
+
+extension ToolbarContent {
+    @ToolbarContentBuilder func withoutGlassBackground() -> some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            sharedBackgroundVisibility(.hidden)
+        } else {
+            self
+        }
+    }
+
+    @ToolbarContentBuilder func verticalOnFoldables() -> some ToolbarContent {
+        if #available(iOS 27.1, *) {
+            axisBehavior(.verticalPreferred)
+        } else {
+            self
         }
     }
 }

@@ -40,7 +40,7 @@ struct CastSectionView: View {
             Text(Strings.shared.cast.titleCased())
                 .sectionTitle()
                 .accessibilityAddTraits(.isHeader)
-            ScrollView(.horizontal, showsIndicators: false) {
+            HorizontalRow(lifts: false) {
                 LazyHStack(alignment: .top, spacing: Space.s3) {
                     ForEach(people, id: \.id) { person in
                         if let onOpenPerson {
@@ -53,7 +53,6 @@ struct CastSectionView: View {
                         }
                     }
                 }
-                .padding(.horizontal, margin)
             }
             .padding(.horizontal, -margin)
         }

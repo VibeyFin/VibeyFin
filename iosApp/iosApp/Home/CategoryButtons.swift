@@ -9,14 +9,13 @@ struct CategoryButtonRow: View {
     let onTap: (CategoryButton) -> Void
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        HorizontalRow(scrollsUnderStrip: false, lifts: false) {
             HStack(spacing: Space.s2) {
                 ForEach(buttons, id: \.kind) { button in
                     FilterChipButton(label: button.label.titleCased(), opensList: button.opensSheet) { onTap(button) }
                         .accessibilityLabel(button.opensSheet ? Strings.shared.opensList(label: button.label) : button.label)
                 }
             }
-            .screenMargin()
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Strings.shared.filterHome)
@@ -30,14 +29,13 @@ struct ListChipRow: View {
     let onTap: (ListChip) -> Void
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        HorizontalRow(scrollsUnderStrip: false, lifts: false) {
             HStack(spacing: Space.s2) {
                 ForEach(chips, id: \.kind) { chip in
                     // Sort and Genre open a list and have a chevron; Movies and Shows switch on and off.
                     FilterChipButton(label: chip.label, active: chip.active, opensList: chip.opensList) { onTap(chip) }
                 }
             }
-            .screenMargin()
         }
     }
 }

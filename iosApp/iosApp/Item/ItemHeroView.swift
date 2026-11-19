@@ -71,31 +71,34 @@ struct PinnedItemBackdrop: View {
     }
 
     var body: some View {
-        ZStack {
-            if let url {
-                Artwork(url: url, title: title, aspectRatio: 2.0 / 3.0, blurHash: blurHash)
-            } else {
-                // Nothing to show behind the title: a plain tile.
-                Color(.tertiarySystemBackground)
+        GeometryReader { proxy in
+            ZStack {
+                if let url {
+                    Artwork(url: url, title: title, aspectRatio: proxy.size.width / max(height, 1), blurHash: blurHash)
+                } else {
+                    // Nothing to show behind the title: a plain tile.
+                    Color(.tertiarySystemBackground)
+                }
+                LinearGradient(
+                    stops: [
+                        .init(color: Brand.scrim, location: 0),
+                        .init(color: .clear, location: 0.18),
+                        .init(color: .clear, location: 0.40),
+                        .init(color: Brand.scrim, location: 0.60),
+                        .init(color: Brand.scrimStrong, location: 0.82),
+                        .init(color: Color(.systemBackground), location: 1),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                // The darkening: from the picture as it is to nearly the page's own colour.
+                Color(.systemBackground).opacity(ScrollDarkening.opacity(progress: progress))
             }
-            LinearGradient(
-                stops: [
-                    .init(color: Brand.scrim, location: 0),
-                    .init(color: .clear, location: 0.18),
-                    .init(color: .clear, location: 0.40),
-                    .init(color: Brand.scrim, location: 0.60),
-                    .init(color: Brand.scrimStrong, location: 0.82),
-                    .init(color: Color(.systemBackground), location: 1),
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            // The darkening: from the picture as it is to nearly the page's own colour.
-            Color(.systemBackground).opacity(ScrollDarkening.opacity(progress: progress))
+            .frame(width: proxy.size.width, height: height)
+            .clipped()
         }
-        .frame(maxWidth: .infinity)
         .frame(height: height)
-        .clipped()
+        .ignoresSafeArea(.container, edges: .horizontal)
     }
 }
 

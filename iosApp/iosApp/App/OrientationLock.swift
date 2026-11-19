@@ -9,7 +9,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         supportedInterfaceOrientationsFor window: UIWindow?
     ) -> UIInterfaceOrientationMask {
-        OrientationLock.mask
+        OrientationLock.mask(for: window?.traitCollection)
     }
 
     /// iOS woke the app for a download that finished or needs the session's answer while it was closed: the shared downloader picks the
@@ -24,15 +24,17 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 }
 
 enum OrientationLock {
-    /// What the app allows right now.
-    static var mask: UIInterfaceOrientationMask = defaultMask
+    /// What the player asked for, until it lets go; nil means the default for the window.
+    private static var lockedMask: UIInterfaceOrientationMask?
 
-    /// What Info.plist allows: iPad turns every way, iPhone everything but upside down.
-    private static var defaultMask: UIInterfaceOrientationMask { defaultMask(for: UIDevice.current.userInterfaceIdiom) }
+    /// What the app allows right now in a window with these traits.
+    static func mask(for traits: UITraitCollection?) -> UIInterfaceOrientationMask {
+        lockedMask ?? defaultMask(horizontal: traits?.horizontalSizeClass ?? .compact, vertical: traits?.verticalSizeClass ?? .regular)
+    }
 
-    /// An iPhone stays upright outside the player, which asks for landscape itself; an iPad turns freely. The Info.plist still lists landscape for the iPhone, or the player could not ask for it.
-    static func defaultMask(for idiom: UIUserInterfaceIdiom) -> UIInterfaceOrientationMask {
-        idiom == .pad ? .all : .portrait
+    /// A window that is regular both ways (an iPad, the inner display of a foldable) turns freely; a compact one stays upright outside the player, which asks for landscape itself. The Info.plist still lists landscape for phones, or the player could not ask for it.
+    static func defaultMask(horizontal: UIUserInterfaceSizeClass, vertical: UIUserInterfaceSizeClass) -> UIInterfaceOrientationMask {
+        horizontal == .regular && vertical == .regular ? .all : .portrait
     }
 
     private static var orientationToRestore: UIInterfaceOrientationMask?
@@ -60,13 +62,13 @@ enum OrientationLock {
         guard let previous = orientationToRestore else { return false }
         let turns = scene.map { maskFor($0.interfaceOrientation) != previous } ?? false
         orientationToRestore = nil
-        mask = defaultMask
+        lockedMask = nil
         apply(previous, keepingMask: true)
         return turns
     }
 
     private static func apply(_ target: UIInterfaceOrientationMask, keepingMask: Bool = false) {
-        if !keepingMask { mask = target }
+        if !keepingMask { lockedMask = target }
         guard let scene else { return }
         scene.keyWindow?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
         scene.requestGeometryUpdate(.iOS(interfaceOrientations: target)) { _ in }

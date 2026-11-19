@@ -32,7 +32,7 @@ struct SearchView: View {
         .onChange(of: text) { _, query in model.setQuery(query) }
         .backMenuTitle(Strings.shared.tabSearch.titleCased())
         // The tab draws its own header; the system bar above it would only be empty space.
-        .tabRootBar()
+        .tabRootBar(title: Strings.shared.tabSearch)
         .onChange(of: model.state?.exit != nil) { _, hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
         }
@@ -40,7 +40,7 @@ struct SearchView: View {
 
     /// One button per kind, once something is typed: All lists every group, the others only theirs.
     private func chips(_ state: SearchUiState) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        HorizontalRow(scrollsUnderStrip: false, lifts: false) {
             HStack(spacing: Space.s2) {
                 ForEach(state.chips, id: \.filter) { chip in
                     // The same chip as Home and a category page; the chosen one fills with ink.
@@ -48,7 +48,6 @@ struct SearchView: View {
                         .accessibilityAddTraits(chip.selected ? .isSelected : [])
                 }
             }
-            .screenMargin()
         }
     }
 

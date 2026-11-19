@@ -199,7 +199,7 @@ struct SeerrTitleView: View {
             if !state.moreLikeThis.isEmpty {
                 VStack(alignment: .leading, spacing: Space.s3) {
                     Text(Strings.shared.seerrMoreLikeThis.titleCased()).sectionTitle().lineLimit(1).accessibilityAddTraits(.isHeader).screenMargin()
-                    ScrollView(.horizontal, showsIndicators: false) {
+                    HorizontalRow {
                         LazyHStack(alignment: .top, spacing: Space.s3) {
                             ForEach(state.moreLikeThis, id: \.self) { title in
                                 // A title the library has opens the library's page.
@@ -208,10 +208,7 @@ struct SeerrTitleView: View {
                                     .frame(width: wide ? 168 : 112)
                             }
                         }
-                        .screenMargin()
-                        .liftRoomInside()
                     }
-                    .liftRoom()
                 }
                 .padding(.horizontal, -margin)
             }

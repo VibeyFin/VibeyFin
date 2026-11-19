@@ -21,6 +21,7 @@ struct PlayerView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var controlsVisible = true
+    @State private var safeArea: EdgeInsets = EdgeInsets()
     /// The second under the finger while the scrubber is dragged.
     @State private var scrubPosition: TimeInterval?
     @State private var hideTask: Task<Void, Never>?
@@ -311,10 +312,13 @@ struct PlayerView: View {
                         ExternalPlaybackStatus(text: Strings.shared.playingOn(device: controller.externalDeviceName))
                     }
                 }
+                .ignoresSafeArea(.container, edges: .horizontal)
+                .padding(.horizontal, PlayerInsets.symmetric(leading: safeArea.leading, trailing: safeArea.trailing))
                 .screenMargin()
                 .padding(.vertical, Space.s3)
             }
         }
+        .background { Color.clear.onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { safeArea = $0 } }
     }
 
     /// Everything over the video sits on the scrim.

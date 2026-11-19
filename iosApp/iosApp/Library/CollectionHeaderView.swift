@@ -43,17 +43,33 @@ struct CollectionHeaderView: View {
         .clipped()
     }
 
+    private var backdropRatio: CGFloat { wide ? 21.0 / 9.0 : 3.0 / 4.0 }
+
+    /// The page's width sizes the header; the picture and its fades are laid over it and run out to the screen's edges.
     private var backdrop: some View {
+        Color.clear
+            .aspectRatio(backdropRatio, contentMode: .fit)
+            .overlay {
+                GeometryReader { proxy in
+                    backdropLayers(ratio: proxy.size.width / max(proxy.size.height, 1))
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .clipped()
+                }
+                .ignoresSafeArea(.container, edges: .horizontal)
+            }
+    }
+
+    private func backdropLayers(ratio: CGFloat) -> some View {
         ZStack {
             if let url = collection.backdropUrl ?? collection.posterUrl {
                 Artwork(
                     url: url,
                     title: collection.title,
-                    aspectRatio: wide ? 21.0 / 9.0 : 3.0 / 4.0,
+                    aspectRatio: ratio,
                     blurHash: collection.backdropUrl != nil ? collection.backdropBlurHash : collection.posterBlurHash
                 )
             } else {
-                Color(.tertiarySystemBackground).aspectRatio(wide ? 21.0 / 9.0 : 3.0 / 4.0, contentMode: .fit)
+                Color(.tertiarySystemBackground)
             }
             if wide {
                 LinearGradient(

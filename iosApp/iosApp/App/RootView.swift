@@ -18,6 +18,7 @@ struct RootView: View {
     @State private var homeButtonFrame: CGRect = .zero
     @State private var ready = false
     @State private var screenWidth: CGFloat = 0
+    @State private var windowFrame: CGRect = .zero
     @StateObject private var startup = StartupObservable()
     @StateObject private var theme = ThemeObservable()
     @ObservedObject private var taps = NotificationTaps.shared
@@ -94,7 +95,7 @@ struct RootView: View {
                     .allowsHitTesting(signedIn)
                     .environment(\.profileButtonHidden, flight != nil)
                     .environment(\.profileButtonFrame) { frame in
-                        if UIScreen.main.bounds.intersects(frame) { homeButtonFrame = frame }
+                        if windowFrame.intersects(frame) { homeButtonFrame = frame }
                     }
                     .transition(.opacity)
             }
@@ -104,6 +105,11 @@ struct RootView: View {
         }
         .id(theme.themeId)
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { screenWidth = $0 }
+        .onGeometryChange(for: CGRect.self) { proxy in
+            let frame: CGRect = proxy.frame(in: .global)
+            let insets: EdgeInsets = proxy.safeAreaInsets
+            return CGRect(x: frame.minX - insets.leading, y: frame.minY - insets.top, width: frame.width + insets.leading + insets.trailing, height: frame.height + insets.top + insets.bottom)
+        } action: { windowFrame = $0 }
         .environment(\.skeletonShimmerWidth, screenWidth > 0 ? screenWidth : nil)
         // Blank background until the app has worked out where to open, a moment of storage reads.
         .overlay {

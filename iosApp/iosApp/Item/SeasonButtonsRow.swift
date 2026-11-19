@@ -16,7 +16,7 @@ struct SeasonButtonsRow<ID: Hashable>: View {
 
     var body: some View {
         ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
+            HorizontalRow(lifts: false) {
                 HStack(spacing: Space.s2) {
                     ForEach(seasons, id: \.id) { season in
                         let selected = season.id == selectedId
@@ -36,7 +36,6 @@ struct SeasonButtonsRow<ID: Hashable>: View {
                         .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
                     }
                 }
-                .padding(.horizontal, margin)
             }
             .padding(.horizontal, -margin)
             .accessibilityElement(children: .contain)
