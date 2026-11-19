@@ -74,7 +74,7 @@ struct PinnedItemBackdrop: View {
         GeometryReader { proxy in
             ZStack {
                 if let url {
-                    Artwork(url: url, title: title, aspectRatio: proxy.size.width / max(height, 1), blurHash: blurHash)
+                    Artwork(url: url, title: title, aspectRatio: max(proxy.size.width, 1) / max(height, 1), blurHash: blurHash)
                 } else {
                     // Nothing to show behind the title: a plain tile.
                     Color(.tertiarySystemBackground)
@@ -130,7 +130,7 @@ struct WideItemBackdrop: View {
                     Artwork(
                         url: url,
                         title: title,
-                        aspectRatio: proxy.size.width / max(proxy.size.height, 1),
+                        aspectRatio: max(proxy.size.width, 1) / max(proxy.size.height, 1),
                         blurHash: blurHash
                     )
                 } else {

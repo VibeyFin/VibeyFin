@@ -29,10 +29,12 @@ enum OrientationLock {
 
     /// What the app allows right now in a window with these traits.
     static func mask(for traits: UITraitCollection?) -> UIInterfaceOrientationMask {
-        lockedMask ?? defaultMask(horizontal: traits?.horizontalSizeClass ?? .compact, vertical: traits?.verticalSizeClass ?? .regular)
+        if let lockedMask { return lockedMask }
+        if UIDevice.current.userInterfaceIdiom == .pad { return .all }
+        return defaultMask(horizontal: traits?.horizontalSizeClass ?? .compact, vertical: traits?.verticalSizeClass ?? .regular)
     }
 
-    /// A window that is regular both ways (an iPad, the inner display of a foldable) turns freely; a compact one stays upright outside the player, which asks for landscape itself. The Info.plist still lists landscape for phones, or the player could not ask for it.
+    /// A window regular both ways (a foldable's inner display) turns freely; a compact one stays upright outside the player.
     static func defaultMask(horizontal: UIUserInterfaceSizeClass, vertical: UIUserInterfaceSizeClass) -> UIInterfaceOrientationMask {
         horizontal == .regular && vertical == .regular ? .all : .portrait
     }

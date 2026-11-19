@@ -21,7 +21,9 @@ struct PlayerView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var controlsVisible = true
-    @State private var safeArea: EdgeInsets = EdgeInsets()
+    @State private var controlsFrame: ControlsFrame = ControlsFrame(safeArea: EdgeInsets(), size: .zero)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var tabletop: TabletopSplit?
     /// The second under the finger while the scrubber is dragged.
     @State private var scrubPosition: TimeInterval?
     @State private var hideTask: Task<Void, Never>?
@@ -57,11 +59,14 @@ struct PlayerView: View {
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
-            PlayerSurface(controller: controller, pip: pip).ignoresSafeArea()
-            SubtitleOverlay(
-                source: controller.isExternalPlayback ? nil : state?.subtitleSource,
-                onUnauthorized: { controller.subtitleRejected() }
-            ) { controller.engine.currentSeconds }
+            Group {
+                PlayerSurface(controller: controller, pip: pip).ignoresSafeArea()
+                SubtitleOverlay(
+                    source: controller.isExternalPlayback ? nil : state?.subtitleSource,
+                    onUnauthorized: { controller.subtitleRejected() }
+                ) { controller.engine.currentSeconds }
+            }
+            .tabletopVideo(split: tabletop)
             // The picture is on the other screen over AirPlay: the item's artwork, blurred, stands in for it.
             if controller.isExternalPlayback {
                 ExternalPlaybackBackdrop(artworkUrl: state?.artworkUrl)
@@ -84,6 +89,7 @@ struct PlayerView: View {
                     }
             }
             .ignoresSafeArea()
+            .allowsHitTesting(tabletop == nil)
             .accessibilityHidden(true)
             // Any skip, from a double tap or the buttons, shows how far the skips in a row have gone.
             ZStack {
@@ -91,25 +97,29 @@ struct PlayerView: View {
                     seekFlashView(side: run.forward ? .forward : .back, seconds: Int(run.seconds))
                 }
             }
+            .tabletopVideo(split: tabletop)
             .animation(.easeOut(duration: 0.15), value: state?.skipRun == nil)
             if let message = state?.message {
                 errorPanel(message)
                 closeOverlay
             } else {
                 if isWaiting {
-                    ProgressView().controlSize(.large)
+                    ProgressView().controlSize(.large).tabletopVideo(split: tabletop)
                 }
-                if controlsVisible || controller.isExternalPlayback {
+                if let tabletop {
+                    tabletopPanel
+                        .tabletopControls(split: tabletop)
+                } else if controlsVisible || controller.isExternalPlayback {
                     controls
                         .transition(.opacity)
                 }
                 // Offered for the whole segment, controls up or not; above the scrubber while that shows.
-                if let offer = state?.skipOffer {
-                    skipButton(offer)
+                if tabletop == nil, let offer = state?.skipOffer {
+                    SkipOfferOverlay(label: offer.label, raised: controlsVisible) { model.skip() }
                 }
                 // Stays up when the controls hide; an error fills the same part of the screen.
                 if showsStats, let diagnostics = state?.diagnostics {
-                    statsOverlay(diagnostics)
+                    StatsPanel(diagnostics: diagnostics)
                 }
             }
             if state?.stillWatching == true {
@@ -145,8 +155,9 @@ struct PlayerView: View {
         .animation(reduceMotion ? nil : .easeOut(duration: 0.26), value: state?.upNext != nil)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: controller.isExternalPlayback)
         .tint(Brand.onMedia)
-        .statusBarHidden(!controlsVisible)
-        .persistentSystemOverlays(controlsVisible ? .automatic : .hidden)
+        .foldReader(split: $tabletop)
+        .statusBarHidden(!(controlsVisible || tabletop != nil))
+        .persistentSystemOverlays(controlsVisible || tabletop != nil ? .automatic : .hidden)
         .overlay(alignment: .top) {
             if let notice = model.state?.notice { PlayerNotice(text: notice) }
         }
@@ -287,13 +298,15 @@ struct PlayerView: View {
 
     private var controls: some View {
         ZStack {
-            scrims
+            PlayerScrims()
             PlayerGlassGroup {
                 ZStack {
                     VStack(spacing: Space.s3) {
                         topBar
+                            .rowInsets(rowInsets(at: .top))
                         Spacer(minLength: 0)
                         bottomBar
+                            .rowInsets(rowInsets(at: .bottom))
                     }
                     if hasStream && !isWaiting {
                         PlayerTransport(
@@ -312,26 +325,56 @@ struct PlayerView: View {
                         ExternalPlaybackStatus(text: Strings.shared.playingOn(device: controller.externalDeviceName))
                     }
                 }
-                .ignoresSafeArea(.container, edges: .horizontal)
-                .padding(.horizontal, PlayerInsets.symmetric(leading: safeArea.leading, trailing: safeArea.trailing))
+                .rowInsets(controlsBalance)
                 .screenMargin()
                 .padding(.vertical, Space.s3)
+                .controlsSpanWidth(spans: spansWidth)
             }
         }
-        .background { Color.clear.onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { safeArea = $0 } }
+        .background { Color.clear.onGeometryChange(for: ControlsFrame.self) { ControlsFrame(safeArea: $0.safeAreaInsets, size: $0.size) } action: { controlsFrame = $0 } }
     }
 
-    /// Everything over the video sits on the scrim.
-    private var scrims: some View {
-        VStack(spacing: 0) {
-            LinearGradient(colors: [Brand.scrim, .clear], startPoint: .top, endPoint: .bottom)
-                .frame(height: 120)
-            Spacer(minLength: 0)
-            LinearGradient(colors: [.clear, Brand.scrim], startPoint: .top, endPoint: .bottom)
-                .frame(height: 160)
-        }
-        .ignoresSafeArea()
-        .allowsHitTesting(false)
+    private var tabletopPanel: some View {
+        PlayerTabletopControls(
+            title: state?.title ?? "",
+            subtitle: state?.subtitle,
+            badge: state?.badge,
+            isPlaying: controller.isPlaying,
+            skipBackSeconds: Int(state?.skipBackSeconds ?? ProfileSettings.Companion.shared.DEFAULT_SKIP_BACK_SECONDS),
+            skipForwardSeconds: Int(state?.skipForwardSeconds ?? ProfileSettings.Companion.shared.DEFAULT_SKIP_FORWARD_SECONDS),
+            speeds: state?.speeds.map { $0.floatValue } ?? [],
+            speed: state?.speed ?? 1,
+            audio: state?.audioTracks ?? [],
+            subtitles: state?.subtitleChoices ?? [],
+            skipOfferLabel: state?.skipOffer?.label,
+            pictureColours: controller.pictureColours,
+            onClose: close,
+            onSkipBack: { skip(.back) },
+            onTogglePlay: {
+                model.userInteraction()
+                controller.togglePlayPause()
+            },
+            onSkipForward: { skip(.forward) },
+            onSelectSpeed: { model.selectSpeed($0) },
+            onSelectAudio: { model.selectAudio($0) },
+            onSelectSubtitle: { model.selectSubtitle($0) },
+            onSearchSubtitles: state?.offersSubtitleSearch == true ? { searchingSubtitles = true } : nil,
+            onSkipOffer: { model.skip() },
+            onToggleStats: { model.toggleStats() },
+            onTouch: { model.userInteraction() },
+            onOpenChange: menuOpenChanged
+        ) { bottomBar }
+    }
+
+    private var safeArea: EdgeInsets { controlsFrame.safeArea }
+    private var spansWidth: Bool { PlayerInsets.spansWidth(size: controlsFrame.size) }
+
+    private var controlsBalance: (leading: CGFloat, trailing: CGFloat) {
+        spansWidth ? (0, 0) : PlayerInsets.balance(leading: safeArea.leading, trailing: safeArea.trailing)
+    }
+
+    private func rowInsets(at edge: PlayerInsets.CameraEdge) -> (leading: CGFloat, trailing: CGFloat) {
+        spansWidth ? PlayerInsets.rowInsets(at: edge, leading: safeArea.leading, trailing: safeArea.trailing, regularWidth: horizontalSizeClass == .regular) : (0, 0)
     }
 
     private var showsStats: Bool {
@@ -458,33 +501,6 @@ struct PlayerView: View {
             },
             trickplay: trickplayTiles
         )
-    }
-
-    /// Top leading, under the close button and title row.
-    private func statsOverlay(_ diagnostics: PlaybackDiagnostics) -> some View {
-        VStack {
-            HStack {
-                StatsOverlay(diagnostics: diagnostics)
-                Spacer(minLength: 0)
-            }
-            Spacer(minLength: 0)
-        }
-        .screenMargin()
-        .padding(.top, Space.s7 + Space.s4)
-        .allowsHitTesting(false)
-    }
-
-    /// Bottom trailing; rises above the scrubber and the times while the controls show.
-    private func skipButton(_ offer: SkipOffer) -> some View {
-        VStack {
-            Spacer(minLength: 0)
-            HStack {
-                Spacer(minLength: 0)
-                SkipButton(label: offer.label) { model.skip() }
-            }
-        }
-        .screenMargin()
-        .padding(.bottom, controlsVisible ? Space.s7 + Space.s6 : Space.s4)
     }
 
     // MARK: - Errors

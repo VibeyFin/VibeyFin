@@ -305,6 +305,7 @@
     "playback_section":"Wiedergabe",
     "playback_stats_title":"Wiedergabe-Statistiken anzeigen",
     "playing_on":"Wird auf {{device}} abgespielt",
+    "airplay":"AirPlay",
     "playing_on_airplay":"Wird über AirPlay abgespielt",
     "playout_tag":"({{method}})",
     "position_description":"{{position}} von {{duration}}",

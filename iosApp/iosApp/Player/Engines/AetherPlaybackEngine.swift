@@ -336,6 +336,8 @@ final class AetherPlaybackEngine: PlaybackEngine {
         return videoView
     }
 
+    var pictureItem: AVPlayerItem? { engine.softwarePiPSource == nil ? engine.nativePlayerLayer?.player?.currentItem : nil }
+
     // MARK: - Picture in picture
 
     /// The window follows the stream: AVPlayer's own layer on the native routes, the engine's frame layer on the software one.

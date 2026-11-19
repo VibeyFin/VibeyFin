@@ -72,9 +72,7 @@ extension EnvironmentValues {
     }
 }
 
-/// The one horizontal scroller. It starts at the page margin, ends clear of the system strip (clock, vertical bars) and, with
-/// `scrollsUnderStrip`, lets the items travel under that strip while they scroll. Without it the row stays inside the safe area, which
-/// keeps chips off the clock and Wi-Fi. `lifts` leaves room for a lifted tile to grow past the row.
+/// The one horizontal scroller: starts at the page margin, scrolls under the system strip unless `scrollsUnderStrip` is off. `lifts` leaves room for a lifted tile.
 struct HorizontalRow<Content: View>: View {
     var scrollsUnderStrip: Bool = true
     var lifts: Bool = true

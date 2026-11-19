@@ -31,7 +31,6 @@ struct DownloadsView: View {
             }
         }
         .backMenuTitle(Strings.shared.tabDownloads.titleCased())
-        // The tab draws its own header; the system bar above it would only be empty space.
         .tabRootBar(title: Strings.shared.tabDownloads)
         .onAppear { model.start() }
         .alert(

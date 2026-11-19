@@ -423,6 +423,7 @@ object Strings {
 
     val pause: String get() = text("pause")
     val close: String get() = text("close")
+    val airplay: String get() = text("airplay")
     val playbackPosition: String get() = text("playback_position")
     val audio: String get() = text("audio")
     val subtitles: String get() = text("subtitles")
