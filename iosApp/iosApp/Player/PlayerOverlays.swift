@@ -318,3 +318,20 @@ struct SkipOfferOverlay: View {
         .padding(.bottom, raised ? Space.s7 + Space.s6 : Space.s4)
     }
 }
+
+/// Near the tapped side; fades in and out, and under Reduce Motion does nothing else.
+struct SeekFlashRow: View {
+    let side: SeekSide
+    let seconds: Int
+
+    var body: some View {
+        HStack {
+            if side == .forward { Spacer(minLength: 0) }
+            SeekFlash(text: Strings.shared.seekFlash(seconds: Int32(seconds)))
+                .padding(.horizontal, Space.s7)
+            if side == .back { Spacer(minLength: 0) }
+        }
+        .allowsHitTesting(false)
+        .transition(.opacity)
+    }
+}

@@ -24,6 +24,7 @@ struct PlayerView: View {
     @State private var controlsFrame: ControlsFrame = ControlsFrame(safeArea: EdgeInsets(), size: .zero)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var tabletop: TabletopSplit?
+    @State private var book: BookSplit?
     /// The second under the finger while the scrubber is dragged.
     @State private var scrubPosition: TimeInterval?
     @State private var hideTask: Task<Void, Never>?
@@ -65,6 +66,7 @@ struct PlayerView: View {
                     source: controller.isExternalPlayback ? nil : state?.subtitleSource,
                     onUnauthorized: { controller.subtitleRejected() }
                 ) { controller.engine.currentSeconds }
+                .bookSubtitles(book)
             }
             .tabletopVideo(split: tabletop)
             // The picture is on the other screen over AirPlay: the item's artwork, blurred, stands in for it.
@@ -94,7 +96,7 @@ struct PlayerView: View {
             // Any skip, from a double tap or the buttons, shows how far the skips in a row have gone.
             ZStack {
                 if let run = state?.skipRun {
-                    seekFlashView(side: run.forward ? .forward : .back, seconds: Int(run.seconds))
+                    SeekFlashRow(side: run.forward ? .forward : .back, seconds: Int(run.seconds))
                 }
             }
             .tabletopVideo(split: tabletop)
@@ -155,7 +157,7 @@ struct PlayerView: View {
         .animation(reduceMotion ? nil : .easeOut(duration: 0.26), value: state?.upNext != nil)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: controller.isExternalPlayback)
         .tint(Brand.onMedia)
-        .foldReader(split: $tabletop)
+        .foldReader(tabletop: $tabletop, book: $book)
         .statusBarHidden(!(controlsVisible || tabletop != nil))
         .persistentSystemOverlays(controlsVisible || tabletop != nil ? .automatic : .hidden)
         .overlay(alignment: .top) {
@@ -298,7 +300,7 @@ struct PlayerView: View {
 
     private var controls: some View {
         ZStack {
-            PlayerScrims()
+            PlayerScrims().bookControls(book)
             PlayerGlassGroup {
                 ZStack {
                     VStack(spacing: Space.s3) {
@@ -327,6 +329,7 @@ struct PlayerView: View {
                 }
                 .rowInsets(controlsBalance)
                 .screenMargin()
+                .bookControls(book)
                 .padding(.vertical, Space.s3)
                 .controlsSpanWidth(spans: spansWidth)
             }
@@ -374,7 +377,7 @@ struct PlayerView: View {
     }
 
     private func rowInsets(at edge: PlayerInsets.CameraEdge) -> (leading: CGFloat, trailing: CGFloat) {
-        spansWidth ? PlayerInsets.rowInsets(at: edge, leading: safeArea.leading, trailing: safeArea.trailing, regularWidth: horizontalSizeClass == .regular) : (0, 0)
+        spansWidth ? PlayerInsets.rowInsets(at: edge, leading: book == nil ? safeArea.leading : 0, trailing: safeArea.trailing, regularWidth: horizontalSizeClass == .regular) : (0, 0)
     }
 
     private var showsStats: Bool {
@@ -636,18 +639,6 @@ struct PlayerView: View {
             return
         }
         skip(side)
-    }
-
-    /// Near the tapped side; fades in and out, and under Reduce Motion does nothing else.
-    private func seekFlashView(side: SeekSide, seconds: Int) -> some View {
-        HStack {
-            if side == .forward { Spacer(minLength: 0) }
-            SeekFlash(text: Strings.shared.seekFlash(seconds: Int32(seconds)))
-                .padding(.horizontal, Space.s7)
-            if side == .back { Spacer(minLength: 0) }
-        }
-        .allowsHitTesting(false)
-        .transition(.opacity)
     }
 
     private func toggleControls() {

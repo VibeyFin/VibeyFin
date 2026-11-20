@@ -9,8 +9,26 @@ final class PlayerFoldTests: XCTestCase {
         XCTAssertEqual(split, TabletopSplit(videoBottom: 313, controlsTop: 327))
     }
 
-    func testAVerticalFoldIsTheBookPoseAndKeepsTheLayout() {
+    func testAVerticalFoldIsNotTheTabletopPose() {
         XCTAssertNil(PlayerFold.tabletopSplit(crease: CGRect(x: 443, y: 0, width: 14, height: 640), in: screen))
+    }
+
+    func testAVerticalFoldSplitsThePictureFromTheControlsOnItsRight() {
+        let split: BookSplit? = PlayerFold.bookSplit(crease: CGRect(x: 443, y: 0, width: 14, height: 640), in: screen, originX: 84)
+        XCTAssertEqual(split, BookSplit(creaseMinX: 443, creaseMaxX: 457, originX: 84))
+        XCTAssertEqual(split?.controlsLeading, 541)
+    }
+
+    func testAHorizontalFoldIsNotTheBookPose() {
+        XCTAssertNil(PlayerFold.bookSplit(crease: CGRect(x: 0, y: 313, width: 900, height: 14), in: screen, originX: 0))
+    }
+
+    func testNoFoldIsNotTheBookPose() {
+        XCTAssertNil(PlayerFold.bookSplit(crease: nil, in: screen, originX: 0))
+    }
+
+    func testAShortVerticalRegionIsNotTheBookPose() {
+        XCTAssertNil(PlayerFold.bookSplit(crease: CGRect(x: 443, y: 0, width: 14, height: 200), in: screen, originX: 0))
     }
 
     func testNoFoldKeepsTheLayout() {
