@@ -29,6 +29,7 @@ A Jetpack Compose app that follows Material 3. Use the `android` theme and `m3-*
 | Settings rows | Toggle: a `Switch` row. Choice: a `ChoiceRow`, a menu (`DropdownMenu`) with the value at the right, never a sub-page. Link: a row with a chevron to a sub-page. Rows sit in rounded `surfaceContainerLow` cards with a leading tonal icon circle and group titles in `ink-muted` text |
 | Quality setting | the one checklist: inline rows in its own section (title once, footer below), the chosen row an `spark-soft` pill with no tick |
 | Settings on tablets | from the 600dp tablet breakpoint a plain two-column layout (root left, page right, detail capped at about 640 and centred), the selected root row an `spark-soft` pill that follows the tapped row. Not `material3-adaptive`. Below it, push navigation |
+| Who's watching? on tablets | from 600dp the title, server name and tiles are one block, centred both ways, with the server button at the top right of the window; below it the block stays top-left |
 | Skip intervals setting | the settings `ChoiceRow` (Skip back 5 to 30 s, Skip forward 10 to 60 s), on the Skipping and autoplay page |
 | Buffer ahead setting | the same `ChoiceRow` (Auto, 10 to 60 s, default 20 s), in its own group on Skipping and autoplay. Player: `DefaultLoadControl.setBufferDurationsMs`; the scrubber's buffered segment reads `player.bufferedPosition`, white at 40% (`overlay-strong`) under the copper fill |
 | Player | Compose controls over Media3 `PlayerSurface`; `MediaSession` notification; PiP with `setAutoEnterEnabled` on Android 12+ |

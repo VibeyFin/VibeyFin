@@ -49,6 +49,13 @@ extension View {
         }
     }
 
+    func bookReader(_ book: Binding<BookSplit?>) -> some View {
+        onGeometryChange(for: BookSplit?.self) { proxy in
+            guard #available(iOS 27.1, *) else { return nil }
+            return PlayerFold.bookSplit(crease: proxy.reservedRegions(kind: .division).first?.frame, in: proxy.size, originX: proxy.frame(in: .global).minX)
+        } action: { book.wrappedValue = $0 }
+    }
+
     func bookControls(_ book: BookSplit?) -> some View {
         padding(.leading, book?.controlsLeading ?? 0)
     }
