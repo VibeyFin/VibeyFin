@@ -19,6 +19,8 @@ struct RootView: View {
     @State private var ready = false
     @State private var screenWidth: CGFloat = 0
     @State private var windowFrame: CGRect = .zero
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @StateObject private var startup = StartupObservable()
     @StateObject private var theme = ThemeObservable()
     @ObservedObject private var taps = NotificationTaps.shared
@@ -110,6 +112,12 @@ struct RootView: View {
             let insets: EdgeInsets = proxy.safeAreaInsets
             return CGRect(x: frame.minX - insets.leading, y: frame.minY - insets.top, width: frame.width + insets.leading + insets.trailing, height: frame.height + insets.top + insets.bottom)
         } action: { windowFrame = $0 }
+        .onChange(of: [horizontalSizeClass, verticalSizeClass]) { _, _ in
+            OrientationLock.refreshDefault(
+                horizontal: horizontalSizeClass == .regular ? .regular : .compact,
+                vertical: verticalSizeClass == .compact ? .compact : .regular
+            )
+        }
         .environment(\.skeletonShimmerWidth, screenWidth > 0 ? screenWidth : nil)
         // Blank background until the app has worked out where to open, a moment of storage reads.
         .overlay {

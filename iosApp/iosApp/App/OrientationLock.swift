@@ -30,13 +30,36 @@ enum OrientationLock {
     /// What the app allows right now in a window with these traits.
     static func mask(for traits: UITraitCollection?) -> UIInterfaceOrientationMask {
         if let lockedMask { return lockedMask }
-        if UIDevice.current.userInterfaceIdiom == .pad { return .all }
         return defaultMask(horizontal: traits?.horizontalSizeClass ?? .compact, vertical: traits?.verticalSizeClass ?? .regular)
     }
 
     /// A window regular both ways (a foldable's inner display) turns freely; a compact one stays upright outside the player.
     static func defaultMask(horizontal: UIUserInterfaceSizeClass, vertical: UIUserInterfaceSizeClass) -> UIInterfaceOrientationMask {
         horizontal == .regular && vertical == .regular ? .all : .portrait
+    }
+
+    /// The player keeps a compact window in landscape; a window regular both ways (the inner display) follows the device, so it can reach the tabletop pose.
+    static func playerMask(horizontal: UIUserInterfaceSizeClass, vertical: UIUserInterfaceSizeClass) -> UIInterfaceOrientationMask {
+        horizontal == .regular && vertical == .regular ? .all : .landscape
+    }
+
+    private static var windowPlayerMask: UIInterfaceOrientationMask {
+        let traits: UITraitCollection? = scene?.keyWindow?.traitCollection
+        return playerMask(horizontal: traits?.horizontalSizeClass ?? .compact, vertical: traits?.verticalSizeClass ?? .regular)
+    }
+
+    /// The window's traits changed (a foldable switched display): the player's lock follows the new window, and a window left sideways turns upright when the new default forbids it.
+    static func refreshDefault(horizontal: UIUserInterfaceSizeClass, vertical: UIUserInterfaceSizeClass) {
+        guard let scene else { return }
+        if orientationToRestore != nil {
+            apply(playerMask(horizontal: horizontal, vertical: vertical))
+            return
+        }
+        guard lockedMask == nil else { return }
+        let allowed: UIInterfaceOrientationMask = defaultMask(horizontal: horizontal, vertical: vertical)
+        scene.keyWindow?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+        guard !allowed.contains(maskFor(scene.interfaceOrientation)) else { return }
+        scene.requestGeometryUpdate(.iOS(interfaceOrientations: allowed)) { _ in }
     }
 
     private static var orientationToRestore: UIInterfaceOrientationMask?
@@ -46,15 +69,16 @@ enum OrientationLock {
         return scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
     }
 
-    /// Phones and tablets turn to landscape for the player and stay there. (An iPad refuses it while the app is windowed, in Split View or in Slide Over: "The current windowing mode does not allow for programmatic changes to interface orientation". The request is kept for when the system allows it.)
+    /// A compact window turns to landscape for the player and stays there. (An iPad refuses it while the app is windowed, in Split View or in Slide Over: "The current windowing mode does not allow for programmatic changes to interface orientation". The request is kept for when the system allows it.)
     /// Returns whether the screen has to turn for it, so a caller can wait for the turn.
     @discardableResult
     static func lockLandscape() -> Bool {
         guard orientationToRestore == nil else { return false }
         let current = scene?.interfaceOrientation
         orientationToRestore = current.map { maskFor($0) } ?? .portrait
-        apply(.landscape)
-        return current?.isLandscape == false
+        let target: UIInterfaceOrientationMask = windowPlayerMask
+        apply(target)
+        return target == .landscape && current?.isLandscape == false
     }
 
     /// Lets the app turn freely again and goes back to the orientation it was in before the player.
@@ -73,6 +97,7 @@ enum OrientationLock {
         if !keepingMask { lockedMask = target }
         guard let scene else { return }
         scene.keyWindow?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+        guard target != .all else { return }
         scene.requestGeometryUpdate(.iOS(interfaceOrientations: target)) { _ in }
     }
 
