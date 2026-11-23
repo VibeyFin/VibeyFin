@@ -1,9 +1,6 @@
 package app.vibeyfin.app.player
 
 import android.os.SystemClock
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -34,12 +31,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -47,9 +42,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
@@ -61,7 +57,6 @@ import app.vibeyfin.app.components.ChipInset
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.pageMargin
 import app.vibeyfin.ui.common.Strings
-import kotlinx.coroutines.launch
 
 /**
  * The overlay above the video: back and title at the top, play or pause in the middle, the scrubber
@@ -81,8 +76,10 @@ fun PlayerControls(
     hasTrackChoices: Boolean,
     /** The picture's one badge ("4K", "HDR10"); null shows none. */
     badge: String?,
-    /** Whether the back, play and forward buttons show: only when there is a stream to control and nothing else is in the middle. */
+    /** Whether the centre buttons show: only when there is a stream to control and nothing else is in the middle. */
     showTransport: Boolean,
+    /** A run of double-tap skips is showing: only the scrubber stays, so the new position is seen over the video. */
+    seeking: Boolean,
     /** The chosen playback speed as a label ("1.5x"), which is also the speed button. */
     speedLabel: String,
     onClose: () -> Unit,
@@ -91,7 +88,7 @@ fun PlayerControls(
     /** Turns the video into a picture-in-picture window; null when the device can't. */
     onPip: (() -> Unit)?,
     onTogglePlay: () -> Unit,
-    /** The profile's skip lengths, which pick the numbers on the two skip buttons. */
+    /** The profile's skip lengths; TalkBack offers the skips as actions on the play button, as double taps can't reach it. */
     skipBackSeconds: Int,
     skipForwardSeconds: Int,
     onSkipBack: () -> Unit,
@@ -101,24 +98,46 @@ fun PlayerControls(
     onSeek: (Long) -> Unit,
     /** The thumbnails to preview while scrubbing; null shows the timestamp alone. */
     trickplay: TrickplayTiles? = null,
-    /** The episode after this one ("S1 E2  ·  Northbound"), read with the Next episode button; null hides the button. */
+    /** What plays is an episode, so Previous and Next sit either side of play. */
+    episodeControls: Boolean = false,
+    /** The episode before this one ("S1 E1  ·  Northbound"), read with the Previous button; null disables it. */
+    previousEpisode: String? = null,
+    /** The episode after this one, read with the Next button; null disables it. */
     nextEpisode: String? = null,
+    onPreviousEpisode: () -> Unit = {},
     onNextEpisode: () -> Unit = {},
     /** Five quick taps on the title: the playback stats are switched on or off. */
     onToggleStats: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxSize()) {
-        TopBar(
-            title, subtitle, hasTrackChoices, badge, speedLabel, nextEpisode, onClose, onNextEpisode, onTracks, onSpeed, onPip, onToggleStats,
-            Modifier.align(Alignment.TopStart),
-        )
+        if (!seeking) {
+            TopBar(
+                title, subtitle, hasTrackChoices, badge, speedLabel, onClose, onTracks, onSpeed, onPip, onToggleStats,
+                Modifier.align(Alignment.TopStart),
+            )
+        }
 
-        if (showTransport) {
-            Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s6)) {
-                TransportSkipButton(R.drawable.ic_replay, skipBackSeconds, Strings.skipBackLabel(skipBackSeconds), forward = false, onSkipBack)
-                PlayPauseButton(playing, onTogglePlay)
-                TransportSkipButton(R.drawable.ic_forward, skipForwardSeconds, Strings.skipForwardLabel(skipForwardSeconds), forward = true, onSkipForward)
+        if (showTransport && !seeking) {
+            Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s7)) {
+                if (episodeControls) EpisodeButton(R.drawable.ic_skip_previous, Strings.previousEpisode, previousEpisode, onPreviousEpisode)
+                PlayPauseButton(
+                    playing,
+                    onTogglePlay,
+                    Modifier.semantics {
+                        customActions = listOf(
+                            CustomAccessibilityAction(Strings.skipBackLabel(skipBackSeconds)) {
+                                onSkipBack()
+                                true
+                            },
+                            CustomAccessibilityAction(Strings.skipForwardLabel(skipForwardSeconds)) {
+                                onSkipForward()
+                                true
+                            },
+                        )
+                    },
+                )
+                if (episodeControls) EpisodeButton(R.drawable.ic_skip_next, Strings.nextEpisode, nextEpisode, onNextEpisode)
             }
         }
 
@@ -151,10 +170,7 @@ private fun TopBar(
     hasTrackChoices: Boolean,
     badge: String?,
     speedLabel: String,
-    /** The episode after this one; null hides the Next episode button. */
-    nextEpisode: String?,
     onClose: () -> Unit,
-    onNextEpisode: () -> Unit,
     onTracks: () -> Unit,
     onSpeed: () -> Unit,
     onPip: (() -> Unit)?,
@@ -197,11 +213,6 @@ private fun TopBar(
                 )
             }
         }
-        if (nextEpisode != null) {
-            Spacer(Modifier.width(VibeyFinTokens.Space.s3))
-            ChipButton(R.drawable.ic_skip_next, Strings.labelled(Strings.nextEpisode, nextEpisode), onNextEpisode)
-        }
-
         Spacer(Modifier.width(VibeyFinTokens.Space.s3))
         TextChipButton(speedLabel, Strings.speed, onSpeed)
 
@@ -276,41 +287,29 @@ private fun ChipButton(icon: Int, description: String, onClick: () -> Unit) {
     }
 }
 
-// The seconds are text over the arrow, so any skip setting (15, 45, 60) has a glyph
+// An episode either side of this one; dimmed and inert when there is none
 @Composable
-private fun TransportSkipButton(icon: Int, seconds: Int, description: String, forward: Boolean, onClick: () -> Unit) {
-    // Each press turns the arrow a little the way it points and springs it back, as Android's own players do
-    val turn = remember { Animatable(0f) }
-    val scope = rememberCoroutineScope()
+private fun EpisodeButton(icon: Int, description: String, episode: String?, onClick: () -> Unit) {
+    val enabled: Boolean = episode != null
 
     Box(
         modifier = Modifier
-            .size(48.dp)
+            .size(56.dp)
             .clip(CircleShape)
-            .clickable(role = Role.Button) {
-                onClick()
-                scope.launch {
-                    turn.snapTo(if (forward) SKIP_TURN_DEGREES else -SKIP_TURN_DEGREES)
-                    turn.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))
-                }
-            },
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = episode?.let { Strings.labelled(description, it) } ?: description },
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             painter = painterResource(icon),
-            contentDescription = description,
-            tint = VibeyFinTokens.Colors.ink,
-            modifier = Modifier.size(40.dp).rotate(turn.value),
-        )
-        Text(
-            text = seconds.toString(),
-            style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"),
-            color = VibeyFinTokens.Colors.ink,
-            modifier = Modifier.padding(top = 3.dp).clearAndSetSemantics { },
+            contentDescription = null,
+            tint = VibeyFinTokens.Colors.onMedia.copy(alpha = if (enabled) 1f else DISABLED_ALPHA),
+            modifier = Modifier.size(36.dp),
         )
     }
 }
 
+private const val DISABLED_ALPHA = 0.38f
 private const val STATS_TAPS = 5
 private const val TAP_GAP_MS = 500L
 
@@ -327,8 +326,6 @@ private fun Modifier.onRepeatedTaps(count: Int, onTaps: () -> Unit): Modifier = 
         }
     }
 }
-
-private const val SKIP_TURN_DEGREES = 30f
 
 @Composable
 private fun PlayPauseButton(playing: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {

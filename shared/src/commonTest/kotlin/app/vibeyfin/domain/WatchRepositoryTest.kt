@@ -234,6 +234,32 @@ class WatchRepositoryTest {
     }
 
     @Test
+    fun thePreviousEpisodeIsTheOneBeforeTheCurrentInTheShowsOwnOrder() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Shows/s1/Episodes", Reply.json(itemsJson(itemJson("e1", type = "Episode"), itemJson("e2", type = "Episode"), itemJson("e3", type = "Episode"))))
+
+        val previous = app.watch.previousEpisode(episodeItem("e2")).success()
+
+        assertEquals("e1", previous?.id)
+        assertEquals("e2", app.jellyfin.requestsTo("GET", "/Shows/s1/Episodes").single().query["adjacentTo"])
+    }
+
+    @Test
+    fun theFirstEpisodeHasNoPreviousOne() = runTest {
+        app.signedIn().on("GET", "/Shows/s1/Episodes", Reply.json(itemsJson(itemJson("e1", type = "Episode"), itemJson("e2", type = "Episode"))))
+
+        assertEquals(null, app.watch.previousEpisode(episodeItem("e1")).success())
+    }
+
+    @Test
+    fun aMovieIsNotAskedAboutAPreviousEpisode() = runTest {
+        app.signedIn()
+
+        assertEquals(null, app.watch.previousEpisode(episodeItem("m1").copy(kind = ItemKind.Movie)).success())
+        assertEquals(0, app.jellyfin.requestsTo("GET", "/Shows/s1/Episodes").size)
+    }
+
+    @Test
     fun aFailedLookupIsAFailure() = runTest {
         app.signedIn().on("GET", "/Shows/s1/Episodes", Reply.status(HttpStatusCode.Forbidden))
 

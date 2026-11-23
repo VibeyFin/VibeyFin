@@ -67,6 +67,8 @@ class PlaybackModel(itemId: String, startOver: Boolean) {
 
     fun onPlayNow() = host.viewModel.onPlayNow()
 
+    fun onPlayPrevious() = host.viewModel.onPlayPrevious()
+
     fun onWatchCredits() = host.viewModel.onWatchCredits()
 
     fun diagnostics(live: LiveDiagnostics) = host.viewModel.onDiagnostics(live)

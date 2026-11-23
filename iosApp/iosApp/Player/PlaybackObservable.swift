@@ -84,9 +84,14 @@ final class PlaybackObservable: ObservableObject {
         model.onStopWatching()
     }
 
-    /// "Play now" on the next-episode card.
+    /// "Play now" on the next-episode card, or the Next episode button.
     func playNow() {
         model.onPlayNow()
+    }
+
+    /// The Previous episode button.
+    func playPrevious() {
+        model.onPlayPrevious()
     }
 
     /// "Watch credits" on the next-episode card: it goes, and the episode plays out.

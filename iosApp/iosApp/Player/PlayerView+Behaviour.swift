@@ -181,16 +181,8 @@ extension PlayerView {
     }
 
     /// The left third skips back, the right third forward, the middle does nothing.
-    func doubleTap(at x: CGFloat, width: CGFloat) {
-        guard hasStream, !isWaiting, state?.message == nil, width > 0 else { return }
-        let side: SeekSide
-        if x < width / 3 {
-            side = .back
-        } else if x > width * 2 / 3 {
-            side = .forward
-        } else {
-            return
-        }
+    func tapToSkip(at x: CGFloat, width: CGFloat) {
+        guard hasStream, !isWaiting, state?.message == nil, let side = SeekSide.at(x: x, width: width) else { return }
         skip(side)
     }
 

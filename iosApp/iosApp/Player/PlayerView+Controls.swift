@@ -19,13 +19,24 @@ extension PlayerView {
                     if hasStream && !isWaiting {
                         PlayerTransport(
                             isPlaying: controller.isPlaying,
+                            episodeControls: state?.episodeControls == true,
+                            previousEpisode: state?.previousEpisode,
+                            nextEpisode: state?.nextEpisode,
                             skipBackSeconds: Int(state?.skipBackSeconds ?? ProfileSettings.Companion.shared.DEFAULT_SKIP_BACK_SECONDS),
                             skipForwardSeconds: Int(state?.skipForwardSeconds ?? ProfileSettings.Companion.shared.DEFAULT_SKIP_FORWARD_SECONDS),
-                            onSkipBack: { skip(.back) },
+                            onPreviousEpisode: {
+                                model.userInteraction()
+                                model.playPrevious()
+                            },
                             onTogglePlay: {
                                 model.userInteraction()
                                 controller.togglePlayPause()
                             },
+                            onNextEpisode: {
+                                model.userInteraction()
+                                model.playNow()
+                            },
+                            onSkipBack: { skip(.back) },
                             onSkipForward: { skip(.forward) }
                         )
                     }
@@ -112,14 +123,6 @@ extension PlayerView {
             .onTapGesture(count: 5) { model.toggleStats() }
             Spacer(minLength: 0)
             PlayerControlCluster {
-                // Episodes with a next one only; gives way to the up next card, which has its own Play Now.
-                if let next = state?.nextEpisode, state?.upNext == nil {
-                    PlayerIconButton(systemName: "forward.end", label: Strings.shared.nextEpisode) {
-                        model.userInteraction()
-                        model.playNow()
-                    }
-                    .accessibilityHint(next)
-                }
                 if let state {
                     PlayerSpeedMenu(
                         speeds: state.speeds.map { $0.floatValue },
@@ -181,6 +184,17 @@ extension PlayerView {
     /// The subtitle then the picture badge, as plain text.
     var metaLine: String {
         Strings.shared.metaLine(subtitle: state?.subtitle, badge: state?.badge) ?? ""
+    }
+
+    /// The scrubber alone while skips in a row show, where it sits with the controls up.
+    var seekingBar: some View {
+        bottomBar
+            .rowInsets(rowInsets(at: .bottom))
+            .rowInsets(controlsBalance)
+            .screenMargin()
+            .bookControls(book)
+            .padding(.vertical, Space.s3)
+            .controlsSpanWidth(spans: spansWidth)
     }
 
     var bottomBar: some View {

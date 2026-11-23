@@ -1222,6 +1222,46 @@ class PlaybackViewModelTest {
     }
 
     @Test
+    fun `an episode with one before it offers it for the Previous button`() = runTest {
+        val jellyfin = seriesServer(episodes = itemsJson(episode("e0", 0), episode("m1", 1), episode("e2", 2)))
+        jellyfin.server("http://nas:8096").on("POST", "/Items/e0/PlaybackInfo", Reply.json(playbackInfoJson(mediaSourceJson())))
+        val viewModel = viewModel()
+        val seen = playing(viewModel, jellyfin)
+        viewModel.onPosition(60_000)
+
+        assertTrue(seen.last().episodeControls)
+        assertEquals("S1 E0  ·  Northbound", seen.last().previousEpisode)
+
+        viewModel.onPlayPrevious()
+        val previous = viewModel.uiState.first { it.subtitle == "Paper Harbour  ·  S1 E0" && it.stream != null }
+
+        assertEquals(1, jellyfin.requestsTo("POST", "/Items/e0/PlaybackInfo").size)
+        assertTrue(previous.episodeControls)
+        val stopped = bodyOf(jellyfin.awaitRequests("POST", "/Sessions/Playing/Stopped").first())
+        assertEquals("m1", stopped.getValue("ItemId").jsonPrimitive.content)
+        // Going back is not finishing it: it stays where it was left.
+        assertEquals(60_000L * 10_000, stopped.getValue("PositionTicks").jsonPrimitive.long)
+    }
+
+    @Test
+    fun `the first episode offers no previous one but still has the episode controls`() = runTest {
+        val jellyfin = seriesServer()
+        val seen = playing(viewModel(), jellyfin)
+
+        assertTrue(seen.last().episodeControls)
+        assertNull(seen.last().previousEpisode)
+    }
+
+    @Test
+    fun `a movie has no episode controls`() = runTest {
+        server()
+        val state = viewModel().uiState.first { it.stream != null }
+
+        assertFalse(state.episodeControls)
+        assertNull(state.previousEpisode)
+    }
+
+    @Test
     fun playNowDoesNotWaitForTheCountdown() = runTest {
         val jellyfin = seriesServer()
         val viewModel = viewModel()

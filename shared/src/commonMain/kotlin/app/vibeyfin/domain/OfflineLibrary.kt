@@ -78,14 +78,25 @@ class OfflineLibrary(
 
     /** The episode downloaded after [current] in its show, by season and episode number; null when there is none. */
     suspend fun nextAfter(profile: ProfileRef, current: MediaItem): MediaItem? {
-        val seriesId = current.seriesId ?: return null
-        val (season, episode) = (current.seasonNumber ?: 0) to (current.episodeNumber ?: return null)
-        val done = dao.all(profile.serverId, profile.userId).filter { it.isPlayable() && it.seriesId == seriesId }.map { it.itemId }.toSet()
-        val next = dao.allItems(profile.serverId, profile.userId)
-            .filter { it.itemId in done && it.kind == ItemKind.Episode.name }
-            .filter { order(it) > season * ORDER_STEP + episode }
-            .minByOrNull { order(it) } ?: return null
+        val at = orderOf(current) ?: return null
+        val next = downloadedEpisodes(profile, current).filter { order(it) > at }.minByOrNull { order(it) } ?: return null
         return OfflineSnapshot.decode(next.snapshotJson).toItem(next)
+    }
+
+    /** The episode downloaded before [current] in its show, by season and episode number; null when there is none. */
+    suspend fun previousBefore(profile: ProfileRef, current: MediaItem): MediaItem? {
+        val at = orderOf(current) ?: return null
+        val previous = downloadedEpisodes(profile, current).filter { order(it) < at }.maxByOrNull { order(it) } ?: return null
+        return OfflineSnapshot.decode(previous.snapshotJson).toItem(previous)
+    }
+
+    private fun orderOf(item: MediaItem): Int? = item.episodeNumber?.let { (item.seasonNumber ?: 0) * ORDER_STEP + it }
+
+    // The playable downloaded episodes of [current]'s show; none when it has no show.
+    private suspend fun downloadedEpisodes(profile: ProfileRef, current: MediaItem): List<DownloadItemEntity> {
+        val seriesId = current.seriesId ?: return emptyList()
+        val done = dao.all(profile.serverId, profile.userId).filter { it.isPlayable() && it.seriesId == seriesId }.map { it.itemId }.toSet()
+        return dao.allItems(profile.serverId, profile.userId).filter { it.itemId in done && it.kind == ItemKind.Episode.name }
     }
 
     /** What to continue with: items started and not finished, most recently watched first, then the next downloaded episode of shows being watched. */

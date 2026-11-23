@@ -5,6 +5,7 @@ import app.vibeyfin.data.api.ApiResult
 import app.vibeyfin.data.api.ItemsResultDto
 import app.vibeyfin.data.api.JellyfinApi
 import app.vibeyfin.data.api.UpdateUserItemDataDto
+import app.vibeyfin.data.api.episodesAround
 import app.vibeyfin.data.api.episodesFrom
 import app.vibeyfin.data.api.map
 import app.vibeyfin.data.api.nextUp
@@ -70,6 +71,18 @@ class WatchRepository(private val connection: ConnectionManager, private val cha
             api.episodesFrom(seriesId, current.id, userId, limit = 2).toItems(api).map { episodes ->
                 val at = episodes.indexOfFirst { it.id == current.id }
                 if (at < 0) null else episodes.getOrNull(at + 1)
+            }
+        }
+    }
+
+    /** The episode before [current], in the show's own order and across seasons, or null when [current] is the first one, is not an episode, or has no show. */
+    suspend fun previousEpisode(current: MediaItem): ApiResult<MediaItem?> {
+        val seriesId = current.seriesId
+        if (current.kind != ItemKind.Episode || seriesId == null) return ApiResult.Success(null)
+        return call { api, userId ->
+            api.episodesAround(seriesId, current.id, userId).toItems(api).map { episodes ->
+                val at = episodes.indexOfFirst { it.id == current.id }
+                if (at < 1) null else episodes[at - 1]
             }
         }
     }

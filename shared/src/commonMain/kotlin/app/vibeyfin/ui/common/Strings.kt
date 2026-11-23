@@ -397,6 +397,9 @@ object Strings {
     /** The player's icon button that starts the next episode now; its hint is the episode's label and title. */
     val nextEpisode: String get() = text("next_episode")
 
+    /** The player's button that starts the episode before this one; its hint is that episode's label and title. */
+    val previousEpisode: String get() = text("previous_episode")
+
     /** Dismisses the card and plays the episode out to the end of its credits. */
     val watchCredits: String get() = text("watch_credits")
 
@@ -741,7 +744,8 @@ object Strings {
 
     fun skipForwardLabel(seconds: Int): String = text("skip_forward_label", "seconds" to seconds)
 
-    fun seekFlash(seconds: Int): String = text("seek_flash", "seconds" to seconds)
+    /** The seconds skipped so far by a run of double taps, signed by direction: "+30", "−30". */
+    fun seekTotal(forward: Boolean, seconds: Int): String = if (forward) text("seek_forward_total", "seconds" to seconds) else text("seek_back_total", "seconds" to seconds)
 
     val autoSkipSegments: String get() = text("auto_skip_segments")
     val bufferAhead: String get() = text("buffer_ahead")

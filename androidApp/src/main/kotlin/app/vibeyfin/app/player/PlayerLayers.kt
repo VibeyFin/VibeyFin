@@ -50,28 +50,31 @@ internal fun PlayerVideoSurface(hdrVideo: Boolean?, player: Player, hidden: Bool
 
 /**
  * Covers the picture and catches its taps: one tap asks for the controls to show or hide, a double tap on the left
- * third skips back and on the right third forward, and the middle does nothing. A vertical swipe changes the volume or the
- * brightness, through [swipe].
+ * third skips back and on the right third forward, and the middle does nothing. While [seeking], each single tap on a side
+ * skips again at once, as on YouTube. A vertical swipe changes the volume or the brightness, through [swipe].
  */
 @Composable
-internal fun PlayerTapLayer(onTap: () -> Unit, onDoubleTap: (SkipSide) -> Unit, swipe: Modifier = Modifier) {
-    // The gesture handler is set up once, so it reads the callbacks through these
+internal fun PlayerTapLayer(seeking: Boolean, onTap: () -> Unit, onSkip: (SkipSide) -> Unit, swipe: Modifier = Modifier) {
+    // The gesture handler is set up once per mode, so it reads the callbacks through these
     val currentOnTap by rememberUpdatedState(onTap)
-    val currentOnDoubleTap by rememberUpdatedState(onDoubleTap)
+    val currentOnSkip by rememberUpdatedState(onSkip)
 
     Box(
-        Modifier.fillMaxSize().then(swipe).pointerInput(Unit) {
-            detectTapGestures(
-                onTap = { currentOnTap() },
-                onDoubleTap = { at ->
-                    val side = when {
-                        at.x < size.width / 3f -> SkipSide.Back
-                        at.x > size.width * 2f / 3f -> SkipSide.Forward
-                        else -> null
-                    }
-                    if (side != null) currentOnDoubleTap(side)
-                },
-            )
+        Modifier.fillMaxSize().then(swipe).pointerInput(seeking) {
+            fun sideOf(x: Float): SkipSide? = when {
+                x < size.width / 3f -> SkipSide.Back
+                x > size.width * 2f / 3f -> SkipSide.Forward
+                else -> null
+            }
+
+            if (seeking) {
+                detectTapGestures(onTap = { at -> sideOf(at.x)?.let(currentOnSkip) })
+            } else {
+                detectTapGestures(
+                    onTap = { currentOnTap() },
+                    onDoubleTap = { at -> sideOf(at.x)?.let(currentOnSkip) },
+                )
+            }
         },
     )
 }

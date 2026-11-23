@@ -190,9 +190,13 @@ data class PlaybackUiState(
     val upNext: UpNext? = null,
     /**
      * The episode after this one ("S2:E5 · Low Tide"), once it is known; null for a movie, the last episode, or before the
-     * lookup is back. The player's Next episode button shows while this is set and [upNext] isn't; it calls `onPlayNow`.
+     * lookup is back. The player's Next episode button is enabled while this is set; it calls `onPlayNow`.
      */
     val nextEpisode: String? = null,
+    /** The episode before this one, like [nextEpisode]; null for the first episode. The Previous button calls `onPlayPrevious`. */
+    val previousEpisode: String? = null,
+    /** What plays is an episode of a show, so the player shows Previous and Next around Play. */
+    val episodeControls: Boolean = false,
     /** Playback reached the end and nothing follows; the screen should close. */
     val finished: Boolean = false,
     /** Set when the session ended and the screen must be left. */
@@ -364,6 +368,9 @@ class PlaybackViewModel(
 
     // The episode after [item], once looked up; null while unknown, and for anything that has no next one.
     private var next: MediaItem? = null
+
+    // The episode before [item], like [next].
+    private var previous: MediaItem? = null
 
     // The user chose "Watch credits": no card for the rest of this episode.
     private var upNextDismissed = false
@@ -817,15 +824,35 @@ class PlaybackViewModel(
                 subtitle = Strings.metaLine(found.seriesName, found.episodeLabel()),
                 artworkUrl = found.landscapeUrl ?: found.backdropUrl ?: found.posterUrl,
                 subtitleSearchItemId = found.id.takeIf { downloaded == null && found.canPlay },
+                episodeControls = found.isShowEpisode(),
             )
         }
         open(startAtMs)
         lookUpNext(found)
+        lookUpPrevious(found)
+    }
+
+    private fun MediaItem.isShowEpisode(): Boolean = kind == ItemKind.Episode && seriesId != null
+
+    private fun lookUpPrevious(current: MediaItem) {
+        if (!current.isShowEpisode()) return
+        viewModelScope.launch {
+            val found = if (local != null) {
+                connection.state.value.profileOrNull()?.let { offline.previousBefore(it, current) }
+            } else {
+                (watch.previousEpisode(current) as? ApiResult.Success)?.value
+            } ?: return@launch
+            if (item?.id == current.id) {
+                previous = found
+                textSource.update { it.copy(previous = found) }
+                content.update { it.copy(previousEpisode = episodeLine(found)) }
+            }
+        }
     }
 
     private fun lookUpNext(current: MediaItem) {
         // Looked up whether or not the episode plays on by itself: the Next episode button needs it either way.
-        if (current.kind != ItemKind.Episode || current.seriesId == null) return
+        if (!current.isShowEpisode()) return
         viewModelScope.launch {
             // A download plays on into the next one downloaded; the server's own order is for what comes from the server.
             val found = if (local != null) {
@@ -898,6 +925,15 @@ class PlaybackViewModel(
         playNext(byItself = false)
     }
 
+    /** The player's Previous episode button: the episode before starts, and this one is left where it is. */
+    fun onPlayPrevious() {
+        val target = previous ?: return
+        binge.interacted()
+        countdown?.cancel()
+        countdown = null
+        switchTo(target, stopAtMs = lastPositionMs)
+    }
+
     // Moves on to [next]. [byItself]: nobody asked for it, so it counts towards "Are you still watching?".
     private fun playNext(byItself: Boolean) {
         if (next == null) return
@@ -919,11 +955,17 @@ class PlaybackViewModel(
     // end, whatever the countdown cut short, so the server counts it as watched.
     private fun advance() {
         val target = next ?: return
-        active.stop(item?.runtimeMs ?: lastPositionMs)
+        switchTo(target, stopAtMs = item?.runtimeMs ?: lastPositionMs)
+    }
+
+    // Plays [target] in place of what plays now, which is reported stopped at [stopAtMs].
+    private fun switchTo(target: MediaItem, stopAtMs: Long) {
+        active.stop(stopAtMs)
         val wasLocal = local != null
         local = null
         itemId = target.id
         next = null
+        previous = null
         item = null
         started = false
         ended = false
@@ -943,7 +985,7 @@ class PlaybackViewModel(
         segmentsRequested = false
         trickplayFor = null
         content.update {
-            it.copy(loading = true, stream = null, upNext = null, nextEpisode = null, skipOffer = null, trickplay = null, speed = 1f, badge = null, stillWatching = false, audioTracks = emptyList(), subtitleTracks = emptyList(), message = null, finished = false)
+            it.copy(loading = true, stream = null, upNext = null, nextEpisode = null, previousEpisode = null, skipOffer = null, trickplay = null, speed = 1f, badge = null, stillWatching = false, audioTracks = emptyList(), subtitleTracks = emptyList(), message = null, finished = false)
         }
         viewModelScope.launch {
             // A download goes on into the next one, which is downloaded too: it is found there again to play from the device.
@@ -1145,6 +1187,7 @@ class PlaybackViewModel(
 private data class PlaybackText(
     val item: MediaItem? = null,
     val next: MediaItem? = null,
+    val previous: MediaItem? = null,
     val problem: PlaybackProblem? = null,
     val format: VideoFormat? = null,
     val audioTracks: List<PlaybackTrack> = emptyList(),
@@ -1177,7 +1220,8 @@ private fun PlaybackUiState.withText(source: PlaybackText): PlaybackUiState {
     }
     return copy(
         subtitle = subtitle?.let { source.item?.let(::subtitleLine) },
-        nextEpisode = nextEpisode?.let { source.next?.let(::nextLine) },
+        nextEpisode = nextEpisode?.let { source.next?.let(::episodeLine) },
+        previousEpisode = previousEpisode?.let { source.previous?.let(::episodeLine) },
         message = message?.let { source.problem?.message() },
         badge = badge?.let { source.format?.badge() },
         audioTracks = audioTracks.map { option -> option.copy(label = source.audioTracks.labelOf(option.index)) },
@@ -1192,7 +1236,7 @@ private fun PlaybackUiState.withText(source: PlaybackText): PlaybackUiState {
 
 private fun subtitleLine(item: MediaItem): String? = Strings.metaLine(item.seriesName, item.episodeLabel())
 
-private fun nextLine(item: MediaItem): String? = Strings.metaLine(item.episodeLabel(), item.title)
+private fun episodeLine(item: MediaItem): String? = Strings.metaLine(item.episodeLabel(), item.title)
 
 private fun List<PlaybackTrack>.labelOf(index: Int): String = firstOrNull { it.index == index }?.name ?: Strings.track(index)
 

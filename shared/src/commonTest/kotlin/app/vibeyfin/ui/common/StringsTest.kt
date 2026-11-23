@@ -125,7 +125,8 @@ class StringsTest {
     fun skipLabelsNameTheSeconds() {
         assertEquals("Back 10 seconds", Strings.skipBackLabel(10))
         assertEquals("Forward 30 seconds", Strings.skipForwardLabel(30))
-        assertEquals("30s", Strings.seekFlash(30))
+        assertEquals("+100", Strings.seekTotal(forward = true, seconds = 100))
+        assertEquals("−30", Strings.seekTotal(forward = false, seconds = 30))
         assertEquals("Skip back", Strings.skipBack)
         assertEquals("Skip forward", Strings.skipForward)
     }

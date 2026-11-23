@@ -70,6 +70,13 @@ suspend fun JellyfinApi.episodesFrom(seriesId: String, startItemId: String, user
     retry = true,
 )
 
+/** `GET /Shows/{id}/Episodes?adjacentTo=` returns the show's episodes either side of [itemId], with [itemId] between them. */
+suspend fun JellyfinApi.episodesAround(seriesId: String, itemId: String, userId: String): ApiResult<ItemsResultDto> = get(
+    "/Shows/$seriesId/Episodes",
+    mapOf("userId" to userId, "adjacentTo" to itemId),
+    retry = true,
+)
+
 /**
  * `POST /UserFavoriteItems/{id}` puts [itemId] on [userId]'s "My List" (the server's favourites); `DELETE` takes it off. Doing
  * either twice changes nothing, so, like the watched mark, it is retried like a read.
