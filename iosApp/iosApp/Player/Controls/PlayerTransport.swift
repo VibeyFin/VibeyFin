@@ -78,50 +78,49 @@ struct PlayerTransport: View {
     }
 }
 
-/// The running total of skips in a row, as YouTube draws it ("+30    >", "<    −30"): the number and one chevron, no
-/// background. The chevron glides out from the number as it appears; on each further tap a second chevron flies in from
-/// behind and knocks the first, which springs back. Under Reduce Motion it only shows.
+/// The running total of skips in a row, as YouTube draws it ("+30      >", "<      −30"): the number and one chevron, no
+/// background. On every tap the number pops a little bigger and settles, the chevron recoils towards it and eases back out,
+/// and a faint second chevron closes in from behind. Under Reduce Motion it only shows.
 struct SeekIndicator: View {
     let forward: Bool
     let text: String
     let taps: Int
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// 1 to 0 as the indicator appears.
-    @State private var glide: CGFloat = 1
-    /// 0 to 1 as the second chevron closes in.
+    @State private var pop: CGFloat = 1
+    /// 1 to 0 as the chevron eases back out from the number.
+    @State private var recoil: CGFloat = 0
+    /// 0 to 1 as the faint chevron behind closes in.
     @State private var flight: CGFloat = 1
-    /// 1 to 0 as the first chevron springs back.
-    @State private var knock: CGFloat = 0
 
     private var ahead: CGFloat { forward ? 1 : -1 }
 
     var body: some View {
-        HStack(spacing: Space.s6) {
+        HStack(spacing: Space.s7) {
             if !forward { chevrons }
             Text(text)
                 .font(.title3.weight(.medium))
                 .monospacedDigit()
+                .scaleEffect(pop)
             if forward { chevrons }
         }
         .foregroundStyle(Brand.onMedia)
         .shadow(color: Brand.scrim, radius: 2, y: 1)
         .accessibilityHidden(true)
-        .onAppear(perform: appear)
-        .onChange(of: forward) { _, _ in appear() }
-        .onChange(of: taps) { _, count in if count > 1 { flyIn() } }
+        .onAppear { animateTap(count: 1) }
+        .onChange(of: forward) { _, _ in animateTap(count: 1) }
+        .onChange(of: taps) { _, count in animateTap(count: count) }
     }
 
     private var chevrons: some View {
         ZStack {
             if flight < 1 {
                 chevron
-                    .offset(x: -ahead * (1 - flight) * 14)
-                    .opacity(0.9 * flight)
+                    .offset(x: -ahead * (1 - flight) * 7)
+                    .opacity(0.6 * flight)
             }
             chevron
-                .offset(x: ahead * (knock * 3 - glide * 10))
-                .opacity(1 - glide * 0.6)
+                .offset(x: -ahead * recoil * 4)
         }
     }
 
@@ -130,23 +129,18 @@ struct SeekIndicator: View {
             .font(.title3.weight(.semibold))
     }
 
-    private func appear() {
-        guard !reduceMotion else {
-            glide = 0
-            return
-        }
-        withoutAnimation { glide = 1 }
-        withAnimation(.easeOut(duration: 0.16)) { glide = 0 }
-    }
-
-    private func flyIn() {
+    private func animateTap(count: Int) {
         guard !reduceMotion else { return }
-        withoutAnimation { flight = 0 }
-        withAnimation(.easeOut(duration: 0.13)) {
-            flight = 1
+        withAnimation(.easeOut(duration: 0.08)) {
+            pop = 1.15
         } completion: {
-            withoutAnimation { knock = 1 }
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.4)) { knock = 0 }
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.45)) { pop = 1 }
+        }
+        withoutAnimation { recoil = 1 }
+        withAnimation(.easeOut(duration: 0.12)) { recoil = 0 }
+        if count > 1 {
+            withoutAnimation { flight = 0 }
+            withAnimation(.easeOut(duration: 0.2)) { flight = 1 }
         }
     }
 

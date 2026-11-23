@@ -40,12 +40,13 @@ import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.animationsEnabled
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.playback.SkipRun
+import kotlinx.coroutines.launch
 
 /**
  * The feedback for skips in a row, as YouTube draws it: the running total and one chevron on the side of the skip
- * ("+30    >", "<    −30"), no background. It fades in with the chevron gliding out from the number; on each further tap a
- * second chevron flies in from behind and knocks the first, which springs back. Without animations it only shows. It takes
- * no touches.
+ * ("+30      >", "<      −30"), no background. On every tap the number pops a little bigger and settles, the chevron
+ * recoils towards it and eases back out, and a faint second chevron closes in from behind. Without animations it only
+ * shows. It takes no touches.
  */
 @Composable
 fun BoxScope.SeekIndicator(run: SkipRun?) {
@@ -67,21 +68,23 @@ fun BoxScope.SeekIndicator(run: SkipRun?) {
 @Composable
 private fun SeekIndicatorContent(run: SkipRun) {
     val motion: Boolean = animationsEnabled()
-    val glide: Animatable<Float, *> = remember { Animatable(0f) }
+    val pop: Animatable<Float, *> = remember { Animatable(1f) }
+    val recoil: Animatable<Float, *> = remember { Animatable(0f) }
     val flight: Animatable<Float, *> = remember { Animatable(1f) }
-    val knock: Animatable<Float, *> = remember { Animatable(0f) }
 
-    LaunchedEffect(run.forward) {
-        glide.snapTo(if (motion) 1f else 0f)
-        glide.animateTo(0f, tween(GLIDE_MS, easing = FastOutSlowInEasing))
-    }
-
-    LaunchedEffect(run.taps) {
-        if (motion && run.taps > 1) {
+    LaunchedEffect(run.taps, run.forward) {
+        if (!motion) return@LaunchedEffect
+        launch {
+            pop.animateTo(POP_SCALE, tween(POP_UP_MS, easing = FastOutSlowInEasing))
+            pop.animateTo(1f, spring(dampingRatio = POP_DAMPING, stiffness = Spring.StiffnessMediumLow))
+        }
+        launch {
+            recoil.snapTo(1f)
+            recoil.animateTo(0f, tween(RECOIL_MS, easing = FastOutSlowInEasing))
+        }
+        if (run.taps > 1) {
             flight.snapTo(0f)
             flight.animateTo(1f, tween(FLIGHT_MS, easing = LinearOutSlowInEasing))
-            knock.snapTo(1f)
-            knock.animateTo(0f, spring(dampingRatio = KNOCK_DAMPING, stiffness = Spring.StiffnessMediumLow))
         }
     }
 
@@ -91,10 +94,10 @@ private fun SeekIndicatorContent(run: SkipRun) {
                 .fillMaxHeight()
                 .fillMaxWidth(SIDE_WIDTH)
                 .align(if (run.forward) Alignment.CenterEnd else Alignment.CenterStart),
-            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s6, Alignment.CenterHorizontally),
+            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s7, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (!run.forward) Chevrons(forward = false, glide = glide.value, flight = flight.value, knock = knock.value)
+            if (!run.forward) Chevrons(forward = false, recoil = recoil.value, flight = flight.value)
             Text(
                 text = Strings.seekTotal(run.forward, run.seconds),
                 style = MaterialTheme.typography.titleLarge.copy(
@@ -103,15 +106,19 @@ private fun SeekIndicatorContent(run: SkipRun) {
                     shadow = Shadow(VibeyFinTokens.Colors.scrim, Offset(0f, 1f), blurRadius = 4f),
                 ),
                 color = VibeyFinTokens.Colors.onMedia,
+                modifier = Modifier.graphicsLayer {
+                    scaleX = pop.value
+                    scaleY = pop.value
+                },
             )
-            if (run.forward) Chevrons(forward = true, glide = glide.value, flight = flight.value, knock = knock.value)
+            if (run.forward) Chevrons(forward = true, recoil = recoil.value, flight = flight.value)
         }
     }
 }
 
-// [glide] 1 to 0 as the indicator appears, [flight] 0 to 1 as the second chevron closes in, [knock] 1 to 0 as the first springs back
+// [recoil] 1 to 0 as the chevron eases back out from the number, [flight] 0 to 1 as the faint one behind closes in
 @Composable
-private fun Chevrons(forward: Boolean, glide: Float, flight: Float, knock: Float) {
+private fun Chevrons(forward: Boolean, recoil: Float, flight: Float) {
     val ahead: Float = if (forward) 1f else -1f
 
     Box {
@@ -124,13 +131,7 @@ private fun Chevrons(forward: Boolean, glide: Float, flight: Float, knock: Float
                 },
             )
         }
-        Chevron(
-            forward,
-            Modifier.graphicsLayer {
-                translationX = ahead * (knock * KNOCK_DISTANCE.toPx() - glide * GLIDE_DISTANCE.toPx())
-                alpha = 1f - glide * GLIDE_FADE
-            },
-        )
+        Chevron(forward, Modifier.graphicsLayer { translationX = -ahead * recoil * RECOIL_DISTANCE.toPx() })
     }
 }
 
@@ -156,13 +157,13 @@ private fun Chevron(forward: Boolean, modifier: Modifier = Modifier) {
 
 private const val SIDE_WIDTH = 0.44f
 private const val APPEAR_MS = 80
-private const val EXIT_MS = 40
-private const val GLIDE_MS = 160
-private const val GLIDE_FADE = 0.6f
-private const val FLIGHT_MS = 130
-private const val FLIGHT_ALPHA = 0.9f
-private const val KNOCK_DAMPING = 0.4f
-private val GLIDE_DISTANCE = 10.dp
-private val FLIGHT_DISTANCE = 14.dp
-private val KNOCK_DISTANCE = 3.dp
+private const val EXIT_MS = 60
+private const val POP_SCALE = 1.15f
+private const val POP_UP_MS = 80
+private const val POP_DAMPING = 0.45f
+private const val RECOIL_MS = 120
+private const val FLIGHT_MS = 200
+private const val FLIGHT_ALPHA = 0.6f
+private val RECOIL_DISTANCE = 4.dp
+private val FLIGHT_DISTANCE = 7.dp
 private val CHEVRON_SIZE = 22.dp

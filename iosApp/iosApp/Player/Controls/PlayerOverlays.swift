@@ -340,6 +340,6 @@ struct SeekingOverlay<Bar: View>: View {
             }
         }
         .allowsHitTesting(false)
-        .transition(.asymmetric(insertion: .opacity.animation(.easeOut(duration: 0.08)), removal: .opacity.animation(.easeOut(duration: 0.04))))
+        .transition(.asymmetric(insertion: .opacity.animation(.easeOut(duration: 0.08)), removal: .opacity.animation(.easeOut(duration: 0.06))))
     }
 }
