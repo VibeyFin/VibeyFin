@@ -319,7 +319,7 @@ struct SkipOfferOverlay: View {
     }
 }
 
-/// While skips in a row show: the video dims a little, the total sits on the side of the skip and only the scrubber stays.
+/// While skips in a row show: the total sits on the side of the skip and only the scrubber stays.
 struct SeekingOverlay<Bar: View>: View {
     let side: SeekSide
     let text: String
@@ -328,10 +328,9 @@ struct SeekingOverlay<Bar: View>: View {
 
     var body: some View {
         ZStack {
-            Brand.scrim.opacity(0.4).ignoresSafeArea()
             GeometryReader { proxy in
                 SeekIndicator(forward: side == .forward, text: text, taps: taps)
-                    .frame(width: proxy.size.width * 0.38, height: proxy.size.height)
+                    .frame(width: proxy.size.width * 0.5, height: proxy.size.height)
                     .frame(maxWidth: .infinity, alignment: side == .forward ? .trailing : .leading)
             }
             .ignoresSafeArea()

@@ -78,40 +78,49 @@ struct PlayerTransport: View {
     }
 }
 
-/// The running total of skips in a row ("+30 >", "< −30"): bold text and one chevron, no background. The chevron nudges
-/// the way of the skip on each tap, except under Reduce Motion.
+/// The running total of skips in a row, as YouTube draws it ("+30   >", "<   −30"): the number and one thin chevron, no
+/// background. On each tap a faint second chevron trails the first and slides into it, except under Reduce Motion.
 struct SeekIndicator: View {
     let forward: Bool
     let text: String
     let taps: Int
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var nudge: CGFloat = 0
+    /// 1 just after a tap, easing to 0: the faint chevron behind closes in on the main one and fades.
+    @State private var trail: CGFloat = 0
 
     var body: some View {
-        HStack(spacing: Space.s3) {
-            if !forward { chevron }
+        HStack(spacing: Space.s6) {
+            if !forward { chevrons }
             Text(text)
-                .font(.title.weight(.bold))
+                .font(.body.weight(.medium))
                 .monospacedDigit()
-            if forward { chevron }
+            if forward { chevrons }
         }
         .foregroundStyle(Brand.onMedia)
-        .shadow(color: Brand.scrim, radius: 3, y: 1)
+        .shadow(color: Brand.scrim, radius: 2, y: 1)
         .accessibilityHidden(true)
-        .onChange(of: taps) { _, _ in nudgeChevron() }
-        .onAppear { nudgeChevron() }
+        .onChange(of: taps) { _, _ in runTrail() }
+        .onAppear { runTrail() }
+    }
+
+    private var chevrons: some View {
+        ZStack {
+            chevron
+                .offset(x: (forward ? -7 : 7) * trail)
+                .opacity(0.5 * trail)
+            chevron
+        }
     }
 
     private var chevron: some View {
         Image(systemName: forward ? "chevron.forward" : "chevron.backward")
-            .font(.title2.weight(.heavy))
-            .offset(x: nudge)
+            .font(.body.weight(.semibold))
     }
 
-    private func nudgeChevron() {
+    private func runTrail() {
         guard !reduceMotion else { return }
-        nudge = forward ? 6 : -6
-        withAnimation(.easeOut(duration: 0.22)) { nudge = 0 }
+        trail = 1
+        withAnimation(.easeOut(duration: 0.26)) { trail = 0 }
     }
 }

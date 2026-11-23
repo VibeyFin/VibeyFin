@@ -53,7 +53,7 @@ Glass is the **navigation and controls layer** floating above content — never 
 | Share | `ShareLink` |
 | Casting | `AVRoutePickerView` (AirPlay) |
 | Player transport | play / pause on a glass disc; for an episode, `backward.end.fill` / `forward.end.fill` either side (dimmed on the first and last). No skip buttons: double-tap seeks, VoiceOver gets the skips as actions on play / pause |
-| Skip feedback | `SeekIndicator`: YouTube's double-tap seek look, the total as bold white text with one chevron on the side the video moved ("+30 >"), the video dimmed and only the scrubber kept |
+| Skip feedback | `SeekIndicator`: YouTube's double-tap seek look, the total and one thin chevron on the side the video moved ("+30   >"), a faint second chevron sliding in on each tap, only the scrubber kept |
 | Settings rows | inset grouped list, small-caps section headers, footers carrying the help text; `Toggle` `.tint(Spark)` (on = copper, as on Android); a choice is a `Picker` with `.pickerStyle(.menu)`, never a sub-page; a link is a `NavigationLink` row |
 | Quality setting | the one checklist: inline rows in its own section (title once, footer below), the chosen row an `spark-soft` pill with no tick |
 | Settings on iPad | at regular width `NavigationSplitView`: the root as the sidebar (system selection following the tapped row), the page in the detail column capped at about 640 and centred; the back chevron is in the sidebar only. At compact width it is the phone's `NavigationStack` |
