@@ -48,11 +48,14 @@ extension Space {
 }
 
 private struct ScreenMargin: ViewModifier {
+    var bleeds: Bool = false
+
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.screenMarginOverride) private var override
 
     func body(content: Content) -> some View {
-        content.padding(.horizontal, override ?? (sizeClass == .regular ? Space.regularMargin : Space.s4))
+        let margin: CGFloat = override ?? (sizeClass == .regular ? Space.regularMargin : Space.s4)
+        content.padding(.horizontal, bleeds ? -margin : margin)
     }
 }
 
@@ -69,10 +72,62 @@ extension EnvironmentValues {
     }
 }
 
+/// The one horizontal scroller: starts at the page margin, scrolls under the system strip unless `scrollsUnderStrip` is off. `lifts` leaves room for a lifted tile.
+struct HorizontalRow<Content: View>: View {
+    var scrollsUnderStrip: Bool = true
+    var lifts: Bool = true
+    @ViewBuilder var content: () -> Content
+
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.screenMarginOverride) private var override
+    @State private var safeArea: EdgeInsets = EdgeInsets()
+
+    var body: some View {
+        let margin: CGFloat = override ?? (sizeClass == .regular ? Space.regularMargin : Space.s4)
+        let leading: CGFloat = margin + (scrollsUnderStrip ? safeArea.leading : 0)
+        let trailing: CGFloat = margin + (scrollsUnderStrip ? safeArea.trailing : 0)
+
+        row(leading: leading, trailing: trailing)
+            .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { safeArea = $0 }
+    }
+
+    @ViewBuilder
+    private func row(leading: CGFloat, trailing: CGFloat) -> some View {
+        let scroller = ScrollView(.horizontal, showsIndicators: false) {
+            content().liftRoomInsideIf(lifts)
+        }
+        .contentMargins(.leading, leading, for: .scrollContent)
+        .contentMargins(.trailing, trailing, for: .scrollContent)
+
+        if scrollsUnderStrip {
+            scroller.liftRoomIf(lifts).ignoresSafeArea(.container, edges: .horizontal)
+        } else {
+            scroller.liftRoomIf(lifts).clipped()
+        }
+    }
+}
+
+extension View {
+    @ViewBuilder
+    fileprivate func liftRoomIf(_ lifts: Bool) -> some View {
+        if lifts { liftRoom() } else { self }
+    }
+
+    @ViewBuilder
+    fileprivate func liftRoomInsideIf(_ lifts: Bool) -> some View {
+        if lifts { liftRoomInside() } else { self }
+    }
+}
+
 extension View {
     /// The horizontal screen margin: 16 pt on phones, 20 pt on iPad.
     func screenMargin() -> some View {
         modifier(ScreenMargin())
+    }
+
+    /// Cancels a `screenMargin()` around it, for a row that adds its own margin.
+    func screenMarginBleed() -> some View {
+        modifier(ScreenMargin(bleeds: true))
     }
 
     /// The name this page has in the system back button's long-press menu, which lists the pages behind it. The bar itself stays

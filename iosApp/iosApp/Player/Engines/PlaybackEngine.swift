@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import Shared
 import UIKit
@@ -52,9 +53,13 @@ protocol PlaybackEngine: AnyObject {
 
     /// The view the video is drawn in. Ties picture-in-picture to it where the engine can.
     func makeVideoView(pip: PlayerPictureInPicture) -> UIView
+    /// The AVPlayer item showing the picture, when there is one to read colours from.
+    var pictureItem: AVPlayerItem? { get }
 }
 
 extension PlaybackEngine {
+    var pictureItem: AVPlayerItem? { nil }
+
     /// Engines that don't draw subtitles themselves have nothing to show.
     func wantSubtitle(_ choice: SubtitleChoice?) {}
 }

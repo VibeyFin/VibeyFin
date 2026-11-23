@@ -100,12 +100,12 @@ struct PlayerTrackMenu: View {
         Menu {
             if !audio.isEmpty {
                 Section(Strings.shared.audio.titleCased()) {
-                    picker(options: audio, onSelect: onSelectAudio)
+                    Self.picker(options: audio, onSelect: onSelectAudio)
                 }
             }
             if !subtitles.isEmpty {
                 Section(Strings.shared.subtitles.titleCased()) {
-                    picker(options: subtitles, onSelect: onSelectSubtitle)
+                    Self.picker(options: subtitles, onSelect: onSelectSubtitle)
                     if let onSearchSubtitles {
                         Button(action: onSearchSubtitles) {
                             Label(Strings.shared.searchForSubtitles.titleCased(), systemImage: "magnifyingglass")
@@ -124,7 +124,7 @@ struct PlayerTrackMenu: View {
 
     /// The picker shows what the shared model marks as selected, and a pick goes straight back to it:
     /// nothing is kept here, so the state is the only truth.
-    private func picker(options: [TrackOption], onSelect: @escaping (Int32) -> Void) -> some View {
+    static func picker(options: [TrackOption], onSelect: @escaping (Int32) -> Void) -> some View {
         Picker(
             "",
             selection: Binding(

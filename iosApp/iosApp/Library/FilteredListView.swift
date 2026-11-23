@@ -50,8 +50,7 @@ struct FilteredListView: View {
         }
         .onAppear { model.start() }
         .backMenuTitle(model.title)
-        // A tab root draws its own title; the system bar above it would only be empty space. A pushed page needs it for back.
-        .tabRootBar(enabled: isRoot)
+        .tabRootBar(title: model.title, enabled: isRoot)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         // Only the chevron, no "Back" label. The swipe from the edge still goes back.

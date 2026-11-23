@@ -32,43 +32,22 @@ struct ChildrenView: View {
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: Space.s4) {
-                    // A collection opens on its own header instead of the plain title.
-                    if let collection = model.state?.collection {
-                        CollectionHeaderView(collection: collection, count: Int(model.state?.items.count ?? 0), scrollOffset: scrollOffset)
-                            .padding(.horizontal, -Space.s4)
-                    } else {
-                        Text(title).screenTitle()
-                    }
-                    // A season's list leads back to its show.
-                    if let series = model.state?.series {
-                        Button { onOpenSeries(series.id) } label: {
-                            HStack(spacing: Space.s1) {
-                                Text(series.name)
-                                Image(systemName: "chevron.right").font(.caption.weight(.semibold))
-                            }
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .frame(minHeight: 44)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(PressableButtonStyle())
-                        .accessibilityLabel(Strings.shared.goToSeries(name: series.name))
-                    }
-                    if let state = model.state {
-                        content(state)
-                    } else {
-                        PosterSkeletonGrid(minimumWidth: 130)
-                    }
+            if let collection = model.state?.collection {
+                GeometryReader { proxy in
+                    if wide { collectionWide(collection, size: proxy.size) } else { collectionPhone(collection, width: proxy.size.width) }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .screenMargin()
-                .padding(.vertical, Space.s5)
-                .background(alignment: .top) { ScrollOffsetReader { scrollOffset = max($0, 0) }.frame(height: 0) }
-                // A collection's header and a season's link to its show arrive with the data: they ease in instead of snapping.
-                .animation(.easeOut(duration: 0.25), value: model.state?.collection != nil)
-                .animation(.easeOut(duration: 0.25), value: model.state?.series != nil)
+                .ignoresSafeArea(edges: .top)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Space.s4) {
+                        Text(title).screenTitle()
+                        listBody
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .screenMargin()
+                    .padding(.vertical, Space.s5)
+                    .animation(.easeOut(duration: 0.25), value: model.state?.series != nil)
+                }
             }
         }
         .onAppear { model.start() }
@@ -93,6 +72,74 @@ struct ChildrenView: View {
         .toolbarRole(.editor)
         .onChange(of: model.state?.exit != nil) { _, hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
+        }
+    }
+
+    /// A season's link to its show, then the list or its placeholder.
+    private var listBody: some View {
+        VStack(alignment: .leading, spacing: Space.s4) {
+            if let series = model.state?.series {
+                Button { onOpenSeries(series.id) } label: {
+                    HStack(spacing: Space.s1) {
+                        Text(series.name)
+                        Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PressableButtonStyle())
+                .accessibilityLabel(Strings.shared.goToSeries(name: series.name))
+            }
+            if let state = model.state {
+                content(state)
+            } else {
+                PosterSkeletonGrid(minimumWidth: 130)
+            }
+        }
+    }
+
+    /// The picture stays put behind the page and darkens; the title goes up over it and the list covers it, as on an item's page.
+    private func collectionPhone(_ collection: MediaItem, width: CGFloat) -> some View {
+        let backdropHeight: CGFloat = width * 1.5
+        return ZStack(alignment: .top) {
+            PinnedItemBackdrop(item: collection, height: backdropHeight, progress: scrollOffset / max(backdropHeight * ScrollDarkening.darkenOver, 1))
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ScrollOffsetReader { scrollOffset = max($0, 0) }.frame(height: 0)
+                    CollectionHeaderView(collection: collection, count: Int(model.state?.items.count ?? 0), centered: true)
+                        .screenMargin()
+                        .padding(.bottom, Space.s4)
+                        .frame(minHeight: width * 1.0, alignment: .bottom)
+                    listBody
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .screenMargin()
+                        .padding(.bottom, Space.s5)
+                        .background(Color(.systemBackground))
+                }
+            }
+        }
+    }
+
+    /// The picture fills the screen; the title sits in a column on the left, and the list scrolls up over it while it darkens.
+    private func collectionWide(_ collection: MediaItem, size: CGSize) -> some View {
+        ZStack {
+            WideItemBackdrop(item: collection, progress: scrollOffset / max(size.height * 0.7, 1))
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ScrollOffsetReader { scrollOffset = max($0, 0) }.frame(height: 0)
+                    Color.clear.frame(height: size.height * 0.3)
+                    CollectionHeaderView(collection: collection, count: Int(model.state?.items.count ?? 0), centered: false)
+                        .frame(maxWidth: min(size.width * 0.46, 520), alignment: .leading)
+                        .screenMargin()
+                        .padding(.bottom, Space.s4)
+                    listBody
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .screenMargin()
+                        .padding(.bottom, Space.s5)
+                }
+            }
         }
     }
 

@@ -265,3 +265,73 @@ struct PlayerNotice: View {
             .transition(.opacity)
     }
 }
+
+/// Under the top row, from the screen margin: it takes no touches, so it needn't keep out of the strip.
+struct StatsPanel: View {
+    let diagnostics: PlaybackDiagnostics
+
+    var body: some View {
+        VStack {
+            HStack {
+                StatsOverlay(diagnostics: diagnostics)
+                Spacer(minLength: 0)
+            }
+            Spacer(minLength: 0)
+        }
+        .screenMargin()
+        .padding(.top, Space.s7 + Space.s6 + Space.s2)
+        .ignoresSafeArea(.container, edges: .horizontal)
+        .allowsHitTesting(false)
+    }
+}
+
+/// Everything over the video sits on the scrim.
+struct PlayerScrims: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            LinearGradient(colors: [Brand.scrim, .clear], startPoint: .top, endPoint: .bottom)
+                .frame(height: 120)
+            Spacer(minLength: 0)
+            LinearGradient(colors: [.clear, Brand.scrim], startPoint: .top, endPoint: .bottom)
+                .frame(height: 160)
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+    }
+}
+
+/// Bottom trailing; rises above the scrubber and the times while the controls show.
+struct SkipOfferOverlay: View {
+    let label: String
+    let raised: Bool
+    let action: () -> Void
+
+    var body: some View {
+        VStack {
+            Spacer(minLength: 0)
+            HStack {
+                Spacer(minLength: 0)
+                SkipButton(label: label, action: action)
+            }
+        }
+        .screenMargin()
+        .padding(.bottom, raised ? Space.s7 + Space.s6 : Space.s4)
+    }
+}
+
+/// Near the tapped side; fades in and out, and under Reduce Motion does nothing else.
+struct SeekFlashRow: View {
+    let side: SeekSide
+    let seconds: Int
+
+    var body: some View {
+        HStack {
+            if side == .forward { Spacer(minLength: 0) }
+            SeekFlash(text: Strings.shared.seekFlash(seconds: Int32(seconds)))
+                .padding(.horizontal, Space.s7)
+            if side == .back { Spacer(minLength: 0) }
+        }
+        .allowsHitTesting(false)
+        .transition(.opacity)
+    }
+}

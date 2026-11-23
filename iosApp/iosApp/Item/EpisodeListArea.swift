@@ -48,13 +48,12 @@ struct EpisodeListArea<Episode, ID: Hashable, Row: View, Card: View>: View {
                 ForEach(0..<3, id: \.self) { _ in EpisodeRowSkeleton() }
             }
         } else if episodes.isEmpty && loading {
-            ScrollView(.horizontal, showsIndicators: false) {
+            HorizontalRow(lifts: false) {
                 HStack(spacing: Space.s4) {
                     ForEach(0..<3, id: \.self) { _ in
                         SkeletonBlock().frame(width: cardWidth).aspectRatio(1.6, contentMode: .fit)
                     }
                 }
-                .padding(.horizontal, margin)
             }
             .padding(.horizontal, -margin)
             .scrollDisabled(true)
@@ -69,17 +68,14 @@ struct EpisodeListArea<Episode, ID: Hashable, Row: View, Card: View>: View {
             .opacity(loading ? 0.5 : 1)
         } else {
             ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
+                HorizontalRow {
                     LazyHStack(alignment: .top, spacing: Space.s4) {
                         ForEach(episodes, id: id) { episode in
                             card(episode, cardWidth).id(episode[keyPath: id])
                         }
                     }
-                    .padding(.horizontal, margin)
-                    .liftRoomInside()
                 }
                 .padding(.horizontal, -margin)
-                .liftRoom()
                 // A season opens at the episode Play will start, so the one being watched is in view; another season at its first.
                 .onAppear { scrollToFocus(proxy) }
                 .onChange(of: episodes.first.map { $0[keyPath: id] }) { scrollToFocus(proxy) }

@@ -26,6 +26,9 @@ final class PlayerController: ObservableObject {
     /// views that draw them re-evaluate on a tick, not the whole player.
     let clock = PlayerClock()
 
+    /// The colours of the picture's lower edge, which the tabletop glow draws.
+    let pictureColours: PictureColourSampler
+
     /// Seconds. Follows the player about twice a second.
     private(set) var position: TimeInterval {
         get { clock.position }
@@ -67,6 +70,7 @@ final class PlayerController: ObservableObject {
 
     init(engine: PlaybackEngine) {
         self.engine = engine
+        pictureColours = PictureColourSampler { engine.pictureItem }
         engine.events = PlaybackEngineEvents(
             state: { [weak self] intendsToPlay, waiting in self?.stateChanged(intendsToPlay: intendsToPlay, waiting: waiting) },
             ready: { [weak self] in self?.pendingStart = nil },

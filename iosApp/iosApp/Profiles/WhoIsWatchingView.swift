@@ -8,6 +8,7 @@ struct WhoIsWatchingView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var tileFrames: [String: CGRect] = [:]
+    @State private var book: BookSplit?
     @Binding var flight: ProfileFlight?
     @Binding var buttonFrame: CGRect
 
@@ -36,18 +37,27 @@ struct WhoIsWatchingView: View {
     }
 
     private var tileSize: CGFloat { sizeClass == .regular ? 140 : 104 }
+    private var centred: Bool { sizeClass == .regular }
+    private var serverInToolbar: Bool {
+        if #available(iOS 27.1, *) { true } else { false }
+    }
 
     var body: some View {
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
             if let state = model.state {
                 content(state)
+                    .padding(.leading, book?.creaseMaxX ?? 0)
                     .opacity(flight.map { $0.step > 0 } == true ? 0 : 1)
                     .allowsHitTesting(flight == nil)
             }
         }
         .onAppear { model.start() }
-        .toolbar(.hidden, for: .navigationBar)
+        .bookReader($book)
+        .modifier(ServerToolbar { if let state = model.state { serverButton(state) } })
+        .overlay(alignment: .topTrailing) {
+            if centred, !serverInToolbar, let state = model.state { serverButton(state).padding(Space.s2) }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { model.appResumed() }
         }
@@ -116,37 +126,56 @@ struct WhoIsWatchingView: View {
         )
     }
 
-    private func content(_ state: WhoIsWatchingUiState) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Space.s4) {
-                VStack(alignment: .leading, spacing: 0) {
-                    TabHeader(title: Strings.shared.whoIsWatching, horizontalMargin: false) {
-                        HeaderMenuButton(
-                            systemImage: "server.rack",
-                            name: Strings.shared.serverMenu(name: state.serverName ?? ""),
-                            items: [
-                                HeaderMenuItem(title: Strings.shared.switchServer, systemImage: "server.rack", action: onSwitchServer),
-                                HeaderMenuItem(title: Strings.shared.serverDetails, systemImage: "info.circle", action: onServerDetails),
-                            ]
-                        )
-                        .frame(width: 44, height: 44)
-                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { buttonFrame = $0 }
-                    }
-                    if let serverName = state.serverName {
-                        Text(serverName)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                if state.loading {
-                    ProfileSkeletonGrid(avatarSize: tileSize)
-                } else {
-                    notes(state)
-                    grid(state)
-                }
+    private func serverButton(_ state: WhoIsWatchingUiState) -> some View {
+        HeaderMenuButton(
+            systemImage: "server.rack",
+            name: Strings.shared.serverMenu(name: state.serverName ?? ""),
+            items: [
+                HeaderMenuItem(title: Strings.shared.switchServer, systemImage: "server.rack", action: onSwitchServer),
+                HeaderMenuItem(title: Strings.shared.serverDetails, systemImage: "info.circle", action: onServerDetails),
+            ]
+        )
+        .frame(width: 44, height: 44)
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { buttonFrame = $0 }
+    }
+
+    @ViewBuilder
+    private func header(_ state: WhoIsWatchingUiState) -> some View {
+        VStack(alignment: centred ? .center : .leading, spacing: 0) {
+            if serverInToolbar || centred {
+                Text(Strings.shared.whoIsWatching.titleCased())
+                    .font(.title2.bold())
+                    .lineLimit(1)
+                    .padding(.vertical, Space.s2)
+                    .accessibilityAddTraits(.isHeader)
+            } else {
+                TabHeader(title: Strings.shared.whoIsWatching, horizontalMargin: false) { serverButton(state) }
             }
-            .screenMargin()
-            .padding(.bottom, Space.s5)
+            if let serverName = state.serverName {
+                Text(serverName)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func content(_ state: WhoIsWatchingUiState) -> some View {
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(alignment: centred ? .center : .leading, spacing: Space.s4) {
+                    header(state)
+                    if state.loading {
+                        ProfileSkeletonGrid(avatarSize: tileSize)
+                            .frame(maxWidth: centred ? blockWidth(tiles: skeletonTileCount, availableWidth: proxy.size.width - 2 * Space.regularMargin) : .infinity)
+                    } else {
+                        notes(state)
+                        grid(state, availableWidth: proxy.size.width - 2 * Space.regularMargin)
+                    }
+                }
+                .screenMargin()
+                .padding(.bottom, Space.s5)
+                .frame(maxWidth: .infinity, minHeight: centred ? proxy.size.height : nil, alignment: centred ? .center : .topLeading)
+            }
         }
     }
 
@@ -165,8 +194,9 @@ struct WhoIsWatchingView: View {
         }
     }
 
-    private func grid(_ state: WhoIsWatchingUiState) -> some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: tileSize + Space.s2), spacing: Space.s4, alignment: .top)], spacing: Space.s5) {
+    private func grid(_ state: WhoIsWatchingUiState, availableWidth: CGFloat) -> some View {
+        let tileCount: Int = state.profiles.count + (state.quickConnectAvailable ? 1 : 0) + 1
+        return LazyVGrid(columns: [GridItem(.adaptive(minimum: tileSize + Space.s2), spacing: Space.s4, alignment: .top)], spacing: Space.s5) {
             ForEach(state.profiles, id: \.userId) { profile in
                 let opening = state.openingUserId == profile.userId
                 Button { model.profileTapped(profile) } label: {
@@ -185,6 +215,16 @@ struct WhoIsWatchingView: View {
             }
             actionTile(Strings.shared.otherUser, systemImage: "person.badge.plus", busy: state.busy) { model.otherUserTapped() }
         }
+        .frame(maxWidth: centred ? blockWidth(tiles: tileCount, availableWidth: availableWidth) : .infinity)
+    }
+
+    private var skeletonTileCount: Int { 4 }
+
+    private func blockWidth(tiles: Int, availableWidth: CGFloat) -> CGFloat {
+        let columnWidth: CGFloat = tileSize + Space.s2
+        let fitting: Int = max(1, Int((availableWidth + Space.s4) / (columnWidth + Space.s4)))
+        let shown: Int = min(fitting, tiles)
+        return CGFloat(shown) * columnWidth + CGFloat(shown - 1) * Space.s4
     }
 
     private func actionTile(_ label: String, systemImage: String, busy: Bool, action: @escaping () -> Void) -> some View {
@@ -497,6 +537,29 @@ private struct Waiting: View {
                 .font(.subheadline)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// On iOS 27.1 the server button is a toolbar item, so the system puts it in the side strip on a foldable and at the top right elsewhere.
+private struct ServerToolbar<Button: View>: ViewModifier {
+    @ViewBuilder let button: () -> Button
+
+    func body(content: Content) -> some View {
+        if #available(iOS 27.1, *) {
+            content
+                .navigationBarTitleDisplayMode(.inline)
+                .navigationBarBackButtonHidden(true)
+                .toolbar(.visible, for: .navigationBar)
+                .toolbarBackground(.hidden, for: .navigationBar)
+                .topEdgeEffectHidden()
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) { button() }
+                        .verticalOnFoldables()
+                        .withoutGlassBackground()
+                }
+        } else {
+            content.toolbar(.hidden, for: .navigationBar)
         }
     }
 }

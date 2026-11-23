@@ -13,12 +13,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
@@ -59,7 +61,10 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -93,6 +98,7 @@ import kotlin.math.roundToInt
 
 private const val DIMMED_ALPHA = 0.38f
 private const val WIDE_FROM_DP = 600
+private const val SKELETON_TILES = 4
 private val SmallAvatar = 64.dp
 
 @Composable
@@ -174,6 +180,10 @@ private fun WhoIsWatchingScreen(
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize().onGloballyPositioned { geometry.screen = it.rootBounds() }) {
+            if (LocalConfiguration.current.screenWidthDp >= WIDE_FROM_DP) {
+                CentredProfiles(state, onSwitchServer, onServerDetails, onProfile, onOtherUser, onQuickConnect, onRetry, tile, geometry, zoom)
+                return@Box
+            }
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -215,6 +225,78 @@ private fun WhoIsWatchingScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CentredProfiles(
+    state: WhoIsWatchingUiState,
+    onSwitchServer: () -> Unit,
+    onServerDetails: () -> Unit,
+    onProfile: (Profile) -> Unit,
+    onOtherUser: () -> Unit,
+    onQuickConnect: () -> Unit,
+    onRetry: () -> Unit,
+    tile: Dp,
+    geometry: ZoomGeometry,
+    zoom: () -> Float,
+) {
+    val gap = VibeyFinTokens.Space.s4
+    val columnWidth = tile + gap
+    val tileCount = if (state.loading) SKELETON_TILES else state.profiles.size + (if (state.quickConnectAvailable) 1 else 0) + 1
+    val available = LocalConfiguration.current.screenWidthDp.dp - screenMargin() * 2
+    val fitting = ((available + gap) / (columnWidth + gap)).toInt().coerceAtLeast(1)
+    val shown = minOf(fitting, tileCount)
+    val blockWidth = columnWidth * shown + gap * (shown - 1)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer { alpha = 1f - zoom().coerceAtMost(1f) }
+            .pageInsetsPadding()
+            .padding(horizontal = screenMargin()),
+    ) {
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(columnWidth),
+            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s5, Alignment.CenterVertically),
+            horizontalArrangement = Arrangement.spacedBy(gap),
+            userScrollEnabled = !state.loading,
+            contentPadding = PaddingValues(bottom = LocalBottomBarPadding.current),
+            modifier = Modifier.widthIn(max = blockWidth).fillMaxHeight().align(Alignment.Center),
+        ) {
+            fullWidth("title") {
+                Text(
+                    text = Strings.whoIsWatching,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().semantics { heading() },
+                )
+            }
+            state.serverName?.let {
+                fullWidth("server-name") {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+            if (state.loading) {
+                skeletonProfiles(count = SKELETON_TILES, avatarSize = tile)
+            } else {
+                notes(state, onRetry)
+                tiles(state, tile, geometry, onProfile, onQuickConnect, onOtherUser)
+            }
+        }
+        ServerButton(
+            state.serverName.orEmpty(),
+            onSwitchServer,
+            onServerDetails,
+            Modifier.align(Alignment.TopEnd).onGloballyPositioned { geometry.button = it.rootBounds() },
+        )
     }
 }
 

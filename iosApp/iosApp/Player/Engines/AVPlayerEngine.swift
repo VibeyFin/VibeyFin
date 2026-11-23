@@ -106,6 +106,7 @@ final class AVPlayerEngine: PlaybackEngine {
     }
 
     var speed: Float { player.defaultRate }
+    var pictureItem: AVPlayerItem? { player.currentItem }
 
     // MARK: - Opening
 

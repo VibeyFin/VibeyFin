@@ -53,18 +53,15 @@ struct MediaRowView: View {
     }
 
     private func tiles(_ items: [MediaItem], width: CGFloat) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        HorizontalRow {
             LazyHStack(alignment: .top, spacing: Space.s3) {
                 ForEach(items, id: \.id) { item in
                     Button { onOpen(item) } label: { ArtworkTile(item: item, captionLines: 2).frame(width: width) }
                         .tileButton(item)
                 }
             }
-            .screenMargin()
-            .liftRoomInside()
             .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: items.map(\.id))
         }
-        .liftRoom()
     }
 }
 

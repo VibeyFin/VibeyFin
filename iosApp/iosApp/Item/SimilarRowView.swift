@@ -13,7 +13,7 @@ struct SimilarRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s3) {
             Text(title).sectionTitle().lineLimit(1).accessibilityAddTraits(.isHeader).screenMargin()
-            ScrollView(.horizontal, showsIndicators: false) {
+            HorizontalRow {
                 LazyHStack(alignment: .top, spacing: Space.s3) {
                     ForEach(tiles, id: \.key) { tile in
                         if let library = tile as? SimilarTileLibrary {
@@ -24,10 +24,7 @@ struct SimilarRowView: View {
                         }
                     }
                 }
-                .screenMargin()
-                .liftRoomInside()
             }
-            .liftRoom()
         }
     }
 }

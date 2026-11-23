@@ -11,6 +11,8 @@ struct AirPlayButton: UIViewRepresentable {
     var onTouch: () -> Void = {}
     /// The picker opened (`true`) or closed (`false`), like the speed and track menus.
     var onOpenChange: (Bool) -> Void = { _ in }
+    /// Takes all the space it is offered, so a tile can be the touch target.
+    var fillsProposal: Bool = false
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -29,7 +31,8 @@ struct AirPlayButton: UIViewRepresentable {
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: AVRoutePickerView, context: Context) -> CGSize? {
-        CGSize(width: diameter, height: diameter)
+        let standard: CGSize = CGSize(width: diameter, height: diameter)
+        return fillsProposal ? proposal.replacingUnspecifiedDimensions(by: standard) : standard
     }
 
     final class Coordinator: NSObject, AVRoutePickerViewDelegate {

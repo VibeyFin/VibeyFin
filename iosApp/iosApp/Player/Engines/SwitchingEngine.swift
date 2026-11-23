@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import Shared
 import UIKit
@@ -22,6 +23,7 @@ final class SwitchingEngine: PlaybackEngine {
     private var audio: AudioChoice?
     private var subtitle: SubtitleChoice?
     private var diagnostics = false
+    private var isSdr = true
 
     init() {
         current = native
@@ -30,10 +32,13 @@ final class SwitchingEngine: PlaybackEngine {
 
     var currentSeconds: TimeInterval? { current.currentSeconds }
     var speed: Float { current.speed }
+    /// HDR and Dolby Vision are never read: the colours would be wrong.
+    var pictureItem: AVPlayerItem? { isSdr ? current.pictureItem : nil }
 
     // MARK: - Opening
 
     func open(_ stream: PlaybackStream, url: URL, bufferAheadSeconds: Int32) {
+        isSdr = stream.dynamicRange == .sdr
         let next = engine(for: stream.engine)
         if next !== current {
             current.close()
