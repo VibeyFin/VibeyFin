@@ -742,12 +742,28 @@ class PlaybackViewModelTest {
         subtitleStreamJson(5, "Image subtitles", delivery = "Encode", codec = "hdmv_pgs_subtitle"),
     )
 
+    // The server lists the downloaded file first, so every stream of the file moves up by one.
+    private val renumbered = listOf(
+        subtitleStreamJson(1, "English - External", language = "eng"),
+        audioStreamJson(2, "English - AAC", language = "eng"),
+        audioStreamJson(3, "Spanish - AAC", language = "spa"),
+        subtitleStreamJson(4, "English subtitles", language = "eng"),
+        subtitleStreamJson(5, "Spanish subtitles", language = "spa"),
+        subtitleStreamJson(6, "Image subtitles", delivery = "Encode", codec = "hdmv_pgs_subtitle"),
+    )
+
+    // Set by a test once a subtitle was downloaded: the server lists these from then on.
+    private var streamsAfterDownload: List<String>? = null
+
     // A server that answers like Jellyfin does: the user's tracks come back as the selected ones only
     // when the request names the media source, otherwise it picks ([audioDefault], [subtitleDefault]).
     // With [transcode], or when direct play is turned off, the source has to be streamed.
+    // [echoesAudio] false is a server that answers with its own default audio whatever was asked for.
     private suspend fun serverWithTracks(
         transcode: Boolean = false,
         subtitleDefault: Int? = null,
+        audioDefault: Int = 1,
+        echoesAudio: Boolean = true,
         streams: List<String> = tracks,
     ): FakeJellyfin {
         val server = app.signedIn()
@@ -758,13 +774,14 @@ class PlaybackViewModelTest {
         server.on("POST", "/Items/m1/PlaybackInfo") { request ->
             val body = bodyOf(request)
             val named = "MediaSourceId" in body
-            val audio = if (named) body["AudioStreamIndex"]?.jsonPrimitive?.int else 1
+            val audio = if (named && echoesAudio) body["AudioStreamIndex"]?.jsonPrimitive?.int else audioDefault
             val subtitle = if (named) body["SubtitleStreamIndex"]?.jsonPrimitive?.int else subtitleDefault
             val streamed = transcode || !body.getValue("EnableDirectPlay").jsonPrimitive.boolean
+            val listed = streamsAfterDownload ?: streams
             val source = if (streamed) {
-                mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = HLS_PATH, streams = streams, defaultAudio = audio, defaultSubtitle = subtitle)
+                mediaSourceJson(directPlay = false, directStream = false, transcodingUrl = HLS_PATH, streams = listed, defaultAudio = audio, defaultSubtitle = subtitle)
             } else {
-                mediaSourceJson(streams = streams, defaultAudio = audio, defaultSubtitle = subtitle)
+                mediaSourceJson(streams = listed, defaultAudio = audio, defaultSubtitle = subtitle)
             }
             Reply.json(playbackInfoJson(source))
         }
@@ -954,6 +971,118 @@ class PlaybackViewModelTest {
         assertEquals("ms-1", request.getValue("MediaSourceId").jsonPrimitive.content)
         assertEquals(2, request.getValue("AudioStreamIndex").jsonPrimitive.int)
         assertEquals(listOf(false, true), viewModel.uiState.value.audioTracks.map { it.selected })
+    }
+
+    @Test
+    fun withTheSecondAudioChosenABurnedInSubtitleAsksTheServerForThatAudioAgain() = runTest {
+        serverWithTracks()
+        val viewModel = viewModel()
+        val first = assertNotNull(viewModel.uiState.first { it.stream != null }.stream)
+        viewModel.onSelectAudio(2)
+
+        viewModel.onSelectSubtitle(5)
+
+        viewModel.uiState.first { it.hasStreamOtherThan(first.id) }
+        assertEquals(2, bodyOf(negotiations().last()).getValue("AudioStreamIndex").jsonPrimitive.int)
+        assertEquals(listOf(false, true), viewModel.uiState.value.audioTracks.map { it.selected })
+    }
+
+    @Test
+    fun withTheSecondAudioChosenASubtitleInsideAPreparedStreamAsksForThatAudioAgain() = runTest {
+        serverWithTracks(transcode = true, streams = tracks + subtitleStreamJson(6, "Embedded subtitles", delivery = "Embed"))
+        val viewModel = viewModel()
+        val first = assertNotNull(viewModel.uiState.first { it.stream != null }.stream)
+        viewModel.onSelectAudio(2)
+        val second = assertNotNull(viewModel.uiState.first { it.hasStreamOtherThan(first.id) }.stream)
+
+        viewModel.onSelectSubtitle(6)
+
+        viewModel.uiState.first { it.hasStreamOtherThan(second.id) }
+        assertEquals(2, bodyOf(negotiations().last()).getValue("AudioStreamIndex").jsonPrimitive.int)
+        assertEquals(listOf(false, true), viewModel.uiState.value.audioTracks.map { it.selected })
+    }
+
+    @Test
+    fun withTheSecondAudioChosenASubtitleFileLeavesTheAudioSelected() = runTest {
+        serverWithTracks()
+        val viewModel = viewModel()
+        viewModel.uiState.first { it.stream != null }
+        viewModel.onSelectAudio(2)
+
+        viewModel.onSelectSubtitle(4)
+
+        val state = viewModel.uiState.first { state -> state.subtitleTracks.any { it.index == 4 && it.selected } }
+        assertEquals(listOf(false, true), state.audioTracks.map { it.selected })
+    }
+
+    @Test
+    fun withTheSecondAudioChosenTurningABurnedInSubtitleOffAsksForThatAudioAgain() = runTest {
+        serverWithTracks(subtitleDefault = 5)
+        val viewModel = viewModel()
+        val first = assertNotNull(viewModel.uiState.first { it.stream != null }.stream)
+        viewModel.onSelectAudio(2)
+
+        viewModel.onSelectSubtitle(SUBTITLES_OFF)
+
+        viewModel.uiState.first { it.hasStreamOtherThan(first.id) }
+        assertEquals(2, bodyOf(negotiations().last()).getValue("AudioStreamIndex").jsonPrimitive.int)
+        assertEquals(listOf(false, true), viewModel.uiState.value.audioTracks.map { it.selected })
+    }
+
+    @Test
+    fun anAudioChangeOnAPreparedStreamKeepsTheSubtitle() = runTest {
+        serverWithTracks(transcode = true, subtitleDefault = 4)
+        val viewModel = viewModel()
+        val first = assertNotNull(viewModel.uiState.first { it.stream != null }.stream)
+
+        viewModel.onSelectAudio(2)
+
+        val state = viewModel.uiState.first { it.hasStreamOtherThan(first.id) }
+        assertEquals(4, bodyOf(negotiations().last()).getValue("SubtitleStreamIndex").jsonPrimitive.int)
+        assertTrue(state.subtitleTracks.single { it.index == 4 }.selected)
+    }
+
+    @Test
+    fun aDirectPlayKeepsTheChosenAudioWhenTheServerAnswersWithItsDefault() = runTest {
+        serverWithTracks(echoesAudio = false)
+        val viewModel = viewModel()
+        val first = assertNotNull(viewModel.uiState.first { it.stream != null }.stream)
+        viewModel.onSelectAudio(2)
+
+        viewModel.onSelectSubtitle(5)
+
+        val state = viewModel.uiState.first { it.hasStreamOtherThan(first.id) }
+        assertEquals(listOf(false, true), state.audioTracks.map { it.selected })
+    }
+
+    @Test
+    fun aDownloadedSubtitleThatRenumbersTheStreamsKeepsTheChosenAudio() = runTest {
+        serverWithTracks()
+        val viewModel = viewModel()
+        val first = assertNotNull(viewModel.uiState.first { it.stream != null }.stream)
+        viewModel.onSelectAudio(2)
+        streamsAfterDownload = renumbered
+
+        viewModel.onSubtitleAdded(SubtitleAdded("m1", 1, "English", audioIndexes = listOf(2, 3)))
+
+        val state = viewModel.uiState.first { it.hasStreamOtherThan(first.id) }
+        assertEquals(3, bodyOf(negotiations().last()).getValue("AudioStreamIndex").jsonPrimitive.int)
+        assertEquals(listOf(false, true), state.audioTracks.map { it.selected })
+    }
+
+    @Test
+    fun aDownloadedSubtitleKeepsTheAudioTheServerPickedWhenTheUserPickedNone() = runTest {
+        serverWithTracks(audioDefault = 2)
+        val viewModel = viewModel()
+        val first = assertNotNull(viewModel.uiState.first { it.stream != null }.stream)
+        streamsAfterDownload = renumbered
+
+        viewModel.onSubtitleAdded(SubtitleAdded("m1", 1, "English", audioIndexes = listOf(2, 3)))
+
+        viewModel.uiState.first { it.hasStreamOtherThan(first.id) }
+        val request = bodyOf(negotiations().last())
+        assertEquals("ms-1", request.getValue("MediaSourceId").jsonPrimitive.content)
+        assertEquals(3, request.getValue("AudioStreamIndex").jsonPrimitive.int)
     }
 
     @Test

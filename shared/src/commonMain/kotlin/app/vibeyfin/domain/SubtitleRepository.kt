@@ -51,8 +51,8 @@ fun RemoteSubtitle.namedBy(track: StreamTrack): Boolean {
 
 /** What came of asking the server to add a subtitle. */
 sealed interface SubtitleDownload {
-    /** The item now lists the track, at this index. */
-    data class Added(val streamIndex: Int) : SubtitleDownload
+    /** The item now lists the track at [streamIndex], and its audio tracks, in order, at [audioIndexes]. */
+    data class Added(val streamIndex: Int, val audioIndexes: List<Int>) : SubtitleDownload
 
     /** The server took the request, but no track appeared in time: a provider refusing looks the same as a success to the client. */
     data object NotArrived : SubtitleDownload
@@ -146,7 +146,7 @@ class SubtitleRepository(
             when (val read = library.item(itemId)) {
                 is ApiResult.Success -> newTrack(before, read.value.subtitleTracks)?.index?.let {
                     connection.state.value.profileOrNull()?.serverId?.let { serverId -> preferences.setSubtitleAdded(serverId, itemId, subtitleId) }
-                    return@asConnected SubtitleDownload.Added(it)
+                    return@asConnected SubtitleDownload.Added(it, read.value.audioTracks.mapNotNull { track -> track.index })
                 }
 
                 is ApiResult.Failure -> if (read.error == ApiError.Unauthorized) return@asConnected SubtitleDownload.Failed(read.error)

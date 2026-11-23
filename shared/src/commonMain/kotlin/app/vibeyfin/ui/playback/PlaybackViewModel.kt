@@ -514,7 +514,7 @@ class PlaybackViewModel(
     fun onSubtitleAdded(added: SubtitleAdded) {
         if (added.itemId != itemId) return
         val current = plan ?: return
-        reopen(current, audio = audioNow, subtitle = added.streamIndex)
+        reopen(current, audio = current.audioRenumbered(audioNow, added.audioIndexes), subtitle = added.streamIndex)
         onNotice(Strings.subtitlesAdded(added.languageName))
     }
 
@@ -1063,6 +1063,22 @@ class PlaybackViewModel(
         }
     }
 
+    // Audio tracks keep their order in the file when a subtitle is added; only their indexes move.
+    private fun PlaybackPlan.audioRenumbered(audio: Int?, indexesNow: List<Int>): Int? {
+        val position: Int = audioTracks.indexOfFirst { it.index == audio }
+        val sameTrackNow: Int? = indexesNow.takeIf { it.size == audioTracks.size }?.getOrNull(position)
+
+        return sameTrackNow ?: audio
+    }
+
+    // In a direct play the player picks the audio, so the pick stands even when the server answers with its own default.
+    private fun PlaybackPlan.keepingAudio(audio: Int?): PlaybackPlan {
+        val kept: Int? = audio.takeIf { method == PlayMethod.DirectPlay && audioTracks.any { track -> track.index == it } }
+
+        if (kept == null || kept == audioStreamIndex) return this
+        return copy(audioStreamIndex = kept, audioTracks = audioTracks.map { it.copy(selected = it.index == kept) })
+    }
+
     // The current stream ends where it is and the server is asked again with the new choice.
     private fun reopen(current: PlaybackPlan, audio: Int?, subtitle: Int?) {
         if (content.value.stream == null) return
@@ -1184,7 +1200,7 @@ class PlaybackViewModel(
             val picked = choice
             when (val negotiation = playback.negotiate(itemId, transcodeOnly, picked?.mediaSourceId, picked?.audio, picked?.subtitle)) {
                 is PlaybackNegotiation.Ready -> {
-                    val ready = negotiation.plan
+                    val ready = negotiation.plan.keepingAudio(picked?.audio)
                     plan = ready
                     method = ready.method
                     audioNow = ready.audioStreamIndex
