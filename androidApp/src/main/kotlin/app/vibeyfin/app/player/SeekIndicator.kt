@@ -2,6 +2,10 @@ package app.vibeyfin.app.player
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -38,21 +42,22 @@ import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.playback.SkipRun
 
 /**
- * The feedback for skips in a row, as YouTube draws it: the running total and one thin chevron on the side of the skip
- * ("+30   >", "<   −30"), no background. On each tap a faint second chevron trails the first and slides into it, unless
- * animations are off. It takes no touches.
+ * The feedback for skips in a row, as YouTube draws it: the running total and one chevron on the side of the skip
+ * ("+30    >", "<    −30"), no background. It fades in with the chevron gliding out from the number; on each further tap a
+ * second chevron flies in from behind and knocks the first, which springs back. Without animations it only shows. It takes
+ * no touches.
  */
 @Composable
 fun BoxScope.SeekIndicator(run: SkipRun?) {
-    // The last run stays drawn while the indicator fades out
+    // The last run stays drawn while the indicator goes
     val shown: Array<SkipRun?> = remember { arrayOfNulls(1) }
 
     if (run != null) shown[0] = run
 
     AnimatedVisibility(
         visible = run != null,
-        enter = fadeIn(tween(FADE_MS)),
-        exit = fadeOut(tween(FADE_MS)),
+        enter = fadeIn(tween(APPEAR_MS)),
+        exit = fadeOut(tween(EXIT_MS)),
         modifier = Modifier.matchParentSize(),
     ) {
         shown[0]?.let { SeekIndicatorContent(it) }
@@ -62,12 +67,21 @@ fun BoxScope.SeekIndicator(run: SkipRun?) {
 @Composable
 private fun SeekIndicatorContent(run: SkipRun) {
     val motion: Boolean = animationsEnabled()
-    val trail: Animatable<Float, *> = remember { Animatable(0f) }
+    val glide: Animatable<Float, *> = remember { Animatable(0f) }
+    val flight: Animatable<Float, *> = remember { Animatable(1f) }
+    val knock: Animatable<Float, *> = remember { Animatable(0f) }
+
+    LaunchedEffect(run.forward) {
+        glide.snapTo(if (motion) 1f else 0f)
+        glide.animateTo(0f, tween(GLIDE_MS, easing = FastOutSlowInEasing))
+    }
 
     LaunchedEffect(run.taps) {
-        if (motion) {
-            trail.snapTo(1f)
-            trail.animateTo(0f, tween(TRAIL_MS))
+        if (motion && run.taps > 1) {
+            flight.snapTo(0f)
+            flight.animateTo(1f, tween(FLIGHT_MS, easing = LinearOutSlowInEasing))
+            knock.snapTo(1f)
+            knock.animateTo(0f, spring(dampingRatio = KNOCK_DAMPING, stiffness = Spring.StiffnessMediumLow))
         }
     }
 
@@ -80,37 +94,43 @@ private fun SeekIndicatorContent(run: SkipRun) {
             horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s6, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (!run.forward) TrailingChevron(forward = false, trail = trail.value)
+            if (!run.forward) Chevrons(forward = false, glide = glide.value, flight = flight.value, knock = knock.value)
             Text(
                 text = Strings.seekTotal(run.forward, run.seconds),
-                style = MaterialTheme.typography.titleMedium.copy(
+                style = MaterialTheme.typography.titleLarge.copy(
                     fontWeight = FontWeight.Medium,
                     fontFeatureSettings = "tnum",
                     shadow = Shadow(VibeyFinTokens.Colors.scrim, Offset(0f, 1f), blurRadius = 4f),
                 ),
                 color = VibeyFinTokens.Colors.onMedia,
             )
-            if (run.forward) TrailingChevron(forward = true, trail = trail.value)
+            if (run.forward) Chevrons(forward = true, glide = glide.value, flight = flight.value, knock = knock.value)
         }
     }
 }
 
-// [trail] runs from 1, just after a tap, to 0: the faint chevron behind closes in on the main one and fades
+// [glide] 1 to 0 as the indicator appears, [flight] 0 to 1 as the second chevron closes in, [knock] 1 to 0 as the first springs back
 @Composable
-private fun TrailingChevron(forward: Boolean, trail: Float) {
-    val behind: Float = if (forward) -1f else 1f
+private fun Chevrons(forward: Boolean, glide: Float, flight: Float, knock: Float) {
+    val ahead: Float = if (forward) 1f else -1f
 
     Box {
-        if (trail > 0f) {
+        if (flight < 1f) {
             Chevron(
                 forward,
                 Modifier.graphicsLayer {
-                    translationX = behind * trail * TRAIL_OFFSET.toPx()
-                    alpha = TRAIL_ALPHA * trail
+                    translationX = -ahead * (1f - flight) * FLIGHT_DISTANCE.toPx()
+                    alpha = FLIGHT_ALPHA * flight
                 },
             )
         }
-        Chevron(forward)
+        Chevron(
+            forward,
+            Modifier.graphicsLayer {
+                translationX = ahead * (knock * KNOCK_DISTANCE.toPx() - glide * GLIDE_DISTANCE.toPx())
+                alpha = 1f - glide * GLIDE_FADE
+            },
+        )
     }
 }
 
@@ -120,13 +140,13 @@ private fun Chevron(forward: Boolean, modifier: Modifier = Modifier) {
     val shadow = VibeyFinTokens.Colors.scrim
 
     Canvas(modifier.size(CHEVRON_SIZE)) {
-        val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-        val tip: Float = if (forward) size.width * 0.65f else size.width * 0.35f
-        val tail: Float = if (forward) size.width * 0.35f else size.width * 0.65f
+        val stroke = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+        val tip: Float = if (forward) size.width * 0.68f else size.width * 0.32f
+        val tail: Float = if (forward) size.width * 0.32f else size.width * 0.68f
         val path = Path().apply {
-            moveTo(tail, size.height * 0.2f)
+            moveTo(tail, size.height * 0.18f)
             lineTo(tip, size.height / 2)
-            lineTo(tail, size.height * 0.8f)
+            lineTo(tail, size.height * 0.82f)
         }
 
         translate(top = 1.dp.toPx()) { drawPath(path, shadow, style = stroke) }
@@ -134,9 +154,15 @@ private fun Chevron(forward: Boolean, modifier: Modifier = Modifier) {
     }
 }
 
-private const val SIDE_WIDTH = 0.5f
-private const val FADE_MS = 150
-private const val TRAIL_MS = 260
-private const val TRAIL_ALPHA = 0.5f
-private val TRAIL_OFFSET = 7.dp
-private val CHEVRON_SIZE = 18.dp
+private const val SIDE_WIDTH = 0.44f
+private const val APPEAR_MS = 80
+private const val EXIT_MS = 40
+private const val GLIDE_MS = 160
+private const val GLIDE_FADE = 0.6f
+private const val FLIGHT_MS = 130
+private const val FLIGHT_ALPHA = 0.9f
+private const val KNOCK_DAMPING = 0.4f
+private val GLIDE_DISTANCE = 10.dp
+private val FLIGHT_DISTANCE = 14.dp
+private val KNOCK_DISTANCE = 3.dp
+private val CHEVRON_SIZE = 22.dp

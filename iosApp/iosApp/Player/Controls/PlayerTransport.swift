@@ -78,49 +78,81 @@ struct PlayerTransport: View {
     }
 }
 
-/// The running total of skips in a row, as YouTube draws it ("+30   >", "<   −30"): the number and one thin chevron, no
-/// background. On each tap a faint second chevron trails the first and slides into it, except under Reduce Motion.
+/// The running total of skips in a row, as YouTube draws it ("+30    >", "<    −30"): the number and one chevron, no
+/// background. The chevron glides out from the number as it appears; on each further tap a second chevron flies in from
+/// behind and knocks the first, which springs back. Under Reduce Motion it only shows.
 struct SeekIndicator: View {
     let forward: Bool
     let text: String
     let taps: Int
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// 1 just after a tap, easing to 0: the faint chevron behind closes in on the main one and fades.
-    @State private var trail: CGFloat = 0
+    /// 1 to 0 as the indicator appears.
+    @State private var glide: CGFloat = 1
+    /// 0 to 1 as the second chevron closes in.
+    @State private var flight: CGFloat = 1
+    /// 1 to 0 as the first chevron springs back.
+    @State private var knock: CGFloat = 0
+
+    private var ahead: CGFloat { forward ? 1 : -1 }
 
     var body: some View {
         HStack(spacing: Space.s6) {
             if !forward { chevrons }
             Text(text)
-                .font(.body.weight(.medium))
+                .font(.title3.weight(.medium))
                 .monospacedDigit()
             if forward { chevrons }
         }
         .foregroundStyle(Brand.onMedia)
         .shadow(color: Brand.scrim, radius: 2, y: 1)
         .accessibilityHidden(true)
-        .onChange(of: taps) { _, _ in runTrail() }
-        .onAppear { runTrail() }
+        .onAppear(perform: appear)
+        .onChange(of: forward) { _, _ in appear() }
+        .onChange(of: taps) { _, count in if count > 1 { flyIn() } }
     }
 
     private var chevrons: some View {
         ZStack {
+            if flight < 1 {
+                chevron
+                    .offset(x: -ahead * (1 - flight) * 14)
+                    .opacity(0.9 * flight)
+            }
             chevron
-                .offset(x: (forward ? -7 : 7) * trail)
-                .opacity(0.5 * trail)
-            chevron
+                .offset(x: ahead * (knock * 3 - glide * 10))
+                .opacity(1 - glide * 0.6)
         }
     }
 
     private var chevron: some View {
         Image(systemName: forward ? "chevron.forward" : "chevron.backward")
-            .font(.body.weight(.semibold))
+            .font(.title3.weight(.semibold))
     }
 
-    private func runTrail() {
+    private func appear() {
+        guard !reduceMotion else {
+            glide = 0
+            return
+        }
+        withoutAnimation { glide = 1 }
+        withAnimation(.easeOut(duration: 0.16)) { glide = 0 }
+    }
+
+    private func flyIn() {
         guard !reduceMotion else { return }
-        trail = 1
-        withAnimation(.easeOut(duration: 0.26)) { trail = 0 }
+        withoutAnimation { flight = 0 }
+        withAnimation(.easeOut(duration: 0.13)) {
+            flight = 1
+        } completion: {
+            withoutAnimation { knock = 1 }
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.4)) { knock = 0 }
+        }
+    }
+
+    private func withoutAnimation(_ change: () -> Void) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction, change)
     }
 }

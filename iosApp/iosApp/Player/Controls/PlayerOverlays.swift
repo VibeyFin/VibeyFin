@@ -330,7 +330,7 @@ struct SeekingOverlay<Bar: View>: View {
         ZStack {
             GeometryReader { proxy in
                 SeekIndicator(forward: side == .forward, text: text, taps: taps)
-                    .frame(width: proxy.size.width * 0.5, height: proxy.size.height)
+                    .frame(width: proxy.size.width * 0.44, height: proxy.size.height)
                     .frame(maxWidth: .infinity, alignment: side == .forward ? .trailing : .leading)
             }
             .ignoresSafeArea()
@@ -340,6 +340,6 @@ struct SeekingOverlay<Bar: View>: View {
             }
         }
         .allowsHitTesting(false)
-        .transition(.opacity)
+        .transition(.asymmetric(insertion: .opacity.animation(.easeOut(duration: 0.08)), removal: .opacity.animation(.easeOut(duration: 0.04))))
     }
 }
