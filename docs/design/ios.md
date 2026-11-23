@@ -52,7 +52,7 @@ Glass is the **navigation and controls layer** floating above content — never 
 | Home category buttons (Shows, Movies, New, Categories) | Horizontal `ScrollView` of capsule buttons under the Home header: `surface-2` fill with `ink`, never selected; 36pt tall with a 44pt hit area. Not glass. Categories adds a trailing `chevron.down` and opens a `.sheet` with a plain list (medium and large detents), no search; the others open their page. A sheet rather than the player's `Menu`, because the list loads on demand and needs loading, empty and error states. A category page's Sort and Genre are capsules that open the same sheet |
 | Share | `ShareLink` |
 | Casting | `AVRoutePickerView` (AirPlay) |
-| Player transport | play / pause on a glass disc; for an episode, `backward.end.fill` / `forward.end.fill` either side (dimmed on the first and last). No skip buttons: double-tap seeks, VoiceOver gets the skips as actions on play / pause |
+| Player transport | `gobackward.<n>`, play / pause, `goforward.<n>` on glass discs; Previous / Next episode in the top bar capsule (episodes only, dimmed on the first and last) |
 | Skip feedback | `SeekIndicator`: YouTube's double-tap seek look, the total and one thin chevron on the side the video moved ("+30   >"), a faint second chevron sliding in on each tap, only the scrubber kept |
 | Settings rows | inset grouped list, small-caps section headers, footers carrying the help text; `Toggle` `.tint(Spark)` (on = copper, as on Android); a choice is a `Picker` with `.pickerStyle(.menu)`, never a sub-page; a link is a `NavigationLink` row |
 | Quality setting | the one checklist: inline rows in its own section (title once, footer below), the chosen row an `spark-soft` pill with no tick |

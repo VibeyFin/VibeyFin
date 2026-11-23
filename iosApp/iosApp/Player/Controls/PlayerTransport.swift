@@ -1,62 +1,34 @@
 import Shared
 import SwiftUI
 
-/// The centre transport: play or pause on a glass disc (a scrim disc before iOS 26), with Previous and Next episode either
-/// side for an episode on smaller discs of the same glass. Double taps on the video skip; VoiceOver gets the skips as actions on play.
+/// The centre transport: skip back, play or pause, skip forward, as glass discs (scrim discs before iOS 26); the skip
+/// glyphs carry the number of seconds from the settings.
 struct PlayerTransport: View {
     let isPlaying: Bool
-    let episodeControls: Bool
-    /// The episode before this one, read with Previous; nil dims it.
-    let previousEpisode: String?
-    /// The episode after this one, read with Next; nil dims it.
-    let nextEpisode: String?
     let skipBackSeconds: Int
     let skipForwardSeconds: Int
-    let onPreviousEpisode: () -> Void
-    let onTogglePlay: () -> Void
-    let onNextEpisode: () -> Void
     let onSkipBack: () -> Void
+    let onTogglePlay: () -> Void
     let onSkipForward: () -> Void
 
     // Fixed sizes would not grow with Dynamic Type; these scale with the glyph's text style.
-    @ScaledMetric(relativeTo: .title2) private var episodeDiameter: CGFloat = 56
+    @ScaledMetric(relativeTo: .title2) private var skipDiameter: CGFloat = 56
     @ScaledMetric(relativeTo: .largeTitle) private var playDiameter: CGFloat = 76
 
     var body: some View {
-        HStack(spacing: Space.s7) {
-            if episodeControls {
-                episodeButton(symbol: "backward.end.fill", label: Strings.shared.previousEpisode, episode: previousEpisode, action: onPreviousEpisode)
-            }
-            playButton
-                .accessibilityAction(named: Strings.shared.skipBackLabel(seconds: Int32(skipBackSeconds)), onSkipBack)
-                .accessibilityAction(named: Strings.shared.skipForwardLabel(seconds: Int32(skipForwardSeconds)), onSkipForward)
-            if episodeControls {
-                episodeButton(symbol: "forward.end.fill", label: Strings.shared.nextEpisode, episode: nextEpisode, action: onNextEpisode)
-            }
+        HStack(spacing: Space.s6) {
+            glassDisc(symbol: Self.symbol("gobackward", seconds: skipBackSeconds), font: .title2, diameter: skipDiameter, action: onSkipBack)
+                .accessibilityLabel(Strings.shared.skipBackLabel(seconds: Int32(skipBackSeconds)))
+            glassDisc(symbol: isPlaying ? "pause.fill" : "play.fill", font: .largeTitle, diameter: playDiameter, action: onTogglePlay)
+                .accessibilityLabel(isPlaying ? Strings.shared.pause : Strings.shared.play)
+            glassDisc(symbol: Self.symbol("goforward", seconds: skipForwardSeconds), font: .title2, diameter: skipDiameter, action: onSkipForward)
+                .accessibilityLabel(Strings.shared.skipForwardLabel(seconds: Int32(skipForwardSeconds)))
         }
     }
 
     /// The numbered symbols exist only for these steps; anything else falls back to the plain arrow.
     static func symbol(_ base: String, seconds: Int) -> String {
         [5, 10, 15, 30, 45, 60].contains(seconds) ? "\(base).\(seconds)" : base
-    }
-
-    private var playButton: some View {
-        glassDisc(
-            symbol: isPlaying ? "pause.fill" : "play.fill",
-            font: .largeTitle,
-            diameter: playDiameter,
-            action: onTogglePlay
-        )
-        .accessibilityLabel(isPlaying ? Strings.shared.pause : Strings.shared.play)
-    }
-
-    private func episodeButton(symbol: String, label: String, episode: String?, action: @escaping () -> Void) -> some View {
-        glassDisc(symbol: symbol, font: .title2, diameter: episodeDiameter, action: action)
-            .disabled(episode == nil)
-            .opacity(episode == nil ? 0.38 : 1)
-            .accessibilityLabel(label)
-            .accessibilityHint(episode ?? "")
     }
 
     @ViewBuilder

@@ -19,24 +19,13 @@ extension PlayerView {
                     if hasStream && !isWaiting {
                         PlayerTransport(
                             isPlaying: controller.isPlaying,
-                            episodeControls: state?.episodeControls == true,
-                            previousEpisode: state?.previousEpisode,
-                            nextEpisode: state?.nextEpisode,
                             skipBackSeconds: Int(state?.skipBackSeconds ?? ProfileSettings.Companion.shared.DEFAULT_SKIP_BACK_SECONDS),
                             skipForwardSeconds: Int(state?.skipForwardSeconds ?? ProfileSettings.Companion.shared.DEFAULT_SKIP_FORWARD_SECONDS),
-                            onPreviousEpisode: {
-                                model.userInteraction()
-                                model.playPrevious()
-                            },
+                            onSkipBack: { skip(.back) },
                             onTogglePlay: {
                                 model.userInteraction()
                                 controller.togglePlayPause()
                             },
-                            onNextEpisode: {
-                                model.userInteraction()
-                                model.playNow()
-                            },
-                            onSkipBack: { skip(.back) },
                             onSkipForward: { skip(.forward) }
                         )
                     }
@@ -123,6 +112,14 @@ extension PlayerView {
             .onTapGesture(count: 5) { model.toggleStats() }
             Spacer(minLength: 0)
             PlayerControlCluster {
+                if state?.episodeControls == true {
+                    episodeButton(systemName: "backward.end.fill", label: Strings.shared.previousEpisode, episode: state?.previousEpisode) {
+                        model.playPrevious()
+                    }
+                    episodeButton(systemName: "forward.end.fill", label: Strings.shared.nextEpisode, episode: state?.nextEpisode) {
+                        model.playNow()
+                    }
+                }
                 if let state {
                     PlayerSpeedMenu(
                         speeds: state.speeds.map { $0.floatValue },
@@ -179,6 +176,17 @@ extension PlayerView {
                 )
             }
         }
+    }
+
+    /// Previous or Next episode; dimmed and inert at the first or last episode.
+    func episodeButton(systemName: String, label: String, episode: String?, action: @escaping () -> Void) -> some View {
+        PlayerIconButton(systemName: systemName, label: label) {
+            model.userInteraction()
+            action()
+        }
+        .disabled(episode == nil)
+        .opacity(episode == nil ? 0.38 : 1)
+        .accessibilityHint(episode ?? "")
     }
 
     /// The subtitle then the picture badge, as plain text.
