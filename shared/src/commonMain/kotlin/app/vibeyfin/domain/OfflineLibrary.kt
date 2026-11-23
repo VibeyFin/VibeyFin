@@ -92,7 +92,6 @@ class OfflineLibrary(
 
     private fun orderOf(item: MediaItem): Int? = item.episodeNumber?.let { (item.seasonNumber ?: 0) * ORDER_STEP + it }
 
-    // The playable downloaded episodes of [current]'s show; none when it has no show.
     private suspend fun downloadedEpisodes(profile: ProfileRef, current: MediaItem): List<DownloadItemEntity> {
         val seriesId = current.seriesId ?: return emptyList()
         val done = dao.all(profile.serverId, profile.userId).filter { it.isPlayable() && it.seriesId == seriesId }.map { it.itemId }.toSet()

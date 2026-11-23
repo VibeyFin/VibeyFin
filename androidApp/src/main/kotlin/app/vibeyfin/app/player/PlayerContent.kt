@@ -61,11 +61,13 @@ internal fun PlayerContent(
     subtitleStyle: SubtitleViewStyle,
     trickplay: TrickplayTiles?,
     playable: Boolean,
+    screenReaderOn: Boolean,
     onClose: () -> Unit,
     onBoundsChanged: (Rect) -> Unit,
 ) {
     val overlaysShown = !chrome.leaving && !pip.active
-    val seeking: Boolean = state.skipRun != null
+    // TalkBack skips through actions on play, so the controls stay up for it
+    val seeking: Boolean = state.skipRun != null && !screenReaderOn
 
     Box(
         Modifier.fillMaxSize().background(FixedColors.videoBackground).onGloballyPositioned {
@@ -98,7 +100,7 @@ internal fun PlayerContent(
         if (overlaysShown) {
             SeekIndicator(state.skipRun)
             ControlsLayer(state, player, clock, chrome, pip, viewModel, trickplay, playable, seeking, onClose)
-            StatusOverlays(state, chrome, viewModel)
+            StatusOverlays(state, chrome, seeking, viewModel)
         }
 
         val waiting = state.loading || (clock.buffering && state.stream != null)
@@ -109,7 +111,7 @@ internal fun PlayerContent(
 
         if (overlaysShown) PromptAndSheets(state, chrome, viewModel)
 
-        UpNextOverlay(state, visible = overlaysShown && state.message == null, viewModel)
+        UpNextOverlay(state, visible = overlaysShown && state.message == null && !seeking, viewModel)
 
         // Over everything else on the video, so the up next card or the skip button never covers it
         if (overlaysShown) SwipeLevelIndicator(swipe)
@@ -141,7 +143,13 @@ private fun ControlsLayer(
         chrome.touched()
     }
 
-    AnimatedVisibility(visible = chrome.controlsVisible || state.message != null || seeking, enter = fadeIn(), exit = fadeOut()) {
+    val visible: Boolean = chrome.controlsVisible || state.message != null || seeking
+    var seekingWhenShown: Boolean by remember { mutableStateOf(false) }
+
+    // Fading out after a run, the controls still draw as seeking, or the top bar would flash up
+    if (visible) seekingWhenShown = seeking
+
+    AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
         PlayerControls(
             title = state.title,
             subtitle = state.subtitle,
@@ -152,7 +160,7 @@ private fun ControlsLayer(
             hasTrackChoices = state.hasTrackChoices && state.message == null,
             badge = state.badge,
             showTransport = playable,
-            seeking = seeking,
+            seeking = seekingWhenShown,
             speedLabel = Strings.speedValue(state.speed),
             trickplay = trickplay,
             episodeControls = state.episodeControls,
@@ -216,7 +224,7 @@ private fun ControlsLayer(
 
 // The stats and the skip button stay up when the controls hide, but not under an error, which fills the same part of the screen
 @Composable
-private fun BoxScope.StatusOverlays(state: PlaybackUiState, chrome: PlayerChrome, viewModel: PlaybackViewModel) {
+private fun BoxScope.StatusOverlays(state: PlaybackUiState, chrome: PlayerChrome, seeking: Boolean, viewModel: PlaybackViewModel) {
     val noError = state.message == null
     val diagnostics = state.diagnostics.takeIf { state.showDiagnostics }
     val skip = state.skipOffer
@@ -244,7 +252,7 @@ private fun BoxScope.StatusOverlays(state: PlaybackUiState, chrome: PlayerChrome
     }
 
     // Offered for the whole segment, controls up or not; above the scrubber while that shows
-    if (noError && skip != null && state.skipRun == null) {
+    if (noError && skip != null && !seeking) {
         val lift by animateDpAsState(if (chrome.controlsVisible) SKIP_LIFT_WITH_CONTROLS else 0.dp, label = "skipLift")
 
         SkipButton(

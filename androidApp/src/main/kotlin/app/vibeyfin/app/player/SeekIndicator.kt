@@ -44,6 +44,7 @@ import app.vibeyfin.ui.playback.SkipRun
  */
 @Composable
 fun BoxScope.SeekIndicator(run: SkipRun?) {
+    // The last run stays drawn while the indicator fades out
     val shown: Array<SkipRun?> = remember { arrayOfNulls(1) }
 
     if (run != null) shown[0] = run

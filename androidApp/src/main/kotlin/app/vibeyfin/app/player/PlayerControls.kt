@@ -1,6 +1,9 @@
 package app.vibeyfin.app.player
 
 import android.os.SystemClock
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -111,15 +114,12 @@ fun PlayerControls(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.fillMaxSize()) {
-        if (!seeking) {
-            TopBar(
-                title, subtitle, hasTrackChoices, badge, speedLabel, onClose, onTracks, onSpeed, onPip, onToggleStats,
-                Modifier.align(Alignment.TopStart),
-            )
+        AnimatedVisibility(!seeking, Modifier.align(Alignment.TopStart), enter = fadeIn(), exit = fadeOut()) {
+            TopBar(title, subtitle, hasTrackChoices, badge, speedLabel, onClose, onTracks, onSpeed, onPip, onToggleStats)
         }
 
-        if (showTransport && !seeking) {
-            Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s7)) {
+        AnimatedVisibility(showTransport && !seeking, Modifier.align(Alignment.Center), enter = fadeIn(), exit = fadeOut()) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s7)) {
                 if (episodeControls) EpisodeButton(R.drawable.ic_skip_previous, Strings.previousEpisode, previousEpisode, onPreviousEpisode)
                 PlayPauseButton(
                     playing,
@@ -287,7 +287,6 @@ private fun ChipButton(icon: Int, description: String, onClick: () -> Unit) {
     }
 }
 
-// An episode either side of this one; dimmed and inert when there is none
 @Composable
 private fun EpisodeButton(icon: Int, description: String, episode: String?, onClick: () -> Unit) {
     val enabled: Boolean = episode != null

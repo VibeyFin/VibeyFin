@@ -369,7 +369,6 @@ class PlaybackViewModel(
     // The episode after [item], once looked up; null while unknown, and for anything that has no next one.
     private var next: MediaItem? = null
 
-    // The episode before [item], like [next].
     private var previous: MediaItem? = null
 
     // The user chose "Watch credits": no card for the rest of this episode.
@@ -958,7 +957,6 @@ class PlaybackViewModel(
         switchTo(target, stopAtMs = item?.runtimeMs ?: lastPositionMs)
     }
 
-    // Plays [target] in place of what plays now, which is reported stopped at [stopAtMs].
     private fun switchTo(target: MediaItem, stopAtMs: Long) {
         active.stop(stopAtMs)
         val wasLocal = local != null

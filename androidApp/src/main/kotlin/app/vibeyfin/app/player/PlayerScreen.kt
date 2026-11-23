@@ -136,6 +136,7 @@ fun PlayerRoute(
         subtitleStyle = subtitleStyle,
         trickplay = rememberTrickplay(state.trickplay, stream?.headers),
         playable = playable,
+        screenReaderOn = screenReaderOn,
         onClose = close,
         onBoundsChanged = { screenBounds = it },
     )
