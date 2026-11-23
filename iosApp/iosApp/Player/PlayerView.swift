@@ -57,9 +57,11 @@ struct PlayerView: View {
     /// The profile wants the swipe, and the picture is on this screen: not in a picture-in-picture window, not over AirPlay.
     var swipeEnabled: Bool { state?.swipeGestures != false && !pip.isActive && !controller.isExternalPlayback }
     var isWaiting: Bool { state?.message == nil && (state?.loading ?? true || controller.isBuffering) }
-    /// Skips in a row are showing: every tap on a side adds one, and only the total and the scrubber are on screen.
-    /// VoiceOver skips through actions on play, so the controls stay up for it.
-    var isSeeking: Bool { state?.skipRun != nil && !voiceOver }
+    /// Skips in a row are showing: every single tap on a side adds one.
+    var isSkipping: Bool { state?.skipRun != nil }
+    /// A run begun by double taps on the video: only the total and the scrubber are on screen. One begun on the skip
+    /// buttons keeps the controls up, and so does VoiceOver.
+    var isSeeking: Bool { state?.skipRun?.fromControls == false && !voiceOver }
 
     var body: some View {
         ZStack {
@@ -84,13 +86,13 @@ struct PlayerView: View {
                     .contentShape(Rectangle())
                     .gesture(
                         SpatialTapGesture(count: 1).onEnded { tapToSkip(at: $0.location.x, width: proxy.size.width) },
-                        including: isSeeking ? .all : .none
+                        including: isSkipping ? .all : .none
                     )
                     .gesture(
                         SpatialTapGesture(count: 2)
                             .onEnded { tapToSkip(at: $0.location.x, width: proxy.size.width) }
                             .exclusively(before: TapGesture().onEnded { toggleControls() }),
-                        including: isSeeking ? .none : .all
+                        including: isSkipping ? .none : .all
                     )
                     .swipeForLevels(swipe, enabled: swipeEnabled, size: proxy.size) {
                         model.userInteraction()
@@ -104,11 +106,11 @@ struct PlayerView: View {
                 if state?.message == nil, let run = state?.skipRun {
                     let side: SeekSide = run.forward ? .forward : .back
                     let total = Strings.shared.seekTotal(forward: run.forward, seconds: run.seconds)
-                    if tabletop != nil {
-                        // The tabletop panel keeps its controls, so only the total shows, over the video.
+                    if tabletop != nil || !isSeeking {
+                        // The controls stay (tabletop, a run from the skip buttons, VoiceOver), so only the total shows.
                         SeekingOverlay(side: side, text: total, taps: Int(run.taps)) { EmptyView() }
                             .tabletopVideo(split: tabletop)
-                    } else if isSeeking {
+                    } else {
                         SeekingOverlay(side: side, text: total, taps: Int(run.taps)) { seekingBar }
                     }
                 }

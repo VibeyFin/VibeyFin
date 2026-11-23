@@ -2124,6 +2124,27 @@ class PlaybackViewModelTest {
     }
 
     @Test
+    fun `a run started from the skip buttons keeps the controls and adds up taps on the video`() = runTest {
+        val vm = serverWithSegments()
+        val duration = 600_000L
+
+        vm.onSkipForward(60_000, duration, fromControls = true)
+        vm.onSeekHandled()
+        vm.onSkipForward(70_000, duration)
+
+        assertEquals(SkipRun(forward = true, movedMs = 20_000, taps = 2, fromControls = true), vm.uiState.value.skipRun)
+    }
+
+    @Test
+    fun `a run started by double taps on the video does not keep the controls`() = runTest {
+        val vm = serverWithSegments()
+
+        vm.onSkipBack(60_000)
+
+        assertFalse(assertNotNull(vm.uiState.value.skipRun).fromControls)
+    }
+
+    @Test
     fun `a skip to the other side starts a new run`() = runTest {
         val vm = serverWithSegments()
         val duration = 600_000L

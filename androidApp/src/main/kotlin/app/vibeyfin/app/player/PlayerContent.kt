@@ -66,8 +66,8 @@ internal fun PlayerContent(
     onBoundsChanged: (Rect) -> Unit,
 ) {
     val overlaysShown = !chrome.leaving && !pip.active
-    // TalkBack skips through actions on play, so the controls stay up for it
-    val seeking: Boolean = state.skipRun != null && !screenReaderOn
+    // A run begun on the skip buttons keeps the controls up, and so does TalkBack; one begun on the video hides them
+    val seeking: Boolean = state.skipRun?.fromControls == false && !screenReaderOn
 
     Box(
         Modifier.fillMaxSize().background(FixedColors.videoBackground).onGloballyPositioned {
@@ -78,7 +78,7 @@ internal fun PlayerContent(
     ) {
         PlayerVideoSurface(hdrVideo, player, hidden = turn.pictureHidden, subtitleStyle)
         PlayerTapLayer(
-            seeking = seeking,
+            seeking = state.skipRun != null,
             swipe = Modifier.swipeForLevels(swipe, enabled = state.swipeGestures && overlaysShown) {
                 viewModel.onUserInteraction()
                 chrome.touched()
@@ -207,11 +207,11 @@ private fun ControlsLayer(
             skipForwardSeconds = state.skipForwardSeconds,
             onSkipBack = {
                 touched()
-                viewModel.onSkipBack(clock.positionMs)
+                viewModel.onSkipBack(clock.positionMs, fromControls = true)
             },
             onSkipForward = {
                 touched()
-                viewModel.onSkipForward(clock.positionMs, clock.durationMs)
+                viewModel.onSkipForward(clock.positionMs, clock.durationMs, fromControls = true)
             },
             onSeek = {
                 viewModel.onUserInteraction()

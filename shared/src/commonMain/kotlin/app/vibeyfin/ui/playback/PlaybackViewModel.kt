@@ -162,9 +162,10 @@ data class SkipOffer(val label: String, val toMs: Long)
 /**
  * Skips in a row to one side, while their total shows: [forward] or back, [movedMs] how far they went
  * together (less than the steps add up to at the start or the end), [taps] how many, so a screen can
- * animate each one.
+ * animate each one. [fromControls]: the run began on a skip button, so the controls stay up; one begun by
+ * double taps on the video hides them.
  */
-data class SkipRun(val forward: Boolean, val movedMs: Long, val taps: Int) {
+data class SkipRun(val forward: Boolean, val movedMs: Long, val taps: Int, val fromControls: Boolean = false) {
     /** [movedMs] in whole seconds, for the label. */
     val seconds: Int get() = ((movedMs + 500) / 1000).toInt()
 }
@@ -559,29 +560,29 @@ class PlaybackViewModel(
         content.update { it.copy(pendingSeekMs = offer.toMs) }
     }
 
-    /** Seeks back by the profile's skip length from [positionMs], not below the start. */
-    fun onSkipBack(positionMs: Long) {
+    /** Seeks back by the profile's skip length from [positionMs], not below the start; [fromControls] when the skip button did it. */
+    fun onSkipBack(positionMs: Long, fromControls: Boolean = false) {
         val from = basePosition(positionMs)
         val to = (from - content.value.skipBackSeconds * 1000L).coerceAtLeast(0L)
         seekTo(to)
-        addToSkipRun(forward = false, movedMs = from - to)
+        addToSkipRun(forward = false, movedMs = from - to, fromControls = fromControls)
     }
 
     /** Seeks forward by the profile's skip length from [positionMs], not past [durationMs]; does nothing while the duration is unknown. */
-    fun onSkipForward(positionMs: Long, durationMs: Long) {
+    fun onSkipForward(positionMs: Long, durationMs: Long, fromControls: Boolean = false) {
         if (durationMs <= 0L) return
         val from = basePosition(positionMs)
         val to = (from + content.value.skipForwardSeconds * 1000L).coerceAtMost(durationMs)
         seekTo(to)
-        addToSkipRun(forward = true, movedMs = (to - from).coerceAtLeast(0L))
+        addToSkipRun(forward = true, movedMs = (to - from).coerceAtLeast(0L), fromControls = fromControls)
     }
 
     // Adds a skip to the run to the same side, or starts a new run, and shows it for [SKIP_RUN_WINDOW] more.
-    private fun addToSkipRun(forward: Boolean, movedMs: Long) {
+    private fun addToSkipRun(forward: Boolean, movedMs: Long, fromControls: Boolean) {
         content.update { state ->
             val run = state.skipRun?.takeIf { it.forward == forward }
             state.copy(
-                skipRun = SkipRun(forward, (run?.movedMs ?: 0L) + movedMs, (run?.taps ?: 0) + 1),
+                skipRun = SkipRun(forward, (run?.movedMs ?: 0L) + movedMs, (run?.taps ?: 0) + 1, fromControls || run?.fromControls == true),
             )
         }
         skipRunEnd?.cancel()
