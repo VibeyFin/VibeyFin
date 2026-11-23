@@ -42,16 +42,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -128,9 +127,9 @@ fun PlayerControls(
 
         AnimatedVisibility(showTransport && !seeking, Modifier.align(Alignment.Center), enter = fadeIn(), exit = fadeOut()) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s6)) {
-                SkipButton(R.drawable.ic_replay, skipBackSeconds, Strings.skipBackLabel(skipBackSeconds), forward = false, onSkipBack)
+                SkipButton(R.drawable.ic_fast_rewind, Strings.skipBackLabel(skipBackSeconds), forward = false, onSkipBack)
                 PlayPauseButton(playing, onTogglePlay)
-                SkipButton(R.drawable.ic_forward, skipForwardSeconds, Strings.skipForwardLabel(skipForwardSeconds), forward = true, onSkipForward)
+                SkipButton(R.drawable.ic_fast_forward, Strings.skipForwardLabel(skipForwardSeconds), forward = true, onSkipForward)
             }
         }
 
@@ -294,11 +293,11 @@ private fun ChipButton(icon: Int, description: String, onClick: () -> Unit, enab
     }
 }
 
-// The seconds are text over the arrow, so any skip setting (15, 45, 60) has a glyph; the disc matches play's
+// Two arrows on a disc that matches play's; TalkBack reads the seconds
 @Composable
-private fun SkipButton(icon: Int, seconds: Int, description: String, forward: Boolean, onClick: () -> Unit) {
-    // Each press turns the arrow a little the way it points and springs it back, as Android's own players do
-    val turn: Animatable<Float, *> = remember { Animatable(0f) }
+private fun SkipButton(icon: Int, description: String, forward: Boolean, onClick: () -> Unit) {
+    // Each press nudges the arrows the way they point and springs them back
+    val nudge: Animatable<Float, *> = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
 
     Box(
@@ -309,8 +308,8 @@ private fun SkipButton(icon: Int, seconds: Int, description: String, forward: Bo
             .clickable(role = Role.Button) {
                 onClick()
                 scope.launch {
-                    turn.snapTo(if (forward) SKIP_TURN_DEGREES else -SKIP_TURN_DEGREES)
-                    turn.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))
+                    nudge.snapTo(if (forward) 1f else -1f)
+                    nudge.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))
                 }
             },
         contentAlignment = Alignment.Center,
@@ -319,18 +318,12 @@ private fun SkipButton(icon: Int, seconds: Int, description: String, forward: Bo
             painter = painterResource(icon),
             contentDescription = description,
             tint = VibeyFinTokens.Colors.ink,
-            modifier = Modifier.size(36.dp).rotate(turn.value),
-        )
-        Text(
-            text = seconds.toString(),
-            style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"),
-            color = VibeyFinTokens.Colors.ink,
-            modifier = Modifier.padding(top = 3.dp).clearAndSetSemantics { },
+            modifier = Modifier.size(32.dp).graphicsLayer { translationX = nudge.value * SKIP_NUDGE.toPx() },
         )
     }
 }
 
-private const val SKIP_TURN_DEGREES = 30f
+private val SKIP_NUDGE = 4.dp
 private const val DISABLED_ALPHA = 0.38f
 private const val STATS_TAPS = 5
 private const val TAP_GAP_MS = 500L
