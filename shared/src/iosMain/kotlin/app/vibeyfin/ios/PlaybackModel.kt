@@ -29,9 +29,9 @@ class PlaybackModel(itemId: String, startOver: Boolean) {
 
     fun onSkip() = host.viewModel.onSkip()
 
-    fun skipBack(positionMs: Long) = host.viewModel.onSkipBack(positionMs)
+    fun skipBack(positionMs: Long, fromControls: Boolean) = host.viewModel.onSkipBack(positionMs, fromControls)
 
-    fun skipForward(positionMs: Long, durationMs: Long) = host.viewModel.onSkipForward(positionMs, durationMs)
+    fun skipForward(positionMs: Long, durationMs: Long, fromControls: Boolean) = host.viewModel.onSkipForward(positionMs, durationMs, fromControls)
 
     fun onSeekHandled() = host.viewModel.onSeekHandled()
 
@@ -66,6 +66,8 @@ class PlaybackModel(itemId: String, startOver: Boolean) {
     fun onStopWatching() = host.viewModel.onStopWatching()
 
     fun onPlayNow() = host.viewModel.onPlayNow()
+
+    fun onPlayPrevious() = host.viewModel.onPlayPrevious()
 
     fun onWatchCredits() = host.viewModel.onWatchCredits()
 

@@ -1,8 +1,8 @@
 import Shared
 import SwiftUI
 
-/// The centre transport: skip back, play or pause, skip forward. Glass discs over the video (a scrim
-/// disc before iOS 26), white symbols; the skip glyphs carry the number of seconds from the settings.
+/// The centre transport: skip back, play or pause, skip forward, as glass discs (scrim discs before iOS 26); the skip
+/// glyphs carry the number of seconds from the settings.
 struct PlayerTransport: View {
     let isPlaying: Bool
     let skipBackSeconds: Int
@@ -11,33 +11,18 @@ struct PlayerTransport: View {
     let onTogglePlay: () -> Void
     let onSkipForward: () -> Void
 
-    // Fixed discs would not grow with Dynamic Type; these scale with the glyph's text style.
+    // Fixed sizes would not grow with Dynamic Type; these scale with the glyph's text style.
     @ScaledMetric(relativeTo: .title2) private var skipDiameter: CGFloat = 56
     @ScaledMetric(relativeTo: .largeTitle) private var playDiameter: CGFloat = 76
 
     var body: some View {
         HStack(spacing: Space.s6) {
-            disc(
-                symbol: Self.symbol("gobackward", seconds: skipBackSeconds),
-                label: Strings.shared.skipBackLabel(seconds: Int32(skipBackSeconds)),
-                diameter: skipDiameter,
-                font: .title2,
-                action: onSkipBack
-            )
-            disc(
-                symbol: isPlaying ? "pause.fill" : "play.fill",
-                label: isPlaying ? Strings.shared.pause : Strings.shared.play,
-                diameter: playDiameter,
-                font: .largeTitle,
-                action: onTogglePlay
-            )
-            disc(
-                symbol: Self.symbol("goforward", seconds: skipForwardSeconds),
-                label: Strings.shared.skipForwardLabel(seconds: Int32(skipForwardSeconds)),
-                diameter: skipDiameter,
-                font: .title2,
-                action: onSkipForward
-            )
+            glassDisc(symbol: Self.symbol("gobackward", seconds: skipBackSeconds), font: .title2, diameter: skipDiameter, action: onSkipBack)
+                .accessibilityLabel(Strings.shared.skipBackLabel(seconds: Int32(skipBackSeconds)))
+            glassDisc(symbol: isPlaying ? "pause.fill" : "play.fill", font: .largeTitle, diameter: playDiameter, action: onTogglePlay)
+                .accessibilityLabel(isPlaying ? Strings.shared.pause : Strings.shared.play)
+            glassDisc(symbol: Self.symbol("goforward", seconds: skipForwardSeconds), font: .title2, diameter: skipDiameter, action: onSkipForward)
+                .accessibilityLabel(Strings.shared.skipForwardLabel(seconds: Int32(skipForwardSeconds)))
         }
     }
 
@@ -47,7 +32,7 @@ struct PlayerTransport: View {
     }
 
     @ViewBuilder
-    private func disc(symbol: String, label: String, diameter: CGFloat, font: Font, action: @escaping () -> Void) -> some View {
+    private func glassDisc(symbol: String, font: Font, diameter: CGFloat, action: @escaping () -> Void) -> some View {
         let glyph = Image(systemName: symbol)
             .font(font.weight(.semibold))
             .foregroundStyle(Brand.onMedia)
@@ -57,27 +42,82 @@ struct PlayerTransport: View {
             Button(action: action) { glyph }
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)
-                .accessibilityLabel(label)
         } else {
             Button(action: action) { glyph.background(Circle().fill(Brand.scrim)) }
                 .buttonStyle(PressableButtonStyle())
-                .accessibilityLabel(label)
         }
     }
 }
 
-/// The seconds skipped so far ("30s"), by the side the skips go.
-struct SeekFlash: View {
+/// The running total of skips in a row, as YouTube draws it ("+30      >", "<      −30"): the number and one chevron, no
+/// background. On every tap the number pops a little bigger and settles, the chevron recoils towards it and eases back out,
+/// and a faint second chevron closes in from behind. Under Reduce Motion it only shows.
+struct SeekIndicator: View {
+    let forward: Bool
     let text: String
+    let taps: Int
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pop: CGFloat = 1
+    /// 1 to 0 as the chevron eases back out from the number.
+    @State private var recoil: CGFloat = 0
+    /// 0 to 1 as the faint chevron behind closes in.
+    @State private var flight: CGFloat = 1
+
+    private var ahead: CGFloat { forward ? 1 : -1 }
 
     var body: some View {
-        Text(text)
+        HStack(spacing: Space.s7) {
+            if !forward { chevrons }
+            Text(text)
+                .font(.title3.weight(.medium))
+                .monospacedDigit()
+                .scaleEffect(pop)
+            if forward { chevrons }
+        }
+        .foregroundStyle(Brand.onMedia)
+        .shadow(color: Brand.scrim, radius: 2, y: 1)
+        .accessibilityHidden(true)
+        .onAppear { animateTap(count: 1) }
+        .onChange(of: forward) { _, _ in animateTap(count: 1) }
+        .onChange(of: taps) { _, count in animateTap(count: count) }
+    }
+
+    private var chevrons: some View {
+        ZStack {
+            if flight < 1 {
+                chevron
+                    .offset(x: -ahead * (1 - flight) * 7)
+                    .opacity(0.6 * flight)
+            }
+            chevron
+                .offset(x: -ahead * recoil * 4)
+        }
+    }
+
+    private var chevron: some View {
+        Image(systemName: forward ? "chevron.forward" : "chevron.backward")
             .font(.title3.weight(.semibold))
-            .monospacedDigit()
-            .foregroundStyle(Brand.onMedia)
-            .padding(.horizontal, Space.s4)
-            .padding(.vertical, Space.s2)
-            .background(Capsule().fill(Brand.scrim))
-            .accessibilityHidden(true)
+    }
+
+    private func animateTap(count: Int) {
+        guard !reduceMotion else { return }
+        withAnimation(.easeOut(duration: 0.08)) {
+            pop = 1.15
+        } completion: {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.45)) { pop = 1 }
+        }
+        withoutAnimation { recoil = 1 }
+        withAnimation(.easeOut(duration: 0.12)) { recoil = 0 }
+        if count > 1 {
+            withoutAnimation { flight = 0 }
+            withAnimation(.easeOut(duration: 0.2)) { flight = 1 }
+        }
+    }
+
+    private func withoutAnimation(_ change: () -> Void) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction, change)
     }
 }

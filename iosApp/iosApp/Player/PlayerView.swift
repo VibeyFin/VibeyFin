@@ -19,6 +19,7 @@ struct PlayerView: View {
     @Environment(\.playerSession) var session
     @Environment(\.scenePhase) var scenePhase
     @Environment(\.accessibilityReduceMotion) var reduceMotion
+    @Environment(\.accessibilityVoiceOverEnabled) var voiceOver
 
     @State var controlsVisible = true
     @State var controlsFrame: ControlsFrame = ControlsFrame(safeArea: EdgeInsets(), size: .zero)
@@ -56,6 +57,11 @@ struct PlayerView: View {
     /// The profile wants the swipe, and the picture is on this screen: not in a picture-in-picture window, not over AirPlay.
     var swipeEnabled: Bool { state?.swipeGestures != false && !pip.isActive && !controller.isExternalPlayback }
     var isWaiting: Bool { state?.message == nil && (state?.loading ?? true || controller.isBuffering) }
+    /// Skips in a row are showing: every single tap on a side adds one.
+    var isSkipping: Bool { state?.skipRun != nil }
+    /// A run begun by double taps on the video: only the total and the scrubber are on screen. One begun on the skip
+    /// buttons keeps the controls up, and so does VoiceOver.
+    var isSeeking: Bool { state?.skipRun?.fromControls == false && !voiceOver }
 
     var body: some View {
         ZStack {
@@ -74,16 +80,19 @@ struct PlayerView: View {
                 ExternalPlaybackBackdrop(artworkUrl: state?.artworkUrl)
                     .transition(.opacity)
             }
-            // A touch anywhere on the video shows or hides the controls; a double tap on the left or
-            // right third seeks. The double tap comes first so a single tap isn't taken for half of it.
-            // A vertical swipe changes the brightness on the left half and the volume on the right.
+            // The double tap comes first so a single tap isn't taken for half of it.
             GeometryReader { proxy in
                 Color.clear
                     .contentShape(Rectangle())
                     .gesture(
+                        SpatialTapGesture(count: 1).onEnded { tapToSkip(at: $0.location.x, width: proxy.size.width) },
+                        including: isSkipping ? .all : .none
+                    )
+                    .gesture(
                         SpatialTapGesture(count: 2)
-                            .onEnded { doubleTap(at: $0.location.x, width: proxy.size.width) }
-                            .exclusively(before: TapGesture().onEnded { toggleControls() })
+                            .onEnded { tapToSkip(at: $0.location.x, width: proxy.size.width) }
+                            .exclusively(before: TapGesture().onEnded { toggleControls() }),
+                        including: isSkipping ? .none : .all
                     )
                     .swipeForLevels(swipe, enabled: swipeEnabled, size: proxy.size) {
                         model.userInteraction()
@@ -93,14 +102,20 @@ struct PlayerView: View {
             .ignoresSafeArea()
             .allowsHitTesting(tabletop == nil)
             .accessibilityHidden(true)
-            // Any skip, from a double tap or the buttons, shows how far the skips in a row have gone.
             ZStack {
-                if let run = state?.skipRun {
-                    SeekFlashRow(side: run.forward ? .forward : .back, seconds: Int(run.seconds))
+                if state?.message == nil, let run = state?.skipRun {
+                    let side: SeekSide = run.forward ? .forward : .back
+                    let total = Strings.shared.seekTotal(forward: run.forward, seconds: run.seconds)
+                    if tabletop != nil || !isSeeking {
+                        // The controls stay (tabletop, a run from the skip buttons, VoiceOver), so only the total shows.
+                        SeekingOverlay(side: side, text: total, taps: Int(run.taps)) { EmptyView() }
+                            .tabletopVideo(split: tabletop)
+                    } else {
+                        SeekingOverlay(side: side, text: total, taps: Int(run.taps)) { seekingBar }
+                    }
                 }
             }
-            .tabletopVideo(split: tabletop)
-            .animation(.easeOut(duration: 0.15), value: state?.skipRun == nil)
+            .animation(.easeOut(duration: 0.15), value: isSeeking)
             if let message = state?.message {
                 errorPanel(message)
                 closeOverlay
@@ -111,12 +126,12 @@ struct PlayerView: View {
                 if let tabletop {
                     tabletopPanel
                         .tabletopControls(split: tabletop)
-                } else if controlsVisible || controller.isExternalPlayback {
+                } else if (controlsVisible || controller.isExternalPlayback) && !isSeeking {
                     controls
                         .transition(.opacity)
                 }
                 // Offered for the whole segment, controls up or not; above the scrubber while that shows.
-                if tabletop == nil, let offer = state?.skipOffer {
+                if tabletop == nil, !isSeeking, let offer = state?.skipOffer {
                     SkipOfferOverlay(label: offer.label, raised: controlsVisible) { model.skip() }
                 }
                 // Stays up when the controls hide; an error fills the same part of the screen.
@@ -132,7 +147,7 @@ struct PlayerView: View {
                 .transition(.opacity)
             }
             // The next episode, in the last seconds of this one, whether or not the controls are up.
-            if let upNext = state?.upNext, state?.message == nil {
+            if let upNext = state?.upNext, state?.message == nil, !isSeeking {
                 UpNextCard(
                     upNext: upNext,
                     onPlayNow: { model.playNow() },

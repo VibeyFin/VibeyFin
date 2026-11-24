@@ -112,13 +112,13 @@ extension PlayerView {
             .onTapGesture(count: 5) { model.toggleStats() }
             Spacer(minLength: 0)
             PlayerControlCluster {
-                // Episodes with a next one only; gives way to the up next card, which has its own Play Now.
-                if let next = state?.nextEpisode, state?.upNext == nil {
-                    PlayerIconButton(systemName: "forward.end", label: Strings.shared.nextEpisode) {
-                        model.userInteraction()
+                if state?.episodeControls == true {
+                    episodeButton(systemName: "backward.end.fill", label: Strings.shared.previousEpisode, episode: state?.previousEpisode, enabled: state?.canPlayPrevious == true) {
+                        model.playPrevious()
+                    }
+                    episodeButton(systemName: "forward.end.fill", label: Strings.shared.nextEpisode, episode: state?.nextEpisode, enabled: state?.canPlayNext == true) {
                         model.playNow()
                     }
-                    .accessibilityHint(next)
                 }
                 if let state {
                     PlayerSpeedMenu(
@@ -178,9 +178,31 @@ extension PlayerView {
         }
     }
 
+    /// Previous or Next episode; dimmed and inert at the first or last episode.
+    func episodeButton(systemName: String, label: String, episode: String?, enabled: Bool, action: @escaping () -> Void) -> some View {
+        PlayerIconButton(systemName: systemName, label: label) {
+            model.userInteraction()
+            action()
+        }
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.38)
+        .accessibilityHint(episode ?? "")
+    }
+
     /// The subtitle then the picture badge, as plain text.
     var metaLine: String {
         Strings.shared.metaLine(subtitle: state?.subtitle, badge: state?.badge) ?? ""
+    }
+
+    /// The scrubber alone while skips in a row show, where it sits with the controls up.
+    var seekingBar: some View {
+        bottomBar
+            .rowInsets(rowInsets(at: .bottom))
+            .rowInsets(controlsBalance)
+            .screenMargin()
+            .bookControls(book)
+            .padding(.vertical, Space.s3)
+            .controlsSpanWidth(spans: spansWidth)
     }
 
     var bottomBar: some View {

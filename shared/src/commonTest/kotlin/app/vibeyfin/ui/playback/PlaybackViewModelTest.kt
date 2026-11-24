@@ -1222,6 +1222,127 @@ class PlaybackViewModelTest {
     }
 
     @Test
+    fun `an episode with one before it offers it for the Previous button`() = runTest {
+        val jellyfin = seriesServer(episodes = itemsJson(episode("e0", 0), episode("m1", 1), episode("e2", 2)))
+        jellyfin.server("http://nas:8096").on("POST", "/Items/e0/PlaybackInfo", Reply.json(playbackInfoJson(mediaSourceJson())))
+        val viewModel = viewModel()
+        val seen = playing(viewModel, jellyfin)
+        viewModel.onPosition(60_000)
+
+        assertTrue(seen.last().episodeControls)
+        assertEquals("S1 E0  ·  Northbound", seen.last().previousEpisode)
+
+        viewModel.onPlayPrevious()
+        val previous = viewModel.uiState.first { it.subtitle == "Paper Harbour  ·  S1 E0" && it.stream != null }
+
+        assertEquals(1, jellyfin.requestsTo("POST", "/Items/e0/PlaybackInfo").size)
+        assertTrue(previous.episodeControls)
+        val stopped = bodyOf(jellyfin.awaitRequests("POST", "/Sessions/Playing/Stopped").first())
+        assertEquals("m1", stopped.getValue("ItemId").jsonPrimitive.content)
+        // Going back is not finishing it: it stays where it was left.
+        assertEquals(60_000L * 10_000, stopped.getValue("PositionTicks").jsonPrimitive.long)
+    }
+
+    @Test
+    fun `the first episode offers no previous one but still has the episode controls`() = runTest {
+        val jellyfin = seriesServer()
+        val seen = playing(viewModel(), jellyfin)
+
+        assertTrue(seen.last().episodeControls)
+        assertNull(seen.last().previousEpisode)
+        assertFalse(seen.last().canPlayPrevious)
+        assertTrue(seen.last().canPlayNext)
+    }
+
+    @Test
+    fun `a failed lookup keeps Previous on and a tap asks again then plays it`() = runTest {
+        val episodes = itemsJson(episode("e0", 0), episode("m1", 1), episode("e2", 2))
+        val jellyfin = seriesServer(episodes = episodes)
+        val show = jellyfin.server("http://nas:8096")
+        var serverDown = true
+        show.on("GET", "/Shows/s1/Episodes") { if (serverDown) Reply.status(HttpStatusCode.InternalServerError) else Reply.json(episodes) }
+        show.on("POST", "/Items/e0/PlaybackInfo", Reply.json(playbackInfoJson(mediaSourceJson())))
+        val viewModel = viewModel()
+        statesOf(viewModel)
+
+        val failed = viewModel.uiState.first { it.stream != null && it.canPlayPrevious && it.canPlayNext }
+        assertNull(failed.previousEpisode)
+        assertNull(failed.nextEpisode)
+
+        serverDown = false
+        viewModel.onPlayPrevious()
+        val previous = viewModel.uiState.first { it.subtitle == "Paper Harbour  ·  S1 E0" && it.stream != null }
+
+        assertEquals(1, jellyfin.requestsTo("POST", "/Items/e0/PlaybackInfo").size)
+        assertTrue(previous.episodeControls)
+    }
+
+    @Test
+    fun `a tap on Previous that still fails says why and plays on`() = runTest {
+        val jellyfin = seriesServer()
+        jellyfin.server("http://nas:8096").on("GET", "/Shows/s1/Episodes", Reply.status(HttpStatusCode.InternalServerError))
+        val viewModel = viewModel()
+        statesOf(viewModel)
+        viewModel.uiState.first { it.stream != null && it.canPlayPrevious }
+
+        viewModel.onPlayPrevious()
+        val state = viewModel.uiState.first { it.notice != null }
+
+        assertEquals(LoadMessages.forError(ApiError.Server(500)), state.notice)
+        assertEquals("Heat", state.title)
+        assertTrue(state.canPlayPrevious)
+    }
+
+    @Test
+    fun `a failed lookup keeps Next on and a tap asks again and plays it`() = runTest {
+        val episodes = itemsJson(episode("m1", 1), episode("e2", 2))
+        val jellyfin = seriesServer(episodes = episodes)
+        var serverDown = true
+        jellyfin.server("http://nas:8096").on("GET", "/Shows/s1/Episodes") {
+            if (serverDown) Reply.status(HttpStatusCode.InternalServerError) else Reply.json(episodes)
+        }
+        val viewModel = viewModel()
+        statesOf(viewModel)
+        viewModel.uiState.first { it.stream != null && it.canPlayNext }
+
+        serverDown = false
+        viewModel.onPlayNow()
+        val next = viewModel.uiState.first { it.subtitle == "Paper Harbour  ·  S1 E2" && it.stream != null }
+
+        assertEquals(1, jellyfin.requestsTo("POST", "/Items/e2/PlaybackInfo").size)
+        assertTrue(next.episodeControls)
+    }
+
+    @Test
+    fun `asked again at the first episode Previous turns off without a notice`() = runTest {
+        val episodes = itemsJson(episode("m1", 1), episode("e2", 2))
+        val jellyfin = seriesServer(episodes = episodes)
+        var serverDown = true
+        jellyfin.server("http://nas:8096").on("GET", "/Shows/s1/Episodes") {
+            if (serverDown) Reply.status(HttpStatusCode.InternalServerError) else Reply.json(episodes)
+        }
+        val viewModel = viewModel()
+        statesOf(viewModel)
+        viewModel.uiState.first { it.stream != null && it.canPlayPrevious }
+
+        serverDown = false
+        viewModel.onPlayPrevious()
+        val state = viewModel.uiState.first { !it.canPlayPrevious }
+
+        assertNull(state.notice)
+        assertEquals("Heat", state.title)
+    }
+
+    @Test
+    fun `a movie has no episode controls`() = runTest {
+        server()
+        val state = viewModel().uiState.first { it.stream != null }
+
+        assertFalse(state.episodeControls)
+        assertNull(state.previousEpisode)
+    }
+
+    @Test
     fun playNowDoesNotWaitForTheCountdown() = runTest {
         val jellyfin = seriesServer()
         val viewModel = viewModel()
@@ -2081,6 +2202,27 @@ class PlaybackViewModelTest {
 
         assertEquals(SkipRun(forward = true, movedMs = 30_000, taps = 3), vm.uiState.value.skipRun)
         assertEquals(30, vm.uiState.value.skipRun?.seconds)
+    }
+
+    @Test
+    fun `a run started from the skip buttons keeps the controls and adds up taps on the video`() = runTest {
+        val vm = serverWithSegments()
+        val duration = 600_000L
+
+        vm.onSkipForward(60_000, duration, fromControls = true)
+        vm.onSeekHandled()
+        vm.onSkipForward(70_000, duration)
+
+        assertEquals(SkipRun(forward = true, movedMs = 20_000, taps = 2, fromControls = true), vm.uiState.value.skipRun)
+    }
+
+    @Test
+    fun `a run started by double taps on the video does not keep the controls`() = runTest {
+        val vm = serverWithSegments()
+
+        vm.onSkipBack(60_000)
+
+        assertFalse(assertNotNull(vm.uiState.value.skipRun).fromControls)
     }
 
     @Test

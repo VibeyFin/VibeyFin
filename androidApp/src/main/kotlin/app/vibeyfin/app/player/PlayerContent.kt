@@ -61,10 +61,13 @@ internal fun PlayerContent(
     subtitleStyle: SubtitleViewStyle,
     trickplay: TrickplayTiles?,
     playable: Boolean,
+    screenReaderOn: Boolean,
     onClose: () -> Unit,
     onBoundsChanged: (Rect) -> Unit,
 ) {
     val overlaysShown = !chrome.leaving && !pip.active
+    // A run begun on the skip buttons keeps the controls up, and so does TalkBack; one begun on the video hides them
+    val seeking: Boolean = state.skipRun?.fromControls == false && !screenReaderOn
 
     Box(
         Modifier.fillMaxSize().background(FixedColors.videoBackground).onGloballyPositioned {
@@ -75,6 +78,7 @@ internal fun PlayerContent(
     ) {
         PlayerVideoSurface(hdrVideo, player, hidden = turn.pictureHidden, subtitleStyle)
         PlayerTapLayer(
+            seeking = state.skipRun != null,
             swipe = Modifier.swipeForLevels(swipe, enabled = state.swipeGestures && overlaysShown) {
                 viewModel.onUserInteraction()
                 chrome.touched()
@@ -84,7 +88,7 @@ internal fun PlayerContent(
                 chrome.controlsVisible = !chrome.controlsVisible
                 chrome.touched()
             },
-            onDoubleTap = { side ->
+            onSkip = { side ->
                 if (playable) {
                     viewModel.onUserInteraction()
                     if (side == SkipSide.Back) viewModel.onSkipBack(clock.positionMs) else viewModel.onSkipForward(clock.positionMs, clock.durationMs)
@@ -94,9 +98,9 @@ internal fun PlayerContent(
         )
 
         if (overlaysShown) {
-            SeekRipple(state.skipRun)
-            ControlsLayer(state, player, clock, chrome, pip, viewModel, trickplay, playable, onClose)
-            StatusOverlays(state, chrome, viewModel)
+            SeekIndicator(state.skipRun)
+            ControlsLayer(state, player, clock, chrome, pip, viewModel, trickplay, playable, seeking, onClose)
+            StatusOverlays(state, chrome, seeking, viewModel)
         }
 
         val waiting = state.loading || (clock.buffering && state.stream != null)
@@ -107,7 +111,7 @@ internal fun PlayerContent(
 
         if (overlaysShown) PromptAndSheets(state, chrome, viewModel)
 
-        UpNextOverlay(state, visible = overlaysShown && state.message == null, viewModel)
+        UpNextOverlay(state, visible = overlaysShown && state.message == null && !seeking, viewModel)
 
         // Over everything else on the video, so the up next card or the skip button never covers it
         if (overlaysShown) SwipeLevelIndicator(swipe)
@@ -130,6 +134,7 @@ private fun ControlsLayer(
     viewModel: PlaybackViewModel,
     trickplay: TrickplayTiles?,
     playable: Boolean,
+    seeking: Boolean,
     onClose: () -> Unit,
 ) {
     // Every control counts as the viewer being there and restarts the hide timer
@@ -138,7 +143,13 @@ private fun ControlsLayer(
         chrome.touched()
     }
 
-    AnimatedVisibility(visible = chrome.controlsVisible || state.message != null, enter = fadeIn(), exit = fadeOut()) {
+    val visible: Boolean = chrome.controlsVisible || state.message != null || seeking
+    var seekingWhenShown: Boolean by remember { mutableStateOf(false) }
+
+    // Fading out after a run, the controls still draw as seeking, or the top bar would flash up
+    if (visible) seekingWhenShown = seeking
+
+    AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
         PlayerControls(
             title = state.title,
             subtitle = state.subtitle,
@@ -149,10 +160,18 @@ private fun ControlsLayer(
             hasTrackChoices = state.hasTrackChoices && state.message == null,
             badge = state.badge,
             showTransport = playable,
+            seeking = seekingWhenShown,
             speedLabel = Strings.speedValue(state.speed),
             trickplay = trickplay,
-            // Gives way to the up next card, which has its own Play now
-            nextEpisode = state.nextEpisode.takeIf { state.upNext == null && state.message == null },
+            episodeControls = state.episodeControls,
+            previousEpisode = state.previousEpisode,
+            nextEpisode = state.nextEpisode,
+            canPlayPrevious = state.canPlayPrevious,
+            canPlayNext = state.canPlayNext,
+            onPreviousEpisode = {
+                viewModel.onUserInteraction()
+                viewModel.onPlayPrevious()
+            },
             onNextEpisode = {
                 viewModel.onUserInteraction()
                 viewModel.onPlayNow()
@@ -190,11 +209,11 @@ private fun ControlsLayer(
             skipForwardSeconds = state.skipForwardSeconds,
             onSkipBack = {
                 touched()
-                viewModel.onSkipBack(clock.positionMs)
+                viewModel.onSkipBack(clock.positionMs, fromControls = true)
             },
             onSkipForward = {
                 touched()
-                viewModel.onSkipForward(clock.positionMs, clock.durationMs)
+                viewModel.onSkipForward(clock.positionMs, clock.durationMs, fromControls = true)
             },
             onSeek = {
                 viewModel.onUserInteraction()
@@ -207,7 +226,7 @@ private fun ControlsLayer(
 
 // The stats and the skip button stay up when the controls hide, but not under an error, which fills the same part of the screen
 @Composable
-private fun BoxScope.StatusOverlays(state: PlaybackUiState, chrome: PlayerChrome, viewModel: PlaybackViewModel) {
+private fun BoxScope.StatusOverlays(state: PlaybackUiState, chrome: PlayerChrome, seeking: Boolean, viewModel: PlaybackViewModel) {
     val noError = state.message == null
     val diagnostics = state.diagnostics.takeIf { state.showDiagnostics }
     val skip = state.skipOffer
@@ -235,7 +254,7 @@ private fun BoxScope.StatusOverlays(state: PlaybackUiState, chrome: PlayerChrome
     }
 
     // Offered for the whole segment, controls up or not; above the scrubber while that shows
-    if (noError && skip != null) {
+    if (noError && skip != null && !seeking) {
         val lift by animateDpAsState(if (chrome.controlsVisible) SKIP_LIFT_WITH_CONTROLS else 0.dp, label = "skipLift")
 
         SkipButton(

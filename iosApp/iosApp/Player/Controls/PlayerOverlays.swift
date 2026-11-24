@@ -319,19 +319,27 @@ struct SkipOfferOverlay: View {
     }
 }
 
-/// Near the tapped side; fades in and out, and under Reduce Motion does nothing else.
-struct SeekFlashRow: View {
+/// While skips in a row show: the total sits on the side of the skip and only the scrubber stays.
+struct SeekingOverlay<Bar: View>: View {
     let side: SeekSide
-    let seconds: Int
+    let text: String
+    let taps: Int
+    @ViewBuilder let bar: Bar
 
     var body: some View {
-        HStack {
-            if side == .forward { Spacer(minLength: 0) }
-            SeekFlash(text: Strings.shared.seekFlash(seconds: Int32(seconds)))
-                .padding(.horizontal, Space.s7)
-            if side == .back { Spacer(minLength: 0) }
+        ZStack {
+            GeometryReader { proxy in
+                SeekIndicator(forward: side == .forward, text: text, taps: taps)
+                    .frame(width: proxy.size.width * 0.44, height: proxy.size.height)
+                    .frame(maxWidth: .infinity, alignment: side == .forward ? .trailing : .leading)
+            }
+            .ignoresSafeArea()
+            VStack {
+                Spacer(minLength: 0)
+                bar
+            }
         }
         .allowsHitTesting(false)
-        .transition(.opacity)
+        .transition(.asymmetric(insertion: .opacity.animation(.easeOut(duration: 0.08)), removal: .opacity.animation(.easeOut(duration: 0.06))))
     }
 }

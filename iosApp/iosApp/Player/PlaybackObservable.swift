@@ -84,9 +84,14 @@ final class PlaybackObservable: ObservableObject {
         model.onStopWatching()
     }
 
-    /// "Play now" on the next-episode card.
+    /// "Play now" on the next-episode card, or the Next episode button.
     func playNow() {
         model.onPlayNow()
+    }
+
+    /// The Previous episode button.
+    func playPrevious() {
+        model.onPlayPrevious()
     }
 
     /// "Watch credits" on the next-episode card: it goes, and the episode plays out.
@@ -136,12 +141,12 @@ final class PlaybackObservable: ObservableObject {
     }
 
     /// A skip button or double-tap: the model answers with a seek by the chosen seconds.
-    func skipBack(_ positionMs: Int64) {
-        model.skipBack(positionMs: positionMs)
+    func skipBack(_ positionMs: Int64, fromControls: Bool = true) {
+        model.skipBack(positionMs: positionMs, fromControls: fromControls)
     }
 
-    func skipForward(_ positionMs: Int64, durationMs: Int64) {
-        model.skipForward(positionMs: positionMs, durationMs: durationMs)
+    func skipForward(_ positionMs: Int64, durationMs: Int64, fromControls: Bool = true) {
+        model.skipForward(positionMs: positionMs, durationMs: durationMs, fromControls: fromControls)
     }
 
     /// The seek the model asked for has been handed to the player.

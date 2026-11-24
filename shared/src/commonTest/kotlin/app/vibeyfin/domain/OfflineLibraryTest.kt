@@ -197,6 +197,19 @@ class OfflineLibraryTest {
     }
 
     @Test
+    fun thePreviousEpisodeIsThePreviousOneOnTheDevice() = runTest {
+        account()
+        app.downloaded("e1", type = "Episode", seriesId = "s1", seriesName = "Saga", season = 1, episode = 1)
+        app.downloaded("e3", type = "Episode", seriesId = "s1", seriesName = "Saga", season = 1, episode = 3)
+        app.downloaded("s2e1", type = "Episode", seriesId = "s1", seriesName = "Saga", season = 2, episode = 1)
+        app.downloaded("other", type = "Episode", seriesId = "s2", seriesName = "Other", season = 1, episode = 2)
+
+        assertEquals("e3", library.previousBefore(alex, library.playable(alex, "s2e1")!!.item)?.id)
+        assertEquals("e1", library.previousBefore(alex, library.playable(alex, "e3")!!.item)?.id, "episode 2 is not downloaded")
+        assertNull(library.previousBefore(alex, library.playable(alex, "e1")!!.item), "nothing before the first")
+    }
+
+    @Test
     fun continueWatchingHasWhatWasStartedAndThenTheNextEpisodeOfAShow() = runTest {
         account()
         app.downloaded("half", positionMs = 30_000, userDataAt = 5_000)

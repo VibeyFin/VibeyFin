@@ -162,9 +162,10 @@ data class SkipOffer(val label: String, val toMs: Long)
 /**
  * Skips in a row to one side, while their total shows: [forward] or back, [movedMs] how far they went
  * together (less than the steps add up to at the start or the end), [taps] how many, so a screen can
- * animate each one.
+ * animate each one. [fromControls]: the run began on a skip button, so the controls stay up; one begun by
+ * double taps on the video hides them.
  */
-data class SkipRun(val forward: Boolean, val movedMs: Long, val taps: Int) {
+data class SkipRun(val forward: Boolean, val movedMs: Long, val taps: Int, val fromControls: Boolean = false) {
     /** [movedMs] in whole seconds, for the label. */
     val seconds: Int get() = ((movedMs + 500) / 1000).toInt()
 }
@@ -190,9 +191,17 @@ data class PlaybackUiState(
     val upNext: UpNext? = null,
     /**
      * The episode after this one ("S2:E5 · Low Tide"), once it is known; null for a movie, the last episode, or before the
-     * lookup is back. The player's Next episode button shows while this is set and [upNext] isn't; it calls `onPlayNow`.
+     * lookup is back. The player's Next episode button calls `onPlayNow`.
      */
     val nextEpisode: String? = null,
+    /** The episode before this one, like [nextEpisode]; null for the first episode. The Previous button calls `onPlayPrevious`. */
+    val previousEpisode: String? = null,
+    /** The Next episode button is enabled: [nextEpisode] is known, or its lookup failed and a tap asks again. */
+    val canPlayNext: Boolean = false,
+    /** The Previous episode button is enabled, like [canPlayNext]. */
+    val canPlayPrevious: Boolean = false,
+    /** What plays is an episode of a show, so the player shows Previous and Next around Play. */
+    val episodeControls: Boolean = false,
     /** Playback reached the end and nothing follows; the screen should close. */
     val finished: Boolean = false,
     /** Set when the session ended and the screen must be left. */
@@ -364,6 +373,12 @@ class PlaybackViewModel(
 
     // The episode after [item], once looked up; null while unknown, and for anything that has no next one.
     private var next: MediaItem? = null
+
+    private var previous: MediaItem? = null
+
+    // The lookup of [next] or [previous] failed, so whether there is one is not known yet.
+    private var nextUnknown = false
+    private var previousUnknown = false
 
     // The user chose "Watch credits": no card for the rest of this episode.
     private var upNextDismissed = false
@@ -553,29 +568,29 @@ class PlaybackViewModel(
         content.update { it.copy(pendingSeekMs = offer.toMs) }
     }
 
-    /** Seeks back by the profile's skip length from [positionMs], not below the start. */
-    fun onSkipBack(positionMs: Long) {
+    /** Seeks back by the profile's skip length from [positionMs], not below the start; [fromControls] when the skip button did it. */
+    fun onSkipBack(positionMs: Long, fromControls: Boolean = false) {
         val from = basePosition(positionMs)
         val to = (from - content.value.skipBackSeconds * 1000L).coerceAtLeast(0L)
         seekTo(to)
-        addToSkipRun(forward = false, movedMs = from - to)
+        addToSkipRun(forward = false, movedMs = from - to, fromControls = fromControls)
     }
 
     /** Seeks forward by the profile's skip length from [positionMs], not past [durationMs]; does nothing while the duration is unknown. */
-    fun onSkipForward(positionMs: Long, durationMs: Long) {
+    fun onSkipForward(positionMs: Long, durationMs: Long, fromControls: Boolean = false) {
         if (durationMs <= 0L) return
         val from = basePosition(positionMs)
         val to = (from + content.value.skipForwardSeconds * 1000L).coerceAtMost(durationMs)
         seekTo(to)
-        addToSkipRun(forward = true, movedMs = (to - from).coerceAtLeast(0L))
+        addToSkipRun(forward = true, movedMs = (to - from).coerceAtLeast(0L), fromControls = fromControls)
     }
 
     // Adds a skip to the run to the same side, or starts a new run, and shows it for [SKIP_RUN_WINDOW] more.
-    private fun addToSkipRun(forward: Boolean, movedMs: Long) {
+    private fun addToSkipRun(forward: Boolean, movedMs: Long, fromControls: Boolean) {
         content.update { state ->
             val run = state.skipRun?.takeIf { it.forward == forward }
             state.copy(
-                skipRun = SkipRun(forward, (run?.movedMs ?: 0L) + movedMs, (run?.taps ?: 0) + 1),
+                skipRun = SkipRun(forward, (run?.movedMs ?: 0L) + movedMs, (run?.taps ?: 0) + 1, fromControls || run?.fromControls == true),
             )
         }
         skipRunEnd?.cancel()
@@ -817,27 +832,74 @@ class PlaybackViewModel(
                 subtitle = Strings.metaLine(found.seriesName, found.episodeLabel()),
                 artworkUrl = found.landscapeUrl ?: found.backdropUrl ?: found.posterUrl,
                 subtitleSearchItemId = found.id.takeIf { downloaded == null && found.canPlay },
+                episodeControls = found.isShowEpisode(),
             )
         }
         open(startAtMs)
         lookUpNext(found)
+        lookUpPrevious(found)
+    }
+
+    private fun MediaItem.isShowEpisode(): Boolean = kind == ItemKind.Episode && seriesId != null
+
+    private fun lookUpPrevious(current: MediaItem) {
+        if (!current.isShowEpisode()) return
+        viewModelScope.launch { settlePrevious(current, findPrevious(current)) }
+    }
+
+    private suspend fun findPrevious(current: MediaItem): ApiResult<MediaItem?> = if (local != null) {
+        ApiResult.Success(connection.state.value.profileOrNull()?.let { offline.previousBefore(it, current) })
+    } else {
+        watch.previousEpisode(current)
+    }
+
+    // A failed lookup leaves the button on, so a tap can ask again instead of it looking like the first episode.
+    private fun settlePrevious(current: MediaItem, result: ApiResult<MediaItem?>) {
+        if (item?.id != current.id) return
+        val found: MediaItem? = (result as? ApiResult.Success)?.value
+        previous = found
+        previousUnknown = result is ApiResult.Failure
+        textSource.update { it.copy(previous = found) }
+        content.update { it.copy(previousEpisode = found?.let(::episodeLine), canPlayPrevious = found != null || previousUnknown) }
     }
 
     private fun lookUpNext(current: MediaItem) {
         // Looked up whether or not the episode plays on by itself: the Next episode button needs it either way.
-        if (current.kind != ItemKind.Episode || current.seriesId == null) return
+        if (!current.isShowEpisode()) return
+        viewModelScope.launch { settleNext(current, findNext(current)) }
+    }
+
+    // A download plays on into the next one downloaded; the server's own order is for what comes from the server.
+    private suspend fun findNext(current: MediaItem): ApiResult<MediaItem?> = if (local != null) {
+        ApiResult.Success(connection.state.value.profileOrNull()?.let { offline.nextAfter(it, current) })
+    } else {
+        watch.nextEpisode(current)
+    }
+
+    // Only if the user is still on the episode this was asked for.
+    private fun settleNext(current: MediaItem, result: ApiResult<MediaItem?>) {
+        if (item?.id != current.id) return
+        val found: MediaItem? = (result as? ApiResult.Success)?.value
+        next = found
+        nextUnknown = result is ApiResult.Failure
+        textSource.update { it.copy(next = found) }
+        content.update { it.copy(nextEpisode = found?.let(::episodeLine), canPlayNext = found != null || nextUnknown) }
+    }
+
+    // A tap on Previous or Next after its lookup failed: asks again, then plays what it finds or says why it can't.
+    private fun retryLookUp(
+        find: suspend (MediaItem) -> ApiResult<MediaItem?>,
+        settle: (MediaItem, ApiResult<MediaItem?>) -> Unit,
+        play: (MediaItem) -> Unit,
+    ) {
+        val current = item ?: return
         viewModelScope.launch {
-            // A download plays on into the next one downloaded; the server's own order is for what comes from the server.
-            val found = if (local != null) {
-                connection.state.value.profileOrNull()?.let { offline.nextAfter(it, current) }
-            } else {
-                (watch.nextEpisode(current) as? ApiResult.Success)?.value
-            } ?: return@launch
-            // Only if the user is still on the episode this was asked for.
-            if (item?.id == current.id) {
-                next = found
-                textSource.update { it.copy(next = found) }
-                content.update { it.copy(nextEpisode = Strings.metaLine(found.episodeLabel(), found.title)) }
+            val result = find(current)
+            if (item?.id != current.id) return@launch
+            settle(current, result)
+            when (result) {
+                is ApiResult.Success -> result.value?.let(play)
+                is ApiResult.Failure -> onNotice(LoadMessages.forError(result.error))
             }
         }
     }
@@ -893,9 +955,27 @@ class PlaybackViewModel(
 
     /** "Play now" on the card, or the player's Next episode button: the next episode starts without waiting for the countdown. */
     fun onPlayNow() {
-        if (next == null) return
+        if (next == null && !nextUnknown) return
         binge.interacted()
-        playNext(byItself = false)
+        if (next != null) {
+            playNext(byItself = false)
+        } else {
+            retryLookUp(::findNext, ::settleNext) { playNext(byItself = false) }
+        }
+    }
+
+    /** The player's Previous episode button: the episode before starts, and this one is left where it is. */
+    fun onPlayPrevious() {
+        if (previous == null && !previousUnknown) return
+        binge.interacted()
+        val target = previous
+        if (target != null) playPrevious(target) else retryLookUp(::findPrevious, ::settlePrevious, ::playPrevious)
+    }
+
+    private fun playPrevious(target: MediaItem) {
+        countdown?.cancel()
+        countdown = null
+        switchTo(target, stopAtMs = lastPositionMs)
     }
 
     // Moves on to [next]. [byItself]: nobody asked for it, so it counts towards "Are you still watching?".
@@ -919,11 +999,18 @@ class PlaybackViewModel(
     // end, whatever the countdown cut short, so the server counts it as watched.
     private fun advance() {
         val target = next ?: return
-        active.stop(item?.runtimeMs ?: lastPositionMs)
+        switchTo(target, stopAtMs = item?.runtimeMs ?: lastPositionMs)
+    }
+
+    private fun switchTo(target: MediaItem, stopAtMs: Long) {
+        active.stop(stopAtMs)
         val wasLocal = local != null
         local = null
         itemId = target.id
         next = null
+        previous = null
+        nextUnknown = false
+        previousUnknown = false
         item = null
         started = false
         ended = false
@@ -943,7 +1030,7 @@ class PlaybackViewModel(
         segmentsRequested = false
         trickplayFor = null
         content.update {
-            it.copy(loading = true, stream = null, upNext = null, nextEpisode = null, skipOffer = null, trickplay = null, speed = 1f, badge = null, stillWatching = false, audioTracks = emptyList(), subtitleTracks = emptyList(), message = null, finished = false)
+            it.copy(loading = true, stream = null, upNext = null, nextEpisode = null, previousEpisode = null, canPlayNext = false, canPlayPrevious = false, skipOffer = null, trickplay = null, speed = 1f, badge = null, stillWatching = false, audioTracks = emptyList(), subtitleTracks = emptyList(), message = null, finished = false)
         }
         viewModelScope.launch {
             // A download goes on into the next one, which is downloaded too: it is found there again to play from the device.
@@ -1145,6 +1232,7 @@ class PlaybackViewModel(
 private data class PlaybackText(
     val item: MediaItem? = null,
     val next: MediaItem? = null,
+    val previous: MediaItem? = null,
     val problem: PlaybackProblem? = null,
     val format: VideoFormat? = null,
     val audioTracks: List<PlaybackTrack> = emptyList(),
@@ -1177,7 +1265,8 @@ private fun PlaybackUiState.withText(source: PlaybackText): PlaybackUiState {
     }
     return copy(
         subtitle = subtitle?.let { source.item?.let(::subtitleLine) },
-        nextEpisode = nextEpisode?.let { source.next?.let(::nextLine) },
+        nextEpisode = nextEpisode?.let { source.next?.let(::episodeLine) },
+        previousEpisode = previousEpisode?.let { source.previous?.let(::episodeLine) },
         message = message?.let { source.problem?.message() },
         badge = badge?.let { source.format?.badge() },
         audioTracks = audioTracks.map { option -> option.copy(label = source.audioTracks.labelOf(option.index)) },
@@ -1192,7 +1281,7 @@ private fun PlaybackUiState.withText(source: PlaybackText): PlaybackUiState {
 
 private fun subtitleLine(item: MediaItem): String? = Strings.metaLine(item.seriesName, item.episodeLabel())
 
-private fun nextLine(item: MediaItem): String? = Strings.metaLine(item.episodeLabel(), item.title)
+private fun episodeLine(item: MediaItem): String? = Strings.metaLine(item.episodeLabel(), item.title)
 
 private fun List<PlaybackTrack>.labelOf(index: Int): String = firstOrNull { it.index == index }?.name ?: Strings.track(index)
 

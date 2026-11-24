@@ -161,7 +161,7 @@ server run a library refresh (`POST /Library/Refresh`), then the seed script bel
 
 | Fixture | Path under `media/` | What it is | Needed by |
 | --- | --- | --- | --- |
-| `saga-show` | `shows/Saga Show/` | Series with poster, backdrop, logo, `season01-poster.jpg`, genres Drama and Science Fiction, plot, two cast members. Seasons: Specials (S00E01, S00E02), Season 1 (E01 to E08), Season 2 (E01 to E03) | Series page, season picker, scrolling episode list on phones, Specials, Home hero (backdrop plus logo) |
+| `saga-show` | `shows/Saga Show/` | Series with poster, backdrop, logo, `season01-poster.jpg`, genres Drama and Science Fiction, plot, two cast members. Seasons: Specials (S00E01, S00E02), Season 1 (E01 to E08), Season 2 (E01 to E03) | Series page, season picker, scrolling episode list on phones, Specials, Home hero (backdrop plus logo), the player's Previous and Next across seasons (checked on 12.4.0: `GET /Shows/{id}/Episodes?adjacentTo=` answers the episode before, the episode and the one after in the show's order, Specials first, and drops the missing side at either end) |
 | `saga-s01` episodes | `Season 01/Saga Show S01E0n.mkv` | "Chapter n". Synopsis on 1, 2 and 4 only; a still (`-thumb.jpg`) on 1, 2 and 5 only; the rest have neither | Episode rows with and without synopsis or still |
 | `saga-s00`, `saga-s02` | `Season 00/`, `Season 02/` | "Special 1", "Special 2"; "Return 1" to "Return 3", all with a synopsis, no still | Specials season, a second season |
 | `solo-season` | `shows/Solo Season/` | Series with one season ("Only 1", "Only 2"), poster only, no backdrop, no logo | Single-season series (no season picker), Home hero must skip it |
