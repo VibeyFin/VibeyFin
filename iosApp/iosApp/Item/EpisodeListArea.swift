@@ -3,7 +3,7 @@ import Shared
 
 /// The chosen season's episodes, as the library's page and Seerr's draw them: grey rows or cards while they load, why they didn't,
 /// "no episodes", then the list: down the page on a phone, sideways as cards on a regular width. Choosing another season swaps the
-/// content in place: the area keeps the height of the tallest list it has shown, and the old list stays up, a little dimmed, until the
+/// content in place: the area keeps the height of the list it showed until the new one has loaded, and the old list stays up, a little dimmed, until the
 /// new one arrives.
 struct EpisodeListArea<Episode, ID: Hashable, Row: View, Card: View>: View {
     let episodes: [Episode]
@@ -18,19 +18,19 @@ struct EpisodeListArea<Episode, ID: Hashable, Row: View, Card: View>: View {
     @ViewBuilder let row: (Episode) -> Row
     @ViewBuilder let card: (Episode, CGFloat) -> Card
 
-    @State private var tallest: CGFloat = 0
+    @State private var settledHeight: CGFloat = 0
 
     /// Episode cards: 300 wide on a phone, 380 on a regular width.
     private var cardWidth: CGFloat { wide ? 380 : 300 }
 
     var body: some View {
         content
-            .frame(minHeight: tallest, alignment: .top)
             .background(GeometryReader { proxy in
                 Color.clear.preference(key: EpisodeHeightKey.self, value: proxy.size.height)
             })
+            .frame(minHeight: settledHeight, alignment: .top)
             .onPreferenceChange(EpisodeHeightKey.self) { height in
-                if !loading && height > tallest { tallest = height }
+                if !loading { settledHeight = height }
             }
     }
 
