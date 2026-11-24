@@ -33,6 +33,8 @@ final class AetherPlaybackEngine: PlaybackEngine {
     private var bufferAheadSeconds: Int32 = 0
     /// What the load found in the file, for the stats.
     private var videoInfo: VideoInfo?
+    private var restoreTask: Task<Void, Never>?
+    private var playAfterRestore = false
 
     init?() {
         guard let engine = try? AetherEngine() else { return nil }
@@ -89,6 +91,11 @@ final class AetherPlaybackEngine: PlaybackEngine {
             .sink { [weak self] _ in self?.applyAudio() }
             .store(in: &subscriptions)
         subscribeToSubtitles()
+        // Queued behind Aether's own didBecomeActive work, so it no longer counts itself as in the background.
+        NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.restoreAfterBackground() }
+            .store(in: &subscriptions)
         engine.$videoRoute
             .combineLatest(engine.$audioDelivery)
             .receive(on: DispatchQueue.main)
@@ -123,6 +130,7 @@ final class AetherPlaybackEngine: PlaybackEngine {
 
     func open(_ stream: PlaybackStream, url: URL, bufferAheadSeconds: Int32) {
         loadTask?.cancel()
+        cancelRestore()
         isOpen = true
         generation += 1
         readyReported = false
@@ -176,6 +184,7 @@ final class AetherPlaybackEngine: PlaybackEngine {
 
     func close() {
         loadTask?.cancel()
+        cancelRestore()
         isOpen = false
         wantedAudio = nil
         appliedAudio = nil
@@ -193,11 +202,52 @@ final class AetherPlaybackEngine: PlaybackEngine {
     // MARK: - Commands
 
     func play() {
-        engine.play()
+        guard engine.needsForegroundVideoRestore || restoreTask != nil else { return engine.play() }
+        playAfterRestore = true
+        restoreAfterBackground()
     }
 
     func pause() {
+        playAfterRestore = false
         engine.pause()
+    }
+
+    // MARK: - Background return
+
+    /// Aether releases a paused video pipeline once the app has been in the background past its grace window
+    /// (a locked phone), and says it must be rebuilt before play; a bare play() then waits forever.
+    private func restoreAfterBackground() {
+        guard isOpen, restoreTask == nil, engine.needsForegroundVideoRestore else { return }
+        let opened = generation
+        PlayerLog.write("aether restore after background")
+        restoreTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                try await self.engine.reloadAtCurrentPosition { $0.autoplay = false }
+                guard self.generation == opened, self.isOpen else { return }
+                self.restoreTask = nil
+                if self.playAfterRestore { self.engine.play() }
+                self.playAfterRestore = false
+            } catch is CancellationError {
+                return
+            } catch {
+                guard self.generation == opened, self.isOpen else { return }
+                self.restoreTask = nil
+                self.playAfterRestore = false
+                PlayerLog.write("aether restore failed \(error)")
+                if let info = self.engine.errorInfo {
+                    self.events.failed(Self.failure(of: info))
+                } else {
+                    self.events.failed(Self.failure(of: error))
+                }
+            }
+        }
+    }
+
+    private func cancelRestore() {
+        restoreTask?.cancel()
+        restoreTask = nil
+        playAfterRestore = false
     }
 
     func setSpeed(_ speed: Float, applyNow: Bool) {
@@ -294,6 +344,13 @@ final class AetherPlaybackEngine: PlaybackEngine {
 
     private func phaseChanged(_ phase: PlaybackPhase) {
         guard isOpen else { return }
+        // A rebuild nobody pressed play for passes through loading and seeking on its way back to paused; the player was paused all along.
+        if restoreTask != nil && !playAfterRestore {
+            switch phase {
+            case .error, .ended: break
+            default: return
+            }
+        }
         PlayerLog.write("aether phase \(phase)")
         switch phase {
         case .idle:
