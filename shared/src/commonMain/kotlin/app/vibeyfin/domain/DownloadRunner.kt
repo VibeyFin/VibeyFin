@@ -309,7 +309,24 @@ class DownloadRunner(
                     is ApiResult.Failure -> if (result.error != ApiError.NotFound) return result
                 }
             }
-            return ApiResult.Success(snapshot.copy(images = images, subtitles = subtitles, assetsDone = true))
+            val trickplay: TrickplayTrack? = when (val result = fetchTrickplay(api, id, snapshot.trickplay)) {
+                is ApiResult.Success -> result.value
+                is ApiResult.Failure -> return result
+            }
+            return ApiResult.Success(snapshot.copy(images = images, subtitles = subtitles, trickplay = trickplay, assetsDone = true))
+        }
+
+        // The scrub-preview tiles, with the video; a tile the server no longer has leaves the download without them (the player asks the server).
+        private suspend fun fetchTrickplay(api: JellyfinApi, id: String, track: TrickplayTrack?): ApiResult<TrickplayTrack?> {
+            if (track == null) return ApiResult.Success(null)
+            for (tileIndex in 0 until track.tileCount) {
+                val result: ApiResult<Unit> = fetchFile(api, track.tilePath(id, tileIndex), trickplayTilePath(profile, id, tileIndex))
+                if (result !is ApiResult.Failure) continue
+                if (result.error != ApiError.NotFound) return result
+                files.delete("${folder(profile, id)}/trickplay")
+                return ApiResult.Success(null)
+            }
+            return ApiResult.Success(track)
         }
 
         private suspend fun fetchFile(api: JellyfinApi, path: String, file: String): ApiResult<Unit> {

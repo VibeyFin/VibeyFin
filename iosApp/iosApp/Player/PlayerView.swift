@@ -209,7 +209,10 @@ struct PlayerView: View {
             pendingBackground?.cancel()
             // The window plays on without this screen being visible; it is torn down when the window closes.
             remote.remove()
-            if !pip.isActive { controller.tearDown() }
+            if !pip.isActive {
+                controller.tearDown()
+                trickplayTiles?.close()
+            }
             OrientationLock.restore()
             swipe.restoreBrightness()
             UIApplication.shared.isIdleTimerDisabled = false

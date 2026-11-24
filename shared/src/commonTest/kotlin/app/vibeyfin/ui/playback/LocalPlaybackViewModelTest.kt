@@ -28,7 +28,9 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -58,7 +60,7 @@ class LocalPlaybackViewModelTest {
         PlaybackViewModel(
             id, app.library, app.playback, app.reporter(reporterScope), app.connection, app.watch, app.profileSettings, app.binge,
             app.offlineLibrary, app.offline, app.localReporter(reporterScope, interval = 20.milliseconds), app.subtitles,
-            listOf(1.milliseconds, 1.milliseconds), startOver, true, countdownStep,
+            listOf(1.milliseconds, 1.milliseconds), startOver, true, countdownStep, app.network,
         ),
     )
 
@@ -87,6 +89,50 @@ class LocalPlaybackViewModelTest {
             }
         }
         assertTrue(condition(), "never became true")
+    }
+
+    @Test
+    fun aDownloadScrubsWithItsOwnTilesAndAsksTheServerForNothing() = runTest {
+        signedIn(offline = true)
+        app.downloaded("m1", trickplayTiles = 3)
+
+        val state = viewModel().uiState.first { !it.loading }
+
+        assertEquals("file:///fake/srv-1/u1/m1/trickplay/1.jpg", assertNotNull(state.trickplay).tileUrl(1))
+        assertEquals(emptyList(), requests())
+    }
+
+    @Test
+    fun aDownloadMadeBeforeTilesWereKeptAsksTheServerForThem() = runTest {
+        val server = signedIn(offline = false)
+        server.on("GET", "/Items", Reply.json("""{"Items":[{"Id":"m1","Name":"Heat","Type":"Movie","Trickplay":{"ms-m1":{"320":{"Width":320,"Height":180,"TileWidth":10,"TileHeight":10,"ThumbnailCount":250,"Interval":10000}}}}],"TotalRecordCount":1}"""))
+        app.downloaded("m1")
+
+        val state = viewModel().uiState.first { it.trickplay != null }
+
+        assertEquals("http://nas:8096/Videos/m1/Trickplay/320/1.jpg?mediaSourceId=ms-m1", state.trickplay!!.tileUrl(1))
+    }
+
+    @Test
+    fun anOfflineDownloadWithoutTilesHasTheTimestampAlone() = runTest {
+        signedIn(offline = true)
+        app.downloaded("m1")
+
+        val state = viewModel().uiState.first { !it.loading }
+
+        assertNull(state.trickplay)
+    }
+
+    @Test
+    fun aMeteredConnectionLimitsTheScrubPreviewFetching() = runTest {
+        signedIn(offline = false)
+        app.downloaded("m1")
+        val model = viewModel()
+
+        assertFalse(model.uiState.first { !it.loading }.dataLimited)
+        app.network.set(NetworkState.Metered)
+
+        assertTrue(model.uiState.first { it.dataLimited }.dataLimited)
     }
 
     @Test

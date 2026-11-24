@@ -93,13 +93,23 @@ extension PlayerView {
     }
 
     /// A new item's trickplay gets new tiles, so the previous episode's thumbnails never show; none clears them.
+    /// The tiles are fetched from the moment they exist, and again around the position after each seek.
     func updateTrickplay(_ state: PlaybackUiState?) {
         guard let track = state?.trickplay, !track.tilesUrl.isEmpty else {
+            trickplayTiles?.close()
             if trickplayTiles != nil { trickplayTiles = nil }
             return
         }
-        guard let headers = state?.stream?.headers, trickplayTiles?.isFor(track) != true else { return }
-        trickplayTiles = TrickplayTiles(track: track, headers: headers)
+        let limited = state?.dataLimited == true
+        if let tiles = trickplayTiles, tiles.isFor(track) {
+            tiles.setLimited(limited)
+            return
+        }
+        guard let headers = state?.stream?.headers else { return }
+        trickplayTiles?.close()
+        let tiles = TrickplayTiles(track: track, headers: headers, limited: limited)
+        tiles.aim(atMs: controller.currentMilliseconds)
+        trickplayTiles = tiles
     }
 
     /// Gives the shared model what the player does. Done on appear, after both objects exist.
@@ -107,8 +117,14 @@ extension PlayerView {
         controller.events = PlayerEvents(
             playing: { model.playing($0) },
             paused: { model.paused($0) },
-            seeked: { model.seeked($0) },
-            position: { model.position($0) },
+            seeked: {
+                model.seeked($0)
+                trickplayTiles?.aim(atMs: $0)
+            },
+            position: {
+                model.position($0)
+                trickplayTiles?.aim(atMs: $0)
+            },
             ended: { model.ended($0) },
             failed: { model.failed($0) },
             diagnostics: { model.diagnostics($0) }

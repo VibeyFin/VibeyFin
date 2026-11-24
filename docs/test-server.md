@@ -60,6 +60,7 @@ this name; renaming or changing one is a reviewed change. All paths are under
 | `show-e03` | `shows/Test Show/Season 01/Test Show S01E03.mkv` | Same as `show-e01`, pattern `rgbtestsrc` | "Are you still watching?" (the prompt appears here with the setting at After 2 episodes) |
 | `show-e04` | `shows/Test Show/Season 01/Test Show S01E04.mkv` | Same as `show-e01`, pattern `smptehdbars` | Makes the prompt in `show-e03` appear: the prompt needs a next episode |
 | `movie-hdr` | `movies/HDR Sample (2026)/HDR Sample (2026).mkv` | 20 s, 1280x720 HEVC 10-bit, bt2020 / smpte2084, mastering metadata, 330 Hz AAC; trickplay on (Movies library), no chapters so no segments | HDR10 badge, HDR to SDR handling in negotiation |
+| `long-scrub` | `movies/Long Scrub (2026)/Long Scrub (2026).mkv` | 25 min, 640x360 H.264 at 12 fps (`testsrc2`), 360 Hz AAC, no chapters; trickplay on (Movies library): 150 thumbnails at 10 s, so two tiles (100 and 50) | Scrub preview across tiles: prefetch order, the data rule, tiles kept with a download and played offline |
 | `plain` | `failures/Plain Clip (2026)/Plain Clip (2026).mkv` | 20 s, 640x360 H.264 (`testsrc2`), 440 Hz AAC, no chapters, no subtitles | The baseline for the failure fixtures; "no segments, no trickplay": no skip button, no scrub thumbnails |
 | `dts-audio` | `failures/DTS Audio (2026)/DTS Audio (2026).mkv` | Same as `plain`, with DTS audio instead of AAC | An audio codec a device may not decode: negotiation |
 | `mkv-vp9-opus` | `failures/MKV VP9 Opus (2026)/MKV VP9 Opus (2026).mkv` | Same as `plain`, VP9 video and Opus audio in MKV | A file AVPlayer cannot open: negotiation |
@@ -401,4 +402,8 @@ curl -s -H "$AUTH" "$URL/Items/<hdrId>"                  # VideoRangeType: HDR10
 
 Trickplay: each episode lists a `320` px entry (10x10 tiles, one thumbnail per 10 s, 18 thumbnails).
 Generation runs after the scan and takes a few seconds for these files. If an item shows none, run
-the "Generate Trickplay Images" scheduled task (Dashboard > Scheduled Tasks).
+the "Generate Trickplay Images" scheduled task (Dashboard > Scheduled Tasks). `long-scrub` lists 150
+thumbnails, so tiles `0.jpg` and `1.jpg`; to check prefetching, scrub it with the throttle proxy on and watch the
+tile requests: the tile under the position first, then its neighbours; on mobile data or with Low Data Mode only
+those. To check downloads, download it, switch to airplane mode and scrub: the thumbnails come from the
+`trickplay/` folder beside the video.

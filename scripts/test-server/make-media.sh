@@ -5,6 +5,8 @@
 #   shows/Test Show/Season 01/Test Show S01E03.mkv   third and fourth: with "After 2 episodes" the still-watching
 #   shows/Test Show/Season 01/Test Show S01E04.mkv   prompt appears in the third, because a fourth follows it
 #   movies/HDR Sample (2026)/HDR Sample (2026).mkv   20 s HEVC HDR10 (10-bit, bt2020 / smpte2084)
+#   movies/Long Scrub (2026)/Long Scrub (2026).mkv   25 min of 640x360 H.264 at 12 fps: 150 trickplay thumbnails, so two tiles
+#     (100 and 50), to check that scrub-preview tiles are prefetched in order and kept with a download
 #   movies/Neon Night (2026), Quiet Harbor (2025), Old Classic (1999)   5 s clips with a movie.nfo each, for the Home
 #     category buttons: genres Drama, Thriller and Science Fiction, and release years 2026 to 1999 for "New".
 #     Jellyfin reads the .nfo as local metadata (no online lookup).
@@ -114,6 +116,14 @@ if [ ! -f "${HDR_DIR}/HDR Sample (2026).mkv" ]; then
      -x265-params "hdr10=1:repeat-headers=1:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1):max-cll=1000,400" \
      -tag:v hvc1 -c:a aac -b:a 64k -shortest \
      "/data/media/movies/HDR Sample (2026)/HDR Sample (2026).mkv"
+fi
+# Trickplay across several tiles: 25 minutes at one thumbnail per 10 s is 150 thumbnails, more than one 10x10 tile holds.
+LONG_DIR="${MEDIA}/movies/Long Scrub (2026)"
+mkdir -p "$LONG_DIR"
+if [ ! -f "${LONG_DIR}/Long Scrub (2026).mkv" ]; then
+  ff -f lavfi -i "testsrc2=size=640x360:rate=12:duration=1500" -f lavfi -i "sine=frequency=360:duration=1500" \
+     -c:v libx264 -preset veryfast -crf 32 -pix_fmt yuv420p -g 48 -c:a aac -b:a 48k -shortest \
+     "/data/media/movies/Long Scrub (2026)/Long Scrub (2026).mkv"
 fi
 # Home category buttons (docs/test-server.md "Fixtures"): small clips with studio and genre set through an .nfo.
 nfo_movie() { # $1 = folder name, $2 = title, $3 = year, $4 = studio, $5.. = genres

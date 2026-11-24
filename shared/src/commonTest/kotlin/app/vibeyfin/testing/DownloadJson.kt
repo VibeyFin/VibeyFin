@@ -20,6 +20,8 @@ fun downloadItemJson(
     subtitle: Boolean = false,
     cast: Boolean = false,
     videoCodec: String = "h264",
+    /** The server has cut this many 320 px thumbnails, one every 10 s in tiles of 10 by 10, for the media source. */
+    trickplayThumbnails: Int? = null,
 ): String {
     val streams = buildList {
         add("""{"Index":0,"Type":"Video","Codec":"$videoCodec","Width":640,"Height":360,"BitDepth":8,"Level":41}""")
@@ -42,6 +44,9 @@ fun downloadItemJson(
         seasonNumber?.let { """"ParentIndexNumber":$it""" },
         episodeNumber?.let { """"IndexNumber":$it""" },
         """"UserData":{"Played":$played,"PlaybackPositionTicks":0}""",
+        trickplayThumbnails?.let {
+            """"Trickplay":{"ms-$id":{"320":{"Width":320,"Height":180,"TileWidth":10,"TileHeight":10,"ThumbnailCount":$it,"Interval":10000,"Bandwidth":1}}}"""
+        },
         if (cast) """"People":[{"Id":"pe1","Name":"Ada Vance","Type":"Actor","Role":"Captain","PrimaryImageTag":"pt1"}]""" else null,
         """"MediaSources":[{"Id":"ms-$id","Container":"$container",${size?.let { """"Size":$it,""" } ?: ""}"ETag":"etag-$id","MediaStreams":[$streams]}]""",
     )

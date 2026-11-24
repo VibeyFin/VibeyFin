@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.vibeyfin.data.api.ApiError
 import app.vibeyfin.data.api.ApiResult
+import app.vibeyfin.domain.AlwaysOnlineNetworkMonitor
 import app.vibeyfin.domain.BingeCounter
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.DynamicRange
@@ -12,6 +13,8 @@ import app.vibeyfin.domain.LiveDiagnostics
 import app.vibeyfin.domain.LocalPlayable
 import app.vibeyfin.domain.LocalPlaybackReporter
 import app.vibeyfin.domain.MediaSegment
+import app.vibeyfin.domain.NetworkMonitor
+import app.vibeyfin.domain.NetworkState
 import app.vibeyfin.domain.OfflineLibrary
 import app.vibeyfin.domain.OfflineMode
 import app.vibeyfin.domain.PlayMethod
@@ -243,6 +246,8 @@ data class PlaybackUiState(
     val skipRun: SkipRun? = null,
     /** The scrub-preview thumbnails of the playing media source; null when the server made none or can't be asked. */
     val trickplay: TrickplayTrack? = null,
+    /** The connection is mobile data or has Low Data Mode or Data Saver on: the player fetches only the scrub-preview tiles near the position. */
+    val dataLimited: Boolean = false,
     /** The speed the user chose, one of [PLAYBACK_SPEEDS]; the player plays at it. */
     val speed: Float = 1f,
     /** The one badge for the picture ("4K", "HDR10"); null when there is none to show. */
@@ -340,6 +345,7 @@ class PlaybackViewModel(
     private val autoAdvance: Boolean = true,
     /** How long one second of the countdown takes; tests make it short. */
     private val countdownStep: Duration = 1.seconds,
+    private val network: NetworkMonitor = AlwaysOnlineNetworkMonitor,
 ) : ViewModel() {
     private val content = MutableStateFlow(PlaybackUiState())
     private val textSource = MutableStateFlow(PlaybackText())
@@ -466,6 +472,9 @@ class PlaybackViewModel(
     init {
         viewModelScope.launch {
             profileSettings.bingeThreshold.collect { bingeThreshold = it ?: ProfileSettings.DEFAULT_BINGE_THRESHOLD }
+        }
+        viewModelScope.launch {
+            network.state.collect { state -> content.update { it.copy(dataLimited = state == NetworkState.Metered) } }
         }
         viewModelScope.launch {
             profileSettings.skipBackSeconds.collect { seconds ->
@@ -1175,6 +1184,12 @@ class PlaybackViewModel(
         }
     }
 
+    private fun useDownloadedTrickplay(track: TrickplayTrack?, mediaSourceId: String) {
+        if (track == null) return loadTrickplay(mediaSourceId)
+        trickplayFor = itemId to mediaSourceId
+        content.update { it.copy(trickplay = track) }
+    }
+
     private fun refreshSkipOffer() {
         // Decided outside the update, which may run twice: auto-skip marks the segment and moves the position.
         val skip = if (autoSkip) autoSkipTarget() else null
@@ -1206,7 +1221,8 @@ class PlaybackViewModel(
         return playing?.let { SkipOffer(Strings.skip(it.type), it.endMs) }
     }
 
-    // Opens the file on the device: there is nothing to ask the server, no scrub preview, and no segments to skip.
+    // Opens the file on the device: there is nothing to ask the server, and no segments to skip. The scrub preview comes from the
+    // device too; a download without its tiles asks the server, and without a connection has the timestamp alone.
     private fun openLocal(downloaded: LocalPlayable, startAtMs: Long) {
         val ready = downloaded.plan
         plan = ready
@@ -1215,6 +1231,7 @@ class PlaybackViewModel(
         subtitleNow = ready.subtitleStreamIndex
         active.begin(ready)
         liveDiagnostics = null
+        useDownloadedTrickplay(downloaded.trickplay, ready.mediaSourceId)
         textSource.update { it.copy(format = ready.videoFormat, audioTracks = ready.audioTracks, subtitleTracks = ready.subtitleTracks) }
         content.update {
             it.copy(

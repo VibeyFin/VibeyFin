@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -131,13 +132,22 @@ internal fun OpenStreamEffect(player: ExoPlayer, http: DefaultHttpDataSource.Fac
     }
 }
 
-// The scrub-preview tiles belong to the item: a new track (the next episode) starts with an empty cache, and leaving the screen drops it
+// The scrub-preview tiles belong to the item: a new track (the next episode) starts with an empty cache, and leaving the screen stops the fetching and drops it
 @Composable
 internal fun rememberTrickplay(track: TrickplayTrack?, headers: Map<String, String>?): TrickplayTiles? {
-    val context = LocalContext.current
+    val tiles: TrickplayTiles? = remember(track, headers) {
+        if (track != null && headers != null && track.tilesUrl.isNotEmpty()) TrickplayTiles(track, headers) else null
+    }
 
-    return remember(track, headers) {
-        if (track != null && headers != null && track.tilesUrl.isNotEmpty()) TrickplayTiles(context.applicationContext, track, headers) else null
+    DisposableEffect(tiles) { onDispose { tiles?.close() } }
+    return tiles
+}
+
+// Fetches the tiles from the first moment, and again around wherever playback is after a seek, nearest first
+@Composable
+internal fun TrickplayPrefetchEffect(tiles: TrickplayTiles?, clock: PlaybackClock, dataLimited: Boolean) {
+    LaunchedEffect(tiles, dataLimited) {
+        if (tiles != null) snapshotFlow { clock.positionMs }.collect { tiles.aim(it, dataLimited) }
     }
 }
 

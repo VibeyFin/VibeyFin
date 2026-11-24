@@ -91,6 +91,62 @@ class DownloadRunnerTest {
     }
 
     @Test
+    fun theScrubPreviewTilesAreDownloadedWithTheVideoAndKeptBesideIt() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Items", Reply.json(itemsPage(downloadItemJson("m1", "Heat", size = body.length.toLong(), trickplayThumbnails = 250))))
+        server.on("GET", "/Items/m1/Download") { Reply.ranged(body, it) }
+        server.on("GET", "/Items/m1/Images/Primary", Reply.file("poster-bytes"))
+        (0..2).forEach { server.on("GET", "/Videos/m1/Trickplay/320/$it.jpg", Reply.file("tile$it")) }
+        queue()
+
+        app.runner.run()
+
+        val done = row()
+        assertEquals(DOWNLOAD_DONE, done.state)
+        assertEquals(body.length.toLong(), done.bytesDone, "the tiles are not counted in the video's progress")
+        assertEquals(body.length.toLong(), done.bytesTotal)
+        assertEquals(listOf("tile0", "tile1", "tile2"), (0..2).map { app.files.text("$folder/trickplay/$it.jpg") })
+        val snapshot = OfflineSnapshot.decode(app.downloads.findItem("srv-1", "u1", "m1")!!.snapshotJson)
+        assertEquals(3, assertNotNull(snapshot.trickplay).tileCount)
+        assertEquals("ms-m1", app.jellyfin.requestsTo("GET", "/Videos/m1/Trickplay/320/1.jpg").single().query["mediaSourceId"])
+    }
+
+    @Test
+    fun aTileTheServerNoLongerHasLeavesTheDownloadWithoutTilesButDone() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Items", Reply.json(itemsPage(downloadItemJson("m1", "Heat", size = body.length.toLong(), trickplayThumbnails = 250))))
+        server.on("GET", "/Items/m1/Download") { Reply.ranged(body, it) }
+        server.on("GET", "/Items/m1/Images/Primary", Reply.file("poster-bytes"))
+        server.on("GET", "/Videos/m1/Trickplay/320/0.jpg", Reply.file("tile0"))
+        server.on("GET", "/Videos/m1/Trickplay/320/1.jpg", Reply.status(HttpStatusCode.NotFound))
+        queue()
+
+        app.runner.run()
+
+        assertEquals(DOWNLOAD_DONE, row().state)
+        val snapshot = OfflineSnapshot.decode(app.downloads.findItem("srv-1", "u1", "m1")!!.snapshotJson)
+        assertNull(snapshot.trickplay)
+        assertTrue(snapshot.assetsDone)
+        assertNull(app.files.text("$folder/trickplay/0.jpg"), "a partial set is not kept")
+    }
+
+    @Test
+    fun removingADownloadDeletesItsTiles() = runTest {
+        val server = app.signedIn()
+        server.on("GET", "/Items", Reply.json(itemsPage(downloadItemJson("m1", "Heat", size = body.length.toLong(), trickplayThumbnails = 50))))
+        server.on("GET", "/Items/m1/Download") { Reply.ranged(body, it) }
+        server.on("GET", "/Items/m1/Images/Primary", Reply.file("poster-bytes"))
+        server.on("GET", "/Videos/m1/Trickplay/320/0.jpg", Reply.file("tile0"))
+        queue()
+        app.runner.run()
+        assertEquals("tile0", app.files.text("$folder/trickplay/0.jpg"))
+
+        app.downloadRepository.remove(alex, "m1")
+
+        assertNull(app.files.text("$folder/trickplay/0.jpg"))
+    }
+
+    @Test
     fun theRequestAsksForTheFileAsTheDownloadsProfile() = runTest {
         val server = movieOnServer()
         queue()

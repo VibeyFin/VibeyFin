@@ -13,7 +13,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 // What a download needs of an item beyond its page: the files, with their sizes, and the streams inside them.
-private const val DOWNLOAD_FIELDS = "MediaSources,MediaStreams,Overview,Genres,People,ProviderIds"
+private const val DOWNLOAD_FIELDS = "MediaSources,MediaStreams,Overview,Genres,People,ProviderIds,Trickplay"
 
 /** `GET /Items?ids=`: [ids] with their media sources (file sizes included), for the download confirmation and the download itself. */
 suspend fun JellyfinApi.itemsForDownload(userId: String, ids: List<String>): ApiResult<ItemsResultDto> = get("/Items", mapOf("ids" to ids.joinToString(","), "userId" to userId, "fields" to DOWNLOAD_FIELDS), retry = true)

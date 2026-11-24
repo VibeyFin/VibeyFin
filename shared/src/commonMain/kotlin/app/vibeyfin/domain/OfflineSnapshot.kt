@@ -40,7 +40,12 @@ data class OfflineSnapshot(
     val subtitles: List<OfflineSubtitle> = emptyList(),
     val audioTracks: List<PlaybackTrack> = emptyList(),
     val subtitleTracks: List<PlaybackTrack> = emptyList(),
-    /** Every picture and subtitle file in [sources] and [subtitleSources] has been fetched (or the server had none). */
+    /**
+     * The scrub-preview thumbnails of the downloaded file, which are fetched with it into `trickplay/{tile}.jpg` beside the video;
+     * null when the server made none, when a tile was gone, and for a download saved before they were kept (those ask the server).
+     */
+    val trickplay: TrickplayTrack? = null,
+    /** Every picture, subtitle file and trickplay tile in [sources], [subtitleSources] and [trickplay] has been fetched (or the server had none). */
     val assetsDone: Boolean = false,
     /** The video stream's codec as Jellyfin names it (`h264`, `av1`…), so a download can be refused before it starts if the device cannot play it. */
     val videoCodec: String? = null,

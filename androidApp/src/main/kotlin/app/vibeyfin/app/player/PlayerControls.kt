@@ -64,6 +64,7 @@ import app.vibeyfin.app.components.ChipButton
 import app.vibeyfin.app.components.ChipInset
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.pageMargin
+import app.vibeyfin.domain.TrickplayPreviewSize
 import app.vibeyfin.ui.common.Strings
 import kotlinx.coroutines.launch
 
@@ -442,10 +443,10 @@ private fun Scrubber(
                     },
             )
 
-            val preview = thumbnail
+            val preview: ImageBitmap? = thumbnail
 
             if (dragged != null && known) {
-                val previewSize = trickplay?.previewSize(maxWidth.value, LocalDensity.current.density)
+                val previewSize: TrickplayPreviewSize? = trickplay?.previewSize(maxWidth.value, LocalDensity.current.density)
 
                 if (preview != null && previewSize != null) {
                     ScrubPreview(

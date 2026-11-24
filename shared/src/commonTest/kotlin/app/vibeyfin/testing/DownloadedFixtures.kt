@@ -6,6 +6,7 @@ import app.vibeyfin.data.db.DownloadItemEntity
 import app.vibeyfin.domain.OfflineSnapshot
 import app.vibeyfin.domain.OfflineSubtitle
 import app.vibeyfin.domain.PlaybackTrack
+import app.vibeyfin.domain.TrickplayTrack
 import app.vibeyfin.domain.model.CastMember
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.MediaItem
@@ -37,6 +38,8 @@ suspend fun TestApp.downloaded(
     videoCodec: String? = null,
     videoLevel: Int? = null,
     videoBitDepth: Int? = null,
+    /** The download kept this many tile images of scrub-preview thumbnails (250 thumbnails need three), as the downloader leaves them. */
+    trickplayTiles: Int? = null,
 ): String {
     val folder = "srv-1/u1/$id"
     val kind = if (type == "Movie") ItemKind.Movie else ItemKind.Episode
@@ -53,6 +56,9 @@ suspend fun TestApp.downloaded(
         audioTracks = listOf(PlaybackTrack(1, "English", true, "aac", "eng".takeIf { described }, default = described), PlaybackTrack(2, "German", false, "aac", "ger".takeIf { described })),
         subtitleTracks = if (subtitle) listOf(PlaybackTrack(3, "English", true, language = "eng".takeIf { described })) else emptyList(),
         subtitles = if (subtitle) listOf(OfflineSubtitle(3, "$folder/subs/3.srt", "application/x-subrip", "eng", "English")) else emptyList(),
+        trickplay = trickplayTiles?.let {
+            TrickplayTrack("ms-$id", 320, 10, 10, 320, 180, thumbnailCount = it * 100 - 50, intervalMs = 10_000)
+        },
         assetsDone = true,
         tracksDescribed = described,
         videoCodec = videoCodec,
@@ -63,6 +69,7 @@ suspend fun TestApp.downloaded(
         files.contents["$folder/video.$extension"] = StringBuilder("video")
         files.contents["$folder/images/poster.img"] = StringBuilder("p")
         if (subtitle) files.contents["$folder/subs/3.srt"] = StringBuilder("1\n")
+        repeat(trickplayTiles ?: 0) { files.contents["$folder/trickplay/$it.jpg"] = StringBuilder("tile$it") }
     }
     downloads.upsert(
         DownloadEntity(
