@@ -53,8 +53,8 @@ data class SubtitleSearchProblem(val title: String, val text: String, val canRet
 /** A download that failed, shown over the results. */
 data class SubtitleSearchMessage(val text: String, val canRetry: Boolean)
 
-/** A subtitle now on the server; the player turns on [streamIndex], the page reads the item again. */
-data class SubtitleAdded(val itemId: String, val streamIndex: Int, val languageName: String)
+/** A subtitle now on the server; the player turns on [streamIndex], and [audioIndexes] are where adding it moved the audio. */
+data class SubtitleAdded(val itemId: String, val streamIndex: Int, val languageName: String, val audioIndexes: List<Int> = emptyList())
 
 data class SubtitleSearchUiState(
     val languageName: String = "",
@@ -197,7 +197,7 @@ class SubtitleSearchViewModel(
             when (outcome) {
                 is SubtitleDownload.Added -> {
                     findings.update { it.copy(addedIds = it.addedIds + id) }
-                    content.update { it.copy(added = SubtitleAdded(item, outcome.streamIndex, language)) }
+                    content.update { it.copy(added = SubtitleAdded(item, outcome.streamIndex, language, outcome.audioIndexes)) }
                 }
 
                 SubtitleDownload.NotArrived -> findings.update { it.copy(downloadFault = if (existing.isEmpty()) DownloadFault.NotArrived else DownloadFault.NotArrivedHasFile) }

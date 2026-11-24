@@ -224,6 +224,28 @@ class SubtitleSearchViewModelTest {
     }
 
     @Test
+    fun theAddedSubtitleSaysWhereTheAudioTracksAreNow() = runTest {
+        val audio: (Int, String) -> String = { index, title -> """{"Index":$index,"Type":"Audio","DisplayTitle":"$title"}""" }
+        val server = signedIn(subtitleLanguage = "eng")
+        var reads = 0
+
+        server.finds("eng", result("a b"))
+        server.on("GET", "/Items") {
+            reads++
+            if (reads < 3) itemWith(audio(1, "English"), audio(2, "German")) else itemWith(track(1, "English - External", external = true), audio(2, "English"), audio(3, "German"))
+        }
+        server.on("POST", "/Items/m1/RemoteSearch/Subtitles/a%20b", Reply.noContent())
+        val viewModel = viewModel()
+        viewModel.onOpen("m1")
+        viewModel.settled()
+
+        viewModel.onChoose("a b")
+        val added = assertNotNull(viewModel.uiState.first { it.added != null }.added)
+
+        assertEquals(SubtitleAdded("m1", 1, "English", audioIndexes = listOf(2, 3)), added)
+    }
+
+    @Test
     fun aRatingOfZeroIsLeftOutLikeNoRating() = runTest {
         val server = signedIn(subtitleLanguage = "eng")
         server.finds("eng", result("a", rating = 0.0))
