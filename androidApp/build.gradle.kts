@@ -38,6 +38,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+        }
         release {
             // R8 shrinks and optimizes the app; Compose in particular runs noticeably smoother for it. The app has no reflection of
             // its own, and the libraries bring their own keep rules.
