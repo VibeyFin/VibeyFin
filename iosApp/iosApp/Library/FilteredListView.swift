@@ -33,7 +33,6 @@ struct FilteredListView: View {
                         .screenTitle()
                         .accessibilityAddTraits(.isHeader)
                         .screenMargin()
-                        .padding(.top, Space.s5)
                 }
                 ListChipRow(chips: model.state.chips) { model.chip($0.kind) }
                 ScrollView {
