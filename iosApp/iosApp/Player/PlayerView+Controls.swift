@@ -16,6 +16,7 @@ extension PlayerView {
                         bottomBar
                             .rowInsets(rowInsets(at: .bottom))
                     }
+                    .zIndex(scrubLayer)
                     if hasStream && !isWaiting {
                         PlayerTransport(
                             isPlaying: controller.isPlaying,
@@ -40,6 +41,7 @@ extension PlayerView {
                 .controlsSpanWidth(spans: spansWidth)
             }
         }
+        .zIndex(scrubLayer)
         .background { Color.clear.onGeometryChange(for: ControlsFrame.self) { ControlsFrame(safeArea: $0.safeAreaInsets, size: $0.size) } action: { controlsFrame = $0 } }
     }
 
@@ -74,6 +76,9 @@ extension PlayerView {
             onOpenChange: menuOpenChanged
         ) { bottomBar }
     }
+
+    /// While the scrubber is dragged its preview must draw over the transport, skip offer, up next and stats.
+    var scrubLayer: Double { scrubPosition == nil ? 0 : 1 }
 
     var safeArea: EdgeInsets { controlsFrame.safeArea }
     var spansWidth: Bool { PlayerInsets.spansWidth(size: controlsFrame.size) }

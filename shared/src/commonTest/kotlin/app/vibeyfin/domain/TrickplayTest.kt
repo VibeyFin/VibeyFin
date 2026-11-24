@@ -68,4 +68,36 @@ class TrickplayTest {
     fun tilePathNamesTheWidthAndTheTile() {
         assertEquals("/Videos/m1/Trickplay/320/2.jpg", track.tilePath("m1", 2))
     }
+
+    @Test
+    fun aSmallTileSetStaysAtTheDesignWidthOnEveryScreen() {
+        assertEquals(TrickplayPreviewSize(width = 160f, height = 90f), track.previewSize(barWidth = 800f, screenScale = 3f))
+        assertEquals(TrickplayPreviewSize(width = 160f, height = 90f), track.previewSize(barWidth = 1_100f, screenScale = 2f))
+    }
+
+    @Test
+    fun aLargerTileSetGrowsToAQuarterOfTheBar() {
+        val large = track.copy(width = 640, thumbWidth = 640, thumbHeight = 360)
+
+        assertEquals(TrickplayPreviewSize(width = 275f, height = 154.6875f), large.previewSize(barWidth = 1_100f, screenScale = 2f))
+    }
+
+    @Test
+    fun thePreviewNeverDrawsWiderThanTheSourcePixelsAllow() {
+        val large = track.copy(width = 640, thumbWidth = 640, thumbHeight = 360)
+
+        assertEquals(TrickplayPreviewSize(width = 320f, height = 180f), large.previewSize(barWidth = 2_000f, screenScale = 2f))
+    }
+
+    @Test
+    fun aNarrowBarNeverShrinksThePreviewBelowTheDesignWidth() {
+        assertEquals(160f, track.previewSize(barWidth = 300f, screenScale = 3f).width)
+    }
+
+    @Test
+    fun theHeightFollowsTheThumbnailsOwnAspect() {
+        val fourByThree = track.copy(thumbHeight = 240)
+
+        assertEquals(120f, fourByThree.previewSize(barWidth = 800f, screenScale = 3f).height)
+    }
 }

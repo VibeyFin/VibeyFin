@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -49,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -403,7 +405,7 @@ private fun Scrubber(
             .padding(horizontal = pageMargin(), vertical = VibeyFinTokens.Space.s2)
             .padding(top = VibeyFinTokens.Space.s4),
     ) {
-        Box {
+        BoxWithConstraints {
             Slider(
                 value = if (known) shown else 0f,
                 onValueChange = {
@@ -442,13 +444,18 @@ private fun Scrubber(
 
             val preview = thumbnail
 
-            if (dragged != null && preview != null && known) {
-                ScrubPreview(
-                    preview,
-                    Strings.clock(shownMs),
-                    shown / durationMs,
-                    Modifier.align(Alignment.TopStart),
-                )
+            if (dragged != null && known) {
+                val previewSize = trickplay?.previewSize(maxWidth.value, LocalDensity.current.density)
+
+                if (preview != null && previewSize != null) {
+                    ScrubPreview(
+                        preview,
+                        Strings.clock(shownMs),
+                        shown / durationMs,
+                        previewSize,
+                        Modifier.align(Alignment.TopStart),
+                    )
+                }
             }
         }
 

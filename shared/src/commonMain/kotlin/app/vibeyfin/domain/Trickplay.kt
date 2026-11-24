@@ -9,6 +9,10 @@ internal const val TRICKPLAY_TARGET_WIDTH = 320
 /** How long a tile image that failed to load counts as missing before the players try it again (a network blip passes). */
 internal const val TRICKPLAY_TILE_RETRY_MS = 10_000L
 
+internal const val TRICKPLAY_PREVIEW_MIN_WIDTH = 160f
+
+internal const val TRICKPLAY_PREVIEW_BAR_SHARE = 0.25f
+
 /**
  * The thumbnails the server cut from one media source: [thumbnailCount] pictures of
  * [thumbWidth] by [thumbHeight], one every [intervalMs], packed into tile images of
@@ -49,7 +53,16 @@ data class TrickplayTrack(
 
     /** The path on the server of tile image [tileIndex]; it needs the same authorisation as any request. */
     fun tilePath(itemId: String, tileIndex: Int): String = "/Videos/$itemId/Trickplay/$width/$tileIndex.jpg"
+
+    fun previewSize(barWidth: Float, screenScale: Float): TrickplayPreviewSize {
+        val sharpestWidth: Float = maxOf(thumbWidth / screenScale, TRICKPLAY_PREVIEW_MIN_WIDTH)
+        val previewWidth: Float = (barWidth * TRICKPLAY_PREVIEW_BAR_SHARE).coerceIn(TRICKPLAY_PREVIEW_MIN_WIDTH, sharpestWidth)
+
+        return TrickplayPreviewSize(width = previewWidth, height = previewWidth * thumbHeight / thumbWidth)
+    }
 }
+
+data class TrickplayPreviewSize(val width: Float, val height: Float)
 
 /** One thumbnail's place: the [tileIndex]th tile image, at [column] and [row] counted from its top left. */
 data class TrickplayThumb(val tileIndex: Int, val column: Int, val row: Int)

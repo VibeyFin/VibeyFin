@@ -158,6 +158,15 @@ final class TrickplayTiles {
     /// Whether this is the set of `track`, so a new one is only made when the item changes.
     func isFor(_ other: TrickplayTrack) -> Bool { track.tilesUrl == other.tilesUrl }
 
+    /// How big the preview is drawn over a bar `barWidth` points wide on a screen of `screenScale` pixels to the point.
+    func previewSize(barWidth: CGFloat, screenScale: CGFloat) -> CGSize {
+        let size = track.previewSize(barWidth: Float(barWidth), screenScale: Float(screenScale))
+        return CGSize(width: CGFloat(size.width), height: CGFloat(size.height))
+    }
+
+    /// Which tile image holds the thumbnail for `positionMs`.
+    func tileIndex(atMs positionMs: Int64) -> Int32 { track.locate(positionMs: positionMs).tileIndex }
+
     /// The thumbnail for `positionMs`, or nil when its tile can't be had.
     func thumbnail(atMs positionMs: Int64) async -> UIImage? {
         let spot = track.locate(positionMs: positionMs)
@@ -209,43 +218,42 @@ private final class TileBox {
     init(_ image: CGImage) { self.image = image }
 }
 
-/// The thumbnail with the time under it, on the scrim, drawn above the scrubber's thumb.
+/// The thumbnail with the time under it, as the design draws it: no box, the picture at `size` with the pop
+/// shadow and an outline.
 struct ScrubPreview: View {
     let thumbnail: UIImage
     let time: String
-    /// The picture's width; see `pictureWidth(forBarWidth:)`.
-    var pictureWidth: CGFloat = ScrubPreview.minPictureWidth
-
-    private static let minPictureWidth: CGFloat = 160
-    private static let maxPictureWidth: CGFloat = 300
-
-    /// The picture grows with the scrubber bar (about a fifth of it), so an iPad shows a larger preview
-    /// than a phone; a phone in landscape stays at the minimum. The tiles are 320 wide, so 300 stays sharp.
-    static func pictureWidth(forBarWidth barWidth: CGFloat) -> CGFloat {
-        min(max(barWidth * 0.2, minPictureWidth), maxPictureWidth)
-    }
-
-    /// The width the whole preview takes (picture and padding), for keeping it on screen.
-    static func width(forBarWidth barWidth: CGFloat) -> CGFloat {
-        pictureWidth(forBarWidth: barWidth) + 2 * Space.s1
-    }
+    let size: CGSize
 
     var body: some View {
         VStack(spacing: Space.s1) {
             Image(uiImage: thumbnail)
                 .resizable()
-                .scaledToFit()
-                .frame(width: pictureWidth)
-                .clipShape(RoundedRectangle(cornerRadius: Radius.artwork / 2, style: .continuous))
+                .scaledToFill()
+                .frame(width: size.width, height: size.height)
+                .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous)
+                        .strokeBorder(Brand.overlayWeak, lineWidth: 1)
+                }
+                .shadow(color: Brand.scrimStrong, radius: 12, y: 8)
             Text(time)
                 .font(.footnote)
                 .monospacedDigit()
                 .foregroundStyle(.primary)
+                .shadow(color: Brand.scrimStrong, radius: 2)
         }
-        .padding(Space.s1)
-        .background(Brand.scrim, in: RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
+        .fixedSize()
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+}
+
+/// Where the preview sits along the bar.
+enum ScrubPreviewPlacement {
+    /// Centred on the thumb (`fraction` along the bar) but kept inside the bar's width, so it never leaves the screen.
+    static func x(barWidth: CGFloat, previewWidth: CGFloat, fraction: CGFloat) -> CGFloat {
+        min(max(barWidth * fraction - previewWidth / 2, 0), max(barWidth - previewWidth, 0))
     }
 }
 

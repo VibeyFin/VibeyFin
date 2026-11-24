@@ -290,7 +290,9 @@ struct PlayerScrubber: View {
 
     @State private var isDragging = false
     @State private var thumbnail: UIImage?
+    @State private var thumbnailTile: Int32?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
         GeometryReader { geometry in
@@ -322,8 +324,13 @@ struct PlayerScrubber: View {
         .task(id: PreviewKey(dragging: isDragging, second: position.isFinite ? Int(position) : 0)) {
             guard isDragging, let trickplay else {
                 thumbnail = nil
+                thumbnailTile = nil
                 return
             }
+            // A frame from another tile must never sit under a new timestamp while that tile loads.
+            let tile = trickplay.tileIndex(atMs: PlayerTime.milliseconds(position))
+            if tile != thumbnailTile { thumbnail = nil }
+            thumbnailTile = tile
             let image = await trickplay.thumbnail(atMs: PlayerTime.milliseconds(position))
             // A newer drag position has cancelled this task; its answer must not replace the newer one.
             guard !Task.isCancelled else { return }
@@ -352,16 +359,16 @@ struct PlayerScrubber: View {
 
     /// Above the bar, centred on the finger but kept inside the bar's width so it never leaves the screen.
     @ViewBuilder private var preview: some View {
-        if isDragging, let thumbnail, duration > 0 {
+        if isDragging, let thumbnail, let trickplay, duration > 0 {
             GeometryReader { geometry in
                 let width = geometry.size.width
                 let fraction = min(max(position / duration, 0), 1)
-                let previewWidth = ScrubPreview.width(forBarWidth: width)
-                let x = min(max(width * fraction - previewWidth / 2, 0), max(width - previewWidth, 0))
+                let size = trickplay.previewSize(barWidth: width, screenScale: displayScale)
+                let x = ScrubPreviewPlacement.x(barWidth: width, previewWidth: size.width, fraction: fraction)
                 ScrubPreview(
                     thumbnail: thumbnail,
                     time: Strings.shared.clock(milliseconds: PlayerTime.milliseconds(position)),
-                    pictureWidth: ScrubPreview.pictureWidth(forBarWidth: width)
+                    size: size
                 )
                     .alignmentGuide(.top) { $0[.bottom] }
                     .offset(x: x)
