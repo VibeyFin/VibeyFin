@@ -28,6 +28,9 @@ struct SearchView: View {
                 .screenMargin()
                 // The bar's own inset, taken back so the field lines up with the title above it.
                 .padding(.horizontal, -Space.s2)
+                if let state = model.state, showsChips(state) {
+                    chips(state).padding(.bottom, Space.s2)
+                }
                 content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
@@ -38,6 +41,11 @@ struct SearchView: View {
         .onChange(of: model.state?.exit != nil) { _, hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
         }
+    }
+
+    /// The buttons stay one view above every answer, so switching between an empty and a full page leaves them, and their scroll, alone.
+    private func showsChips(_ state: SearchUiState) -> Bool {
+        !state.showsPrompt && state.message == nil
     }
 
     /// One button per kind, once something is typed: All lists every group, the others only theirs.
@@ -66,11 +74,11 @@ struct SearchView: View {
                 }
             } else if state.message == nil && state.noResults == false && state.searched.isEmpty {
                 // The first answer for this text is on its way.
-                VStack(spacing: Space.s2) { chips(state); skeleton }
+                skeleton
             } else if let message = state.message {
                 LoadErrorView(message: message, onRetry: { model.retry() }).screenMargin()
             } else if state.noResults {
-                VStack(spacing: 0) { chips(state); prompt(Strings.shared.noSearchResults(query: state.searched), state.offline ? Strings.shared.offlineSearchEmpty : Strings.shared.noSearchResultsHelp) }
+                prompt(Strings.shared.noSearchResults(query: state.searched), state.offline ? Strings.shared.offlineSearchEmpty : Strings.shared.noSearchResultsHelp)
             } else if state.searched.isEmpty {
                 skeleton
             } else {
@@ -129,8 +137,6 @@ struct SearchView: View {
     }
 
     private func results(_ state: SearchUiState) -> some View {
-        VStack(spacing: Space.s2) {
-        chips(state)
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Space.s2) {
                 // The library had nothing, but Seerr's group follows: say so above it (issue #14).
@@ -166,7 +172,6 @@ struct SearchView: View {
             .padding(.vertical, Space.s2)
             // The older answer stays while the next one is on its way, dimmed.
             .opacity(state.loading ? 0.5 : 1)
-        }
         }
     }
 
