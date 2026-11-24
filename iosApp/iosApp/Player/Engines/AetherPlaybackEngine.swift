@@ -343,14 +343,7 @@ final class AetherPlaybackEngine: PlaybackEngine {
     // MARK: - State
 
     private func phaseChanged(_ phase: PlaybackPhase) {
-        guard isOpen else { return }
-        // A rebuild nobody pressed play for passes through loading and seeking on its way back to paused; the player was paused all along.
-        if restoreTask != nil && !playAfterRestore {
-            switch phase {
-            case .error, .ended: break
-            default: return
-            }
-        }
+        guard isOpen, !isQuietRestore(phase) else { return }
         PlayerLog.write("aether phase \(phase)")
         switch phase {
         case .idle:
@@ -371,6 +364,15 @@ final class AetherPlaybackEngine: PlaybackEngine {
         case .error(let message):
             PlayerLog.write("aether error \(message) info=\(String(describing: engine.errorInfo))")
             events.failed(Self.failure(of: engine.errorInfo))
+        }
+    }
+
+    /// A rebuild nobody pressed play for passes through loading and seeking on its way back to paused; the player was paused all along.
+    private func isQuietRestore(_ phase: PlaybackPhase) -> Bool {
+        guard restoreTask != nil, !playAfterRestore else { return false }
+        switch phase {
+        case .error, .ended: return false
+        default: return true
         }
     }
 
