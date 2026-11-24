@@ -78,6 +78,7 @@ fun PlayerRoute(
     PositionTickerEffect(player, viewModel, clock, rememberStatsFeed(player, viewModel, stream?.id, state.showDiagnostics))
     StillWatchingPauseEffect(state.stillWatching, player)
     PauseWhenBackgroundedEffect(player, viewModel)
+    PlayerScreenRestEffect(state, window, chrome, viewModel)
     rememberPlayerSession(player)
 
     // A new stream (the next episode) takes the track sheet with it: it listed the old one's tracks

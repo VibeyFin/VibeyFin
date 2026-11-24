@@ -71,6 +71,8 @@ data class SettingsValues(
     val bufferAheadSeconds: Int = ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
     val pictureInPicture: Boolean = true,
     val swipeGestures: Boolean = true,
+    /** Minutes paused before the player dims the screen; 0 is never. */
+    val dimWhenPausedMinutes: Int = ProfileSettings.DEFAULT_DIM_WHEN_PAUSED_MINUTES,
     /** The app uses only its downloads, even with a network (device-wide). */
     val offlineMode: Boolean = false,
     /** Downloads may use mobile data; off, they wait for Wi-Fi. */
@@ -529,6 +531,19 @@ fun skippingPage(v: SettingsValues): SettingsPage {
                 ),
             ),
             SettingsSection(
+                Strings.screenGroup,
+                Strings.dimWhenPausedHelp,
+                items = listOf(
+                    ChoiceItem(
+                        SettingKey.DimWhenPaused,
+                        Strings.dimWhenPaused,
+                        value = v.dimWhenPausedMinutes,
+                        options = ProfileSettings.DIM_WHEN_PAUSED_CHOICES.map { SettingOption(it, dimWhenPausedLabel(it)) },
+                        visible = profile,
+                    ),
+                ),
+            ),
+            SettingsSection(
                 Strings.bufferingGroup,
                 Strings.bufferAheadHelp,
                 items = listOf(
@@ -544,6 +559,8 @@ fun skippingPage(v: SettingsValues): SettingsPage {
         ),
     )
 }
+
+private fun dimWhenPausedLabel(minutes: Int): String = if (minutes == 0) Strings.dimWhenPausedNever else Strings.minutesShort(minutes)
 
 // How subtitles look, at the end of the Audio and subtitles page.
 private fun subtitleStyleSections(v: SettingsValues): List<SettingsSection> {

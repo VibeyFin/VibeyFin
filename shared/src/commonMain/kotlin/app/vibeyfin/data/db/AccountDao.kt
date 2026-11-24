@@ -108,6 +108,12 @@ abstract class AccountDao {
     @Query("UPDATE account_settings SET swipeGestures = :value WHERE serverId = :serverId AND userId = :userId")
     abstract suspend fun setSwipeGestures(serverId: String, userId: String, value: Boolean)
 
+    @Query("SELECT dimWhenPausedMinutes FROM account_settings WHERE serverId = :serverId AND userId = :userId")
+    abstract fun observeDimWhenPausedMinutes(serverId: String, userId: String): Flow<Int?>
+
+    @Query("UPDATE account_settings SET dimWhenPausedMinutes = :value WHERE serverId = :serverId AND userId = :userId")
+    abstract suspend fun setDimWhenPausedMinutes(serverId: String, userId: String, value: Int)
+
     @Query("SELECT autoSkipSegments FROM account_settings WHERE serverId = :serverId AND userId = :userId")
     abstract fun observeAutoSkipSegments(serverId: String, userId: String): Flow<Boolean?>
 

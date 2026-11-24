@@ -88,6 +88,9 @@ class ProfileSettings(
     /** Whether a vertical swipe on the player changes the volume and the brightness. On by default. Null when nobody is signed in. */
     val swipeGestures: Flow<Boolean?> = observe(ProfileSettingDefinitions.SwipeGestures)
 
+    /** Minutes paused before the player dims the screen, one of [DIM_WHEN_PAUSED_CHOICES]; 0 is never. Null when nobody is signed in. */
+    val dimWhenPausedMinutes: Flow<Int?> = observe(ProfileSettingDefinitions.DimWhenPausedMinutes)
+
     /** Seconds of video the player loads ahead; one of [BUFFER_AHEAD_CHOICES]. Null when nobody is signed in. */
     val bufferAheadSeconds: Flow<Int?> = observe(ProfileSettingDefinitions.BufferAheadSeconds)
 
@@ -196,6 +199,9 @@ class ProfileSettings(
     /** Does nothing when nobody is signed in. */
     suspend fun setSwipeGestures(value: Boolean) = set(ProfileSettingDefinitions.SwipeGestures, value)
 
+    /** Accepts one of [DIM_WHEN_PAUSED_CHOICES]; anything else is ignored. Does nothing when nobody is signed in. */
+    suspend fun setDimWhenPausedMinutes(value: Int) = set(ProfileSettingDefinitions.DimWhenPausedMinutes, value)
+
     /** Does nothing when nobody is signed in. */
     suspend fun setAutoSkipSegments(value: Boolean) = set(ProfileSettingDefinitions.AutoSkipSegments, value)
 
@@ -238,6 +244,11 @@ class ProfileSettings(
 
         /** The skip-forward lengths, in seconds, in the order the setting lists them. */
         val SKIP_FORWARD_CHOICES = listOf(10, 15, 30, 45, 60)
+
+        const val DEFAULT_DIM_WHEN_PAUSED_MINUTES = 5
+
+        /** How long the player waits while paused before it dims the screen, in minutes, in the order the setting lists them; 0 is never. */
+        val DIM_WHEN_PAUSED_CHOICES = listOf(0, 1, 2, 5, 10, 15)
 
         const val DEFAULT_BUFFER_AHEAD_SECONDS = 20
 

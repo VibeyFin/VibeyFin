@@ -420,6 +420,17 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `dim when paused defaults to 5 minutes and follows its handler`() = runTest {
+        app.signedIn()
+        val viewModel = viewModel()
+        assertEquals(5, viewModel.uiState.first { it.hasProfile }.value(SettingKey.DimWhenPaused))
+
+        viewModel.onChoose(SettingKey.DimWhenPaused, 0)
+        assertEquals(0, viewModel.uiState.first { it.value(SettingKey.DimWhenPaused) == 0 }.value(SettingKey.DimWhenPaused))
+        assertEquals(0, app.profileSettings.dimWhenPausedMinutes.first())
+    }
+
+    @Test
     fun `buffer ahead defaults to 20 and follows its handler`() = runTest {
         app.signedIn()
         val viewModel = viewModel()
@@ -508,7 +519,7 @@ class SettingsViewModelTest {
         val skipping = viewModel.uiState.first { it.hasProfile }.page(SettingsPageId.Skipping)
 
         assertEquals(
-            listOf(SettingKey.SkipBack, SettingKey.SkipForward, SettingKey.AutoSkip, SettingKey.BingeThreshold, SettingKey.PictureInPicture, SettingKey.SwipeGestures, SettingKey.BufferAhead),
+            listOf(SettingKey.SkipBack, SettingKey.SkipForward, SettingKey.AutoSkip, SettingKey.BingeThreshold, SettingKey.PictureInPicture, SettingKey.SwipeGestures, SettingKey.DimWhenPaused, SettingKey.BufferAhead),
             skipping.keys(),
         )
 

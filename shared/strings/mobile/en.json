@@ -1,4 +1,5 @@
 {
+    "dim_when_paused_help":"After the player has been paused this long, the screen dims, then turns off when your phone's own screen timeout allows. Tap to bring it back; the video stays paused where it was.",
     "download":"Download",
     "download_action_description":"Download {{title}}, {{state}}",
     "download_all_episodes":"Download all episodes",
@@ -64,6 +65,7 @@
     "offline_search_prompt":"Find something you've downloaded",
     "offline_toast":"You're offline. Showing what you've downloaded.",
     "pause_download":"Pause download",
+    "player_screen_dimmed":"Screen dimmed. Tap to wake it.",
     "purge_downloads_confirm_message":"The downloads of this profile are deleted from this device. Other profiles keep theirs. You can download again at any time.",
     "purge_downloads_confirm_title":"Delete all downloaded files?",
     "purge_downloads_help":"Removes every download of this profile and any leftover files, also those shown in the Files app.",

@@ -79,6 +79,16 @@ internal class PlayerWindow(private val activity: Activity) {
         controller.hide(WindowInsetsCompat.Type.systemBars())
     }
 
+    fun keepScreenOn(on: Boolean) {
+        if (!applied) return
+
+        if (on) {
+            activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
     fun closesWithTurn(): Boolean {
         val locked = Settings.System.getInt(activity.contentResolver, Settings.System.ACCELEROMETER_ROTATION, 0) == 0
 

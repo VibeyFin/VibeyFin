@@ -71,6 +71,13 @@ object ProfileSettingDefinitions {
         write = { dao, a, v -> dao.setSwipeGestures(a.serverId, a.userId, v) },
     )
 
+    val DimWhenPausedMinutes = ProfileSetting(
+        default = ProfileSettings.DEFAULT_DIM_WHEN_PAUSED_MINUTES,
+        accepts = { it in ProfileSettings.DIM_WHEN_PAUSED_CHOICES },
+        read = { dao, a -> dao.observeDimWhenPausedMinutes(a.serverId, a.userId) },
+        write = { dao, a, v -> dao.setDimWhenPausedMinutes(a.serverId, a.userId, v) },
+    )
+
     val BufferAheadSeconds = ProfileSetting(
         default = ProfileSettings.DEFAULT_BUFFER_AHEAD_SECONDS,
         accepts = { it in ProfileSettings.BUFFER_AHEAD_CHOICES },
@@ -178,7 +185,7 @@ object ProfileSettingDefinitions {
 
     internal val all: List<ProfileSetting<*>> = listOf(
         ShowPlaybackStats, BingeThreshold, HomeGenreRows, HomeHeroItems, ShowWatchedInRows, SkipBackSeconds, SkipForwardSeconds, AutoSkipSegments,
-        PictureInPicture, SwipeGestures, BufferAheadSeconds, MaxStreamingBitrate, CaptionsFollowSystem, SubtitleSize, SubtitleTextColor,
+        PictureInPicture, SwipeGestures, DimWhenPausedMinutes, BufferAheadSeconds, MaxStreamingBitrate, CaptionsFollowSystem, SubtitleSize, SubtitleTextColor,
         SubtitleBackground, NotificationsEnabled, DownloadNotifications, NotificationScope, KidsProfile, PinGateSwitches, DownloadOverMobile, AutoCleanWatched,
         StorageLimitMb, ThemeId,
     )

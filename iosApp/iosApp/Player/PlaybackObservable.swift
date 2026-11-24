@@ -74,6 +74,11 @@ final class PlaybackObservable: ObservableObject {
         model.onUserInteraction()
     }
 
+    /// The player is in front again; the screen wakes without counting as the viewer being there.
+    func screenShown() {
+        model.onScreenShown()
+    }
+
     /// "Keep watching" on the prompt.
     func continueWatching() {
         model.onContinueWatching()

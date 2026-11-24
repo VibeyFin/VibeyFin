@@ -179,6 +179,9 @@ class AccountSettingsEntity(
     /** Whether a vertical swipe on the player changes the volume (right half) and the brightness (left half). */
     @ColumnInfo(defaultValue = "1")
     val swipeGestures: Boolean = true,
+    /** Minutes the player waits while paused before it dims the screen and lets it turn off; 0 never. */
+    @ColumnInfo(defaultValue = "5")
+    val dimWhenPausedMinutes: Int = 5,
     /** Whether downloads may use mobile data (or any metered network). Off: they wait for Wi-Fi. */
     @ColumnInfo(defaultValue = "0")
     val downloadOverMobile: Boolean = false,
