@@ -320,7 +320,7 @@ struct PlayerScrubber: View {
             )
         }
         .frame(height: 44)
-        .overlay(alignment: .topLeading) { preview }
+        .anchorPreference(key: ScrubPreviewKey.self, value: .bounds) { previewRequest(bar: $0) }
         .task(id: PreviewKey(dragging: isDragging, second: position.isFinite ? Int(position) : 0)) {
             guard isDragging, let trickplay else {
                 thumbnail = nil
@@ -357,24 +357,17 @@ struct PlayerScrubber: View {
         let second: Int
     }
 
-    /// Above the bar, centred on the finger but kept inside the bar's width so it never leaves the screen.
-    @ViewBuilder private var preview: some View {
-        if isDragging, let thumbnail, let trickplay, duration > 0 {
-            GeometryReader { geometry in
-                let width = geometry.size.width
-                let fraction = min(max(position / duration, 0), 1)
-                let size = trickplay.previewSize(barWidth: width, screenScale: displayScale)
-                let x = ScrubPreviewPlacement.x(barWidth: width, previewWidth: size.width, fraction: fraction)
-                ScrubPreview(
-                    thumbnail: thumbnail,
-                    time: Strings.shared.clock(milliseconds: PlayerTime.milliseconds(position)),
-                    size: size
-                )
-                    .alignmentGuide(.top) { $0[.bottom] }
-                    .offset(x: x)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            }
-        }
+    /// What the player draws above everything else while dragging, so no control can cover it.
+    private func previewRequest(bar: Anchor<CGRect>) -> ScrubPreviewRequest? {
+        guard isDragging, let thumbnail, let trickplay, duration > 0 else { return nil }
+        let screenScale: CGFloat = displayScale
+        return ScrubPreviewRequest(
+            thumbnail: thumbnail,
+            time: Strings.shared.clock(milliseconds: PlayerTime.milliseconds(position)),
+            fraction: min(max(position / duration, 0), 1),
+            bar: bar,
+            sizeForBarWidth: { trickplay.previewSize(barWidth: $0, screenScale: screenScale) }
+        )
     }
 
     private func seconds(at x: CGFloat, in width: CGFloat) -> TimeInterval {

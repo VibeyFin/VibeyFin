@@ -169,6 +169,7 @@ struct PlayerView: View {
                 }
             }
         }
+        .overlayPreferenceValue(ScrubPreviewKey.self) { ScrubPreviewLayer(request: $0) }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.26), value: state?.upNext != nil)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: controller.isExternalPlayback)
         .tint(Brand.onMedia)

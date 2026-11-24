@@ -173,6 +173,45 @@ enum ScrubPreviewPlacement {
     }
 }
 
+/// A preview the scrubber asks the player to draw, with the bar's bounds to place it by.
+struct ScrubPreviewRequest {
+    let thumbnail: UIImage
+    let time: String
+    let fraction: CGFloat
+    let bar: Anchor<CGRect>
+    let sizeForBarWidth: (CGFloat) -> CGSize
+}
+
+struct ScrubPreviewKey: PreferenceKey {
+    static var defaultValue: ScrubPreviewRequest?
+
+    static func reduce(value: inout ScrubPreviewRequest?, nextValue: () -> ScrubPreviewRequest?) {
+        value = nextValue() ?? value
+    }
+}
+
+/// The scrub preview, drawn over the whole player: above the glass transport, skip offer, up next and stats.
+struct ScrubPreviewLayer: View {
+    let request: ScrubPreviewRequest?
+
+    var body: some View {
+        GeometryReader { proxy in
+            if let request {
+                let bar = proxy[request.bar]
+                let size = request.sizeForBarWidth(bar.width)
+                ScrubPreview(thumbnail: request.thumbnail, time: request.time, size: size)
+                    .alignmentGuide(.top) { $0[.bottom] }
+                    .offset(
+                        x: bar.minX + ScrubPreviewPlacement.x(barWidth: bar.width, previewWidth: size.width, fraction: request.fraction),
+                        y: bar.minY
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
 /// A short message over the picture, on the scrim. Takes no touches.
 struct PlayerNotice: View {
     let text: String
