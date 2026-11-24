@@ -43,7 +43,7 @@ struct SearchView: View {
         }
     }
 
-    /// The buttons stay one view above every answer, so switching between an empty and a full page leaves them, and their scroll, alone.
+    /// One view above every answer, so a page that changes doesn't reset the chips' scroll.
     private func showsChips(_ state: SearchUiState) -> Bool {
         !state.showsPrompt && state.message == nil
     }
@@ -238,7 +238,6 @@ struct SearchView: View {
         }
     }
 
-    /// A fixed circle with the name under it: two name lines and one subtitle line are always reserved, so the tiles share one height.
     private func personTile(_ result: SearchResult) -> some View {
         VStack(spacing: Space.s2) {
             PortraitView(name: result.title, imageUrl: result.imageUrl, size: Self.personPortraitSize, initialsFont: .headline)
