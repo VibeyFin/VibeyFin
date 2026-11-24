@@ -101,7 +101,7 @@ private class EpisodePhase<E>(val seasonKey: Any?, val index: Int, val snapshot:
 /**
  * The chosen season's episodes, as the library's page and Seerr's draw them: grey rows or cards while they load, why they didn't,
  * "no episodes", then the list: rows down the page on a phone, cards in a row on a tablet. Choosing another season swaps the content
- * in place: the area keeps the height of the tallest list it has shown, a later season slides in from the right and an earlier one
+ * in place: the area keeps the height of the list it showed until the new one has loaded, a later season slides in from the right and an earlier one
  * from the left. [focusKey] is the episode a wide list opens at; the first when it is null or not in the list.
  */
 @Composable
@@ -120,18 +120,17 @@ internal fun <E, K : Any> EpisodeListArea(
     val cardWidth = if (wide) EPISODE_CARD_WIDE else EPISODE_CARD
     val currentPhase = EpisodePhase(seasonKey, seasonIndex, episodes)
 
-    // The episode area keeps the height of the tallest list it has shown, so choosing a season swaps its content in place and
-    // nothing below it moves.
+    // The episode area keeps the height of the list it showed until the next one has loaded, so nothing below it jumps meanwhile.
     val density = LocalDensity.current
-    var tallest by remember { mutableStateOf(0.dp) }
+    var settledHeight by remember { mutableStateOf(0.dp) }
 
     Column(
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         modifier = Modifier
-            .heightIn(min = tallest)
-            .onSizeChanged { size -> with(density) { if (!currentPhase.loading && size.height.toDp() > tallest) tallest = size.height.toDp() } },
+            .heightIn(min = settledHeight),
     ) {
         AnimatedContent(
+            modifier = Modifier.onSizeChanged { size -> with(density) { if (!currentPhase.loading) settledHeight = size.height.toDp() } },
             targetState = currentPhase,
             transitionSpec = {
                 // A later season slides in from the right, an earlier one from the left; the same season only fades
