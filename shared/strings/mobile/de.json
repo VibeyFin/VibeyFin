@@ -1,5 +1,5 @@
 {
-    "dim_when_paused_help":"Ist der Player so lange pausiert, wird der Bildschirm abgedunkelt und schaltet sich dann ab, sobald die Bildschirmsperre deines Telefons es zulässt. Tippe, um ihn zurückzuholen; das Video bleibt an derselben Stelle pausiert.",
+    "dim_when_paused_help":"Ist der Player so lange pausiert, wird der Bildschirm abgedunkelt und schaltet sich dann ab, sobald die Bildschirmsperre deines Telefons es zulässt. Tippe, um ihn zurückzuholen. Das Video bleibt an derselben Stelle pausiert.",
     "download":"Download",
     "download_action_description":"{{title}} herunterladen, {{state}}",
     "download_all_episodes":"Alle Folgen herunterladen",
