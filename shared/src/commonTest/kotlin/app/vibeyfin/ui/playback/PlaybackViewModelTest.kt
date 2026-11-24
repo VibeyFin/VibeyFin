@@ -1250,6 +1250,87 @@ class PlaybackViewModelTest {
 
         assertTrue(seen.last().episodeControls)
         assertNull(seen.last().previousEpisode)
+        assertFalse(seen.last().canPlayPrevious)
+        assertTrue(seen.last().canPlayNext)
+    }
+
+    @Test
+    fun `a failed lookup keeps Previous on and a tap asks again then plays it`() = runTest {
+        val episodes = itemsJson(episode("e0", 0), episode("m1", 1), episode("e2", 2))
+        val jellyfin = seriesServer(episodes = episodes)
+        val show = jellyfin.server("http://nas:8096")
+        var serverDown = true
+        show.on("GET", "/Shows/s1/Episodes") { if (serverDown) Reply.status(HttpStatusCode.InternalServerError) else Reply.json(episodes) }
+        show.on("POST", "/Items/e0/PlaybackInfo", Reply.json(playbackInfoJson(mediaSourceJson())))
+        val viewModel = viewModel()
+        statesOf(viewModel)
+
+        val failed = viewModel.uiState.first { it.stream != null && it.canPlayPrevious && it.canPlayNext }
+        assertNull(failed.previousEpisode)
+        assertNull(failed.nextEpisode)
+
+        serverDown = false
+        viewModel.onPlayPrevious()
+        val previous = viewModel.uiState.first { it.subtitle == "Paper Harbour  ·  S1 E0" && it.stream != null }
+
+        assertEquals(1, jellyfin.requestsTo("POST", "/Items/e0/PlaybackInfo").size)
+        assertTrue(previous.episodeControls)
+    }
+
+    @Test
+    fun `a tap on Previous that still fails says why and plays on`() = runTest {
+        val jellyfin = seriesServer()
+        jellyfin.server("http://nas:8096").on("GET", "/Shows/s1/Episodes", Reply.status(HttpStatusCode.InternalServerError))
+        val viewModel = viewModel()
+        statesOf(viewModel)
+        viewModel.uiState.first { it.stream != null && it.canPlayPrevious }
+
+        viewModel.onPlayPrevious()
+        val state = viewModel.uiState.first { it.notice != null }
+
+        assertEquals(LoadMessages.forError(ApiError.Server(500)), state.notice)
+        assertEquals("Heat", state.title)
+        assertTrue(state.canPlayPrevious)
+    }
+
+    @Test
+    fun `a failed lookup keeps Next on and a tap asks again and plays it`() = runTest {
+        val episodes = itemsJson(episode("m1", 1), episode("e2", 2))
+        val jellyfin = seriesServer(episodes = episodes)
+        var serverDown = true
+        jellyfin.server("http://nas:8096").on("GET", "/Shows/s1/Episodes") {
+            if (serverDown) Reply.status(HttpStatusCode.InternalServerError) else Reply.json(episodes)
+        }
+        val viewModel = viewModel()
+        statesOf(viewModel)
+        viewModel.uiState.first { it.stream != null && it.canPlayNext }
+
+        serverDown = false
+        viewModel.onPlayNow()
+        val next = viewModel.uiState.first { it.subtitle == "Paper Harbour  ·  S1 E2" && it.stream != null }
+
+        assertEquals(1, jellyfin.requestsTo("POST", "/Items/e2/PlaybackInfo").size)
+        assertTrue(next.episodeControls)
+    }
+
+    @Test
+    fun `asked again at the first episode Previous turns off without a notice`() = runTest {
+        val episodes = itemsJson(episode("m1", 1), episode("e2", 2))
+        val jellyfin = seriesServer(episodes = episodes)
+        var serverDown = true
+        jellyfin.server("http://nas:8096").on("GET", "/Shows/s1/Episodes") {
+            if (serverDown) Reply.status(HttpStatusCode.InternalServerError) else Reply.json(episodes)
+        }
+        val viewModel = viewModel()
+        statesOf(viewModel)
+        viewModel.uiState.first { it.stream != null && it.canPlayPrevious }
+
+        serverDown = false
+        viewModel.onPlayPrevious()
+        val state = viewModel.uiState.first { !it.canPlayPrevious }
+
+        assertNull(state.notice)
+        assertEquals("Heat", state.title)
     }
 
     @Test

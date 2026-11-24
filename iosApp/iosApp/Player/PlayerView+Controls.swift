@@ -113,10 +113,10 @@ extension PlayerView {
             Spacer(minLength: 0)
             PlayerControlCluster {
                 if state?.episodeControls == true {
-                    episodeButton(systemName: "backward.end.fill", label: Strings.shared.previousEpisode, episode: state?.previousEpisode) {
+                    episodeButton(systemName: "backward.end.fill", label: Strings.shared.previousEpisode, episode: state?.previousEpisode, enabled: state?.canPlayPrevious == true) {
                         model.playPrevious()
                     }
-                    episodeButton(systemName: "forward.end.fill", label: Strings.shared.nextEpisode, episode: state?.nextEpisode) {
+                    episodeButton(systemName: "forward.end.fill", label: Strings.shared.nextEpisode, episode: state?.nextEpisode, enabled: state?.canPlayNext == true) {
                         model.playNow()
                     }
                 }
@@ -179,13 +179,13 @@ extension PlayerView {
     }
 
     /// Previous or Next episode; dimmed and inert at the first or last episode.
-    func episodeButton(systemName: String, label: String, episode: String?, action: @escaping () -> Void) -> some View {
+    func episodeButton(systemName: String, label: String, episode: String?, enabled: Bool, action: @escaping () -> Void) -> some View {
         PlayerIconButton(systemName: systemName, label: label) {
             model.userInteraction()
             action()
         }
-        .disabled(episode == nil)
-        .opacity(episode == nil ? 0.38 : 1)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.38)
         .accessibilityHint(episode ?? "")
     }
 

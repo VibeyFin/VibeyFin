@@ -191,11 +191,15 @@ data class PlaybackUiState(
     val upNext: UpNext? = null,
     /**
      * The episode after this one ("S2:E5 · Low Tide"), once it is known; null for a movie, the last episode, or before the
-     * lookup is back. The player's Next episode button is enabled while this is set; it calls `onPlayNow`.
+     * lookup is back. The player's Next episode button calls `onPlayNow`.
      */
     val nextEpisode: String? = null,
     /** The episode before this one, like [nextEpisode]; null for the first episode. The Previous button calls `onPlayPrevious`. */
     val previousEpisode: String? = null,
+    /** The Next episode button is enabled: [nextEpisode] is known, or its lookup failed and a tap asks again. */
+    val canPlayNext: Boolean = false,
+    /** The Previous episode button is enabled, like [canPlayNext]. */
+    val canPlayPrevious: Boolean = false,
     /** What plays is an episode of a show, so the player shows Previous and Next around Play. */
     val episodeControls: Boolean = false,
     /** Playback reached the end and nothing follows; the screen should close. */
@@ -371,6 +375,10 @@ class PlaybackViewModel(
     private var next: MediaItem? = null
 
     private var previous: MediaItem? = null
+
+    // The lookup of [next] or [previous] failed, so whether there is one is not known yet.
+    private var nextUnknown = false
+    private var previousUnknown = false
 
     // The user chose "Watch credits": no card for the rest of this episode.
     private var upNextDismissed = false
@@ -836,35 +844,62 @@ class PlaybackViewModel(
 
     private fun lookUpPrevious(current: MediaItem) {
         if (!current.isShowEpisode()) return
-        viewModelScope.launch {
-            val found = if (local != null) {
-                connection.state.value.profileOrNull()?.let { offline.previousBefore(it, current) }
-            } else {
-                (watch.previousEpisode(current) as? ApiResult.Success)?.value
-            } ?: return@launch
-            if (item?.id == current.id) {
-                previous = found
-                textSource.update { it.copy(previous = found) }
-                content.update { it.copy(previousEpisode = episodeLine(found)) }
-            }
-        }
+        viewModelScope.launch { settlePrevious(current, findPrevious(current)) }
+    }
+
+    private suspend fun findPrevious(current: MediaItem): ApiResult<MediaItem?> = if (local != null) {
+        ApiResult.Success(connection.state.value.profileOrNull()?.let { offline.previousBefore(it, current) })
+    } else {
+        watch.previousEpisode(current)
+    }
+
+    // A failed lookup leaves the button on, so a tap can ask again instead of it looking like the first episode.
+    private fun settlePrevious(current: MediaItem, result: ApiResult<MediaItem?>) {
+        if (item?.id != current.id) return
+        val found: MediaItem? = (result as? ApiResult.Success)?.value
+        previous = found
+        previousUnknown = result is ApiResult.Failure
+        textSource.update { it.copy(previous = found) }
+        content.update { it.copy(previousEpisode = found?.let(::episodeLine), canPlayPrevious = found != null || previousUnknown) }
     }
 
     private fun lookUpNext(current: MediaItem) {
         // Looked up whether or not the episode plays on by itself: the Next episode button needs it either way.
         if (!current.isShowEpisode()) return
+        viewModelScope.launch { settleNext(current, findNext(current)) }
+    }
+
+    // A download plays on into the next one downloaded; the server's own order is for what comes from the server.
+    private suspend fun findNext(current: MediaItem): ApiResult<MediaItem?> = if (local != null) {
+        ApiResult.Success(connection.state.value.profileOrNull()?.let { offline.nextAfter(it, current) })
+    } else {
+        watch.nextEpisode(current)
+    }
+
+    // Only if the user is still on the episode this was asked for.
+    private fun settleNext(current: MediaItem, result: ApiResult<MediaItem?>) {
+        if (item?.id != current.id) return
+        val found: MediaItem? = (result as? ApiResult.Success)?.value
+        next = found
+        nextUnknown = result is ApiResult.Failure
+        textSource.update { it.copy(next = found) }
+        content.update { it.copy(nextEpisode = found?.let(::episodeLine), canPlayNext = found != null || nextUnknown) }
+    }
+
+    // A tap on Previous or Next after its lookup failed: asks again, then plays what it finds or says why it can't.
+    private fun retryLookUp(
+        find: suspend (MediaItem) -> ApiResult<MediaItem?>,
+        settle: (MediaItem, ApiResult<MediaItem?>) -> Unit,
+        play: (MediaItem) -> Unit,
+    ) {
+        val current = item ?: return
         viewModelScope.launch {
-            // A download plays on into the next one downloaded; the server's own order is for what comes from the server.
-            val found = if (local != null) {
-                connection.state.value.profileOrNull()?.let { offline.nextAfter(it, current) }
-            } else {
-                (watch.nextEpisode(current) as? ApiResult.Success)?.value
-            } ?: return@launch
-            // Only if the user is still on the episode this was asked for.
-            if (item?.id == current.id) {
-                next = found
-                textSource.update { it.copy(next = found) }
-                content.update { it.copy(nextEpisode = Strings.metaLine(found.episodeLabel(), found.title)) }
+            val result = find(current)
+            if (item?.id != current.id) return@launch
+            settle(current, result)
+            when (result) {
+                is ApiResult.Success -> result.value?.let(play)
+                is ApiResult.Failure -> onNotice(LoadMessages.forError(result.error))
             }
         }
     }
@@ -920,15 +955,24 @@ class PlaybackViewModel(
 
     /** "Play now" on the card, or the player's Next episode button: the next episode starts without waiting for the countdown. */
     fun onPlayNow() {
-        if (next == null) return
+        if (next == null && !nextUnknown) return
         binge.interacted()
-        playNext(byItself = false)
+        if (next != null) {
+            playNext(byItself = false)
+        } else {
+            retryLookUp(::findNext, ::settleNext) { playNext(byItself = false) }
+        }
     }
 
     /** The player's Previous episode button: the episode before starts, and this one is left where it is. */
     fun onPlayPrevious() {
-        val target = previous ?: return
+        if (previous == null && !previousUnknown) return
         binge.interacted()
+        val target = previous
+        if (target != null) playPrevious(target) else retryLookUp(::findPrevious, ::settlePrevious, ::playPrevious)
+    }
+
+    private fun playPrevious(target: MediaItem) {
         countdown?.cancel()
         countdown = null
         switchTo(target, stopAtMs = lastPositionMs)
@@ -965,6 +1009,8 @@ class PlaybackViewModel(
         itemId = target.id
         next = null
         previous = null
+        nextUnknown = false
+        previousUnknown = false
         item = null
         started = false
         ended = false
@@ -984,7 +1030,7 @@ class PlaybackViewModel(
         segmentsRequested = false
         trickplayFor = null
         content.update {
-            it.copy(loading = true, stream = null, upNext = null, nextEpisode = null, previousEpisode = null, skipOffer = null, trickplay = null, speed = 1f, badge = null, stillWatching = false, audioTracks = emptyList(), subtitleTracks = emptyList(), message = null, finished = false)
+            it.copy(loading = true, stream = null, upNext = null, nextEpisode = null, previousEpisode = null, canPlayNext = false, canPlayPrevious = false, skipOffer = null, trickplay = null, speed = 1f, badge = null, stillWatching = false, audioTracks = emptyList(), subtitleTracks = emptyList(), message = null, finished = false)
         }
         viewModelScope.launch {
             // A download goes on into the next one, which is downloaded too: it is found there again to play from the device.

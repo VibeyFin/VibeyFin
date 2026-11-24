@@ -166,6 +166,8 @@ private fun ControlsLayer(
             episodeControls = state.episodeControls,
             previousEpisode = state.previousEpisode,
             nextEpisode = state.nextEpisode,
+            canPlayPrevious = state.canPlayPrevious,
+            canPlayNext = state.canPlayNext,
             onPreviousEpisode = {
                 viewModel.onUserInteraction()
                 viewModel.onPlayPrevious()

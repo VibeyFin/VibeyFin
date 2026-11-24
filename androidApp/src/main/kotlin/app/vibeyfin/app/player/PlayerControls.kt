@@ -107,10 +107,12 @@ fun PlayerControls(
     trickplay: TrickplayTiles? = null,
     /** What plays is an episode, so the top bar has Previous and Next. */
     episodeControls: Boolean = false,
-    /** The episode before this one ("S1 E1  ·  Northbound"), read with the Previous button; null disables it. */
+    /** The episode before this one ("S1 E1  ·  Northbound"), read with the Previous button; null when it isn't known. */
     previousEpisode: String? = null,
-    /** The episode after this one, read with the Next button; null disables it. */
+    /** The episode after this one, read with the Next button; null when it isn't known. */
     nextEpisode: String? = null,
+    canPlayPrevious: Boolean = false,
+    canPlayNext: Boolean = false,
     onPreviousEpisode: () -> Unit = {},
     onNextEpisode: () -> Unit = {},
     /** Five quick taps on the title: the playback stats are switched on or off. */
@@ -121,7 +123,7 @@ fun PlayerControls(
         AnimatedVisibility(!seeking, Modifier.align(Alignment.TopStart), enter = fadeIn(), exit = fadeOut()) {
             TopBar(
                 title, subtitle, hasTrackChoices, badge, speedLabel, episodeControls, previousEpisode, nextEpisode,
-                onClose, onPreviousEpisode, onNextEpisode, onTracks, onSpeed, onPip, onToggleStats,
+                canPlayPrevious, canPlayNext, onClose, onPreviousEpisode, onNextEpisode, onTracks, onSpeed, onPip, onToggleStats,
             )
         }
 
@@ -165,6 +167,8 @@ private fun TopBar(
     episodeControls: Boolean,
     previousEpisode: String?,
     nextEpisode: String?,
+    canPlayPrevious: Boolean,
+    canPlayNext: Boolean,
     onClose: () -> Unit,
     onPreviousEpisode: () -> Unit,
     onNextEpisode: () -> Unit,
@@ -212,9 +216,9 @@ private fun TopBar(
         }
         if (episodeControls) {
             Spacer(Modifier.width(VibeyFinTokens.Space.s3))
-            ChipButton(R.drawable.ic_skip_previous, episodeLabel(Strings.previousEpisode, previousEpisode), onPreviousEpisode, enabled = previousEpisode != null)
+            ChipButton(R.drawable.ic_skip_previous, episodeLabel(Strings.previousEpisode, previousEpisode), onPreviousEpisode, enabled = canPlayPrevious)
             Spacer(Modifier.width(VibeyFinTokens.Space.s3))
-            ChipButton(R.drawable.ic_skip_next, episodeLabel(Strings.nextEpisode, nextEpisode), onNextEpisode, enabled = nextEpisode != null)
+            ChipButton(R.drawable.ic_skip_next, episodeLabel(Strings.nextEpisode, nextEpisode), onNextEpisode, enabled = canPlayNext)
         }
 
         Spacer(Modifier.width(VibeyFinTokens.Space.s3))
