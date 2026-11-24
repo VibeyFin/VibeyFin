@@ -232,6 +232,7 @@ class SettingsViewModel(
             bufferAheadSeconds = settings[ProfileSettingDefinitions.BufferAheadSeconds],
             pictureInPicture = settings[ProfileSettingDefinitions.PictureInPicture],
             swipeGestures = settings[ProfileSettingDefinitions.SwipeGestures],
+            dimWhenPausedMinutes = settings[ProfileSettingDefinitions.DimWhenPausedMinutes],
             offlineMode = v[OFFLINE_MODE] as Boolean? ?: defaults.offlineMode,
             downloadOverMobile = settings[ProfileSettingDefinitions.DownloadOverMobile],
             storageLimitGb = (settings[ProfileSettingDefinitions.StorageLimitMb] / MB_PER_GB).toInt(),
@@ -357,6 +358,8 @@ class SettingsViewModel(
                 SettingKey.SkipForward -> profileSettings.setSkipForwardSeconds(value)
 
                 SettingKey.BufferAhead -> profileSettings.setBufferAheadSeconds(value)
+
+                SettingKey.DimWhenPaused -> profileSettings.setDimWhenPausedMinutes(value)
 
                 SettingKey.Quality -> profileSettings.setMaxStreamingBitrate(value)
 

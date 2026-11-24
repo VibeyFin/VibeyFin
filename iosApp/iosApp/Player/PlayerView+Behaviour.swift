@@ -35,6 +35,23 @@ extension PlayerView {
             forward: Int(state?.skipForwardSeconds ?? ProfileSettings.Companion.shared.DEFAULT_SKIP_FORWARD_SECONDS)
         )
         pip.allow(state?.pictureInPicture != false)
+        applyScreenRest(state)
+    }
+
+    /// Both engines hold the screen on only while video plays, so the app holds it while paused too; not while minimised or over AirPlay.
+    func applyScreenRest(_ state: PlaybackUiState?) {
+        let onThisScreen = !session.minimised && !controller.isExternalPlayback
+        UIApplication.shared.isIdleTimerDisabled = onThisScreen && state?.keepsScreenOn != false
+        if onThisScreen && state?.screenDimmed == true && controlsVisible {
+            hideTask?.cancel()
+            setControlsVisible(false)
+        }
+    }
+
+    /// A touch on the dimmed player: the screen wakes with the controls up, and the wait starts again.
+    func wakeScreen() {
+        model.userInteraction()
+        showControls()
     }
 
     /// What leaving or coming back to the app does to the video, the orientation and the controls.
@@ -70,6 +87,7 @@ extension PlayerView {
             if !session.minimised { OrientationLock.lockLandscape() }
             // A picker that closed while the app was away may never have said so.
             menuOpen = false
+            model.screenShown()
             showControls()
         }
     }

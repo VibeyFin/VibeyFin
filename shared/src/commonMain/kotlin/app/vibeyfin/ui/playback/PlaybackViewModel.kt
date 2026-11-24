@@ -56,6 +56,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -144,6 +145,12 @@ private const val MIN_AUTO_ADVANCE_RUNTIME_MS = 180_000L
 
 // Seeking back this far outside the window takes the card away again.
 private const val UP_NEXT_SEEK_SLACK_MS = 5_000L
+
+/** How the screen rests after the player has been paused for the profile's wait: dimmed, then handed to the system's timeout. */
+enum class PlayerScreenState { Awake, Dimmed, MaySleep }
+
+/** How long the screen stays dimmed before the app lets it turn off. */
+val DIMMED_BEFORE_SLEEP = 15.seconds
 
 /** One row in the audio or subtitle picker. */
 data class TrackOption(
@@ -250,7 +257,14 @@ data class PlaybackUiState(
     val subtitleSearchItemId: String? = null,
     /** A short message over the picture that goes by itself. */
     val notice: String? = null,
+    val screenState: PlayerScreenState = PlayerScreenState.Awake,
 ) {
+    /** The app holds the screen on; once false, the system's own timeout may turn it off. */
+    val keepsScreenOn: Boolean get() = screenState != PlayerScreenState.MaySleep
+
+    /** The player is covered and its controls hidden until a touch. */
+    val screenDimmed: Boolean get() = screenState != PlayerScreenState.Awake
+
     /** The speeds to pick from. */
     val speeds: List<Float> get() = PLAYBACK_SPEEDS
 
@@ -444,6 +458,9 @@ class PlaybackViewModel(
 
     private var noticeJob: Job? = null
 
+    private var dimWhenPausedMinutes = ProfileSettings.DEFAULT_DIM_WHEN_PAUSED_MINUTES
+    private var screenRest: Job? = null
+
     private class TrackChoice(val mediaSourceId: String, val audio: Int?, val subtitle: Int)
 
     init {
@@ -472,6 +489,12 @@ class PlaybackViewModel(
         }
         viewModelScope.launch {
             profileSettings.autoSkipSegments.collect { autoSkip = it ?: false }
+        }
+        viewModelScope.launch {
+            profileSettings.dimWhenPausedMinutes.collect { minutes ->
+                dimWhenPausedMinutes = minutes ?: ProfileSettings.DEFAULT_DIM_WHEN_PAUSED_MINUTES
+                restartScreenRest()
+            }
         }
         viewModelScope.launch {
             subtitles.available.collect { can -> content.update { it.copy(canSearchSubtitles = can) } }
@@ -546,12 +569,14 @@ class PlaybackViewModel(
         lastPositionMs = positionMs
         videoPlaying.value = true
         active.playing(positionMs)
+        restartScreenRest()
     }
 
     fun onPaused(positionMs: Long) {
         lastPositionMs = positionMs
         videoPlaying.value = false
         active.paused(positionMs)
+        restartScreenRest()
     }
 
     fun onSeeked(positionMs: Long) {
@@ -637,6 +662,7 @@ class PlaybackViewModel(
         lastPositionMs = positionMs
         active.stop(positionMs)
         ended = true
+        restartScreenRest()
         val upcoming = next
         if (upcoming != null && autoAdvanceOpen) {
             // Already counting down: the video ended under it, so there is nothing left to wait for.
@@ -665,10 +691,31 @@ class PlaybackViewModel(
         active.stop(positionMs)
         binge.reset()
         cancelCountdown()
+        screenRest?.cancel()
     }
 
     /** The viewer touched or pressed something: whatever was counted towards "Are you still watching?" starts over. */
-    fun onUserInteraction() = binge.interacted()
+    fun onUserInteraction() {
+        binge.interacted()
+        restartScreenRest()
+    }
+
+    /** The player is in front again (the phone was unlocked): the screen wakes, without counting as the viewer being there. */
+    fun onScreenShown() = restartScreenRest()
+
+    private fun restartScreenRest() {
+        val waiting: Boolean = (!videoPlaying.value || ended) && !inPictureInPicture
+
+        screenRest?.cancel()
+        content.update { if (it.screenState == PlayerScreenState.Awake) it else it.copy(screenState = PlayerScreenState.Awake) }
+        if (!waiting || dimWhenPausedMinutes == 0) return
+        screenRest = viewModelScope.launch {
+            delay(dimWhenPausedMinutes.minutes)
+            content.update { it.copy(screenState = PlayerScreenState.Dimmed) }
+            delay(DIMMED_BEFORE_SLEEP)
+            content.update { it.copy(screenState = PlayerScreenState.MaySleep) }
+        }
+    }
 
     /**
      * "Keep watching" on the prompt: the count starts over, the player carries on, and the card comes back
@@ -697,6 +744,7 @@ class PlaybackViewModel(
         lastPositionMs = positionMs
         inPictureInPicture = true
         content.update { it.copy(inPictureInPicture = true) }
+        restartScreenRest()
     }
 
     /**
@@ -706,7 +754,7 @@ class PlaybackViewModel(
     fun onLeftPictureInPicture(positionMs: Long, closed: Boolean) {
         inPictureInPicture = false
         content.update { it.copy(inPictureInPicture = false) }
-        if (closed) onClosed(positionMs)
+        if (closed) onClosed(positionMs) else restartScreenRest()
     }
 
     /** The player couldn't play the stream, for the reason [failure]. Ignored when no stream is open. */
@@ -1014,6 +1062,7 @@ class PlaybackViewModel(
         item = null
         started = false
         ended = false
+        restartScreenRest()
         upNextDismissed = false
         plan = null
         method = null

@@ -104,6 +104,25 @@ class ProfileSettingsTest {
     }
 
     @Test
+    fun `dim when paused is null with nobody signed in and 5 minutes for a new profile`() = runTest {
+        assertNull(app.profileSettings.dimWhenPausedMinutes.first())
+        app.signedIn()
+        assertEquals(5, app.profileSettings.dimWhenPausedMinutes.first())
+    }
+
+    @Test
+    fun `a dim wait from the choices is saved and another is ignored`() = runTest {
+        app.signedIn()
+
+        app.profileSettings.setDimWhenPausedMinutes(15)
+        assertEquals(15, app.profileSettings.dimWhenPausedMinutes.first())
+        app.profileSettings.setDimWhenPausedMinutes(0)
+        assertEquals(0, app.profileSettings.dimWhenPausedMinutes.first())
+        app.profileSettings.setDimWhenPausedMinutes(3)
+        assertEquals(0, app.profileSettings.dimWhenPausedMinutes.first())
+    }
+
+    @Test
     fun `a buffer length from the choices is saved and another is ignored`() = runTest {
         app.signedIn()
 

@@ -178,6 +178,7 @@ struct PlayerView: View {
         .overlay(alignment: .top) {
             if let notice = model.state?.notice { PlayerNotice(text: notice) }
         }
+        .overlay { PlayerDimOverlay(dimmed: state?.screenDimmed == true && !controller.isExternalPlayback) { wakeScreen() } }
         .subtitleSearch(
             itemId: model.state?.subtitleSearchItemId,
             isPresented: $searchingSubtitles,
@@ -201,6 +202,7 @@ struct PlayerView: View {
         // Out of sight while picture-in-picture plays: the page behind is upright, and the player is back in landscape when it returns.
         .onChange(of: session.minimised) { _, minimised in
             if minimised { OrientationLock.restore() } else { OrientationLock.lockLandscape() }
+            applyScreenRest(state)
         }
         .onDisappear {
             hideTask?.cancel()
@@ -210,10 +212,12 @@ struct PlayerView: View {
             if !pip.isActive { controller.tearDown() }
             OrientationLock.restore()
             swipe.restoreBrightness()
+            UIApplication.shared.isIdleTimerDisabled = false
         }
         .onReceive(model.$state) { stateChanged($0) }
         // Over AirPlay the controls are the whole screen, so they stay up until it stops.
         .onChange(of: controller.isExternalPlayback) { _, active in
+            applyScreenRest(state)
             if active {
                 hideTask?.cancel()
                 setControlsVisible(true)

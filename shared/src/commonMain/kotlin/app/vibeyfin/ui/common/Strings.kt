@@ -831,6 +831,11 @@ object Strings {
     val swipeGestures: String get() = text("swipe_gestures")
     val swipeGesturesHelp: String get() = text("swipe_gestures_help")
     val bufferingGroup: String get() = text("buffering_group")
+    val screenGroup: String get() = text("screen_group")
+    val dimWhenPaused: String get() = text("dim_when_paused")
+    val dimWhenPausedHelp: String get() = text("dim_when_paused_help")
+    val dimWhenPausedNever: String get() = text("dim_when_paused_never")
+    val playerScreenDimmed: String get() = text("player_screen_dimmed")
 
     fun skipSecondsShort(seconds: Int): String = text("skip_seconds_short", "seconds" to seconds)
 

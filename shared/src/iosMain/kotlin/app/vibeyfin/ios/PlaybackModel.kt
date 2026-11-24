@@ -61,6 +61,8 @@ class PlaybackModel(itemId: String, startOver: Boolean) {
 
     fun onUserInteraction() = host.viewModel.onUserInteraction()
 
+    fun onScreenShown() = host.viewModel.onScreenShown()
+
     fun onContinueWatching() = host.viewModel.onContinueWatching()
 
     fun onStopWatching() = host.viewModel.onStopWatching()

@@ -139,5 +139,7 @@ class MigrationTest {
 
     @Test fun version20MigratesToTheCurrentSchema() = assertMigratesFrom(20)
 
-    @Test fun theCurrentVersionOpensAsItIs() = assertMigratesFrom(21)
+    @Test fun version21MigratesToTheCurrentSchema() = assertMigratesFrom(21)
+
+    @Test fun theCurrentVersionOpensAsItIs() = assertMigratesFrom(22)
 }

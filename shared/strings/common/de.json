@@ -822,5 +822,8 @@
     "year_from_title":"Ab Jahr",
     "year_range":"{{from}} bis {{to}}",
     "year_title":"Erscheinungsjahr",
-    "year_to_title":"Bis Jahr"
+    "year_to_title":"Bis Jahr",
+    "dim_when_paused":"Bei Pause abdunkeln",
+    "dim_when_paused_never":"Nie",
+    "screen_group":"Bildschirm"
 }

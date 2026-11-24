@@ -121,6 +121,14 @@ internal fun PlayerContent(
                 LoadError(message = message, onRetry = viewModel::onRetry)
             }
         }
+
+        if (overlaysShown) {
+            PlayerDimOverlay(state.screenDimmed) {
+                viewModel.onUserInteraction()
+                chrome.controlsVisible = true
+                chrome.touched()
+            }
+        }
     }
 }
 

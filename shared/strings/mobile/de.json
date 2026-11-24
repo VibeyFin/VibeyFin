@@ -1,4 +1,5 @@
 {
+    "dim_when_paused_help":"Ist der Player so lange pausiert, wird der Bildschirm abgedunkelt und schaltet sich dann ab, sobald die Bildschirmsperre deines Telefons es zulässt. Tippe, um ihn zurückzuholen; das Video bleibt an derselben Stelle pausiert.",
     "download":"Download",
     "download_action_description":"{{title}} herunterladen, {{state}}",
     "download_all_episodes":"Alle Folgen herunterladen",
@@ -64,6 +65,7 @@
     "offline_search_prompt":"Etwas finden, das du heruntergeladen hast",
     "offline_toast":"Du bist offline. Es werden deine Downloads angezeigt.",
     "pause_download":"Download pausieren",
+    "player_screen_dimmed":"Bildschirm abgedunkelt. Zum Aufwecken tippen.",
     "purge_downloads_confirm_message":"Die Downloads dieses Profils werden von diesem Gerät gelöscht. Andere Profile behalten ihre. Du kannst jederzeit erneut herunterladen.",
     "purge_downloads_confirm_title":"Alle heruntergeladenen Dateien löschen?",
     "purge_downloads_help":"Entfernt alle Downloads dieses Profils und alle übrig gebliebenen Dateien, auch die, die in der Dateien-App angezeigt werden.",

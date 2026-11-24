@@ -403,6 +403,9 @@ their own section, the section title once, the footer (help text) below, and the
 - Skip back 5, 10, 15 or 30 s; Skip forward 10, 15, 30, 45 or 60 s (the values SF Symbols has glyphs for).
 - "Auto skip intros and recaps", off by default (the segment buttons show either way).
 - "Still watching after": Off or 2 to 5 episodes, default 3.
+- **Dim when paused** in its own "Screen" group: Never, 1, 2, 5, 10 or 15 min, default 5 min
+  (`Strings.dimWhenPausedHelp`). After that long paused, the player dims, then lets the phone's own timeout turn the
+  screen off; a touch wakes it (`player.md`).
 - **Buffer ahead** in its own group: Auto, 10 to 60 s, default 20 s, applied from the next video
   (`Strings.bufferAheadHelp`).
 
