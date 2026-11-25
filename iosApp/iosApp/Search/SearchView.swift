@@ -3,6 +3,9 @@ import Shared
 
 /// The Search tab: the system's search field, and under it what matches, grouped into movies, shows, episodes, people and collections.
 struct SearchView: View {
+    private static let personPortraitSize: CGFloat = 88
+    private static let personColumnMinimum: CGFloat = 100
+
     @StateObject private var model = SearchObservable()
     @State private var text = ""
 
@@ -25,6 +28,9 @@ struct SearchView: View {
                 .screenMargin()
                 // The bar's own inset, taken back so the field lines up with the title above it.
                 .padding(.horizontal, -Space.s2)
+                if let state = model.state, showsChips(state) {
+                    chips(state).padding(.bottom, Space.s2)
+                }
                 content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
@@ -35,6 +41,11 @@ struct SearchView: View {
         .onChange(of: model.state?.exit != nil) { _, hasExit in
             if hasExit, let exit = model.state?.exit { onExit(exit) }
         }
+    }
+
+    /// One view above every answer, so a page that changes doesn't reset the chips' scroll.
+    private func showsChips(_ state: SearchUiState) -> Bool {
+        !state.showsPrompt && state.message == nil
     }
 
     /// One button per kind, once something is typed: All lists every group, the others only theirs.
@@ -63,11 +74,11 @@ struct SearchView: View {
                 }
             } else if state.message == nil && state.noResults == false && state.searched.isEmpty {
                 // The first answer for this text is on its way.
-                VStack(spacing: Space.s2) { chips(state); skeleton }
+                skeleton
             } else if let message = state.message {
                 LoadErrorView(message: message, onRetry: { model.retry() }).screenMargin()
             } else if state.noResults {
-                VStack(spacing: 0) { chips(state); prompt(Strings.shared.noSearchResults(query: state.searched), state.offline ? Strings.shared.offlineSearchEmpty : Strings.shared.noSearchResultsHelp) }
+                prompt(Strings.shared.noSearchResults(query: state.searched), state.offline ? Strings.shared.offlineSearchEmpty : Strings.shared.noSearchResultsHelp)
             } else if state.searched.isEmpty {
                 skeleton
             } else {
@@ -126,8 +137,6 @@ struct SearchView: View {
     }
 
     private func results(_ state: SearchUiState) -> some View {
-        VStack(spacing: Space.s2) {
-        chips(state)
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Space.s2) {
                 // The library had nothing, but Seerr's group follows: say so above it (issue #14).
@@ -144,7 +153,7 @@ struct SearchView: View {
                         .accessibilityAddTraits(.isHeader)
                     // Posters and portraits sit in a narrow grid; episodes are rows, one per line on a phone and more on an iPad.
                     LazyVGrid(
-                        columns: [GridItem(.adaptive(minimum: group.kind == .episode ? 300 : 110), spacing: Space.s3, alignment: .top)],
+                        columns: [GridItem(.adaptive(minimum: gridMinimum(for: group.kind)), spacing: Space.s3, alignment: .top)],
                         alignment: .leading,
                         spacing: Space.s4
                     ) {
@@ -163,7 +172,6 @@ struct SearchView: View {
             .padding(.vertical, Space.s2)
             // The older answer stays while the next one is on its way, dimmed.
             .opacity(state.loading ? 0.5 : 1)
-        }
         }
     }
 
@@ -199,10 +207,10 @@ struct SearchView: View {
 
     @ViewBuilder
     private func tile(_ result: SearchResult) -> some View {
-        if result.kind == .episode {
-            episodeRow(result)
-        } else {
-            posterTile(result)
+        switch result.kind {
+        case .episode: episodeRow(result)
+        case .person: personTile(result)
+        default: posterTile(result)
         }
     }
 
@@ -222,18 +230,38 @@ struct SearchView: View {
         .contentShape(Rectangle())
     }
 
+    private func gridMinimum(for kind: SearchKind) -> CGFloat {
+        switch kind {
+        case .episode: return 300
+        case .person: return Self.personColumnMinimum
+        default: return 110
+        }
+    }
+
+    private func personTile(_ result: SearchResult) -> some View {
+        VStack(spacing: Space.s2) {
+            PortraitView(name: result.title, imageUrl: result.imageUrl, size: Self.personPortraitSize, initialsFont: .headline)
+            VStack(spacing: 2) {
+                Text(result.title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary).lineLimit(2, reservesSpace: true)
+                Text(result.subtitle ?? "").font(.caption).foregroundStyle(.secondary).lineLimit(1, reservesSpace: true)
+            }
+            .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, alignment: .top)
+        .contentShape(Rectangle())
+    }
+
     private func posterTile(_ result: SearchResult) -> some View {
-        let isPerson = result.kind == .person
-        return VStack(alignment: isPerson ? .center : .leading, spacing: Space.s2) {
+        VStack(alignment: .leading, spacing: Space.s2) {
             picture(result)
-            VStack(alignment: isPerson ? .center : .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(result.title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary).lineLimit(2)
                 if let subtitle = result.subtitle {
                     Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
-            .multilineTextAlignment(isPerson ? .center : .leading)
-            .frame(maxWidth: .infinity, alignment: isPerson ? .center : .leading)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .contentShape(Rectangle())
     }
@@ -241,17 +269,6 @@ struct SearchView: View {
     @ViewBuilder
     private func picture(_ result: SearchResult) -> some View {
         switch result.kind {
-        case .person:
-            ZStack {
-                Circle().fill(Color(.tertiarySystemBackground))
-                Text(Strings.shared.initials(name: result.title))
-                    .font(.headline).foregroundStyle(.secondary)
-                if let url = result.imageUrl.flatMap({ URL(string: $0) }) {
-                    AsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { Color.clear }
-                }
-            }
-            .aspectRatio(1, contentMode: .fit)
-            .clipShape(Circle())
         case .episode:
             Artwork(url: result.imageUrl, title: result.title, aspectRatio: 16.0 / 9.0, blurHash: nil)
                 .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
