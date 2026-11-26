@@ -2,6 +2,7 @@ package app.vibeyfin.ui.servers
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.vibeyfin.dev.SkeletonGate
 import app.vibeyfin.domain.AccountRepository
 import app.vibeyfin.domain.DiscoveredServer
 import app.vibeyfin.domain.LanDiscovery
@@ -40,6 +41,7 @@ class ServersViewModel(
     accounts: AccountRepository,
     private val discovery: LanDiscovery,
     private val removal: ServerRemoval,
+    gate: SkeletonGate = SkeletonGate.AlwaysOpen,
 ) : ViewModel() {
     private val found = MutableStateFlow<List<DiscoveredServer>>(emptyList())
     private val searching = MutableStateFlow(false)
@@ -51,10 +53,10 @@ class ServersViewModel(
     }
 
     val uiState: StateFlow<ServersUiState> =
-        combine(savedRows, found, searching, confirmRemoveId) { rows, found, searching, removeId ->
+        combine(savedRows, found, searching, confirmRemoveId, gate.held) { rows, found, searching, removeId, held ->
             val savedIds = rows.mapTo(mutableSetOf()) { it.server.id }
             ServersUiState(
-                loading = false,
+                loading = held,
                 servers = rows,
                 discovered = found.filter { it.id !in savedIds },
                 searching = searching,

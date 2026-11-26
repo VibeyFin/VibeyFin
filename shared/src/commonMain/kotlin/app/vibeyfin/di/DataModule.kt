@@ -5,6 +5,8 @@ import app.vibeyfin.data.db.VibeyFinDatabase
 import app.vibeyfin.data.db.buildVibeyFinDatabase
 import app.vibeyfin.data.platform.DeviceInfo
 import app.vibeyfin.data.prefs.DataStoreDevicePreferences
+import app.vibeyfin.dev.DevFlags
+import app.vibeyfin.dev.SkeletonGate
 import app.vibeyfin.domain.AccountRepository
 import app.vibeyfin.domain.DevicePreferences
 import app.vibeyfin.domain.LanguagePreferences
@@ -26,6 +28,9 @@ import kotlin.time.Clock
 /** Storage and repositories. Needs [platformModule] for the builder, DataStore and vault. */
 fun dataModule() = module {
     single<Clock> { Clock.System }
+
+    single { DevFlags(enabled = get<DeviceInfo>().debugBuild) }
+    single { SkeletonGate(get()) }
 
     single { get<RoomDatabase.Builder<VibeyFinDatabase>>().buildVibeyFinDatabase() }
     single { get<VibeyFinDatabase>().serverDao() }

@@ -6,6 +6,8 @@ import app.vibeyfin.data.api.JellyfinHttpClient
 import app.vibeyfin.data.api.ServerReachability
 import app.vibeyfin.data.api.Timeouts
 import app.vibeyfin.data.api.UnauthorizedEvents
+import app.vibeyfin.data.platform.DeviceInfo
+import app.vibeyfin.dev.SkeletonGate
 import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.BingeCounter
 import app.vibeyfin.domain.ConnectionManager
@@ -56,6 +58,7 @@ fun apiModule() = module {
             JellyfinHttpClient.create(
                 clientInfo = get<ClientInfoProvider>()::current,
                 timeouts = Timeouts.Api,
+                gate = get<SkeletonGate>().takeIf { get<DeviceInfo>().debugBuild },
             ),
             unauthorized = get(),
             reachability = get(),

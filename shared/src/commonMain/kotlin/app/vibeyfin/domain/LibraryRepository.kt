@@ -30,6 +30,7 @@ import app.vibeyfin.domain.model.CastMember
 import app.vibeyfin.domain.model.FilteredPage
 import app.vibeyfin.domain.model.ItemKind
 import app.vibeyfin.domain.model.ItemPage
+import app.vibeyfin.domain.model.MediaAspect
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.model.Person
 import app.vibeyfin.domain.model.SearchKind
@@ -285,8 +286,8 @@ private const val BACKDROP_WIDTH = 1280
 private const val LANDSCAPE_WIDTH = 640
 private const val LOGO_WIDTH = 640
 private const val CAST_WIDTH = 200
-private const val TALL = 2f / 3f
-private const val WIDE = 16f / 9f
+private const val TALL = MediaAspect.POSTER
+private const val WIDE = MediaAspect.WIDE
 private const val TICKS_PER_MINUTE = 600_000_000L
 
 private fun BaseItemDto.toPerson(baseUrl: String): Person {

@@ -1,5 +1,8 @@
 package app.vibeyfin.ui.whoswatching
 
+import app.vibeyfin.dev.DevFlagRegistry
+import app.vibeyfin.dev.DevFlags
+import app.vibeyfin.dev.SkeletonGate
 import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.model.ProfileRef
@@ -68,13 +71,26 @@ class WhoIsWatchingViewModelTest {
         app.close()
     }
 
-    private fun TestScope.viewModel(pinFor: ProfileRef? = null): WhoIsWatchingViewModel {
+    private fun TestScope.viewModel(pinFor: ProfileRef? = null, gate: SkeletonGate = SkeletonGate.AlwaysOpen): WhoIsWatchingViewModel {
         val clock = virtualClock()
         val auth = AuthRepository(app.connector, app.accounts, app.connection, clock)
-        return viewModels.track(WhoIsWatchingViewModel("srv-1", app.servers, app.accounts, auth, app.connection, app.pins, clock, pinFor))
+        return viewModels.track(WhoIsWatchingViewModel("srv-1", app.servers, app.accounts, auth, app.connection, app.pins, clock, pinFor, gate))
     }
 
     private suspend fun WhoIsWatchingViewModel.loaded() = uiState.first { !it.loading }
+
+    @Test
+    fun staysLoadingWhileTheSkeletonGateIsClosed() = runTest {
+        val flags = DevFlags(enabled = true)
+        val viewModel = viewModel(gate = SkeletonGate(flags))
+        flags.set(DevFlagRegistry.showSkeletons, true)
+        viewModel.uiState.first { it.profiles.isNotEmpty() }
+
+        assertTrue(viewModel.uiState.value.loading)
+        flags.set(DevFlagRegistry.showSkeletons, false)
+
+        assertEquals(listOf("Alex", "Kim", "Sam"), viewModel.loaded().profiles.map { it.name })
+    }
 
     @Test
     fun showsTheServersUsersAsTiles() = runTest {

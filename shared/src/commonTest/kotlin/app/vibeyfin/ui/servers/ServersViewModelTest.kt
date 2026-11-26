@@ -1,5 +1,8 @@
 package app.vibeyfin.ui.servers
 
+import app.vibeyfin.dev.DevFlagRegistry
+import app.vibeyfin.dev.DevFlags
+import app.vibeyfin.dev.SkeletonGate
 import app.vibeyfin.domain.DiscoveredServer
 import app.vibeyfin.testing.FakeLanDiscovery
 import app.vibeyfin.testing.TestApp
@@ -42,11 +45,24 @@ class ServersViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(ServersViewModel(servers, app.accounts, discovery, app.serverRemoval))
+    private fun viewModel(gate: SkeletonGate = SkeletonGate.AlwaysOpen) = viewModels.track(ServersViewModel(servers, app.accounts, discovery, app.serverRemoval, gate))
 
     @Test
     fun startsLoadingSoTheEmptyStateDoesNotFlash() {
         assertTrue(viewModel().uiState.value.loading)
+    }
+
+    @Test
+    fun staysLoadingWhileTheSkeletonGateIsClosed() = runTest {
+        servers.save("srv-1", "Home", "10.10.7", "https://nas")
+        val flags = DevFlags(enabled = true)
+        val viewModel = viewModel(SkeletonGate(flags))
+        flags.set(DevFlagRegistry.showSkeletons, true)
+
+        viewModel.uiState.first { it.loading && it.servers.isNotEmpty() }
+        flags.set(DevFlagRegistry.showSkeletons, false)
+
+        assertEquals(listOf("Home"), viewModel.uiState.first { !it.loading }.servers.map { it.server.name })
     }
 
     @Test

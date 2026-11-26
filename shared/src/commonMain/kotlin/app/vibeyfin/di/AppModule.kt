@@ -47,7 +47,7 @@ fun appModule() = module {
     viewModel { params -> ServerDetailsViewModel(params.get(), get(), get(), get()) }
     viewModel { params -> AddServerViewModel(params.getOrNull(), get(), get()) }
     viewModel { params ->
-        WhoIsWatchingViewModel(params.get(), get(), get(), get(), get(), get(), get(), params.getOrNull())
+        WhoIsWatchingViewModel(params.get(), get(), get(), get(), get(), get(), get(), params.getOrNull(), get())
     }
     viewModelOf(::HomeViewModel)
     viewModelOf(::OfflineHomeViewModel)
