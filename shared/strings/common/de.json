@@ -825,5 +825,6 @@
     "year_to_title":"Bis Jahr",
     "dim_when_paused":"Bei Pause abdunkeln",
     "dim_when_paused_never":"Nie",
-    "screen_group":"Bildschirm"
+    "screen_group":"Bildschirm",
+    "settings_group_developer":"Entwickler"
 }

@@ -3,6 +3,8 @@ package app.vibeyfin.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.vibeyfin.data.api.ApiResult
+import app.vibeyfin.dev.DevFlagToggle
+import app.vibeyfin.dev.DevFlags
 import app.vibeyfin.domain.AuthRepository
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.ConnectionState
@@ -42,6 +44,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
@@ -102,6 +105,7 @@ class SettingsViewModel(
     seerr: SeerrConnection? = null,
     private val appLanguages: List<AppLanguage> = emptyList(),
     language: StateFlow<String> = Texts.language,
+    private val devFlags: DevFlags? = null,
 ) : ViewModel(),
     PinSheetControls {
     private val confirmSignOut = MutableStateFlow(false)
@@ -190,6 +194,7 @@ class SettingsViewModel(
         live(seerr?.state ?: MutableStateFlow<SeerrState>(SeerrState.Hidden)),
         unread(preferences.appLanguage),
         live(language),
+        (devFlags?.toggleChanges ?: flowOf(emptyList<DevFlagToggle>())) to (devFlags?.toggles() ?: emptyList<DevFlagToggle>()),
     )
 
     /** Eager, so the reads start with the ViewModel and not when the screen first draws. */
@@ -249,6 +254,7 @@ class SettingsViewModel(
             languageStatus = v[LANGUAGE_STATUS] as LanguageStatus,
             searches = v[SEARCHES].cast(),
             seerrStatus = seerrStatus(v[SEERR] as SeerrState),
+            devToggles = v[DEV_TOGGLES].cast(),
         )
         return SettingsUiState(
             pages = settingsPages(values),
@@ -265,6 +271,11 @@ class SettingsViewModel(
             requestNotificationPermission = v[REQUEST_PERMISSION] as Boolean,
             closePage = v[CLOSE_PAGE] as SettingsPageId?,
         )
+    }
+
+    /** A developer flag's switch was flipped; [id] is its [ToggleItem.devFlagId]. */
+    fun onDevFlag(id: String, value: Boolean) {
+        devFlags?.set(id, value)
     }
 
     /** A [ToggleItem] was switched. Keys that are not toggles are ignored. */
@@ -598,5 +609,6 @@ private const val CLOSE_PAGE = 16
 private const val CONFIRM_PURGE_DOWNLOADS = 17
 private const val SEERR = 18
 private const val APP_LANGUAGE = 19
+private const val DEV_TOGGLES = 21
 
 private const val MB_PER_GB = 1_000L

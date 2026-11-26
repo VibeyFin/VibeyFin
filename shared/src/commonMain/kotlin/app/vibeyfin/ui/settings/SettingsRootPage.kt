@@ -40,6 +40,7 @@ fun rootPage(v: SettingsValues): SettingsPage = SettingsPage(
         deviceSection(v),
         downloadsSection(v),
         advancedSection(v),
+        developerSection(v),
     ),
 )
 
@@ -165,6 +166,12 @@ private fun downloadsSection(v: SettingsValues) = SettingsSection(
         ),
         ActionItem(SettingKey.PurgeDownloads, Strings.purgeDownloadsTitle, Strings.purgeDownloadsHelp, destructive = true, visible = v.hasProfile),
     ),
+)
+
+private fun developerSection(v: SettingsValues) = SettingsSection(
+    Strings.settingsGroupDeveloper,
+    footer = null,
+    items = v.devToggles.map { ToggleItem(SettingKey.DevFlag, it.flag.label, checked = it.checked, devFlagId = it.flag.id) },
 )
 
 private fun advancedSection(v: SettingsValues): SettingsSection {

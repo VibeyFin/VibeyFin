@@ -1,7 +1,9 @@
 package app.vibeyfin.dev
 
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 
 enum class DevFlagKind { Toggle }
@@ -38,9 +40,13 @@ class DevFlags(val enabled: Boolean) {
         DevFlagRegistry.all.firstOrNull { it.id == id }?.let { set(it, value) }
     }
 
+    /** The toggles to show; none in a release build. */
     fun toggles(): List<DevFlagToggle> = DevFlagRegistry.all
-        .filter { it.kind == DevFlagKind.Toggle }
+        .filter { enabled && it.kind == DevFlagKind.Toggle }
         .map { DevFlagToggle(it, states.getValue(it.id).value) }
+
+    /** [toggles] again whenever one changes. */
+    val toggleChanges: Flow<List<DevFlagToggle>> = combine(DevFlagRegistry.all.map { state(it) }) { toggles() }
 }
 
 /** Closed while "Show skeletons" is on, so data requests wait and screens stay on their skeletons. Always open in a release build. */

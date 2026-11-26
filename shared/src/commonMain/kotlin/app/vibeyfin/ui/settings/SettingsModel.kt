@@ -61,6 +61,7 @@ enum class SettingKey {
     NoLanguageMatch,
     Seerr,
     QuickConnect,
+    DevFlag,
 }
 
 /**
@@ -114,6 +115,8 @@ data class ToggleItem(
     val checked: Boolean,
     override val visible: Boolean = true,
     override val enabled: Boolean = true,
+    /** Set on a developer flag's switch: the screen then reports it to `onDevFlag` with this id instead of `onToggle`. */
+    val devFlagId: String? = null,
 ) : SettingItem
 
 data class ChoiceItem(

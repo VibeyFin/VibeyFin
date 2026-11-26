@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
@@ -169,6 +170,7 @@ private fun iconFor(key: SettingKey): ImageVector? = when (key) {
     SettingKey.KidsProfile, SettingKey.Pin -> Icons.Filled.Lock
     SettingKey.Seerr -> Icons.Filled.Add
     SettingKey.QuickConnect -> null
+    SettingKey.DevFlag -> Icons.Filled.Build
     else -> Icons.Filled.Info
 }
 

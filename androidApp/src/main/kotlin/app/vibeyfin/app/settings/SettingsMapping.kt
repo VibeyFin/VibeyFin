@@ -26,8 +26,19 @@ internal fun SettingsPage.drawn(hasPage: (SettingsPageId) -> Boolean): SettingsP
     )
 }
 
-/** A row's identity, used as its composition key and in tests: the page id and the key, since a key can appear on two pages. */
-internal fun rowId(page: SettingsPageId, item: SettingItem): String = "${page.name}/${item.key.name}"
+/** A row's identity, used as its composition key and in tests: the page id and the key (a developer flag adds its id, as they all share one key), since a key can appear on two pages. */
+internal fun rowId(page: SettingsPageId, item: SettingItem): String {
+    val flagId: String? = (item as? ToggleItem)?.devFlagId
+
+    return listOfNotNull(page.name, item.key.name, flagId).joinToString("/")
+}
+
+/** Reports a flipped switch: a developer flag goes to [onDevFlag] with its id, any other switch to [onToggle] with its key. */
+internal fun ToggleItem.report(value: Boolean, onToggle: (SettingKey, Boolean) -> Unit, onDevFlag: (String, Boolean) -> Unit) {
+    val flagId: String? = devFlagId
+
+    if (flagId != null) onDevFlag(flagId, value) else onToggle(key, value)
+}
 
 /** The page a route id names; an id this build does not know (a newer link, a stale back stack) opens the root. */
 internal fun pageIdOrRoot(id: String): SettingsPageId = SettingsPageId.entries.firstOrNull { it.name == id } ?: SettingsPageId.Root

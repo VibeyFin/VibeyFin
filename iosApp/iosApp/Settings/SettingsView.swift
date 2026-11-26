@@ -109,8 +109,8 @@ struct SettingsPageView: View {
         let items = model.items(of: section)
         if !items.isEmpty {
             Section {
-                // Keyed by page and setting, so a setting that ever sits on two pages stays distinct.
-                ForEach(items, id: \.key) { item in
+                // Keyed by page and setting (and flag, for developer switches), so a setting that ever sits on two pages stays distinct.
+                ForEach(items, id: \.rowID) { item in
                     SettingsItemRow(item: item, page: page, model: model, selection: selection, onAction: perform) { id in
                         // The list starts whole each time it opens.
                         model.pageOpened(id)
@@ -198,4 +198,8 @@ private struct SettingsPickerSheet: View {
             searchHint: page.searchPrompt ?? ""
         )
     }
+}
+
+private extension SettingItem {
+    var rowID: String { settingRowID(keyName: key.name, devFlagId: (self as? ToggleItem)?.devFlagId) }
 }

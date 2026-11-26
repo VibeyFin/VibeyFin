@@ -119,7 +119,7 @@ fun SettingsRoute(
     } else if (twoPane) {
         SettingsTabletScreen(
             state = state,
-            onToggle = viewModel::onToggle,
+            onToggle = { item, value -> item.report(value, viewModel::onToggle, viewModel::onDevFlag) },
             onChoose = viewModel::onChoose,
             onAction = viewModel::onAction,
             onBack = onBack,
@@ -132,7 +132,7 @@ fun SettingsRoute(
         SettingsPageScreen(
             page = page,
             hasPage = { it in state.pages },
-            onToggle = viewModel::onToggle,
+            onToggle = { item, value -> item.report(value, viewModel::onToggle, viewModel::onDevFlag) },
             onChoose = viewModel::onChoose,
             onAction = viewModel::onAction,
             onOpen = open,
@@ -192,7 +192,7 @@ private fun LeaveWhenDisconnected(connection: ConnectionManager, onExit: (HomeEx
 @Composable
 fun SettingsPageScreen(
     page: SettingsPage,
-    onToggle: (SettingKey, Boolean) -> Unit,
+    onToggle: (ToggleItem, Boolean) -> Unit,
     onChoose: (SettingKey, Int) -> Unit,
     onAction: (SettingKey) -> Unit,
     onOpen: (SettingsPageId) -> Unit,
@@ -228,7 +228,7 @@ internal fun SettingsPageBody(
     hasPage: (SettingsPageId) -> Boolean,
     modifier: Modifier,
     selectedLink: SettingKey?,
-    onToggle: (SettingKey, Boolean) -> Unit,
+    onToggle: (ToggleItem, Boolean) -> Unit,
     onChoose: (SettingKey, Int) -> Unit,
     onAction: (SettingKey) -> Unit,
     onOpen: (LinkItem) -> Unit,
@@ -299,13 +299,13 @@ private fun SettingsPickerSheet(
 private fun ItemRow(
     item: SettingItem,
     selectedLink: SettingKey?,
-    onToggle: (SettingKey, Boolean) -> Unit,
+    onToggle: (ToggleItem, Boolean) -> Unit,
     onChoose: (SettingKey, Int) -> Unit,
     onAction: (SettingKey) -> Unit,
     onOpen: (LinkItem) -> Unit,
 ) {
     when (item) {
-        is ToggleItem -> ToggleRow(item) { onToggle(item.key, it) }
+        is ToggleItem -> ToggleRow(item) { onToggle(item, it) }
 
         // A checklist choice draws its options inline in its own section: the section's title is its title
         is ChoiceItem -> if (item.asPage) {

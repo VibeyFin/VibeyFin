@@ -65,7 +65,7 @@ fun appModule() = module {
     viewModelOf(::NotificationOpenViewModel)
     viewModel {
         val device = get<DeviceInfo>()
-        SettingsViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(ApplicationScope), device.appVersion, device.subtitleStyleApplies, downloadAlerts = device.downloadAlerts, seerr = get(), appLanguages = if (device.languagePickedInSystem) emptyList() else get<AppLocale>().languages)
+        SettingsViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(ApplicationScope), device.appVersion, device.subtitleStyleApplies, downloadAlerts = device.downloadAlerts, seerr = get(), devFlags = get(), appLanguages = if (device.languagePickedInSystem) emptyList() else get<AppLocale>().languages)
     }
     viewModelOf(::AppBannerViewModel)
     viewModelOf(::DownloadsViewModel)

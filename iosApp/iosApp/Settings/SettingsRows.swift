@@ -47,12 +47,12 @@ struct SettingsItemRow: View {
 
     // The whole row is the switch, so the label is a target too (a bare `Toggle` in a list only reacts to the switch itself).
     private func toggleRow(_ item: ToggleItem) -> some View {
-        Toggle(isOn: Binding(get: { item.checked }, set: { model.toggle(item.key, $0) })) {
+        Toggle(isOn: Binding(get: { item.checked }, set: { model.toggle(item, $0) })) {
             RowLabel(title: item.title, help: item.help)
         }
         .tint(Brand.spark)
         .contentShape(Rectangle())
-        .onTapGesture { model.toggle(item.key, !item.checked) }
+        .onTapGesture { model.toggle(item, !item.checked) }
     }
 
     @ViewBuilder
