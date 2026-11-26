@@ -111,19 +111,13 @@ private struct SubtitleSearchView: View {
         } else {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(0..<4, id: \.self) { _ in
-                    ResultRow(result: Self.placeholderResult, downloading: false, enabled: true) {}
+                    ResultRow(result: Placeholders.shared.subtitleResult, downloading: false, enabled: true) {}
                 }
             }
             .padding(.horizontal, Space.s4)
             .skeleton()
             Spacer(minLength: 0)
         }
-    }
-
-    private static var placeholderResult: SubtitleResultRow {
-        let result: SearchResult = Placeholders.shared.searchResult(kind: .movie)
-
-        return SubtitleResultRow(id: result.id, name: result.title, details: result.subtitle ?? "", isMatch: false, added: false, spoken: "")
     }
 
     private var languagePicker: some View {

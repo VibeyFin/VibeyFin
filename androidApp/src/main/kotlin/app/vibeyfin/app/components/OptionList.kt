@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import app.vibeyfin.app.components.Text
 import app.vibeyfin.app.theme.MenuPressIndication
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.ui.common.Placeholders
 import app.vibeyfin.ui.common.Strings
 
 /** One row of an [OptionList]: [key] is handed back when it is chosen. */
@@ -108,12 +109,10 @@ fun OptionList(title: String, options: List<OptionRow>, onSelect: (String) -> Un
 /** An [OptionList] while its options load: the real list with [rowCount] placeholder options. */
 @Composable
 fun OptionListPlaceholder(title: String, modifier: Modifier = Modifier, rowCount: Int = 6) {
-    val rows: List<OptionRow> = remember(rowCount) { (0 until rowCount).map { OptionRow(key = "placeholder-$it", label = Strings.loadingPage, detail = PLACEHOLDER_DETAIL) } }
+    val rows: List<OptionRow> = remember(rowCount) { (0 until rowCount).map { OptionRow(key = Placeholders.key(it), label = Strings.loadingPage, detail = Placeholders.DETAIL) } }
 
     Skeleton { OptionList(title, rows, onSelect = {}, modifier = modifier) }
 }
-
-private const val PLACEHOLDER_DETAIL = "00"
 
 @Composable
 private fun OptionListTitle(title: String) {

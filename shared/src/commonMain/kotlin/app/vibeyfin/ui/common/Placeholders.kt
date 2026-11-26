@@ -21,12 +21,14 @@ import app.vibeyfin.domain.model.Server
 import app.vibeyfin.ui.home.ContinueCard
 import app.vibeyfin.ui.home.MediaRow
 import app.vibeyfin.ui.servers.ServerRow
+import app.vibeyfin.ui.subtitles.SubtitleResultRow
 
 /**
  * Fake data for each kind of content, so a skeleton is the real view drawn with these and shaped by redaction. Texts are longer
  * than any line limit, so every line the real view has is filled; none of it ever shows as words.
  */
 object Placeholders {
+    const val DETAIL: String = "00"
     const val LONG_TITLE: String = "A placeholder title that is long enough to fill every line the real title may take up"
 
     private const val LONG_NAME: String = "Placeholder Person With A Long Name"
@@ -114,6 +116,11 @@ object Placeholders {
         server = Server(id = "placeholder-server", name = "$LONG_TITLE on the home network", version = "10.11.0", addresses = listOf("https://placeholder.example.org")),
         profileCount = 2,
     )
+
+    val subtitleResult: SubtitleResultRow
+        get() = SubtitleResultRow(id = key(0), name = LONG_TITLE, details = Strings.loadingPage, isMatch = false, added = false, spoken = "")
+
+    fun key(index: Int): String = "placeholder-$index"
 
     fun posterTiles(count: Int): List<MediaItem> = (0 until count).map { posterTile.copy(id = "placeholder-$it") }
 

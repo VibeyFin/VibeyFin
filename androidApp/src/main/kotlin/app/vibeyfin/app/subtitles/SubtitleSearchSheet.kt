@@ -126,7 +126,7 @@ private fun SubtitleSearchSheet(state: SubtitleSearchUiState, viewModel: Subtitl
                 when {
                     state.loading -> Skeleton {
                         Column {
-                            repeat(SKELETON_ROWS) { ResultRow(placeholderResult(), downloading = false, enabled = false, onClick = {}) }
+                            repeat(SKELETON_ROWS) { ResultRow(Placeholders.subtitleResult, downloading = false, enabled = true, onClick = {}) }
                         }
                     }
 
@@ -240,7 +240,5 @@ private fun Problem(problem: SubtitleSearchProblem, onRetry: () -> Unit) {
 }
 
 private const val SKELETON_ROWS = 4
-
-private fun placeholderResult(): SubtitleResultRow = SubtitleResultRow("placeholder", Placeholders.LONG_TITLE, Strings.loadingPage, isMatch = false, added = false, spoken = "")
 
 private const val DISABLED_ALPHA = 0.4f
