@@ -96,6 +96,8 @@ Device ID: generate a UUID once per install and persist it.
 - Comments: write few. Add one only for a reason the code can't show (a platform quirk, an ordering that matters, a
   product decision), in one short line. Don't narrate what the code does or explain a tweak; that belongs in the commit.
   Don't add comments to code you didn't change.
+- A skeleton is the real view with placeholder data (`Placeholders`), drawn through the one skeleton modifier; never a separate hand-built layout.
+- Debug-only labels (a dev flag's, `PseudoLocale.language`) may be literals in code, not `Strings`.
 - Time: inject a clock (`kotlin.time.Clock`) so repositories are testable.
 
 ## Design language

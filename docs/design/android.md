@@ -33,7 +33,7 @@ A Jetpack Compose app that follows Material 3. Use the `android` theme and `m3-*
 | Skip intervals setting | the settings `ChoiceRow` (Skip back 5 to 30 s, Skip forward 10 to 60 s), on the Skipping and autoplay page |
 | Buffer ahead setting | the same `ChoiceRow` (Auto, 10 to 60 s, default 20 s), in its own group on Skipping and autoplay. Player: `DefaultLoadControl.setBufferDurationsMs`; the scrubber's buffered segment reads `player.bufferedPosition`, white at 40% (`overlay-strong`) under the copper fill |
 | Player | Compose controls over Media3 `PlayerSurface`; `MediaSession` notification; PiP with `setAutoEnterEnabled` on Android 12+ |
-| Loading | `LinearProgressIndicator` / skeletons; `CircularProgressIndicator` only in the player |
+| Loading | `LinearProgressIndicator`; `CircularProgressIndicator` only in the player. Skeletons are the real composable fed `Placeholders` and drawn through the skeleton modifier (grey fill, shimmer driven by one clock in a composition local, off with animations); a row's count comes from `PlaceholderCount.forRow` (the visible width plus one peeking tile, the real count when known) and a grid fills the screen height, large image shapes from `MediaAspect` |
 
 ## Go
 

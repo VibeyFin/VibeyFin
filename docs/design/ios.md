@@ -60,7 +60,7 @@ Glass is the **navigation and controls layer** floating above content — never 
 | Skip intervals setting | a `Picker` with `.pickerStyle(.menu)` (Skip back 5 to 30 s, Skip forward 10 to 60 s), on the Skipping and autoplay page |
 | Buffer ahead setting | the same `Picker` row (Auto, 10 to 60 s, default 20 s), in its own group on Skipping and autoplay. Player: `AVPlayerItem.preferredForwardBufferDuration`; the scrubber's buffered segment is the end of the `loadedTimeRanges` range holding the current time |
 | Player | Custom SwiftUI controls over `AVPlayerLayer` (Jellyfin trickplay and skip segments need it); PiP via `AVPictureInPictureController`; Now Playing via `MPNowPlayingInfoCenter`; while video AirPlay is active the item's artwork shows blurred behind the controls, the PiP button is hidden and a "Playing on <device>" pill shows (`player.md`) |
-| Loading | `ProgressView` in the player only; skeletons elsewhere (`.redacted(reason: .placeholder)`) |
+| Loading | `ProgressView` in the player only. Skeletons are the real view fed `Placeholders`, wrapped in one modifier over `.redacted(reason: .placeholder)` (grey fill and shimmer, grey and still under Reduce Motion); a row's count comes from `PlaceholderCount.forRow` (the visible width plus one peeking tile, the real count when known) and a grid fills the screen height, large image shapes from `MediaAspect` |
 
 ## Go
 
