@@ -19,7 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -67,6 +66,12 @@ fun Artwork(
     description: String? = null,
     blurHash: String? = null,
 ) {
+    if (LocalSkeleton.current) {
+        Box(modifier.aspectRatio(aspectRatio).skeleton())
+
+        return
+    }
+
     Box(
         modifier = modifier.aspectRatio(aspectRatio).background(VibeyFinTokens.Colors.surface2),
         contentAlignment = Alignment.Center,
@@ -152,25 +157,32 @@ fun WatchedBadge(modifier: Modifier = Modifier) {
 @Composable
 fun ArtworkTile(item: MediaItem, onClick: () -> Unit, modifier: Modifier = Modifier, captionLines: Int = 0) {
     val longPress = LocalTileLongPress.current
+    val skeleton: Boolean = LocalSkeleton.current
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
             // The poster grows into the detail page's picture; this tile is the one that does, from the moment it is tapped
-            .combinedClickable(
-                role = Role.Button,
-                onLongClickLabel = if (longPress != null) Strings.showOptions else null,
-                onLongClick = longPress?.let { press -> { press(item) } },
-                onClick = {
-                    SharedPick.itemId = item.id
-                    onClick()
+            .then(
+                if (skeleton) {
+                    Modifier
+                } else {
+                    Modifier.combinedClickable(
+                        role = Role.Button,
+                        onLongClickLabel = if (longPress != null) Strings.showOptions else null,
+                        onLongClick = longPress?.let { press -> { press(item) } },
+                        onClick = {
+                            SharedPick.itemId = item.id
+                            onClick()
+                        },
+                    )
                 },
             )
             .semantics(mergeDescendants = true) { contentDescription = Strings.cardLabel(item.title, item.year) },
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
     ) {
-        Box(Modifier.sharedPoster(item.id, source = true).clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
+        Box((if (skeleton) Modifier else Modifier.sharedPoster(item.id, source = true)).clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
             Artwork(
                 url = item.posterUrl,
                 title = item.title,

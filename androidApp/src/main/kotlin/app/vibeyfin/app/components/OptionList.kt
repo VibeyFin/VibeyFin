@@ -14,7 +14,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
@@ -35,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import app.vibeyfin.app.components.Text
 import app.vibeyfin.app.theme.MenuPressIndication
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.ui.common.Strings
@@ -97,7 +97,7 @@ fun OptionList(title: String, options: List<OptionRow>, onSelect: (String) -> Un
                     modifier = Modifier
                         .padding(horizontal = VibeyFinTokens.Space.s2)
                         .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
-                        .selectable(selected = option.selected, role = Role.RadioButton, onClick = { onSelect(option.key) })
+                        .unlessSkeleton { selectable(selected = option.selected, role = Role.RadioButton, onClick = { onSelect(option.key) }) }
                         .semantics { option.description?.let { contentDescription = it } },
                 )
             }
@@ -105,23 +105,15 @@ fun OptionList(title: String, options: List<OptionRow>, onSelect: (String) -> Un
     }
 }
 
-/** An [OptionList] while its options load: the same title and rows, each a gray label and a gray count where the real ones go. */
+/** An [OptionList] while its options load: the real list with [rowCount] placeholder options. */
 @Composable
-fun OptionListSkeleton(title: String, modifier: Modifier = Modifier, rowCount: Int = 6) {
-    Column(modifier) {
-        OptionListTitle(title)
-        Column(Modifier.clearAndSetSemantics { contentDescription = Strings.loadingPage }) {
-            repeat(rowCount) {
-                ListItem(
-                    headlineContent = { SkeletonLine(160.dp, MaterialTheme.typography.bodyLarge) },
-                    trailingContent = { SkeletonLine(28.dp, MaterialTheme.typography.bodyMedium) },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    modifier = Modifier.padding(horizontal = VibeyFinTokens.Space.s2),
-                )
-            }
-        }
-    }
+fun OptionListPlaceholder(title: String, modifier: Modifier = Modifier, rowCount: Int = 6) {
+    val rows: List<OptionRow> = remember(rowCount) { (0 until rowCount).map { OptionRow(key = "placeholder-$it", label = Strings.loadingPage, detail = PLACEHOLDER_DETAIL) } }
+
+    Skeleton { OptionList(title, rows, onSelect = {}, modifier = modifier) }
 }
+
+private const val PLACEHOLDER_DETAIL = "00"
 
 @Composable
 private fun OptionListTitle(title: String) {

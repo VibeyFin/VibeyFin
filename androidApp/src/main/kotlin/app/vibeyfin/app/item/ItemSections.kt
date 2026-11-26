@@ -50,7 +50,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -83,16 +82,19 @@ import app.vibeyfin.R
 import app.vibeyfin.app.components.Artwork
 import app.vibeyfin.app.components.ArtworkTile
 import app.vibeyfin.app.components.LoadError
+import app.vibeyfin.app.components.LocalSkeleton
 import app.vibeyfin.app.components.MediaRowSection
 import app.vibeyfin.app.components.POSTER_CAPTION_LINES
 import app.vibeyfin.app.components.PlaybackProgressBar
 import app.vibeyfin.app.components.ROW_FADE_MS
 import app.vibeyfin.app.components.RowPhase
 import app.vibeyfin.app.components.SectionTitle
-import app.vibeyfin.app.components.SkeletonBlock
+import app.vibeyfin.app.components.Text
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.components.bleed
+import app.vibeyfin.app.components.skeleton
+import app.vibeyfin.app.components.unlessSkeleton
 import app.vibeyfin.app.downloads.DownloadActionMenuItem
 import app.vibeyfin.app.downloads.EpisodeDownloadButton
 import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
@@ -103,6 +105,7 @@ import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.model.CastMember
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.model.SeerrTitle
+import app.vibeyfin.ui.common.Placeholders
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.downloads.actions
 import app.vibeyfin.ui.home.MediaRow
@@ -144,7 +147,7 @@ fun SeasonsSection(
 
         Crossfade(targetState = phase, animationSpec = tween(ROW_FADE_MS), modifier = Modifier.animateContentSize(tween(ROW_FADE_MS))) { shown ->
             when (shown) {
-                RowPhase.Loading -> SeasonSkeleton(margin)
+                RowPhase.Loading -> SeasonChipsPlaceholder(margin)
 
                 RowPhase.Failed -> LoadError(seasons.message ?: "", onRetrySeasons)
 
@@ -159,13 +162,6 @@ fun SeasonsSection(
         if (seasons.seasons.isNotEmpty() && !seasons.loading && seasons.message == null) {
             EpisodeList(seasons, wide, margin, onPlayEpisode, onToggleEpisodePlayed, onViewEpisode, onRetryEpisodes, downloads, canDownload, downloadCallbacks)
         }
-    }
-}
-
-@Composable
-private fun SeasonSkeleton(margin: Dp) {
-    Row(Modifier.bleed(margin).padding(horizontal = margin), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-        repeat(3) { SkeletonBlock(Modifier.width(96.dp).size(width = 96.dp, height = 32.dp), RoundedCornerShape(VibeyFinTokens.Radius.m3Md)) }
     }
 }
 
@@ -192,6 +188,7 @@ private fun EpisodeList(
         wide = wide,
         margin = margin,
         focusKey = seasons.startEpisode?.id,
+        placeholder = remember { Placeholders.episode.copy(resumePositionMs = 0) },
         onRetry = onRetry,
         row = { episode ->
             EpisodeRow(
@@ -219,25 +216,7 @@ internal val EPISODE_CARD_WIDE = 380.dp
 
 internal const val EPISODE_ASPECT = 1.6f
 
-@Composable
-internal fun EpisodeCardSkeleton(width: Dp) {
-    SkeletonBlock(Modifier.width(width).aspectRatio(EPISODE_ASPECT))
-}
-
 internal val EPISODE_ROW_PICTURE = 148.dp
-
-@Composable
-internal fun EpisodeRowSkeleton() {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-        SkeletonBlock(Modifier.width(EPISODE_ROW_PICTURE).aspectRatio(EPISODE_ASPECT))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-            SkeletonBlock(Modifier.fillMaxWidth(0.7f).height(16.dp))
-            SkeletonBlock(Modifier.fillMaxWidth(0.4f).height(12.dp))
-            SkeletonBlock(Modifier.fillMaxWidth().height(12.dp))
-            SkeletonBlock(Modifier.fillMaxWidth(0.8f).height(12.dp))
-        }
-    }
-}
 
 private fun episodeTime(episode: MediaItem): String? = when {
     episode.progress != null && episode.runtimeMs != null -> Strings.timeLeftShort(episode.runtimeMs!! - episode.resumePositionMs)
@@ -268,7 +247,7 @@ private fun EpisodeRow(
                     .aspectRatio(EPISODE_ASPECT)
                     .clip(shape)
                     .border(1.dp, if (current) VibeyFinTokens.Colors.lineStrong else VibeyFinTokens.Colors.surface3, shape)
-                    .combinedClickable(role = Role.Button, onLongClickLabel = Strings.showOptions, onClick = onPlay, onLongClick = { menu = true }),
+                    .unlessSkeleton { combinedClickable(role = Role.Button, onLongClickLabel = Strings.showOptions, onClick = onPlay, onLongClick = { menu = true }) },
             ) {
                 Artwork(
                     url = episode.landscapeUrl ?: episode.posterUrl,
@@ -295,7 +274,7 @@ private fun EpisodeRow(
             Column(
                 Modifier
                     .weight(1f)
-                    .combinedClickable(role = Role.Button, onLongClickLabel = Strings.showOptions, onClick = onView, onLongClick = { menu = true }),
+                    .unlessSkeleton { combinedClickable(role = Role.Button, onLongClickLabel = Strings.showOptions, onClick = onView, onLongClick = { menu = true }) },
                 verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
             ) {
                 Strings.episodeTag(episode.seasonNumber, episode.episodeNumber)?.let {
@@ -410,7 +389,7 @@ private fun EpisodeCard(
                 .aspectRatio(EPISODE_ASPECT)
                 .clip(shape)
                 .border(1.dp, if (current) VibeyFinTokens.Colors.lineStrong else VibeyFinTokens.Colors.surface3, shape)
-                .combinedClickable(role = Role.Button, onLongClickLabel = Strings.showOptions, onClick = onPlay, onLongClick = { menu = true }),
+                .unlessSkeleton { combinedClickable(role = Role.Button, onLongClickLabel = Strings.showOptions, onClick = onPlay, onLongClick = { menu = true }) },
         ) {
             Artwork(
                 url = episode.landscapeUrl ?: episode.posterUrl,
@@ -420,7 +399,7 @@ private fun EpisodeCard(
                 modifier = Modifier.fillMaxSize(),
             )
 
-            EpisodeCardScrim()
+            if (!LocalSkeleton.current) EpisodeCardScrim()
 
             if (episode.played) {
                 Icon(
@@ -435,7 +414,7 @@ private fun EpisodeCard(
                 Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    .combinedClickable(role = Role.Button, onLongClickLabel = Strings.showOptions, onClick = onView, onLongClick = { menu = true })
+                    .unlessSkeleton { combinedClickable(role = Role.Button, onLongClickLabel = Strings.showOptions, onClick = onView, onLongClick = { menu = true }) }
                     .padding(horizontal = VibeyFinTokens.Space.s3)
                     .padding(bottom = VibeyFinTokens.Space.s3 + if (episode.progress != null) 4.dp else 0.dp),
                 verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
@@ -507,7 +486,7 @@ internal fun EpisodeTag(text: String) {
         maxLines = 1,
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(VibeyFinTokens.Colors.scrim)
+            .unlessSkeleton { background(VibeyFinTokens.Colors.scrim) }
             .padding(horizontal = 6.dp, vertical = 2.dp),
     )
 }
@@ -533,12 +512,12 @@ private fun CastTile(person: CastMember, tile: Dp, onClick: () -> Unit) {
         modifier = Modifier
             .width(tile)
             .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
-            .clickable(role = Role.Button, onClick = onClick)
+            .unlessSkeleton { clickable(role = Role.Button, onClick = onClick) }
             .semantics { contentDescription = Strings.personDescription(person.name, person.role) },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
     ) {
-        Box(Modifier.size(tile).clip(CircleShape).background(VibeyFinTokens.Colors.surface2), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(tile).skeleton(CircleShape).clip(CircleShape).background(VibeyFinTokens.Colors.surface2), contentAlignment = Alignment.Center) {
             Text(Strings.initials(person.name), style = MaterialTheme.typography.titleMedium, color = VibeyFinTokens.Colors.inkMuted)
 
             if (person.imageUrl != null) {

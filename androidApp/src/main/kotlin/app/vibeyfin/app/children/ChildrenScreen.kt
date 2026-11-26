@@ -51,12 +51,11 @@ import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.components.MediaRowSection
-import app.vibeyfin.app.components.PosterSkeletonRow
-import app.vibeyfin.app.components.SkeletonLine
+import app.vibeyfin.app.components.Skeleton
 import app.vibeyfin.app.components.TabHeader
 import app.vibeyfin.app.components.bleed
-import app.vibeyfin.app.components.skeletonCount
-import app.vibeyfin.app.components.skeletonTiles
+import app.vibeyfin.app.components.placeholderGridCount
+import app.vibeyfin.app.components.placeholderTiles
 import app.vibeyfin.app.downloads.DownloadConfirmDialog
 import app.vibeyfin.app.downloads.RemoveConfirmDialog
 import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
@@ -65,9 +64,11 @@ import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.pageInsetsPadding
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.ItemKind
+import app.vibeyfin.domain.model.MediaAspect
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.children.ChildrenUiState
 import app.vibeyfin.ui.children.ChildrenViewModel
+import app.vibeyfin.ui.common.Placeholders
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.home.MediaRow
@@ -152,7 +153,9 @@ fun ChildrenScreen(
 ) {
     val pinned = controls != null
     val collectionPage = state.collection != null || collectionHint
-    val tiles = skeletonCount(6)
+    val wideScreen: Boolean = LocalConfiguration.current.screenWidthDp >= 600
+    val tileMinWidth: Dp = posterMinWidth(isRoot, wideScreen)
+    val tiles: Int = placeholderGridCount(tileMinWidth, MediaAspect.POSTER, screenMargin())
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(Modifier.fillMaxSize()) {
@@ -167,7 +170,7 @@ fun ChildrenScreen(
 
                 when {
                     state.loading -> LazyVerticalGrid(
-                        columns = GridCells.Adaptive(posterMinWidth(isRoot, LocalConfiguration.current.screenWidthDp >= 600)),
+                        columns = GridCells.Adaptive(tileMinWidth),
                         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
                         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
                         userScrollEnabled = false,
@@ -184,13 +187,14 @@ fun ChildrenScreen(
                         if (collectionPage) {
                             // A collection's members are rows of posters, so gray rows stand in, not a grid
                             item(span = { GridItemSpan(maxLineSpan) }, key = "members-skeleton") {
-                                Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-                                    SkeletonLine(96.dp, MaterialTheme.typography.titleMedium)
-                                    PosterSkeletonRow(Modifier.bleed(screenMargin()), count = skeletonCount(3), tileWidth = if (LocalConfiguration.current.screenWidthDp >= 600) 168.dp else 132.dp)
+                                Skeleton {
+                                    MediaRowSection(Placeholders.mediaRow(0).copy(loading = true), screenMargin(), onOpen = {}, onSeeAll = null, onRetry = {}, tileWidth = if (wideScreen) 168.dp else 132.dp)
                                 }
                             }
                         } else {
-                            skeletonTiles(tiles)
+                            placeholderTiles(tiles, "skeleton") { index ->
+                                ArtworkTile(Placeholders.posterTile.copy(id = "placeholder-$index"), onClick = {})
+                            }
                         }
                     }
 

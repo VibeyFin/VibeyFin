@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -49,7 +50,6 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -79,10 +79,13 @@ import app.vibeyfin.R
 import app.vibeyfin.app.components.Artwork
 import app.vibeyfin.app.components.KeepAtListEnd
 import app.vibeyfin.app.components.MenuHeader
-import app.vibeyfin.app.components.SkeletonLine
+import app.vibeyfin.app.components.Skeleton
+import app.vibeyfin.app.components.Text
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
 import app.vibeyfin.app.components.VibeyFinSheet
+import app.vibeyfin.app.components.skeleton
+import app.vibeyfin.app.components.unlessSkeleton
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.ui.common.Strings
@@ -313,7 +316,13 @@ private fun MenuContent(title: SeerrTitle, state: SeerrTitleUiState, viewModel: 
 
         if (state.loading) {
             // Every row comes at once, so none appears late under a finger
-            repeat(3) { Row(Modifier.fillMaxWidth().heightIn(min = ROW_HEIGHT).padding(horizontal = VibeyFinTokens.Space.s4), verticalAlignment = Alignment.CenterVertically) { SkeletonLine(140.dp, MaterialTheme.typography.bodyLarge) } }
+            Skeleton {
+                Column {
+                    MenuRow(Strings.seerrRequest, Icons.Filled.Add, onClick = {})
+                    MenuRow(Strings.details, Icons.Filled.Info, onClick = {})
+                    MenuRow(Strings.trailer, null, onClick = {}, resource = R.drawable.ic_trailer)
+                }
+            }
             return@Column
         }
 
@@ -341,14 +350,14 @@ private fun MenuContent(title: SeerrTitle, state: SeerrTitleUiState, viewModel: 
 @Composable
 private fun MenuRow(label: String, icon: ImageVector?, onClick: () -> Unit, resource: Int? = null) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = ROW_HEIGHT).clickable(role = Role.Button, onClick = onClick).padding(horizontal = VibeyFinTokens.Space.s4),
+        Modifier.fillMaxWidth().heightIn(min = ROW_HEIGHT).unlessSkeleton { clickable(role = Role.Button, onClick = onClick) }.padding(horizontal = VibeyFinTokens.Space.s4),
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val tint = MaterialTheme.colorScheme.onSurfaceVariant
 
-        icon?.let { Icon(it, contentDescription = null, tint = tint) }
-        resource?.let { Icon(painterResource(it), contentDescription = null, tint = tint) }
+        icon?.let { Icon(it, contentDescription = null, tint = tint, modifier = Modifier.skeleton(CircleShape)) }
+        resource?.let { Icon(painterResource(it), contentDescription = null, tint = tint, modifier = Modifier.skeleton(CircleShape)) }
         Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
     }
 }

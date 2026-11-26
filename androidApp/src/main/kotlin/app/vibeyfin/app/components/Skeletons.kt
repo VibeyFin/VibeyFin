@@ -1,5 +1,6 @@
 package app.vibeyfin.app.components
 
+import android.content.res.Configuration
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -10,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,11 +20,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.State
@@ -45,8 +48,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.vibeyfin.app.navigation.LocalSeerrLongPress
+import app.vibeyfin.app.navigation.LocalTileLongPress
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.animationsEnabled
+import app.vibeyfin.ui.common.PlaceholderCount
 import app.vibeyfin.ui.common.SkeletonShimmer
 import app.vibeyfin.ui.common.Strings
 
@@ -76,6 +82,22 @@ fun ProvideSkeletonShimmer(content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalSkeletonShimmerElapsedMillis provides elapsed, content = content)
 }
 
+/** True under [Skeleton]: the real views below draw as gray shapes of themselves, with placeholder data and nothing to tap. */
+val LocalSkeleton = staticCompositionLocalOf { false }
+
+/** Draws [content], a real view fed placeholder data, as gray shapes. It reads as one "loading" to a screen reader and opens nothing. */
+@Composable
+fun Skeleton(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Box(modifier.clearAndSetSemantics { contentDescription = Strings.loadingPage }) {
+        CompositionLocalProvider(
+            LocalSkeleton provides true,
+            LocalTileLongPress provides null,
+            LocalSeerrLongPress provides null,
+            content = content,
+        )
+    }
+}
+
 /** A gray block with the artwork corner radius. */
 @Composable
 fun SkeletonBlock(
@@ -83,139 +105,104 @@ fun SkeletonBlock(
     shape: Shape = RoundedCornerShape(VibeyFinTokens.Radius.artwork),
     color: Color = VibeyFinTokens.Colors.surface2,
 ) {
-    Box(modifier.clip(shape).background(color).then(shimmer()))
+    Box(modifier.skeletonFill(shape, color))
+}
+
+/** Under [Skeleton], draws this element's box as a gray shape in place of its content; layout is untouched. Put it first in the chain. */
+@Composable
+fun Modifier.skeleton(shape: Shape = RoundedCornerShape(VibeyFinTokens.Radius.artwork)): Modifier = if (LocalSkeleton.current) skeletonFill(shape, VibeyFinTokens.Colors.surface2) else this
+
+@Composable
+internal fun Modifier.skeletonFill(shape: Shape, color: Color): Modifier {
+    val band: ShimmerBand = rememberShimmerBand()
+
+    return this
+        .clip(shape)
+        .then(band.track())
+        .drawWithContent {
+            drawRect(color)
+            band.brush()?.let { drawRect(it) }
+        }
+}
+
+internal class ShimmerBand(private val elapsed: State<Float>?, private val sweepWidth: Float, private val highlight: Color) {
+    private val originX: FloatArray = FloatArray(1)
+
+    fun track(): Modifier = if (elapsed == null) Modifier else Modifier.onGloballyPositioned { originX[0] = it.positionInRoot().x }
+
+    // The band is placed in screen coordinates and read at draw time, so the shapes line up and nothing recomposes per frame
+    fun brush(): Brush? {
+        val clock: State<Float> = elapsed ?: return null
+        val center: Float = SkeletonShimmer.bandCenter(clock.value.toLong(), sweepWidth) - originX[0]
+        val half: Float = SkeletonShimmer.bandHalfWidth(sweepWidth)
+
+        return Brush.horizontalGradient(listOf(Color.Transparent, highlight, Color.Transparent), startX = center - half, endX = center + half)
+    }
 }
 
 @Composable
-private fun shimmer(): Modifier {
-    val elapsed: State<Float> = LocalSkeletonShimmerElapsedMillis.current ?: return Modifier
+internal fun rememberShimmerBand(): ShimmerBand {
+    val elapsed: State<Float>? = LocalSkeletonShimmerElapsedMillis.current
     val sweepWidth: Float = LocalWindowInfo.current.containerSize.width.toFloat()
-    val originX: FloatArray = remember { FloatArray(1) }
     val highlight: Color = VibeyFinTokens.Colors.line.copy(alpha = SHIMMER_ALPHA)
 
-    // The band is placed in screen coordinates and read at draw time, so the blocks line up and nothing recomposes per frame
-    return Modifier
-        .onGloballyPositioned { originX[0] = it.positionInRoot().x }
-        .drawWithContent {
-            val center: Float = SkeletonShimmer.bandCenter(elapsed.value.toLong(), sweepWidth) - originX[0]
-            val half: Float = SkeletonShimmer.bandHalfWidth(sweepWidth)
+    return remember(elapsed, sweepWidth, highlight) { ShimmerBand(elapsed, sweepWidth, highlight) }
+}
 
-            drawContent()
-            drawRect(Brush.horizontalGradient(listOf(Color.Transparent, highlight, Color.Transparent), startX = center - half, endX = center + half))
+/**
+ * A row of placeholder tiles, drawn by [tile] with the real tile's own view, that fills the screen's width and one tile more (or [known]
+ * tiles, when the row's real count is known). It is the real row without the scroll.
+ */
+@Composable
+fun SkeletonRow(
+    tileWidth: Dp,
+    margin: Dp,
+    modifier: Modifier = Modifier,
+    spacing: Dp = VibeyFinTokens.Space.s3,
+    known: Int? = null,
+    tile: @Composable (Int) -> Unit,
+) {
+    val screenWidth: Float = LocalConfiguration.current.screenWidthDp.toFloat()
+    val count: Int = PlaceholderCount.forRow(screenWidth, tileWidth.value, spacing.value, known)
+
+    Skeleton {
+        LazyRow(
+            modifier = modifier,
+            userScrollEnabled = false,
+            contentPadding = PaddingValues(horizontal = margin),
+            horizontalArrangement = Arrangement.spacedBy(spacing),
+        ) {
+            items(count) { index -> tile(index) }
         }
+    }
 }
 
 private const val SHIMMER_ALPHA = 0.5f
 
 /**
- * How many placeholders a row or grid draws: [phone] on a compact width, twice as many from 600 dp (a tablet, an unfolded
- * foldable), where the same count would leave the row looking nearly empty. A row that scrolls never shows the extras.
+ * How many placeholder tiles a grid of [minTileWidth] tiles draws: whole rows that fill the screen's height, plus one peeking row.
+ * [tileHeightBeyondPicture] is what sits under each tile's picture (its caption).
  */
 @Composable
-fun skeletonCount(phone: Int): Int = if (LocalConfiguration.current.screenWidthDp >= WIDE_FROM_DP) phone * 2 else phone
+fun placeholderGridCount(minTileWidth: Dp, aspectRatio: Float, margin: Dp, tileHeightBeyondPicture: Dp = POSTER_CAPTION_HEIGHT): Int {
+    val configuration: Configuration = LocalConfiguration.current
+    val spacing: Float = VibeyFinTokens.Space.s3.value
+    val width: Float = configuration.screenWidthDp - margin.value * 2
+    val columns: Int = maxOf(1, ((width + spacing) / (minTileWidth.value + spacing)).toInt())
+    val tileWidth: Float = (width - (columns - 1) * spacing) / columns
+    val rowHeight: Float = tileWidth / aspectRatio + tileHeightBeyondPicture.value
 
-private const val WIDE_FROM_DP = 600
+    return SkeletonBars.gridCount(columns, configuration.screenHeightDp.toFloat(), rowHeight, VibeyFinTokens.Space.s4.value)
+}
 
-/** A gray bar as tall as one line of [style], so the skeleton is exactly as tall as the real text. */
+// Two lines of the title style and the gap above them
+private val POSTER_CAPTION_HEIGHT = 48.dp
+
+/** [count] placeholder tiles in a lazy grid, each drawn by [tile]; [keyPrefix] tells two such runs in one grid apart. */
+fun LazyGridScope.placeholderTiles(count: Int, keyPrefix: String, tile: @Composable (Int) -> Unit) {
+    items(count, key = { "$keyPrefix-$it" }) { index -> Skeleton { tile(index) } }
+}
+
+/** [add] applied to this modifier, except under [Skeleton], where nothing may be tapped. */
 @Composable
-fun SkeletonLine(width: Dp, style: TextStyle) {
-    Box(Modifier.width(width)) {
-        Text(text = "", style = style, minLines = 1)
-        SkeletonBlock(
-            Modifier.matchParentSize().padding(vertical = VibeyFinTokens.Space.s1),
-            RoundedCornerShape(VibeyFinTokens.Radius.m3Xs),
-        )
-    }
-}
-
-/** Poster tiles for a lazy grid: [count] gray posters with a title line under each; [keyPrefix] tells two such runs in one grid apart. */
-fun LazyGridScope.skeletonTiles(count: Int = 6, aspectRatio: Float = 2f / 3f, keyPrefix: String = "skeleton") {
-    items(count, key = { "$keyPrefix-$it" }) {
-        Column(
-            Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = Strings.loadingPage },
-            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
-        ) {
-            SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(aspectRatio))
-            SkeletonLine(96.dp, MaterialTheme.typography.titleSmall)
-        }
-    }
-}
-
-/**
- * The detail page while it loads, in the shapes the page has: on a phone the tall picture with the logo, the facts, Play and the four
- * actions at its foot, then the cast; on a tablet the picture behind a column at the left. So nothing moves when the page arrives.
- */
-@Composable
-fun ItemSkeleton(wide: Boolean, screenWidth: Dp, screenHeight: Dp, margin: Dp, modifier: Modifier = Modifier) {
-    val pill = RoundedCornerShape(50)
-    val bar = RoundedCornerShape(VibeyFinTokens.Radius.m3Xs)
-    val line = VibeyFinTokens.Colors.surface3
-
-    Box(modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = Strings.loadingPage }) {
-        if (wide) {
-            SkeletonBlock(Modifier.fillMaxWidth().height(screenHeight * 0.7f), RoundedCornerShape(0.dp))
-        } else {
-            SkeletonBlock(Modifier.fillMaxWidth().height(screenWidth * 1.5f), RoundedCornerShape(0.dp))
-        }
-
-        Column(
-            Modifier.fillMaxWidth().then(if (wide) Modifier.fillMaxWidth(0.46f) else Modifier).padding(horizontal = margin)
-                .padding(top = if (wide) screenHeight * 0.3f else screenWidth * 1.5f - 360.dp),
-            horizontalAlignment = if (wide) Alignment.Start else Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-        ) {
-            SkeletonBlock(Modifier.fillMaxWidth(0.6f).height(56.dp), bar, line)
-            SkeletonBlock(Modifier.width(150.dp).height(16.dp), bar, line)
-            SkeletonBlock(Modifier.fillMaxWidth().height(40.dp), bar, line)
-            SkeletonBlock(Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge), pill, line)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                repeat(4) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
-                        SkeletonBlock(Modifier.size(30.dp), CircleShape, line)
-                        SkeletonBlock(Modifier.width(56.dp).height(14.dp), bar, line)
-                    }
-                }
-            }
-        }
-    }
-}
-
-fun LazyGridScope.skeletonProfiles(count: Int, avatarSize: Dp) {
-    items(count, key = { "skeleton-profile-$it" }) {
-        Column(
-            Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = Strings.loadingPage },
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
-        ) {
-            SkeletonBlock(Modifier.size(avatarSize), RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
-            SkeletonLine(72.dp, MaterialTheme.typography.bodyMedium)
-        }
-    }
-}
-
-/** A row of gray tiles at [tileWidth], for a row of posters or library tiles while it loads. */
-@Composable
-fun PosterSkeletonRow(
-    modifier: Modifier = Modifier,
-    count: Int = 4,
-    tileWidth: Dp = VibeyFinTokens.Size.posterWidth,
-    aspectRatio: Float = 2f / 3f,
-    captionLines: Int = 2,
-) {
-    // Wider than a phone, so the row measures its tiles unbounded and the box cuts it off at the edge: no tile is squeezed
-    Box(modifier.clipToBounds().clearAndSetSemantics { contentDescription = Strings.loadingPage }) {
-        Row(
-            modifier = Modifier.wrapContentWidth(Alignment.Start, unbounded = true),
-            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-        ) {
-            repeat(skeletonCount(count)) {
-                Column(Modifier.width(tileWidth), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-                    SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(aspectRatio))
-                    repeat(captionLines) { line ->
-                        SkeletonLine(if (line == 0) 72.dp else 48.dp, MaterialTheme.typography.titleSmall)
-                    }
-                }
-            }
-        }
-    }
-}
+fun Modifier.unlessSkeleton(add: Modifier.() -> Modifier): Modifier = if (LocalSkeleton.current) this else add()

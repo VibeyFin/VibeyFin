@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -37,8 +37,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.components.ROW_FADE_MS
+import app.vibeyfin.app.components.Skeleton
+import app.vibeyfin.app.components.SkeletonRow
+import app.vibeyfin.app.components.Text
 import app.vibeyfin.app.components.bleed
+import app.vibeyfin.app.components.skeleton
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.domain.model.MediaAspect
+import app.vibeyfin.ui.common.PlaceholderCount
 import app.vibeyfin.ui.common.Strings
 
 /** One season button: what it selects by and what it says. */
@@ -74,11 +80,27 @@ internal fun <K : Any> SeasonChipsRow(seasons: List<SeasonChip<K>>, selectedId: 
                     selectedLabelColor = VibeyFinTokens.Colors.onSparkSoft,
                 ),
                 border = null,
-                modifier = Modifier.semantics { contentDescription = Strings.seasonDescription(season.label, selected) },
+                modifier = Modifier.skeleton(FilterChipDefaults.shape).semantics { contentDescription = Strings.seasonDescription(season.label, selected) },
             )
         }
     }
 }
+
+// A season's own episode count is not in the page's state, so its rows fill the screen's height and one more, as a row of tiles fills the width.
+@Composable
+private fun rowsToFillScreen(): Int {
+    val rowHeight: Float = EPISODE_ROW_PICTURE.value / EPISODE_ASPECT
+
+    return PlaceholderCount.forRow(LocalConfiguration.current.screenHeightDp.toFloat(), rowHeight, VibeyFinTokens.Space.s4.value, known = null)
+}
+
+/** The season buttons while the seasons load: the real row with three placeholder seasons. */
+@Composable
+internal fun SeasonChipsPlaceholder(margin: Dp) {
+    Skeleton { SeasonChipsRow((1..PLACEHOLDER_SEASONS).map { SeasonChip(it, Strings.season(it)) }, selectedId = null, margin = margin, onSelect = {}) }
+}
+
+private const val PLACEHOLDER_SEASONS = 3
 
 /** What an episode area has to draw: the episodes, whether more are on their way, and why they didn't come. */
 internal class EpisodeSnapshot<E>(val items: List<E>, val loading: Boolean, val message: String?)
@@ -113,6 +135,7 @@ internal fun <E, K : Any> EpisodeListArea(
     wide: Boolean,
     margin: Dp,
     focusKey: K?,
+    placeholder: E,
     onRetry: () -> Unit,
     row: @Composable (E) -> Unit,
     card: @Composable (E, Dp) -> Unit,
@@ -151,15 +174,13 @@ internal fun <E, K : Any> EpisodeListArea(
             when {
                 phase.failed -> LoadError(list.message ?: "", onRetry)
 
-                phase.loading && wide ->
-                    Row(Modifier.bleed(margin).padding(horizontal = margin), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
-                        repeat(3) { EpisodeCardSkeleton(cardWidth) }
-                    }
+                phase.loading && wide -> SkeletonRow(cardWidth, margin, Modifier.bleed(margin), spacing = VibeyFinTokens.Space.s4) { card(placeholder, cardWidth) }
 
-                phase.loading ->
+                phase.loading -> Skeleton {
                     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
-                        repeat(3) { EpisodeRowSkeleton() }
+                        repeat(rowsToFillScreen()) { row(placeholder) }
                     }
+                }
 
                 list.items.isEmpty() -> Text(Strings.noEpisodes, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
 

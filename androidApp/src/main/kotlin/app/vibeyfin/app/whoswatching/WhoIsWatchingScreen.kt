@@ -35,7 +35,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -76,9 +75,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.R
 import app.vibeyfin.app.components.HeaderButton
 import app.vibeyfin.app.components.TabHeader
+import app.vibeyfin.app.components.Text
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
-import app.vibeyfin.app.components.skeletonProfiles
+import app.vibeyfin.app.components.placeholderTiles
+import app.vibeyfin.app.components.skeleton
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.settings.PinSheet
 import app.vibeyfin.app.theme.VibeyFinTokens
@@ -88,6 +89,7 @@ import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.Profile
 import app.vibeyfin.domain.model.ProfileRef
 import app.vibeyfin.ui.common.AvatarTint
+import app.vibeyfin.ui.common.Placeholders
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.whoswatching.WhoIsWatchingUiState
 import app.vibeyfin.ui.whoswatching.WhoIsWatchingViewModel
@@ -217,7 +219,7 @@ private fun WhoIsWatchingScreen(
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     if (state.loading) {
-                        skeletonProfiles(count = 4, avatarSize = tile)
+                        placeholderProfiles(SKELETON_TILES, tile)
                     } else {
                         notes(state, onRetry)
                         tiles(state, tile, geometry, onProfile, onQuickConnect, onOtherUser)
@@ -285,7 +287,7 @@ private fun CentredProfiles(
                 }
             }
             if (state.loading) {
-                skeletonProfiles(count = SKELETON_TILES, avatarSize = tile)
+                placeholderProfiles(SKELETON_TILES, tile)
             } else {
                 notes(state, onRetry)
                 tiles(state, tile, geometry, onProfile, onQuickConnect, onOtherUser)
@@ -413,6 +415,13 @@ private fun UnreachableCard(state: WhoIsWatchingUiState, onRetry: () -> Unit) {
     }
 }
 
+// A profile list has no feed to fill the screen with, so it holds as many places as a household has people
+private fun LazyGridScope.placeholderProfiles(count: Int, tile: Dp) {
+    placeholderTiles(count, "profile-skeleton") {
+        Tile(Placeholders.profile.name, description = "", dimmed = false, enabled = false, onClick = {}) { Avatar(Placeholders.profile, tile) }
+    }
+}
+
 @Composable
 private fun Tile(label: String, description: String, dimmed: Boolean, enabled: Boolean, onClick: () -> Unit, picture: @Composable BoxScope.() -> Unit) {
     Column(
@@ -476,6 +485,7 @@ internal fun Avatar(profile: Profile, size: Dp, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .size(size)
+            .skeleton(RoundedCornerShape(if (small) VibeyFinTokens.Radius.m3Xs else VibeyFinTokens.Radius.m3Md))
             .clip(RoundedCornerShape(if (small) VibeyFinTokens.Radius.m3Xs else VibeyFinTokens.Radius.m3Md))
             .background(VibeyFinTokens.Colors.avatars[AvatarTint.of(profile.name)]),
         contentAlignment = Alignment.Center,

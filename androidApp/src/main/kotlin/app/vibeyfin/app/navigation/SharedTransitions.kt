@@ -20,6 +20,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import app.vibeyfin.app.components.LocalSkeleton
 
 /**
  * The shared-element transition from a poster to the detail page's picture, with Compose's own `SharedTransitionLayout` (no new
@@ -57,7 +58,7 @@ private const val SHARED_POSTER_ENABLED = false
  */
 @Composable
 fun Modifier.sharedPoster(itemId: String, source: Boolean): Modifier {
-    if (!SHARED_POSTER_ENABLED) return this
+    if (!SHARED_POSTER_ENABLED || LocalSkeleton.current) return this
 
     val transition = LocalSharedTransitionScope.current ?: return this
     val animated = LocalNavAnimatedScope.current ?: return this

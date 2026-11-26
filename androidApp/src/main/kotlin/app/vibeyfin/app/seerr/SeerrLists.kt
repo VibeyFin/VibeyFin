@@ -51,18 +51,24 @@ import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FilterChipButton
 import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.LoadError
+import app.vibeyfin.app.components.LocalSkeleton
 import app.vibeyfin.app.components.SectionTitle
 import app.vibeyfin.app.components.SkeletonBlock
+import app.vibeyfin.app.components.SkeletonRow
 import app.vibeyfin.app.components.bleed
+import app.vibeyfin.app.components.placeholderGridCount
+import app.vibeyfin.app.components.placeholderTiles
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.navigation.LocalSeerrLongPress
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.isTabletWidth
 import app.vibeyfin.app.theme.pageInsetsPadding
 import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.domain.model.MediaAspect
 import app.vibeyfin.domain.model.RequestState
 import app.vibeyfin.domain.model.SeerrMediaType
 import app.vibeyfin.domain.model.SeerrTitle
+import app.vibeyfin.ui.common.Placeholders
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.seerr.MyRequestsViewModel
 import app.vibeyfin.ui.seerr.RequestFilter
@@ -80,11 +86,17 @@ internal fun SeerrTile(title: SeerrTitle, onOpen: (SeerrTitle) -> Unit, modifier
 
     SeerrPosterTile(
         title,
-        modifier.clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).combinedClickable(
-            role = Role.Button,
-            onLongClickLabel = if (longPress != null) Strings.showOptions else null,
-            onLongClick = longPress?.let { press -> { press(title) } },
-            onClick = { onOpen(title) },
+        modifier.clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md)).then(
+            if (LocalSkeleton.current) {
+                Modifier
+            } else {
+                Modifier.combinedClickable(
+                    role = Role.Button,
+                    onLongClickLabel = if (longPress != null) Strings.showOptions else null,
+                    onLongClick = longPress?.let { press -> { press(title) } },
+                    onClick = { onOpen(title) },
+                )
+            },
         ),
         meta = meta,
         plainInLibrary = plainInLibrary,
@@ -109,9 +121,8 @@ fun SeerrRowSection(row: SeerrRow, margin: Dp, onOpen: (SeerrTitle) -> Unit, onS
         }
 
         if (row.loading) {
-            // Laid out like the real tiles, so nothing under the row moves when they arrive
-            Row(Modifier.bleed(margin).padding(horizontal = margin), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-                repeat(PLACEHOLDER_TILES) { SeerrPosterPlaceholder(Modifier.width(VibeyFinTokens.Size.posterWidth)) }
+            SkeletonRow(VibeyFinTokens.Size.posterWidth, margin, Modifier.bleed(margin)) {
+                SeerrPosterTile(Placeholders.seerrTitle, Modifier.width(VibeyFinTokens.Size.posterWidth))
             }
         } else {
             LazyRow(
@@ -149,7 +160,7 @@ fun SeerrListRoute(kind: SeerrListKind, onBack: () -> Unit, onOpen: (SeerrTitle)
         }
 
         when {
-            state.loading -> PosterGridSkeleton(margin)
+            state.loading -> SeerrGridPlaceholder(margin)
 
             state.message != null -> LoadError(state.message!!, viewModel::onRetry, Modifier.padding(horizontal = margin))
 
@@ -191,7 +202,7 @@ fun MyRequestsRoute(onBack: () -> Unit, onOpen: (SeerrTitle) -> Unit, viewModel:
         }
 
         when {
-            state.loading -> PosterGridSkeleton(margin)
+            state.loading -> SeerrGridPlaceholder(margin)
 
             state.message != null -> LoadError(state.message!!, viewModel::onRetry, Modifier.padding(horizontal = margin))
 
@@ -249,18 +260,23 @@ private fun PageFrame(title: String, onBack: () -> Unit, content: @Composable ()
 }
 
 @Composable
-private fun PosterGridSkeleton(margin: Dp) {
+private fun SeerrGridPlaceholder(margin: Dp) {
+    val minTileWidth: Dp = posterMinWidth(isRoot = false, wide = isTabletWidth())
+    val tiles: Int = placeholderGridCount(minTileWidth, MediaAspect.POSTER, margin, SEERR_CAPTION_HEIGHT)
+
     LazyVerticalGrid(
-        // The library's grid: bigger posters on a tablet
-        columns = GridCells.Adaptive(posterMinWidth(isRoot = false, wide = isTabletWidth())),
+        columns = GridCells.Adaptive(minTileWidth),
         userScrollEnabled = false,
         contentPadding = PaddingValues(start = margin, top = VibeyFinTokens.Space.s3, end = margin),
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
     ) {
-        items(9) { SeerrPosterPlaceholder(Modifier.fillMaxWidth()) }
+        placeholderTiles(tiles, "seerr-skeleton") { SeerrPosterTile(Placeholders.seerrTitle, Modifier.fillMaxWidth()) }
     }
 }
+
+// Two lines of title, one of meta, and the gaps between
+private val SEERR_CAPTION_HEIGHT: Dp = 68.dp
 
 @Composable
 private fun MoreSpinner() {
@@ -268,8 +284,6 @@ private fun MoreSpinner() {
         CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
-
-private const val PLACEHOLDER_TILES = 4
 
 // The next page is asked for when the list is this close to its end.
 private const val LOAD_MORE_BEFORE = 6
