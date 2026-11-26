@@ -14,6 +14,7 @@ struct PortraitView: View {
             Text(Strings.shared.initials(name: name))
                 .font(initialsFont)
                 .foregroundStyle(.secondary)
+                .skeletonHidden()
             if let url = imageUrl.flatMap({ URL(string: $0) }) {
                 AsyncImage(url: url) { image in
                     image.resizable().scaledToFill()

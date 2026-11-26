@@ -24,10 +24,10 @@ struct ContinueCardTile: View {
         VStack(alignment: .leading, spacing: Space.s2) {
             Button(action: onPlay) {
                 Artwork(url: card.imageUrl, title: card.title, aspectRatio: 16.0 / 9.0, blurHash: card.imageBlurHash)
-                    .overlay { PlayDisc() }
+                    .overlay { PlayDisc().skeletonHidden() }
                     .overlay(alignment: .bottom) {
                         if let progress = card.progress {
-                            ProgressBar(progress: CGFloat(progress.floatValue))
+                            ProgressBar(progress: CGFloat(progress.floatValue)).skeletonHidden()
                         }
                     }
                     .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
@@ -159,7 +159,7 @@ struct ContinueRowView: View {
                 .sectionTitle()
                 .screenMargin()
             if row.loading {
-                ContinueSkeletonRow()
+                SkeletonRow(tileWidth: Size.thumbWidth) { ContinueCardTile(card: Placeholders.shared.continueCard, onPlay: {}, onDetails: {}, onMarkWatched: {}) }
             } else if let message = row.message {
                 LoadErrorView(message: message, onRetry: onRetry)
                     .screenMargin()
@@ -184,39 +184,5 @@ struct ContinueRowView: View {
                 }
             }
         }
-    }
-}
-
-/// Stands in for the row while it loads, redacted so nothing moves when the cards arrive. The words under
-/// the pictures are never seen, only drawn as grey bars, so they borrow strings that already exist.
-struct ContinueSkeletonRow: View {
-    @Environment(\.horizontalSizeClass) private var sizeClass
-
-    var body: some View {
-        // In a scroll view that never scrolls: the three fixed-width cards are wider than a phone, and
-        // laid out on their own they would stretch everything above them past the screen's edge.
-        HorizontalRow(lifts: false) {
-            HStack(alignment: .top, spacing: Space.s3) {
-                ForEach(0..<skeletonCount(3, regularWidth: sizeClass == .regular), id: \.self) { _ in
-                    VStack(alignment: .leading, spacing: Space.s2) {
-                        Color(.tertiarySystemBackground)
-                            .aspectRatio(16.0 / 9.0, contentMode: .fit)
-                            .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(Strings.shared.continueWatching)
-                                .font(.subheadline.weight(.semibold))
-                            Text(Strings.shared.play)
-                                .font(.caption)
-                        }
-                    }
-                    .frame(width: Size.thumbWidth, alignment: .leading)
-                }
-            }
-            .redacted(reason: .placeholder)
-            .skeletonShimmer()
-        }
-        .scrollDisabled(true)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Strings.shared.loadingContinueWatching)
     }
 }

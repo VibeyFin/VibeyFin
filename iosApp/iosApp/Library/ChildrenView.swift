@@ -95,7 +95,7 @@ struct ChildrenView: View {
             if let state = model.state {
                 content(state)
             } else {
-                PosterSkeletonGrid(minimumWidth: 130)
+                SkeletonGrid(minimumWidth: 130) { PosterSkeletonTile(captionLines: 0) }
             }
         }
     }
@@ -173,7 +173,7 @@ struct ChildrenView: View {
     @ViewBuilder
     private func content(_ state: ChildrenUiState) -> some View {
         if state.loading {
-            PosterSkeletonGrid(minimumWidth: 130)
+            SkeletonGrid(minimumWidth: 130) { PosterSkeletonTile(captionLines: 0) }
         } else if let message = state.message {
             LoadErrorView(message: message, onRetry: { model.retry() })
         } else if state.isEmpty {

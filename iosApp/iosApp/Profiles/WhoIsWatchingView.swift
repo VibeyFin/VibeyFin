@@ -165,8 +165,7 @@ struct WhoIsWatchingView: View {
                 VStack(alignment: centred ? .center : .leading, spacing: Space.s4) {
                     header(state)
                     if state.loading {
-                        ProfileSkeletonGrid(avatarSize: tileSize)
-                            .frame(maxWidth: centred ? blockWidth(tiles: skeletonTileCount, availableWidth: proxy.size.width - 2 * Space.regularMargin) : .infinity)
+                        skeletonGrid(availableWidth: proxy.size.width - 2 * Space.regularMargin)
                     } else {
                         notes(state)
                         grid(state, availableWidth: proxy.size.width - 2 * Space.regularMargin)
@@ -218,7 +217,18 @@ struct WhoIsWatchingView: View {
         .frame(maxWidth: centred ? blockWidth(tiles: tileCount, availableWidth: availableWidth) : .infinity)
     }
 
-    private var skeletonTileCount: Int { 4 }
+    private func skeletonGrid(availableWidth: CGFloat) -> some View {
+        let columnWidth: CGFloat = tileSize + Space.s2
+        let tileCount: Int       = skeletonTileCount(screenWidth: availableWidth + Space.s4, tileWidth: columnWidth, spacing: Space.s4, known: nil)
+
+        return LazyVGrid(columns: [GridItem(.adaptive(minimum: columnWidth), spacing: Space.s4, alignment: .top)], spacing: Space.s5) {
+            ForEach(0..<tileCount, id: \.self) { _ in
+                ProfileTile(profile: Placeholders.shared.profile, size: tileSize, opening: false) { _ in }
+            }
+        }
+        .frame(maxWidth: centred ? blockWidth(tiles: tileCount, availableWidth: availableWidth) : .infinity)
+        .skeleton()
+    }
 
     private func blockWidth(tiles: Int, availableWidth: CGFloat) -> CGFloat {
         let columnWidth: CGFloat = tileSize + Space.s2
@@ -324,12 +334,14 @@ struct Avatar: View {
     let profile: Profile
     let size: CGFloat
 
+    @Environment(\.isSkeleton) private var isSkeleton: Bool
+
     private var small: Bool { size < 64 }
 
     var body: some View {
         ZStack {
-            Rectangle().fill(tint)
-            initial
+            Rectangle().fill(isSkeleton ? Color(.tertiarySystemBackground) : tint)
+            initial.skeletonHidden()
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: small ? Radius.artwork : Radius.card, style: .continuous))

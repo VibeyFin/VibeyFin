@@ -61,7 +61,7 @@ struct ItemView: View {
                 }
             } else {
                 // The grey page, in the shapes of the real one; it fades into it, so opening a title is not a sudden cut.
-                ItemSkeleton(wide: wide, margin: margin)
+                ItemSkeleton(wide: wide, margin: margin) { ItemHeroPlaceholder(centered: $0) }
                     .transition(.opacity)
             }
         }

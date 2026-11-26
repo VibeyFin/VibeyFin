@@ -109,17 +109,21 @@ private struct SubtitleSearchView: View {
                 .scrollContentBackground(.hidden)
             }
         } else {
-            VStack(alignment: .leading, spacing: Space.s4) {
+            VStack(alignment: .leading, spacing: 0) {
                 ForEach(0..<4, id: \.self) { _ in
-                    VStack(alignment: .leading, spacing: Space.s1) {
-                        SkeletonLine(font: .body, width: 240)
-                        SkeletonLine(font: .footnote, width: 140)
-                    }
+                    ResultRow(result: Self.placeholderResult, downloading: false, enabled: true) {}
                 }
             }
             .padding(.horizontal, Space.s4)
+            .skeleton()
             Spacer(minLength: 0)
         }
+    }
+
+    private static var placeholderResult: SubtitleResultRow {
+        let result: SearchResult = Placeholders.shared.searchResult(kind: .movie)
+
+        return SubtitleResultRow(id: result.id, name: result.title, details: result.subtitle ?? "", isMatch: false, added: false, spoken: "")
     }
 
     private var languagePicker: some View {

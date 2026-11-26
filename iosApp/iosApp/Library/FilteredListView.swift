@@ -90,7 +90,7 @@ struct FilteredListView: View {
     @ViewBuilder
     private func content(_ state: ChildrenUiState) -> some View {
         if state.loading {
-            PosterSkeletonGrid(minimumWidth: isRoot ? 104 : 130)
+            SkeletonGrid(minimumWidth: isRoot ? 104 : 130) { PosterSkeletonTile(captionLines: 0) }
         } else if let message = state.message {
             LoadErrorView(message: message, onRetry: { model.retry() })
         } else if state.isEmpty && !state.refreshing {

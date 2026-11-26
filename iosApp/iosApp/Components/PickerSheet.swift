@@ -29,6 +29,12 @@ struct PickerSheetView: View {
     var search: Binding<String>?
     var searchHint = ""
 
+    private static var placeholderRows: [PickerRow] {
+        let label: String = Placeholders.shared.searchResult(kind: .movie).title
+
+        return (0..<6).map { PickerRow(id: String($0), label: label) }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s3) {
             Text(title)
@@ -49,20 +55,14 @@ struct PickerSheetView: View {
                 .padding(.horizontal, Space.s4)
             }
             if loading {
-                List(0..<6, id: \.self) { _ in
-                    HStack(spacing: Space.s3) {
-                        SkeletonLine(font: .body, width: 160)
-                        Spacer()
-                        SkeletonLine(font: .subheadline, width: 28)
-                    }
-                    .padding(.horizontal, Space.s3)
-                    .padding(.vertical, Space.s2)
-                    .listRowBackground(Color.clear)
+                List(Self.placeholderRows) { row in
+                    PickerRowLabel(row: row)
+                        .lineLimit(1)
+                        .listRowBackground(Color.clear)
                 }
                 .listStyle(.plain)
                 .scrollDisabled(true)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(Strings.shared.loadingPage)
+                .skeleton()
             } else if let message {
                 LoadErrorView(message: message, onRetry: onRetry)
                     .padding(.horizontal, Space.s4)
@@ -75,28 +75,7 @@ struct PickerSheetView: View {
                 Spacer(minLength: 0)
             } else {
                 List(rows) { row in
-                    Button { onPick(row.id) } label: {
-                        HStack(spacing: Space.s3) {
-                            Text(row.label)
-                                .foregroundStyle(.primary)
-                            Spacer()
-                            if let detail = row.detail {
-                                Text(detail)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                            if let symbol = row.trailingSymbol {
-                                Image(systemName: symbol)
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .fontWeight(row.selected ? .semibold : .regular)
-                        .padding(.horizontal, Space.s3)
-                        .padding(.vertical, Space.s2)
-                        .background(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous).fill(row.selected ? Brand.sparkSoft : Color.clear))
-                        .contentShape(Rectangle())
-                    }
+                    Button { onPick(row.id) } label: { PickerRowLabel(row: row) }
                     .listRowBackground(Color.clear)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(row.description ?? row.label)
@@ -108,5 +87,33 @@ struct PickerSheetView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color(.systemBackground))
         .presentationDetents([.medium, .large])
+    }
+}
+
+/// What a picker row looks like, as the list and its skeleton draw it.
+private struct PickerRowLabel: View {
+    let row: PickerRow
+
+    var body: some View {
+        HStack(spacing: Space.s3) {
+            Text(row.label)
+                .foregroundStyle(.primary)
+            Spacer()
+            if let detail = row.detail {
+                Text(detail)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            if let symbol = row.trailingSymbol {
+                Image(systemName: symbol)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .fontWeight(row.selected ? .semibold : .regular)
+        .padding(.horizontal, Space.s3)
+        .padding(.vertical, Space.s2)
+        .background(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous).fill(row.selected ? Brand.sparkSoft : Color.clear))
+        .contentShape(Rectangle())
     }
 }

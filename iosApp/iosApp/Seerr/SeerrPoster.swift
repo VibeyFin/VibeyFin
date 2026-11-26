@@ -14,9 +14,9 @@ struct SeerrPosterTile: View {
         let meta = self.meta ?? Strings.shared.seerrTitleMeta(year: title.year, type: title.type)
         let marked = !(plainInLibrary && title.jellyfinItemId != nil)
         VStack(alignment: .leading, spacing: Space.s2) {
-            Artwork(url: title.posterUrl, title: title.title, aspectRatio: 2.0 / 3.0, blurHash: nil)
+            Artwork(url: title.posterUrl, title: title.title, aspectRatio: CGFloat(MediaAspect.shared.POSTER), blurHash: nil)
                 .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
-                .overlay(alignment: .topLeading) { if marked { SeerrMarker(state: title.state).padding(6) } }
+                .overlay(alignment: .topLeading) { if marked { SeerrMarker(state: title.state).padding(6).skeletonHidden() } }
             VStack(alignment: .leading, spacing: 2) {
                 // Always two lines' room, so tiles are one height and rows never change size.
                 Text(title.title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary).lineLimit(2, reservesSpace: true)
@@ -76,20 +76,5 @@ private struct MarkerBackground: ViewModifier {
         } else {
             content.background(Capsule().fill(Brand.scrim))
         }
-    }
-}
-
-/// A grey stand-in for `SeerrPosterTile`, laid out like it, so the row keeps its height when the real tiles arrive.
-struct SeerrPosterPlaceholder: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: Space.s2) {
-            SkeletonBlock().aspectRatio(2.0 / 3.0, contentMode: .fit)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(" ").font(.subheadline.weight(.semibold)).lineLimit(2, reservesSpace: true)
-                Text(" ").font(.caption).lineLimit(1)
-            }
-            .hidden()
-        }
-        .accessibilityHidden(true)
     }
 }

@@ -24,11 +24,13 @@ struct SeasonsSectionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s3) {
             if seasons.loading {
-                HStack(spacing: Space.s2) {
-                    ForEach(0..<3, id: \.self) { _ in
-                        SkeletonBlock(cornerRadius: 18).frame(width: 96, height: 36)
-                    }
-                }
+                SeasonButtonsRow(
+                    seasons: Placeholders.shared.seerrDetails.seasons.map { SeasonButton(id: $0.number, label: $0.name ?? "") },
+                    selectedId: nil,
+                    margin: margin,
+                    onSelect: { _ in }
+                )
+                .skeleton()
             } else if let message = seasons.message {
                 LoadErrorView(message: message, onRetry: onRetrySeasons)
             } else if seasons.seasons.isEmpty {
@@ -61,6 +63,7 @@ struct SeasonsSectionView: View {
             message: list.message,
             wide: wide,
             margin: margin,
+            placeholder: Placeholders.shared.episode,
             focusId: seasons.startEpisode?.id,
             onRetry: onRetryEpisodes,
             row: { episode in

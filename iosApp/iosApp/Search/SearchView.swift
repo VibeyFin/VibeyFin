@@ -188,8 +188,8 @@ struct SearchView: View {
         if let failed = seerr as? SeerrSearchFailed {
             LoadErrorView(message: failed.message, onRetry: { model.retrySeerr() })
         } else {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
-                if let found = seerr as? SeerrSearchFound {
+            if let found = seerr as? SeerrSearchFound {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
                     ForEach(found.titles, id: \.self) { title in
                         // A tap opens its Seerr page; a long press its Seerr menu (Request, Details, Trailer).
                         Button {
@@ -198,9 +198,9 @@ struct SearchView: View {
                         } label: { SeerrPosterTile(title: title) }
                             .seerrTileButton(title)
                     }
-                } else {
-                    ForEach(0..<3, id: \.self) { _ in SeerrPosterPlaceholder() }
                 }
+            } else {
+                SkeletonGrid(minimumWidth: 110) { SeerrPosterTile(title: Placeholders.shared.seerrTitle) }
             }
         }
     }
@@ -270,31 +270,20 @@ struct SearchView: View {
     private func picture(_ result: SearchResult) -> some View {
         switch result.kind {
         case .episode:
-            Artwork(url: result.imageUrl, title: result.title, aspectRatio: 16.0 / 9.0, blurHash: nil)
+            Artwork(url: result.imageUrl, title: result.title, aspectRatio: CGFloat(MediaAspect.shared.WIDE), blurHash: nil)
                 .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
         default:
-            Artwork(url: result.imageUrl, title: result.title, aspectRatio: 2.0 / 3.0, blurHash: nil)
+            Artwork(url: result.imageUrl, title: result.title, aspectRatio: CGFloat(MediaAspect.shared.POSTER), blurHash: nil)
                 .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
         }
     }
 
-    /// Grey tiles, laid out as the results are (same spacing, padding and margins), so the first answer
+    /// The poster tiles, laid out as the results are (same spacing, padding and margins), so the first answer
     /// replaces them without anything moving.
     private var skeleton: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Space.s2) {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
-                    ForEach(0..<6, id: \.self) { _ in
-                        VStack(alignment: .leading, spacing: Space.s2) {
-                            SkeletonBlock().aspectRatio(2.0 / 3.0, contentMode: .fit)
-                            // A title and the line under it, as a result's tile has
-                            VStack(alignment: .leading, spacing: 2) {
-                                SkeletonLine(font: .subheadline, width: 80)
-                                SkeletonLine(font: .caption, width: 48)
-                            }
-                        }
-                    }
-                }
+                SkeletonGrid(minimumWidth: 110) { posterTile(Placeholders.shared.searchResult(kind: .movie)) }
             }
             .screenMargin()
             .padding(.vertical, Space.s2)

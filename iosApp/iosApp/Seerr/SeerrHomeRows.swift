@@ -53,14 +53,7 @@ struct SeerrRowView: View {
             }
             .screenMargin()
             if row.loading {
-                // Laid out like the real tiles, so nothing under the row moves when they arrive. The four tiles are wider than a
-                // phone: `minWidth: 0` keeps the row at the screen's width, or it widens Home's scroll view and the whole page with it.
-                HStack(alignment: .top, spacing: Space.s3) {
-                    ForEach(0..<4, id: \.self) { _ in SeerrPosterPlaceholder().frame(width: 112) }
-                }
-                .screenMargin()
-                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-                .clipped()
+                SkeletonRow(tileWidth: 112) { SeerrPosterTile(title: Placeholders.shared.seerrTitle) }
             } else {
                 HorizontalRow {
                     LazyHStack(alignment: .top, spacing: Space.s3) {
@@ -126,7 +119,7 @@ struct SeerrListView: View {
                     if let message = state.message {
                         LoadErrorView(message: message, onRetry: { model.retry() })
                     } else if state.loading {
-                        SeerrGridSkeleton()
+                        SkeletonGrid(minimumWidth: sizeClass == .regular ? 168 : 130) { SeerrPosterTile(title: Placeholders.shared.seerrTitle) }
                     } else {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: sizeClass == .regular ? 168 : 130), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
                             ForEach(Array(state.titles.enumerated()), id: \.element) { index, title in
@@ -200,7 +193,7 @@ struct MyRequestsView: View {
                     if let message = state.message {
                         LoadErrorView(message: message, onRetry: { model.retry() })
                     } else if state.loading {
-                        SeerrGridSkeleton()
+                        SkeletonGrid(minimumWidth: sizeClass == .regular ? 168 : 130) { SeerrPosterTile(title: Placeholders.shared.seerrTitle) }
                     } else if state.empty {
                         Text(Strings.shared.seerrNoRequests).font(.body).foregroundStyle(.secondary).padding(.vertical, Space.s5)
                     } else {
@@ -225,16 +218,5 @@ struct MyRequestsView: View {
         .navigationTitle(Strings.shared.seerrMyRequests.titleCased())
         .navigationBarTitleDisplayMode(.large)
         .onAppear { model.start() }
-    }
-}
-
-/// Grey posters while a Seerr page's first answer is on its way, sized as the library's grid.
-private struct SeerrGridSkeleton: View {
-    @Environment(\.horizontalSizeClass) private var sizeClass
-
-    var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: sizeClass == .regular ? 168 : 130), spacing: Space.s3, alignment: .top)], alignment: .leading, spacing: Space.s4) {
-            ForEach(0..<9, id: \.self) { _ in SeerrPosterPlaceholder() }
-        }
     }
 }

@@ -19,7 +19,7 @@ struct HomeHeroView: View {
 
     var body: some View {
         // A banner rather than a full poster, so Continue watching stays close to the top: 4:3 on a phone, wider on an iPad.
-        Artwork(url: item.backdropUrl, title: item.title, aspectRatio: wide ? 2.6 : 4.0 / 3.0, blurHash: item.backdropBlurHash)
+        Artwork(url: item.backdropUrl, title: item.title, aspectRatio: CGFloat(wide ? MediaAspect.shared.HERO_WIDE : MediaAspect.shared.HERO), blurHash: item.backdropBlurHash)
             .overlay {
                 LinearGradient(
                     stops: [.init(color: .clear, location: 0), .init(color: .clear, location: 0.4), .init(color: Brand.scrim, location: 0.75), .init(color: Brand.scrimStrong, location: 1)],
@@ -81,40 +81,16 @@ struct HomeHeroView: View {
     }
 }
 
-/// The hero's place while it is being picked: the same rounded card at the same height, with grey stand-ins for the logo, the line
-/// and the two buttons, so the hero does not just appear. With `dots`, the page dots' row under it is kept empty.
+/// The hero's place while it is being picked: the real card drawn with placeholder data, so it has the same height. With `dots`, the
+/// page dots' row under it is kept empty.
 struct HomeHeroSkeleton: View {
     var dots = false
 
-    @Environment(\.horizontalSizeClass) private var sizeClass
-    private var wide: Bool { sizeClass == .regular }
-
     var body: some View {
         VStack(spacing: 0) {
-            card
+            HomeHeroView(item: Placeholders.shared.item, onPlay: {}, onOpen: { _ in }, onMyList: {})
+                .skeleton()
             if dots { Color.clear.frame(height: HomeHeroCarousel.dotsHeight) }
         }
-    }
-
-    private var card: some View {
-        Color(.tertiarySystemBackground)
-            .aspectRatio(wide ? 2.6 : 4.0 / 3.0, contentMode: .fit)
-            .overlay(alignment: wide ? .bottomLeading : .bottom) {
-                VStack(alignment: wide ? .leading : .center, spacing: Space.s2) {
-                    RoundedRectangle(cornerRadius: 6).fill(Color(.quaternarySystemFill)).frame(width: wide ? 160 : 180, height: 40)
-                    RoundedRectangle(cornerRadius: 6).fill(Color(.quaternarySystemFill)).frame(width: 150, height: 16)
-                    HStack(spacing: Space.s2) {
-                        Capsule().fill(Color(.quaternarySystemFill)).frame(height: 40)
-                        Capsule().fill(Color(.quaternarySystemFill)).frame(height: 40)
-                    }
-                    .frame(maxWidth: wide ? 360 : .infinity)
-                }
-                .padding(Space.s3)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
-            .skeletonShimmer()
-            .overlay(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous).stroke(Color(.tertiarySystemBackground), lineWidth: 1))
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Strings.shared.loadingPage)
     }
 }
