@@ -1,5 +1,5 @@
 {
-    "dim_when_paused_help":"After the player has been paused this long, the screen dims, then turns off when your phone's own screen timeout allows. Tap to bring it back; the video stays paused where it was.",
+    "dim_when_paused_help":"After the player has been paused this long, the screen dims, then turns off when your phone's own screen timeout allows. Tap to bring it back. The video stays paused where it was.",
     "download":"Download",
     "download_action_description":"Download {{title}}, {{state}}",
     "download_all_episodes":"Download all episodes",
