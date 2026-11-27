@@ -284,8 +284,8 @@ Checking a notification (Android emulator, `admin`):
    the item id from the path, so the episode comes back with the same id, which the profile has already been notified
    about; switching off forgets that, and the next poll is a first poll, which announces what was added in the last day.
 
-Running the work now: `adb shell cmd jobscheduler run -f -n androidx.work.systemjobscheduler app.vibeyfin <job id>`,
-with the id from `adb shell dumpsys jobscheduler | grep "JOB .*app.vibeyfin"` (the number after `u0a…/`). WorkManager
+Running the work now: `adb shell cmd jobscheduler run -f -n androidx.work.systemjobscheduler app.vibeyfin.debug <job id>`,
+with the id from `adb shell dumpsys jobscheduler | grep "JOB .*app.vibeyfin.debug"` (the number after `u0a…/`). WorkManager
 skips a periodic run forced before its period is up ("being executed before schedule" in logcat): the first run happens
 when Notifications is switched on, and later ones need the clock moved past the 4 hours. On an emulator image without
 root: `adb shell settings put global auto_time 0`, then `adb shell cmd alarm set-time <epoch ms 5 h ahead>`, force the
@@ -321,7 +321,7 @@ bodies of `/Download` answers at the given speed (`8197 600000` makes `big-downl
 speed. On the emulator add `http://10.0.2.2:8197` as the server's address (the app tries its best address first, and falls back to the
 other when the proxy is stopped). Use it to turn the screen off, force Doze (`adb shell dumpsys deviceidle force-idle`), drop Wi-Fi
 (`adb shell svc wifi disable`; reconnect with `adb shell cmd wifi connect-network AndroidWifi open`) or kill the process
-(`adb shell run-as app.vibeyfin kill -9 <pid>`) in the middle of a download, and compare the file with the source (`md5sum`).
+(`adb shell run-as app.vibeyfin.debug kill -9 <pid>`) in the middle of a download, and compare the file with the source (`md5sum`).
 
 ## Sign-in fixtures: who is listed, a user without a password, a hidden user, Quick Connect
 

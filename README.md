@@ -5,19 +5,15 @@ built for
 speed on every platform: native SwiftUI on iOS and iPadOS, Jetpack Compose with Material 3 on
 Android, over a
 Kotlin Multiplatform core. Dark and artwork-forward, with [Seerr](https://docs.seerr.dev) requests
-and
-recommendations planned for later, in native screens. Android ships first.
+in native screens (recommendations planned).  Android ships first.
 
 ## Status
 
-The roadmap's Phases 0 to 4, Phase 6 and Phase 10 (offline) are done (Phase 5, a recommendation
-backend, is deferred): connect
-to a server, sign in, browse, search, play, pick up where you left off on any device, and tune
-playback and
-profiles in Settings. Phase 6 still owes Now Playing on the lock screen and a baseline profile. Next
-is
-customisation (Phase 7); Seerr is on the roadmap but not started. See
-the [roadmap](docs/ROADMAP.md).
+The roadmap's Phases 0 to 4, Phase 6 and Phase 10 (offline) are done, and Seerr requests (Phase 8)
+are built: connect to a server, sign in, browse, search, play, pick up where you left off on any
+device, download for offline, request titles that are not in the library, and tune playback and
+profiles in Settings. Phase 7 (customisation) is in progress, and Seerr recommendations (Phase 9) and the TV
+apps (Phase 11) are planned. See the [roadmap](docs/ROADMAP.md).
 
 What works today:
 
@@ -64,14 +60,13 @@ What works today:
   refresh
   on iOS). Tablets get a two-pane Settings.
 
-Not built yet: customisation of Home rows and tabs, Seerr, TV apps. Translations are in
+Not built yet: customisation of Home rows and tabs, Seerr recommendations, TV apps. Translations are in
 progress, see [Translating](#translating). Android has been run on an emulator against a local test server (see
 [`docs/test-server.md`](docs/test-server.md)); there has been no real-device pass yet,
-so real HDR output is unverified. **The iOS app builds and its unit tests pass on the simulator, but
-most screens have not been walked through by hand**,
-and picture-in-picture, Control Center and notifications have not been seen running on iOS. Expect
-fixes
-when they are.
+so real HDR output is unverified.
+
+**The iOS app builds and its unit tests pass on the simulator.** Playback on iOS runs well, with
+Picture-in-Picture and Now Playing in Control Center.
 
 ## Project layout
 
@@ -84,7 +79,7 @@ when they are.
 | `scripts/`    | Design drift and title-case checks, and a disposable local Jellyfin for testing (`scripts/test-server/`).                                                                |
 
 Targets are `androidTarget`, `iosArm64` and `iosSimulatorArm64`. The Android application ID and iOS
-bundle ID are `app.vibeyfin`. Android needs API 26 or newer (compile SDK 37, target SDK 36); iOS
+bundle ID are `app.vibeyfin` (`app.vibeyfin.debug` for debug builds, so both can be installed side by side). Android needs API 26 or newer (compile SDK 37, target SDK 36); iOS
 needs 16 or newer.
 
 ## Requirements

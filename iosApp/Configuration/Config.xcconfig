@@ -2,6 +2,8 @@ TEAM_ID=
 BUNDLE_ID=app.vibeyfin
 APP_NAME=VibeyFin
 
+BUNDLE_ID[config=Debug]=app.vibeyfin.debug
+
 // Your own overrides (TEAM_ID=...) go in Local.xcconfig, which git ignores. Keeping the team
 // out of the project file stops Xcode from rewriting it when it picks a team for signing.
 #include? "Local.xcconfig"
