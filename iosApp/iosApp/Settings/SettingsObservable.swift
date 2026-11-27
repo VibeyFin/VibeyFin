@@ -78,8 +78,11 @@ final class SettingsObservable: ObservableObject {
         return rootLinks().first { $0.target == first }?.key
     }
 
-    func toggle(_ key: SettingKey, _ value: Bool) {
-        model.onToggle(key: key, value: value)
+    func toggle(_ item: ToggleItem, _ value: Bool) {
+        switch SettingsToggleRoute.of(devFlagId: item.devFlagId) {
+        case .devFlag(let id): model.onDevFlag(id: id, value: value)
+        case .setting: model.onToggle(key: item.key, value: value)
+        }
     }
 
     func choose(_ key: SettingKey, _ value: Int32) {

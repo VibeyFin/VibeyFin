@@ -2,6 +2,7 @@ package app.vibeyfin.ui.downloads
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.vibeyfin.dev.SkeletonGate
 import app.vibeyfin.domain.ConnectionManager
 import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.DownloadRepository
@@ -76,6 +77,7 @@ class DownloadsViewModel(
     private val downloads: DownloadRepository,
     offline: OfflineMode,
     profileSettings: ProfileSettings,
+    gate: SkeletonGate = SkeletonGate.AlwaysOpen,
 ) : ViewModel() {
     private val flow = DownloadFlow(viewModelScope, downloads) { connection.state.value.profileOrNull() }
 
@@ -92,7 +94,7 @@ class DownloadsViewModel(
         }
     }
 
-    val uiState: StateFlow<DownloadsUiState> = combine(content, waiting, flow.removal, flow.message, connection.sessionEnded()) { state, waiting, removal, message, exit ->
+    val uiState: StateFlow<DownloadsUiState> = combine(content.combine(gate.held) { state, held -> state.copy(loading = state.loading || held) }, waiting, flow.removal, flow.message, connection.sessionEnded()) { state, waiting, removal, message, exit ->
         state.copy(waiting = waiting, removal = removal, message = message, exit = exit)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DownloadsUiState())
 

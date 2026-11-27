@@ -22,6 +22,25 @@ enum class ItemKind {
     Other,
 }
 
+/** Width over height of the picture shapes the screens and their skeletons share, so a placeholder is the shape of the real picture. */
+object MediaAspect {
+    /** A poster: movies, shows, seasons and collections. */
+    const val POSTER: Float = 2f / 3f
+
+    /** A 16:9 picture: a Continue card, an episode's card in a search, a library. */
+    const val WIDE: Float = 16f / 9f
+
+    /** An episode's still. */
+    const val EPISODE_STILL: Float = 1.6f
+
+    /** Home's hero billboard on a phone and, when the screen is [HERO_WIDE], a tablet. */
+    const val HERO: Float = 4f / 3f
+    const val HERO_WIDE: Float = 2.6f
+
+    /** The backdrop picture behind an item's page; the page lays it out to the screen. */
+    const val ITEM_BACKDROP: Float = 16f / 9f
+}
+
 /** A library, folder, series, season, movie or episode, as the screens show it. Serializable so a download can keep it. */
 @Serializable
 data class MediaItem(

@@ -39,7 +39,7 @@ struct MediaRowView: View {
             // The grey posters give way to the real ones with a short fade.
             Group {
                 if row.loading {
-                    PosterSkeletonRow(tileWidth: tileWidth)
+                    SkeletonRow(tileWidth: tileWidth, tile: { PosterSkeletonTile() })
                 } else if let message = row.message {
                     LoadErrorView(message: message, onRetry: onRetry)
                         .screenMargin()
@@ -61,17 +61,6 @@ struct MediaRowView: View {
                 }
             }
             .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: items.map(\.id))
-        }
-    }
-}
-
-/// A row's header and posters in grey, for the moment before the rows are known.
-struct RowPlaceholder: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: Space.s3) {
-            SkeletonLine(font: .title3.bold(), width: 220)
-                .screenMargin()
-            PosterSkeletonRow()
         }
     }
 }

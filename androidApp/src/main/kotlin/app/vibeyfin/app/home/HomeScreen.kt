@@ -56,15 +56,14 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.components.ActionSnackbar
 import app.vibeyfin.app.components.ContinueCard
-import app.vibeyfin.app.components.ContinueSkeletonCards
 import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.components.MediaRowSection
 import app.vibeyfin.app.components.MenuHeader
-import app.vibeyfin.app.components.PosterSkeletonRow
 import app.vibeyfin.app.components.ROW_FADE_MS
 import app.vibeyfin.app.components.RowPhase
 import app.vibeyfin.app.components.SectionTitle
-import app.vibeyfin.app.components.SkeletonLine
+import app.vibeyfin.app.components.Skeleton
+import app.vibeyfin.app.components.SkeletonRow
 import app.vibeyfin.app.components.TabHeader
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.bleed
@@ -81,6 +80,7 @@ import app.vibeyfin.domain.Download
 import app.vibeyfin.domain.HomeFilter
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.model.SeerrTitle
+import app.vibeyfin.ui.common.Placeholders
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.downloads.DownloadAction
 import app.vibeyfin.ui.downloads.DownloadBadge
@@ -404,7 +404,7 @@ private fun Content(
                         val heroes = state.heroes
 
                         if (ids.isEmpty() || heroes.isEmpty()) {
-                            HomeHeroSkeleton(wideHero, dots = state.heroSlots >= 2)
+                            HomeHeroPlaceholder(wideHero, dots = state.heroSlots >= 2)
                         } else {
                             HomeHeroCarousel(heroes, wideHero, onHeroPlay, onDetails, onHeroMyList)
                         }
@@ -475,7 +475,9 @@ internal fun ContinueWatching(
 
         Crossfade(targetState = phase, animationSpec = tween(ROW_FADE_MS), modifier = Modifier.animateContentSize(tween(ROW_FADE_MS))) { shown ->
             when (shown) {
-                RowPhase.Loading -> ContinueSkeletonCards(Modifier.bleed(margin).padding(horizontal = margin))
+                RowPhase.Loading -> SkeletonRow(VibeyFinTokens.Size.thumbWidth, margin, Modifier.bleed(margin)) {
+                    ContinueCard(Placeholders.continueCard, onPlay = {}, onDetails = {}, onLongClick = {})
+                }
 
                 RowPhase.Failed -> LoadError(row.message ?: "", onRetry)
 
@@ -501,9 +503,8 @@ internal fun ContinueWatching(
 
 @Composable
 private fun RowPlaceholder(margin: Dp) {
-    Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-        SkeletonLine(220.dp, MaterialTheme.typography.titleLarge)
-        PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin))
+    Skeleton {
+        MediaRowSection(Placeholders.mediaRow(0).copy(loading = true), margin, onOpen = {}, onSeeAll = null, onRetry = {})
     }
 }
 

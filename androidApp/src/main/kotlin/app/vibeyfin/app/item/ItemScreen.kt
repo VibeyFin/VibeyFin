@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -35,9 +36,10 @@ import app.vibeyfin.app.components.ActionSnackbar
 import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.DangerConfirmDialog
 import app.vibeyfin.app.components.FloatingBackButton
-import app.vibeyfin.app.components.ItemSkeleton
 import app.vibeyfin.app.components.LoadError
+import app.vibeyfin.app.components.LocalSkeleton
 import app.vibeyfin.app.components.MediaRowSection
+import app.vibeyfin.app.components.Skeleton
 import app.vibeyfin.app.downloads.DownloadConfirmDialog
 import app.vibeyfin.app.downloads.RemoveConfirmDialog
 import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
@@ -50,8 +52,10 @@ import app.vibeyfin.app.theme.detailMargin
 import app.vibeyfin.app.theme.pageInsetsPadding
 import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.domain.model.ItemKind
+import app.vibeyfin.domain.model.MediaAspect
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.model.SeerrTitle
+import app.vibeyfin.ui.common.Placeholders
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.item.ItemUiState
@@ -199,7 +203,7 @@ fun ItemScreen(
             Crossfade(targetState = phase, animationSpec = tween(ITEM_FADE_MS), label = "item page") { shown ->
                 when (shown) {
                     ItemPhase.Loading -> BoxWithConstraints(Modifier.fillMaxSize()) {
-                        ItemSkeleton(wide = maxWidth >= WIDE_FROM, screenWidth = maxWidth, screenHeight = maxHeight, margin = detailMargin(maxWidth >= WIDE_FROM))
+                        Skeleton(Modifier.fillMaxSize()) { ItemPlaceholderPage(wide = maxWidth >= WIDE_FROM, screenWidth = maxWidth, screenHeight = maxHeight) }
                     }
 
                     ItemPhase.Failed -> Column(Modifier.fillMaxSize().pageInsetsPadding()) {
@@ -239,6 +243,39 @@ private val CAST_TILE_NARROW = 88.dp
 private val EXTRA_NARROW = 200.dp
 private val EXTRA_WIDE = 260.dp
 private val CAST_TILE_WIDE = 112.dp
+
+// The page of a movie before it has loaded: the real page, with a placeholder movie, that opens and plays nothing
+@Composable
+private fun ItemPlaceholderPage(wide: Boolean, screenWidth: Dp, screenHeight: Dp) {
+    val item: MediaItem = remember { Placeholders.item.copy(resumePositionMs = 0) }
+    val state: ItemUiState = remember { ItemUiState(item = item, loading = false, facts = listOfNotNull(item.year?.toString(), item.runtimeMinutes?.let(Strings::minutesShort), item.ageRating)) }
+
+    ItemPage(
+        item = item,
+        state = state,
+        wide = wide,
+        screenWidth = screenWidth,
+        screenHeight = screenHeight,
+        onPlay = {},
+        onPlayEpisode = {},
+        onOpen = {},
+        onOpenSeries = {},
+        onToggleFavorite = {},
+        onTogglePlayed = {},
+        onToggleSeasonPlayed = {},
+        onToggleEpisodePlayed = {},
+        onSelectSeason = {},
+        onRetrySimilar = {},
+        onRetryCollections = {},
+        onRetrySeasons = {},
+        onRetryEpisodes = {},
+        onOpenPerson = {},
+        onRetryExtras = {},
+        subtitles = SubtitleActions(onSearch = {}, onDelete = {}),
+        downloads = DownloadCallbacks.None,
+        onOpenSeerr = {},
+    )
+}
 
 // On a tablet the backdrop stays put and darkens while the rest scrolls up over it
 @Composable
@@ -280,7 +317,7 @@ private fun ItemPage(
             if (item.cast.isNotEmpty()) CastSection(item.cast, margin, tile = if (wide) CAST_TILE_WIDE else CAST_TILE_NARROW, onOpenPerson = onOpenPerson)
 
             state.extras?.takeIf { it.isVisible }?.let { row ->
-                MediaRowSection(row, margin, onOpen, onSeeAll = null, onRetry = onRetryExtras, tileWidth = if (wide) EXTRA_WIDE else EXTRA_NARROW, skeletonAspect = 16f / 9f)
+                MediaRowSection(row, margin, onOpen, onSeeAll = null, onRetry = onRetryExtras, tileWidth = if (wide) EXTRA_WIDE else EXTRA_NARROW, placeholder = Placeholders.posterTile.copy(posterAspectRatio = MediaAspect.WIDE))
             }
 
             state.collections?.takeIf { it.isVisible }?.let { row ->
@@ -291,7 +328,7 @@ private fun ItemPage(
                 SimilarSection(row, state.similarTiles, margin, onOpen, onOpenSeerr, onRetry = onRetrySimilar, tileWidth = if (wide) POSTER_WIDE else VibeyFinTokens.Size.posterWidth)
             }
 
-            if (state.technical.isNotEmpty()) TechnicalInfo(state.technical, subtitles)
+            if (state.technical.isNotEmpty() && !LocalSkeleton.current) TechnicalInfo(state.technical, subtitles)
 
             Spacer(Modifier.height(VibeyFinTokens.Space.s5))
         }
@@ -338,7 +375,7 @@ private fun ItemPage(
     }
 }
 
-private const val PHONE_HERO_BY_WIDTH = 1.5f
+private const val PHONE_HERO_BY_WIDTH = 1f / MediaAspect.POSTER
 
 private const val FIRST_SCREEN = 0.7f
 

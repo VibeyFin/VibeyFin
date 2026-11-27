@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -30,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.model.MediaItem
+import app.vibeyfin.ui.common.Placeholders
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.MediaRow
 import app.vibeyfin.ui.home.SeeAll
@@ -66,8 +66,8 @@ fun MediaRowSection(
     onRetry: () -> Unit,
     // Posters are 112 on a phone and larger on a tablet (`screens.md`)
     tileWidth: Dp = VibeyFinTokens.Size.posterWidth,
-    // The gray tiles take the shape of the real ones: tall for posters, wide for clips such as extras
-    skeletonAspect: Float = 2f / 3f,
+    // The placeholder tile the loading row is drawn from: tall for posters, wide for clips such as extras
+    placeholder: MediaItem = Placeholders.posterTile,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -97,7 +97,9 @@ fun MediaRowSection(
 
         Crossfade(targetState = phase, animationSpec = tween(ROW_FADE_MS), modifier = Modifier.animateContentSize(tween(ROW_FADE_MS))) { shown ->
             when (shown) {
-                RowPhase.Loading -> PosterSkeletonRow(Modifier.bleed(margin).padding(horizontal = margin), tileWidth = tileWidth, aspectRatio = skeletonAspect)
+                RowPhase.Loading -> SkeletonRow(tileWidth, margin, Modifier.bleed(margin)) { index ->
+                    ArtworkTile(placeholder.copy(id = "placeholder-$index"), onClick = {}, modifier = Modifier.width(tileWidth), captionLines = POSTER_CAPTION_LINES)
+                }
 
                 RowPhase.Failed -> LoadError(row.message ?: "", onRetry)
 

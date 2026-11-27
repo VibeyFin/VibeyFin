@@ -4,6 +4,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.room3.Room
 import app.vibeyfin.data.db.VibeyFinDatabase
 import app.vibeyfin.data.db.buildVibeyFinDatabase
+import app.vibeyfin.dev.DevFlagRegistry
+import app.vibeyfin.dev.DevFlags
 import app.vibeyfin.domain.AccountRepository
 import app.vibeyfin.domain.ConnectionState
 import app.vibeyfin.domain.DevicePreferences
@@ -95,9 +97,37 @@ class SettingsViewModelTest {
         seerr: SeerrConnection? = null,
         downloadAlerts: Boolean = true,
         appLanguages: List<AppLanguage> = emptyList(),
+        devFlags: DevFlags? = null,
     ) = viewModels.track(
-        SettingsViewModel(preferences, profileSettings, app.connection, app.servers, pins, app.policy, app.languages, app.auth, app.downloadRepository, applicationScope, appVersion, downloadAlerts = downloadAlerts, seerr = seerr, appLanguages = appLanguages),
+        SettingsViewModel(preferences, profileSettings, app.connection, app.servers, pins, app.policy, app.languages, app.auth, app.downloadRepository, applicationScope, appVersion, downloadAlerts = downloadAlerts, seerr = seerr, appLanguages = appLanguages, devFlags = devFlags),
     )
+
+    @Test
+    fun `a debug build ends the root page with a Developer section that switches the flag`() = runTest {
+        val flags = DevFlags(enabled = true)
+        val viewModel = viewModel(devFlags = flags)
+
+        val section = viewModel.uiState.value.page(SettingsPageId.Root).sections.last()
+        val toggle = section.items.single() as ToggleItem
+
+        assertEquals("Developer", section.title)
+        assertEquals("Show skeletons", toggle.title)
+        assertEquals(DevFlagRegistry.showSkeletons.id, toggle.devFlagId)
+        assertFalse(toggle.checked)
+
+        viewModel.onDevFlag(DevFlagRegistry.showSkeletons.id, true)
+
+        assertTrue(flags.state(DevFlagRegistry.showSkeletons).value)
+        assertTrue(viewModel.uiState.first { it.checked(SettingKey.DevFlag) }.checked(SettingKey.DevFlag))
+    }
+
+    @Test
+    fun `a release build has no Developer section`() = runTest {
+        val viewModel = viewModel(devFlags = DevFlags(enabled = false))
+
+        assertFalse(viewModel.uiState.value.page(SettingsPageId.Root).sections.any { it.title == "Developer" })
+        assertFalse(viewModel(devFlags = null).uiState.value.page(SettingsPageId.Root).sections.any { it.title == "Developer" })
+    }
 
     @Test
     fun `the Seerr row shows where the profile stands with Seerr and leads to its page`() = runTest {

@@ -10,6 +10,7 @@ import app.vibeyfin.ui.settings.SettingsPage
 import app.vibeyfin.ui.settings.SettingsPageId
 import app.vibeyfin.ui.settings.SettingsSection
 import app.vibeyfin.ui.settings.SettingsValues
+import app.vibeyfin.ui.settings.ToggleItem
 import app.vibeyfin.ui.settings.settingsPages
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -67,6 +68,26 @@ class SettingsMappingTest {
         val b = quality.first { it.key == SettingKey.Quality }
 
         assertNotEquals(rowId(SettingsPageId.Root, a), rowId(SettingsPageId.Quality, b))
+    }
+
+    @Test
+    fun `developer flags with one key get distinct row ids`() {
+        val first = ToggleItem(SettingKey.DevFlag, "One", checked = false, devFlagId = "one")
+        val second = ToggleItem(SettingKey.DevFlag, "Two", checked = false, devFlagId = "two")
+
+        assertNotEquals(rowId(SettingsPageId.Root, first), rowId(SettingsPageId.Root, second))
+    }
+
+    @Test
+    fun `a developer flag switch reports to the flag handler and any other to the toggle handler`() {
+        val reported = mutableListOf<String>()
+        val onToggle: (SettingKey, Boolean) -> Unit = { key, value -> reported += "toggle ${key.name} $value" }
+        val onDevFlag: (String, Boolean) -> Unit = { id, value -> reported += "flag $id $value" }
+
+        ToggleItem(SettingKey.DevFlag, "Show skeletons", checked = false, devFlagId = "show_skeletons").report(true, onToggle, onDevFlag)
+        ToggleItem(SettingKey.Notifications, "Notifications", checked = true).report(false, onToggle, onDevFlag)
+
+        assertEquals(listOf("flag show_skeletons true", "toggle Notifications false"), reported)
     }
 
     @Test

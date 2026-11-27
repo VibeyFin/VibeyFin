@@ -32,6 +32,7 @@ import app.vibeyfin.app.theme.screenMargin
 import app.vibeyfin.ui.settings.SettingKey
 import app.vibeyfin.ui.settings.SettingsPageId
 import app.vibeyfin.ui.settings.SettingsUiState
+import app.vibeyfin.ui.settings.ToggleItem
 import org.koin.androidx.compose.koinViewModel
 
 private val ListPaneWidth = 380.dp
@@ -46,7 +47,7 @@ private val DetailMaxWidth = 640.dp
 @Composable
 fun SettingsTabletScreen(
     state: SettingsUiState,
-    onToggle: (SettingKey, Boolean) -> Unit,
+    onToggle: (ToggleItem, Boolean) -> Unit,
     onChoose: (SettingKey, Int) -> Unit,
     onAction: (SettingKey) -> Unit,
     onBack: () -> Unit,

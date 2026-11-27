@@ -1,6 +1,9 @@
 package app.vibeyfin.ui.downloads
 
 import app.vibeyfin.data.db.DOWNLOAD_RUNNING
+import app.vibeyfin.dev.DevFlagRegistry
+import app.vibeyfin.dev.DevFlags
+import app.vibeyfin.dev.SkeletonGate
 import app.vibeyfin.domain.DownloadAttempt
 import app.vibeyfin.domain.DownloadRepository
 import app.vibeyfin.domain.DownloadRunner
@@ -45,7 +48,20 @@ class DownloadsViewModelTest {
         app.close()
     }
 
-    private fun viewModel() = viewModels.track(DownloadsViewModel(app.connection, app.downloadRepository, app.offline, app.profileSettings))
+    private fun viewModel(gate: SkeletonGate = SkeletonGate.AlwaysOpen) = viewModels.track(DownloadsViewModel(app.connection, app.downloadRepository, app.offline, app.profileSettings, gate))
+
+    @Test
+    fun staysLoadingWhileTheSkeletonGateIsClosed() = runTest {
+        app.sagaServer()
+        val flags = DevFlags(enabled = true)
+        val viewModel = viewModel(SkeletonGate(flags))
+        flags.set(DevFlagRegistry.showSkeletons, true)
+
+        assertTrue(viewModel.uiState.value.loading)
+        flags.set(DevFlagRegistry.showSkeletons, false)
+
+        assertTrue(!viewModel.uiState.first { !it.loading }.loading)
+    }
 
     private suspend fun queue(target: DownloadTarget, repository: DownloadRepository = app.downloadRepository) {
         val plan = (repository.plan(alex, target) as DownloadAttempt.Success).value

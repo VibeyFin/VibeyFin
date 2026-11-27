@@ -36,7 +36,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -69,9 +69,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.vibeyfin.R
 import app.vibeyfin.app.components.Artwork
+import app.vibeyfin.app.components.LocalSkeleton
 import app.vibeyfin.app.components.SkeletonBlock
+import app.vibeyfin.app.components.Text
 import app.vibeyfin.app.components.VibeyFinMenu
 import app.vibeyfin.app.components.VibeyFinMenuItem
+import app.vibeyfin.app.components.skeleton
+import app.vibeyfin.app.components.unlessSkeleton
 import app.vibeyfin.app.downloads.DownloadActionMenuItem
 import app.vibeyfin.app.downloads.DownloadBadgeIcon
 import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
@@ -79,6 +83,7 @@ import app.vibeyfin.app.navigation.LocalOpenTrailerUrl
 import app.vibeyfin.app.theme.BrandDisplay
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.domain.model.ItemKind
+import app.vibeyfin.domain.model.MediaAspect
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.downloads.actions
@@ -116,7 +121,7 @@ fun ItemBackdrop(title: String, picture: String?, blurHash: String?, screenWidth
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
-            Box(Modifier.fillMaxSize().background(VibeyFinTokens.Colors.surface2))
+            Box(Modifier.fillMaxSize().skeleton(RectangleShape).background(VibeyFinTokens.Colors.surface2))
         }
 
         val scrim = VibeyFinTokens.Colors.scrim
@@ -151,12 +156,12 @@ fun PinnedBackdrop(title: String, picture: String?, blurHash: String?, height: D
             Artwork(
                 url = picture,
                 title = title,
-                aspectRatio = 2f / 3f,
+                aspectRatio = MediaAspect.POSTER,
                 blurHash = blurHash,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
-            Box(Modifier.fillMaxSize().background(VibeyFinTokens.Colors.surface2))
+            Box(Modifier.fillMaxSize().skeleton(RectangleShape).background(VibeyFinTokens.Colors.surface2))
         }
 
         val scrim = VibeyFinTokens.Colors.scrim
@@ -209,7 +214,7 @@ fun HeroDetails(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .clip(CircleShape)
-                        .clickable(role = Role.Button) { onOpenSeries(seriesId) }
+                        .unlessSkeleton { clickable(role = Role.Button) { onOpenSeries(seriesId) } }
                         .semantics { contentDescription = Strings.goToSeries(name) }
                         .padding(horizontal = VibeyFinTokens.Space.s2),
                 ) {
@@ -410,12 +415,12 @@ internal fun ActionButton(label: String, description: String, icon: @Composable 
                 .defaultMinSize(minWidth = 64.dp, minHeight = 72.dp)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
-                .clickable(role = Role.Button, onClick = onClick)
+                .unlessSkeleton { clickable(role = Role.Button, onClick = onClick) }
                 .semantics { contentDescription = description }
                 .padding(vertical = VibeyFinTokens.Space.s2),
         ) {
             icon(
-                Modifier.size(30.dp).graphicsLayer {
+                Modifier.size(30.dp).skeleton(CircleShape).graphicsLayer {
                     scaleX = pop.value
                     scaleY = pop.value
                 },
@@ -504,7 +509,7 @@ internal fun Overview(text: String) {
         )
 
         if (overflows || expanded) {
-            TextButton(onClick = { expanded = !expanded }) {
+            TextButton(onClick = { expanded = !expanded }, enabled = !LocalSkeleton.current) {
                 Text(if (expanded) Strings.less else Strings.more, color = VibeyFinTokens.Colors.inkMuted)
             }
         }
@@ -514,14 +519,14 @@ internal fun Overview(text: String) {
 @Composable
 private fun PlayButtons(label: String, canStartOver: Boolean, onPlay: (startOver: Boolean) -> Unit, fullWidth: Boolean) {
     Row(horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3), modifier = if (fullWidth) Modifier.fillMaxWidth() else Modifier) {
-        Button(onClick = { onPlay(false) }, modifier = (if (fullWidth) Modifier.weight(1f) else Modifier.widthIn(min = 200.dp)).height(VibeyFinTokens.Size.buttonLarge)) {
+        Button(onClick = { onPlay(false) }, modifier = (if (fullWidth) Modifier.weight(1f) else Modifier.widthIn(min = 200.dp)).height(VibeyFinTokens.Size.buttonLarge).skeleton(RoundedCornerShape(50))) {
             Icon(painter = painterResource(R.drawable.ic_play), contentDescription = null)
             Spacer(Modifier.width(VibeyFinTokens.Space.s2))
             Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
 
         if (canStartOver) {
-            FilledTonalIconButton(onClick = { onPlay(true) }, modifier = Modifier.size(VibeyFinTokens.Size.buttonLarge)) {
+            FilledTonalIconButton(onClick = { onPlay(true) }, modifier = Modifier.size(VibeyFinTokens.Size.buttonLarge).skeleton(CircleShape)) {
                 Icon(imageVector = Icons.Default.Refresh, contentDescription = Strings.startOver)
             }
         }

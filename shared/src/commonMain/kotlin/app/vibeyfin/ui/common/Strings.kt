@@ -785,6 +785,7 @@ object Strings {
     val settingsGroupKids: String get() = text("settings_group_kids")
     val settingsGroupDevice: String get() = text("settings_group_device")
     val settingsGroupAdvanced: String get() = text("settings_group_advanced")
+    val settingsGroupDeveloper: String get() = text("settings_group_developer")
     val settingsKidsFooter: String get() = text("settings_kids_footer")
     val settingsDeviceHelp: String get() = text("settings_device_help")
 

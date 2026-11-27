@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -24,7 +25,6 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -49,10 +49,14 @@ import app.vibeyfin.app.components.KeepSystemBarsHidden
 import app.vibeyfin.app.components.OptionRow
 import app.vibeyfin.app.components.PickerSearch
 import app.vibeyfin.app.components.PickerSheet
-import app.vibeyfin.app.components.SkeletonLine
+import app.vibeyfin.app.components.Skeleton
+import app.vibeyfin.app.components.Text
 import app.vibeyfin.app.components.VibeyFinSheet
+import app.vibeyfin.app.components.skeleton
+import app.vibeyfin.app.components.unlessSkeleton
 import app.vibeyfin.app.theme.MenuPressIndication
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.ui.common.Placeholders
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.subtitles.SubtitleAdded
 import app.vibeyfin.ui.subtitles.SubtitleResultRow
@@ -120,12 +124,9 @@ private fun SubtitleSearchSheet(state: SubtitleSearchUiState, viewModel: Subtitl
                 val problem = state.problem
 
                 when {
-                    state.loading -> Column(Modifier.padding(VibeyFinTokens.Space.s4), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
-                        repeat(SKELETON_ROWS) {
-                            Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
-                                SkeletonLine(width = 240.dp, style = MaterialTheme.typography.bodyMedium)
-                                SkeletonLine(width = 140.dp, style = MaterialTheme.typography.bodySmall)
-                            }
+                    state.loading -> Skeleton {
+                        Column {
+                            repeat(SKELETON_ROWS) { ResultRow(Placeholders.subtitleResult, downloading = false, enabled = true, onClick = {}) }
                         }
                     }
 
@@ -188,7 +189,7 @@ private fun ResultRow(result: SubtitleResultRow, downloading: Boolean, enabled: 
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = VibeyFinTokens.Size.touch)
-            .clickable(enabled = enabled, onClick = onClick)
+            .unlessSkeleton { clickable(enabled = enabled, onClick = onClick) }
             .alpha(if (enabled || downloading || result.added) 1f else DISABLED_ALPHA)
             .clearAndSetSemantics {
                 contentDescription = result.spoken
@@ -208,7 +209,7 @@ private fun ResultRow(result: SubtitleResultRow, downloading: Boolean, enabled: 
         } else if (result.added) {
             Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
         } else {
-            Icon(painterResource(R.drawable.ic_download), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+            Icon(painterResource(R.drawable.ic_download), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp).skeleton(CircleShape))
         }
     }
 }
@@ -239,4 +240,5 @@ private fun Problem(problem: SubtitleSearchProblem, onRetry: () -> Unit) {
 }
 
 private const val SKELETON_ROWS = 4
+
 private const val DISABLED_ALPHA = 0.4f

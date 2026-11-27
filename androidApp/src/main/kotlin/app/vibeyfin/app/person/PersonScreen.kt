@@ -25,7 +25,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,13 +49,15 @@ import app.vibeyfin.app.components.ArtworkTile
 import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FloatingBackButton
 import app.vibeyfin.app.components.LoadError
+import app.vibeyfin.app.components.LocalSkeleton
 import app.vibeyfin.app.components.MediaRowSection
 import app.vibeyfin.app.components.POSTER_CAPTION_LINES
 import app.vibeyfin.app.components.SectionTitle
-import app.vibeyfin.app.components.SkeletonBlock
-import app.vibeyfin.app.components.SkeletonLine
-import app.vibeyfin.app.components.skeletonCount
-import app.vibeyfin.app.components.skeletonTiles
+import app.vibeyfin.app.components.Skeleton
+import app.vibeyfin.app.components.Text
+import app.vibeyfin.app.components.placeholderGridCount
+import app.vibeyfin.app.components.placeholderTiles
+import app.vibeyfin.app.components.skeleton
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.navigation.verticalPageScroll
 import app.vibeyfin.app.theme.BrandDisplay
@@ -64,8 +65,10 @@ import app.vibeyfin.app.theme.ContentMaxWidth
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.pageInsetsPadding
 import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.domain.model.MediaAspect
 import app.vibeyfin.domain.model.MediaItem
 import app.vibeyfin.domain.model.Person
+import app.vibeyfin.ui.common.Placeholders
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.home.MediaRow
@@ -80,7 +83,6 @@ private val POSTER_WIDE: Dp = 168.dp
 private val PORTRAIT_SIZE: Dp = 160.dp
 private const val BIOGRAPHY_LINES = 4
 private const val BIOGRAPHY_FOLDS_FROM = 180
-private const val SKELETON_TILES = 6
 
 @Composable
 fun PersonRoute(
@@ -123,7 +125,7 @@ private fun PersonColumn(state: PersonUiState, onOpen: (MediaItem) -> Unit, onRe
 
         Column(Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4)) {
             when {
-                state.loading -> PersonSkeleton()
+                state.loading -> Skeleton { PersonHeader(PersonPlaceholder, margin) }
 
                 state.message != null -> LoadError(state.message!!, onRetry, modifier = Modifier.padding(horizontal = margin))
 
@@ -148,7 +150,7 @@ private fun PersonColumn(state: PersonUiState, onOpen: (MediaItem) -> Unit, onRe
 @Composable
 private fun PersonGrid(state: PersonUiState, onOpen: (MediaItem) -> Unit, onRetry: () -> Unit) {
     val margin = screenMargin()
-    val skeletonTileCount = skeletonCount(SKELETON_TILES)
+    val skeletonTileCount: Int = placeholderGridCount(POSTER_WIDE, MediaAspect.POSTER, margin)
     val bottomSpace = LocalBottomBarPadding.current + VibeyFinTokens.Space.s5
 
     LazyVerticalGrid(
@@ -161,7 +163,7 @@ private fun PersonGrid(state: PersonUiState, onOpen: (MediaItem) -> Unit, onRetr
         fullWidth("back-space") { Spacer(Modifier.height(BackButtonSpace)) }
 
         when {
-            state.loading -> fullWidth("skeleton") { PersonSkeletonWide() }
+            state.loading -> fullWidth("skeleton") { Skeleton { PersonHeaderWide(PersonPlaceholder) } }
 
             state.message != null -> fullWidth("error") { LoadError(state.message!!, onRetry) }
 
@@ -187,7 +189,9 @@ private fun LazyGridScope.filmography(row: MediaRow, skeletonTileCount: Int, onO
     fullWidth("${row.id}-title") { SectionTitle(row.title, maxLines = 1, modifier = Modifier.padding(top = VibeyFinTokens.Space.s3).semantics { heading() }) }
 
     when {
-        row.loading -> skeletonTiles(count = skeletonTileCount, keyPrefix = "${row.id}-skeleton")
+        row.loading -> placeholderTiles(skeletonTileCount, "${row.id}-skeleton") { index ->
+            ArtworkTile(Placeholders.posterTile.copy(id = "placeholder-$index"), onClick = {}, captionLines = POSTER_CAPTION_LINES)
+        }
 
         row.message != null -> fullWidth("${row.id}-error") { LoadError(row.message.orEmpty(), onRetry) }
 
@@ -229,7 +233,7 @@ private fun PersonHeaderWide(state: PersonUiState) {
 
 @Composable
 private fun Portrait(person: Person) {
-    Box(Modifier.size(PORTRAIT_SIZE).clip(CircleShape).background(VibeyFinTokens.Colors.surface2), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(PORTRAIT_SIZE).skeleton(CircleShape).clip(CircleShape).background(VibeyFinTokens.Colors.surface2), contentAlignment = Alignment.Center) {
         Text(
             Strings.initials(person.name),
             style = BrandDisplay.copy(fontSize = 44.sp),
@@ -279,7 +283,7 @@ private fun PersonDetails(state: PersonUiState, person: Person, centered: Boolea
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .padding(top = VibeyFinTokens.Space.s2)
-                .clickable(enabled = biography != null, role = Role.Button, onClickLabel = if (expanded) Strings.less else Strings.more) { expanded = !expanded }
+                .clickable(enabled = biography != null && !LocalSkeleton.current, role = Role.Button, onClickLabel = if (expanded) Strings.less else Strings.more) { expanded = !expanded }
                 .animateContentSize(),
         )
 
@@ -288,32 +292,10 @@ private fun PersonDetails(state: PersonUiState, person: Person, centered: Boolea
                 text = if (expanded) Strings.less else Strings.more,
                 style = MaterialTheme.typography.labelLarge,
                 color = VibeyFinTokens.Colors.inkMuted,
-                modifier = Modifier.clickable { expanded = !expanded }.padding(vertical = VibeyFinTokens.Space.s1),
+                modifier = Modifier.clickable(enabled = !LocalSkeleton.current) { expanded = !expanded }.padding(vertical = VibeyFinTokens.Space.s1),
             )
         }
     }
 }
 
-@Composable
-private fun PersonSkeleton() {
-    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
-        SkeletonBlock(Modifier.size(PORTRAIT_SIZE), CircleShape)
-        SkeletonDetailLines()
-    }
-}
-
-@Composable
-private fun PersonSkeletonWide() {
-    Row(Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s5)) {
-        SkeletonBlock(Modifier.size(PORTRAIT_SIZE), CircleShape)
-        Column(Modifier.padding(top = VibeyFinTokens.Space.s2), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) { SkeletonDetailLines() }
-    }
-}
-
-@Composable
-private fun SkeletonDetailLines() {
-    SkeletonLine(200.dp, MaterialTheme.typography.headlineMedium)
-    SkeletonLine(140.dp, MaterialTheme.typography.titleSmall)
-    SkeletonLine(280.dp, MaterialTheme.typography.bodyMedium)
-    SkeletonLine(240.dp, MaterialTheme.typography.bodyMedium)
-}
+private val PersonPlaceholder: PersonUiState = PersonUiState(person = Placeholders.person, loading = false)

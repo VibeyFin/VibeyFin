@@ -16,7 +16,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,8 +27,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.vibeyfin.app.components.Artwork
-import app.vibeyfin.app.components.SkeletonBlock
+import app.vibeyfin.app.components.LocalSkeleton
+import app.vibeyfin.app.components.Text
 import app.vibeyfin.app.theme.VibeyFinTokens
+import app.vibeyfin.domain.model.MediaAspect
 import app.vibeyfin.domain.model.RequestState
 import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.ui.common.Strings
@@ -55,8 +56,8 @@ fun SeerrPosterTile(
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
     ) {
         Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
-            Artwork(url = title.posterUrl, title = title.title, aspectRatio = 2f / 3f, modifier = Modifier.fillMaxWidth())
-            if (marked) SeerrMarker(title.state, Modifier.align(Alignment.TopStart).padding(VibeyFinTokens.Space.s2))
+            Artwork(url = title.posterUrl, title = title.title, aspectRatio = MediaAspect.POSTER, modifier = Modifier.fillMaxWidth())
+            if (marked && !LocalSkeleton.current) SeerrMarker(title.state, Modifier.align(Alignment.TopStart).padding(VibeyFinTokens.Space.s2))
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1 / 2)) {
@@ -93,17 +94,5 @@ fun SeerrMarker(state: RequestState, modifier: Modifier = Modifier) {
     ) {
         Icon(painterResource(stateIconOf(state)), contentDescription = null, tint = color, modifier = Modifier.size(12.dp))
         Text(label, style = MaterialTheme.typography.labelSmall, color = color, maxLines = 1)
-    }
-}
-
-/** A grey stand-in for [SeerrPosterTile], laid out like it (the same picture and text lines), so the row keeps its height when the real tiles arrive. */
-@Composable
-fun SeerrPosterPlaceholder(modifier: Modifier = Modifier) {
-    Column(modifier.clearAndSetSemantics { }, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-        SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(2f / 3f))
-        Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1 / 2)) {
-            Text("", style = MaterialTheme.typography.titleSmall, minLines = 2, maxLines = 2)
-            Text("", style = MaterialTheme.typography.bodySmall, minLines = 1, maxLines = 1)
-        }
     }
 }

@@ -35,7 +35,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -72,22 +71,26 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vibeyfin.app.components.Artwork
 import app.vibeyfin.app.components.FilterChipButton
 import app.vibeyfin.app.components.LoadError
+import app.vibeyfin.app.components.LocalSkeleton
 import app.vibeyfin.app.components.SectionTitle
-import app.vibeyfin.app.components.SkeletonBlock
-import app.vibeyfin.app.components.SkeletonLine
 import app.vibeyfin.app.components.TabHeader
+import app.vibeyfin.app.components.Text
+import app.vibeyfin.app.components.placeholderGridCount
+import app.vibeyfin.app.components.placeholderTiles
+import app.vibeyfin.app.components.skeleton
 import app.vibeyfin.app.navigation.LocalBottomBarPadding
 import app.vibeyfin.app.navigation.LocalSeerrLongPress
 import app.vibeyfin.app.navigation.LocalTileLongPress
-import app.vibeyfin.app.seerr.SeerrPosterPlaceholder
 import app.vibeyfin.app.seerr.SeerrPosterTile
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.pageInsetsPadding
 import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.domain.model.MediaAspect
 import app.vibeyfin.domain.model.SearchKind
 import app.vibeyfin.domain.model.SearchResult
 import app.vibeyfin.domain.model.SeerrTitle
 import app.vibeyfin.domain.model.asMediaItem
+import app.vibeyfin.ui.common.Placeholders
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.HomeExit
 import app.vibeyfin.ui.search.SearchFilter
@@ -232,7 +235,7 @@ fun SearchScreen(
                     state.noResults -> Prompt(Strings.noSearchResults(state.searched), if (state.offline) Strings.offlineSearchEmpty else Strings.noSearchResultsHelp, margin)
 
                     // The first answer for this text is on its way
-                    state.searched.isEmpty() -> ResultSkeleton(margin)
+                    state.searched.isEmpty() -> ResultPlaceholders(margin)
 
                     else -> Results(state, margin, onOpenResult, onSeerrRetry, onOpenSeerr)
                 }
@@ -339,7 +342,7 @@ private fun LazyGridScope.seerrGroup(seerr: SeerrSearch, titled: Boolean, onRetr
     }
 
     when (seerr) {
-        SeerrSearch.Searching -> items(SEERR_SKELETON_TILES, key = { "seerr-skeleton-$it" }) { SeerrPosterPlaceholder(Modifier.fillMaxWidth()) }
+        SeerrSearch.Searching -> placeholderTiles(SEERR_SKELETON_TILES, "seerr-skeleton") { SeerrPosterTile(Placeholders.seerrTitle, Modifier.fillMaxWidth()) }
 
         is SeerrSearch.Found -> gridItems(seerr.titles, key = { "seerr-${it.type}-${it.tmdbId}" }) { title ->
             // A tap opens its Seerr page; a long press its Seerr menu (Request, Details, Trailer)
@@ -367,18 +370,24 @@ private fun ResultTile(result: SearchResult, onClick: () -> Unit) {
     val modifier = Modifier
         .fillMaxWidth()
         .clip(RoundedCornerShape(VibeyFinTokens.Radius.m3Md))
-        .combinedClickable(
-            role = Role.Button,
-            onLongClickLabel = if (longPress != null && asItem != null) Strings.showOptions else null,
-            onLongClick = if (longPress != null && asItem != null) ({ longPress(asItem) }) else null,
-            onClick = onClick,
+        .then(
+            if (LocalSkeleton.current) {
+                Modifier
+            } else {
+                Modifier.combinedClickable(
+                    role = Role.Button,
+                    onLongClickLabel = if (longPress != null && asItem != null) Strings.showOptions else null,
+                    onLongClick = if (longPress != null && asItem != null) ({ longPress(asItem) }) else null,
+                    onClick = onClick,
+                )
+            },
         )
         .semantics(mergeDescendants = true) { contentDescription = Strings.searchResultDescription(result.title, result.subtitle) }
     if (result.kind == SearchKind.Episode) {
         // The show and episode number need the room a tile doesn't have, so an episode reads as a row
         Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3)) {
             Box(Modifier.width(EPISODE_STILL_WIDTH).clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
-                Artwork(url = result.imageUrl, title = result.title, aspectRatio = 16f / 9f, modifier = Modifier.fillMaxWidth())
+                Artwork(url = result.imageUrl, title = result.title, aspectRatio = MediaAspect.WIDE, modifier = Modifier.fillMaxWidth())
             }
 
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -395,7 +404,7 @@ private fun ResultTile(result: SearchResult, onClick: () -> Unit) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
         when (result.kind) {
             SearchKind.Person -> Box(
-                Modifier.fillMaxWidth().aspectRatio(1f).clip(CircleShape).background(VibeyFinTokens.Colors.surface2),
+                Modifier.fillMaxWidth().aspectRatio(1f).skeleton(CircleShape).clip(CircleShape).background(VibeyFinTokens.Colors.surface2),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(Strings.initials(result.title), style = MaterialTheme.typography.titleMedium, color = VibeyFinTokens.Colors.inkMuted)
@@ -406,7 +415,7 @@ private fun ResultTile(result: SearchResult, onClick: () -> Unit) {
             }
 
             else -> Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))) {
-                Artwork(url = result.imageUrl, title = result.title, aspectRatio = 2f / 3f, modifier = Modifier.fillMaxWidth())
+                Artwork(url = result.imageUrl, title = result.title, aspectRatio = MediaAspect.POSTER, modifier = Modifier.fillMaxWidth())
             }
         }
 
@@ -422,7 +431,9 @@ private fun ResultTile(result: SearchResult, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ResultSkeleton(margin: Dp) {
+private fun ResultPlaceholders(margin: Dp) {
+    val tiles: Int = placeholderGridCount(GRID_MIN_WIDTH, MediaAspect.POSTER, margin, RESULT_CAPTION_HEIGHT)
+
     LazyVerticalGrid(
         columns = GridCells.Adaptive(GRID_MIN_WIDTH),
         userScrollEnabled = false,
@@ -431,14 +442,12 @@ private fun ResultSkeleton(margin: Dp) {
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
         verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
     ) {
-        items(6) {
-            Column(verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-                SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(2f / 3f))
-                SkeletonLine(80.dp, MaterialTheme.typography.titleSmall)
-            }
-        }
+        placeholderTiles(tiles, "result-skeleton") { ResultTile(Placeholders.searchResult(SearchKind.Movie), onClick = {}) }
     }
 }
+
+// Two lines of title, one of subtitle, and the gaps between
+private val RESULT_CAPTION_HEIGHT: Dp = 68.dp
 
 private val GRID_MIN_WIDTH = 110.dp
 

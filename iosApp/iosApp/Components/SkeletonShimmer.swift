@@ -5,6 +5,18 @@ private struct SkeletonShimmerWidthKey: EnvironmentKey {
     static let defaultValue: CGFloat? = nil
 }
 
+private struct SkeletonScreenHeightKey: EnvironmentKey {
+    static let defaultValue: CGFloat? = nil
+}
+
+extension EnvironmentValues {
+    /// The screen's height, set once at the root, so a skeleton grid draws enough rows to fill it; nil until it is measured.
+    var skeletonScreenHeight: CGFloat? {
+        get { self[SkeletonScreenHeightKey.self] }
+        set { self[SkeletonScreenHeightKey.self] = newValue }
+    }
+}
+
 extension EnvironmentValues {
     /// The width the shimmer sweeps across, the screen's, set once at the root; nil until it is measured.
     var skeletonShimmerWidth: CGFloat? {

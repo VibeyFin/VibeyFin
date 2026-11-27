@@ -32,6 +32,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 - Synopsis 3 lines + "More". Technical info (video, audio, subtitles, file) in a collapsed section at the bottom.
 - A trailer the server holds plays in the player; one on the web opens straight in YouTube (or the system's viewer for another site). **Never** inline with sound on the detail screen.
 - Opening a detail page: the screen dims at once, a skeleton shaped like the page shows, and the finished page fades up whole. **Never** a spinner, and never a page that builds itself piece by piece in front of the user.
+- **A skeleton is the real view with placeholder data:** the same composable or SwiftUI view the content uses, fed `Placeholders` and drawn as grey shapes, so its size can't drift from the real one. **Never** a second hand-built skeleton layout. Image shapes (poster, backdrop, episode still) read `MediaAspect`; a row draws `PlaceholderCount.forRow` (the visible width plus one peeking tile, the real count when known) and a grid fills the screen height.
 
 ## Playback
 
@@ -59,6 +60,7 @@ Hard rules per screen, the same on iOS and Android — they describe behavior, n
 - **Sign out** is on the Profile page, asks for confirmation (which says the profile's downloads are deleted), clears the token, deletes the profile's downloads from the device and keeps the profile's tile locked in "Who's watching?". An expired session (401) deletes nothing: that profile is coming back. It runs to completion even if the user leaves the screen (it is not tied to the screen's lifetime). It is the only way to clear a token besides a 401. Never on a kids profile.
 - **Tablets:** two panes at regular width; the selected root row follows the tapped row; Quality is selected on open.
 - **PIN** (Settings, Kids and PIN group, **Kids profile** row): 4 digits, optional, per profile, a salted hash, never the Jellyfin password. A household lock, not security, and never presented as security. It is independent of the kids flag. Turning kids mode off, changing the PIN and removing it always ask for the PIN. "Forgot PIN?" checks the Jellyfin password with a normal sign-in and removes the PIN.
+- **Developer (debug builds only):** the last group of device Settings, with a "Show skeletons" switch that holds every loading screen on its skeleton. Release builds don't have it. A dev flag's label is a literal in code, not a `Strings` key (precedent: `PseudoLocale.language`).
 
 ## Navigation
 

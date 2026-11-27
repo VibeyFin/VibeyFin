@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -22,7 +23,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetValue
-import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +40,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.vibeyfin.R
+import app.vibeyfin.app.components.Skeleton
+import app.vibeyfin.app.components.Text
+import app.vibeyfin.app.components.skeleton
+import app.vibeyfin.app.components.unlessSkeleton
 import app.vibeyfin.app.downloads.DownloadActionMenuItem
 import app.vibeyfin.app.downloads.DownloadBadgeIcon
 import app.vibeyfin.app.downloads.rememberDownloadNotificationPermission
@@ -108,11 +112,7 @@ fun TileMenuSheet(
                 ) { shown ->
                     when (shown) {
                         2 -> menu.trailer?.let { trailer -> MenuRow(Strings.trailer, painterIcon(R.drawable.ic_trailer)) { onTrailer(trailer) } }
-
-                        1 -> Row(Modifier.fillMaxWidth().heightIn(min = ROW_HEIGHT).padding(horizontal = VibeyFinTokens.Space.s4), verticalAlignment = Alignment.CenterVertically) {
-                            SkeletonLine(120.dp, MaterialTheme.typography.bodyLarge)
-                        }
-
+                        1 -> Skeleton { MenuRow(Strings.trailer, painterIcon(R.drawable.ic_trailer), onClick = {}) }
                         else -> Unit
                     }
                 }
@@ -174,14 +174,14 @@ private fun painterIcon(resource: Int) = MenuIcon(resource = resource)
 @Composable
 private fun MenuRow(label: String, icon: MenuIcon, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = ROW_HEIGHT).clickable(role = Role.Button, onClick = onClick).padding(horizontal = VibeyFinTokens.Space.s4),
+        Modifier.fillMaxWidth().heightIn(min = ROW_HEIGHT).unlessSkeleton { clickable(role = Role.Button, onClick = onClick) }.padding(horizontal = VibeyFinTokens.Space.s4),
         horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val tint = MaterialTheme.colorScheme.onSurfaceVariant
 
-        icon.vector?.let { Icon(it, contentDescription = null, tint = tint) }
-        icon.resource?.let { Icon(painterResource(it), contentDescription = null, tint = tint) }
+        icon.vector?.let { Icon(it, contentDescription = null, tint = tint, modifier = Modifier.skeleton(CircleShape)) }
+        icon.resource?.let { Icon(painterResource(it), contentDescription = null, tint = tint, modifier = Modifier.skeleton(CircleShape)) }
         Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
     }
 }

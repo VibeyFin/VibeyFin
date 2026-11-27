@@ -31,7 +31,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -59,20 +58,22 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import app.vibeyfin.R
 import app.vibeyfin.app.components.Artwork
+import app.vibeyfin.app.components.LocalSkeleton
+import app.vibeyfin.app.components.Skeleton
 import app.vibeyfin.app.components.SkeletonBlock
+import app.vibeyfin.app.components.Text
+import app.vibeyfin.app.components.skeleton
 import app.vibeyfin.app.navigation.LocalTileLongPress
 import app.vibeyfin.app.theme.VibeyFinTokens
 import app.vibeyfin.app.theme.animationsEnabled
+import app.vibeyfin.domain.model.MediaAspect
 import app.vibeyfin.domain.model.MediaItem
+import app.vibeyfin.ui.common.Placeholders
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.home.HERO_ADVANCE_MILLIS
 import app.vibeyfin.ui.home.heroFacts
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
-
-// A banner rather than a full poster, so Continue watching stays near the top
-private const val HERO_ASPECT = 4f / 3f
-private const val HERO_ASPECT_WIDE = 2.6f
 
 private const val HERO_WIDE_FROM_DP = 600
 
@@ -95,6 +96,7 @@ fun HomeHeroSection(
     onLongPressed: () -> Unit = {},
 ) {
     val longPress = LocalTileLongPress.current
+    val skeleton: Boolean = LocalSkeleton.current
     val shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md)
 
     Box(
@@ -103,30 +105,38 @@ fun HomeHeroSection(
             .fillMaxWidth()
             .clip(shape)
             .border(1.dp, VibeyFinTokens.Colors.surface3, shape)
-            .combinedClickable(
-                onLongClickLabel = if (longPress != null) Strings.showOptions else null,
-                onLongClick = longPress?.let { press ->
-                    {
-                        onLongPressed()
-                        press(item)
-                    }
+            .then(
+                if (skeleton) {
+                    Modifier
+                } else {
+                    Modifier.combinedClickable(
+                        onLongClickLabel = if (longPress != null) Strings.showOptions else null,
+                        onLongClick = longPress?.let { press ->
+                            {
+                                onLongPressed()
+                                press(item)
+                            }
+                        },
+                        onClick = { onOpen(item.id) },
+                    )
                 },
-                onClick = { onOpen(item.id) },
             )
             .semantics { contentDescription = description },
     ) {
         Artwork(
             url = item.backdropUrl,
             title = item.title,
-            aspectRatio = if (wide) HERO_ASPECT_WIDE else HERO_ASPECT,
+            aspectRatio = if (wide) MediaAspect.HERO_WIDE else MediaAspect.HERO,
             blurHash = item.backdropBlurHash,
             modifier = Modifier.fillMaxWidth(),
         )
-        Box(
-            Modifier.matchParentSize().background(
-                Brush.verticalGradient(0f to Color.Transparent, 0.4f to Color.Transparent, 0.75f to VibeyFinTokens.Colors.scrim, 1f to VibeyFinTokens.Colors.scrimStrong),
-            ),
-        )
+        if (!skeleton) {
+            Box(
+                Modifier.matchParentSize().background(
+                    Brush.verticalGradient(0f to Color.Transparent, 0.4f to Color.Transparent, 0.75f to VibeyFinTokens.Colors.scrim, 1f to VibeyFinTokens.Colors.scrimStrong),
+                ),
+            )
+        }
 
         val align = if (wide) Alignment.Start else Alignment.CenterHorizontally
 
@@ -135,13 +145,17 @@ fun HomeHeroSection(
             horizontalAlignment = align,
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
         ) {
-            AsyncImage(
-                model = item.logoUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                alignment = if (wide) Alignment.CenterStart else Alignment.Center,
-                modifier = Modifier.fillMaxWidth(if (wide) 0.3f else 0.6f).heightIn(max = if (wide) 72.dp else 52.dp),
-            )
+            if (skeleton) {
+                SkeletonBlock(Modifier.fillMaxWidth(if (wide) 0.3f else 0.6f).height(if (wide) 72.dp else 52.dp), RoundedCornerShape(VibeyFinTokens.Radius.m3Xs))
+            } else {
+                AsyncImage(
+                    model = item.logoUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    alignment = if (wide) Alignment.CenterStart else Alignment.Center,
+                    modifier = Modifier.fillMaxWidth(if (wide) 0.3f else 0.6f).heightIn(max = if (wide) 72.dp else 52.dp),
+                )
+            }
 
             val facts = item.heroFacts
 
@@ -159,7 +173,7 @@ fun HomeHeroSection(
             Row(Modifier.then(if (wide) Modifier.width(360.dp) else Modifier.fillMaxWidth()), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
                 Button(
                     onClick = onPlay,
-                    modifier = Modifier.weight(1f).height(HERO_BUTTON_HEIGHT),
+                    modifier = Modifier.weight(1f).height(HERO_BUTTON_HEIGHT).skeleton(RoundedCornerShape(50)),
                 ) {
                     Icon(painter = painterResource(R.drawable.ic_play), contentDescription = null)
                     Spacer(Modifier.width(VibeyFinTokens.Space.s2))
@@ -169,7 +183,7 @@ fun HomeHeroSection(
                 Button(
                     onClick = onMyList,
                     colors = ButtonDefaults.buttonColors(containerColor = VibeyFinTokens.Colors.overlay, contentColor = VibeyFinTokens.Colors.ink),
-                    modifier = Modifier.weight(1f).height(HERO_BUTTON_HEIGHT).semantics { contentDescription = Strings.myListAction(item.isFavorite) },
+                    modifier = Modifier.weight(1f).height(HERO_BUTTON_HEIGHT).skeleton(RoundedCornerShape(50)).semantics { contentDescription = Strings.myListAction(item.isFavorite) },
                 ) {
                     Icon(if (item.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, contentDescription = null)
                     Spacer(Modifier.width(VibeyFinTokens.Space.s2))
@@ -287,42 +301,12 @@ private const val HERO_LOOP_START = HERO_LOOP_PAGES / 2
 // The skeleton keeps it too, so the card does not move
 private val HERO_DOTS_HEIGHT = 24.dp
 
-/**
- * The hero's place while it is being picked: the same card, rounded and the same height, with gray stand-ins for the logo, the line and
- * the two buttons; with [dots], the dots' row under it is kept empty.
- */
+/** The hero's place while it is being picked: the real card drawn from a placeholder, with the dots' row kept under it when there are [dots]. */
 @Composable
-fun HomeHeroSkeleton(wide: Boolean, dots: Boolean = false) {
+fun HomeHeroPlaceholder(wide: Boolean, dots: Boolean = false) {
     Column {
-        HeroSkeletonCard(wide)
+        Skeleton { HomeHeroSection(Placeholders.item, wide, onPlay = {}, onOpen = {}, onMyList = {}) }
 
         if (dots) Spacer(Modifier.height(HERO_DOTS_HEIGHT))
-    }
-}
-
-@Composable
-private fun HeroSkeletonCard(wide: Boolean) {
-    val shape = RoundedCornerShape(VibeyFinTokens.Radius.m3Md)
-
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .border(1.dp, VibeyFinTokens.Colors.surface3, shape)
-            .semantics { contentDescription = Strings.loadingPage },
-    ) {
-        SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(if (wide) HERO_ASPECT_WIDE else HERO_ASPECT), shape)
-        Column(
-            Modifier.align(if (wide) Alignment.BottomStart else Alignment.BottomCenter).fillMaxWidth().padding(horizontal = VibeyFinTokens.Space.s3).padding(bottom = VibeyFinTokens.Space.s3),
-            horizontalAlignment = if (wide) Alignment.Start else Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2),
-        ) {
-            SkeletonBlock(Modifier.width(if (wide) 160.dp else 180.dp).height(40.dp), RoundedCornerShape(VibeyFinTokens.Radius.m3Xs), VibeyFinTokens.Colors.surface3)
-            SkeletonBlock(Modifier.width(150.dp).height(16.dp), RoundedCornerShape(VibeyFinTokens.Radius.m3Xs), VibeyFinTokens.Colors.surface3)
-            Row(Modifier.then(if (wide) Modifier.width(360.dp) else Modifier.fillMaxWidth()), horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
-                SkeletonBlock(Modifier.weight(1f).height(HERO_BUTTON_HEIGHT), RoundedCornerShape(50), VibeyFinTokens.Colors.surface3)
-                SkeletonBlock(Modifier.weight(1f).height(HERO_BUTTON_HEIGHT), RoundedCornerShape(50), VibeyFinTokens.Colors.surface3)
-            }
-        }
     }
 }

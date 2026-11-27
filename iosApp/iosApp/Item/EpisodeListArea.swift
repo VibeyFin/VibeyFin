@@ -12,6 +12,10 @@ struct EpisodeListArea<Episode, ID: Hashable, Row: View, Card: View>: View {
     let message: String?
     let wide: Bool
     let margin: CGFloat
+    /// A made-up episode the row and the card are drawn with, as a skeleton, while the list loads.
+    let placeholder: Episode
+    /// How many episodes the season has, once known, so the skeleton has as many.
+    var knownCount: Int?
     /// The episode a wide list opens at; the first when nil or not in the list.
     var focusId: ID?
     let onRetry: () -> Void
@@ -19,6 +23,8 @@ struct EpisodeListArea<Episode, ID: Hashable, Row: View, Card: View>: View {
     @ViewBuilder let card: (Episode, CGFloat) -> Card
 
     @State private var settledHeight: CGFloat = 0
+
+    private static var phonePlaceholderCount: Int { 3 }
 
     /// Episode cards: 300 wide on a phone, 380 on a regular width.
     private var cardWidth: CGFloat { wide ? 380 : 300 }
@@ -45,18 +51,12 @@ struct EpisodeListArea<Episode, ID: Hashable, Row: View, Card: View>: View {
             LoadErrorView(message: message, onRetry: onRetry)
         } else if episodes.isEmpty && loading && !wide {
             VStack(spacing: Space.s4) {
-                ForEach(0..<3, id: \.self) { _ in EpisodeRowSkeleton() }
+                ForEach(0..<(knownCount ?? Self.phonePlaceholderCount), id: \.self) { _ in row(placeholder) }
             }
+            .skeleton()
         } else if episodes.isEmpty && loading {
-            HorizontalRow(lifts: false) {
-                HStack(spacing: Space.s4) {
-                    ForEach(0..<3, id: \.self) { _ in
-                        SkeletonBlock().frame(width: cardWidth).aspectRatio(1.6, contentMode: .fit)
-                    }
-                }
-            }
-            .padding(.horizontal, -margin)
-            .scrollDisabled(true)
+            SkeletonRow(tileWidth: cardWidth, spacing: Space.s4, known: knownCount) { card(placeholder, cardWidth) }
+                .padding(.horizontal, -margin)
         } else if episodes.isEmpty {
             Text(Strings.shared.noEpisodes)
                 .font(.body)
@@ -88,18 +88,4 @@ struct EpisodeListArea<Episode, ID: Hashable, Row: View, Card: View>: View {
 private struct EpisodeHeightKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
-}
-
-private struct EpisodeRowSkeleton: View {
-    var body: some View {
-        HStack(alignment: .top, spacing: Space.s3) {
-            SkeletonBlock().frame(width: 148).aspectRatio(1.6, contentMode: .fit)
-            VStack(alignment: .leading, spacing: Space.s2) {
-                SkeletonLine(font: .headline, width: 140)
-                SkeletonLine(font: .caption, width: 90)
-                SkeletonLine(font: .subheadline, width: nil)
-                SkeletonLine(font: .subheadline, width: 120)
-            }
-        }
-    }
 }

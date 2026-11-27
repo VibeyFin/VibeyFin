@@ -73,7 +73,7 @@ fun PickerSheet(
         }
 
         when {
-            loading -> OptionListSkeleton(title, modifier = modifier)
+            loading -> OptionListPlaceholder(title, modifier = modifier)
 
             message != null -> Column(plain, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s2)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)

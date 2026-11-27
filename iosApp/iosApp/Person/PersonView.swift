@@ -55,7 +55,7 @@ struct PersonView: View {
         } else if let message = state.message {
             LoadErrorView(message: message, onRetry: { model.retry() }).screenMargin()
         } else if let person = state.person {
-            if wide { wideHeader(state, person) } else { header(state, person) }
+            headerContent(facts: state.facts, person: person)
             VStack(alignment: .leading, spacing: Space.s5) {
                 if state.movies.isVisible { filmography(state.movies) }
                 if state.shows.isVisible { filmography(state.shows) }
@@ -81,7 +81,7 @@ struct PersonView: View {
                     .lineLimit(1)
                     .accessibilityAddTraits(.isHeader)
                 if row.loading {
-                    PosterSkeletonGrid(minimumWidth: wideTileWidth)
+                    SkeletonGrid(minimumWidth: wideTileWidth) { PosterSkeletonTile() }
                 } else if let message = row.message {
                     LoadErrorView(message: message, onRetry: { model.retry() })
                 } else {
@@ -95,19 +95,24 @@ struct PersonView: View {
         }
     }
 
-    private func header(_ state: PersonUiState, _ person: Person) -> some View {
+    @ViewBuilder
+    private func headerContent(facts: [String], person: Person) -> some View {
+        if wide { wideHeader(facts, person) } else { header(facts, person) }
+    }
+
+    private func header(_ facts: [String], _ person: Person) -> some View {
         VStack(spacing: Space.s2) {
             portrait(person)
-            details(state, person, alignment: .center)
+            details(facts, person, alignment: .center)
                 .padding(.top, Space.s2)
         }
         .screenMargin()
     }
 
-    private func wideHeader(_ state: PersonUiState, _ person: Person) -> some View {
+    private func wideHeader(_ facts: [String], _ person: Person) -> some View {
         HStack(alignment: .top, spacing: Space.s5) {
             portrait(person)
-            details(state, person, alignment: .leading)
+            details(facts, person, alignment: .leading)
                 .padding(.top, Space.s2)
         }
         .frame(maxWidth: contentMaxWidth, alignment: .leading)
@@ -115,7 +120,7 @@ struct PersonView: View {
         .screenMargin()
     }
 
-    private func details(_ state: PersonUiState, _ person: Person, alignment: HorizontalAlignment) -> some View {
+    private func details(_ facts: [String], _ person: Person, alignment: HorizontalAlignment) -> some View {
         let textAlignment: TextAlignment = alignment == .center ? .center : .leading
 
         return VStack(alignment: alignment, spacing: Space.s2) {
@@ -124,8 +129,8 @@ struct PersonView: View {
                 .tracking(-0.4)
                 .multilineTextAlignment(textAlignment)
                 .lineLimit(3)
-            if !state.facts.isEmpty {
-                Text(Strings.shared.factsLine(facts: state.facts))
+            if !facts.isEmpty {
+                Text(Strings.shared.factsLine(facts: facts))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(textAlignment)
@@ -149,28 +154,10 @@ struct PersonView: View {
             .accessibilityLabel(person.name)
     }
 
-    @ViewBuilder
     private var skeleton: some View {
-        if wide {
-            HStack(alignment: .top, spacing: Space.s5) {
-                SkeletonBlock().frame(width: portraitSize, height: portraitSize).clipShape(Circle())
-                VStack(alignment: .leading, spacing: Space.s3) { skeletonLines }
-                    .padding(.top, Space.s2)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .screenMargin()
-        } else {
-            VStack(spacing: Space.s3) {
-                SkeletonBlock().frame(width: portraitSize, height: portraitSize).clipShape(Circle())
-                skeletonLines
-            }
-        }
-    }
+        let person: Person = Placeholders.shared.person
 
-    @ViewBuilder
-    private var skeletonLines: some View {
-        SkeletonLine(font: .title, width: 200)
-        SkeletonLine(font: .subheadline, width: 140)
-        SkeletonLine(font: .subheadline, width: 280)
+        return headerContent(facts: [person.birthplace ?? ""], person: person)
+            .skeleton()
     }
 }

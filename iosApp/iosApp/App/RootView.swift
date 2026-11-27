@@ -18,6 +18,7 @@ struct RootView: View {
     @State private var homeButtonFrame: CGRect = .zero
     @State private var ready = false
     @State private var screenWidth: CGFloat = 0
+    @State private var screenHeight: CGFloat = 0
     @State private var windowFrame: CGRect = .zero
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -107,6 +108,7 @@ struct RootView: View {
         }
         .id(theme.themeId)
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { screenWidth = $0 }
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { screenHeight = $0 }
         .onGeometryChange(for: CGRect.self) { proxy in
             let frame: CGRect = proxy.frame(in: .global)
             let insets: EdgeInsets = proxy.safeAreaInsets
@@ -119,6 +121,7 @@ struct RootView: View {
             )
         }
         .environment(\.skeletonShimmerWidth, screenWidth > 0 ? screenWidth : nil)
+        .environment(\.skeletonScreenHeight, screenHeight > 0 ? screenHeight : nil)
         // Blank background until the app has worked out where to open, a moment of storage reads.
         .overlay {
             if !ready { Color(.systemBackground).ignoresSafeArea() }

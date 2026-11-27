@@ -1,5 +1,8 @@
 package app.vibeyfin.data.api
 
+import app.vibeyfin.dev.HeldRequests
+import app.vibeyfin.dev.SkeletonGate
+import app.vibeyfin.dev.skeletonHold
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
@@ -63,15 +66,17 @@ object JellyfinHttpClient {
      * Builds a client that sends the `MediaBrowser` `Authorization` header on every request and
      * reads JSON leniently. Give a request [TokenAttribute] to sign it in, or pass a default [token].
      * [engine] is for tests; leave it out to use the platform's engine (OkHttp on Android, Darwin
-     * on iOS).
+     * on iOS). [gate] holds data requests in debug builds; leave it out to hold nothing.
      */
     fun create(
         clientInfo: suspend () -> ClientInfo,
         token: String? = null,
         timeouts: Timeouts = Timeouts.Api,
         engine: HttpClientEngine? = null,
+        gate: SkeletonGate? = null,
     ): HttpClient {
         val configure: HttpClientConfig<*>.() -> Unit = {
+            gate?.let { install(skeletonHold(it, HeldRequests::jellyfin)) }
             install(authorization(clientInfo, token))
             install(ContentNegotiation) { json(JellyfinJson) }
             install(HttpTimeout) {

@@ -14,6 +14,7 @@ struct Artwork: View {
     var showsTitle = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.redactionReasons) private var redactionReasons: RedactionReasons
 
     /// `dur-base` in `design/tokens.json`; no fade when the system asks for Reduce Motion.
     private var fade: Animation? { reduceMotion ? nil : .easeIn(duration: 0.14) }
@@ -23,7 +24,9 @@ struct Artwork: View {
         Color(.tertiarySystemBackground)
             .aspectRatio(aspectRatio, contentMode: .fit)
             .overlay {
-                if let url = url.flatMap(URL.init(string:)) {
+                if redactionReasons.contains(.placeholder) {
+                    EmptyView()
+                } else if let url = url.flatMap(URL.init(string:)) {
                     // Each picture gets the tile's exact size and is cropped to it. Left to size itself, a picture and its BlurHash
                     // (both larger than the tile) end up offset from each other, and a strip of the blur shows at one edge.
                     GeometryReader { geo in

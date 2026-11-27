@@ -1,6 +1,9 @@
 package app.vibeyfin.data.seerr
 
 import app.vibeyfin.data.api.Timeouts
+import app.vibeyfin.dev.HeldRequests
+import app.vibeyfin.dev.SkeletonGate
+import app.vibeyfin.dev.skeletonHold
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
@@ -25,9 +28,10 @@ val SeerrJson = Json {
  * session never leaks between profiles.
  */
 object SeerrHttpClient {
-    /** [engine] is for tests; leave it out to use the platform's engine. */
-    fun create(timeouts: Timeouts = Timeouts.Api, engine: HttpClientEngine? = null): HttpClient {
+    /** [engine] is for tests; leave it out to use the platform's engine. [gate] holds data requests in debug builds. */
+    fun create(timeouts: Timeouts = Timeouts.Api, engine: HttpClientEngine? = null, gate: SkeletonGate? = null): HttpClient {
         val configure: HttpClientConfig<*>.() -> Unit = {
+            gate?.let { install(skeletonHold(it, HeldRequests::seerr)) }
             install(ContentNegotiation) { json(SeerrJson) }
             install(HttpTimeout) {
                 connectTimeoutMillis = timeouts.connect.inWholeMilliseconds

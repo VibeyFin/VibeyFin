@@ -1,6 +1,7 @@
 package app.vibeyfin.ui.settings
 
 import app.vibeyfin.data.api.ApiError
+import app.vibeyfin.dev.DevFlagToggle
 import app.vibeyfin.domain.AccessDays
 import app.vibeyfin.domain.Language
 import app.vibeyfin.domain.LanguagePrefs
@@ -97,6 +98,8 @@ data class SettingsValues(
     val searches: Map<SettingsPageId, String> = emptyMap(),
     /** Where this profile stands with Seerr, as the root row shows it; null hides the row (a kids profile, nobody signed in). */
     val seerrStatus: String? = null,
+    /** The developer options, shown as the last section; empty in a release build. */
+    val devToggles: List<DevFlagToggle> = emptyList(),
 )
 
 /** Every page the shared code builds, keyed by its id. */

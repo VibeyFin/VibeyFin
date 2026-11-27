@@ -210,7 +210,9 @@ struct HeroDetailsView: View {
             if state.canPlay {
                 playButtons
             } else if state.playLoading {
-                SkeletonBlock().frame(maxWidth: .infinity).frame(height: 50).clipShape(Capsule())
+                PrimaryButton(action: {}) { Label(Strings.shared.play.titleCased(), systemImage: "play.fill") }
+                    .frame(maxWidth: centered ? .infinity : 260)
+                    .skeleton()
             }
             actions
         }

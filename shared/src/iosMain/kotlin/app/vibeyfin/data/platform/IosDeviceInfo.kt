@@ -6,6 +6,8 @@ import platform.Foundation.currentLocale
 import platform.Foundation.languageCode
 import platform.Foundation.preferredLanguages
 import platform.UIKit.UIDevice
+import kotlin.experimental.ExperimentalNativeApi
+import kotlin.native.Platform
 
 class IosDeviceInfo : DeviceInfo {
     // Since iOS 16 the name is a generic "iPhone" unless the app has the device-name entitlement.
@@ -17,6 +19,10 @@ class IosDeviceInfo : DeviceInfo {
     override val downloadAlerts: Boolean = true
 
     override val languagePickedInSystem: Boolean = true
+
+    // Xcode's embedAndSign builds the framework in the configuration being built, so a Release app has a release binary.
+    @OptIn(ExperimentalNativeApi::class)
+    override val debugBuild: Boolean = Platform.isDebugBinary
 
     override val language: String = NSLocale.currentLocale.languageCode
 

@@ -38,7 +38,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -68,10 +67,13 @@ import app.vibeyfin.app.components.ActionSnackbar
 import app.vibeyfin.app.components.Artwork
 import app.vibeyfin.app.components.BackButtonSpace
 import app.vibeyfin.app.components.FloatingBackButton
-import app.vibeyfin.app.components.ItemSkeleton
 import app.vibeyfin.app.components.LoadError
+import app.vibeyfin.app.components.LocalSkeleton
 import app.vibeyfin.app.components.SectionTitle
+import app.vibeyfin.app.components.Skeleton
+import app.vibeyfin.app.components.Text
 import app.vibeyfin.app.components.bleed
+import app.vibeyfin.app.components.skeleton
 import app.vibeyfin.app.item.ActionButton
 import app.vibeyfin.app.item.ActionRow
 import app.vibeyfin.app.item.EPISODE_ASPECT
@@ -79,9 +81,7 @@ import app.vibeyfin.app.item.EPISODE_CARD
 import app.vibeyfin.app.item.EPISODE_CARD_WIDE
 import app.vibeyfin.app.item.EPISODE_ROW_PICTURE
 import app.vibeyfin.app.item.EpisodeCardScrim
-import app.vibeyfin.app.item.EpisodeCardSkeleton
 import app.vibeyfin.app.item.EpisodeListArea
-import app.vibeyfin.app.item.EpisodeRowSkeleton
 import app.vibeyfin.app.item.EpisodeSnapshot
 import app.vibeyfin.app.item.EpisodeTag
 import app.vibeyfin.app.item.ItemBackdrop
@@ -98,14 +98,17 @@ import app.vibeyfin.app.theme.detailMargin
 import app.vibeyfin.app.theme.isTabletWidth
 import app.vibeyfin.app.theme.pageInsetsPadding
 import app.vibeyfin.app.theme.screenMargin
+import app.vibeyfin.domain.model.MediaAspect
 import app.vibeyfin.domain.model.RequestState
 import app.vibeyfin.domain.model.SeerrCastMember
 import app.vibeyfin.domain.model.SeerrEpisode
 import app.vibeyfin.domain.model.SeerrMediaType
 import app.vibeyfin.domain.model.SeerrTitle
+import app.vibeyfin.ui.common.Placeholders
 import app.vibeyfin.ui.common.Strings
 import app.vibeyfin.ui.seerr.SeerrNotice
 import app.vibeyfin.ui.seerr.SeerrNoticeAction
+import app.vibeyfin.ui.seerr.SeerrPrimary
 import app.vibeyfin.ui.seerr.SeerrTitleUiState
 import app.vibeyfin.ui.seerr.SeerrTitleViewModel
 import coil3.compose.AsyncImage
@@ -127,6 +130,9 @@ fun SeerrTitleRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val openTrailer = LocalOpenTrailerUrl.current
+    val actions: SeerrTitleActions = remember(viewModel) {
+        SeerrTitleActions(viewModel::onRequest, viewModel::onRequest4k, viewModel::onCancelRequest, viewModel::onSelectSeason, viewModel::onRetryEpisodes)
+    }
 
     LaunchedEffect(state.openItem) {
         state.openItem?.let {
@@ -151,14 +157,14 @@ fun SeerrTitleRoute(
             val margin = detailMargin(wide)
 
             when {
-                state.loading && state.title == null -> ItemSkeleton(wide = wide, screenWidth = maxWidth, screenHeight = maxHeight, margin = margin)
+                state.loading && state.title == null -> Skeleton(Modifier.fillMaxSize()) { SeerrTitlePage(remember { placeholderState() }, wide, maxWidth, maxHeight, margin, SeerrTitleActions.None, openTrailer = {}, onOpenItem = {}, onOpenSeerr = {}) }
 
                 state.title == null -> Column(Modifier.fillMaxSize().pageInsetsPadding()) {
                     Spacer(Modifier.height(BackButtonSpace))
                     LoadError(state.message.orEmpty(), viewModel::onRetry, Modifier.padding(horizontal = margin))
                 }
 
-                else -> SeerrTitlePage(state, wide, maxWidth, maxHeight, margin, viewModel, openTrailer, onOpenItem, onOpenSeerr)
+                else -> SeerrTitlePage(state, wide, maxWidth, maxHeight, margin, actions, openTrailer, onOpenItem, onOpenSeerr)
             }
 
             FloatingBackButton(onBack)
@@ -198,7 +204,7 @@ private fun SeerrTitlePage(
     screenWidth: Dp,
     screenHeight: Dp,
     margin: Dp,
-    viewModel: SeerrTitleViewModel,
+    actions: SeerrTitleActions,
     openTrailer: (String) -> Unit,
     onOpenItem: (String) -> Unit,
     onOpenSeerr: (SeerrTitle) -> Unit,
@@ -208,7 +214,7 @@ private fun SeerrTitlePage(
     val picture = title.backdropUrl ?: title.posterUrl
     val sections: @Composable () -> Unit = {
         Column(Modifier.padding(horizontal = margin, vertical = VibeyFinTokens.Space.s5), verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s5)) {
-            if (state.seasons.isNotEmpty()) SeasonsAndEpisodes(state, wide, margin, viewModel::onSelectSeason, viewModel::onRetryEpisodes)
+            if (state.seasons.isNotEmpty()) SeasonsAndEpisodes(state, wide, margin, actions.onSelectSeason, actions.onRetryEpisodes)
             if (state.cast.isNotEmpty()) CastRow(state.cast, margin)
             if (state.moreLikeThis.isNotEmpty()) MoreLikeThis(state.moreLikeThis, margin, onOpenItem, onOpenSeerr)
             Spacer(Modifier.height(VibeyFinTokens.Space.s5))
@@ -223,7 +229,7 @@ private fun SeerrTitlePage(
             Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
                 Box(Modifier.fillMaxWidth().heightIn(min = heroHeight)) {
                     Column(Modifier.align(Alignment.BottomCenter).padding(horizontal = margin).padding(bottom = VibeyFinTokens.Space.s4)) {
-                        Hero(state, centered = true, viewModel, openTrailer)
+                        Hero(state, centered = true, actions, openTrailer)
                     }
                 }
                 Box(Modifier.fillMaxWidth().background(VibeyFinTokens.Colors.bg).padding(bottom = LocalBottomBarPadding.current)) { sections() }
@@ -240,7 +246,7 @@ private fun SeerrTitlePage(
         ItemBackdrop(title.title, picture, null, screenWidth, screenHeight, progress, Modifier.fillMaxSize())
         Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
             Spacer(Modifier.height(screenHeight * FIRST_SCREEN_CLEAR))
-            Column(Modifier.fillMaxWidth(0.46f).widthIn(max = 520.dp).padding(horizontal = margin)) { Hero(state, centered = false, viewModel, openTrailer) }
+            Column(Modifier.fillMaxWidth(0.46f).widthIn(max = 520.dp).padding(horizontal = margin)) { Hero(state, centered = false, actions, openTrailer) }
             sections()
             Spacer(Modifier.height(LocalBottomBarPadding.current))
         }
@@ -249,7 +255,7 @@ private fun SeerrTitlePage(
 
 // The title (no Logo from Seerr, so the brand face), the facts, the overview, the status line, the one primary button and the actions
 @Composable
-private fun Hero(state: SeerrTitleUiState, centered: Boolean, viewModel: SeerrTitleViewModel, openTrailer: (String) -> Unit) {
+private fun Hero(state: SeerrTitleUiState, centered: Boolean, actions: SeerrTitleActions, openTrailer: (String) -> Unit) {
     val title = state.title ?: return
     val align = if (centered) TextAlign.Center else TextAlign.Start
 
@@ -279,9 +285,9 @@ private fun Hero(state: SeerrTitleUiState, centered: Boolean, viewModel: SeerrTi
         state.primary?.let { primary ->
             // With nothing to do the button stays, disabled, so the page doesn't jump
             Button(
-                onClick = viewModel::onRequest,
+                onClick = actions.onRequest,
                 enabled = primary.enabled,
-                modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge),
+                modifier = Modifier.fillMaxWidth().height(VibeyFinTokens.Size.buttonLarge).skeleton(RoundedCornerShape(50)),
             ) {
                 if (state.sending && state.picker == null) {
                     CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
@@ -311,10 +317,10 @@ private fun Hero(state: SeerrTitleUiState, centered: Boolean, viewModel: SeerrTi
                     )
                 }
                 if (state.offer4k) {
-                    ActionButton(Strings.seerrRequest4k, Strings.seerrRequest4k, icon = { Icon(Icons.Filled.Add, null, tint = VibeyFinTokens.Colors.ink, modifier = it) }, onClick = viewModel::onRequest4k)
+                    ActionButton(Strings.seerrRequest4k, Strings.seerrRequest4k, icon = { Icon(Icons.Filled.Add, null, tint = VibeyFinTokens.Colors.ink, modifier = it) }, onClick = actions.onRequest4k)
                 }
                 if (state.cancelRequestId != null) {
-                    ActionButton(Strings.seerrCancelRequest, Strings.seerrCancelRequest, icon = { Icon(Icons.Filled.Close, null, tint = VibeyFinTokens.Colors.ink, modifier = it) }, onClick = viewModel::onCancelRequest)
+                    ActionButton(Strings.seerrCancelRequest, Strings.seerrCancelRequest, icon = { Icon(Icons.Filled.Close, null, tint = VibeyFinTokens.Colors.ink, modifier = it) }, onClick = actions.onCancelRequest)
                 }
             }
         }
@@ -363,6 +369,7 @@ private fun SeasonsAndEpisodes(state: SeerrTitleUiState, wide: Boolean, margin: 
             wide = wide,
             margin = margin,
             focusKey = null,
+            placeholder = Placeholders.seerrEpisode,
             onRetry = onRetry,
             row = { SeerrEpisodeRow(it) },
             card = { episode, width -> SeerrEpisodeCard(episode, width) },
@@ -409,7 +416,7 @@ private fun SeerrEpisodeCard(episode: SeerrEpisode, width: Dp) {
             .semantics(mergeDescendants = true) { },
     ) {
         Artwork(url = episode.stillUrl, title = episode.title, aspectRatio = EPISODE_ASPECT, modifier = Modifier.fillMaxSize())
-        EpisodeCardScrim()
+        if (!LocalSkeleton.current) EpisodeCardScrim()
         Column(
             Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = VibeyFinTokens.Space.s3).padding(bottom = VibeyFinTokens.Space.s3),
             verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1),
@@ -441,7 +448,7 @@ private fun CastRow(cast: List<SeerrCastMember>, margin: Dp) {
         ) {
             items(cast, key = { it.id }) { person ->
                 Column(Modifier.width(tile), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s1)) {
-                    Box(Modifier.size(tile).clip(CircleShape).background(VibeyFinTokens.Colors.surface2), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(tile).skeleton(CircleShape).clip(CircleShape).background(VibeyFinTokens.Colors.surface2), contentAlignment = Alignment.Center) {
                         Text(Strings.initials(person.name), style = MaterialTheme.typography.titleMedium, color = VibeyFinTokens.Colors.inkMuted)
                         person.photoUrl?.let { AsyncImage(model = it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
                     }
@@ -494,9 +501,35 @@ internal fun stateIconOf(state: RequestState): Int = when (state) {
 }
 
 private val WIDE_FROM = 600.dp
-private const val PHONE_HERO_BY_WIDTH = 1.5f
+private const val PHONE_HERO_BY_WIDTH = 1f / MediaAspect.POSTER
 private const val FIRST_SCREEN = 0.7f
 private const val FIRST_SCREEN_CLEAR = 0.3f
 private val CAST_TILE = 88.dp
 private val CAST_TILE_WIDE = 112.dp
 private val POSTER_WIDE = 168.dp
+
+/** What the page's buttons do; [None] for the placeholder page, which does nothing. */
+private class SeerrTitleActions(
+    val onRequest: () -> Unit,
+    val onRequest4k: () -> Unit,
+    val onCancelRequest: () -> Unit,
+    val onSelectSeason: (Int) -> Unit,
+    val onRetryEpisodes: () -> Unit,
+) {
+    companion object {
+        val None: SeerrTitleActions = SeerrTitleActions({}, {}, {}, {}, {})
+    }
+}
+
+private fun placeholderState(): SeerrTitleUiState = Placeholders.seerrDetails.let { details ->
+    SeerrTitleUiState(
+        loading = false,
+        title = details.title,
+        facts = listOfNotNull(details.title.year?.toString(), details.runtimeMinutes?.let(Strings::minutesShort), details.certification),
+        genres = details.genres,
+        overview = details.title.overview,
+        primary = SeerrPrimary(Strings.seerrRequest, enabled = true),
+        trailerUrl = "",
+        cast = details.cast,
+    )
+}

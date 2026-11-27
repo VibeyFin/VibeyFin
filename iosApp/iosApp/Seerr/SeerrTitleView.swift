@@ -41,7 +41,7 @@ struct SeerrTitleView: View {
                 }
             } else {
                 // The grey page, in the shapes of the real one; it fades into it, as a library title does.
-                ItemSkeleton(wide: wide, margin: margin)
+                ItemSkeleton(wide: wide, margin: margin) { hero(.placeholder, Placeholders.shared.seerrTitle, centered: $0) }
                     .transition(.opacity)
             }
         }
@@ -279,6 +279,7 @@ private struct SeerrSeasonsView: View {
             message: list?.message,
             wide: wide,
             margin: margin,
+            placeholder: Placeholders.shared.seerrEpisode,
             onRetry: { model.retryEpisodes() },
             row: { SeerrEpisodeRowView(episode: $0) },
             card: { SeerrEpisodeCardView(episode: $0, width: $1) }

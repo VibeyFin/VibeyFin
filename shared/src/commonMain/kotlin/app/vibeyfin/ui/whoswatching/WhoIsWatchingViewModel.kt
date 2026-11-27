@@ -2,6 +2,7 @@ package app.vibeyfin.ui.whoswatching
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.vibeyfin.dev.SkeletonGate
 import app.vibeyfin.domain.AccountRepository
 import app.vibeyfin.domain.ActivateResult
 import app.vibeyfin.domain.AuthRepository
@@ -116,6 +117,7 @@ class WhoIsWatchingViewModel(
     private val pins: PinLock,
     private val clock: Clock,
     private val pinFor: ProfileRef? = null,
+    private val gate: SkeletonGate = SkeletonGate.AlwaysOpen,
 ) : ViewModel(),
     PinSheetControls {
     private data class Local(
@@ -144,16 +146,16 @@ class WhoIsWatchingViewModel(
     private var shownProfiles: List<Profile> = emptyList()
 
     val uiState: StateFlow<WhoIsWatchingUiState> =
-        combine(accounts.observeAccounts(serverId), local, pin.prompt, connection.state, Texts.language) { saved, local, pinPrompt, connected, _ ->
+        combine(accounts.observeAccounts(serverId), local, pin.prompt, connection.state, combine(Texts.language, gate.held) { _, held -> held }) { saved, local, pinPrompt, connected, held ->
             val merged = mergeProfiles(saved, local.public)
             // While a profile opens the tiles keep their places, so the zoom starts from the one that was tapped
             val profiles = if (local.busy) merged.inOrderOf(shownProfiles) else merged
             shownProfiles = profiles
             WhoIsWatchingUiState(
-                loading = !local.loaded,
+                loading = !local.loaded || held,
                 serverName = local.server?.name,
                 profiles = profiles,
-                serverReachable = !local.loaded || local.public != null,
+                serverReachable = !local.loaded || held || local.public != null,
                 triedAddresses = local.server?.addresses.orEmpty(),
                 quickConnectAvailable = local.public?.quickConnectEnabled == true && !local.quickConnectOff,
                 sheet = local.sheet?.rendered(),

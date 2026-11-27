@@ -17,6 +17,9 @@ class SettingsModel : PinSheetModel {
 
     fun onToggle(key: SettingKey, value: Boolean) = host.viewModel.onToggle(key, value)
 
+    /** A developer flag's switch was flipped; [id] is the row's `devFlagId`. */
+    fun onDevFlag(id: String, value: Boolean) = host.viewModel.onDevFlag(id, value)
+
     fun onChoose(key: SettingKey, value: Int) = host.viewModel.onChoose(key, value)
 
     fun onChooseLanguage(key: SettingKey, code: String) = host.viewModel.onChooseLanguage(key, code)

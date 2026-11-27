@@ -7,23 +7,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -58,11 +54,13 @@ fun ContinueCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val skeleton: Boolean = LocalSkeleton.current
+
     Column(modifier = modifier.width(VibeyFinTokens.Size.thumbWidth)) {
         Box(
             Modifier
                 .clip(RoundedCornerShape(VibeyFinTokens.Radius.artwork))
-                .combinedClickable(role = Role.Button, onLongClickLabel = Strings.showOptions, onClick = onPlay, onLongClick = onLongClick)
+                .then(if (skeleton) Modifier else Modifier.combinedClickable(role = Role.Button, onLongClickLabel = Strings.showOptions, onClick = onPlay, onLongClick = onLongClick))
                 .semantics(mergeDescendants = true) { contentDescription = card.accessibilityLabel },
         ) {
             // Rounded again inside the outer clip: a pressed card shrinks, and its corners shrink with it
@@ -74,8 +72,10 @@ fun ContinueCard(
                     blurHash = card.imageBlurHash,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                PlayDisc(Modifier.align(Alignment.Center))
-                card.progress?.let { PlaybackProgressBar(it, Modifier.align(Alignment.BottomStart), CARD_PROGRESS_HEIGHT) }
+                if (!skeleton) {
+                    PlayDisc(Modifier.align(Alignment.Center))
+                    card.progress?.let { PlaybackProgressBar(it, Modifier.align(Alignment.BottomStart), CARD_PROGRESS_HEIGHT) }
+                }
             }
         }
 
@@ -85,7 +85,7 @@ fun ContinueCard(
                 modifier = Modifier
                     .weight(1f)
                     .padding(top = VibeyFinTokens.Space.s2)
-                    .combinedClickable(role = Role.Button, onLongClickLabel = Strings.showOptions, onClick = onDetails, onLongClick = onLongClick)
+                    .then(if (skeleton) Modifier else Modifier.combinedClickable(role = Role.Button, onLongClickLabel = Strings.showOptions, onClick = onDetails, onLongClick = onLongClick))
                     .clearAndSetSemantics { },
                 verticalArrangement = Arrangement.spacedBy(CARD_LINE_GAP),
             ) {
@@ -108,7 +108,7 @@ fun ContinueCard(
                 )
             }
 
-            IconButton(onClick = onLongClick, modifier = Modifier.size(32.dp)) {
+            IconButton(onClick = onLongClick, modifier = Modifier.size(32.dp).skeleton(CircleShape)) {
                 Icon(
                     painter = painterResource(R.drawable.ic_more_horiz),
                     contentDescription = Strings.moreActions,
@@ -135,28 +135,5 @@ private fun PlayDisc(modifier: Modifier = Modifier) {
             tint = VibeyFinTokens.Colors.ink,
             modifier = Modifier.size(24.dp),
         )
-    }
-}
-
-/** Stands in for the row while it loads: the same cards, gray, so nothing moves when they arrive. */
-@Composable
-fun ContinueSkeletonCards(modifier: Modifier = Modifier) {
-    // The cards are wider than a phone, so the row measures them unbounded and the box cuts it off at the edge: every card keeps
-    // the real card's width, as in the loaded row, which scrolls
-    Box(modifier.clipToBounds().clearAndSetSemantics { contentDescription = Strings.loadingContinueWatching }) {
-        Row(
-            modifier = Modifier.wrapContentWidth(Alignment.Start, unbounded = true),
-            horizontalArrangement = Arrangement.spacedBy(VibeyFinTokens.Space.s3),
-        ) {
-            repeat(skeletonCount(3)) {
-                Column(Modifier.width(VibeyFinTokens.Size.thumbWidth)) {
-                    SkeletonBlock(Modifier.fillMaxWidth().aspectRatio(CARD_ASPECT))
-                    Column(Modifier.padding(top = VibeyFinTokens.Space.s2), verticalArrangement = Arrangement.spacedBy(CARD_LINE_GAP)) {
-                        SkeletonLine(140.dp, MaterialTheme.typography.titleSmall)
-                        SkeletonLine(72.dp, MaterialTheme.typography.bodySmall)
-                    }
-                }
-            }
-        }
     }
 }
