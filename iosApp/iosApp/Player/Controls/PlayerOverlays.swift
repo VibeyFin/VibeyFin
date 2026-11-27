@@ -134,118 +134,81 @@ struct StillWatchingPrompt: View {
     }
 }
 
-/// The scrub-preview thumbnails of one playback: fetches the tile images with the stream's headers,
-/// keeps them decoded in a small in-memory cache, and crops one thumbnail out by the shared maths.
-/// Make a new one for a new track (the next episode); letting go of it drops the cache. A tile that
-/// can't be loaded counts as missing for a short while (scrubbing carries on with the timestamp alone),
-/// then it is tried again.
-@MainActor
-final class TrickplayTiles {
-    private let track: TrickplayTrack
-    private let headers: [String: String]
-    private let tiles = NSCache<NSNumber, TileBox>()
-    /// When each tile failed, in milliseconds of system uptime.
-    private var failed: [Int: Int64] = [:]
-    private var loading: [Int: Task<CGImage?, Never>] = [:]
-
-    init(track: TrickplayTrack, headers: [String: String]) {
-        self.track = track
-        self.headers = headers
-        // About 32 MB of decoded tiles; the cache drops the rest and a tile is simply fetched again.
-        tiles.totalCostLimit = 32 * 1024 * 1024
-    }
-
-    /// Whether this is the set of `track`, so a new one is only made when the item changes.
-    func isFor(_ other: TrickplayTrack) -> Bool { track.tilesUrl == other.tilesUrl }
-
-    /// The thumbnail for `positionMs`, or nil when its tile can't be had.
-    func thumbnail(atMs positionMs: Int64) async -> UIImage? {
-        let spot = track.locate(positionMs: positionMs)
-        guard let tile = await tile(Int(spot.tileIndex)) else { return nil }
-        let width = Int(track.thumbWidth)
-        let height = Int(track.thumbHeight)
-        let rect = CGRect(x: Int(spot.column) * width, y: Int(spot.row) * height, width: width, height: height)
-        guard CGRect(x: 0, y: 0, width: tile.width, height: tile.height).contains(rect),
-              let cropped = tile.cropping(to: rect) else { return nil }
-        return UIImage(cgImage: cropped)
-    }
-
-    private func tile(_ index: Int) async -> CGImage? {
-        if let cached = tiles.object(forKey: NSNumber(value: index)) { return cached.image }
-        if let failedAt = failed[index] {
-            guard track.mayRetryTile(failedAtMs: failedAt, nowMs: Self.nowMs()) else { return nil }
-            failed[index] = nil
-        }
-        if let running = loading[index] { return await running.value }
-        // The download and the JPEG decode (a tile is a few megapixels) happen off the main actor.
-        let task = Task.detached { [track, headers] () -> CGImage? in
-            guard let url = URL(string: track.tileUrl(tileIndex: Int32(index))) else { return nil }
-            var request = URLRequest(url: url)
-            headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
-            guard let (data, response) = try? await URLSession.shared.data(for: request),
-                  (response as? HTTPURLResponse)?.statusCode == 200,
-                  let image = UIImage(data: data)?.preparingForDisplay() else { return nil }
-            return image.cgImage
-        }
-        loading[index] = task
-        let image = await task.value
-        loading[index] = nil
-        if let image {
-            tiles.setObject(TileBox(image), forKey: NSNumber(value: index), cost: image.bytesPerRow * image.height)
-        } else {
-            failed[index] = Self.nowMs()
-        }
-        return image
-    }
-}
-
-extension TrickplayTiles {
-    /// A monotonic clock in milliseconds, for timing failed tiles.
-    fileprivate static func nowMs() -> Int64 { Int64(ProcessInfo.processInfo.systemUptime * 1000) }
-}
-
-private final class TileBox {
-    let image: CGImage
-    init(_ image: CGImage) { self.image = image }
-}
-
-/// The thumbnail with the time under it, on the scrim, drawn above the scrubber's thumb.
+/// The thumbnail with the time under it, as the design draws it: no box, the picture at `size` with the pop
+/// shadow and an outline.
 struct ScrubPreview: View {
     let thumbnail: UIImage
     let time: String
-    /// The picture's width; see `pictureWidth(forBarWidth:)`.
-    var pictureWidth: CGFloat = ScrubPreview.minPictureWidth
-
-    private static let minPictureWidth: CGFloat = 160
-    private static let maxPictureWidth: CGFloat = 300
-
-    /// The picture grows with the scrubber bar (about a fifth of it), so an iPad shows a larger preview
-    /// than a phone; a phone in landscape stays at the minimum. The tiles are 320 wide, so 300 stays sharp.
-    static func pictureWidth(forBarWidth barWidth: CGFloat) -> CGFloat {
-        min(max(barWidth * 0.2, minPictureWidth), maxPictureWidth)
-    }
-
-    /// The width the whole preview takes (picture and padding), for keeping it on screen.
-    static func width(forBarWidth barWidth: CGFloat) -> CGFloat {
-        pictureWidth(forBarWidth: barWidth) + 2 * Space.s1
-    }
+    let size: CGSize
 
     var body: some View {
         VStack(spacing: Space.s1) {
             Image(uiImage: thumbnail)
                 .resizable()
-                .scaledToFit()
-                .frame(width: pictureWidth)
-                .clipShape(RoundedRectangle(cornerRadius: Radius.artwork / 2, style: .continuous))
+                .scaledToFill()
+                .frame(width: size.width, height: size.height)
+                .clipShape(RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous)
+                        .strokeBorder(Brand.overlayWeak, lineWidth: 1)
+                }
+                .shadow(color: Brand.scrimStrong, radius: 12, y: 8)
             Text(time)
                 .font(.footnote)
                 .monospacedDigit()
                 .foregroundStyle(.primary)
+                .shadow(color: Brand.scrimStrong, radius: 2)
         }
-        .padding(Space.s1)
-        .background(Brand.scrim, in: RoundedRectangle(cornerRadius: Radius.artwork, style: .continuous))
+        .fixedSize()
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+}
+
+/// Where the preview sits along the bar.
+enum ScrubPreviewPlacement {
+    /// Centred on the thumb (`fraction` along the bar) but kept inside the bar's width, so it never leaves the screen.
+    static func x(barWidth: CGFloat, previewWidth: CGFloat, fraction: CGFloat) -> CGFloat {
+        min(max(barWidth * fraction - previewWidth / 2, 0), max(barWidth - previewWidth, 0))
+    }
+}
+
+/// A preview the scrubber asks the player to draw, with the bar's bounds to place it by.
+struct ScrubPreviewRequest {
+    let thumbnail: UIImage
+    let time: String
+    let fraction: CGFloat
+    let bar: Anchor<CGRect>
+    let sizeForBarWidth: (CGFloat) -> CGSize
+}
+
+struct ScrubPreviewKey: PreferenceKey {
+    static var defaultValue: ScrubPreviewRequest?
+
+    static func reduce(value: inout ScrubPreviewRequest?, nextValue: () -> ScrubPreviewRequest?) {
+        value = nextValue() ?? value
+    }
+}
+
+/// The scrub preview, drawn over the whole player: above the glass transport, skip offer, up next and stats.
+struct ScrubPreviewLayer: View {
+    let request: ScrubPreviewRequest?
+
+    var body: some View {
+        GeometryReader { proxy in
+            if let request {
+                let bar = proxy[request.bar]
+                let size = request.sizeForBarWidth(bar.width)
+                ScrubPreview(thumbnail: request.thumbnail, time: request.time, size: size)
+                    .alignmentGuide(.top) { $0[.bottom] }
+                    .offset(
+                        x: bar.minX + ScrubPreviewPlacement.x(barWidth: bar.width, previewWidth: size.width, fraction: request.fraction),
+                        y: bar.minY
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
 

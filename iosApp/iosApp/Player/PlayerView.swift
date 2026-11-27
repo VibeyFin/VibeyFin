@@ -169,6 +169,7 @@ struct PlayerView: View {
                 }
             }
         }
+        .overlayPreferenceValue(ScrubPreviewKey.self) { ScrubPreviewLayer(request: $0) }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.26), value: state?.upNext != nil)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: controller.isExternalPlayback)
         .tint(Brand.onMedia)
@@ -209,7 +210,10 @@ struct PlayerView: View {
             pendingBackground?.cancel()
             // The window plays on without this screen being visible; it is torn down when the window closes.
             remote.remove()
-            if !pip.isActive { controller.tearDown() }
+            if !pip.isActive {
+                controller.tearDown()
+                trickplayTiles?.close()
+            }
             OrientationLock.restore()
             swipe.restoreBrightness()
             UIApplication.shared.isIdleTimerDisabled = false

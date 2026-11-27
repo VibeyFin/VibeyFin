@@ -14,8 +14,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
-/** A downloaded item ready to play from the device: the item as saved, with where the user got to, and the plan the player opens. */
-class LocalPlayable(val item: MediaItem, val plan: PlaybackPlan)
+/**
+ * A downloaded item ready to play from the device: the item as saved, with where the user got to, the plan the player opens, and its
+ * scrub-preview thumbnails from the device; null for a download without them, which asks the server.
+ */
+class LocalPlayable(val item: MediaItem, val plan: PlaybackPlan, val trickplay: TrickplayTrack? = null)
 
 /**
  * What is on the device, as the screens and the player read it without the server: the downloaded movies and episodes with their
@@ -58,7 +61,17 @@ class OfflineLibrary(
             videoFormat = item.videoFormat,
             engine = engineFor(row.filePath, snapshot),
         )
-        return LocalPlayable(item, plan)
+        return LocalPlayable(item, plan, snapshot.trickplayOnDevice(profile, itemId))
+    }
+
+    // The thumbnails count only when every tile is still on the device; otherwise the player asks the server.
+    private fun OfflineSnapshot.trickplayOnDevice(profile: ProfileRef, itemId: String): TrickplayTrack? {
+        val track: TrickplayTrack = trickplay ?: return null
+        val paths: List<String> = (0 until track.tileCount).map { trickplayTilePath(profile, itemId, it) }
+        if (paths.isEmpty() || !paths.all(files::exists)) return null
+        val uris: List<String> = paths.map(files::uri)
+
+        return track.copy(tilesUrl = uris.first(), tileUris = uris)
     }
 
     // The first player that opens the stored file, in the order the platform lists them (AVPlayer before Aether). The file is as the

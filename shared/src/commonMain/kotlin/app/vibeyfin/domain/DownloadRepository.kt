@@ -372,6 +372,9 @@ class DownloadRepository(
 /** The folder one item's files are in, relative to the downloads folder. */
 internal fun folder(profile: ProfileRef, itemId: String) = "${profile.serverId}/${profile.userId}/$itemId"
 
+/** Where tile image [tileIndex] of an item's scrub-preview thumbnails is kept, relative to the downloads folder. */
+internal fun trickplayTilePath(profile: ProfileRef, itemId: String, tileIndex: Int): String = "${folder(profile, itemId)}/trickplay/$tileIndex.jpg"
+
 // The saved copy of an item: the columns the lists use, and its [OfflineSnapshot] as JSON.
 private fun BaseItemDto.toSnapshotEntity(profile: ProfileRef, baseUrl: String, now: Long): DownloadItemEntity {
     val snapshot = toSnapshot(baseUrl)
@@ -422,14 +425,16 @@ internal fun BaseItemDto.toSnapshot(baseUrl: String): OfflineSnapshot {
         }
         SubtitleSource(stream.index, "/Videos/$id/${source!!.id}/Subtitles/${stream.index}/0/Stream.$extension", mimeType, stream.language?.takeIf { it.isNotBlank() }, stream.name())
     }
+    val trickplay: TrickplayTrack? = source?.let { trickplay[it.id]?.values?.toTrickplayTrack(it.id) }
     return OfflineSnapshot(
         item = item,
         sources = sources,
         subtitleSources = subtitleSources,
         audioTracks = tracks?.audio.orEmpty(),
         subtitleTracks = tracks?.subtitles.orEmpty(),
-        // Nothing to fetch for an item with no pictures and no subtitle files.
-        assetsDone = sources.isEmpty() && subtitleSources.isEmpty(),
+        trickplay = trickplay,
+        // Nothing to fetch for an item with no pictures, no subtitle files and no thumbnails.
+        assetsDone = sources.isEmpty() && subtitleSources.isEmpty() && trickplay == null,
         videoCodec = video?.codec?.lowercase(),
         videoLevel = video?.level?.toInt(),
         videoBitDepth = video?.bitDepth,

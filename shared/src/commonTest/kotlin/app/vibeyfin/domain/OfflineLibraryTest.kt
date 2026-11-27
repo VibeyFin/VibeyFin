@@ -46,6 +46,35 @@ class OfflineLibraryTest {
         assertTrue(playable.plan.playSessionId.startsWith(LOCAL_SESSION_PREFIX))
     }
 
+    @Test
+    fun aDownloadWithItsTilesPlaysTheThumbnailsFromTheDevice() = runTest {
+        account()
+        app.downloaded("m1", trickplayTiles = 3)
+
+        val track = assertNotNull(assertNotNull(library.playable(alex, "m1")).trickplay)
+
+        assertEquals(3, track.tileCount)
+        assertEquals("file:///fake/srv-1/u1/m1/trickplay/2.jpg", track.tileUrl(2))
+        assertEquals("file:///fake/srv-1/u1/m1/trickplay/0.jpg", track.tilesUrl)
+    }
+
+    @Test
+    fun aDownloadMissingATileFileLeavesTheThumbnailsToTheServer() = runTest {
+        account()
+        app.downloaded("m1", trickplayTiles = 3)
+        app.files.contents.remove("srv-1/u1/m1/trickplay/1.jpg")
+
+        assertNull(assertNotNull(library.playable(alex, "m1")).trickplay)
+    }
+
+    @Test
+    fun aDownloadMadeBeforeTilesWereKeptHasNoneOnTheDevice() = runTest {
+        account()
+        app.downloaded("m1")
+
+        assertNull(assertNotNull(library.playable(alex, "m1")).trickplay)
+    }
+
     private val avPlayer = PlaybackCapabilities(containers = listOf("mp4"), videoCodecs = listOf("h264"), audioCodecs = listOf("aac"))
     private val aether = PlaybackCapabilities(containers = listOf("mp4", "mkv"), videoCodecs = listOf("h264"), audioCodecs = listOf("aac"))
 

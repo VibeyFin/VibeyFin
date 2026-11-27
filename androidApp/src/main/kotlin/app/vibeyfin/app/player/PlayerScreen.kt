@@ -124,6 +124,10 @@ fun PlayerRoute(
     // Whether there is something to seek in: skip buttons and double-taps do nothing while loading, buffering or showing an error
     val playable = state.stream != null && state.message == null && !state.loading && !clock.buffering
 
+    val trickplay: TrickplayTiles? = rememberTrickplay(state.trickplay, stream?.headers)
+
+    TrickplayPrefetchEffect(trickplay, clock, state.dataLimited)
+
     PlayerContent(
         state = state,
         player = player,
@@ -135,7 +139,7 @@ fun PlayerRoute(
         viewModel = viewModel,
         hdrVideo = rememberHdrVideo(stream),
         subtitleStyle = subtitleStyle,
-        trickplay = rememberTrickplay(state.trickplay, stream?.headers),
+        trickplay = trickplay,
         playable = playable,
         screenReaderOn = screenReaderOn,
         onClose = close,

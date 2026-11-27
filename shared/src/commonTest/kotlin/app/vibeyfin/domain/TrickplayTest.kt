@@ -66,6 +66,107 @@ class TrickplayTest {
 
     @Test
     fun tilePathNamesTheWidthAndTheTile() {
-        assertEquals("/Videos/m1/Trickplay/320/2.jpg", track.tilePath("m1", 2))
+        assertEquals("/Videos/m1/Trickplay/320/2.jpg?mediaSourceId=ms-1", track.tilePath("m1", 2))
+    }
+
+    @Test
+    fun aSmallTileSetStaysAtTheDesignWidthOnEveryScreen() {
+        assertEquals(TrickplayPreviewSize(width = 160f, height = 90f), track.previewSize(barWidth = 800f, screenScale = 3f))
+        assertEquals(TrickplayPreviewSize(width = 160f, height = 90f), track.previewSize(barWidth = 1_100f, screenScale = 2f))
+    }
+
+    @Test
+    fun aLargerTileSetGrowsToAQuarterOfTheBar() {
+        val large = track.copy(width = 640, thumbWidth = 640, thumbHeight = 360)
+
+        assertEquals(TrickplayPreviewSize(width = 275f, height = 154.6875f), large.previewSize(barWidth = 1_100f, screenScale = 2f))
+    }
+
+    @Test
+    fun thePreviewNeverDrawsWiderThanTheSourcePixelsAllow() {
+        val large = track.copy(width = 640, thumbWidth = 640, thumbHeight = 360)
+
+        assertEquals(TrickplayPreviewSize(width = 320f, height = 180f), large.previewSize(barWidth = 2_000f, screenScale = 2f))
+    }
+
+    @Test
+    fun aNarrowBarNeverShrinksThePreviewBelowTheDesignWidth() {
+        assertEquals(160f, track.previewSize(barWidth = 300f, screenScale = 3f).width)
+    }
+
+    @Test
+    fun theHeightFollowsTheThumbnailsOwnAspect() {
+        val fourByThree = track.copy(thumbHeight = 240)
+
+        assertEquals(120f, fourByThree.previewSize(barWidth = 800f, screenScale = 3f).height)
+    }
+
+    @Test
+    fun theTileCountRoundsUpToWholeTiles() {
+        assertEquals(3, track.tileCount)
+        assertEquals(1, track.copy(thumbnailCount = 100).tileCount)
+        assertEquals(2, track.copy(thumbnailCount = 101).tileCount)
+        assertEquals(0, track.copy(thumbnailCount = 0).tileCount)
+    }
+
+    @Test
+    fun prefetchStartsAtTheCurrentTileAndWorksOutwardsAlternating() {
+        val long = track.copy(thumbnailCount = 700)
+
+        assertEquals(listOf(3, 4, 2, 5, 1, 6, 0), long.prefetchOrder(positionMs = 3_500_000L))
+    }
+
+    @Test
+    fun prefetchContinuesOnTheOtherSideWhenOneRunsOut() {
+        assertEquals(listOf(0, 1, 2), track.prefetchOrder(positionMs = 0L))
+        assertEquals(listOf(2, 1, 0), track.prefetchOrder(positionMs = 9_999_999L))
+        assertEquals(listOf(1, 2, 0), track.prefetchOrder(positionMs = 1_250_000L))
+    }
+
+    @Test
+    fun prefetchOrderListsEveryTileOnce() {
+        val long = track.copy(thumbnailCount = 1_234)
+
+        assertEquals((0 until long.tileCount).toList(), long.prefetchOrder(positionMs = 5_000_000L).sorted())
+    }
+
+    @Test
+    fun aTrackWithoutThumbnailsPrefetchesNothing() {
+        assertEquals(emptyList(), track.copy(thumbnailCount = 0).prefetchOrder(positionMs = 0L))
+    }
+
+    @Test
+    fun onANormalConnectionTheWholeFilmIsPrefetched() {
+        assertEquals(track.prefetchOrder(1_250_000L), track.prefetchTiles(1_250_000L, dataLimited = false))
+    }
+
+    @Test
+    fun onALimitedConnectionOnlyTheCurrentAndNeighbouringTilesAreFetched() {
+        val long = track.copy(thumbnailCount = 700)
+
+        assertEquals(listOf(3, 4, 2), long.prefetchTiles(positionMs = 3_500_000L, dataLimited = true))
+        assertEquals(listOf(0, 1), long.prefetchTiles(positionMs = 0L, dataLimited = true))
+        assertEquals(listOf(6, 5), long.prefetchTiles(positionMs = 9_999_999L, dataLimited = true))
+    }
+
+    @Test
+    fun theDecodedTilesAreTheOneBeingScrubbedAndTheNextInTheDirectionOfTravel() {
+        assertEquals(listOf(1, 2), track.decodedTiles(tileIndex = 1, previousTileIndex = 0))
+        assertEquals(listOf(1, 0), track.decodedTiles(tileIndex = 1, previousTileIndex = 2))
+        assertEquals(listOf(1, 2), track.decodedTiles(tileIndex = 1, previousTileIndex = null))
+        assertEquals(listOf(1, 2), track.decodedTiles(tileIndex = 1, previousTileIndex = 1))
+    }
+
+    @Test
+    fun theDecodedTilesStayInsideTheTileRange() {
+        assertEquals(listOf(2), track.decodedTiles(tileIndex = 2, previousTileIndex = 1))
+        assertEquals(listOf(0), track.decodedTiles(tileIndex = 0, previousTileIndex = 1))
+    }
+
+    @Test
+    fun aTrackOnTheDeviceHasATileAddressForEveryTile() {
+        val offline = track.copy(tilesUrl = "file:///d/0.jpg", tileUris = listOf("file:///d/0.jpg", "file:///d/1.jpg", "file:///d/2.jpg"))
+
+        assertEquals("file:///d/2.jpg", offline.tileUrl(2))
     }
 }

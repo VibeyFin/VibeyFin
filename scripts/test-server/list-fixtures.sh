@@ -35,6 +35,7 @@ FIXTURES = {
     "show-e04": ("shows/Test Show/Season 01/Test Show S01E04.mkv", EPISODE),
     "movie-hdr": ("movies/HDR Sample (2026)/HDR Sample (2026).mkv",
                   dict(CLIP, video="hevc", trickplay=True, range="HDR10")),
+    "long-scrub": ("movies/Long Scrub (2026)/Long Scrub (2026).mkv", dict(CLIP, seconds=1500, trickplay=True)),  # 150 thumbnails: two tiles
     "plain": ("failures/Plain Clip (2026)/Plain Clip (2026).mkv", CLIP),
     "dts-audio": ("failures/DTS Audio (2026)/DTS Audio (2026).mkv", dict(CLIP, audio=["dts"])),
     "mkv-vp9-opus": ("failures/MKV VP9 Opus (2026)/MKV VP9 Opus (2026).mkv", dict(CLIP, video="vp9", audio=["opus"])),

@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.media3.exoplayer.ExoPlayer
 import app.vibeyfin.app.components.LoadError
 import app.vibeyfin.app.subtitles.SubtitleSearch
@@ -157,7 +158,13 @@ private fun ControlsLayer(
     // Fading out after a run, the controls still draw as seeking, or the top bar would flash up
     if (visible) seekingWhenShown = seeking
 
-    AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
+    // The scrub preview must draw over the skip button, up next and stats, which are later siblings
+    AnimatedVisibility(
+        visible = visible,
+        modifier = Modifier.zIndex(if (chrome.scrubbing) 1f else 0f),
+        enter = fadeIn(),
+        exit = fadeOut(),
+    ) {
         PlayerControls(
             title = state.title,
             subtitle = state.subtitle,

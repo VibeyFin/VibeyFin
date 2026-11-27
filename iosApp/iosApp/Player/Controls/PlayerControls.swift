@@ -290,7 +290,9 @@ struct PlayerScrubber: View {
 
     @State private var isDragging = false
     @State private var thumbnail: UIImage?
+    @State private var thumbnailTile: Int32?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
         GeometryReader { geometry in
@@ -318,12 +320,17 @@ struct PlayerScrubber: View {
             )
         }
         .frame(height: 44)
-        .overlay(alignment: .topLeading) { preview }
+        .anchorPreference(key: ScrubPreviewKey.self, value: .bounds) { previewRequest(bar: $0) }
         .task(id: PreviewKey(dragging: isDragging, second: position.isFinite ? Int(position) : 0)) {
             guard isDragging, let trickplay else {
                 thumbnail = nil
+                thumbnailTile = nil
                 return
             }
+            // A frame from another tile must never sit under a new timestamp while that tile loads.
+            let tile = trickplay.tileIndex(atMs: PlayerTime.milliseconds(position))
+            if tile != thumbnailTile { thumbnail = nil }
+            thumbnailTile = tile
             let image = await trickplay.thumbnail(atMs: PlayerTime.milliseconds(position))
             // A newer drag position has cancelled this task; its answer must not replace the newer one.
             guard !Task.isCancelled else { return }
@@ -350,24 +357,17 @@ struct PlayerScrubber: View {
         let second: Int
     }
 
-    /// Above the bar, centred on the finger but kept inside the bar's width so it never leaves the screen.
-    @ViewBuilder private var preview: some View {
-        if isDragging, let thumbnail, duration > 0 {
-            GeometryReader { geometry in
-                let width = geometry.size.width
-                let fraction = min(max(position / duration, 0), 1)
-                let previewWidth = ScrubPreview.width(forBarWidth: width)
-                let x = min(max(width * fraction - previewWidth / 2, 0), max(width - previewWidth, 0))
-                ScrubPreview(
-                    thumbnail: thumbnail,
-                    time: Strings.shared.clock(milliseconds: PlayerTime.milliseconds(position)),
-                    pictureWidth: ScrubPreview.pictureWidth(forBarWidth: width)
-                )
-                    .alignmentGuide(.top) { $0[.bottom] }
-                    .offset(x: x)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            }
-        }
+    /// What the player draws above everything else while dragging, so no control can cover it.
+    private func previewRequest(bar: Anchor<CGRect>) -> ScrubPreviewRequest? {
+        guard isDragging, let thumbnail, let trickplay, duration > 0 else { return nil }
+        let screenScale: CGFloat = displayScale
+        return ScrubPreviewRequest(
+            thumbnail: thumbnail,
+            time: Strings.shared.clock(milliseconds: PlayerTime.milliseconds(position)),
+            fraction: min(max(position / duration, 0), 1),
+            bar: bar,
+            sizeForBarWidth: { trickplay.previewSize(barWidth: $0, screenScale: screenScale) }
+        )
     }
 
     private func seconds(at x: CGFloat, in width: CGFloat) -> TimeInterval {
